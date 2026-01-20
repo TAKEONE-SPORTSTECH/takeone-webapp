@@ -149,14 +149,14 @@
 
             <div class="divider"></div>
 
-            <p>We're excited to have you with us. If you have any questions or need assistance, please don't hesitate to reach out to your guardian or our support team.</p>
+            <p>Before you can access your account, please verify your email address by clicking the button below.</p>
 
             <div class="button-container">
-                <a href="{{ url('/login') }}" class="button">Access Your Account</a>
+                <a href="{{ $user->verificationUrl() }}" class="button">Verify Your Email</a>
             </div>
 
             <p style="text-align: center; color: #999999; font-size: 14px; margin-top: 30px;">
-                If you have any questions, feel free to contact us at any time.
+                If you did not create an account, no further action is required. If you have any questions, feel free to contact us at any time.
             </p>
         </div>
         <div class="footer">

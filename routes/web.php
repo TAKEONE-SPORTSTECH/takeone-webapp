@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
 use App\Http\Controllers\FamilyController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
@@ -39,8 +40,23 @@ Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])
 Route::post('/reset-password', [NewPasswordController::class, 'store'])
                 ->name('password.update');
 
+// Email verification routes
+Route::get('/email/verify', function () {
+    return view('auth.verify-email');
+})->middleware('auth')->name('verification.notice');
+
+Route::get('/email/verify/{id}/{hash}', function (Request $request) {
+    $request->user()->markEmailAsVerified();
+    return redirect('/')->with('verified', true);
+})->middleware(['auth', 'signed'])->name('verification.verify');
+
+Route::post('/email/verification-notification', function (Request $request) {
+    $request->user()->sendEmailVerificationNotification();
+    return back()->with('resent', true);
+})->middleware(['auth', 'throttle:6,1'])->name('verification.send');
+
 // Family routes
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [FamilyController::class, 'profile'])->name('profile.show');
     Route::get('/family', [FamilyController::class, 'dashboard'])->name('family.dashboard');
     Route::get('/family/create', [FamilyController::class, 'create'])->name('family.create');

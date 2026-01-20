@@ -1,20 +1,26 @@
 @props(['name' => 'country_code', 'id' => 'country_code', 'value' => '+1', 'required' => false, 'error' => null])
 
-<div class="input-group">
+<div class="input-group" onclick="event.stopPropagation()">
     <button class="btn btn-outline-secondary dropdown-toggle country-dropdown-btn d-flex align-items-center"
             type="button"
             id="{{ $id }}Dropdown"
             data-bs-toggle="dropdown"
+            data-bs-auto-close="outside"
             aria-expanded="false">
         <span class="fi fi-us me-2" id="{{ $id }}SelectedFlag"></span>
         <span class="country-label" id="{{ $id }}SelectedCountry">{{ $value }}</span>
     </button>
 
-    <div class="dropdown-menu p-2" aria-labelledby="{{ $id }}Dropdown" style="min-width: 300px;">
+    <div class="dropdown-menu p-2" aria-labelledby="{{ $id }}Dropdown" style="min-width: 200px;" onclick="event.stopPropagation()">
         <input type="text"
                class="form-control form-control-sm mb-2"
                placeholder="Search country..."
-               id="{{ $id }}Search">
+               id="{{ $id }}Search"
+               onmousedown="event.stopPropagation()"
+               onfocus="event.stopPropagation()"
+               oninput="event.stopPropagation()"
+               onkeydown="event.stopPropagation()"
+               onkeyup="event.stopPropagation()">
 
         <div class="country-list" id="{{ $id }}List" style="max-height: 300px; overflow-y: auto;">
             <!-- Countries will be populated by JavaScript -->
@@ -131,23 +137,27 @@
                 const countryList = document.getElementById(componentId + 'List');
                 if (!countryList) return;
 
+                // Clear existing items
+                countryList.innerHTML = '';
+
                 // Populate country dropdown
                 countries.forEach(country => {
-                    const button = document.createElement('button');
-                    button.className = 'dropdown-item d-flex align-items-center';
-                    button.type = 'button';
-                    button.setAttribute('data-country-code', country.code);
-                    button.setAttribute('data-country-name', country.name);
-                    button.setAttribute('data-flag-code', country.flagCode);
-                    button.innerHTML = `
-                        <span class="fi fi-${country.flagCode} me-2"></span>
-                        <span>${country.name} (${country.code})</span>
-                    `;
-                    button.addEventListener('click', function() {
-                        selectCountry(componentId, country.code, country.name, country.flagCode);
+                        const button = document.createElement('button');
+                        button.className = 'dropdown-item d-flex align-items-center';
+                        button.type = 'button';
+                        button.setAttribute('data-country-code', country.code);
+                        button.setAttribute('data-country-name', country.name);
+                        button.setAttribute('data-flag-code', country.flagCode);
+                        button.setAttribute('data-search', country.name.toLowerCase() + ' ' + country.code.toLowerCase());
+                        button.innerHTML = `
+                            <span class="fi fi-${country.flagCode} me-2"></span>
+                            <span>${country.name} (${country.code})</span>
+                        `;
+                        button.addEventListener('click', function() {
+                            selectCountry(componentId, country.code, country.name, country.flagCode);
+                        });
+                        countryList.appendChild(button);
                     });
-                    countryList.appendChild(button);
-                });
 
                 // Search functionality
                 const searchInput = document.getElementById(componentId + 'Search');
@@ -156,11 +166,11 @@
                         const searchTerm = e.target.value.toLowerCase();
                         const items = countryList.querySelectorAll('.dropdown-item');
                         items.forEach(item => {
-                            const text = item.textContent.toLowerCase();
-                            if (text.includes(searchTerm)) {
-                                item.style.display = '';
+                            const searchText = item.getAttribute('data-search') || '';
+                            if (searchText.includes(searchTerm)) {
+                                item.classList.remove('d-none');
                             } else {
-                                item.style.display = 'none';
+                                item.classList.add('d-none');
                             }
                         });
                     });
@@ -184,6 +194,13 @@
                 if (flagElement) flagElement.className = `fi fi-${flagCode} me-2`;
                 if (countryElement) countryElement.textContent = code;
                 if (hiddenInput) hiddenInput.value = code;
+
+                // Close the dropdown after selection
+                const dropdownButton = document.getElementById(componentId + 'Dropdown');
+                if (dropdownButton) {
+                    const dropdown = bootstrap.Dropdown.getInstance(dropdownButton);
+                    if (dropdown) dropdown.hide();
+                }
             }
         });
     </script>

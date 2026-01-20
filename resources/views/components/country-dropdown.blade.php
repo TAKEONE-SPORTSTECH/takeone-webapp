@@ -16,16 +16,25 @@
     @endif
 </div>
 
-@once
     @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            const selectElement = document.getElementById('{{ $id }}');
+            if (!selectElement) return;
+
+            // Check if Select2 is already initialized
+            if ($(selectElement).hasClass('select2-hidden-accessible')) {
+                return;
+            }
+
             // Load countries from JSON file
             fetch('/data/countries.json')
                 .then(response => response.json())
                 .then(countries => {
-                    const selectElement = document.getElementById('{{ $id }}');
-                    if (!selectElement) return;
+                    // Clear existing options except the first one
+                    while (selectElement.options.length > 1) {
+                        selectElement.remove(1);
+                    }
 
                     // Populate dropdown
                     countries.forEach(country => {
@@ -77,4 +86,3 @@
         }
     </style>
     @endpush
-@endonce

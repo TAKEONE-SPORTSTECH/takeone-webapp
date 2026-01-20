@@ -61,8 +61,6 @@ class RegisteredUserController extends Controller
         // Send welcome email
         Mail::to($user->email)->send(new WelcomeEmail($user, $user, null));
 
-        Auth::login($user);
-
-        return redirect()->route('login')->with('success', 'Registration successful! Please login with your credentials.');
+        return redirect()->route('verification.notice')->with('success', 'Registration successful! Please check your email to verify your account.');
     }
 }

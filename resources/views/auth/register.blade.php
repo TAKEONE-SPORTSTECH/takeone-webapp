@@ -42,7 +42,7 @@
         <div class="col-lg-10">
             <div class="card shadow">
                 <div class="card-header bg-white py-3">
-                    <h3 class="text-center mb-0 fw-bold">Create Your Profile</h3>
+                    <h3 class="text-center mb-0 fw-bold">Register</h3>
                 </div>
                 <div class="card-body p-4">
                     <form method="POST" action="{{ route('register') }}" id="registrationForm">
@@ -178,7 +178,7 @@
                         <!-- Register Button -->
                         <div class="d-grid mt-4">
                             <button type="submit" class="btn btn-primary btn-lg" id="registerButton">
-                                Create Account
+                                Register
                             </button>
                         </div>
                     </form>

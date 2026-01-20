@@ -34,6 +34,13 @@ class AuthenticatedSessionController extends Controller
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
 
+            if (!$request->user()->hasVerifiedEmail()) {
+                Auth::logout();
+                return redirect()->route('verification.notice')->withErrors([
+                    'email' => 'You need to verify your email address before logging in.',
+                ]);
+            }
+
             return redirect()->route('family.dashboard');
         }
 
