@@ -27,10 +27,33 @@ class FamilyController extends Controller
         $user = Auth::user();
         $dependents = UserRelationship::where('guardian_user_id', $user->id)
             ->with('dependent')
-            ->get();
+            ->get()
+            ->sortBy(function($relationship) {
+                return $relationship->dependent->full_name;
+            });
         $familyInvoices = $this->familyService->getFamilyInvoices($user->id);
 
         return view('family.dashboard', compact('user', 'dependents', 'familyInvoices'));
+    }
+
+    /**
+     * Display the current user's profile.
+     *
+     * @return \Illuminate\View\View
+     */
+    public function profile()
+    {
+        $user = Auth::user();
+
+        // Pass user directly and a flag to indicate it's the current user's profile
+        return view('family.show', [
+            'relationship' => (object)[
+                'dependent' => $user,
+                'relationship_type' => 'self',
+                'guardian_user_id' => $user->id,
+                'dependent_user_id' => $user->id,
+            ]
+        ]);
     }
 
     /**
@@ -54,7 +77,7 @@ class FamilyController extends Controller
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
-            'gender' => 'required|in:male,female',
+            'gender' => 'required|in:m,f',
             'birthdate' => 'required|date',
             'blood_type' => 'nullable|string|max:10',
             'nationality' => 'required|string|max:100',
@@ -115,7 +138,7 @@ class FamilyController extends Controller
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
-            'gender' => 'required|in:male,female',
+            'gender' => 'required|in:m,f',
             'birthdate' => 'required|date',
             'blood_type' => 'nullable|string|max:10',
             'nationality' => 'required|string|max:100',

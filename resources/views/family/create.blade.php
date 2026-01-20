@@ -33,8 +33,8 @@
                                 <label for="gender" class="form-label">Gender</label>
                                 <select class="form-select @error('gender') is-invalid @enderror" id="gender" name="gender" required>
                                     <option value="">Select Gender</option>
-                                    <option value="male" {{ old('gender') == 'male' ? 'selected' : '' }}>Male</option>
-                                    <option value="female" {{ old('gender') == 'female' ? 'selected' : '' }}>Female</option>
+                                    <option value="m" {{ old('gender') == 'm' ? 'selected' : '' }}>Male</option>
+                                    <option value="f" {{ old('gender') == 'f' ? 'selected' : '' }}>Female</option>
                                 </select>
                                 @error('gender')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -51,18 +51,30 @@
 
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <label for="blood_type" class="form-label">Blood Type <span class="text-muted">(Optional)</span></label>
-                                <input type="text" class="form-control @error('blood_type') is-invalid @enderror" id="blood_type" name="blood_type" value="{{ old('blood_type') }}">
+                                <label for="blood_type" class="form-label">Blood Type</label>
+                                <select class="form-select @error('blood_type') is-invalid @enderror" id="blood_type" name="blood_type">
+                                    <option value="">Select Blood Type</option>
+                                    <option value="A+" {{ old('blood_type') == 'A+' ? 'selected' : '' }}>A+</option>
+                                    <option value="A-" {{ old('blood_type') == 'A-' ? 'selected' : '' }}>A-</option>
+                                    <option value="B+" {{ old('blood_type') == 'B+' ? 'selected' : '' }}>B+</option>
+                                    <option value="B-" {{ old('blood_type') == 'B-' ? 'selected' : '' }}>B-</option>
+                                    <option value="AB+" {{ old('blood_type') == 'AB+' ? 'selected' : '' }}>AB+</option>
+                                    <option value="AB-" {{ old('blood_type') == 'AB-' ? 'selected' : '' }}>AB-</option>
+                                    <option value="O+" {{ old('blood_type') == 'O+' ? 'selected' : '' }}>O+</option>
+                                    <option value="O-" {{ old('blood_type') == 'O-' ? 'selected' : '' }}>O-</option>
+                                    <option value="Unknown" {{ old('blood_type') == 'Unknown' ? 'selected' : '' }}>Unknown</option>
+                                </select>
                                 @error('blood_type')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-md-6">
-                                <label for="nationality" class="form-label">Nationality</label>
-                                <input type="text" class="form-control @error('nationality') is-invalid @enderror" id="nationality" name="nationality" value="{{ old('nationality') }}" required>
-                                @error('nationality')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                                <x-country-dropdown
+                                    name="nationality"
+                                    id="nationality"
+                                    :value="old('nationality')"
+                                    :required="true"
+                                    :error="$errors->first('nationality')" />
                             </div>
                         </div>
 
