@@ -168,16 +168,6 @@
                         </div>
                     </div>
 
-                    <!-- Sponsor/Guardian Info -->
-                    <div class="px-4 py-2 {{ $relationship->dependent->gender == 'm' ? 'bg-primary' : 'bg-danger' }} bg-opacity-10 border-bottom">
-                        <div class="d-flex align-items-center gap-2 small">
-                            <i class="bi bi-person-badge {{ $relationship->dependent->gender == 'm' ? 'text-primary' : 'text-danger' }}"></i>
-                            <span class="fw-medium {{ $relationship->dependent->gender == 'm' ? 'text-primary' : 'text-danger' }}">
-                                {{ ucfirst($relationship->relationship_type) }}: {{ $user->full_name }}
-                            </span>
-                        </div>
-                    </div>
-
                     <!-- Contact Info -->
                     <div class="px-4 py-3 bg-light border-bottom">
                         @if($relationship->dependent->mobile)
@@ -261,6 +251,16 @@
                                 <span class="text-muted fw-medium">Member Since</span>
                                 <span class="fw-semibold">{{ $relationship->dependent->created_at->format('d/m/Y') }}</span>
                             </div>
+                    </div>
+                </div>
+
+                <!-- Sponsor/Guardian Info - Footer -->
+                <div class="px-4 py-2 {{ $relationship->dependent->gender == 'm' ? 'bg-primary' : 'bg-danger' }} bg-opacity-10 border-top">
+                    <div class="d-flex align-items-center justify-content-center gap-2 small">
+                        <i class="bi bi-person-badge {{ $relationship->dependent->gender == 'm' ? 'text-primary' : 'text-danger' }}"></i>
+                        <span class="fw-medium {{ $relationship->dependent->gender == 'm' ? 'text-primary' : 'text-danger' }}">
+                            {{ strtoupper($relationship->relationship_type) }} : {{ strtoupper($user->full_name) }}
+                        </span>
                     </div>
                 </div>
                 </div>

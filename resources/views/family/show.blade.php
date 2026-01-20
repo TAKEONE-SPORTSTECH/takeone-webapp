@@ -31,7 +31,7 @@
             <div class="flex-grow-1 p-4">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <h3 class="fw-bold mb-0">{{ $relationship->dependent->full_name }}</h3>
-                    <button class="btn btn-primary btn-sm">
+                    <button class="btn btn-primary btn-sm rounded-pill">
                         <i class="bi bi-person-plus me-1"></i>Follow
                     </button>
                 </div>
