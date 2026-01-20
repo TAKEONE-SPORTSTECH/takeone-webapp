@@ -554,9 +554,43 @@
                 <div class="card-body p-4">
                     <div class="d-flex align-items-center mb-2">
                         <i class="bi bi-heart-pulse text-danger me-2"></i>
-                        <h5 class="mb-0 fw-bold">Health Tracking</h5>
+                        <h5 class="mb-0 fw-bold">Health Metrics Overview</h5>
                     </div>
-                    <p class="text-muted small mb-4">Monitor health metrics and progress over time</p>
+
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <p class="text-muted small mb-0">Monitor health metrics and progress over time</p>
+
+                        @php
+                            $latestDate = \Carbon\Carbon::parse('2024-01-08');
+                            $now = \Carbon\Carbon::now();
+                            $diff = $latestDate->diff($now);
+                        @endphp
+
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-calendar-event text-primary"></i>
+                                <span class="fw-semibold">Snapshot Date:</span>
+                                <span class="text-muted">{{ $latestDate->format('F j, Y') }}</span>
+                            </div>
+                            <div class="vr"></div>
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-clock-history text-primary"></i>
+                                <span class="fw-semibold">Time Since:</span>
+                                <span class="text-muted">
+                                    @if($diff->y > 0)
+                                        {{ $diff->y }} {{ $diff->y == 1 ? 'year' : 'years' }}
+                                    @endif
+                                    @if($diff->m > 0)
+                                        {{ $diff->m }} {{ $diff->m == 1 ? 'month' : 'months' }}
+                                    @endif
+                                    @if($diff->d > 0)
+                                        {{ $diff->d }} {{ $diff->d == 1 ? 'day' : 'days' }}
+                                    @endif
+                                    ago
+                                </span>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Health Metrics Cards -->
                     <div class="row g-3">
