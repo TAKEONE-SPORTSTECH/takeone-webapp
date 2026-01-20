@@ -114,7 +114,9 @@
                             </div>
                     </div>
 
-                    <!-- Guardian/Sponsor Info - Footer -->
+
+                </div>
+                <!-- Guardian/Sponsor Info - Footer -->
                     <div class="px-4 py-2 {{ $user->gender == 'm' ? 'bg-primary' : 'bg-danger' }} bg-opacity-10 border-top">
                         <div class="d-flex align-items-center justify-content-center gap-2 small">
                             <i class="bi bi-person-badge {{ $user->gender == 'm' ? 'text-primary' : 'text-danger' }}"></i>
@@ -123,7 +125,6 @@
                             </span>
                         </div>
                     </div>
-                </div>
                 </div>
             </a>
         </div>
@@ -179,7 +180,7 @@
                     </div>
 
                     <!-- Contact Info -->
-                    <div class="px-4 py-3 bg-light border-bottom">
+                    <div class="px-4 py-3 bg-light border-top border-bottom">
                         @if($relationship->dependent->mobile)
                         <div class="d-flex align-items-center gap-2 small mb-2">
                             <i class="bi bi-telephone-fill {{ $relationship->dependent->gender == 'm' ? 'text-primary' : 'text-danger' }}"></i>
