@@ -26,10 +26,19 @@ class AuthenticatedSessionController extends Controller
      */
     public function store(Request $request)
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
+        $request->validate([
+            'email' => ['required'],
             'password' => ['required'],
         ]);
+
+        if (filter_var($request->email, FILTER_VALIDATE_EMAIL)) {
+            $field = 'email';
+            $value = $request->email;
+        } else {
+            $field = 'mobile';
+            $value = trim(preg_replace('/[^\d\+]/', '', $request->email)); // Keep digits and +, trim
+        }
+        $credentials = [$field => $value, 'password' => $request->password];
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();

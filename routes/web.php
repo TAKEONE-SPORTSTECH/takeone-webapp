@@ -45,10 +45,21 @@ Route::get('/email/verify', function () {
     return view('auth.verify-email');
 })->middleware('auth')->name('verification.notice');
 
-Route::get('/email/verify/{id}/{hash}', function (Request $request) {
-    $request->user()->markEmailAsVerified();
-    return redirect('/')->with('verified', true);
-})->middleware(['auth', 'signed'])->name('verification.verify');
+Route::get('/email/verify/{id}/{hash}', function (Request $request, $id, $hash) {
+    $user = \App\Models\User::findOrFail($id);
+
+    if (! hash_equals((string) $hash, sha1($user->getEmailForVerification()))) {
+        abort(403, 'Invalid verification link.');
+    }
+
+    if ($user->hasVerifiedEmail()) {
+        return redirect('/login')->with('status', 'Email already verified.');
+    }
+
+    $user->markEmailAsVerified();
+
+    return redirect('/login')->with('status', 'Email verified successfully. You can now log in.');
+})->middleware(['signed'])->name('verification.verify');
 
 Route::post('/email/verification-notification', function (Request $request) {
     $request->user()->sendEmailVerificationNotification();
@@ -58,6 +69,9 @@ Route::post('/email/verification-notification', function (Request $request) {
 // Family routes
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [FamilyController::class, 'profile'])->name('profile.show');
+    Route::get('/profile/edit', [FamilyController::class, 'editProfile'])->name('profile.edit');
+    Route::put('/profile', [FamilyController::class, 'updateProfile'])->name('profile.update');
+    Route::post('/profile/upload-picture', [FamilyController::class, 'uploadProfilePicture'])->name('profile.upload-picture');
     Route::get('/family', [FamilyController::class, 'dashboard'])->name('family.dashboard');
     Route::get('/family/create', [FamilyController::class, 'create'])->name('family.create');
     Route::post('/family', [FamilyController::class, 'store'])->name('family.store');

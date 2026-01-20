@@ -152,7 +152,7 @@
             <p>Before you can access your account, please verify your email address by clicking the button below.</p>
 
             <div class="button-container">
-                <a href="{{ $user->verificationUrl() }}" class="button">Verify Your Email</a>
+                <a href="{{ $verificationUrl }}" class="button">Verify Your Email</a>
             </div>
 
             <p style="text-align: center; color: #999999; font-size: 14px; margin-top: 30px;">

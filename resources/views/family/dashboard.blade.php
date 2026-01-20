@@ -16,7 +16,7 @@
         <!-- Current User Card -->
         <div class="col">
             <a href="{{ route('profile.show') }}" class="text-decoration-none">
-                <div class="card h-100 shadow-sm border-0 overflow-hidden d-flex flex-column family-card">
+                <div class="card h-100 shadow-sm border overflow-hidden d-flex flex-column family-card">
                     <!-- Header with gradient background -->
                     <div class="p-4 pb-3" style="background: linear-gradient(135deg, {{ $user->gender == 'm' ? 'rgba(13, 110, 253, 0.1) 0%, rgba(13, 110, 253, 0.05) 50%' : 'rgba(214, 51, 132, 0.1) 0%, rgba(214, 51, 132, 0.05) 50%' }}, transparent 100%);">
                     <div class="d-flex align-items-start gap-3">
@@ -25,7 +25,7 @@
                                 @if($user->media_gallery[0] ?? false)
                                     <img src="{{ $user->media_gallery[0] }}" alt="{{ $user->full_name }}" class="w-100 h-100" style="object-fit: cover;">
                                 @else
-                                    <div class="w-100 h-100 d-flex align-items-center justify-center text-white fw-bold fs-4" style="background: linear-gradient(135deg, {{ $user->gender == 'm' ? '#0d6efd 0%, #0a58ca 100%' : '#d63384 0%, #a61e4d 100%' }});">
+                                    <div class="w-100 h-100 d-flex align-items-center justify-content-center text-white fw-bold fs-4" style="background: linear-gradient(135deg, {{ $user->gender == 'm' ? '#0d6efd 0%, #0a58ca 100%' : '#d63384 0%, #a61e4d 100%' }});">
                                         {{ strtoupper(substr($user->full_name, 0, 1)) }}
                                     </div>
                                 @endif
@@ -133,19 +133,19 @@
         @foreach($dependents as $relationship)
             <div class="col">
                 <a href="{{ route('family.show', $relationship->dependent->id) }}" class="text-decoration-none">
-                    <div class="card h-100 shadow-sm border-0 overflow-hidden d-flex flex-column family-card">
+                    <div class="card h-100 shadow-sm border overflow-hidden d-flex flex-column family-card">
                         <!-- Header with gradient background -->
                         <div class="p-4 pb-3" style="background: linear-gradient(135deg, {{ $relationship->dependent->gender == 'm' ? 'rgba(13, 110, 253, 0.1) 0%, rgba(13, 110, 253, 0.05) 50%' : 'rgba(214, 51, 132, 0.1) 0%, rgba(214, 51, 132, 0.05) 50%' }}, transparent 100%);">
                         <div class="d-flex align-items-start gap-3">
                             <div class="position-relative">
                                 <div class="rounded-circle border border-4 border-white shadow" style="width: 80px; height: 80px; overflow: hidden; box-shadow: 0 0 0 2px {{ $relationship->dependent->gender == 'm' ? 'rgba(13, 110, 253, 0.3)' : 'rgba(214, 51, 132, 0.3)' }} !important;">
-                                    @if($relationship->dependent->media_gallery[0] ?? false)
-                                        <img src="{{ $relationship->dependent->media_gallery[0] }}" alt="{{ $relationship->dependent->full_name }}" class="w-100 h-100" style="object-fit: cover;">
-                                    @else
-                                        <div class="w-100 h-100 d-flex align-items-center justify-center text-white fw-bold fs-4" style="background: linear-gradient(135deg, {{ $relationship->dependent->gender == 'm' ? '#0d6efd 0%, #0a58ca 100%' : '#d63384 0%, #a61e4d 100%' }});">
-                                            {{ strtoupper(substr($relationship->dependent->full_name, 0, 1)) }}
-                                        </div>
-                                    @endif
+                                @if($relationship->dependent->media_gallery[0] ?? false)
+                                    <img src="{{ $relationship->dependent->media_gallery[0] }}" alt="{{ $relationship->dependent->full_name }}" class="w-100 h-100" style="object-fit: cover;">
+                                @else
+                                    <div class="w-100 h-100 d-flex align-items-center justify-content-center text-white fw-bold fs-4" style="background: linear-gradient(135deg, {{ $relationship->dependent->gender == 'm' ? '#0d6efd 0%, #0a58ca 100%' : '#d63384 0%, #a61e4d 100%' }});">
+                                        {{ strtoupper(substr($relationship->dependent->full_name, 0, 1)) }}
+                                    </div>
+                                @endif
                                 </div>
                             </div>
                             <div class="flex-grow-1 min-w-0">

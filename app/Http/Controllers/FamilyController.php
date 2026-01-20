@@ -57,6 +57,104 @@ class FamilyController extends Controller
     }
 
     /**
+     * Show the form for editing the current user's profile.
+     *
+     * @return \Illuminate\View\View
+     */
+    public function editProfile()
+    {
+        $user = Auth::user();
+
+        return view('family.profile-edit', compact('user'));
+    }
+
+    /**
+     * Upload profile picture for the current user.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function uploadProfilePicture(Request $request)
+    {
+        $request->validate([
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
+        ]);
+
+        $user = Auth::user();
+
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+
+            // Generate unique filename
+            $filename = 'profile_' . $user->id . '_' . time() . '.' . $image->getClientOriginalExtension();
+
+            // Store in public/images/profiles
+            $path = $image->storeAs('images/profiles', $filename, 'public');
+
+            // Delete old profile picture if exists
+            if ($user->profile_picture && \Storage::disk('public')->exists($user->profile_picture)) {
+                \Storage::disk('public')->delete($user->profile_picture);
+            }
+
+            // Update user
+            $user->update(['profile_picture' => $path]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Profile picture uploaded successfully.',
+                'path' => $path,
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'No image file provided.',
+        ], 400);
+    }
+
+    /**
+     * Update the current user's profile in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function updateProfile(Request $request)
+    {
+        $validated = $request->validate([
+            'full_name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email,' . Auth::id(),
+            'mobile' => 'nullable|string|max:20',
+            'gender' => 'required|in:m,f',
+            'birthdate' => 'required|date',
+            'blood_type' => 'nullable|string|max:10',
+            'nationality' => 'required|string|max:100',
+            'social_links' => 'nullable|array',
+            'social_links.*.platform' => 'required_with:social_links.*.url|string',
+            'social_links.*.url' => 'required_with:social_links.*.platform|url',
+            'motto' => 'nullable|string|max:500',
+        ]);
+
+        $user = Auth::user();
+
+        // Process social links - convert from array of objects to associative array
+        $socialLinks = [];
+        if (isset($validated['social_links']) && is_array($validated['social_links'])) {
+            foreach ($validated['social_links'] as $link) {
+                if (!empty($link['platform']) && !empty($link['url'])) {
+                    $socialLinks[$link['platform']] = $link['url'];
+                }
+            }
+        }
+
+        $validated['social_links'] = $socialLinks;
+
+        $user->update($validated);
+
+        return redirect()->route('profile.show')
+            ->with('success', 'Profile updated successfully.');
+    }
+
+    /**
      * Show the form for creating a new family member.
      *
      * @return \Illuminate\View\View

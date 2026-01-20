@@ -35,6 +35,8 @@ class User extends Authenticatable
         'addresses',
         'social_links',
         'media_gallery',
+        'profile_picture',
+        'motto',
     ];
 
     /**
@@ -198,5 +200,15 @@ class User extends Authenticatable
     public function payerInvoices(): HasMany
     {
         return $this->hasMany(Invoice::class, 'payer_user_id');
+    }
+
+    /**
+     * Send the email verification notification.
+     * Override to prevent sending the default Laravel notification.
+     * We send our custom welcome email instead.
+     */
+    public function sendEmailVerificationNotification()
+    {
+        // Do nothing - we handle verification via welcome email
     }
 }

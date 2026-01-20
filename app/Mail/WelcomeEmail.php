@@ -7,6 +7,7 @@ use App\Models\UserRelationship;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Support\Facades\URL;
 
 class WelcomeEmail extends Mailable
 {
@@ -68,6 +69,12 @@ class WelcomeEmail extends Mailable
     {
         return new Content(
             view: 'emails.welcome',
+            with: [
+                'verificationUrl' => URL::temporarySignedRoute('verification.verify', now()->addMinutes(60), [
+                    'id' => $this->user->getKey(),
+                    'hash' => sha1($this->user->getEmailForVerification()),
+                ]),
+            ],
         );
     }
 

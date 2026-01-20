@@ -8,9 +8,20 @@
             <h2 class="fw-bold mb-1">Member Profile</h2>
             <p class="text-muted mb-0">Comprehensive member information and analytics</p>
         </div>
-        <a href="{{ route('family.dashboard') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left me-2"></i>Back to Family
-        </a>
+        <div>
+            @if($relationship->relationship_type == 'self')
+                <a href="{{ route('profile.edit') }}" class="btn btn-primary me-2">
+                    <i class="bi bi-pencil me-1"></i>Edit Profile
+                </a>
+            @else
+                <a href="{{ route('family.edit', $relationship->dependent->id) }}" class="btn btn-primary me-2">
+                    <i class="bi bi-pencil me-1"></i>Edit Member
+                </a>
+            @endif
+            <a href="{{ route('family.dashboard') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Back to Family
+            </a>
+        </div>
     </div>
 
     <!-- Profile Card -->
@@ -35,7 +46,9 @@
                         <i class="bi bi-person-plus me-1"></i>Follow
                     </button>
                 </div>
-                            <p class="text-muted fst-italic mb-3">"Every rep brings me closer to my best self. Consistency is my superpower!"</p>
+                            @if($relationship->dependent->motto)
+                                <p class="text-muted fst-italic mb-3">"{{ $relationship->dependent->motto }}"</p>
+                            @endif
 
                             <!-- Achievement Badges -->
                             <div class="d-flex gap-2 mb-3 flex-wrap">
@@ -92,74 +105,74 @@
                             </div>
 
                             <!-- Social Media Icons -->
-                            <div class="d-flex gap-2 flex-wrap">
-                                <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Facebook">
-                                    <i class="bi bi-facebook"></i>
-                                </a>
-                                <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Twitter/X">
-                                    <span style="font-weight: bold; font-size: 1.2rem;">X</span>
-                                </a>
-                                <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Instagram">
-                                    <i class="bi bi-instagram"></i>
-                                </a>
-                                <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="LinkedIn">
-                                    <i class="bi bi-linkedin"></i>
-                                </a>
-                                <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="YouTube">
-                                    <i class="bi bi-youtube"></i>
-                                </a>
-                                <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="TikTok">
-                                    <i class="bi bi-tiktok"></i>
-                                </a>
-                                <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Snapchat">
-                                    <i class="bi bi-snapchat"></i>
-                                </a>
-                                <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="WhatsApp">
-                                    <i class="bi bi-whatsapp"></i>
-                                </a>
-                                <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Telegram">
-                                    <i class="bi bi-telegram"></i>
-                                </a>
-                                <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Discord">
-                                    <i class="bi bi-discord"></i>
-                                </a>
-                                <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Reddit">
-                                    <i class="bi bi-reddit"></i>
-                                </a>
-                                <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Pinterest">
-                                    <i class="bi bi-pinterest"></i>
-                                </a>
-                                <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Twitch">
-                                    <i class="bi bi-twitch"></i>
-                                </a>
-                                <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="GitHub">
-                                    <i class="bi bi-github"></i>
-                                </a>
-                                <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Spotify">
-                                    <i class="bi bi-spotify"></i>
-                                </a>
-                                <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Skype">
-                                    <i class="bi bi-skype"></i>
-                                </a>
-                                <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Slack">
-                                    <i class="bi bi-slack"></i>
-                                </a>
-                                <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Medium">
-                                    <i class="bi bi-medium"></i>
-                                </a>
-                                <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Vimeo">
-                                    <i class="bi bi-vimeo"></i>
-                                </a>
-                                <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Messenger">
-                                    <i class="bi bi-messenger"></i>
-                                </a>
-                                <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="WeChat">
-                                    <i class="bi bi-wechat"></i>
-                                </a>
-                                <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Line">
-                                    <i class="bi bi-line"></i>
-                                </a>
-                            </div>
+                            @if($relationship->dependent->social_links && count($relationship->dependent->social_links) > 0)
+                                <div class="d-flex gap-2 flex-wrap">
+                                    @php
+                                        $socialLinks = $relationship->dependent->social_links;
+                                        ksort($socialLinks); // Sort by platform name
+
+                                        $socialIcons = [
+                                            'facebook' => 'bi-facebook',
+                                            'twitter' => 'X', // Special case for Twitter/X
+                                            'instagram' => 'bi-instagram',
+                                            'linkedin' => 'bi-linkedin',
+                                            'youtube' => 'bi-youtube',
+                                            'tiktok' => 'bi-tiktok',
+                                            'snapchat' => 'bi-snapchat',
+                                            'whatsapp' => 'bi-whatsapp',
+                                            'telegram' => 'bi-telegram',
+                                            'discord' => 'bi-discord',
+                                            'reddit' => 'bi-reddit',
+                                            'pinterest' => 'bi-pinterest',
+                                            'twitch' => 'bi-twitch',
+                                            'github' => 'bi-github',
+                                            'spotify' => 'bi-spotify',
+                                            'skype' => 'bi-skype',
+                                            'slack' => 'bi-slack',
+                                            'medium' => 'bi-medium',
+                                            'vimeo' => 'bi-vimeo',
+                                            'messenger' => 'bi-messenger',
+                                            'wechat' => 'bi-wechat',
+                                            'line' => 'bi-line',
+                                        ];
+                                        $socialTitles = [
+                                            'facebook' => 'Facebook',
+                                            'twitter' => 'Twitter/X',
+                                            'instagram' => 'Instagram',
+                                            'linkedin' => 'LinkedIn',
+                                            'youtube' => 'YouTube',
+                                            'tiktok' => 'TikTok',
+                                            'snapchat' => 'Snapchat',
+                                            'whatsapp' => 'WhatsApp',
+                                            'telegram' => 'Telegram',
+                                            'discord' => 'Discord',
+                                            'reddit' => 'Reddit',
+                                            'pinterest' => 'Pinterest',
+                                            'twitch' => 'Twitch',
+                                            'github' => 'GitHub',
+                                            'spotify' => 'Spotify',
+                                            'skype' => 'Skype',
+                                            'slack' => 'Slack',
+                                            'medium' => 'Medium',
+                                            'vimeo' => 'Vimeo',
+                                            'messenger' => 'Messenger',
+                                            'wechat' => 'WeChat',
+                                            'line' => 'Line',
+                                        ];
+                                    @endphp
+                                    @foreach($socialLinks as $platform => $url)
+                                        @if(!empty($url) && isset($socialIcons[$platform]))
+                                            <a href="{{ $url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="{{ $socialTitles[$platform] ?? ucfirst($platform) }}">
+                                                @if($platform === 'twitter')
+                                                    <span style="font-weight: bold; font-size: 1.2rem;">{{ $socialIcons[$platform] }}</span>
+                                                @else
+                                                    <i class="bi {{ $socialIcons[$platform] }}"></i>
+                                                @endif
+                                            </a>
+                                        @endif
+                                    @endforeach
+                                </div>
+                            @endif
             </div>
         </div>
     </div>

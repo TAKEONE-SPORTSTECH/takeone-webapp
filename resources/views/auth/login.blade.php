@@ -14,14 +14,15 @@
                     <form method="POST" action="{{ route('login') }}">
                         @csrf
 
-                        <!-- Email Address -->
+                        <!-- Email or Phone -->
                         <div class="mb-3">
-                            <label for="email" class="form-label">Email Address</label>
-                            <input id="email" type="email"
+                            <label for="email" class="form-label">Email or Phone</label>
+                            <input id="email" type="text"
                                    class="form-control @error('email') is-invalid @enderror"
                                    name="email"
                                    value="{{ old('email') }}"
-                                   required autocomplete="email"
+                                   placeholder="Enter your email or phone number"
+                                   required autocomplete="username"
                                    autofocus>
                             @error('email')
                                 <span class="invalid-feedback" role="alert">
