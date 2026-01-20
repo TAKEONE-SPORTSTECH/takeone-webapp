@@ -46,13 +46,13 @@
                         @if($user->mobile)
                         <div class="d-flex align-items-center gap-2 small mb-2">
                             <i class="bi bi-telephone-fill {{ $user->gender == 'm' ? 'text-primary' : 'text-danger' }}"></i>
-                            <span class="fw-medium">{{ $user->mobile }}</span>
+                            <span class="fw-medium text-muted">{{ $user->mobile }}</span>
                         </div>
                         @endif
                         @if($user->email)
                         <div class="d-flex align-items-center gap-2 small">
                             <i class="bi bi-envelope-fill {{ $user->gender == 'm' ? 'text-primary' : 'text-danger' }}"></i>
-                            <span class="fw-medium text-truncate">{{ $user->email }}</span>
+                            <span class="fw-medium text-muted text-truncate">{{ $user->email }}</span>
                         </div>
                         @endif
                     </div>
@@ -62,21 +62,21 @@
                     <div class="row g-3 mb-3">
                         <div class="col-6">
                             <div class="small text-muted text-uppercase fw-medium mb-1" style="font-size: 0.7rem; letter-spacing: 0.5px;">Gender</div>
-                            <div class="fw-semibold text-capitalize">{{ $user->gender == 'm' ? 'Male' : 'Female' }}</div>
+                            <div class="fw-semibold text-muted text-capitalize">{{ $user->gender == 'm' ? 'Male' : 'Female' }}</div>
                         </div>
                         <div class="col-6">
                             <div class="small text-muted text-uppercase fw-medium mb-1" style="font-size: 0.7rem; letter-spacing: 0.5px;">Age</div>
-                            <div class="fw-semibold">{{ $user->age }} years</div>
+                            <div class="fw-semibold text-muted">{{ $user->age }} years</div>
                         </div>
                     </div>
                     <div class="row g-3 mb-3">
                         <div class="col-6">
                             <div class="small text-muted text-uppercase fw-medium mb-1" style="font-size: 0.7rem; letter-spacing: 0.5px;">Nationality</div>
-                            <div class="fw-semibold fs-5 nationality-display" data-iso3="{{ $user->nationality }}">{{ $user->nationality }}</div>
+                            <div class="fw-semibold text-muted fs-5 nationality-display" data-iso3="{{ $user->nationality }}">{{ $user->nationality }}</div>
                         </div>
                         <div class="col-6">
                             <div class="small text-muted text-uppercase fw-medium mb-1" style="font-size: 0.7rem; letter-spacing: 0.5px;">Horoscope</div>
-                            <div class="fw-semibold">
+                            <div class="fw-semibold text-muted">
                                 @php
                                     $horoscopeSymbols = [
                                         'Aries' => '♈',
@@ -102,15 +102,25 @@
                     <div class="pt-2 border-top">
                         <div class="d-flex justify-content-between align-items-center small mb-2">
                             <span class="text-muted fw-medium">Next Birthday</span>
-                            <span class="fw-semibold {{ $user->gender == 'm' ? 'text-primary' : 'text-danger' }}">
+                            <span class="fw-semibold text-muted">
                                 {{ $user->birthdate->copy()->year(now()->year)->isFuture()
                                     ? $user->birthdate->copy()->year(now()->year)->diffForHumans(['parts' => 2, 'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE])
                                     : $user->birthdate->copy()->year(now()->year + 1)->diffForHumans(['parts' => 2, 'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE]) }}
                             </span>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center small">
-                            <span class="text-muted fw-medium">Member Since</span>
-                            <span class="fw-semibold">{{ $user->created_at->format('d/m/Y') }}</span>
+                            <div class="d-flex justify-content-between align-items-center small">
+                                <span class="text-muted fw-medium">Member Since</span>
+                                <span class="fw-semibold text-muted">{{ $user->created_at->format('d/m/Y') }}</span>
+                            </div>
+                    </div>
+
+                    <!-- Guardian/Sponsor Info - Footer -->
+                    <div class="px-4 py-2 {{ $user->gender == 'm' ? 'bg-primary' : 'bg-danger' }} bg-opacity-10 border-top">
+                        <div class="d-flex align-items-center justify-content-center gap-2 small">
+                            <i class="bi bi-person-badge {{ $user->gender == 'm' ? 'text-primary' : 'text-danger' }}"></i>
+                            <span class="fw-medium {{ $user->gender == 'm' ? 'text-primary' : 'text-danger' }}">
+                                GUARDIAN
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -173,24 +183,24 @@
                         @if($relationship->dependent->mobile)
                         <div class="d-flex align-items-center gap-2 small mb-2">
                             <i class="bi bi-telephone-fill {{ $relationship->dependent->gender == 'm' ? 'text-primary' : 'text-danger' }}"></i>
-                            <span class="fw-medium">{{ $relationship->dependent->mobile }}</span>
+                            <span class="fw-medium text-muted">{{ $relationship->dependent->mobile }}</span>
                         </div>
                         @elseif($user->mobile)
                         <div class="d-flex align-items-center gap-2 small mb-2">
                             <i class="bi bi-telephone-fill {{ $relationship->dependent->gender == 'm' ? 'text-primary' : 'text-danger' }}"></i>
-                            <span class="fw-medium">{{ $user->mobile }}</span>
+                            <span class="fw-medium text-muted">{{ $user->mobile }}</span>
                             <span class="badge {{ $relationship->dependent->gender == 'm' ? 'bg-info' : 'bg-danger' }} {{ $relationship->dependent->gender == 'm' ? 'text-dark' : 'text-white' }} ms-auto">Guardian's</span>
                         </div>
                         @endif
                         @if($relationship->dependent->email)
                         <div class="d-flex align-items-center gap-2 small">
                             <i class="bi bi-envelope-fill {{ $relationship->dependent->gender == 'm' ? 'text-primary' : 'text-danger' }}"></i>
-                            <span class="fw-medium text-truncate">{{ $relationship->dependent->email }}</span>
+                            <span class="fw-medium text-muted text-truncate">{{ $relationship->dependent->email }}</span>
                         </div>
                         @elseif($user->email)
                         <div class="d-flex align-items-center gap-2 small">
                             <i class="bi bi-envelope-fill {{ $relationship->dependent->gender == 'm' ? 'text-primary' : 'text-danger' }}"></i>
-                            <span class="fw-medium text-truncate">{{ $user->email }}</span>
+                            <span class="fw-medium text-muted text-truncate">{{ $user->email }}</span>
                             <span class="badge {{ $relationship->dependent->gender == 'm' ? 'bg-info' : 'bg-danger' }} {{ $relationship->dependent->gender == 'm' ? 'text-dark' : 'text-white' }} ms-auto">Guardian's</span>
                         </div>
                         @endif
@@ -201,21 +211,21 @@
                         <div class="row g-3 mb-3">
                             <div class="col-6">
                                 <div class="small text-muted text-uppercase fw-medium mb-1" style="font-size: 0.7rem; letter-spacing: 0.5px;">Gender</div>
-                                <div class="fw-semibold text-capitalize">{{ $relationship->dependent->gender == 'm' ? 'Male' : 'Female' }}</div>
+                                <div class="fw-semibold text-muted text-capitalize">{{ $relationship->dependent->gender == 'm' ? 'Male' : 'Female' }}</div>
                             </div>
                             <div class="col-6">
                                 <div class="small text-muted text-uppercase fw-medium mb-1" style="font-size: 0.7rem; letter-spacing: 0.5px;">Age</div>
-                                <div class="fw-semibold">{{ $relationship->dependent->age }} years</div>
+                                <div class="fw-semibold text-muted">{{ $relationship->dependent->age }} years</div>
                             </div>
                         </div>
                         <div class="row g-3 mb-3">
                             <div class="col-6">
                                 <div class="small text-muted text-uppercase fw-medium mb-1" style="font-size: 0.7rem; letter-spacing: 0.5px;">Nationality</div>
-                                <div class="fw-semibold fs-5 nationality-display" data-iso3="{{ $relationship->dependent->nationality }}">{{ $relationship->dependent->nationality }}</div>
+                                <div class="fw-semibold text-muted fs-5 nationality-display" data-iso3="{{ $relationship->dependent->nationality }}">{{ $relationship->dependent->nationality }}</div>
                             </div>
                             <div class="col-6">
                                 <div class="small text-muted text-uppercase fw-medium mb-1" style="font-size: 0.7rem; letter-spacing: 0.5px;">Horoscope</div>
-                                <div class="fw-semibold">
+                                <div class="fw-semibold text-muted">
                                     @php
                                         $horoscopeSymbols = [
                                             'Aries' => '♈',
@@ -241,7 +251,7 @@
                         <div class="pt-2 border-top">
                             <div class="d-flex justify-content-between align-items-center small mb-2">
                                 <span class="text-muted fw-medium">Next Birthday</span>
-                                <span class="fw-semibold {{ $relationship->dependent->gender == 'm' ? 'text-primary' : 'text-danger' }}">
+                                <span class="fw-semibold text-muted">
                                     {{ $relationship->dependent->birthdate->copy()->year(now()->year)->isFuture()
                                         ? $relationship->dependent->birthdate->copy()->year(now()->year)->diffForHumans(['parts' => 2, 'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE])
                                         : $relationship->dependent->birthdate->copy()->year(now()->year + 1)->diffForHumans(['parts' => 2, 'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE]) }}
@@ -249,7 +259,7 @@
                             </div>
                             <div class="d-flex justify-content-between align-items-center small">
                                 <span class="text-muted fw-medium">Member Since</span>
-                                <span class="fw-semibold">{{ $relationship->dependent->created_at->format('d/m/Y') }}</span>
+                                <span class="fw-semibold text-muted">{{ $relationship->dependent->created_at->format('d/m/Y') }}</span>
                             </div>
                     </div>
                 </div>
