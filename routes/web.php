@@ -1,16 +1,23 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use App\Http\Controllers\FamilyController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\ClubController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
 Route::get('/', function () {
-    return view('welcome');
+    // If user is authenticated, show explore page
+    if (Auth::check()) {
+        return redirect()->route('clubs.explore');
+    }
+    // Otherwise redirect to login
+    return redirect()->route('login');
 });
 
 // Authentication routes
@@ -65,6 +72,13 @@ Route::post('/email/verification-notification', function (Request $request) {
     $request->user()->sendEmailVerificationNotification();
     return back()->with('resent', true);
 })->middleware(['auth', 'throttle:6,1'])->name('verification.send');
+
+// Explore routes (accessible to authenticated users)
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/explore', [ClubController::class, 'index'])->name('clubs.explore');
+    Route::get('/clubs/nearby', [ClubController::class, 'nearby'])->name('clubs.nearby');
+    Route::get('/clubs/all', [ClubController::class, 'all'])->name('clubs.all');
+});
 
 // Family routes
 Route::middleware(['auth', 'verified'])->group(function () {

@@ -3,7 +3,7 @@
 @section('content')
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="mb-0">My Family</h1>
+        <h1 class="mb-0">Family</h1>
         <div>
             <a href="{{ route('invoices.index') }}" class="btn btn-outline-primary">
                 <i class="bi bi-receipt"></i> All Invoices

@@ -36,7 +36,10 @@ class AuthenticatedSessionController extends Controller
             $value = $request->email;
         } else {
             $field = 'mobile';
-            $value = trim(preg_replace('/[^\d\+]/', '', $request->email)); // Keep digits and +, trim
+            // Normalize mobile: remove all non-digits, then add + prefix
+            $cleanNumber = preg_replace('/[^\d]/', '', $request->email);
+            // Try with + prefix first (as stored in DB)
+            $value = '+' . $cleanNumber;
         }
         $credentials = [$field => $value, 'password' => $request->password];
 
