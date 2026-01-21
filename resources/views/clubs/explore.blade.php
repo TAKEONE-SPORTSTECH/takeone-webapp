@@ -589,7 +589,7 @@ function showAlert(message, type = 'danger') {
 // Reverse geocode to get address
 async function reverseGeocode(lat, lng) {
     try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`);
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`);
         const data = await response.json();
         return data.address || null;
     } catch (error) {
@@ -606,7 +606,7 @@ function getCountryInfo(address) {
     const country = countriesData.find(c => c.iso2 === iso2);
     if (country) {
         const flag = iso2.split('').map(char => String.fromCodePoint(127397 + char.charCodeAt(0))).join('');
-        return { flag, name: country.name };
+        return { flag, name: country.name, iso3: country.iso3 };
     }
     return null;
 }
@@ -616,9 +616,9 @@ async function updateModalLocation(lat, lng) {
     const address = await reverseGeocode(lat, lng);
     const info = getCountryInfo(address);
     const coords = `Latitude: ${lat.toFixed(6)}, Longitude: ${lng.toFixed(6)}`;
-    const area = address?.city || address?.state || address?.county || '';
+    const area = address?.suburb || address?.town || address?.city || address?.state || address?.county || '';
     if (info) {
-        document.getElementById('modalLocationCoordinates').innerHTML = `${info.flag} ${info.name}${area ? ', ' + area : ''} - ${coords}`;
+        document.getElementById('modalLocationCoordinates').innerHTML = `${info.name}${area ? ', ' + area : ''} - ${coords}`;
     } else {
         document.getElementById('modalLocationCoordinates').textContent = `${area ? area + ' - ' : ''}${coords}`;
     }
