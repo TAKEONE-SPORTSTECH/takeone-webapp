@@ -19,6 +19,8 @@
     /* Primary - Soft Purple */
     --color-primary: hsl(250 60% 70%);
     --color-primary-foreground: hsl(0 0% 100%);
+    --color-brand-red: hsl(250 60% 70%);
+    --color-brand-red-dark: hsl(250 60% 65%);
 
     /* Secondary - Soft Sage Green */
     --color-secondary: hsl(140 30% 75%);

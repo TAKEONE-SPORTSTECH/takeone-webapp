@@ -85,7 +85,7 @@
                                     <option value="">Select Relationship</option>
                                     <option value="son" {{ old('relationship_type') == 'son' ? 'selected' : '' }}>Son</option>
                                     <option value="daughter" {{ old('relationship_type') == 'daughter' ? 'selected' : '' }}>Daughter</option>
-                                    <option value="spouse" {{ old('relationship_type') == 'spouse' ? 'selected' : '' }}>Spouse</option>
+                                    <option value="spouse" {{ old('relationship_type') == 'spouse' ? 'selected' : '' }}>Wife</option>
                                     <option value="sponsor" {{ old('relationship_type') == 'sponsor' ? 'selected' : '' }}>Sponsor</option>
                                     <option value="other" {{ old('relationship_type') == 'other' ? 'selected' : '' }}>Other</option>
                                 </select>

@@ -44,9 +44,23 @@
 
                         <div class="mb-3">
                             <label for="mobile" class="form-label">Mobile Number</label>
-                            <input type="text" class="form-control @error('mobile') is-invalid @enderror" id="mobile" name="mobile" value="{{ old('mobile', $relationship->dependent->mobile) }}">
+                            <div class="input-group" onclick="event.stopPropagation()">
+                                <button class="btn btn-outline-secondary dropdown-toggle country-dropdown-btn d-flex align-items-center" type="button" id="country_codeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <span class="fi fi-bh me-2" id="country_codeSelectedFlag"></span>
+                                    <span class="country-label" id="country_codeSelectedCountry">{{ old('mobile_code', $relationship->dependent->mobile['code'] ?? '+973') }}</span>
+                                </button>
+                                <div class="dropdown-menu p-2" aria-labelledby="country_codeDropdown" style="min-width: 200px;" onclick="event.stopPropagation()">
+                                    <input type="text" class="form-control form-control-sm mb-2" placeholder="Search country..." id="country_codeSearch" onkeydown="event.stopPropagation()">
+                                    <div class="country-list" id="country_codeList" style="max-height: 300px; overflow-y: auto;"></div>
+                                </div>
+                                <input type="hidden" id="country_code" name="mobile_code" value="{{ old('mobile_code', $relationship->dependent->mobile['code'] ?? '+973') }}">
+                                <input id="mobile_number" type="tel" class="form-control @error('mobile') is-invalid @enderror" name="mobile" value="{{ old('mobile', $relationship->dependent->mobile['number'] ?? '') }}" autocomplete="tel" placeholder="Phone number">
+                            </div>
                             @error('mobile')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                            @error('mobile_code')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
 
@@ -179,7 +193,7 @@
                                     <option value="">Select Relationship</option>
                                     <option value="son" {{ old('relationship_type', $relationship->relationship_type) == 'son' ? 'selected' : '' }}>Son</option>
                                     <option value="daughter" {{ old('relationship_type', $relationship->relationship_type) == 'daughter' ? 'selected' : '' }}>Daughter</option>
-                                    <option value="spouse" {{ old('relationship_type', $relationship->relationship_type) == 'spouse' ? 'selected' : '' }}>Spouse</option>
+                                    <option value="spouse" {{ old('relationship_type', $relationship->relationship_type) == 'spouse' ? 'selected' : '' }}>Wife</option>
                                     <option value="sponsor" {{ old('relationship_type', $relationship->relationship_type) == 'sponsor' ? 'selected' : '' }}>Sponsor</option>
                                     <option value="other" {{ old('relationship_type', $relationship->relationship_type) == 'other' ? 'selected' : '' }}>Other</option>
                                 </select>
@@ -200,7 +214,7 @@
                                 <button type="button" class="btn btn-danger me-2" data-bs-toggle="modal" data-bs-target="#deleteModal">
                                     Remove
                                 </button>
-                                <button type="submit" class="btn btn-primary">Update Family Member</button>
+                                <button type="submit" class="btn btn-primary">Update</button>
                             </div>
                         </div>
                     </form>
@@ -308,4 +322,73 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load countries for mobile code dropdown
+    fetch('/data/countries.json')
+        .then(response => response.json())
+        .then(countries => {
+            const listElement = document.getElementById('country_codeList');
+            const selectedFlag = document.getElementById('country_codeSelectedFlag');
+            const selectedCountry = document.getElementById('country_codeSelectedCountry');
+            const hiddenInput = document.getElementById('country_code');
+            const searchInput = document.getElementById('country_codeSearch');
+
+            if (!listElement) return;
+
+            // Populate dropdown
+            countries.forEach(country => {
+                const button = document.createElement('button');
+                button.className = 'dropdown-item d-flex align-items-center';
+                button.type = 'button';
+                button.setAttribute('data-country-code', country.call_code);
+                button.setAttribute('data-country-name', country.name);
+                button.setAttribute('data-flag-code', country.flag);
+                button.setAttribute('data-search', `${country.name.toLowerCase()} ${country.call_code}`);
+                button.innerHTML = `<span class="fi fi-${country.flag.toLowerCase()} me-2"></span><span>${country.name} (${country.call_code})</span>`;
+                button.addEventListener('click', function() {
+                    const code = this.getAttribute('data-country-code');
+                    const flag = this.getAttribute('data-flag-code');
+                    const name = this.getAttribute('data-country-name');
+                    selectedFlag.className = `fi fi-${flag.toLowerCase()} me-2`;
+                    selectedCountry.textContent = code;
+                    hiddenInput.value = code;
+                    // Close dropdown
+                    const dropdown = bootstrap.Dropdown.getInstance(document.getElementById('country_codeDropdown'));
+                    if (dropdown) dropdown.hide();
+                });
+                listElement.appendChild(button);
+            });
+
+            // Set initial value
+            const initialValue = '{{ old('mobile_code', $relationship->dependent->mobile['code'] ?? '+973') }}';
+            if (initialValue) {
+                hiddenInput.value = initialValue;
+                selectedCountry.textContent = initialValue;
+                const country = countries.find(c => c.call_code === initialValue);
+                if (country) {
+                    selectedFlag.className = `fi fi-${country.flag.toLowerCase()} me-2`;
+                }
+            }
+
+            // Search functionality
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                const items = listElement.querySelectorAll('.dropdown-item');
+                items.forEach(item => {
+                    const searchData = item.getAttribute('data-search');
+                    if (searchData.includes(searchTerm)) {
+                        item.style.display = '';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        })
+        .catch(error => console.error('Error loading countries:', error));
+});
+</script>
+@endpush
 @endsection

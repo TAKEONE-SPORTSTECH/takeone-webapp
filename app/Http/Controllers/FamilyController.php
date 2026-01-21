@@ -123,6 +123,7 @@ class FamilyController extends Controller
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email,' . Auth::id(),
+            'mobile_code' => 'nullable|string|max:5',
             'mobile' => 'nullable|string|max:20',
             'gender' => 'required|in:m,f',
             'birthdate' => 'required|date',
@@ -147,6 +148,13 @@ class FamilyController extends Controller
         }
 
         $validated['social_links'] = $socialLinks;
+
+        // Process mobile
+        $validated['mobile'] = [
+            'code' => $validated['mobile_code'] ?? null,
+            'number' => $validated['mobile'] ?? null,
+        ];
+        unset($validated['mobile_code']);
 
         $user->update($validated);
 
@@ -236,6 +244,7 @@ class FamilyController extends Controller
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
+            'mobile_code' => 'nullable|string|max:5',
             'mobile' => 'nullable|string|max:20',
             'gender' => 'required|in:m,f',
             'birthdate' => 'required|date',
@@ -264,11 +273,17 @@ class FamilyController extends Controller
             }
         }
 
+        // Process mobile
+        $mobile = [
+            'code' => $validated['mobile_code'] ?? null,
+            'number' => $validated['mobile'] ?? null,
+        ];
+
         $dependent = User::findOrFail($id);
         $dependent->update([
             'full_name' => $validated['full_name'],
             'email' => $validated['email'],
-            'mobile' => $validated['mobile'],
+            'mobile' => $mobile,
             'gender' => $validated['gender'],
             'birthdate' => $validated['birthdate'],
             'blood_type' => $validated['blood_type'],

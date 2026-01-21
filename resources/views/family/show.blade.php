@@ -9,18 +9,22 @@
             <p class="text-muted mb-0">Comprehensive member information and analytics</p>
         </div>
         <div>
-            @if($relationship->relationship_type == 'self')
-                <a href="{{ route('profile.edit') }}" class="btn btn-primary me-2">
-                    <i class="bi bi-pencil me-1"></i>Edit Profile
-                </a>
-            @else
-                <a href="{{ route('family.edit', $relationship->dependent->id) }}" class="btn btn-primary me-2">
-                    <i class="bi bi-pencil me-1"></i>Edit Member
-                </a>
-            @endif
-            <a href="{{ route('family.dashboard') }}" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left me-2"></i>Back to Family
-            </a>
+            <div class="dropdown">
+                <button class="btn btn-primary rounded-pill dropdown-toggle" type="button" id="actionDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-lightning me-1"></i>Action
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="actionDropdown">
+                    <li><a class="dropdown-item" href="@if($relationship->relationship_type == 'self'){{ route('profile.edit') }}@else{{ route('family.edit', $relationship->dependent->id) }}@endif">
+                        <i class="bi bi-pencil me-2"></i>Edit Info
+                    </a></li>
+                    <li><a class="dropdown-item" href="#"><i class="bi bi-calendar-check me-2"></i>Add Attendance Record</a></li>
+                    <li><a class="dropdown-item" href="#"><i class="bi bi-heart-pulse me-2"></i>Add Health Update</a></li>
+                    <li><a class="dropdown-item" href="#"><i class="bi bi-bullseye me-2"></i>Set a Goal</a></li>
+                    <li><a class="dropdown-item" href="#"><i class="bi bi-trophy me-2"></i>Add Achievement</a></li>
+                    <li><a class="dropdown-item" href="#"><i class="bi bi-award me-2"></i>Add Tournament Participation</a></li>
+                    <li><a class="dropdown-item" href="#"><i class="bi bi-calendar-event me-2"></i>Add Event Participation</a></li>
+                </ul>
+            </div>
         </div>
     </div>
 
@@ -474,80 +478,7 @@
                 </div>
             </div>
 
-            <!-- Club Memberships -->
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-body p-4">
-                    <h5 class="fw-bold mb-3">Club Memberships</h5>
-                    @if($relationship->dependent->memberClubs->count() > 0)
-                        <div class="row g-3">
-                            @foreach($relationship->dependent->memberClubs as $club)
-                                <div class="col-md-6">
-                                    <div class="border rounded p-3">
-                                        <div class="d-flex justify-content-between align-items-start">
-                                            <div>
-                                                <h6 class="fw-bold mb-1">{{ $club->club_name }}</h6>
-                                                <small class="text-muted">Status: {{ ucfirst($club->pivot->status) }}</small>
-                                            </div>
-                                            <span class="badge bg-{{ $club->pivot->status === 'active' ? 'success' : 'secondary' }}">
-                                                {{ ucfirst($club->pivot->status) }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    @else
-                        <p class="text-center text-muted my-4">No club memberships found.</p>
-                    @endif
-                </div>
-            </div>
 
-            <!-- Recent Invoices -->
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-4">
-                    <h5 class="fw-bold mb-3">Recent Invoices</h5>
-                    @if($relationship->dependent->studentInvoices->count() > 0)
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Club</th>
-                                        <th>Amount</th>
-                                        <th>Status</th>
-                                        <th>Due Date</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($relationship->dependent->studentInvoices->take(5) as $invoice)
-                                        <tr>
-                                            <td>{{ $invoice->tenant->club_name }}</td>
-                                            <td>${{ number_format($invoice->amount, 2) }}</td>
-                                            <td>
-                                                @if($invoice->status === 'paid')
-                                                    <span class="badge bg-success">Paid</span>
-                                                @elseif($invoice->status === 'pending')
-                                                    <span class="badge bg-warning text-dark">Pending</span>
-                                                @else
-                                                    <span class="badge bg-danger">Overdue</span>
-                                                @endif
-                                            </td>
-                                            <td>{{ $invoice->due_date->format('M j, Y') }}</td>
-                                            <td>
-                                                <a href="{{ route('invoices.show', $invoice->id) }}" class="btn btn-sm btn-outline-primary">
-                                                    View
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @else
-                        <p class="text-center text-muted my-4">No invoices found.</p>
-                    @endif
-                </div>
-            </div>
         </div>
 
         <!-- Attendance Tab -->

@@ -244,6 +244,15 @@
         .notification-item.unread {
             background-color: hsl(var(--accent));
         }
+
+        .dropdown-item:hover {
+            background-color: hsl(var(--primary)) !important;
+            color: white !important;
+        }
+
+        .nav-icon-btn.dropdown-toggle::after {
+            display: none;
+        }
     </style>
 
     @stack('styles')
@@ -272,6 +281,18 @@
                             <a class="nav-link nav-icon-btn" href="{{ route('clubs.explore') }}" title="Explore">
                                 <i class="bi bi-compass" style="font-size: 1.25rem;"></i>
                             </a>
+                        </li>
+
+                        <!-- Messages Dropdown -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link nav-icon-btn dropdown-toggle" href="#" id="messagesDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Messages">
+                                <i class="bi bi-chat" style="font-size: 1.25rem;"></i>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-end" aria-labelledby="messagesDropdown">
+                                <h6 class="dropdown-header small">Messages</h6>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item small" href="#">No new messages</a>
+                            </div>
                         </li>
 
                         <!-- Notifications Dropdown -->
@@ -337,21 +358,44 @@
                                         {{ strtoupper(substr(Auth::user()->full_name, 0, 1)) }}
                                     </span>
                                 @endif
-                                {{ Auth::user()->full_name }}
                             </a>
 
                             <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                <a class="dropdown-item" href="{{ route('family.dashboard') }}">
-                                    <i class="bi bi-people me-2"></i>Family
+                                <h6 class="dropdown-header small"><strong>{{ Auth::user()->full_name }}</strong><br><small>{{ Auth::user()->email }}</small></h6>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item small" href="{{ url('profile') }}">
+                                    <i class="bi bi-person me-2"></i>My Profile
                                 </a>
-                                <a class="dropdown-item" href="{{ route('invoices.index') }}">
-                                    <i class="bi bi-receipt me-2"></i>Invoices
+                                <a class="dropdown-item small" href="#">
+                                    <i class="bi bi-diagram-3 me-2"></i>Affiliations
+                                </a>
+                                <a class="dropdown-item small" href="#">
+                                    <i class="bi bi-calendar-event me-2"></i>My Sessions
+                                </a>
+                                <a class="dropdown-item small" href="{{ route('family.dashboard') }}">
+                                    <i class="bi bi-people me-2"></i>My Family
+                                </a>
+                                <a class="dropdown-item small" href="#">
+                                    <i class="bi bi-gear me-2"></i>Settings
                                 </a>
                                 <div class="dropdown-divider"></div>
-                                <a class="dropdown-item" href="{{ route('logout') }}"
+                                @if(Auth::user()->has_business ?? false)
+                                <a class="dropdown-item small" href="#">
+                                    <i class="bi bi-building me-2"></i>Manage My Business
+                                </a>
+                                @endif
+                                @if((Auth::user()->is_super_admin ?? false) || (Auth::user()->is_moderator ?? false))
+                                <a class="dropdown-item small" href="#">
+                                    <i class="bi bi-shield me-2"></i>Admin Panel
+                                </a>
+                                @endif
+                                @if((Auth::user()->has_business ?? false) || ((Auth::user()->is_super_admin ?? false) || (Auth::user()->is_moderator ?? false)))
+                                <div class="dropdown-divider"></div>
+                                @endif
+                                <a class="dropdown-item small" href="{{ route('logout') }}"
                                    onclick="event.preventDefault();
                                                  document.getElementById('logout-form').submit();">
-                                    <i class="bi bi-box-arrow-right me-2"></i>{{ __('Logout') }}
+                                    <i class="bi bi-box-arrow-right me-2"></i>Sign Out
                                 </a>
 
                                 <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">

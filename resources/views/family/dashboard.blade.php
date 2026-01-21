@@ -18,14 +18,14 @@
             <a href="{{ route('profile.show') }}" class="text-decoration-none">
                 <div class="card h-100 shadow-sm border overflow-hidden d-flex flex-column family-card">
                     <!-- Header with gradient background -->
-                    <div class="p-4 pb-3" style="background: linear-gradient(135deg, {{ $user->gender == 'm' ? 'rgba(13, 110, 253, 0.1) 0%, rgba(13, 110, 253, 0.05) 50%' : 'rgba(214, 51, 132, 0.1) 0%, rgba(214, 51, 132, 0.05) 50%' }}, transparent 100%);">
+                    <div class="p-4 pb-3" style="background: linear-gradient(135deg, {{ $user->gender == 'm' ? 'rgba(147, 51, 234, 0.1) 0%, rgba(147, 51, 234, 0.05) 50%' : 'rgba(214, 51, 132, 0.1) 0%, rgba(214, 51, 132, 0.05) 50%' }}, transparent 100%);">
                     <div class="d-flex align-items-start gap-3">
                         <div class="position-relative">
-                            <div class="rounded-circle border border-4 border-white shadow" style="width: 80px; height: 80px; overflow: hidden; box-shadow: 0 0 0 2px {{ $user->gender == 'm' ? 'rgba(13, 110, 253, 0.3)' : 'rgba(214, 51, 132, 0.3)' }} !important;">
+                            <div class="rounded-circle border border-4 border-white shadow" style="width: 80px; height: 80px; overflow: hidden; box-shadow: 0 0 0 2px {{ $user->gender == 'm' ? 'rgba(147, 51, 234, 0.3)' : 'rgba(214, 51, 132, 0.3)' }} !important;">
                                 @if($user->media_gallery[0] ?? false)
                                     <img src="{{ $user->media_gallery[0] }}" alt="{{ $user->full_name }}" class="w-100 h-100" style="object-fit: cover;">
                                 @else
-                                    <div class="w-100 h-100 d-flex align-items-center justify-content-center text-white fw-bold fs-4" style="background: linear-gradient(135deg, {{ $user->gender == 'm' ? '#0d6efd 0%, #0a58ca 100%' : '#d63384 0%, #a61e4d 100%' }});">
+                                    <div class="w-100 h-100 d-flex align-items-center justify-content-center text-white fw-bold fs-4" style="background: linear-gradient(135deg, {{ $user->gender == 'm' ? '#8b5cf6 0%, #7c3aed 100%' : '#d63384 0%, #a61e4d 100%' }});">
                                         {{ strtoupper(substr($user->full_name, 0, 1)) }}
                                     </div>
                                 @endif
@@ -43,12 +43,10 @@
 
                     <!-- Contact Info -->
                     <div class="px-4 py-3 bg-light border-top border-bottom">
-                        @if($user->mobile)
                         <div class="d-flex align-items-center gap-2 small mb-2">
                             <i class="bi bi-telephone-fill {{ $user->gender == 'm' ? 'text-primary' : 'text-danger' }}"></i>
-                            <span class="fw-medium text-muted">{{ $user->mobile }}</span>
+                            <span class="fw-medium text-muted">{{ $user->mobile_formatted ?: 'Not provided' }}</span>
                         </div>
-                        @endif
                         @if($user->email)
                         <div class="d-flex align-items-center gap-2 small">
                             <i class="bi bi-envelope-fill {{ $user->gender == 'm' ? 'text-primary' : 'text-danger' }}"></i>
@@ -118,9 +116,8 @@
                 </div>
                 <!-- Guardian/Sponsor Info - Footer -->
                     <div class="px-4 py-2 {{ $user->gender == 'm' ? 'bg-primary' : 'bg-danger' }} bg-opacity-10 border-top">
-                        <div class="d-flex align-items-center justify-content-center gap-2 small">
-                            <i class="bi bi-person-badge {{ $user->gender == 'm' ? 'text-primary' : 'text-danger' }}"></i>
-                            <span class="fw-medium {{ $user->gender == 'm' ? 'text-primary' : 'text-danger' }}">
+                        <div class="d-flex align-items-center justify-content-center small">
+                            <span class="fw-medium text-white">
                                 GUARDIAN
                             </span>
                         </div>
@@ -135,14 +132,14 @@
                 <a href="{{ route('family.show', $relationship->dependent->id) }}" class="text-decoration-none">
                     <div class="card h-100 shadow-sm border overflow-hidden d-flex flex-column family-card">
                         <!-- Header with gradient background -->
-                        <div class="p-4 pb-3" style="background: linear-gradient(135deg, {{ $relationship->dependent->gender == 'm' ? 'rgba(13, 110, 253, 0.1) 0%, rgba(13, 110, 253, 0.05) 50%' : 'rgba(214, 51, 132, 0.1) 0%, rgba(214, 51, 132, 0.05) 50%' }}, transparent 100%);">
+                        <div class="p-4 pb-3" style="background: linear-gradient(135deg, {{ $relationship->dependent->gender == 'm' ? 'rgba(147, 51, 234, 0.1) 0%, rgba(147, 51, 234, 0.05) 50%' : 'rgba(214, 51, 132, 0.1) 0%, rgba(214, 51, 132, 0.05) 50%' }}, transparent 100%);">
                         <div class="d-flex align-items-start gap-3">
                             <div class="position-relative">
-                                <div class="rounded-circle border border-4 border-white shadow" style="width: 80px; height: 80px; overflow: hidden; box-shadow: 0 0 0 2px {{ $relationship->dependent->gender == 'm' ? 'rgba(13, 110, 253, 0.3)' : 'rgba(214, 51, 132, 0.3)' }} !important;">
+                                <div class="rounded-circle border border-4 border-white shadow" style="width: 80px; height: 80px; overflow: hidden; box-shadow: 0 0 0 2px {{ $relationship->dependent->gender == 'm' ? 'rgba(147, 51, 234, 0.3)' : 'rgba(214, 51, 132, 0.3)' }} !important;">
                                 @if($relationship->dependent->media_gallery[0] ?? false)
                                     <img src="{{ $relationship->dependent->media_gallery[0] }}" alt="{{ $relationship->dependent->full_name }}" class="w-100 h-100" style="object-fit: cover;">
                                 @else
-                                    <div class="w-100 h-100 d-flex align-items-center justify-content-center text-white fw-bold fs-4" style="background: linear-gradient(135deg, {{ $relationship->dependent->gender == 'm' ? '#0d6efd 0%, #0a58ca 100%' : '#d63384 0%, #a61e4d 100%' }});">
+                                    <div class="w-100 h-100 d-flex align-items-center justify-content-center text-white fw-bold fs-4" style="background: linear-gradient(135deg, {{ $relationship->dependent->gender == 'm' ? '#8b5cf6 0%, #7c3aed 100%' : '#d63384 0%, #a61e4d 100%' }});">
                                         {{ strtoupper(substr($relationship->dependent->full_name, 0, 1)) }}
                                     </div>
                                 @endif
@@ -181,18 +178,13 @@
 
                     <!-- Contact Info -->
                     <div class="px-4 py-3 bg-light border-top border-bottom">
-                        @if($relationship->dependent->mobile)
                         <div class="d-flex align-items-center gap-2 small mb-2">
                             <i class="bi bi-telephone-fill {{ $relationship->dependent->gender == 'm' ? 'text-primary' : 'text-danger' }}"></i>
-                            <span class="fw-medium text-muted">{{ $relationship->dependent->mobile }}</span>
+                            <span class="fw-medium text-muted">{{ $relationship->dependent->mobile_formatted ?: ($user->mobile_formatted ?: 'Not provided') }}</span>
+                            @if(!$relationship->dependent->mobile_formatted && $user->mobile_formatted)
+                                <span class="badge {{ $relationship->dependent->gender == 'm' ? 'bg-info' : 'bg-danger' }} {{ $relationship->dependent->gender == 'm' ? 'text-dark' : 'text-white' }} ms-auto">Guardian's</span>
+                            @endif
                         </div>
-                        @elseif($user->mobile)
-                        <div class="d-flex align-items-center gap-2 small mb-2">
-                            <i class="bi bi-telephone-fill {{ $relationship->dependent->gender == 'm' ? 'text-primary' : 'text-danger' }}"></i>
-                            <span class="fw-medium text-muted">{{ $user->mobile }}</span>
-                            <span class="badge {{ $relationship->dependent->gender == 'm' ? 'bg-info' : 'bg-danger' }} {{ $relationship->dependent->gender == 'm' ? 'text-dark' : 'text-white' }} ms-auto">Guardian's</span>
-                        </div>
-                        @endif
                         @if($relationship->dependent->email)
                         <div class="d-flex align-items-center gap-2 small">
                             <i class="bi bi-envelope-fill {{ $relationship->dependent->gender == 'm' ? 'text-primary' : 'text-danger' }}"></i>
@@ -268,9 +260,8 @@
                 <!-- Sponsor/Guardian Info - Footer -->
                 <div class="px-4 py-2 {{ $relationship->dependent->gender == 'm' ? 'bg-primary' : 'bg-danger' }} bg-opacity-10 border-top">
                     <div class="d-flex align-items-center justify-content-center gap-2 small">
-                        <i class="bi bi-person-badge {{ $relationship->dependent->gender == 'm' ? 'text-primary' : 'text-danger' }}"></i>
-                        <span class="fw-medium {{ $relationship->dependent->gender == 'm' ? 'text-primary' : 'text-danger' }}">
-                            {{ strtoupper($relationship->relationship_type) }} : {{ strtoupper($user->full_name) }}
+                        <span class="fw-medium text-white">
+                            {{ $relationship->relationship_type === 'spouse' ? 'WIFE' : strtoupper($relationship->relationship_type) }}
                         </span>
                     </div>
                 </div>

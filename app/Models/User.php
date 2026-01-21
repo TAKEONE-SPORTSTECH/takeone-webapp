@@ -63,6 +63,7 @@ class User extends Authenticatable
             'addresses' => 'array',
             'social_links' => 'array',
             'media_gallery' => 'array',
+            'mobile' => 'array',
         ];
     }
 
@@ -148,6 +149,21 @@ class User extends Authenticatable
                 } else {
                     return 'Senior';
                 }
+            }
+        );
+    }
+
+    /**
+     * Get the formatted mobile number.
+     */
+    protected function mobileFormatted(): Attribute
+    {
+        return Attribute::make(
+            get: function () {
+                if (!$this->mobile || !is_array($this->mobile) || empty($this->mobile['code'] ?? '') || empty($this->mobile['number'] ?? '')) {
+                    return null;
+                }
+                return ($this->mobile['code'] ?? '') . ' ' . ($this->mobile['number'] ?? '');
             }
         );
     }

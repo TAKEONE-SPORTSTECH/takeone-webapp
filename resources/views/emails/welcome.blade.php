@@ -140,7 +140,7 @@
             <div class="info-box">
                 <h3>Your Family Information</h3>
                 <p><strong>Guardian:</strong> {{ $guardian->full_name }}</p>
-                <p><strong>Relationship:</strong> {{ ucfirst($relationship->relationship_type) }}</p>
+                <p><strong>Relationship:</strong> {{ $relationship->relationship_type === 'spouse' ? 'Wife' : ucfirst($relationship->relationship_type) }}</p>
                 @if($user->birthdate)
                 <p><strong>Birthdate:</strong> {{ \Carbon\Carbon::parse($user->birthdate)->format('F j, Y') }}</p>
                 @endif

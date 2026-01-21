@@ -33,7 +33,7 @@ class FamilyService
             'full_name' => $data['full_name'],
             'email' => $data['email'] ?? null,
             'password' => $data['password'] ?? null,
-            'mobile' => $data['mobile'] ?? null,
+            'mobile' => !empty($data['mobile'] ?? []) ? $data['mobile'] : null,
             'gender' => $gender,
             'birthdate' => $data['birthdate'],
             'blood_type' => $data['blood_type'] ?? 'Unknown',

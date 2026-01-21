@@ -50,7 +50,7 @@ class RegisteredUserController extends Controller
             'full_name' => $request->full_name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'mobile' => $request->country_code . $request->mobile_number,
+            'mobile' => ['code' => $request->country_code, 'number' => $request->mobile_number],
             'gender' => $request->gender,
             'birthdate' => $request->birthdate,
             'nationality' => $request->nationality,

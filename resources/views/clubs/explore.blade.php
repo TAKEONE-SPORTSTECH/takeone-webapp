@@ -37,22 +37,22 @@
                     <i class="bi bi-search me-2"></i>All
                 </button>
                 <button class="btn btn-outline-primary category-btn" data-category="sports-clubs">
-                    <i class="bi bi-trophy me-2"></i>Sports Clubs
+                    <i class="bi bi-trophy me-2"></i>Clubs
                 </button>
                 <button class="btn btn-outline-primary category-btn" data-category="personal-trainers">
-                    <i class="bi bi-person me-2"></i>Personal Trainers
+                    <i class="bi bi-person me-2"></i>Trainers
                 </button>
                 <button class="btn btn-outline-primary category-btn" data-category="events">
                     <i class="bi bi-calendar-event me-2"></i>Events
                 </button>
                 <button class="btn btn-outline-primary category-btn" data-category="nutrition-clinic">
-                    <i class="bi bi-apple me-2"></i>Nutrition Clinic
+                    <i class="bi bi-apple me-2"></i>Nutrition
                 </button>
                 <button class="btn btn-outline-primary category-btn" data-category="physiotherapy-clinics">
-                    <i class="bi bi-activity me-2"></i>Physiotherapy Clinics
+                    <i class="bi bi-activity me-2"></i>Physiotherapy
                 </button>
                 <button class="btn btn-outline-primary category-btn" data-category="sports-shops">
-                    <i class="bi bi-bag me-2"></i>Sports Shops
+                    <i class="bi bi-bag me-2"></i>Shops
                 </button>
                 <button class="btn btn-outline-primary category-btn" data-category="venues">
                     <i class="bi bi-building-fill me-2"></i>Venues
@@ -112,17 +112,17 @@
             <div class="modal-body p-0">
                 <div id="map" style="height: 600px; width: 100%;"></div>
             </div>
-            <div class="modal-footer border-0 bg-light">
-                <div class="w-100 d-flex justify-content-between align-items-center">
-                    <small class="text-muted">
-                        <i class="bi bi-geo-alt-fill me-1"></i>
-                        <span id="modalLocationCoordinates">Drag the marker to set your location</span>
-                    </small>
-                    <button type="button" class="btn btn-primary" id="applyLocationBtn">
-                        <i class="bi bi-check-circle me-2"></i>Apply Location
-                    </button>
-                </div>
-            </div>
+    <div class="modal-footer border-0 bg-light">
+        <div class="w-100 d-flex justify-content-between align-items-center">
+            <small class="text-muted">
+                <i class="bi bi-geo-alt-fill me-1"></i>
+                <span id="modalLocationCoordinates">Drag the marker to set your location</span>
+            </small>
+            <button type="button" class="btn btn-primary" id="applyLocationBtn">
+                <i class="bi bi-check-circle me-2"></i>Apply Location
+            </button>
+        </div>
+    </div>
         </div>
     </div>
 </div>
@@ -144,6 +144,7 @@
     .category-btn:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        color: white !important;
     }
 
     .category-btn.active {
@@ -262,9 +263,18 @@ let userLocation = null;
 let watchId = null;
 let currentCategory = 'all';
 let allClubs = [];
+let countriesData = [];
 
 // Initialize the page
 document.addEventListener('DOMContentLoaded', function() {
+    // Load countries from JSON file
+    fetch('/data/countries.json')
+        .then(response => response.json())
+        .then(countries => {
+            countriesData = countries;
+        })
+        .catch(error => console.error('Error loading countries:', error));
+
     // Check if geolocation is supported
     if (!navigator.geolocation) {
         showAlert('Geolocation is not supported by your browser', 'danger');
@@ -303,6 +313,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => {
             if (userLocation) {
                 initMap(userLocation.latitude, userLocation.longitude);
+                updateModalLocation(userLocation.latitude, userLocation.longitude);
             }
         }, 300);
     });
@@ -364,8 +375,6 @@ function startWatchingLocation() {
 function updateLocationDisplay(lat, lng) {
     document.getElementById('currentLocation').innerHTML =
         `<i class="bi bi-geo-alt-fill me-1 fs-5"></i>${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-    document.getElementById('modalLocationCoordinates').textContent =
-        `Latitude: ${lat.toFixed(6)}, Longitude: ${lng.toFixed(6)}`;
 }
 
 // Initialize map in modal
@@ -400,6 +409,7 @@ function initMap(lat, lng) {
             longitude: position.lng
         };
         updateLocationDisplay(position.lat, position.lng);
+        updateModalLocation(position.lat, position.lng);
     });
 
     // Search radius circle (removed - no red tint on map)
@@ -462,50 +472,87 @@ function displayClubs(clubs) {
         const card = document.createElement('div');
         card.className = 'col-md-6 col-lg-4';
         card.innerHTML = `
-            <div class="card club-card shadow-sm h-100">
-                <div class="position-relative">
-                    <img src="https://via.placeholder.com/400x200?text=${encodeURIComponent(club.club_name)}"
-                         class="club-card-img" alt="${club.club_name}">
-                    <span class="club-badge">Sports Club</span>
-                </div>
-                <div class="card-body">
-                    <h5 class="card-title mb-2">${club.club_name}</h5>
-                    <p class="text-danger mb-2">
-                        <i class="bi bi-geo-alt-fill me-1"></i>${club.distance} km away
-                    </p>
-                    <p class="text-muted small mb-3">
-                        <i class="bi bi-geo me-1"></i>${club.owner_name || 'N/A'}
-                    </p>
-
-                    <div class="row g-2 mb-3">
-                        <div class="col-4">
-                            <div class="stat-box">
-                                <i class="bi bi-people"></i>
-                                <div class="stat-number">0</div>
-                                <div class="stat-label">Members</div>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="stat-box">
-                                <i class="bi bi-box"></i>
-                                <div class="stat-number">0</div>
-                                <div class="stat-label">Packages</div>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="stat-box">
-                                <i class="bi bi-person-badge"></i>
-                                <div class="stat-number">0</div>
-                                <div class="stat-label">Trainers</div>
-                            </div>
+            <div class="rounded-none border bg-card text-card-foreground shadow-sm hover:shadow-elevated transition-all cursor-pointer overflow-hidden group">
+                <div class="relative h-64 overflow-hidden">
+                    <img src="https://via.placeholder.com/400x200?text=${encodeURIComponent(club.club_name)}" alt="${club.club_name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                    <div class="absolute bottom-3 right-3 z-10">
+                        <div class="w-14 h-14 rounded-full border-2 border-white/90 shadow-lg overflow-hidden bg-white/95 backdrop-blur">
+                            <img src="https://via.placeholder.com/50x50?text=Logo" alt="${club.club_name} logo" class="w-full h-full object-contain rounded-full">
                         </div>
                     </div>
-
-                    <div class="d-grid gap-2">
-                        <button class="btn btn-primary">
-                            <i class="bi bi-person-plus me-2"></i>Join Club
+                    <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent absolute top-4 right-4 bg-brand-red text-white hover:bg-brand-red-dark">Sports Club</div>
+                </div>
+                <div class="px-5 pt-4 pb-2">
+                    <h3 class="text-2xl font-bold text-foreground leading-tight line-clamp-2">${club.club_name}</h3>
+                </div>
+                <div class="p-6 px-5 pb-5 pt-2 space-y-3">
+                    <div>
+                        <div class="flex items-center gap-1 text-sm text-brand-red mb-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-navigation w-4 h-4">
+                                <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+                            </svg>
+                            <span class="font-medium">${club.distance} km away</span>
+                        </div>
+                        <div class="flex items-center gap-1 text-sm text-muted-foreground">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-building w-4 h-4">
+                                <rect width="16" height="20" x="4" y="2" rx="2" ry="2"></rect>
+                                <path d="M9 22v-4h6v4"></path>
+                                <path d="M8 6h.01"></path>
+                                <path d="M16 6h.01"></path>
+                                <path d="M12 6h.01"></path>
+                                <path d="M12 10h.01"></path>
+                                <path d="M12 14h.01"></path>
+                                <path d="M16 10h.01"></path>
+                                <path d="M16 14h.01"></path>
+                                <path d="M8 10h.01"></path>
+                                <path d="M8 14h.01"></path>
+                            </svg>
+                            <span>${club.owner_name || 'N/A'}</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 border-t pt-3">
+                        <div class="bg-brand-red/5 rounded-lg p-2 border border-brand-red/10 hover:border-brand-red/20 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users w-4 h-4 mx-auto mb-1 text-brand-red">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                            <p class="text-lg font-bold text-center">0</p>
+                            <p class="text-[10px] text-muted-foreground text-center font-medium">Members</p>
+                        </div>
+                        <div class="bg-brand-red/5 rounded-lg p-2 border border-brand-red/10 hover:border-brand-red/20 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-package w-4 h-4 mx-auto mb-1 text-brand-red">
+                                <path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"></path>
+                                <path d="M12 22V12"></path>
+                                <path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"></path>
+                                <path d="m7.5 4.27 9 5.15"></path>
+                            </svg>
+                            <p class="text-lg font-bold text-center">0</p>
+                            <p class="text-[10px] text-muted-foreground text-center font-medium">Packages</p>
+                        </div>
+                        <div class="bg-brand-red/5 rounded-lg p-2 border border-brand-red/10 hover:border-brand-red/20 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user w-4 h-4 mx-auto mb-1 text-brand-red">
+                                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                            <p class="text-lg font-bold text-center">0</p>
+                            <p class="text-[10px] text-muted-foreground text-center font-medium">Trainers</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:shadow-medium hover:scale-105 h-10 px-4 py-2 flex-1 bg-brand-red hover:bg-brand-red-dark text-white font-semibold shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-plus w-4 h-4 mr-2">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <line x1="19" x2="19" y1="8" y2="14"></line>
+                                <line x1="22" x2="16" y1="11" y2="11"></line>
+                            </svg>
+                            Join Club
                         </button>
-                        <button class="btn btn-outline-primary">View Details</button>
+                        <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:text-accent-foreground h-10 px-4 py-2 flex-1 text-brand-red hover:bg-brand-red/10 font-semibold">
+                            View Details
+                        </button>
                     </div>
                 </div>
             </div>
@@ -537,6 +584,44 @@ function showAlert(message, type = 'danger') {
     alert.style.display = 'block';
     alert.className = `alert alert-${type} alert-dismissible fade show`;
     messageSpan.textContent = message;
+}
+
+// Reverse geocode to get address
+async function reverseGeocode(lat, lng) {
+    try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`);
+        const data = await response.json();
+        return data.address || null;
+    } catch (error) {
+        console.error('Reverse geocoding error:', error);
+        return null;
+    }
+}
+
+// Get country info from address
+function getCountryInfo(address) {
+    if (!address || !countriesData.length) return null;
+    const iso2 = address.country_code?.toUpperCase();
+    if (!iso2) return null;
+    const country = countriesData.find(c => c.iso2 === iso2);
+    if (country) {
+        const flag = iso2.split('').map(char => String.fromCodePoint(127397 + char.charCodeAt(0))).join('');
+        return { flag, name: country.name };
+    }
+    return null;
+}
+
+// Update modal location display with country and area
+async function updateModalLocation(lat, lng) {
+    const address = await reverseGeocode(lat, lng);
+    const info = getCountryInfo(address);
+    const coords = `Latitude: ${lat.toFixed(6)}, Longitude: ${lng.toFixed(6)}`;
+    const area = address?.city || address?.state || address?.county || '';
+    if (info) {
+        document.getElementById('modalLocationCoordinates').innerHTML = `${info.flag} ${info.name}${area ? ', ' + area : ''} - ${coords}`;
+    } else {
+        document.getElementById('modalLocationCoordinates').textContent = `${area ? area + ' - ' : ''}${coords}`;
+    }
 }
 </script>
 @endpush
