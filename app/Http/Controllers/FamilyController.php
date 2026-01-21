@@ -236,10 +236,15 @@ class FamilyController extends Controller
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
+            'mobile' => 'nullable|string|max:20',
             'gender' => 'required|in:m,f',
             'birthdate' => 'required|date',
             'blood_type' => 'nullable|string|max:10',
             'nationality' => 'required|string|max:100',
+            'social_links' => 'nullable|array',
+            'social_links.*.platform' => 'required_with:social_links.*.url|string',
+            'social_links.*.url' => 'required_with:social_links.*.platform|url',
+            'motto' => 'nullable|string|max:500',
             'relationship_type' => 'required|string|max:50',
             'is_billing_contact' => 'boolean',
         ]);
@@ -249,14 +254,27 @@ class FamilyController extends Controller
             ->where('dependent_user_id', $id)
             ->firstOrFail();
 
+        // Process social links - convert from array of objects to associative array
+        $socialLinks = [];
+        if (isset($validated['social_links']) && is_array($validated['social_links'])) {
+            foreach ($validated['social_links'] as $link) {
+                if (!empty($link['platform']) && !empty($link['url'])) {
+                    $socialLinks[$link['platform']] = $link['url'];
+                }
+            }
+        }
+
         $dependent = User::findOrFail($id);
         $dependent->update([
             'full_name' => $validated['full_name'],
             'email' => $validated['email'],
+            'mobile' => $validated['mobile'],
             'gender' => $validated['gender'],
             'birthdate' => $validated['birthdate'],
             'blood_type' => $validated['blood_type'],
             'nationality' => $validated['nationality'],
+            'social_links' => $socialLinks,
+            'motto' => $validated['motto'],
         ]);
 
         $relationship->update([
@@ -266,6 +284,58 @@ class FamilyController extends Controller
 
         return redirect()->route('family.dashboard')
             ->with('success', 'Family member updated successfully.');
+    }
+
+    /**
+     * Upload profile picture for a family member.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function uploadFamilyMemberPicture(Request $request, $id)
+    {
+        $request->validate([
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
+        ]);
+
+        $user = Auth::user();
+
+        // Verify the family member belongs to the authenticated user
+        $relationship = UserRelationship::where('guardian_user_id', $user->id)
+            ->where('dependent_user_id', $id)
+            ->firstOrFail();
+
+        $familyMember = User::findOrFail($id);
+
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+
+            // Generate unique filename
+            $filename = 'profile_' . $familyMember->id . '_' . time() . '.' . $image->getClientOriginalExtension();
+
+            // Store in public/images/profiles
+            $path = $image->storeAs('images/profiles', $filename, 'public');
+
+            // Delete old profile picture if exists
+            if ($familyMember->profile_picture && \Storage::disk('public')->exists($familyMember->profile_picture)) {
+                \Storage::disk('public')->delete($familyMember->profile_picture);
+            }
+
+            // Update family member
+            $familyMember->update(['profile_picture' => $path]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Profile picture uploaded successfully.',
+                'path' => $path,
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'No image file provided.',
+        ], 400);
     }
 
     /**

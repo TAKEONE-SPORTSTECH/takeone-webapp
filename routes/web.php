@@ -92,6 +92,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/family/{id}', [FamilyController::class, 'show'])->name('family.show');
     Route::get('/family/{id}/edit', [FamilyController::class, 'edit'])->name('family.edit');
     Route::put('/family/{id}', [FamilyController::class, 'update'])->name('family.update');
+    Route::post('/family/{id}/upload-picture', [FamilyController::class, 'uploadFamilyMemberPicture'])->name('family.upload-picture');
     Route::delete('/family/{id}', [FamilyController::class, 'destroy'])->name('family.destroy');
 
     // Invoice routes
