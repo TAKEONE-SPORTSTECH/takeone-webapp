@@ -3,24 +3,24 @@
 @section('content')
 <div class="container py-4">
     <!-- Hero Section -->
-    <div class="text-center mb-5">
-        <h1 class="display-4 fw-bold text-danger mb-2">Find Your Perfect Fit</h1>
+    <div class="text-center mb-3">
+        <h1 class="display-4 fw-bold text-primary mb-2">Find Your Perfect Fit</h1>
         <p class="lead text-muted">Discover sports clubs, trainers, nutrition clinics, and more near you</p>
-        <p class="text-muted"><i class="bi bi-geo-alt-fill me-1"></i><span id="currentLocation">Detecting location...</span></p>
+        <p class="text-muted"><span id="currentLocation" class="badge bg-primary text-white rounded-pill px-3 py-2"><i class="bi bi-geo-alt-fill me-1 fs-5"></i>Detecting location...</span></p>
     </div>
 
     <!-- Search Bar with Near Me Button -->
     <div class="row justify-content-center mb-4">
         <div class="col-lg-10">
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-2">
-                    <div class="input-group">
+            <div class="card shadow-sm rounded-pill border-0">
+                <div class="card-body rounded-pill p-2">
+                    <div class="input-group rounded-pill">
                         <span class="input-group-text bg-white border-0">
                             <i class="bi bi-search"></i>
                         </span>
-                        <input type="text" id="searchInput" class="form-control border-0"
+                        <input type="text" id="searchInput" class="form-control bg-white border-0"
                                placeholder="Search for clubs, trainers, nutrition clinics...">
-                        <button class="btn btn-danger px-4" id="nearMeBtn" type="button">
+                        <button class="btn btn-primary px-4 rounded-pill" id="nearMeBtn" type="button">
                             <i class="bi bi-geo-alt-fill me-2"></i>Near Me
                         </button>
                     </div>
@@ -33,34 +33,34 @@
     <div class="row justify-content-center mb-4">
         <div class="col-lg-10">
             <div class="d-flex flex-wrap gap-2 justify-content-center">
-                <button class="btn btn-danger category-btn active" data-category="all">
+                <button class="btn btn-primary category-btn active" data-category="all">
                     <i class="bi bi-search me-2"></i>All
                 </button>
-                <button class="btn btn-outline-danger category-btn" data-category="sports-clubs">
+                <button class="btn btn-outline-primary category-btn" data-category="sports-clubs">
                     <i class="bi bi-trophy me-2"></i>Sports Clubs
                 </button>
-                <button class="btn btn-outline-danger category-btn" data-category="personal-trainers">
+                <button class="btn btn-outline-primary category-btn" data-category="personal-trainers">
                     <i class="bi bi-person me-2"></i>Personal Trainers
                 </button>
-                <button class="btn btn-outline-danger category-btn" data-category="events">
+                <button class="btn btn-outline-primary category-btn" data-category="events">
                     <i class="bi bi-calendar-event me-2"></i>Events
                 </button>
-                <button class="btn btn-outline-danger category-btn" data-category="nutrition-clinic">
+                <button class="btn btn-outline-primary category-btn" data-category="nutrition-clinic">
                     <i class="bi bi-apple me-2"></i>Nutrition Clinic
                 </button>
-                <button class="btn btn-outline-danger category-btn" data-category="physiotherapy-clinics">
+                <button class="btn btn-outline-primary category-btn" data-category="physiotherapy-clinics">
                     <i class="bi bi-activity me-2"></i>Physiotherapy Clinics
                 </button>
-                <button class="btn btn-outline-danger category-btn" data-category="sports-shops">
+                <button class="btn btn-outline-primary category-btn" data-category="sports-shops">
                     <i class="bi bi-bag me-2"></i>Sports Shops
                 </button>
-                <button class="btn btn-outline-danger category-btn" data-category="venues">
-                    <i class="bi bi-building me-2"></i>Venues
+                <button class="btn btn-outline-primary category-btn" data-category="venues">
+                    <i class="bi bi-building-fill me-2"></i>Venues
                 </button>
-                <button class="btn btn-outline-danger category-btn" data-category="supplements">
+                <button class="btn btn-outline-primary category-btn" data-category="supplements">
                     <i class="bi bi-box me-2"></i>Supplements
                 </button>
-                <button class="btn btn-outline-danger category-btn" data-category="food-plans">
+                <button class="btn btn-outline-primary category-btn" data-category="food-plans">
                     <i class="bi bi-egg-fried me-2"></i>Food Plans
                 </button>
             </div>
@@ -76,7 +76,7 @@
 
     <!-- Loading Spinner -->
     <div id="loadingSpinner" class="text-center py-5">
-        <div class="spinner-border text-danger" role="status">
+        <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Loading...</span>
         </div>
         <p class="mt-3 text-muted">Finding what's near you...</p>
@@ -88,6 +88,8 @@
             <div class="row g-4" id="clubsContainer">
                 <!-- Club cards will be inserted here -->
             </div>
+        </div>
+        <div class="col-12 d-flex justify-content-center">
             <div id="noResults" class="d-flex flex-column align-items-center justify-content-center text-center" style="display: none; min-height: 400px;">
                 <i class="bi bi-inbox" style="font-size: 4rem; color: #dee2e6;"></i>
                 <h4 class="mt-3 text-muted">No Results Found</h4>
@@ -116,7 +118,7 @@
                         <i class="bi bi-geo-alt-fill me-1"></i>
                         <span id="modalLocationCoordinates">Drag the marker to set your location</span>
                     </small>
-                    <button type="button" class="btn btn-danger" id="applyLocationBtn">
+                    <button type="button" class="btn btn-primary" id="applyLocationBtn">
                         <i class="bi bi-check-circle me-2"></i>Apply Location
                     </button>
                 </div>
@@ -146,7 +148,7 @@
 
     .category-btn.active {
         transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+        box-shadow: 0 4px 8px hsl(var(--primary) / 0.3);
     }
 
     .club-card {
@@ -171,7 +173,7 @@
         position: absolute;
         top: 10px;
         right: 10px;
-        background: #dc3545;
+        background: #0d6efd;
         color: white;
         padding: 0.25rem 0.75rem;
         border-radius: 20px;
@@ -180,7 +182,7 @@
     }
 
     .stat-box {
-        background: #f8f9fa;
+        background: hsl(var(--muted));
         border-radius: 8px;
         padding: 0.75rem;
         text-align: center;
@@ -188,18 +190,18 @@
 
     .stat-box i {
         font-size: 1.25rem;
-        color: #dc3545;
+        color: hsl(var(--primary));
     }
 
     .stat-box .stat-number {
         font-size: 1.25rem;
         font-weight: 700;
-        color: #212529;
+        color: hsl(var(--foreground));
     }
 
     .stat-box .stat-label {
         font-size: 0.75rem;
-        color: #6c757d;
+        color: hsl(var(--muted-foreground));
     }
 
     /* Pulsing animation for location marker */
@@ -220,6 +222,28 @@
 
     .pulse-marker {
         animation: pulse 2s ease-in-out infinite;
+        color: #0d6efd;
+    }
+
+    #currentLocation {
+        font-size: 1.2rem;
+    }
+
+    .input-group.rounded-pill {
+        overflow: hidden;
+    }
+
+    .input-group.rounded-pill .input-group-text {
+        border-radius: 50rem 0 0 50rem !important;
+    }
+
+    .input-group.rounded-pill .form-control {
+        border-radius: 0;
+    }
+
+    .form-control:focus {
+        border-color: #ced4da !important;
+        box-shadow: none !important;
     }
 </style>
 @endpush
@@ -254,11 +278,11 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.category-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.category-btn').forEach(b => {
-                b.classList.remove('active', 'btn-danger');
-                b.classList.add('btn-outline-danger');
+                b.classList.remove('active', 'btn-primary');
+                b.classList.add('btn-outline-primary');
             });
-            this.classList.remove('btn-outline-danger');
-            this.classList.add('active', 'btn-danger');
+            this.classList.remove('btn-outline-primary');
+            this.classList.add('active', 'btn-primary');
 
             currentCategory = this.dataset.category;
             filterClubs();
@@ -338,8 +362,8 @@ function startWatchingLocation() {
 
 // Update location display
 function updateLocationDisplay(lat, lng) {
-    document.getElementById('currentLocation').textContent =
-        `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    document.getElementById('currentLocation').innerHTML =
+        `<i class="bi bi-geo-alt-fill me-1 fs-5"></i>${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     document.getElementById('modalLocationCoordinates').textContent =
         `Latitude: ${lat.toFixed(6)}, Longitude: ${lng.toFixed(6)}`;
 }
@@ -350,7 +374,7 @@ function initMap(lat, lng) {
         map.remove();
     }
 
-    map = L.map('map').setView([lat, lng], 13);
+    map = L.map('map', { attributionControl: false }).setView([lat, lng], 13);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors',
@@ -478,10 +502,10 @@ function displayClubs(clubs) {
                     </div>
 
                     <div class="d-grid gap-2">
-                        <button class="btn btn-danger">
+                        <button class="btn btn-primary">
                             <i class="bi bi-person-plus me-2"></i>Join Club
                         </button>
-                        <button class="btn btn-outline-danger">View Details</button>
+                        <button class="btn btn-outline-primary">View Details</button>
                     </div>
                 </div>
             </div>

@@ -26,10 +26,130 @@
 
     <!-- Custom Styles -->
     <style>
+        :root {
+          /* Base Colors */
+          --background: 220 15% 97%;
+          --foreground: 215 25% 27%;
+
+          --card: 0 0% 100%;
+          --card-foreground: 215 25% 27%;
+
+          /* Primary - Soft Purple */
+          --primary: 250 60% 70%;
+          --primary-foreground: 0 0% 100%;
+          --primary-hover: 250 60% 65%;
+
+          /* Secondary - Soft Sage Green */
+          --secondary: 140 30% 75%;
+          --secondary-foreground: 140 45% 25%;
+
+          /* Success - Soft Mint */
+          --success: 150 40% 70%;
+          --success-foreground: 150 45% 20%;
+
+          /* Warning - Soft Peach */
+          --warning: 35 60% 80%;
+          --warning-foreground: 35 60% 30%;
+
+          /* Info - Soft Sky Blue */
+          --info: 200 50% 75%;
+          --info-foreground: 200 60% 25%;
+
+          --muted: 220 15% 94%;
+          --muted-foreground: 215 15% 50%;
+
+          --accent: 250 60% 92%;
+          --accent-foreground: 250 60% 30%;
+
+          --destructive: 0 50% 75%;
+          --destructive-foreground: 0 0% 100%;
+
+          --border: 220 15% 88%;
+          --input: 220 15% 92%;
+          --ring: 250 60% 70%;
+          --radius: 0.75rem;
+
+          /* Sidebar */
+          --sidebar-background: 250 25% 96%;
+          --sidebar-foreground: 215 25% 35%;
+          --sidebar-primary: 250 60% 70%;
+          --sidebar-primary-foreground: 0 0% 100%;
+          --sidebar-accent: 250 25% 90%;
+          --sidebar-accent-foreground: 215 25% 40%;
+          --sidebar-border: 250 20% 85%;
+          --sidebar-ring: 250 60% 70%;
+
+          /* Gradients */
+          --gradient-primary: linear-gradient(135deg, hsl(250 60% 75%), hsl(250 60% 65%));
+          --gradient-secondary: linear-gradient(135deg, hsl(140 30% 80%), hsl(140 30% 70%));
+          --gradient-sidebar: linear-gradient(180deg, hsl(250 25% 98%), hsl(250 25% 94%));
+          --gradient-success: linear-gradient(135deg, hsl(150 40% 75%), hsl(150 40% 65%));
+          --gradient-warning: linear-gradient(135deg, hsl(35 60% 85%), hsl(35 60% 75%));
+          --gradient-info: linear-gradient(135deg, hsl(200 50% 80%), hsl(200 50% 70%));
+
+          /* Shadows */
+          --shadow-card: 0 2px 12px hsl(250 20% 70% / 0.08);
+          --shadow-elevated: 0 8px 30px hsl(250 20% 60% / 0.12);
+          --shadow-primary: 0 4px 20px hsl(250 60% 70% / 0.25);
+
+          /* Bootstrap Overrides */
+          --bs-primary: hsl(var(--primary));
+          --bs-secondary: hsl(var(--secondary));
+          --bs-success: hsl(var(--success));
+          --bs-info: hsl(var(--info));
+          --bs-warning: hsl(var(--warning));
+          --bs-danger: hsl(var(--destructive));
+          --bs-light: hsl(var(--muted));
+          --bs-dark: hsl(var(--foreground));
+          --bs-white: hsl(var(--card));
+          --bs-body-color: hsl(var(--foreground));
+          --bs-body-bg: hsl(var(--background));
+        }
+
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f8f9fa;
+            background-color: hsl(var(--background));
         }
+
+        /* Theme Overrides */
+        .text-primary { color: hsl(var(--primary)) !important; }
+        .text-secondary { color: hsl(var(--secondary)) !important; }
+        .text-success { color: hsl(var(--success)) !important; }
+        .text-info { color: hsl(var(--info)) !important; }
+        .text-warning { color: hsl(var(--warning)) !important; }
+        .text-danger { color: hsl(var(--destructive)) !important; }
+        .text-muted { color: hsl(var(--muted-foreground)) !important; }
+
+        .bg-primary { background-color: hsl(var(--primary)) !important; }
+        .bg-secondary { background-color: hsl(var(--secondary)) !important; }
+        .bg-success { background-color: hsl(var(--success)) !important; }
+        .bg-info { background-color: hsl(var(--info)) !important; }
+        .bg-warning { background-color: hsl(var(--warning)) !important; }
+        .bg-danger { background-color: hsl(var(--destructive)) !important; }
+        .bg-light { background-color: hsl(var(--muted)) !important; }
+        .bg-white { background-color: #ffffff !important; }
+
+        .btn-primary {
+            background-color: hsl(var(--primary)) !important;
+            border-color: hsl(var(--primary)) !important;
+        }
+        .btn-primary:hover {
+            background-color: hsl(var(--primary-hover)) !important;
+            border-color: hsl(var(--primary-hover)) !important;
+        }
+        .btn-outline-primary {
+            color: hsl(var(--primary)) !important;
+            border-color: hsl(var(--primary)) !important;
+        }
+        .btn-outline-primary:hover {
+            background-color: hsl(var(--primary)) !important;
+            border-color: hsl(var(--primary)) !important;
+        }
+
+        .border { border-color: hsl(var(--border)) !important; }
+        .border-primary { border-color: hsl(var(--primary)) !important; }
+
+        .card { background-color: #ffffff !important; }
         .navbar-brand {
             font-weight: 600;
         }
@@ -50,12 +170,12 @@
             font-weight: 500;
         }
         .btn-primary {
-            background-color: #0d6efd;
-            border-color: #0d6efd;
+            background-color: hsl(var(--primary));
+            border-color: hsl(var(--primary));
         }
         .btn-primary:hover {
-            background-color: #0b5ed7;
-            border-color: #0a58ca;
+            background-color: hsl(var(--primary-hover));
+            border-color: hsl(var(--primary-hover));
         }
         .user-avatar {
             width: 32px;
@@ -68,8 +188,8 @@
             width: 32px;
             height: 32px;
             border-radius: 50%;
-            background-color: #0d6efd;
-            color: white;
+            background-color: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -94,8 +214,8 @@
             position: absolute;
             top: 0;
             right: 0;
-            background-color: #dc3545;
-            color: white;
+            background-color: hsl(var(--destructive));
+            color: hsl(var(--destructive-foreground));
             border-radius: 50%;
             width: 18px;
             height: 18px;
@@ -112,24 +232,24 @@
         }
         .notification-item {
             padding: 0.75rem 1rem;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid hsl(var(--border));
             transition: background-color 0.2s;
         }
         .notification-item:hover {
-            background-color: #f8f9fa;
+            background-color: hsl(var(--muted));
         }
         .notification-item:last-child {
             border-bottom: none;
         }
         .notification-item.unread {
-            background-color: #f0f7ff;
+            background-color: hsl(var(--accent));
         }
     </style>
 
     @stack('styles')
 </head>
 <body>
-    <nav class="navbar navbar-expand-md navbar-light bg-white shadow-sm">
+    <nav class="navbar navbar-expand-md navbar-light bg-light shadow-sm">
         <div class="container">
             <a class="navbar-brand" href="{{ Auth::check() ? route('clubs.explore') : url('/') }}">
                 <img src="{{ asset('images/logo.png') }}" alt="TAKEONE" height="40">
