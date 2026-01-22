@@ -8,35 +8,17 @@
             <h2 class="fw-bold mb-1">Member Profile</h2>
             <p class="text-muted mb-0">Comprehensive member information and analytics</p>
         </div>
-        <div>
-            <div class="dropdown">
-                <button class="btn btn-primary rounded-pill dropdown-toggle" type="button" id="actionDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-lightning me-1"></i>Action
-                </button>
-                <ul class="dropdown-menu" aria-labelledby="actionDropdown">
-                    <li><a class="dropdown-item" href="@if($relationship->relationship_type == 'self'){{ route('profile.edit') }}@else{{ route('family.edit', $relationship->dependent->id) }}@endif">
-                        <i class="bi bi-pencil me-2"></i>Edit Info
-                    </a></li>
-                    <li><a class="dropdown-item" href="#"><i class="bi bi-calendar-check me-2"></i>Add Attendance Record</a></li>
-                    <li><a class="dropdown-item" href="#"><i class="bi bi-heart-pulse me-2"></i>Add Health Update</a></li>
-                    <li><a class="dropdown-item" href="#"><i class="bi bi-bullseye me-2"></i>Set a Goal</a></li>
-                    <li><a class="dropdown-item" href="#"><i class="bi bi-trophy me-2"></i>Add Achievement</a></li>
-                    <li><a class="dropdown-item" href="#"><i class="bi bi-award me-2"></i>Add Tournament Participation</a></li>
-                    <li><a class="dropdown-item" href="#"><i class="bi bi-calendar-event me-2"></i>Add Event Participation</a></li>
-                </ul>
-            </div>
-        </div>
     </div>
 
     <!-- Profile Card -->
-    <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+    <div class="card shadow-sm border-0 mb-4">
         <div class="d-flex">
             <!-- Profile Picture -->
-            <div style="width: 180px; min-height: 250px;">
+            <div style="width: 180px; min-height: 250px; border-radius: 0.375rem 0 0 0.375rem;">
                 @if($relationship->dependent->media_gallery[0] ?? false)
-                    <img src="{{ $relationship->dependent->media_gallery[0] }}" alt="{{ $relationship->dependent->full_name }}" class="w-100 h-100" style="object-fit: cover;">
+                    <img src="{{ $relationship->dependent->media_gallery[0] }}" alt="{{ $relationship->dependent->full_name }}" class="w-100 h-100" style="object-fit: cover; border-radius: 0.375rem 0 0 0.375rem;">
                 @else
-                    <div class="w-100 h-100 d-flex align-items-center justify-content-center text-white fw-bold" style="font-size: 3rem; background: linear-gradient(135deg, {{ $relationship->dependent->gender == 'm' ? '#0d6efd 0%, #0a58ca 100%' : '#d63384 0%, #a61e4d 100%' }});">
+                    <div class="w-100 h-100 d-flex align-items-center justify-content-center text-white fw-bold" style="font-size: 3rem; background: linear-gradient(135deg, {{ $relationship->dependent->gender == 'm' ? '#0d6efd 0%, #0a58ca 100%' : '#d63384 0%, #a61e4d 100%' }}); border-radius: 0.375rem 0 0 0.375rem;">
                         {{ strtoupper(substr($relationship->dependent->full_name, 0, 1)) }}
                     </div>
                 @endif
@@ -46,9 +28,30 @@
             <div class="flex-grow-1 p-4">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <h3 class="fw-bold mb-0">{{ $relationship->dependent->full_name }}</h3>
-                    <button class="btn btn-primary btn-sm rounded-pill">
-                        <i class="bi bi-person-plus me-1"></i>Follow
-                    </button>
+                    @if($relationship->relationship_type == 'self' || Auth::id() == $relationship->guardian_user_id)
+                        <div>
+                            <div class="dropdown">
+                                <button class="btn btn-primary rounded-pill dropdown-toggle" type="button" id="actionDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-lightning me-1"></i>Action
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionDropdown">
+                                    <li><a class="dropdown-item" href="@if($relationship->relationship_type == 'self'){{ route('profile.edit') }}@else{{ route('family.edit', $relationship->dependent->id) }}@endif">
+                                        <i class="bi bi-pencil me-2"></i>Edit Info
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-calendar-check me-2"></i>Add Attendance Record</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-heart-pulse me-2"></i>Add Health Update</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-bullseye me-2"></i>Set a Goal</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-trophy me-2"></i>Add Achievement</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-award me-2"></i>Add Tournament Participation</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-calendar-event me-2"></i>Add Event Participation</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    @else
+                        <button class="btn btn-primary btn-sm rounded-pill">
+                            <i class="bi bi-person-plus me-1"></i>Follow
+                        </button>
+                    @endif
                 </div>
                             @if($relationship->dependent->motto)
                                 <p class="text-muted fst-italic mb-3">"{{ $relationship->dependent->motto }}"</p>

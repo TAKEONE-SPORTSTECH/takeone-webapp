@@ -178,15 +178,15 @@
             border-color: hsl(var(--primary-hover));
         }
         .user-avatar {
-            width: 32px;
-            height: 32px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             object-fit: cover;
             margin-right: 8px;
         }
         .user-avatar-placeholder {
-            width: 32px;
-            height: 32px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             background-color: hsl(var(--primary));
             color: hsl(var(--primary-foreground));
@@ -195,6 +195,23 @@
             justify-content: center;
             margin-right: 8px;
             font-weight: 600;
+        }
+        .avatar-container {
+            position: relative;
+            display: inline-block;
+        }
+        .online-indicator {
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            width: 10px;
+            height: 10px;
+            background-color: #28a745;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+        .dropdown-toggle::after {
+            display: none;
         }
         .dropdown-toggle {
             display: flex;
@@ -205,10 +222,13 @@
             padding: 0.5rem;
             margin: 0 0.25rem;
             border-radius: 50%;
-            transition: background-color 0.2s;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .nav-icon-btn:hover {
-            background-color: #f8f9fa;
+            transform: scale(1.1);
         }
         .notification-badge {
             position: absolute;
@@ -234,15 +254,21 @@
             padding: 0.75rem 1rem;
             border-bottom: 1px solid hsl(var(--border));
             transition: background-color 0.2s;
+            cursor: pointer;
+            background-color: white;
         }
         .notification-item:hover {
-            background-color: hsl(var(--muted));
+            background-color: hsl(var(--primary)) !important;
+            color: hsl(var(--primary-foreground)) !important;
+        }
+        .notification-item:hover .text-muted {
+            color: hsl(var(--primary-foreground)) !important;
         }
         .notification-item:last-child {
             border-bottom: none;
         }
         .notification-item.unread {
-            background-color: hsl(var(--accent));
+            background-color: white;
         }
 
         .dropdown-item:hover {
@@ -330,34 +356,24 @@
                                         <small class="text-muted">2d</small>
                                     </div>
                                 </div>
-                                <div class="dropdown-divider"></div>
                                 <a class="dropdown-item text-center small" href="#">View All Notifications</a>
                             </div>
                         </li>
                     @endauth
 
-                    @guest
-                        @if (Route::has('login'))
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ route('login') }}">{{ __('Login') }}</a>
-                            </li>
-                        @endif
-
-                        @if (Route::has('register'))
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ route('register') }}">{{ __('Register') }}</a>
-                            </li>
-                        @endif
-                    @else
+                    @auth
                         <li class="nav-item dropdown">
                             <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>
-                                @if(Auth::user()->profile_picture)
-                                    <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}" alt="{{ Auth::user()->full_name }}" class="user-avatar">
-                                @else
-                                    <span class="user-avatar-placeholder">
-                                        {{ strtoupper(substr(Auth::user()->full_name, 0, 1)) }}
-                                    </span>
-                                @endif
+                                <div class="avatar-container">
+                                    @if(Auth::user()->profile_picture)
+                                        <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}" alt="{{ Auth::user()->full_name }}" class="user-avatar">
+                                    @else
+                                        <span class="user-avatar-placeholder">
+                                            {{ strtoupper(substr(Auth::user()->full_name, 0, 1)) }}
+                                        </span>
+                                    @endif
+                                    <span class="online-indicator"></span>
+                                </div>
                             </a>
 
                             <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">

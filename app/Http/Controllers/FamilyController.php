@@ -243,7 +243,7 @@ class FamilyController extends Controller
     {
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255',
+            'email' => 'nullable|email|max:255|unique:users,email,' . $id,
             'mobile_code' => 'nullable|string|max:5',
             'mobile' => 'nullable|string|max:20',
             'gender' => 'required|in:m,f',
@@ -366,7 +366,8 @@ class FamilyController extends Controller
             ->where('dependent_user_id', $id)
             ->firstOrFail();
 
-        $relationship->delete();
+        $dependent = User::findOrFail($id);
+        $dependent->delete();
 
         return redirect()->route('family.dashboard')
             ->with('success', 'Family member removed successfully.');

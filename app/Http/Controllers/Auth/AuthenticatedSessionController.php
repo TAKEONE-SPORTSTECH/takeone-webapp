@@ -59,7 +59,7 @@ class AuthenticatedSessionController extends Controller
             //     ]);
             // }
 
-            return redirect()->route('family.dashboard');
+            return redirect()->route('clubs.explore');
         }
 
         return back()->withErrors([
