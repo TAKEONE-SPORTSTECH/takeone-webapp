@@ -7,8 +7,8 @@
             <div class="card shadow-sm">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
                     <h4 class="mb-0">Invoice #{{ $invoice->id }}</h4>
-                    <a href="{{ route('invoices.index') }}" class="btn btn-outline-secondary btn-sm">
-                        <i class="bi bi-arrow-left"></i> Back to Invoices
+                    <a href="{{ route('bills.index') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-left"></i> Back to Bills
                     </a>
                 </div>
                 <div class="card-body">
@@ -83,13 +83,16 @@
 
                     <div class="d-flex justify-content-end">
                         @if($invoice->status !== 'paid')
-                            <a href="{{ route('invoices.pay', $invoice->id) }}" class="btn btn-success">
+                            <a href="{{ route('bills.pay', $invoice->id) }}" class="btn btn-success">
                                 <i class="bi bi-credit-card"></i> Pay Now
                             </a>
                         @else
-                            <button class="btn btn-outline-success" disabled>
+                            <button class="btn btn-outline-success me-2" disabled>
                                 <i class="bi bi-check-circle"></i> Paid
                             </button>
+                            <a href="{{ route('bills.receipt', $invoice->id) }}" class="btn btn-outline-primary" target="_blank">
+                                <i class="bi bi-receipt"></i> View Receipt
+                            </a>
                         @endif
                     </div>
                 </div>

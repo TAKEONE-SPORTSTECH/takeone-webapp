@@ -4,11 +4,6 @@
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="mb-0">Family</h1>
-        <div>
-            <a href="{{ route('invoices.index') }}" class="btn btn-outline-primary">
-                <i class="bi bi-receipt"></i> All Invoices
-            </a>
-        </div>
     </div>
 
     <!-- Family Members Card Grid -->
@@ -98,14 +93,18 @@
                         </div>
                     </div>
                     <div class="pt-2 border-top">
-                        <div class="d-flex justify-content-between align-items-center small mb-2">
-                            <span class="text-muted fw-medium">Next Birthday</span>
-                            <span class="fw-semibold text-muted">
-                                {{ $user->birthdate->copy()->year(now()->year)->isFuture()
-                                    ? $user->birthdate->copy()->year(now()->year)->diffForHumans(['parts' => 2, 'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE])
-                                    : $user->birthdate->copy()->year(now()->year + 1)->diffForHumans(['parts' => 2, 'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE]) }}
-                            </span>
-                        </div>
+                            <div class="d-flex justify-content-between align-items-center small mb-2">
+                                <span class="text-muted fw-medium">Next Birthday</span>
+                                <span class="fw-semibold text-muted">
+                                    @if($user->birthdate)
+                                        {{ $user->birthdate->copy()->year(now()->year)->isFuture()
+                                            ? $user->birthdate->copy()->year(now()->year)->diffForHumans(['parts' => 2, 'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE])
+                                            : $user->birthdate->copy()->year(now()->year + 1)->diffForHumans(['parts' => 2, 'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE]) }}
+                                    @else
+                                        N/A
+                                    @endif
+                                </span>
+                            </div>
                             <div class="d-flex justify-content-between align-items-center small">
                                 <span class="text-muted fw-medium">Member Since</span>
                                 <span class="fw-semibold text-muted">{{ $user->created_at->format('d/m/Y') }}</span>
@@ -245,9 +244,13 @@
                             <div class="d-flex justify-content-between align-items-center small mb-2">
                                 <span class="text-muted fw-medium">Next Birthday</span>
                                 <span class="fw-semibold text-muted">
-                                    {{ $relationship->dependent->birthdate->copy()->year(now()->year)->isFuture()
-                                        ? $relationship->dependent->birthdate->copy()->year(now()->year)->diffForHumans(['parts' => 2, 'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE])
-                                        : $relationship->dependent->birthdate->copy()->year(now()->year + 1)->diffForHumans(['parts' => 2, 'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE]) }}
+                                    @if($relationship->dependent->birthdate)
+                                        {{ $relationship->dependent->birthdate->copy()->year(now()->year)->isFuture()
+                                            ? $relationship->dependent->birthdate->copy()->year(now()->year)->diffForHumans(['parts' => 2, 'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE])
+                                            : $relationship->dependent->birthdate->copy()->year(now()->year + 1)->diffForHumans(['parts' => 2, 'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE]) }}
+                                    @else
+                                        N/A
+                                    @endif
                                 </span>
                             </div>
                             <div class="d-flex justify-content-between align-items-center small">
@@ -283,68 +286,7 @@
         </div>
     </div>
 
-    <!-- Family Payments Table -->
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-white">
-            <h4 class="mb-0">Family Payments</h4>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Student Name</th>
-                            <th>Class/Package</th>
-                            <th>Amount</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($familyInvoices as $invoice)
-                            <tr>
-                                <td>{{ $invoice->student->full_name }}</td>
-                                <td>{{ $invoice->tenant->club_name }}</td>
-                                <td>${{ number_format($invoice->amount, 2) }}</td>
-                                <td>
-                                    @if($invoice->status === 'paid')
-                                        <span class="badge bg-success">Paid</span>
-                                    @elseif($invoice->status === 'pending')
-                                        <span class="badge bg-warning text-dark">Pending</span>
-                                    @else
-                                        <span class="badge bg-danger">Overdue</span>
-                                    @endif
-                                </td>
-                                <td>
-                                    <a href="{{ route('invoices.show', $invoice->id) }}" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-eye"></i> View
-                                    </a>
-                                    @if($invoice->status !== 'paid')
-                                        <a href="{{ route('invoices.pay', $invoice->id) }}" class="btn btn-sm btn-success">
-                                            <i class="bi bi-credit-card"></i> Pay
-                                        </a>
-                                    @endif
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="5" class="text-center py-4">
-                                    <p class="text-muted mb-0">No payments due at this time.</p>
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <div class="card-footer bg-white d-flex justify-content-end">
-            @if(count($familyInvoices->where('status', '!=', 'paid')) > 0)
-                <a href="{{ route('invoices.pay-all') }}" class="btn btn-success">
-                    <i class="bi bi-credit-card"></i> Pay All
-                </a>
-            @endif
-        </div>
-    </div>
+
 </div>
 
 <!-- Add Family Member Modal -->

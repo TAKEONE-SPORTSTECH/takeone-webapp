@@ -95,9 +95,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/family/{id}/upload-picture', [FamilyController::class, 'uploadFamilyMemberPicture'])->name('family.upload-picture');
     Route::delete('/family/{id}', [FamilyController::class, 'destroy'])->name('family.destroy');
 
-    // Invoice routes
-    Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
-    Route::get('/invoices/{id}', [InvoiceController::class, 'show'])->name('invoices.show');
-    Route::get('/invoices/{id}/pay', [InvoiceController::class, 'pay'])->name('invoices.pay');
-    Route::get('/invoices/pay-all', [InvoiceController::class, 'payAll'])->name('invoices.pay-all');
+    // Bills routes
+    Route::get('/bills', [InvoiceController::class, 'index'])->name('bills.index');
+    Route::get('/bills/{id}', [InvoiceController::class, 'show'])->name('bills.show');
+    Route::get('/bills/{id}/receipt', [InvoiceController::class, 'receipt'])->name('bills.receipt');
+    Route::get('/bills/{id}/pay', [InvoiceController::class, 'pay'])->name('bills.pay');
+    Route::get('/bills/pay-all', [InvoiceController::class, 'payAll'])->name('bills.pay-all');
 });

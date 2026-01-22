@@ -34,7 +34,7 @@ class InvoiceController extends Controller
      * @param  int  $id
      * @return \Illuminate\View\View
      */
-    public function show($id)
+    public function show(Request $request, $id)
     {
         $user = Auth::user();
         $invoice = Invoice::where('id', $id)
@@ -42,7 +42,28 @@ class InvoiceController extends Controller
             ->with(['student', 'tenant'])
             ->firstOrFail();
 
+        if ($request->ajax()) {
+            return response()->json(['html' => view('invoices._show_modal', compact('invoice'))->render()]);
+        }
+
         return view('invoices.show', compact('invoice'));
+    }
+
+    /**
+     * Display the receipt for the specified invoice.
+     *
+     * @param  int  $id
+     * @return \Illuminate\View\View
+     */
+    public function receipt($id)
+    {
+        $user = Auth::user();
+        $invoice = Invoice::where('id', $id)
+            ->where('payer_user_id', $user->id)
+            ->with(['student', 'tenant'])
+            ->firstOrFail();
+
+        return view('invoices.receipt', compact('invoice'));
     }
 
     /**
@@ -63,7 +84,7 @@ class InvoiceController extends Controller
             'status' => 'paid'
         ]);
 
-        return redirect()->route('invoices.show', $invoice->id)
+        return redirect()->route('bills.show', $invoice->id)
             ->with('success', 'Payment processed successfully.');
     }
 
@@ -86,7 +107,7 @@ class InvoiceController extends Controller
             ]);
         }
 
-        return redirect()->route('invoices.index')
+        return redirect()->route('bills.index')
             ->with('success', 'All payments processed successfully.');
     }
 }

@@ -31,9 +31,8 @@ class FamilyController extends Controller
             ->sortBy(function($relationship) {
                 return $relationship->dependent->full_name;
             });
-        $familyInvoices = $this->familyService->getFamilyInvoices($user->id);
 
-        return view('family.dashboard', compact('user', 'dependents', 'familyInvoices'));
+        return view('family.dashboard', compact('user', 'dependents'));
     }
 
     /**

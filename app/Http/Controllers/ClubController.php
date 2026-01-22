@@ -54,9 +54,9 @@ class ClubController extends Controller
                 'gps_lat' => (float) $club->gps_lat,
                 'gps_long' => (float) $club->gps_long,
                 'distance' => round($distance, 2), // distance in kilometers
-                'owner_name' => $club->owner->full_name,
-                'owner_email' => $club->owner->email,
-                'owner_mobile' => $club->owner->mobile,
+                'owner_name' => $club->owner ? $club->owner->full_name : 'N/A',
+                'owner_email' => $club->owner ? $club->owner->email : null,
+                'owner_mobile' => $club->owner ? $club->owner->mobile : null,
             ];
         });
 
@@ -107,9 +107,7 @@ class ClubController extends Controller
      */
     public function all()
     {
-        $clubs = Tenant::whereNotNull('gps_lat')
-            ->whereNotNull('gps_long')
-            ->with('owner')
+        $clubs = Tenant::with('owner')
             ->get()
             ->map(function ($club) {
                 return [
@@ -117,9 +115,9 @@ class ClubController extends Controller
                     'club_name' => $club->club_name,
                     'slug' => $club->slug,
                     'logo' => $club->logo,
-                    'gps_lat' => (float) $club->gps_lat,
-                    'gps_long' => (float) $club->gps_long,
-                    'owner_name' => $club->owner->full_name,
+                    'gps_lat' => $club->gps_lat ? (float) $club->gps_lat : null,
+                    'gps_long' => $club->gps_long ? (float) $club->gps_long : null,
+                    'owner_name' => $club->owner ? $club->owner->full_name : 'N/A',
                 ];
             });
 

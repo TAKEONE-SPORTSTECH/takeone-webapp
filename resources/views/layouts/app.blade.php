@@ -391,6 +391,9 @@
                                 <a class="dropdown-item small" href="{{ route('family.dashboard') }}">
                                     <i class="bi bi-people me-2"></i>My Family
                                 </a>
+                                <a class="dropdown-item small" href="{{ route('bills.index') }}">
+                                    <i class="bi bi-receipt me-2"></i>My Bills
+                                </a>
                                 <a class="dropdown-item small" href="#">
                                     <i class="bi bi-gear me-2"></i>Settings
                                 </a>

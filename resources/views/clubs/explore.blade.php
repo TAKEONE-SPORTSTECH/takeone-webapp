@@ -89,8 +89,8 @@
                 <!-- Club cards will be inserted here -->
             </div>
         </div>
-        <div class="col-12 d-flex justify-content-center">
-            <div id="noResults" class="d-flex flex-column align-items-center justify-content-center text-center" style="display: none; min-height: 400px;">
+        <div class="col-12 d-flex justify-content-center" id="noResultsContainer" style="display: none;">
+            <div id="noResults" class="d-flex flex-column align-items-center justify-content-center text-center" style="min-height: 400px;">
                 <i class="bi bi-inbox" style="font-size: 4rem; color: #dee2e6;"></i>
                 <h4 class="mt-3 text-muted">No Results Found</h4>
                 <p class="text-muted">Try adjusting your search or location</p>
@@ -284,6 +284,9 @@ document.addEventListener('DOMContentLoaded', function() {
         startWatchingLocation();
     }
 
+    // Initial load: fetch all clubs since 'all' is default
+    fetchAllClubs();
+
     // Category buttons
     document.querySelectorAll('.category-btn').forEach(btn => {
         btn.addEventListener('click', function() {
@@ -295,7 +298,14 @@ document.addEventListener('DOMContentLoaded', function() {
             this.classList.add('active', 'btn-primary');
 
             currentCategory = this.dataset.category;
-            filterClubs();
+            if (currentCategory === 'all') {
+                fetchAllClubs();
+            } else if (userLocation) {
+                fetchNearbyClubs(userLocation.latitude, userLocation.longitude);
+            } else {
+                // If no location, show message or fetch all as fallback
+                fetchAllClubs();
+            }
         });
     });
 
@@ -324,7 +334,11 @@ document.addEventListener('DOMContentLoaded', function() {
         mapModal.hide();
 
         if (userLocation) {
-            fetchNearbyClubs(userLocation.latitude, userLocation.longitude);
+            if (currentCategory === 'all') {
+                fetchAllClubs();
+            } else {
+                fetchNearbyClubs(userLocation.latitude, userLocation.longitude);
+            }
         }
     });
 });
@@ -339,7 +353,11 @@ function startWatchingLocation() {
             };
 
             updateLocationDisplay(userLocation.latitude, userLocation.longitude);
-            fetchNearbyClubs(userLocation.latitude, userLocation.longitude);
+
+            // If current category is not 'all', fetch nearby clubs
+            if (currentCategory !== 'all') {
+                fetchNearbyClubs(userLocation.latitude, userLocation.longitude);
+            }
 
             // Stop watching after first successful location
             if (watchId) {
@@ -361,7 +379,10 @@ function startWatchingLocation() {
                     break;
             }
             showAlert(errorMessage, 'danger');
-            document.getElementById('loadingSpinner').style.display = 'none';
+            // If location fails and category is not 'all', perhaps fetch all as fallback
+            if (currentCategory !== 'all') {
+                fetchAllClubs();
+            }
         },
         {
             enableHighAccuracy: true,
@@ -454,19 +475,50 @@ function fetchNearbyClubs(lat, lng) {
     });
 }
 
+// Fetch all clubs
+function fetchAllClubs() {
+    document.getElementById('loadingSpinner').style.display = 'block';
+    document.getElementById('clubsGrid').style.display = 'none';
+
+    fetch(`{{ route('clubs.all') }}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('loadingSpinner').style.display = 'none';
+        document.getElementById('clubsGrid').style.display = 'block';
+
+        if (data.success) {
+            allClubs = data.clubs;
+            displayClubs(allClubs);
+        } else {
+            showAlert('Failed to fetch clubs', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        document.getElementById('loadingSpinner').style.display = 'none';
+        showAlert('Error fetching clubs', 'danger');
+    });
+}
+
 // Display clubs as cards
 function displayClubs(clubs) {
     const container = document.getElementById('clubsContainer');
-    const noResults = document.getElementById('noResults');
+    const noResultsContainer = document.getElementById('noResultsContainer');
 
     container.innerHTML = '';
 
     if (clubs.length === 0) {
-        noResults.style.display = 'flex';
+        noResultsContainer.style.display = 'flex';
         return;
     }
 
-    noResults.style.display = 'none';
+    noResultsContainer.style.display = 'none';
 
     clubs.forEach(club => {
         const card = document.createElement('div');
@@ -491,7 +543,7 @@ function displayClubs(clubs) {
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-navigation w-4 h-4">
                                 <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
                             </svg>
-                            <span class="font-medium">${club.distance} km away</span>
+                            <span class="font-medium">${club.distance ? club.distance + ' km away' : 'Location available'}</span>
                         </div>
                         <div class="flex items-center gap-1 text-sm text-muted-foreground">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-building w-4 h-4">
