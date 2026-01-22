@@ -90,7 +90,7 @@
                                 <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none" style="font-size: 1rem;">🥇 <span class="fw-semibold text-dark">4</span></a>
                                 <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none" style="font-size: 1rem;">🥈 <span class="fw-semibold text-dark">6</span></a>
                                 <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none" style="font-size: 1rem;">🥉 <span class="fw-semibold text-dark">3</span></a>
-                                <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none" style="font-size: 1rem;">🎯 <span class="fw-semibold text-dark">8</span></a>
+                                <a href="#goals" class="border bg-white rounded px-2 py-1 text-decoration-none" style="font-size: 1rem;" onclick="document.getElementById('goals-tab').click();">🎯 <span class="fw-semibold text-dark">8</span></a>
                                 <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none" style="font-size: 1rem;">⭐ <span class="fw-semibold text-dark">12</span></a>
                             </div>
 
@@ -234,8 +234,8 @@
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link text-dark" id="achievements-tab" data-bs-toggle="tab" data-bs-target="#achievements" type="button" role="tab">
-                <i class="bi bi-trophy me-2"></i>Achievements
+            <button class="nav-link text-dark" id="affiliations-tab" data-bs-toggle="tab" data-bs-target="#affiliations" type="button" role="tab">
+                <i class="bi bi-diagram-3 me-2"></i>Affiliations
             </button>
         </li>
         <li class="nav-item" role="presentation">
@@ -279,27 +279,12 @@
                                     <div class="progress" style="height: 4px; background-color: #e9ecef;">
                                         <div class="progress-bar" role="progressbar" style="width: 85%; background: linear-gradient(90deg, #6f42c1 0%, #8b5cf6 100%);"></div>
                                     </div>
-                                    <small class="text-muted">Sessions completed this year</small>
+                                    <small class="text-muted" style="font-size: 0.75rem;">Sessions completed this year</small>
                                 </div>
                             </div>
                         </div>
 
-                                <!-- Total Revenue -->
-                                <div class="col-md-6">
-                            <div class="d-flex align-items-center gap-3 p-3 bg-light rounded">
-                                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background-color: #10b981;">
-                                    <i class="bi bi-currency-dollar text-white"></i>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <div class="small text-muted mb-1">Total Revenue</div>
-                                    <div class="h4 fw-bold mb-2">$4250</div>
-                                    <div class="progress" style="height: 4px; background-color: #e9ecef;">
-                                        <div class="progress-bar" role="progressbar" style="width: 70%; background: linear-gradient(90deg, #6f42c1 0%, #10b981 100%);"></div>
-                                    </div>
-                                    <small class="text-muted">Revenue generated this year</small>
-                                </div>
-                            </div>
-                        </div>
+
 
                                 <!-- Attendance Rate -->
                                 <div class="col-md-6">
@@ -313,27 +298,12 @@
                                     <div class="progress" style="height: 4px; background-color: #e9ecef;">
                                         <div class="progress-bar" role="progressbar" style="width: 85%; background: linear-gradient(90deg, #6f42c1 0%, #10b981 100%);"></div>
                                     </div>
-                                    <small class="text-muted">Average session attendance</small>
+                                    <small class="text-muted" style="font-size: 0.75rem;">Average session attendance</small>
                                 </div>
                             </div>
                         </div>
 
-                                <!-- Member Since -->
-                                <div class="col-md-6">
-                            <div class="d-flex align-items-center gap-3 p-3 bg-light rounded">
-                                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background-color: #f59e0b;">
-                                    <i class="bi bi-calendar-check text-white"></i>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <div class="small text-muted mb-1">Member Since</div>
-                                    <div class="h4 fw-bold mb-2">1.5</div>
-                                    <div class="progress" style="height: 4px; background-color: #e9ecef;">
-                                        <div class="progress-bar" role="progressbar" style="width: 30%; background: linear-gradient(90deg, #6f42c1 0%, #10b981 100%);"></div>
-                                    </div>
-                                    <small class="text-muted">Years of membership</small>
-                                </div>
-                            </div>
-                        </div>
+
 
                                 <!-- Achievements -->
                                 <div class="col-md-6">
@@ -347,7 +317,7 @@
                                     <div class="progress" style="height: 4px; background-color: #e9ecef;">
                                         <div class="progress-bar" role="progressbar" style="width: 40%; background: linear-gradient(90deg, #6f42c1 0%, #10b981 100%);"></div>
                                     </div>
-                                    <small class="text-muted">Total badges earned</small>
+                                    <small class="text-muted" style="font-size: 0.75rem;">Total badges earned</small>
                                 </div>
                             </div>
                         </div>
@@ -364,7 +334,7 @@
                                     <div class="progress" style="height: 4px; background-color: #e9ecef;">
                                         <div class="progress-bar" role="progressbar" style="width: 75%; background: linear-gradient(90deg, #6f42c1 0%, #10b981 100%);"></div>
                                     </div>
-                                    <small class="text-muted">Current goals achieved</small>
+                                    <small class="text-muted" style="font-size: 0.75rem;">Current goals achieved</small>
                                 </div>
                             </div>
                         </div>
@@ -373,15 +343,15 @@
                     </div>
                 </div>
 
-                <!-- Revenue Chart -->
+                <!-- Self Investment Chart -->
                 <div class="col-lg-6">
                     <div class="card shadow-sm border-0 h-100">
                         <div class="card-body p-4">
                             <div class="d-flex align-items-center mb-2">
                                 <i class="bi bi-bar-chart-line text-primary me-2"></i>
-                                <h5 class="mb-0 fw-bold">Revenue Chart</h5>
+                                <h5 class="mb-0 fw-bold">Self Investment Chart</h5>
                             </div>
-                            <p class="text-muted small mb-4">Revenue analytics over time</p>
+                            <p class="text-muted small mb-4">Self investment analytics over time</p>
 
                             <div class="d-flex align-items-center justify-content-center" style="min-height: 300px;">
                                 <div class="text-center">
@@ -420,88 +390,34 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                @forelse($invoices as $invoice)
                                 <tr>
-                                    <td class="small">2023-12-15</td>
-                                    <td class="small text-primary">Package Payment</td>
-                                    <td class="small">Premium Fitness + Personal Training</td>
-                                    <td class="small text-muted">2023-12-15 to 2024-06-15</td>
-                                    <td class="small">18/24</td>
-                                    <td class="small fw-semibold" style="color: #10b981;">649.5 BHD</td>
-                                    <td><span class="badge bg-success-subtle text-success small">✓ Paid</span></td>
-                                    <td class="small">Credit Card</td>
+                                    <td class="small">{{ $invoice->created_at->format('Y-m-d') }}</td>
+                                    <td class="small text-primary">Invoice</td>
+                                    <td class="small">{{ $invoice->tenant->club_name ?? 'N/A' }}</td>
+                                    <td class="small text-muted">-</td>
+                                    <td class="small">-</td>
+                                    <td class="small fw-semibold" style="color: {{ $invoice->status == 'paid' ? '#10b981' : '#f59e0b' }};">{{ $invoice->amount }} BHD</td>
+                                    <td>
+                                        @if($invoice->status == 'paid')
+                                            <span class="badge bg-success-subtle text-success small">✓ Paid</span>
+                                        @elseif($invoice->status == 'due')
+                                            <span class="badge bg-warning-subtle text-warning small">○ Due</span>
+                                        @else
+                                            <span class="badge bg-secondary-subtle text-secondary small">{{ ucfirst($invoice->status) }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="small">-</td>
                                     <td class="small">
-                                        <i class="bi bi-file-earmark-text text-primary"></i>
-                                        <i class="bi bi-download text-secondary ms-1"></i>
+                                        <a href="{{ route('bills.receipt', $invoice->id) }}" target="_blank" title="View Receipt"><i class="bi bi-file-earmark-text text-primary"></i></a>
+                                        <a href="{{ route('bills.receipt', $invoice->id) }}?download=1" download title="Download Receipt"><i class="bi bi-download text-secondary ms-1"></i></a>
                                     </td>
                                 </tr>
+                                @empty
                                 <tr>
-                                    <td class="small">2024-02-15</td>
-                                    <td class="small text-primary">Package Payment</td>
-                                    <td class="small">Premium Fitness + Personal Training</td>
-                                    <td class="small text-muted">2023-12-15 to 2024-06-15</td>
-                                    <td class="small">18/24</td>
-                                    <td class="small fw-semibold" style="color: #f59e0b;">649.5 BHD</td>
-                                    <td><span class="badge bg-warning-subtle text-warning small">○ Due</span></td>
-                                    <td class="small">Auto-pay</td>
-                                    <td class="small">-</td>
+                                    <td colspan="9" class="text-center text-muted small">No invoices found</td>
                                 </tr>
-                                <tr>
-                                    <td class="small">2023-06-15</td>
-                                    <td class="small text-primary">Package Payment</td>
-                                    <td class="small">Basic Gym Membership</td>
-                                    <td class="small text-muted">2023-06-15 to 2023-12-15</td>
-                                    <td class="small">Unlimited</td>
-                                    <td class="small fw-semibold" style="color: #10b981;">599 BHD</td>
-                                    <td><span class="badge bg-success-subtle text-success small">✓ Paid</span></td>
-                                    <td class="small">Bank Transfer</td>
-                                    <td class="small">
-                                        <i class="bi bi-file-earmark-text text-primary"></i>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="small">2024-02-01</td>
-                                    <td class="small text-primary">Package Payment</td>
-                                    <td class="small">Nutrition Consultation Package</td>
-                                    <td class="small text-muted">2024-02-01 to 2024-05-01</td>
-                                    <td class="small">0/6</td>
-                                    <td class="small fw-semibold" style="color: #f59e0b;">450 BHD</td>
-                                    <td><span class="badge bg-warning-subtle text-warning small">○ Due</span></td>
-                                    <td class="small">Credit Card</td>
-                                    <td class="small">-</td>
-                                </tr>
-                                <tr>
-                                    <td class="small">2024-01-08</td>
-                                    <td class="small text-secondary">Service/Product</td>
-                                    <td class="small">Personal Training Session - Paid</td>
-                                    <td class="small">-</td>
-                                    <td class="small">-</td>
-                                    <td class="small fw-semibold" style="color: #10b981;">75 BHD</td>
-                                    <td><span class="badge bg-success-subtle text-success small">✓ Paid</span></td>
-                                    <td class="small">Credit Card</td>
-                                    <td class="small">-</td>
-                                </tr>
-                                <tr>
-                                    <td class="small">2024-01-05</td>
-                                    <td class="small text-secondary">Service/Product</td>
-                                    <td class="small">Protein Supplement - Paid</td>
-                                    <td class="small">-</td>
-                                    <td class="small">-</td>
-                                    <td class="small fw-semibold" style="color: #10b981;">45 BHD</td>
-                                    <td><span class="badge bg-success-subtle text-success small">✓ Paid</span></td>
-                                    <td class="small">Cash</td>
-                                    <td class="small">-</td>
-                                </tr>
-                                <tr>
-                                    <td class="small">2024-01-01</td>
-                                    <td class="small text-secondary">Service/Product</td>
-                                    <td class="small">Monthly Membership - Due</td>
-                                    <td class="small">-</td>
-                                    <td class="small">-</td>
-                                    <td class="small fw-semibold" style="color: #10b981;">99 BHD</td>
-                                    <td><span class="badge bg-success-subtle text-success small">✓ Paid</span></td>
-                                    <td class="small">Auto-pay</td>
-                                    <td class="small">-</td>
-                                </tr>
+                                @endforelse
                             </tbody>
                         </table>
                     </div>
@@ -515,7 +431,7 @@
         <div class="tab-pane fade" id="attendance" role="tabpanel">
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <h5 class="fw-bold mb-3">Attendance Records</h5>
+                    <h5 class="fw-bold mb-3"><i class="bi bi-calendar-check me-2"></i>Attendance Records</h5>
                     <p class="text-muted">Attendance tracking coming soon...</p>
                 </div>
             </div>
@@ -644,12 +560,10 @@
                 <div class="col-lg-7">
                     <div class="card shadow-sm border-0 h-100">
                         <div class="card-body p-4">
-                            <h5 class="fw-bold mb-4">Body Composition Analysis</h5>
+                            <h5 class="fw-bold mb-4"><i class="bi bi-activity me-2"></i>Body Composition Analysis</h5>
 
-                            <div class="text-center py-5">
-                                <i class="bi bi-radar text-muted" style="font-size: 3rem;"></i>
-                                <p class="text-muted mt-3 mb-1">Radar chart visualization coming soon...</p>
-                                <small class="text-muted">Chart will compare current vs previous body composition metrics</small>
+                            <div class="chart-container" style="position: relative; height: 500px; width: 100%;">
+                                <canvas id="radarChart" data-current="@json($comparisonRecords->first())" data-previous="@json($comparisonRecords->skip(1)->first())"></canvas>
                             </div>
                         </div>
                     </div>
@@ -659,7 +573,7 @@
                 <div class="col-lg-5">
                     <div class="card shadow-sm border-0 h-100">
                         <div class="card-body p-4">
-                            <h5 class="fw-bold mb-4">Compare</h5>
+                            <h5 class="fw-bold mb-4"><i class="bi bi-bar-chart-line me-2"></i>Compare</h5>
 
                             @if($comparisonRecords->count() >= 2)
                                 @php
@@ -707,8 +621,8 @@
                                             <tr class="border-bottom">
                                                 <th class="text-muted small fw-semibold">Metric</th>
                                                 <th class="text-muted small fw-semibold text-end">Current</th>
-                                                <th class="text-muted small fw-semibold text-center">Change</th>
                                                 <th class="text-muted small fw-semibold text-end">Previous</th>
+                                                <th class="text-muted small fw-semibold text-center">Change</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -722,62 +636,62 @@
                                             <tr data-metric="weight">
                                                 <td class="small"><i class="bi bi-speedometer2 me-2"></i>Weight</td>
                                                 <td class="small text-end fw-semibold">{{ $current->weight ?? 'N/A' }}kg</td>
-                                                <td class="text-center">{!! $current->weight && $previous->weight ? getChangeIcon($current->weight, $previous->weight) : '-' !!}</td>
                                                 <td class="small text-end text-muted">{{ $previous->weight ?? 'N/A' }}kg</td>
+                                                <td class="text-center">{!! $current->weight && $previous->weight ? getChangeIcon($current->weight, $previous->weight) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="body_fat">
                                                 <td class="small"><i class="bi bi-activity me-2"></i>Body Fat</td>
                                                 <td class="small text-end fw-semibold">{{ $current->body_fat_percentage ?? 'N/A' }}%</td>
-                                                <td class="text-center">{!! $current->body_fat_percentage && $previous->body_fat_percentage ? getChangeIcon($current->body_fat_percentage, $previous->body_fat_percentage) : '-' !!}</td>
                                                 <td class="small text-end text-muted">{{ $previous->body_fat_percentage ?? 'N/A' }}%</td>
+                                                <td class="text-center">{!! $current->body_fat_percentage && $previous->body_fat_percentage ? getChangeIcon($current->body_fat_percentage, $previous->body_fat_percentage) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="bmi">
                                                 <td class="small"><i class="bi bi-calculator me-2"></i>BMI</td>
                                                 <td class="small text-end fw-semibold">{{ $current->bmi ?? 'N/A' }}</td>
-                                                <td class="text-center">{!! $current->bmi && $previous->bmi ? getChangeIcon($current->bmi, $previous->bmi) : '-' !!}</td>
                                                 <td class="small text-end text-muted">{{ $previous->bmi ?? 'N/A' }}</td>
+                                                <td class="text-center">{!! $current->bmi && $previous->bmi ? getChangeIcon($current->bmi, $previous->bmi) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="body_water">
                                                 <td class="small"><i class="bi bi-droplet me-2"></i>Body Water</td>
                                                 <td class="small text-end fw-semibold">{{ $current->body_water_percentage ?? 'N/A' }}%</td>
-                                                <td class="text-center">{!! $current->body_water_percentage && $previous->body_water_percentage ? getChangeIcon($current->body_water_percentage, $previous->body_water_percentage) : '-' !!}</td>
                                                 <td class="small text-end text-muted">{{ $previous->body_water_percentage ?? 'N/A' }}%</td>
+                                                <td class="text-center">{!! $current->body_water_percentage && $previous->body_water_percentage ? getChangeIcon($current->body_water_percentage, $previous->body_water_percentage) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="muscle_mass">
                                                 <td class="small"><i class="bi bi-heart me-2"></i>Muscle Mass</td>
                                                 <td class="small text-end fw-semibold">{{ $current->muscle_mass ?? 'N/A' }}kg</td>
-                                                <td class="text-center">{!! $current->muscle_mass && $previous->muscle_mass ? getChangeIcon($current->muscle_mass, $previous->muscle_mass) : '-' !!}</td>
                                                 <td class="small text-end text-muted">{{ $previous->muscle_mass ?? 'N/A' }}kg</td>
+                                                <td class="text-center">{!! $current->muscle_mass && $previous->muscle_mass ? getChangeIcon($current->muscle_mass, $previous->muscle_mass) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="bone_mass">
                                                 <td class="small"><i class="bi bi-capsule me-2"></i>Bone Mass</td>
                                                 <td class="small text-end fw-semibold">{{ $current->bone_mass ?? 'N/A' }}kg</td>
-                                                <td class="text-center">{!! $current->bone_mass && $previous->bone_mass ? getChangeIcon($current->bone_mass, $previous->bone_mass) : '-' !!}</td>
                                                 <td class="small text-end text-muted">{{ $previous->bone_mass ?? 'N/A' }}kg</td>
+                                                <td class="text-center">{!! $current->bone_mass && $previous->bone_mass ? getChangeIcon($current->bone_mass, $previous->bone_mass) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="visceral_fat">
                                                 <td class="small"><i class="bi bi-activity me-2"></i>Visceral Fat</td>
                                                 <td class="small text-end fw-semibold">{{ $current->visceral_fat ?? 'N/A' }}</td>
-                                                <td class="text-center">{!! $current->visceral_fat && $previous->visceral_fat ? getChangeIcon($current->visceral_fat, $previous->visceral_fat) : '-' !!}</td>
                                                 <td class="small text-end text-muted">{{ $previous->visceral_fat ?? 'N/A' }}</td>
+                                                <td class="text-center">{!! $current->visceral_fat && $previous->visceral_fat ? getChangeIcon($current->visceral_fat, $previous->visceral_fat) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="bmr">
                                                 <td class="small"><i class="bi bi-lightning me-2"></i>BMR</td>
                                                 <td class="small text-end fw-semibold">{{ $current->bmr ?? 'N/A' }}cal</td>
-                                                <td class="text-center">{!! $current->bmr && $previous->bmr ? getChangeIcon($current->bmr, $previous->bmr) : '-' !!}</td>
                                                 <td class="small text-end text-muted">{{ $previous->bmr ?? 'N/A' }}cal</td>
+                                                <td class="text-center">{!! $current->bmr && $previous->bmr ? getChangeIcon($current->bmr, $previous->bmr) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="protein">
                                                 <td class="small"><i class="bi bi-heart-pulse me-2"></i>Protein</td>
                                                 <td class="small text-end fw-semibold">{{ $current->protein_percentage ?? 'N/A' }}%</td>
-                                                <td class="text-center">{!! $current->protein_percentage && $previous->protein_percentage ? getChangeIcon($current->protein_percentage, $previous->protein_percentage) : '-' !!}</td>
                                                 <td class="small text-end text-muted">{{ $previous->protein_percentage ?? 'N/A' }}%</td>
+                                                <td class="text-center">{!! $current->protein_percentage && $previous->protein_percentage ? getChangeIcon($current->protein_percentage, $previous->protein_percentage) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="body_age">
                                                 <td class="small"><i class="bi bi-calendar-heart me-2"></i>Body Age</td>
                                                 <td class="small text-end fw-semibold">{{ $current->body_age ?? 'N/A' }}yrs</td>
-                                                <td class="text-center">{!! $current->body_age && $previous->body_age ? getChangeIcon($current->body_age, $previous->body_age) : '-' !!}</td>
                                                 <td class="small text-end text-muted">{{ $previous->body_age ?? 'N/A' }}yrs</td>
+                                                <td class="text-center">{!! $current->body_age && $previous->body_age ? getChangeIcon($current->body_age, $previous->body_age) : '-' !!}</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -796,7 +710,7 @@
             <!-- Health Tracking History -->
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <h5 class="fw-bold mb-4">Health Tracking History</h5>
+                    <h5 class="fw-bold mb-4"><i class="bi bi-heart-pulse me-2"></i>Health Tracking</h5>
 
                     @if($healthRecords->count() > 0)
                         <div class="table-responsive">
@@ -858,18 +772,18 @@
         <div class="tab-pane fade" id="goals" role="tabpanel">
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <h5 class="fw-bold mb-3">Goals & Progress</h5>
+                    <h5 class="fw-bold mb-3"><i class="bi bi-bullseye me-2"></i>Goals & Progress</h5>
                     <p class="text-muted">Goal tracking coming soon...</p>
                 </div>
             </div>
         </div>
 
-        <!-- Achievements Tab -->
-        <div class="tab-pane fade" id="achievements" role="tabpanel">
+        <!-- Affiliations Tab -->
+        <div class="tab-pane fade" id="affiliations" role="tabpanel">
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <h5 class="fw-bold mb-3">Achievements & Badges</h5>
-                    <p class="text-muted">Achievement system coming soon...</p>
+                    <h5 class="fw-bold mb-3"><i class="bi bi-diagram-3 me-2"></i>Affiliations & Badges</h5>
+                    <p class="text-muted">Affiliation system coming soon...</p>
                 </div>
             </div>
         </div>
@@ -878,7 +792,7 @@
         <div class="tab-pane fade" id="tournaments" role="tabpanel">
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <h5 class="fw-bold mb-3">Tournament History</h5>
+                    <h5 class="fw-bold mb-3"><i class="bi bi-award me-2"></i>Tournament History</h5>
                     <p class="text-muted">Tournament records coming soon...</p>
                 </div>
             </div>
@@ -888,7 +802,7 @@
         <div class="tab-pane fade" id="events" role="tabpanel">
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <h5 class="fw-bold mb-3">Event Participation</h5>
+                    <h5 class="fw-bold mb-3"><i class="bi bi-calendar-event me-2"></i>Event Participation</h5>
                     <p class="text-muted">Event history coming soon...</p>
                 </div>
             </div>
@@ -1026,6 +940,86 @@
         // Store health records data for dynamic comparison
         const healthRecordsData = @json($healthRecords->items());
 
+        // Radar chart variables
+        let radarChart = null;
+        const metricLabels = ['Weight', 'Body Fat', 'BMI', 'Body Water', 'Muscle Mass', 'Bone Mass', 'Visceral Fat', 'BMR', 'Protein', 'Body Age'];
+        const metricKeys = ['weight', 'body_fat_percentage', 'bmi', 'body_water_percentage', 'muscle_mass', 'bone_mass', 'visceral_fat', 'bmr', 'protein_percentage', 'body_age'];
+
+        // Function to create/update radar chart
+        function updateRadarChart(currentRecord, previousRecord) {
+            console.log('updateRadarChart called', currentRecord, previousRecord);
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            console.log('ctx', ctx);
+
+            const currentData = metricKeys.map(key => currentRecord ? (currentRecord[key] || 0) : 0);
+            const previousData = metricKeys.map(key => previousRecord ? (previousRecord[key] || 0) : 0);
+            console.log('currentData', currentData);
+            console.log('previousData', previousData);
+            console.log('window.Chart', window.Chart);
+
+            if (radarChart) {
+                radarChart.destroy();
+            }
+
+            radarChart = new window.Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: metricLabels,
+                    datasets: [
+                        {
+                            label: 'From Record',
+                            data: previousData,
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgba(54, 162, 235, 1)',
+                        },
+                        {
+                            label: 'To Record',
+                            data: currentData,
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            pointBackgroundColor: 'rgba(255, 99, 132, 1)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgba(255, 99, 132, 1)',
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += context.parsed.r;
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 10
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
         // Function to reset modal for adding new record
         function resetHealthModal() {
             document.getElementById('healthUpdateModalLabel').textContent = 'Add Health Update';
@@ -1115,6 +1109,9 @@
                 updateTableRow('bmr', currentRecord.bmr, previousRecord.bmr);
                 updateTableRow('protein', currentRecord.protein_percentage, previousRecord.protein_percentage);
                 updateTableRow('body_age', currentRecord.body_age, previousRecord.body_age);
+
+                // Update the radar chart
+                updateRadarChart(currentRecord, previousRecord);
             }
 
             function calculateTimeDifference(date1, date2) {
@@ -1155,19 +1152,19 @@
 
                     // Update previous value
                     if (metric === 'weight' || metric === 'muscle_mass' || metric === 'bone_mass') {
-                        cells[3].textContent = previousValue ? `${previousValue}kg` : 'N/A';
+                        cells[2].textContent = previousValue ? `${previousValue}kg` : 'N/A';
                     } else if (metric === 'body_fat' || metric === 'body_water' || metric === 'protein') {
-                        cells[3].textContent = previousValue ? `${previousValue}%` : 'N/A';
+                        cells[2].textContent = previousValue ? `${previousValue}%` : 'N/A';
                     } else if (metric === 'bmr') {
-                        cells[3].textContent = previousValue ? `${previousValue}cal` : 'N/A';
+                        cells[2].textContent = previousValue ? `${previousValue}cal` : 'N/A';
                     } else if (metric === 'body_age') {
-                        cells[3].textContent = previousValue ? `${previousValue}yrs` : 'N/A';
+                        cells[2].textContent = previousValue ? `${previousValue}yrs` : 'N/A';
                     } else {
-                        cells[3].textContent = previousValue || 'N/A';
+                        cells[2].textContent = previousValue || 'N/A';
                     }
 
                     // Update change cell
-                    const changeCell = cells[2];
+                    const changeCell = cells[3];
                     if (currentValue && previousValue) {
                         const change = currentValue - previousValue;
                         let arrow = '';
@@ -1195,7 +1192,25 @@
 
             currentDateSelect.addEventListener('change', updateComparisonTable);
             previousDateSelect.addEventListener('change', updateComparisonTable);
+
+            // Initialize chart with default values
+            updateComparisonTable();
         }
+
+        // Initialize radar chart with data from data attributes after a delay to ensure tab is shown
+        setTimeout(() => {
+            const radarCanvas = document.getElementById('radarChart');
+            if (radarCanvas) {
+                const currentData = radarCanvas.dataset.current ? JSON.parse(radarCanvas.dataset.current) : null;
+                const previousData = radarCanvas.dataset.previous ? JSON.parse(radarCanvas.dataset.previous) : null;
+                if (currentData && previousData) {
+                    updateRadarChart(currentData, previousData);
+                } else {
+                    // Initialize with empty chart or message
+                    updateRadarChart(null, null);
+                }
+            }
+        }, 1000);
     });
 </script>
 @endsection

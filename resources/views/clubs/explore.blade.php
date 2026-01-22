@@ -97,6 +97,8 @@
             </div>
         </div>
     </div>
+
+
 </div>
 
 <!-- Map Modal -->
@@ -317,15 +319,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // Near Me button
     document.getElementById('nearMeBtn').addEventListener('click', function() {
         const mapModal = new bootstrap.Modal(document.getElementById('mapModal'));
-        mapModal.show();
+        const modalElement = document.getElementById('mapModal');
 
-        // Initialize map when modal is shown
-        setTimeout(() => {
+        modalElement.addEventListener('shown.bs.modal', function() {
             if (userLocation) {
                 initMap(userLocation.latitude, userLocation.longitude);
                 updateModalLocation(userLocation.latitude, userLocation.longitude);
+            } else {
+                // No location available, use default and let user drag
+                initMap(25.276987, 55.296249); // Default to Dubai or any location
+                updateModalLocation(25.276987, 55.296249);
             }
-        }, 300);
+        }, { once: true });
+
+        mapModal.show();
     });
 
     // Apply Location button
@@ -354,10 +361,11 @@ function startWatchingLocation() {
 
             updateLocationDisplay(userLocation.latitude, userLocation.longitude);
 
-            // If current category is not 'all', fetch nearby clubs
-            if (currentCategory !== 'all') {
-                fetchNearbyClubs(userLocation.latitude, userLocation.longitude);
-            }
+            // Fetch nearby clubs
+            fetchNearbyClubs(userLocation.latitude, userLocation.longitude);
+
+            // Initialize page map
+            initPageMap(userLocation.latitude, userLocation.longitude);
 
             // Stop watching after first successful location
             if (watchId) {
@@ -398,6 +406,43 @@ function updateLocationDisplay(lat, lng) {
         `<i class="bi bi-geo-alt-fill me-1 fs-5"></i>${lat.toFixed(4)}, ${lng.toFixed(4)}`;
 }
 
+// Initialize page map
+function initPageMap(lat, lng) {
+    if (pageMap) {
+        pageMap.remove();
+    }
+
+    pageMap = L.map('pageMap').setView([lat, lng], 13);
+
+    L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(pageMap);
+
+    // Add user marker
+    userMarker = L.marker([lat, lng], {
+        icon: L.divIcon({
+            className: 'user-location-marker',
+            html: '<i class="bi bi-geo-alt-fill pulse-marker" style="font-size: 36px; color: #dc3545; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));"></i>',
+            iconSize: [36, 36],
+            iconAnchor: [18, 36]
+        })
+    }).addTo(pageMap);
+
+    // Add club markers
+    if (allClubs.length > 0) {
+        allClubs.forEach(club => {
+            if (club.gps_lat && club.gps_long) {
+                L.marker([club.gps_lat, club.gps_long]).addTo(pageMap)
+                    .bindPopup(`<b>${club.club_name}</b><br>${club.owner_name || 'N/A'}`);
+            }
+        });
+    }
+
+    setTimeout(() => pageMap.invalidateSize(), 100);
+    document.getElementById('mapSection').style.display = 'block';
+}
+
 // Initialize map in modal
 function initMap(lat, lng) {
     if (map) {
@@ -406,7 +451,7 @@ function initMap(lat, lng) {
 
     map = L.map('map', { attributionControl: false }).setView([lat, lng], 13);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors',
         maxZoom: 19
     }).addTo(map);
@@ -423,7 +468,7 @@ function initMap(lat, lng) {
     }).addTo(map);
 
     // Drag event
-    userMarker.on('dragend', function(event) {
+    userMarker.on('drag', function(event) {
         const position = event.target.getLatLng();
         userLocation = {
             latitude: position.lat,
@@ -519,6 +564,24 @@ function displayClubs(clubs) {
     }
 
     noResultsContainer.style.display = 'none';
+
+    // Update map markers if page map exists
+    if (pageMap) {
+        // Clear existing club markers (assuming user marker is the first)
+        pageMap.eachLayer(function(layer) {
+            if (layer instanceof L.Marker && layer !== userMarker) {
+                pageMap.removeLayer(layer);
+            }
+        });
+
+        // Add new club markers
+        clubs.forEach(club => {
+            if (club.gps_lat && club.gps_long) {
+                L.marker([club.gps_lat, club.gps_long]).addTo(pageMap)
+                    .bindPopup(`<b>${club.club_name}</b><br>${club.owner_name || 'N/A'}`);
+            }
+        });
+    }
 
     clubs.forEach(club => {
         const card = document.createElement('div');

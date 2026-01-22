@@ -53,15 +53,22 @@ class InvoiceController extends Controller
      * Display the receipt for the specified invoice.
      *
      * @param  int  $id
-     * @return \Illuminate\View\View
+     * @return \Illuminate\View\View|\Illuminate\Http\Response
      */
-    public function receipt($id)
+    public function receipt(Request $request, $id)
     {
         $user = Auth::user();
         $invoice = Invoice::where('id', $id)
             ->where('payer_user_id', $user->id)
             ->with(['student', 'tenant'])
             ->firstOrFail();
+
+        if ($request->has('download')) {
+            $html = view('invoices.receipt', compact('invoice'))->render();
+            return response($html)
+                ->header('Content-Type', 'text/html')
+                ->header('Content-Disposition', 'attachment; filename="receipt_' . $invoice->id . '.html"');
+        }
 
         return view('invoices.receipt', compact('invoice'));
     }

@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
             'full_name' => 'Test User',
             'mobile' => ['code' => '+1', 'number' => '1234567890'],
             'password' => bcrypt('password'),
+            'email_verified_at' => now(),
         ]);
 
         // Create a tenant (club)
@@ -34,6 +35,8 @@ class DatabaseSeeder extends Seeder
             'owner_user_id' => $user->id,
             'club_name' => 'Test Club',
             'slug' => 'test-club',
+            'gps_lat' => 25.276987, // Dubai latitude
+            'gps_long' => 55.296249, // Dubai longitude
         ]);
 
         // Create membership

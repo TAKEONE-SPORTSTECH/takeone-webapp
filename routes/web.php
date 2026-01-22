@@ -74,7 +74,7 @@ Route::post('/email/verification-notification', function (Request $request) {
 })->middleware(['auth', 'throttle:6,1'])->name('verification.send');
 
 // Explore routes (accessible to authenticated users)
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::get('/explore', [ClubController::class, 'index'])->name('clubs.explore');
     Route::get('/clubs/nearby', [ClubController::class, 'nearby'])->name('clubs.nearby');
     Route::get('/clubs/all', [ClubController::class, 'all'])->name('clubs.all');

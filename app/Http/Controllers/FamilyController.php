@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\UserRelationship;
 use App\Models\HealthRecord;
+use App\Models\Invoice;
 use App\Services\FamilyService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -28,6 +29,7 @@ class FamilyController extends Controller
         $user = Auth::user();
         $dependents = UserRelationship::where('guardian_user_id', $user->id)
             ->with('dependent')
+            ->whereHas('dependent')
             ->get()
             ->sortBy(function($relationship) {
                 return $relationship->dependent->full_name;
@@ -50,6 +52,9 @@ class FamilyController extends Controller
         $healthRecords = $user->healthRecords()->orderBy('recorded_at', 'desc')->paginate(10);
         $comparisonRecords = $user->healthRecords()->orderBy('recorded_at', 'desc')->take(2)->get();
 
+        // Fetch invoices
+        $invoices = Invoice::where('student_user_id', $user->id)->orWhere('payer_user_id', $user->id)->with(['student', 'tenant'])->get();
+
         // Pass user directly and a flag to indicate it's the current user's profile
         return view('family.show', [
             'relationship' => (object)[
@@ -61,6 +66,7 @@ class FamilyController extends Controller
             'latestHealthRecord' => $latestHealthRecord,
             'healthRecords' => $healthRecords,
             'comparisonRecords' => $comparisonRecords,
+            'invoices' => $invoices,
         ]);
     }
 
@@ -225,7 +231,10 @@ class FamilyController extends Controller
         $healthRecords = $relationship->dependent->healthRecords()->orderBy('recorded_at', 'desc')->paginate(10);
         $comparisonRecords = $relationship->dependent->healthRecords()->orderBy('recorded_at', 'desc')->take(2)->get();
 
-        return view('family.show', compact('relationship', 'latestHealthRecord', 'healthRecords', 'comparisonRecords'));
+        // Fetch invoices for the dependent
+        $invoices = Invoice::where('student_user_id', $relationship->dependent->id)->orWhere('payer_user_id', $relationship->dependent->id)->with(['student', 'tenant'])->get();
+
+        return view('family.show', compact('relationship', 'latestHealthRecord', 'healthRecords', 'comparisonRecords', 'invoices'));
     }
 
     /**
