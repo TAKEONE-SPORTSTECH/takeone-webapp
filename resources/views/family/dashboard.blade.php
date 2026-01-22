@@ -378,7 +378,7 @@
                     <div class="mb-3">
                         <label for="mobile" class="form-label">Mobile Number</label>
                         <div class="input-group" onclick="event.stopPropagation()">
-                            <button class="btn btn-outline-secondary dropdown-toggle country-dropdown-btn d-flex align-items-center" type="button" id="country_codeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <button class="btn btn-outline-secondary dropdown-toggle country-dropdown-btn d-flex align-items-center" type="button" id="country_codeDropdown" data-bs-toggle="dropdown" data-bs-auto-close="false" aria-expanded="false">
                                 <span class="fi fi-bh me-2" id="country_codeSelectedFlag"></span>
                                 <span class="country-label" id="country_codeSelectedCountry">{{ old('mobile_code', '+973') }}</span>
                             </button>
