@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\UserRelationship;
+use App\Models\HealthRecord;
 use App\Services\FamilyService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -44,6 +45,11 @@ class FamilyController extends Controller
     {
         $user = Auth::user();
 
+        // Fetch health data
+        $latestHealthRecord = $user->healthRecords()->latest('recorded_at')->first();
+        $healthRecords = $user->healthRecords()->orderBy('recorded_at', 'desc')->paginate(10);
+        $comparisonRecords = $user->healthRecords()->orderBy('recorded_at', 'desc')->take(2)->get();
+
         // Pass user directly and a flag to indicate it's the current user's profile
         return view('family.show', [
             'relationship' => (object)[
@@ -51,7 +57,10 @@ class FamilyController extends Controller
                 'relationship_type' => 'self',
                 'guardian_user_id' => $user->id,
                 'dependent_user_id' => $user->id,
-            ]
+            ],
+            'latestHealthRecord' => $latestHealthRecord,
+            'healthRecords' => $healthRecords,
+            'comparisonRecords' => $comparisonRecords,
         ]);
     }
 
@@ -211,7 +220,12 @@ class FamilyController extends Controller
             ->with('dependent')
             ->firstOrFail();
 
-        return view('family.show', compact('relationship'));
+        // Fetch health data for the dependent
+        $latestHealthRecord = $relationship->dependent->healthRecords()->latest('recorded_at')->first();
+        $healthRecords = $relationship->dependent->healthRecords()->orderBy('recorded_at', 'desc')->paginate(10);
+        $comparisonRecords = $relationship->dependent->healthRecords()->orderBy('recorded_at', 'desc')->take(2)->get();
+
+        return view('family.show', compact('relationship', 'latestHealthRecord', 'healthRecords', 'comparisonRecords'));
     }
 
     /**
@@ -350,6 +364,151 @@ class FamilyController extends Controller
             'success' => false,
             'message' => 'No image file provided.',
         ], 400);
+    }
+
+    /**
+     * Store a health record for the specified family member.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function storeHealth(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'recorded_at' => 'required|date',
+            'weight' => 'nullable|numeric|min:0|max:999.9',
+            'body_fat_percentage' => 'nullable|numeric|min:0|max:100',
+            'bmi' => 'nullable|numeric|min:0|max:100',
+            'body_water_percentage' => 'nullable|numeric|min:0|max:100',
+            'muscle_mass' => 'nullable|numeric|min:0|max:999.9',
+            'bone_mass' => 'nullable|numeric|min:0|max:999.9',
+            'visceral_fat' => 'nullable|integer|min:0|max:50',
+            'bmr' => 'nullable|integer|min:0|max:10000',
+            'protein_percentage' => 'nullable|numeric|min:0|max:100',
+            'body_age' => 'nullable|integer|min:0|max:150',
+        ]);
+
+        // Check that at least one metric is provided besides the date
+        $metrics = array_filter([
+            $validated['weight'] ?? null,
+            $validated['body_fat_percentage'] ?? null,
+            $validated['bmi'] ?? null,
+            $validated['body_water_percentage'] ?? null,
+            $validated['muscle_mass'] ?? null,
+            $validated['bone_mass'] ?? null,
+            $validated['visceral_fat'] ?? null,
+            $validated['bmr'] ?? null,
+            $validated['protein_percentage'] ?? null,
+            $validated['body_age'] ?? null,
+        ]);
+
+        if (empty($metrics)) {
+            return redirect()->back()
+                ->with('error', 'Please provide at least one health metric besides the date.');
+        }
+
+        $user = Auth::user();
+
+        // For self profile, allow without relationship check
+        if ($id == $user->id) {
+            $dependent = $user;
+        } else {
+            // Verify the family member belongs to the authenticated user
+            $relationship = UserRelationship::where('guardian_user_id', $user->id)
+                ->where('dependent_user_id', $id)
+                ->firstOrFail();
+
+            $dependent = User::findOrFail($id);
+        }
+
+        // Check for duplicate date
+        $existing = $dependent->healthRecords()->where('recorded_at', $validated['recorded_at'])->first();
+        if ($existing) {
+            return redirect()->back()
+                ->with('error', 'A health record already exists for this date. Please choose a different date.');
+        }
+
+        $dependent->healthRecords()->create($validated);
+
+        return redirect()->back()->withFragment('health')
+            ->with('success', 'Health record added successfully.');
+    }
+
+    /**
+     * Update a health record for the specified family member.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @param  int  $recordId
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function updateHealth(Request $request, $id, $recordId)
+    {
+        $validated = $request->validate([
+            'recorded_at' => 'required|date',
+            'weight' => 'nullable|numeric|min:0|max:999.9',
+            'body_fat_percentage' => 'nullable|numeric|min:0|max:100',
+            'bmi' => 'nullable|numeric|min:0|max:100',
+            'body_water_percentage' => 'nullable|numeric|min:0|max:100',
+            'muscle_mass' => 'nullable|numeric|min:0|max:999.9',
+            'bone_mass' => 'nullable|numeric|min:0|max:999.9',
+            'visceral_fat' => 'nullable|integer|min:0|max:50',
+            'bmr' => 'nullable|integer|min:0|max:10000',
+            'protein_percentage' => 'nullable|numeric|min:0|max:100',
+            'body_age' => 'nullable|integer|min:0|max:150',
+        ]);
+
+        // Check that at least one metric is provided besides the date
+        $metrics = array_filter([
+            $validated['weight'] ?? null,
+            $validated['body_fat_percentage'] ?? null,
+            $validated['bmi'] ?? null,
+            $validated['body_water_percentage'] ?? null,
+            $validated['muscle_mass'] ?? null,
+            $validated['bone_mass'] ?? null,
+            $validated['visceral_fat'] ?? null,
+            $validated['bmr'] ?? null,
+            $validated['protein_percentage'] ?? null,
+            $validated['body_age'] ?? null,
+        ]);
+
+        if (empty($metrics)) {
+            return redirect()->back()
+                ->with('error', 'Please provide at least one health metric besides the date.');
+        }
+
+        $user = Auth::user();
+
+        // For self profile, allow without relationship check
+        if ($id == $user->id) {
+            $dependent = $user;
+        } else {
+            // Verify the family member belongs to the authenticated user
+            $relationship = UserRelationship::where('guardian_user_id', $user->id)
+                ->where('dependent_user_id', $id)
+                ->firstOrFail();
+
+            $dependent = User::findOrFail($id);
+        }
+
+        // Find the health record
+        $healthRecord = $dependent->healthRecords()->findOrFail($recordId);
+
+        // Check for duplicate date (excluding current record)
+        $existing = $dependent->healthRecords()
+            ->where('recorded_at', $validated['recorded_at'])
+            ->where('id', '!=', $recordId)
+            ->first();
+        if ($existing) {
+            return redirect()->back()
+                ->with('error', 'A health record already exists for this date. Please choose a different date.');
+        }
+
+        $healthRecord->update($validated);
+
+        return redirect()->back()->withFragment('health')
+            ->with('success', 'Health record updated successfully.');
     }
 
     /**

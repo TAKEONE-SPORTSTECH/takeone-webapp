@@ -1,7 +1,34 @@
 @extends('layouts.app')
 
+@php
+    function calculateTimeDifference($date1, $date2) {
+        $diff = $date1->diff($date2);
+        $parts = [];
+
+        if ($diff->y > 0) $parts[] = $diff->y . ' year' . ($diff->y > 1 ? 's' : '');
+        if ($diff->m > 0) $parts[] = $diff->m . ' month' . ($diff->m > 1 ? 's' : '');
+        if ($diff->d > 0) $parts[] = $diff->d . ' day' . ($diff->d > 1 ? 's' : '');
+
+        return implode(' ', $parts) ?: 'Same day';
+    }
+@endphp
+
 @section('content')
 <div class="container py-4">
+    <!-- Flash Messages -->
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -35,15 +62,15 @@
                                     <i class="bi bi-lightning me-1"></i>Action
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionDropdown">
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-trophy me-2"></i>Add Achievement</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-calendar-check me-2"></i>Add Attendance Record</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-calendar-event me-2"></i>Add Event Participation</a></li>
+                                    <li><a class="dropdown-item" href="#" data-bs-target="#healthUpdateModal"><i class="bi bi-heart-pulse me-2"></i>Add Health Update</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-award me-2"></i>Add Tournament Participation</a></li>
                                     <li><a class="dropdown-item" href="@if($relationship->relationship_type == 'self'){{ route('profile.edit') }}@else{{ route('family.edit', $relationship->dependent->id) }}@endif">
                                         <i class="bi bi-pencil me-2"></i>Edit Info
                                     </a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-calendar-check me-2"></i>Add Attendance Record</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-heart-pulse me-2"></i>Add Health Update</a></li>
                                     <li><a class="dropdown-item" href="#"><i class="bi bi-bullseye me-2"></i>Set a Goal</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-trophy me-2"></i>Add Achievement</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-award me-2"></i>Add Tournament Participation</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-calendar-event me-2"></i>Add Event Participation</a></li>
                                 </ul>
                             </div>
                         </div>
@@ -507,93 +534,106 @@
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <p class="text-muted small mb-0">Monitor health metrics and progress over time</p>
 
-                        @php
-                            $latestDate = \Carbon\Carbon::parse('2024-01-08');
-                            $now = \Carbon\Carbon::now();
-                            $diff = $latestDate->diff($now);
-                        @endphp
+                        @if($latestHealthRecord)
+                            @php
+                                $latestDate = $latestHealthRecord->recorded_at;
+                                $now = \Carbon\Carbon::now();
+                                $diff = $latestDate->diff($now);
+                            @endphp
 
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="d-flex align-items-center gap-2">
-                                <i class="bi bi-calendar-event text-primary"></i>
-                                <span class="fw-semibold">Snapshot Date:</span>
-                                <span class="text-muted">{{ $latestDate->format('F j, Y') }}</span>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-calendar-event text-primary"></i>
+                                    <span class="fw-semibold">Snapshot Date:</span>
+                                    <span class="text-muted">{{ $latestDate->format('F j, Y') }}</span>
+                                </div>
+                                <div class="vr"></div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-clock-history text-primary"></i>
+                                    <span class="fw-semibold">Time Since:</span>
+                                    <span class="text-muted">
+                                        @if($diff->y > 0)
+                                            {{ $diff->y }} {{ $diff->y == 1 ? 'year' : 'years' }}
+                                        @endif
+                                        @if($diff->m > 0)
+                                            {{ $diff->m }} {{ $diff->m == 1 ? 'month' : 'months' }}
+                                        @endif
+                                        @if($diff->d > 0)
+                                            {{ $diff->d }} {{ $diff->d == 1 ? 'day' : 'days' }}
+                                        @endif
+                                        ago
+                                    </span>
+                                </div>
                             </div>
-                            <div class="vr"></div>
-                            <div class="d-flex align-items-center gap-2">
-                                <i class="bi bi-clock-history text-primary"></i>
-                                <span class="fw-semibold">Time Since:</span>
-                                <span class="text-muted">
-                                    @if($diff->y > 0)
-                                        {{ $diff->y }} {{ $diff->y == 1 ? 'year' : 'years' }}
-                                    @endif
-                                    @if($diff->m > 0)
-                                        {{ $diff->m }} {{ $diff->m == 1 ? 'month' : 'months' }}
-                                    @endif
-                                    @if($diff->d > 0)
-                                        {{ $diff->d }} {{ $diff->d == 1 ? 'day' : 'days' }}
-                                    @endif
-                                    ago
-                                </span>
-                            </div>
-                        </div>
+                        @else
+                            <div class="text-muted small">No health records available</div>
+                        @endif
                     </div>
 
                     <!-- Health Metrics Cards -->
                     <div class="row g-3">
-                        <!-- Weight -->
-                        <div class="col-md-2">
-                            <div class="text-center p-3 bg-light rounded">
-                                <i class="bi bi-speedometer2 text-purple mb-2" style="font-size: 1.5rem; color: #8b5cf6;"></i>
-                                <div class="h4 fw-bold mb-0">75</div>
-                                <small class="text-muted">Weight (kg)</small>
+                        @if($latestHealthRecord)
+                            <!-- Weight -->
+                            <div class="col-md-2">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <i class="bi bi-speedometer2 text-purple mb-2" style="font-size: 1.5rem; color: #8b5cf6;"></i>
+                                    <div class="h4 fw-bold mb-0">{{ $latestHealthRecord->weight ?? 'N/A' }}</div>
+                                    <small class="text-muted">Weight (kg)</small>
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- Body Fat -->
-                        <div class="col-md-2">
-                            <div class="text-center p-3 bg-light rounded">
-                                <i class="bi bi-activity text-warning mb-2" style="font-size: 1.5rem;"></i>
-                                <div class="h4 fw-bold mb-0">12.8%</div>
-                                <small class="text-muted">Body Fat</small>
+                            <!-- Body Fat -->
+                            <div class="col-md-2">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <i class="bi bi-activity text-warning mb-2" style="font-size: 1.5rem;"></i>
+                                    <div class="h4 fw-bold mb-0">{{ $latestHealthRecord->body_fat_percentage ?? 'N/A' }}%</div>
+                                    <small class="text-muted">Body Fat</small>
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- Body Water -->
-                        <div class="col-md-2">
-                            <div class="text-center p-3 bg-light rounded">
-                                <i class="bi bi-droplet text-info mb-2" style="font-size: 1.5rem;"></i>
-                                <div class="h4 fw-bold mb-0">68.2%</div>
-                                <small class="text-muted">Body Water</small>
+                            <!-- Body Water -->
+                            <div class="col-md-2">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <i class="bi bi-droplet text-info mb-2" style="font-size: 1.5rem;"></i>
+                                    <div class="h4 fw-bold mb-0">{{ $latestHealthRecord->body_water_percentage ?? 'N/A' }}%</div>
+                                    <small class="text-muted">Body Water</small>
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- Muscle Mass -->
-                        <div class="col-md-2">
-                            <div class="text-center p-3 bg-light rounded">
-                                <i class="bi bi-heart text-success mb-2" style="font-size: 1.5rem;"></i>
-                                <div class="h4 fw-bold mb-0">70.5</div>
-                                <small class="text-muted">Muscle Mass</small>
+                            <!-- Muscle Mass -->
+                            <div class="col-md-2">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <i class="bi bi-heart text-success mb-2" style="font-size: 1.5rem;"></i>
+                                    <div class="h4 fw-bold mb-0">{{ $latestHealthRecord->muscle_mass ?? 'N/A' }}</div>
+                                    <small class="text-muted">Muscle Mass</small>
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- Bone Mass -->
-                        <div class="col-md-2">
-                            <div class="text-center p-3 bg-light rounded">
-                                <i class="bi bi-capsule text-secondary mb-2" style="font-size: 1.5rem;"></i>
-                                <div class="h4 fw-bold mb-0">3.7</div>
-                                <small class="text-muted">Bone Mass</small>
+                            <!-- Bone Mass -->
+                            <div class="col-md-2">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <i class="bi bi-capsule text-secondary mb-2" style="font-size: 1.5rem;"></i>
+                                    <div class="h4 fw-bold mb-0">{{ $latestHealthRecord->bone_mass ?? 'N/A' }}</div>
+                                    <small class="text-muted">Bone Mass</small>
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- BMR -->
-                        <div class="col-md-2">
-                            <div class="text-center p-3 bg-light rounded">
-                                <i class="bi bi-lightning text-danger mb-2" style="font-size: 1.5rem;"></i>
-                                <div class="h4 fw-bold mb-0">1895</div>
-                                <small class="text-muted">BMR (cal)</small>
+                            <!-- BMR -->
+                            <div class="col-md-2">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <i class="bi bi-lightning text-danger mb-2" style="font-size: 1.5rem;"></i>
+                                    <div class="h4 fw-bold mb-0">{{ $latestHealthRecord->bmr ?? 'N/A' }}</div>
+                                    <small class="text-muted">BMR (cal)</small>
+                                </div>
                             </div>
-                        </div>
+                        @else
+                            <div class="col-12">
+                                <div class="text-center py-4">
+                                    <i class="bi bi-heart-pulse text-muted" style="font-size: 3rem;"></i>
+                                    <p class="text-muted mt-3">No health metrics available</p>
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -621,80 +661,133 @@
                         <div class="card-body p-4">
                             <h5 class="fw-bold mb-4">Compare</h5>
 
-                            <div class="table-responsive">
-                                <table class="table table-sm align-middle">
-                                    <thead>
-                                        <tr class="border-bottom">
-                                            <th class="text-muted small fw-semibold">Metric</th>
-                                            <th class="text-muted small fw-semibold text-end">Current</th>
-                                            <th class="text-muted small fw-semibold text-center">Change</th>
-                                            <th class="text-muted small fw-semibold text-end">Previous</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td class="small"><i class="bi bi-speedometer2 me-2"></i>Weight</td>
-                                            <td class="small text-end fw-semibold">75kg</td>
-                                            <td class="text-center"><i class="bi bi-arrow-down text-success"></i></td>
-                                            <td class="small text-end text-muted">77kg</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="small"><i class="bi bi-activity me-2"></i>Body Fat</td>
-                                            <td class="small text-end fw-semibold">12.8%</td>
-                                            <td class="text-center"><i class="bi bi-arrow-down text-success"></i></td>
-                                            <td class="small text-end text-muted">14.5%</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="small"><i class="bi bi-calculator me-2"></i>BMI</td>
-                                            <td class="small text-end fw-semibold">22.5</td>
-                                            <td class="text-center"><i class="bi bi-arrow-down text-success"></i></td>
-                                            <td class="small text-end text-muted">23.2</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="small"><i class="bi bi-droplet me-2"></i>Body Water</td>
-                                            <td class="small text-end fw-semibold">68.2%</td>
-                                            <td class="text-center"><i class="bi bi-arrow-up text-success"></i></td>
-                                            <td class="small text-end text-muted">65.8%</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="small"><i class="bi bi-heart me-2"></i>Muscle Mass</td>
-                                            <td class="small text-end fw-semibold">70.5kg</td>
-                                            <td class="text-center"><i class="bi bi-arrow-up text-success"></i></td>
-                                            <td class="small text-end text-muted">68.2kg</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="small"><i class="bi bi-capsule me-2"></i>Bone Mass</td>
-                                            <td class="small text-end fw-semibold">3.7kg</td>
-                                            <td class="text-center"><i class="bi bi-arrow-up text-success"></i></td>
-                                            <td class="small text-end text-muted">3.6kg</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="small"><i class="bi bi-activity me-2"></i>Visceral Fat</td>
-                                            <td class="small text-end fw-semibold">3</td>
-                                            <td class="text-center"><i class="bi bi-arrow-down text-success"></i></td>
-                                            <td class="small text-end text-muted">4</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="small"><i class="bi bi-lightning me-2"></i>BMR</td>
-                                            <td class="small text-end fw-semibold">1895cal</td>
-                                            <td class="text-center"><i class="bi bi-arrow-up text-success"></i></td>
-                                            <td class="small text-end text-muted">1865cal</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="small"><i class="bi bi-heart-pulse me-2"></i>Protein</td>
-                                            <td class="small text-end fw-semibold">19.8%</td>
-                                            <td class="text-center"><i class="bi bi-arrow-up text-success"></i></td>
-                                            <td class="small text-end text-muted">18.9%</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="small"><i class="bi bi-calendar-heart me-2"></i>Body Age</td>
-                                            <td class="small text-end fw-semibold">25yrs</td>
-                                            <td class="text-center"><i class="bi bi-arrow-down text-success"></i></td>
-                                            <td class="small text-end text-muted">27yrs</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                            @if($comparisonRecords->count() >= 2)
+                                @php
+                                    $current = $comparisonRecords->first();
+                                    $previous = $comparisonRecords->skip(1)->first();
+                                @endphp
+
+                                <div class="mb-3">
+                                    <div class="row g-2">
+                                        <div class="col-6 text-center">
+                                            <label class="form-label fw-bold">From</label>
+                                            <select class="form-select form-select-sm" id="currentDate">
+                                                @foreach($healthRecords as $record)
+                                                    <option value="{{ $record->id }}" {{ $record->id == $current->id ? 'selected' : '' }}>
+                                                        {{ $record->recorded_at->format('M j, Y') }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div class="col-6 text-center">
+                                            <label class="form-label fw-bold">To</label>
+                                            <select class="form-select form-select-sm" id="previousDate">
+                                                @foreach($healthRecords as $record)
+                                                    <option value="{{ $record->id }}" {{ $record->id == $previous->id ? 'selected' : '' }}>
+                                                        {{ $record->recorded_at->format('M j, Y') }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3">
+                                        <div class="alert alert-secondary text-center py-2" id="timeDifference">
+                                            @if($current && $previous)
+                                                <strong>Time between records:</strong> {{ calculateTimeDifference($current->recorded_at, $previous->recorded_at) }}
+                                            @else
+                                                Select dates to see time difference
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="table-responsive">
+                                    <table class="table table-sm align-middle">
+                                        <thead>
+                                            <tr class="border-bottom">
+                                                <th class="text-muted small fw-semibold">Metric</th>
+                                                <th class="text-muted small fw-semibold text-end">Current</th>
+                                                <th class="text-muted small fw-semibold text-center">Change</th>
+                                                <th class="text-muted small fw-semibold text-end">Previous</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @php
+                                                function getChangeIcon($current, $previous) {
+                                                    if ($current > $previous) return '<i class="bi bi-arrow-up text-success"></i>';
+                                                    if ($current < $previous) return '<i class="bi bi-arrow-down text-danger"></i>';
+                                                    return '<i class="bi bi-dash text-muted"></i>';
+                                                }
+                                            @endphp
+                                            <tr data-metric="weight">
+                                                <td class="small"><i class="bi bi-speedometer2 me-2"></i>Weight</td>
+                                                <td class="small text-end fw-semibold">{{ $current->weight ?? 'N/A' }}kg</td>
+                                                <td class="text-center">{!! $current->weight && $previous->weight ? getChangeIcon($current->weight, $previous->weight) : '-' !!}</td>
+                                                <td class="small text-end text-muted">{{ $previous->weight ?? 'N/A' }}kg</td>
+                                            </tr>
+                                            <tr data-metric="body_fat">
+                                                <td class="small"><i class="bi bi-activity me-2"></i>Body Fat</td>
+                                                <td class="small text-end fw-semibold">{{ $current->body_fat_percentage ?? 'N/A' }}%</td>
+                                                <td class="text-center">{!! $current->body_fat_percentage && $previous->body_fat_percentage ? getChangeIcon($current->body_fat_percentage, $previous->body_fat_percentage) : '-' !!}</td>
+                                                <td class="small text-end text-muted">{{ $previous->body_fat_percentage ?? 'N/A' }}%</td>
+                                            </tr>
+                                            <tr data-metric="bmi">
+                                                <td class="small"><i class="bi bi-calculator me-2"></i>BMI</td>
+                                                <td class="small text-end fw-semibold">{{ $current->bmi ?? 'N/A' }}</td>
+                                                <td class="text-center">{!! $current->bmi && $previous->bmi ? getChangeIcon($current->bmi, $previous->bmi) : '-' !!}</td>
+                                                <td class="small text-end text-muted">{{ $previous->bmi ?? 'N/A' }}</td>
+                                            </tr>
+                                            <tr data-metric="body_water">
+                                                <td class="small"><i class="bi bi-droplet me-2"></i>Body Water</td>
+                                                <td class="small text-end fw-semibold">{{ $current->body_water_percentage ?? 'N/A' }}%</td>
+                                                <td class="text-center">{!! $current->body_water_percentage && $previous->body_water_percentage ? getChangeIcon($current->body_water_percentage, $previous->body_water_percentage) : '-' !!}</td>
+                                                <td class="small text-end text-muted">{{ $previous->body_water_percentage ?? 'N/A' }}%</td>
+                                            </tr>
+                                            <tr data-metric="muscle_mass">
+                                                <td class="small"><i class="bi bi-heart me-2"></i>Muscle Mass</td>
+                                                <td class="small text-end fw-semibold">{{ $current->muscle_mass ?? 'N/A' }}kg</td>
+                                                <td class="text-center">{!! $current->muscle_mass && $previous->muscle_mass ? getChangeIcon($current->muscle_mass, $previous->muscle_mass) : '-' !!}</td>
+                                                <td class="small text-end text-muted">{{ $previous->muscle_mass ?? 'N/A' }}kg</td>
+                                            </tr>
+                                            <tr data-metric="bone_mass">
+                                                <td class="small"><i class="bi bi-capsule me-2"></i>Bone Mass</td>
+                                                <td class="small text-end fw-semibold">{{ $current->bone_mass ?? 'N/A' }}kg</td>
+                                                <td class="text-center">{!! $current->bone_mass && $previous->bone_mass ? getChangeIcon($current->bone_mass, $previous->bone_mass) : '-' !!}</td>
+                                                <td class="small text-end text-muted">{{ $previous->bone_mass ?? 'N/A' }}kg</td>
+                                            </tr>
+                                            <tr data-metric="visceral_fat">
+                                                <td class="small"><i class="bi bi-activity me-2"></i>Visceral Fat</td>
+                                                <td class="small text-end fw-semibold">{{ $current->visceral_fat ?? 'N/A' }}</td>
+                                                <td class="text-center">{!! $current->visceral_fat && $previous->visceral_fat ? getChangeIcon($current->visceral_fat, $previous->visceral_fat) : '-' !!}</td>
+                                                <td class="small text-end text-muted">{{ $previous->visceral_fat ?? 'N/A' }}</td>
+                                            </tr>
+                                            <tr data-metric="bmr">
+                                                <td class="small"><i class="bi bi-lightning me-2"></i>BMR</td>
+                                                <td class="small text-end fw-semibold">{{ $current->bmr ?? 'N/A' }}cal</td>
+                                                <td class="text-center">{!! $current->bmr && $previous->bmr ? getChangeIcon($current->bmr, $previous->bmr) : '-' !!}</td>
+                                                <td class="small text-end text-muted">{{ $previous->bmr ?? 'N/A' }}cal</td>
+                                            </tr>
+                                            <tr data-metric="protein">
+                                                <td class="small"><i class="bi bi-heart-pulse me-2"></i>Protein</td>
+                                                <td class="small text-end fw-semibold">{{ $current->protein_percentage ?? 'N/A' }}%</td>
+                                                <td class="text-center">{!! $current->protein_percentage && $previous->protein_percentage ? getChangeIcon($current->protein_percentage, $previous->protein_percentage) : '-' !!}</td>
+                                                <td class="small text-end text-muted">{{ $previous->protein_percentage ?? 'N/A' }}%</td>
+                                            </tr>
+                                            <tr data-metric="body_age">
+                                                <td class="small"><i class="bi bi-calendar-heart me-2"></i>Body Age</td>
+                                                <td class="small text-end fw-semibold">{{ $current->body_age ?? 'N/A' }}yrs</td>
+                                                <td class="text-center">{!! $current->body_age && $previous->body_age ? getChangeIcon($current->body_age, $previous->body_age) : '-' !!}</td>
+                                                <td class="small text-end text-muted">{{ $previous->body_age ?? 'N/A' }}yrs</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @else
+                                <div class="text-center py-4">
+                                    <i class="bi bi-bar-chart-line text-muted" style="font-size: 3rem;"></i>
+                                    <p class="text-muted mt-3">Need at least 2 health records to compare</p>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -705,92 +798,58 @@
                 <div class="card-body p-4">
                     <h5 class="fw-bold mb-4">Health Tracking History</h5>
 
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="text-muted small fw-semibold">Date</th>
-                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-speedometer2 me-1"></i>Weight (kg)</th>
-                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-activity me-1"></i>Body Fat %</th>
-                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-calculator me-1"></i>BMI</th>
-                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-droplet me-1"></i>Body Water %</th>
-                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-heart me-1"></i>Muscle Mass (kg)</th>
-                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-capsule me-1"></i>Bone Mass (kg)</th>
-                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-activity me-1"></i>Visceral Fat</th>
-                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-lightning me-1"></i>BMR</th>
-                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-heart-pulse me-1"></i>Protein %</th>
-                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-calendar-heart me-1"></i>Body Age</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td class="small fw-semibold">Jan 08, 2024</td>
-                                    <td class="small text-center">75</td>
-                                    <td class="small text-center">12.8</td>
-                                    <td class="small text-center">22.5</td>
-                                    <td class="small text-center">68.2</td>
-                                    <td class="small text-center">70.5</td>
-                                    <td class="small text-center">3.7</td>
-                                    <td class="small text-center">3</td>
-                                    <td class="small text-center">1895</td>
-                                    <td class="small text-center">19.8</td>
-                                    <td class="small text-center">25</td>
-                                </tr>
-                                <tr>
-                                    <td class="small fw-semibold">Jan 01, 2024</td>
-                                    <td class="small text-center">77</td>
-                                    <td class="small text-center">14.5</td>
-                                    <td class="small text-center">23.2</td>
-                                    <td class="small text-center">65.8</td>
-                                    <td class="small text-center">68.2</td>
-                                    <td class="small text-center">3.6</td>
-                                    <td class="small text-center">4</td>
-                                    <td class="small text-center">1865</td>
-                                    <td class="small text-center">18.9</td>
-                                    <td class="small text-center">27</td>
-                                </tr>
-                                <tr>
-                                    <td class="small fw-semibold">Dec 25, 2023</td>
-                                    <td class="small text-center">79</td>
-                                    <td class="small text-center">16.8</td>
-                                    <td class="small text-center">23.9</td>
-                                    <td class="small text-center">63.2</td>
-                                    <td class="small text-center">66.7</td>
-                                    <td class="small text-center">3.5</td>
-                                    <td class="small text-center">5</td>
-                                    <td class="small text-center">1845</td>
-                                    <td class="small text-center">18.2</td>
-                                    <td class="small text-center">29</td>
-                                </tr>
-                                <tr>
-                                    <td class="small fw-semibold">Dec 18, 2023</td>
-                                    <td class="small text-center">82</td>
-                                    <td class="small text-center">19.2</td>
-                                    <td class="small text-center">24.6</td>
-                                    <td class="small text-center">60.8</td>
-                                    <td class="small text-center">64.7</td>
-                                    <td class="small text-center">3.4</td>
-                                    <td class="small text-center">7</td>
-                                    <td class="small text-center">1820</td>
-                                    <td class="small text-center">17.6</td>
-                                    <td class="small text-center">31</td>
-                                </tr>
-                                <tr>
-                                    <td class="small fw-semibold">Dec 11, 2023</td>
-                                    <td class="small text-center">84</td>
-                                    <td class="small text-center">21.5</td>
-                                    <td class="small text-center">25.2</td>
-                                    <td class="small text-center">58.5</td>
-                                    <td class="small text-center">63</td>
-                                    <td class="small text-center">3.4</td>
-                                    <td class="small text-center">8</td>
-                                    <td class="small text-center">1795</td>
-                                    <td class="small text-center">17.1</td>
-                                    <td class="small text-center">33</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                    @if($healthRecords->count() > 0)
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="text-muted small fw-semibold">Date</th>
+                                        <th class="text-muted small fw-semibold text-center"><i class="bi bi-speedometer2 me-1"></i>Weight (kg)</th>
+                                        <th class="text-muted small fw-semibold text-center"><i class="bi bi-activity me-1"></i>Body Fat %</th>
+                                        <th class="text-muted small fw-semibold text-center"><i class="bi bi-calculator me-1"></i>BMI</th>
+                                        <th class="text-muted small fw-semibold text-center"><i class="bi bi-droplet me-1"></i>Body Water %</th>
+                                        <th class="text-muted small fw-semibold text-center"><i class="bi bi-heart me-1"></i>Muscle Mass (kg)</th>
+                                        <th class="text-muted small fw-semibold text-center"><i class="bi bi-capsule me-1"></i>Bone Mass (kg)</th>
+                                        <th class="text-muted small fw-semibold text-center"><i class="bi bi-activity me-1"></i>Visceral Fat</th>
+                                        <th class="text-muted small fw-semibold text-center"><i class="bi bi-lightning me-1"></i>BMR</th>
+                                        <th class="text-muted small fw-semibold text-center"><i class="bi bi-heart-pulse me-1"></i>Protein %</th>
+                                        <th class="text-muted small fw-semibold text-center"><i class="bi bi-calendar-heart me-1"></i>Body Age</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($healthRecords as $record)
+                                        <tr data-record-id="{{ $record->id }}" class="position-relative history-row">
+                                            <td class="small fw-semibold">{{ $record->recorded_at->format('M j, Y') }}</td>
+                                            <td class="small text-center">{{ $record->weight ?? '-' }}</td>
+                                            <td class="small text-center">{{ $record->body_fat_percentage ?? '-' }}</td>
+                                            <td class="small text-center">{{ $record->bmi ?? '-' }}</td>
+                                            <td class="small text-center">{{ $record->body_water_percentage ?? '-' }}</td>
+                                            <td class="small text-center">{{ $record->muscle_mass ?? '-' }}</td>
+                                            <td class="small text-center">{{ $record->bone_mass ?? '-' }}</td>
+                                            <td class="small text-center">{{ $record->visceral_fat ?? '-' }}</td>
+                                            <td class="small text-center">{{ $record->bmr ?? '-' }}</td>
+                                            <td class="small text-center">{{ $record->protein_percentage ?? '-' }}</td>
+                                            <td class="small text-center">{{ $record->body_age ?? '-' }}</td>
+                                            <td class="position-absolute top-50 end-0 translate-middle-y opacity-0 edit-record-btn" style="cursor: pointer; right: 10px;">
+                                                <i class="bi bi-pencil text-primary" style="font-size: 1.2rem;"></i>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        <div class="d-flex justify-content-center mt-4">
+                            {{ $healthRecords->links() }}
+                        </div>
+                    @else
+                        <div class="text-center py-5">
+                            <i class="bi bi-clipboard-data text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-3">No health records found</p>
+                            <small class="text-muted">Health tracking data will appear here once records are added</small>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -837,6 +896,79 @@
     </div>
 </div>
 
+<!-- Health Update Modal -->
+<div class="modal fade" id="healthUpdateModal" tabindex="-1" aria-labelledby="healthUpdateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="healthUpdateModalLabel">Add Health Update</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="healthUpdateForm" method="POST" action="{{ route('family.store-health', $relationship->dependent->id) }}">
+                @csrf
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="recorded_at" class="form-label">Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="recorded_at" name="recorded_at" value="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="weight" class="form-label">Weight (kg)</label>
+                            <input type="number" step="0.1" class="form-control" id="weight" name="weight">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="body_fat_percentage" class="form-label">Body Fat (%)</label>
+                            <input type="number" step="0.1" class="form-control" id="body_fat_percentage" name="body_fat_percentage">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="bmi" class="form-label">BMI</label>
+                            <input type="number" step="0.1" class="form-control" id="bmi" name="bmi">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="body_water_percentage" class="form-label">Body Water (%)</label>
+                            <input type="number" step="0.1" class="form-control" id="body_water_percentage" name="body_water_percentage">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="muscle_mass" class="form-label">Muscle Mass (kg)</label>
+                            <input type="number" step="0.1" class="form-control" id="muscle_mass" name="muscle_mass">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="bone_mass" class="form-label">Bone Mass (kg)</label>
+                            <input type="number" step="0.1" class="form-control" id="bone_mass" name="bone_mass">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="visceral_fat" class="form-label">Visceral Fat</label>
+                            <input type="number" class="form-control" id="visceral_fat" name="visceral_fat">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="bmr" class="form-label">BMR (cal)</label>
+                            <input type="number" class="form-control" id="bmr" name="bmr">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="protein_percentage" class="form-label">Protein (%)</label>
+                            <input type="number" step="0.1" class="form-control" id="protein_percentage" name="protein_percentage">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="body_age" class="form-label">Body Age (years)</label>
+                            <input type="number" class="form-control" id="body_age" name="body_age">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Health Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .history-row:hover .edit-record-btn {
+        opacity: 1 !important;
+    }
+</style>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Load countries from JSON file
@@ -862,6 +994,208 @@
                 });
             })
             .catch(error => console.error('Error loading countries:', error));
+
+        // Handle Add Health Update click
+        document.querySelector('a[href="#"][data-bs-target="#healthUpdateModal"]').addEventListener('click', function(e) {
+            e.preventDefault();
+            resetHealthModal();
+            const modal = new bootstrap.Modal(document.getElementById('healthUpdateModal'));
+            modal.show();
+        });
+
+        // Handle Edit Health Record click
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.edit-record-btn')) {
+                e.preventDefault();
+                const recordId = e.target.closest('tr').getAttribute('data-record-id');
+                populateHealthModalForEdit(recordId);
+                const modal = new bootstrap.Modal(document.getElementById('healthUpdateModal'));
+                modal.show();
+            }
+        });
+
+        // Activate health tab if URL has #health
+        if (window.location.hash === '#health') {
+            const healthTab = document.querySelector('#health-tab');
+            if (healthTab) {
+                const tab = new bootstrap.Tab(healthTab);
+                tab.show();
+            }
+        }
+
+        // Store health records data for dynamic comparison
+        const healthRecordsData = @json($healthRecords->items());
+
+        // Function to reset modal for adding new record
+        function resetHealthModal() {
+            document.getElementById('healthUpdateModalLabel').textContent = 'Add Health Update';
+            document.getElementById('healthUpdateForm').action = '{{ route("family.store-health", $relationship->dependent->id) }}';
+            document.getElementById('healthUpdateForm').method = 'POST';
+            document.getElementById('recorded_at').value = '{{ \Carbon\Carbon::now()->format("Y-m-d") }}';
+            document.getElementById('weight').value = '';
+            document.getElementById('body_fat_percentage').value = '';
+            document.getElementById('bmi').value = '';
+            document.getElementById('body_water_percentage').value = '';
+            document.getElementById('muscle_mass').value = '';
+            document.getElementById('bone_mass').value = '';
+            document.getElementById('visceral_fat').value = '';
+            document.getElementById('bmr').value = '';
+            document.getElementById('protein_percentage').value = '';
+            document.getElementById('body_age').value = '';
+            document.querySelector('#healthUpdateForm button[type="submit"]').textContent = 'Save Health Update';
+        }
+
+        // Function to populate modal for editing
+        function populateHealthModalForEdit(recordId) {
+            const record = healthRecordsData.find(r => r.id == recordId);
+            if (!record) return;
+
+            document.getElementById('healthUpdateModalLabel').textContent = 'Edit Health Update';
+            document.getElementById('healthUpdateForm').action = '{{ route("family.update-health", ["id" => $relationship->dependent->id, "recordId" => "__RECORD_ID__"]) }}'.replace('__RECORD_ID__', recordId);
+            document.getElementById('healthUpdateForm').method = 'POST';
+
+            // Add method spoofing for PUT
+            let methodInput = document.querySelector('#healthUpdateForm input[name="_method"]');
+            if (!methodInput) {
+                methodInput = document.createElement('input');
+                methodInput.type = 'hidden';
+                methodInput.name = '_method';
+                document.getElementById('healthUpdateForm').appendChild(methodInput);
+            }
+            methodInput.value = 'PUT';
+
+            document.getElementById('recorded_at').value = record.recorded_at.split('T')[0];
+            document.getElementById('weight').value = record.weight || '';
+            document.getElementById('body_fat_percentage').value = record.body_fat_percentage || '';
+            document.getElementById('bmi').value = record.bmi || '';
+            document.getElementById('body_water_percentage').value = record.body_water_percentage || '';
+            document.getElementById('muscle_mass').value = record.muscle_mass || '';
+            document.getElementById('bone_mass').value = record.bone_mass || '';
+            document.getElementById('visceral_fat').value = record.visceral_fat || '';
+            document.getElementById('bmr').value = record.bmr || '';
+            document.getElementById('protein_percentage').value = record.protein_percentage || '';
+            document.getElementById('body_age').value = record.body_age || '';
+            document.querySelector('#healthUpdateForm button[type="submit"]').textContent = 'Update Health Update';
+        }
+
+        // Handle comparison dropdown changes
+        const currentDateSelect = document.getElementById('currentDate');
+        const previousDateSelect = document.getElementById('previousDate');
+
+        if (currentDateSelect && previousDateSelect) {
+            function updateComparisonTable() {
+                const currentId = currentDateSelect.value;
+                const previousId = previousDateSelect.value;
+
+                if (!currentId || !previousId) {
+                    document.getElementById('timeDifference').innerHTML = 'Select dates to see time difference';
+                    return;
+                }
+
+                const currentRecord = healthRecordsData.find(r => r.id == currentId);
+                const previousRecord = healthRecordsData.find(r => r.id == previousId);
+
+                if (!currentRecord || !previousRecord) {
+                    document.getElementById('timeDifference').innerHTML = 'Select dates to see time difference';
+                    return;
+                }
+
+                // Update time difference
+                const timeDiff = calculateTimeDifference(currentRecord.recorded_at, previousRecord.recorded_at);
+                document.getElementById('timeDifference').innerHTML = `<strong>Time between records:</strong> ${timeDiff}`;
+
+                // Update the table rows
+                updateTableRow('weight', currentRecord.weight, previousRecord.weight);
+                updateTableRow('body_fat', currentRecord.body_fat_percentage, previousRecord.body_fat_percentage);
+                updateTableRow('bmi', currentRecord.bmi, previousRecord.bmi);
+                updateTableRow('body_water', currentRecord.body_water_percentage, previousRecord.body_water_percentage);
+                updateTableRow('muscle_mass', currentRecord.muscle_mass, previousRecord.muscle_mass);
+                updateTableRow('bone_mass', currentRecord.bone_mass, previousRecord.bone_mass);
+                updateTableRow('visceral_fat', currentRecord.visceral_fat, previousRecord.visceral_fat);
+                updateTableRow('bmr', currentRecord.bmr, previousRecord.bmr);
+                updateTableRow('protein', currentRecord.protein_percentage, previousRecord.protein_percentage);
+                updateTableRow('body_age', currentRecord.body_age, previousRecord.body_age);
+            }
+
+            function calculateTimeDifference(date1, date2) {
+                const d1 = new Date(date1);
+                const d2 = new Date(date2);
+                const diff = Math.abs(d1 - d2);
+
+                const years = Math.floor(diff / (1000 * 60 * 60 * 24 * 365));
+                const months = Math.floor((diff % (1000 * 60 * 60 * 24 * 365)) / (1000 * 60 * 60 * 24 * 30));
+                const days = Math.floor((diff % (1000 * 60 * 60 * 24 * 30)) / (1000 * 60 * 60 * 24));
+
+                const parts = [];
+                if (years > 0) parts.push(`${years} year${years > 1 ? 's' : ''}`);
+                if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
+                if (days > 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
+
+                return parts.length > 0 ? parts.join(' ') : 'Same day';
+            }
+
+            function updateTableRow(metric, currentValue, previousValue) {
+                const row = document.querySelector(`tr[data-metric="${metric}"]`);
+                if (!row) return;
+
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 4) {
+                    // Update current value
+                    if (metric === 'weight' || metric === 'muscle_mass' || metric === 'bone_mass') {
+                        cells[1].textContent = currentValue ? `${currentValue}kg` : 'N/A';
+                    } else if (metric === 'body_fat' || metric === 'body_water' || metric === 'protein') {
+                        cells[1].textContent = currentValue ? `${currentValue}%` : 'N/A';
+                    } else if (metric === 'bmr') {
+                        cells[1].textContent = currentValue ? `${currentValue}cal` : 'N/A';
+                    } else if (metric === 'body_age') {
+                        cells[1].textContent = currentValue ? `${currentValue}yrs` : 'N/A';
+                    } else {
+                        cells[1].textContent = currentValue || 'N/A';
+                    }
+
+                    // Update previous value
+                    if (metric === 'weight' || metric === 'muscle_mass' || metric === 'bone_mass') {
+                        cells[3].textContent = previousValue ? `${previousValue}kg` : 'N/A';
+                    } else if (metric === 'body_fat' || metric === 'body_water' || metric === 'protein') {
+                        cells[3].textContent = previousValue ? `${previousValue}%` : 'N/A';
+                    } else if (metric === 'bmr') {
+                        cells[3].textContent = previousValue ? `${previousValue}cal` : 'N/A';
+                    } else if (metric === 'body_age') {
+                        cells[3].textContent = previousValue ? `${previousValue}yrs` : 'N/A';
+                    } else {
+                        cells[3].textContent = previousValue || 'N/A';
+                    }
+
+                    // Update change cell
+                    const changeCell = cells[2];
+                    if (currentValue && previousValue) {
+                        const change = currentValue - previousValue;
+                        let arrow = '';
+                        let colorClass = 'text-muted';
+
+                        if (change > 0) {
+                            arrow = '↑';
+                            colorClass = 'text-danger';
+                        } else if (change < 0) {
+                            arrow = '↓';
+                            colorClass = 'text-success';
+                        } else {
+                            arrow = '—';
+                            colorClass = 'text-muted';
+                        }
+
+                        changeCell.innerHTML = `<span class="${colorClass}">${arrow} ${Math.abs(change).toFixed(1)}</span>`;
+                    } else {
+                        changeCell.textContent = '-';
+                    }
+                }
+            }
+
+
+
+            currentDateSelect.addEventListener('change', updateComparisonTable);
+            previousDateSelect.addEventListener('change', updateComparisonTable);
+        }
     });
 </script>
 @endsection

@@ -220,6 +220,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the health records for the user.
+     */
+    public function healthRecords(): HasMany
+    {
+        return $this->hasMany(HealthRecord::class);
+    }
+
+    /**
      * Send the email verification notification.
      * Override to prevent sending the default Laravel notification.
      * We send our custom welcome email instead.
