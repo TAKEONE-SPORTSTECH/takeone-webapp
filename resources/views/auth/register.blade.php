@@ -425,7 +425,7 @@
                             :error="$errors->first('nationality')" />
                     </div>
 
-                    <button type="submit" class="btn btn-primary" id="registerButton">Register</button>
+                    <button type="submit" class="btn btn-primary" id="registerButton">REGISTER</button>
                 </form>
             </div>
             <!-- /.login-card-body -->
