@@ -7,7 +7,7 @@
             data-bs-toggle="dropdown"
             data-bs-auto-close="outside"
             aria-expanded="false">
-        <span class="fi fi-us me-2" id="{{ $id }}SelectedFlag"></span>
+        <span id="{{ $id }}SelectedFlag">🇺🇸</span>
         <span class="country-label" id="{{ $id }}SelectedCountry">{{ $value }}</span>
     </button>
 
@@ -68,64 +68,99 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Country data with flags and codes
             const countries = [
-                { code: '+1', name: 'United States', flagCode: 'us' },
-                { code: '+1', name: 'Canada', flagCode: 'ca' },
-                { code: '+44', name: 'United Kingdom', flagCode: 'gb' },
-                { code: '+971', name: 'United Arab Emirates', flagCode: 'ae' },
-                { code: '+966', name: 'Saudi Arabia', flagCode: 'sa' },
-                { code: '+974', name: 'Qatar', flagCode: 'qa' },
-                { code: '+965', name: 'Kuwait', flagCode: 'kw' },
-                { code: '+973', name: 'Bahrain', flagCode: 'bh' },
-                { code: '+968', name: 'Oman', flagCode: 'om' },
-                { code: '+20', name: 'Egypt', flagCode: 'eg' },
-                { code: '+91', name: 'India', flagCode: 'in' },
-                { code: '+92', name: 'Pakistan', flagCode: 'pk' },
-                { code: '+880', name: 'Bangladesh', flagCode: 'bd' },
-                { code: '+60', name: 'Malaysia', flagCode: 'my' },
-                { code: '+65', name: 'Singapore', flagCode: 'sg' },
-                { code: '+81', name: 'Japan', flagCode: 'jp' },
-                { code: '+86', name: 'China', flagCode: 'cn' },
-                { code: '+82', name: 'South Korea', flagCode: 'kr' },
-                { code: '+61', name: 'Australia', flagCode: 'au' },
-                { code: '+49', name: 'Germany', flagCode: 'de' },
-                { code: '+33', name: 'France', flagCode: 'fr' },
-                { code: '+39', name: 'Italy', flagCode: 'it' },
-                { code: '+34', name: 'Spain', flagCode: 'es' },
-                { code: '+31', name: 'Netherlands', flagCode: 'nl' },
-                { code: '+46', name: 'Sweden', flagCode: 'se' },
-                { code: '+47', name: 'Norway', flagCode: 'no' },
-                { code: '+45', name: 'Denmark', flagCode: 'dk' },
-                { code: '+358', name: 'Finland', flagCode: 'fi' },
-                { code: '+41', name: 'Switzerland', flagCode: 'ch' },
-                { code: '+43', name: 'Austria', flagCode: 'at' },
-                { code: '+48', name: 'Poland', flagCode: 'pl' },
-                { code: '+420', name: 'Czech Republic', flagCode: 'cz' },
-                { code: '+36', name: 'Hungary', flagCode: 'hu' },
-                { code: '+40', name: 'Romania', flagCode: 'ro' },
-                { code: '+30', name: 'Greece', flagCode: 'gr' },
-                { code: '+90', name: 'Turkey', flagCode: 'tr' },
-                { code: '+7', name: 'Russia', flagCode: 'ru' },
-                { code: '+55', name: 'Brazil', flagCode: 'br' },
-                { code: '+52', name: 'Mexico', flagCode: 'mx' },
-                { code: '+54', name: 'Argentina', flagCode: 'ar' },
-                { code: '+56', name: 'Chile', flagCode: 'cl' },
-                { code: '+57', name: 'Colombia', flagCode: 'co' },
-                { code: '+27', name: 'South Africa', flagCode: 'za' },
-                { code: '+234', name: 'Nigeria', flagCode: 'ng' },
-                { code: '+254', name: 'Kenya', flagCode: 'ke' },
-                { code: '+94', name: 'Sri Lanka', flagCode: 'lk' },
-                { code: '+84', name: 'Vietnam', flagCode: 'vn' },
-                { code: '+66', name: 'Thailand', flagCode: 'th' },
-                { code: '+62', name: 'Indonesia', flagCode: 'id' },
-                { code: '+63', name: 'Philippines', flagCode: 'ph' },
-                { code: '+64', name: 'New Zealand', flagCode: 'nz' },
-                { code: '+351', name: 'Portugal', flagCode: 'pt' },
-                { code: '+353', name: 'Ireland', flagCode: 'ie' },
-                { code: '+972', name: 'Israel', flagCode: 'il' },
-                { code: '+962', name: 'Jordan', flagCode: 'jo' },
-                { code: '+961', name: 'Lebanon', flagCode: 'lb' },
-                { code: '+964', name: 'Iraq', flagCode: 'iq' },
+                { code: '+1', name: 'United States', flag: '🇺🇸' },
+                { code: '+1', name: 'Canada', flag: '🇨🇦' },
+                { code: '+44', name: 'United Kingdom', flag: '🇬🇧' },
+                { code: '+971', name: 'United Arab Emirates', flag: '🇦🇪' },
+                { code: '+966', name: 'Saudi Arabia', flag: '🇸🇦' },
+                { code: '+974', name: 'Qatar', flag: '🇶🇦' },
+                { code: '+965', name: 'Kuwait', flag: '🇰🇼' },
+                { code: '+973', name: 'Bahrain', flag: '🇧🇭' },
+                { code: '+968', name: 'Oman', flag: '🇴🇲' },
+                { code: '+20', name: 'Egypt', flag: '🇪🇬' },
+                { code: '+91', name: 'India', flag: '🇮🇳' },
+                { code: '+92', name: 'Pakistan', flag: '🇵🇰' },
+                { code: '+880', name: 'Bangladesh', flag: '🇧🇩' },
+                { code: '+60', name: 'Malaysia', flag: '🇲🇾' },
+                { code: '+65', name: 'Singapore', flag: '🇸🇬' },
+                { code: '+81', name: 'Japan', flag: '🇯🇵' },
+                { code: '+86', name: 'China', flag: '🇨🇳' },
+                { code: '+82', name: 'South Korea', flag: '🇰🇷' },
+                { code: '+61', name: 'Australia', flag: '🇦🇺' },
+                { code: '+49', name: 'Germany', flag: '🇩🇪' },
+                { code: '+33', name: 'France', flag: '🇫🇷' },
+                { code: '+39', name: 'Italy', flag: '🇮🇹' },
+                { code: '+34', name: 'Spain', flag: '🇪🇸' },
+                { code: '+31', name: 'Netherlands', flag: '🇳🇱' },
+                { code: '+46', name: 'Sweden', flag: '🇸🇪' },
+                { code: '+47', name: 'Norway', flag: '🇳🇴' },
+                { code: '+45', name: 'Denmark', flag: '🇩🇰' },
+                { code: '+358', name: 'Finland', flag: '🇫🇮' },
+                { code: '+41', name: 'Switzerland', flag: '🇨🇭' },
+                { code: '+43', name: 'Austria', flag: '🇦🇹' },
+                { code: '+48', name: 'Poland', flag: '🇵🇱' },
+                { code: '+420', name: 'Czech Republic', flag: '🇨🇿' },
+                { code: '+36', name: 'Hungary', flag: '🇭🇺' },
+                { code: '+40', name: 'Romania', flag: '🇷🇴' },
+                { code: '+30', name: 'Greece', flag: '🇬🇷' },
+                { code: '+90', name: 'Turkey', flag: '🇹🇷' },
+                { code: '+98', name: 'Iran', flag: '🇮🇷' },
+                { code: '+7', name: 'Russia', flag: '🇷🇺' },
+                { code: '+55', name: 'Brazil', flag: '🇧🇷' },
+                { code: '+52', name: 'Mexico', flag: '🇲🇽' },
+                { code: '+54', name: 'Argentina', flag: '🇦🇷' },
+                { code: '+56', name: 'Chile', flag: '🇨🇱' },
+                { code: '+57', name: 'Colombia', flag: '🇨🇴' },
+                { code: '+27', name: 'South Africa', flag: '🇿🇦' },
+                { code: '+234', name: 'Nigeria', flag: '🇳🇬' },
+                { code: '+254', name: 'Kenya', flag: '🇰🇪' },
+                { code: '+94', name: 'Sri Lanka', flag: '🇱🇰' },
+                { code: '+84', name: 'Vietnam', flag: '🇻🇳' },
+                { code: '+66', name: 'Thailand', flag: '🇹🇭' },
+                { code: '+62', name: 'Indonesia', flag: '🇮🇩' },
+                { code: '+63', name: 'Philippines', flag: '🇵🇭' },
+                { code: '+64', name: 'New Zealand', flag: '🇳🇿' },
+                { code: '+351', name: 'Portugal', flag: '🇵🇹' },
+                { code: '+353', name: 'Ireland', flag: '🇮🇪' },
+                { code: '+962', name: 'Jordan', flag: '🇯🇴' },
+                { code: '+961', name: 'Lebanon', flag: '🇱🇧' },
+                { code: '+964', name: 'Iraq', flag: '🇮🇶' },
+                { code: '+970', name: 'Palestine', flag: '🇵🇸' },
+                { code: '+972', name: 'Palestine', flag: '🇵🇸' }
             ];
+
+            // Function to get user's country based on GPS
+            function detectUserCountry(callback) {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(function(position) {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        // Use a reverse geocoding API
+                        fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)
+                            .then(response => response.json())
+                            .then(data => {
+                                const countryName = data.countryName;
+                                const iso2 = data.countryCode;
+                                // Find the country code based on country name or iso2
+                                let defaultCode = '+1'; // Default to US
+                                for (let country of countries) {
+                                    if (country.name.toLowerCase().includes(countryName.toLowerCase()) || country.name.toLowerCase().includes(iso2.toLowerCase())) {
+                                        defaultCode = country.code;
+                                        break;
+                                    }
+                                }
+                                callback(defaultCode);
+                            })
+                            .catch(() => {
+                                callback('+1'); // Default if error
+                            });
+                    }, function() {
+                        callback('+1'); // Default if geolocation denied
+                    });
+                } else {
+                    callback('+1'); // Default if no geolocation
+                }
+            }
 
             // Initialize all country code dropdowns on the page
             document.querySelectorAll('[id$="List"]').forEach(function(listElement) {
@@ -147,14 +182,14 @@
                         button.type = 'button';
                         button.setAttribute('data-country-code', country.code);
                         button.setAttribute('data-country-name', country.name);
-                        button.setAttribute('data-flag-code', country.flagCode);
+                        button.setAttribute('data-flag', country.flag);
                         button.setAttribute('data-search', country.name.toLowerCase() + ' ' + country.code.toLowerCase());
                         button.innerHTML = `
-                            <span class="fi fi-${country.flagCode} me-2"></span>
+                            <span class="me-2">${country.flag}</span>
                             <span>${country.name} (${country.code})</span>
                         `;
                         button.addEventListener('click', function() {
-                            selectCountry(componentId, country.code, country.name, country.flagCode);
+                            selectCountry(componentId, country.code, country.name, country.flag);
                         });
                         countryList.appendChild(button);
                     });
@@ -176,23 +211,26 @@
                     });
                 }
 
-                // Set initial value if provided
-                const hiddenInput = document.getElementById(componentId);
-                if (hiddenInput && hiddenInput.value) {
-                    const initialCountry = countries.find(c => c.code === hiddenInput.value);
-                    if (initialCountry) {
-                        selectCountry(componentId, initialCountry.code, initialCountry.name, initialCountry.flagCode);
+                // Detect user's country and set as default
+                detectUserCountry(function(defaultCode) {
+                    const hiddenInput = document.getElementById(componentId);
+                    if (hiddenInput) {
+                        hiddenInput.value = defaultCode;
                     }
-                }
+                    const initialCountry = countries.find(c => c.code === defaultCode);
+                    if (initialCountry) {
+                        selectCountry(componentId, initialCountry.code, initialCountry.name, initialCountry.flag);
+                    }
+                });
             }
 
-            function selectCountry(componentId, code, name, flagCode) {
+            function selectCountry(componentId, code, name, flag) {
                 const flagElement = document.getElementById(componentId + 'SelectedFlag');
                 const countryElement = document.getElementById(componentId + 'SelectedCountry');
                 const hiddenInput = document.getElementById(componentId);
 
-                if (flagElement) flagElement.className = `fi fi-${flagCode} me-2`;
-                if (countryElement) countryElement.textContent = code;
+                if (flagElement) flagElement.textContent = flag;
+                if (countryElement) countryElement.textContent = `${name} (${code})`;
                 if (hiddenInput) hiddenInput.value = code;
 
                 // Close the dropdown after selection

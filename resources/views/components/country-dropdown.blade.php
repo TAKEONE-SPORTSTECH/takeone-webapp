@@ -27,6 +27,31 @@
                 return;
             }
 
+            // Function to get user's country based on GPS
+            function detectUserCountry(callback) {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(function(position) {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        // Use a reverse geocoding API
+                        fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)
+                            .then(response => response.json())
+                            .then(data => {
+                                const countryName = data.countryName;
+                                const iso2 = data.countryCode;
+                                callback(countryName, iso2);
+                            })
+                            .catch(() => {
+                                callback('United States', 'US'); // Default if error
+                            });
+                    }, function() {
+                        callback('United States', 'US'); // Default if geolocation denied
+                    });
+                } else {
+                    callback('United States', 'US'); // Default if no geolocation
+                }
+            }
+
             // Load countries from JSON file
             fetch('/data/countries.json')
                 .then(response => response.json())
@@ -71,6 +96,19 @@
                                 return $(`<span><span class="fi fi-${flagCode} me-2"></span>${state.text}</span>`);
                             },
                             width: '100%'
+                        });
+
+                        // Detect user's country and set as default
+                        detectUserCountry(function(countryName, iso2) {
+                            // Find the country by name or iso2
+                            let defaultIso3 = 'USA'; // Default to US
+                            for (let country of countries) {
+                                if (country.name.toLowerCase().includes(countryName.toLowerCase()) || country.iso2 === iso2) {
+                                    defaultIso3 = country.iso3;
+                                    break;
+                                }
+                            }
+                            $(selectElement).val(defaultIso3).trigger('change');
                         });
                     }
                 })

@@ -284,6 +284,7 @@
     @stack('styles')
 </head>
 <body>
+    @if(!View::hasSection('hide-navbar'))
     <nav class="navbar navbar-expand-md navbar-light bg-light shadow-sm">
         <div class="container">
             <a class="navbar-brand" href="{{ Auth::check() ? route('clubs.explore') : url('/') }}">
@@ -427,6 +428,7 @@
             </div>
         </div>
     </nav>
+    @endif
 
     <main>
         @yield('content')
