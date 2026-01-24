@@ -8,6 +8,7 @@ use App\Models\HealthRecord;
 use App\Models\Invoice;
 use App\Models\TournamentEvent;
 use App\Models\Goal;
+use App\Models\Attendance;
 use App\Services\FamilyService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -80,6 +81,13 @@ class FamilyController extends Controller
         $completedGoalsCount = $goals->where('status', 'completed')->count();
         $successRate = $goals->count() > 0 ? round(($completedGoalsCount / $goals->count()) * 100) : 0;
 
+        // Fetch attendance data
+        $attendanceRecords = $user->attendanceRecords()->orderBy('session_datetime', 'desc')->get();
+        $sessionsCompleted = $attendanceRecords->where('status', 'completed')->count();
+        $noShows = $attendanceRecords->where('status', 'no_show')->count();
+        $totalSessions = $attendanceRecords->count();
+        $attendanceRate = $totalSessions > 0 ? round(($sessionsCompleted / $totalSessions) * 100, 1) : 0;
+
         // Pass user directly and a flag to indicate it's the current user's profile
         return view('family.show', [
             'relationship' => (object)[
@@ -99,6 +107,10 @@ class FamilyController extends Controller
             'activeGoalsCount' => $activeGoalsCount,
             'completedGoalsCount' => $completedGoalsCount,
             'successRate' => $successRate,
+            'attendanceRecords' => $attendanceRecords,
+            'sessionsCompleted' => $sessionsCompleted,
+            'noShows' => $noShows,
+            'attendanceRate' => $attendanceRate,
         ]);
     }
 
@@ -289,7 +301,14 @@ class FamilyController extends Controller
         $completedGoalsCount = $goals->where('status', 'completed')->count();
         $successRate = $goals->count() > 0 ? round(($completedGoalsCount / $goals->count()) * 100) : 0;
 
-        return view('family.show', compact('relationship', 'latestHealthRecord', 'healthRecords', 'comparisonRecords', 'invoices', 'tournamentEvents', 'awardCounts', 'sports', 'goals', 'activeGoalsCount', 'completedGoalsCount', 'successRate'));
+        // Fetch attendance data for the dependent
+        $attendanceRecords = $relationship->dependent->attendanceRecords()->orderBy('session_datetime', 'desc')->get();
+        $sessionsCompleted = $attendanceRecords->where('status', 'completed')->count();
+        $noShows = $attendanceRecords->where('status', 'no_show')->count();
+        $totalSessions = $attendanceRecords->count();
+        $attendanceRate = $totalSessions > 0 ? round(($sessionsCompleted / $totalSessions) * 100, 1) : 0;
+
+        return view('family.show', compact('relationship', 'latestHealthRecord', 'healthRecords', 'comparisonRecords', 'invoices', 'tournamentEvents', 'awardCounts', 'sports', 'goals', 'activeGoalsCount', 'completedGoalsCount', 'successRate', 'attendanceRecords', 'sessionsCompleted', 'noShows', 'attendanceRate'));
     }
 
     /**

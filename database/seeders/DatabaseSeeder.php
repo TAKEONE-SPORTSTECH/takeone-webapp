@@ -65,5 +65,8 @@ class DatabaseSeeder extends Seeder
             'status' => 'pending',
             'due_date' => now()->addDays(15),
         ]);
+
+        // Seed attendance data
+        $this->call(AttendanceSeeder::class);
     }
 }

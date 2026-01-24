@@ -243,6 +243,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the attendance records for the user.
+     */
+    public function attendanceRecords(): HasMany
+    {
+        return $this->hasMany(Attendance::class, 'member_id');
+    }
+
+    /**
      * Send the email verification notification.
      * Override to prevent sending the default Laravel notification.
      * We send our custom welcome email instead.

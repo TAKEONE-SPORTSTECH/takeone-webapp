@@ -431,8 +431,91 @@
         <div class="tab-pane fade" id="attendance" role="tabpanel">
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <h5 class="fw-bold mb-3"><i class="bi bi-calendar-check me-2"></i>Attendance Records</h5>
-                    <p class="text-muted">Attendance tracking coming soon...</p>
+                    <div class="d-flex align-items-center justify-content-between mb-4">
+                        <div>
+                            <h1 class="h3 fw-bold">Member Attendance</h1>
+                            <p class="text-muted">Track your gym session attendance and performance</p>
+                        </div>
+                    </div>
+
+                    <!-- Summary Cards -->
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-4">
+                            <div class="card shadow-sm bg-light">
+                                <div class="card-body text-center">
+                                    <div class="display-4 fw-bold text-success mb-2">{{ $sessionsCompleted }}</div>
+                                    <h6 class="card-title text-muted">Sessions Completed</h6>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card shadow-sm bg-light">
+                                <div class="card-body text-center">
+                                    <div class="display-4 fw-bold text-danger mb-2">{{ $noShows }}</div>
+                                    <h6 class="card-title text-muted">No Shows</h6>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card shadow-sm bg-light">
+                                <div class="card-body text-center">
+                                    <div class="display-4 fw-bold text-primary mb-2">{{ $attendanceRate }}%</div>
+                                    <h6 class="card-title text-muted">Attendance Rate</h6>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Attendance Table -->
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light">
+                            <h6 class="card-title mb-0">Session History</h6>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="border-0 fw-semibold">Date & Time</th>
+                                            <th class="border-0 fw-semibold">Session Type</th>
+                                            <th class="border-0 fw-semibold">Trainer Name</th>
+                                            <th class="border-0 fw-semibold">Status</th>
+                                            <th class="border-0 fw-semibold">Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse($attendanceRecords as $record)
+                                        <tr>
+                                            <td class="align-middle">
+                                                <div class="fw-semibold">{{ $record->session_datetime->format('M j, Y') }}</div>
+                                                <small class="text-muted">{{ $record->session_datetime->format('g:i A') }}</small>
+                                            </td>
+                                            <td class="align-middle">{{ $record->session_type }}</td>
+                                            <td class="align-middle">{{ $record->trainer_name }}</td>
+                                            <td class="align-middle">
+                                                @if($record->status === 'completed')
+                                                    <span class="badge bg-success">Completed</span>
+                                                @else
+                                                    <span class="badge bg-danger">No Show</span>
+                                                @endif
+                                            </td>
+                                            <td class="align-middle">
+                                                <small class="text-muted">{{ $record->notes ?: '-' }}</small>
+                                            </td>
+                                        </tr>
+                                        @empty
+                                        <tr>
+                                            <td colspan="5" class="text-center py-4">
+                                                <i class="bi bi-calendar-check text-muted" style="font-size: 2rem;"></i>
+                                                <p class="text-muted mt-2 mb-0">No attendance records found</p>
+                                            </td>
+                                        </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1352,7 +1435,7 @@
                         r: {
                             beginAtZero: true,
                             ticks: {
-                                stepSize: 10
+                                display: false
                             }
                         }
                     }
