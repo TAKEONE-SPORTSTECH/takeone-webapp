@@ -94,6 +94,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/family/{id}', [FamilyController::class, 'update'])->name('family.update');
     Route::post('/family/{id}/health', [FamilyController::class, 'storeHealth'])->name('family.store-health');
     Route::put('/family/{id}/health/{recordId}', [FamilyController::class, 'updateHealth'])->name('family.update-health');
+    Route::put('/family/goal/{goalId}', [FamilyController::class, 'updateGoal'])->name('family.update-goal');
     Route::post('/family/{id}/upload-picture', [FamilyController::class, 'uploadFamilyMemberPicture'])->name('family.upload-picture');
     Route::delete('/family/{id}', [FamilyController::class, 'destroy'])->name('family.destroy');
 

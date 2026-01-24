@@ -227,6 +227,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the tournament events for the user.
+     */
+    public function tournamentEvents(): HasMany
+    {
+        return $this->hasMany(TournamentEvent::class);
+    }
+
+    /**
+     * Get the goals for the user.
+     */
+    public function goals(): HasMany
+    {
+        return $this->hasMany(Goal::class);
+    }
+
+    /**
      * Send the email verification notification.
      * Override to prevent sending the default Laravel notification.
      * We send our custom welcome email instead.

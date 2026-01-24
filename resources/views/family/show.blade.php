@@ -563,7 +563,7 @@
                             <h5 class="fw-bold mb-4"><i class="bi bi-activity me-2"></i>Body Composition Analysis</h5>
 
                             <div class="chart-container" style="position: relative; height: 500px; width: 100%;">
-                                <canvas id="radarChart" data-current="@json($comparisonRecords->first())" data-previous="@json($comparisonRecords->skip(1)->first())"></canvas>
+                                <canvas id="radarChart" data-current='@json($comparisonRecords->first())' data-previous='@json($comparisonRecords->skip(1)->first())'></canvas>
                             </div>
                         </div>
                     </div>
@@ -633,64 +633,70 @@
                                                     return '<i class="bi bi-dash text-muted"></i>';
                                                 }
                                             @endphp
+                                            <tr data-metric="height">
+                                                <td class="small"><i class="bi bi-rulers me-2"></i>Height</td>
+                                                <td class="small text-end fw-semibold text-primary">{{ $current->height ?? 'N/A' }}cm</td>
+                                                <td class="small text-end text-danger">{{ $previous->height ?? 'N/A' }}cm</td>
+                                                <td class="text-center">{!! $current->height && $previous->height ? getChangeIcon($current->height, $previous->height) : '-' !!}</td>
+                                            </tr>
                                             <tr data-metric="weight">
                                                 <td class="small"><i class="bi bi-speedometer2 me-2"></i>Weight</td>
-                                                <td class="small text-end fw-semibold">{{ $current->weight ?? 'N/A' }}kg</td>
-                                                <td class="small text-end text-muted">{{ $previous->weight ?? 'N/A' }}kg</td>
+                                                <td class="small text-end fw-semibold text-primary">{{ $current->weight ?? 'N/A' }}kg</td>
+                                                <td class="small text-end text-danger">{{ $previous->weight ?? 'N/A' }}kg</td>
                                                 <td class="text-center">{!! $current->weight && $previous->weight ? getChangeIcon($current->weight, $previous->weight) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="body_fat">
                                                 <td class="small"><i class="bi bi-activity me-2"></i>Body Fat</td>
-                                                <td class="small text-end fw-semibold">{{ $current->body_fat_percentage ?? 'N/A' }}%</td>
-                                                <td class="small text-end text-muted">{{ $previous->body_fat_percentage ?? 'N/A' }}%</td>
+                                                <td class="small text-end fw-semibold text-primary">{{ $current->body_fat_percentage ?? 'N/A' }}%</td>
+                                                <td class="small text-end text-danger">{{ $previous->body_fat_percentage ?? 'N/A' }}%</td>
                                                 <td class="text-center">{!! $current->body_fat_percentage && $previous->body_fat_percentage ? getChangeIcon($current->body_fat_percentage, $previous->body_fat_percentage) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="bmi">
                                                 <td class="small"><i class="bi bi-calculator me-2"></i>BMI</td>
-                                                <td class="small text-end fw-semibold">{{ $current->bmi ?? 'N/A' }}</td>
-                                                <td class="small text-end text-muted">{{ $previous->bmi ?? 'N/A' }}</td>
+                                                <td class="small text-end fw-semibold text-primary">{{ $current->bmi ?? 'N/A' }}</td>
+                                                <td class="small text-end text-danger">{{ $previous->bmi ?? 'N/A' }}</td>
                                                 <td class="text-center">{!! $current->bmi && $previous->bmi ? getChangeIcon($current->bmi, $previous->bmi) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="body_water">
                                                 <td class="small"><i class="bi bi-droplet me-2"></i>Body Water</td>
-                                                <td class="small text-end fw-semibold">{{ $current->body_water_percentage ?? 'N/A' }}%</td>
-                                                <td class="small text-end text-muted">{{ $previous->body_water_percentage ?? 'N/A' }}%</td>
+                                                <td class="small text-end fw-semibold text-primary">{{ $current->body_water_percentage ?? 'N/A' }}%</td>
+                                                <td class="small text-end text-danger">{{ $previous->body_water_percentage ?? 'N/A' }}%</td>
                                                 <td class="text-center">{!! $current->body_water_percentage && $previous->body_water_percentage ? getChangeIcon($current->body_water_percentage, $previous->body_water_percentage) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="muscle_mass">
                                                 <td class="small"><i class="bi bi-heart me-2"></i>Muscle Mass</td>
-                                                <td class="small text-end fw-semibold">{{ $current->muscle_mass ?? 'N/A' }}kg</td>
-                                                <td class="small text-end text-muted">{{ $previous->muscle_mass ?? 'N/A' }}kg</td>
+                                                <td class="small text-end fw-semibold text-primary">{{ $current->muscle_mass ?? 'N/A' }}kg</td>
+                                                <td class="small text-end text-danger">{{ $previous->muscle_mass ?? 'N/A' }}kg</td>
                                                 <td class="text-center">{!! $current->muscle_mass && $previous->muscle_mass ? getChangeIcon($current->muscle_mass, $previous->muscle_mass) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="bone_mass">
                                                 <td class="small"><i class="bi bi-capsule me-2"></i>Bone Mass</td>
-                                                <td class="small text-end fw-semibold">{{ $current->bone_mass ?? 'N/A' }}kg</td>
-                                                <td class="small text-end text-muted">{{ $previous->bone_mass ?? 'N/A' }}kg</td>
+                                                <td class="small text-end fw-semibold text-primary">{{ $current->bone_mass ?? 'N/A' }}kg</td>
+                                                <td class="small text-end text-danger">{{ $previous->bone_mass ?? 'N/A' }}kg</td>
                                                 <td class="text-center">{!! $current->bone_mass && $previous->bone_mass ? getChangeIcon($current->bone_mass, $previous->bone_mass) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="visceral_fat">
                                                 <td class="small"><i class="bi bi-activity me-2"></i>Visceral Fat</td>
-                                                <td class="small text-end fw-semibold">{{ $current->visceral_fat ?? 'N/A' }}</td>
-                                                <td class="small text-end text-muted">{{ $previous->visceral_fat ?? 'N/A' }}</td>
+                                                <td class="small text-end fw-semibold text-primary">{{ $current->visceral_fat ?? 'N/A' }}</td>
+                                                <td class="small text-end text-danger">{{ $previous->visceral_fat ?? 'N/A' }}</td>
                                                 <td class="text-center">{!! $current->visceral_fat && $previous->visceral_fat ? getChangeIcon($current->visceral_fat, $previous->visceral_fat) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="bmr">
                                                 <td class="small"><i class="bi bi-lightning me-2"></i>BMR</td>
-                                                <td class="small text-end fw-semibold">{{ $current->bmr ?? 'N/A' }}cal</td>
-                                                <td class="small text-end text-muted">{{ $previous->bmr ?? 'N/A' }}cal</td>
+                                                <td class="small text-end fw-semibold text-primary">{{ $current->bmr ?? 'N/A' }}cal</td>
+                                                <td class="small text-end text-danger">{{ $previous->bmr ?? 'N/A' }}cal</td>
                                                 <td class="text-center">{!! $current->bmr && $previous->bmr ? getChangeIcon($current->bmr, $previous->bmr) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="protein">
                                                 <td class="small"><i class="bi bi-heart-pulse me-2"></i>Protein</td>
-                                                <td class="small text-end fw-semibold">{{ $current->protein_percentage ?? 'N/A' }}%</td>
-                                                <td class="small text-end text-muted">{{ $previous->protein_percentage ?? 'N/A' }}%</td>
+                                                <td class="small text-end fw-semibold text-primary">{{ $current->protein_percentage ?? 'N/A' }}%</td>
+                                                <td class="small text-end text-danger">{{ $previous->protein_percentage ?? 'N/A' }}%</td>
                                                 <td class="text-center">{!! $current->protein_percentage && $previous->protein_percentage ? getChangeIcon($current->protein_percentage, $previous->protein_percentage) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="body_age">
                                                 <td class="small"><i class="bi bi-calendar-heart me-2"></i>Body Age</td>
-                                                <td class="small text-end fw-semibold">{{ $current->body_age ?? 'N/A' }}yrs</td>
-                                                <td class="small text-end text-muted">{{ $previous->body_age ?? 'N/A' }}yrs</td>
+                                                <td class="small text-end fw-semibold text-primary">{{ $current->body_age ?? 'N/A' }}yrs</td>
+                                                <td class="small text-end text-danger">{{ $previous->body_age ?? 'N/A' }}yrs</td>
                                                 <td class="text-center">{!! $current->body_age && $previous->body_age ? getChangeIcon($current->body_age, $previous->body_age) : '-' !!}</td>
                                             </tr>
                                         </tbody>
@@ -716,24 +722,26 @@
                         <div class="table-responsive">
                             <table class="table table-hover align-middle">
                                 <thead class="table-light">
-                                    <tr>
-                                        <th class="text-muted small fw-semibold">Date</th>
-                                        <th class="text-muted small fw-semibold text-center"><i class="bi bi-speedometer2 me-1"></i>Weight (kg)</th>
-                                        <th class="text-muted small fw-semibold text-center"><i class="bi bi-activity me-1"></i>Body Fat %</th>
-                                        <th class="text-muted small fw-semibold text-center"><i class="bi bi-calculator me-1"></i>BMI</th>
-                                        <th class="text-muted small fw-semibold text-center"><i class="bi bi-droplet me-1"></i>Body Water %</th>
-                                        <th class="text-muted small fw-semibold text-center"><i class="bi bi-heart me-1"></i>Muscle Mass (kg)</th>
-                                        <th class="text-muted small fw-semibold text-center"><i class="bi bi-capsule me-1"></i>Bone Mass (kg)</th>
-                                        <th class="text-muted small fw-semibold text-center"><i class="bi bi-activity me-1"></i>Visceral Fat</th>
-                                        <th class="text-muted small fw-semibold text-center"><i class="bi bi-lightning me-1"></i>BMR</th>
-                                        <th class="text-muted small fw-semibold text-center"><i class="bi bi-heart-pulse me-1"></i>Protein %</th>
-                                        <th class="text-muted small fw-semibold text-center"><i class="bi bi-calendar-heart me-1"></i>Body Age</th>
-                                    </tr>
+                                <tr>
+                                    <th class="text-muted small fw-semibold">Date</th>
+                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-rulers me-1"></i>Height (cm)</th>
+                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-speedometer2 me-1"></i>Weight (kg)</th>
+                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-activity me-1"></i>Body Fat %</th>
+                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-calculator me-1"></i>BMI</th>
+                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-droplet me-1"></i>Body Water %</th>
+                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-heart me-1"></i>Muscle Mass (kg)</th>
+                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-capsule me-1"></i>Bone Mass (kg)</th>
+                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-activity me-1"></i>Visceral Fat</th>
+                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-lightning me-1"></i>BMR</th>
+                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-heart-pulse me-1"></i>Protein %</th>
+                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-calendar-heart me-1"></i>Body Age</th>
+                                </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($healthRecords as $record)
                                         <tr data-record-id="{{ $record->id }}" class="position-relative history-row">
                                             <td class="small fw-semibold">{{ $record->recorded_at->format('M j, Y') }}</td>
+                                            <td class="small text-center">{{ $record->height ?? '-' }}</td>
                                             <td class="small text-center">{{ $record->weight ?? '-' }}</td>
                                             <td class="small text-center">{{ $record->body_fat_percentage ?? '-' }}</td>
                                             <td class="small text-center">{{ $record->bmi ?? '-' }}</td>
@@ -772,8 +780,125 @@
         <div class="tab-pane fade" id="goals" role="tabpanel">
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <h5 class="fw-bold mb-3"><i class="bi bi-bullseye me-2"></i>Goals & Progress</h5>
-                    <p class="text-muted">Goal tracking coming soon...</p>
+                    <!-- Section Title & Subtitle -->
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <h5 class="fw-bold mb-1"><i class="bi bi-bullseye me-2"></i>Goal Tracking</h5>
+                            <p class="text-muted small mb-0">Set, track, and achieve your fitness objectives.</p>
+                        </div>
+                    </div>
+
+                    <!-- Summary Cards -->
+                    <div class="row g-3 mb-4">
+                        <!-- Active Goals -->
+                        <div class="col-md-4">
+                            <div class="card shadow-sm border-0 text-center h-100 goal-filter-card" style="background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%); min-height: 120px; cursor: pointer;" data-filter="active">
+                                <div class="card-body p-3 d-flex flex-column justify-content-center align-items-center h-100">
+                                    <i class="bi bi-bullseye text-white mb-2" style="font-size: 2rem;"></i>
+                                    <h4 class="text-white fw-bold mb-1">{{ $activeGoalsCount }}</h4>
+                                    <small class="text-white-50">Active Goals</small>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Completed Goals -->
+                        <div class="col-md-4">
+                            <div class="card shadow-sm border-0 text-center h-100 goal-filter-card" style="background: linear-gradient(135deg, #10b981 0%, #34d399 100%); min-height: 120px; cursor: pointer;" data-filter="completed">
+                                <div class="card-body p-3 d-flex flex-column justify-content-center align-items-center h-100">
+                                    <i class="bi bi-check-circle-fill text-white mb-2" style="font-size: 2rem;"></i>
+                                    <h4 class="text-white fw-bold mb-1">{{ $completedGoalsCount }}</h4>
+                                    <small class="text-white-50">Completed Goals</small>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Success Rate -->
+                        <div class="col-md-4">
+                            <div class="card shadow-sm border-0 text-center h-100" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); min-height: 120px;">
+                                <div class="card-body p-3 d-flex flex-column justify-content-center align-items-center h-100">
+                                    <i class="bi bi-graph-up-arrow text-white mb-2" style="font-size: 2rem;"></i>
+                                    <h4 class="text-white fw-bold mb-1">{{ $successRate }}%</h4>
+                                    <small class="text-white-50">Success Rate</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Current Goals List -->
+                    @if($goals->count() > 0)
+                        <div class="row g-4">
+                            @foreach($goals as $goal)
+                        <div class="col-lg-6">
+                            <div class="card shadow-sm border-0 h-100 position-relative">
+                                <!-- Edit Button (only for active goals and authorized users) -->
+                                @if($goal->status == 'active' && ($relationship->relationship_type == 'self' || Auth::id() == $relationship->guardian_user_id))
+                                    <button class="btn btn-sm btn-outline-primary rounded-circle position-absolute top-0 end-0 mt-2 me-2 edit-goal-btn" style="width: 32px; height: 32px; padding: 0;" data-goal-id="{{ $goal->id }}" title="Edit Goal">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                @endif
+
+                                <div class="card-body p-4">
+                                    <!-- Title & Icon -->
+                                    <div class="d-flex align-items-center mb-3">
+                                        <div class="rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px; background-color: #8b5cf6;">
+                                            @if($goal->icon_type == 'dumbbell')
+                                                <i class="bi bi-dumbbell text-white"></i>
+                                            @elseif($goal->icon_type == 'clock')
+                                                <i class="bi bi-clock text-white"></i>
+                                            @else
+                                                <i class="bi bi-bullseye text-white"></i>
+                                            @endif
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="fw-bold mb-1">{{ $goal->title }}</h6>
+                                            @if($goal->description)
+                                                <p class="text-muted small mb-0">{{ $goal->description }}</p>
+                                            @endif
+                                        </div>
+                                    </div>
+
+                                            <!-- Progress Indicator -->
+                                            <div class="mb-3">
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <small class="text-muted">Progress: {{ number_format($goal->current_progress_value, 1) }} / {{ number_format($goal->target_value, 1) }} {{ $goal->unit }}</small>
+                                                    <small class="fw-semibold">{{ number_format($goal->progress_percentage, 1) }}%</small>
+                                                </div>
+                                                <div class="progress" style="height: 8px;">
+                                                    <div class="progress-bar" role="progressbar" style="width: {{ $goal->progress_percentage }}%; background: linear-gradient(90deg, #8b5cf6 0%, #10b981 100%);" aria-valuenow="{{ $goal->progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Dates & Status -->
+                                            <div class="row g-2 mb-3">
+                                                <div class="col-6">
+                                                    <small class="text-muted d-block">Started:</small>
+                                                    <small class="fw-semibold">{{ $goal->start_date->format('M d, Y') }}</small>
+                                                </div>
+                                                <div class="col-6 text-end">
+                                                    <small class="text-muted d-block">Target:</small>
+                                                    <small class="fw-semibold">{{ $goal->target_date->format('M d, Y') }}</small>
+                                                </div>
+                                            </div>
+
+                                            <!-- Status Badges -->
+                                            <div class="d-flex gap-2 flex-wrap">
+                                                <span class="badge {{ $goal->status == 'active' ? 'bg-primary' : 'bg-success' }} small">
+                                                    {{ ucfirst($goal->status) }}
+                                                </span>
+                                                <span class="badge {{ $goal->priority_level == 'high' ? 'bg-danger' : ($goal->priority_level == 'medium' ? 'bg-warning text-dark' : 'bg-secondary') }} small">
+                                                    {{ ucfirst($goal->priority_level) }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="text-center py-4">
+                            <i class="bi bi-bullseye text-muted" style="font-size: 3rem;"></i>
+                            <h5 class="text-muted mt-3 mb-2">No Goals Set Yet</h5>
+                            <p class="text-muted mb-0">Start your fitness journey by setting your first goal!</p>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -792,8 +917,160 @@
         <div class="tab-pane fade" id="tournaments" role="tabpanel">
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <h5 class="fw-bold mb-3"><i class="bi bi-award me-2"></i>Tournament History</h5>
-                    <p class="text-muted">Tournament records coming soon...</p>
+                    <!-- Section Title & Subtitle -->
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <h5 class="fw-bold mb-1"><i class="bi bi-trophy-fill text-warning me-2"></i>Tournament & Event Participation</h5>
+                            <p class="text-muted small mb-0">Proven champion with multiple championship wins and prestigious awards.</p>
+                        </div>
+                        <!-- Filter Section -->
+                        <div class="d-flex align-items-center">
+                            <label for="sportFilter" class="form-label me-2 mb-0 fw-semibold">Filter by Sport:</label>
+                            <select class="form-select form-select-sm" id="sportFilter" style="width: 150px;">
+                                <option value="all">All Sports</option>
+                                @foreach($sports as $sport)
+                                    <option value="{{ $sport }}">{{ $sport }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Award Summary Cards -->
+                    <div class="row g-3 mb-4" id="awardCards">
+                        <div class="col-md-3">
+                            <div class="card shadow-sm border-0 text-center" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
+                                <div class="card-body p-3">
+                                    <i class="bi bi-trophy-fill text-white mb-2" style="font-size: 2rem;"></i>
+                                    <h4 class="text-white fw-bold mb-1" id="specialCount">{{ $awardCounts['special'] }}</h4>
+                                    <small class="text-white-50">Special Award</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card shadow-sm border-0 text-center" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
+                                <div class="card-body p-3">
+                                    <i class="bi bi-award-fill text-white mb-2" style="font-size: 2rem;"></i>
+                                    <h4 class="text-white fw-bold mb-1" id="firstCount">{{ $awardCounts['1st'] }}</h4>
+                                    <small class="text-white-50">1st Place</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card shadow-sm border-0 text-center" style="background: linear-gradient(135deg, #C0C0C0 0%, #A8A8A8 100%);">
+                                <div class="card-body p-3">
+                                    <i class="bi bi-award-fill text-white mb-2" style="font-size: 2rem;"></i>
+                                    <h4 class="text-white fw-bold mb-1" id="secondCount">{{ $awardCounts['2nd'] }}</h4>
+                                    <small class="text-white-50">2nd Place</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card shadow-sm border-0 text-center" style="background: linear-gradient(135deg, #CD7F32 0%, #A0522D 100%);">
+                                <div class="card-body p-3">
+                                    <i class="bi bi-award-fill text-white mb-2" style="font-size: 2rem;"></i>
+                                    <h4 class="text-white fw-bold mb-1" id="thirdCount">{{ $awardCounts['3rd'] }}</h4>
+                                    <small class="text-white-50">3rd Place</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tournament History Table -->
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body p-4">
+                            <h6 class="fw-bold mb-3"><i class="bi bi-list-ul me-2"></i>Tournament & Championships History</h6>
+
+                            @if($tournamentEvents->count() > 0)
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle" id="tournamentsTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="text-muted small fw-semibold">Tournament Details</th>
+                                                <th class="text-muted small fw-semibold">Performance & Result</th>
+                                                <th class="text-muted small fw-semibold">Notes & Media</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($tournamentEvents as $event)
+                                                <tr data-sport="{{ $event->sport }}">
+                                                    <td>
+                                                        <div class="fw-bold">{{ $event->title }}</div>
+                                                        <div class="d-flex gap-2 mt-1 flex-wrap">
+                                                            <span class="badge bg-{{ $event->type == 'championship' ? 'primary' : 'secondary' }} small">{{ ucfirst($event->type) }}</span>
+                                                            <span class="badge bg-info small">{{ $event->sport }}</span>
+                                                        </div>
+                                                        <div class="text-muted small mt-1">
+                                                            <i class="bi bi-calendar-event me-1"></i>{{ $event->date->format('M j, Y') }}
+                                                            @if($event->time)
+                                                                <i class="bi bi-clock me-1 ms-2"></i>{{ $event->time->format('H:i') }}
+                                                            @endif
+                                                            @if($event->location)
+                                                                <i class="bi bi-geo-alt me-1 ms-2"></i>{{ $event->location }}
+                                                            @endif
+                                                            @if($event->participants_count)
+                                                                <i class="bi bi-people me-1 ms-2"></i>{{ $event->participants_count }} participants
+                                                            @endif
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        @if($event->performanceResults->count() > 0)
+                                                            @foreach($event->performanceResults as $result)
+                                                                <div class="d-flex align-items-center gap-2 mb-1">
+                                                                    @if($result->medal_type == '1st')
+                                                                        <i class="bi bi-award-fill text-warning"></i>
+                                                                        <span class="badge bg-warning text-dark small">1st Place</span>
+                                                                    @elseif($result->medal_type == '2nd')
+                                                                        <i class="bi bi-award-fill text-secondary"></i>
+                                                                        <span class="badge bg-secondary small">2nd Place</span>
+                                                                    @elseif($result->medal_type == '3rd')
+                                                                        <i class="bi bi-award-fill" style="color: #CD7F32;"></i>
+                                                                        <span class="badge" style="background-color: #CD7F32; color: white;" small>3rd Place</span>
+                                                                    @elseif($result->medal_type == 'special')
+                                                                        <i class="bi bi-trophy-fill text-warning"></i>
+                                                                        <span class="badge bg-warning text-dark small">Special Award</span>
+                                                                    @endif
+                                                                    @if($result->points)
+                                                                        <small class="text-muted">{{ $result->points }} pts</small>
+                                                                    @endif
+                                                                </div>
+                                                                @if($result->description)
+                                                                    <small class="text-muted">{{ $result->description }}</small>
+                                                                @endif
+                                                            @endforeach
+                                                        @else
+                                                            <span class="text-muted small">No results recorded</span>
+                                                        @endif
+                                                    </td>
+                                                    <td>
+                                                        @if($event->notesMedia->count() > 0)
+                                                            @foreach($event->notesMedia as $note)
+                                                                @if($note->note_text)
+                                                                    <p class="mb-1 small">{{ $note->note_text }}</p>
+                                                                @endif
+                                                                @if($note->media_link)
+                                                                    <a href="{{ $note->media_link }}" target="_blank" class="btn btn-sm btn-outline-primary small">
+                                                                        <i class="bi bi-image me-1"></i>View Media
+                                                                    </a>
+                                                                @endif
+                                                            @endforeach
+                                                        @else
+                                                            <span class="text-muted small">No notes available</span>
+                                                        @endif
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @else
+                                <div class="text-center py-5">
+                                    <i class="bi bi-trophy text-muted" style="font-size: 3rem;"></i>
+                                    <p class="text-muted mt-3">No tournament records found</p>
+                                    <small class="text-muted">Tournament participation will appear here once records are added</small>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -806,6 +1083,62 @@
                     <p class="text-muted">Event history coming soon...</p>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Goal Edit Modal -->
+<div class="modal fade" id="goalEditModal" tabindex="-1" aria-labelledby="goalEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="goalEditModalLabel">Edit Goal Progress</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="goalEditForm" method="POST">
+                @csrf
+                @method('PUT')
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="rounded-circle d-flex align-items-center justify-content-center me-3" id="goalIconDisplay" style="width: 48px; height: 48px; background-color: #8b5cf6;">
+                                    <i class="bi bi-bullseye text-white"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold mb-1" id="goalTitleDisplay">Goal Title</h6>
+                                    <p class="text-muted small mb-0" id="goalDescriptionDisplay">Goal description</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="current_progress_value" class="form-label">Current Progress <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="number" step="0.1" class="form-control" id="current_progress_value" name="current_progress_value" required>
+                                <span class="input-group-text" id="goalUnitDisplay">lbs</span>
+                            </div>
+                            <div class="form-text">Target: <span id="goalTargetDisplay">170.0 lbs</span></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="goal_status" class="form-label">Status</label>
+                            <select class="form-select" id="goal_status" name="status">
+                                <option value="active">Active</option>
+                                <option value="completed">Completed</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar" role="progressbar" id="progressPreview" style="width: 0%; background: linear-gradient(90deg, #8b5cf6 0%, #10b981 100%);"></div>
+                            </div>
+                            <small class="text-muted mt-1 d-block" id="progressTextPreview">Progress: 0.0 / 170.0 lbs (0.0%)</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Goal</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -825,6 +1158,10 @@
                         <div class="col-md-6">
                             <label for="recorded_at" class="form-label">Date <span class="text-danger">*</span></label>
                             <input type="date" class="form-control" id="recorded_at" name="recorded_at" value="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="height" class="form-label">Height (cm)</label>
+                            <input type="number" step="0.1" class="form-control" id="height" name="height">
                         </div>
                         <div class="col-md-6">
                             <label for="weight" class="form-label">Weight (kg)</label>
@@ -942,20 +1279,17 @@
 
         // Radar chart variables
         let radarChart = null;
-        const metricLabels = ['Weight', 'Body Fat', 'BMI', 'Body Water', 'Muscle Mass', 'Bone Mass', 'Visceral Fat', 'BMR', 'Protein', 'Body Age'];
-        const metricKeys = ['weight', 'body_fat_percentage', 'bmi', 'body_water_percentage', 'muscle_mass', 'bone_mass', 'visceral_fat', 'bmr', 'protein_percentage', 'body_age'];
+        const metricLabels = ['Height', 'Weight', 'Body Fat', 'BMI', 'Body Water', 'Muscle Mass', 'Bone Mass', 'Visceral Fat', 'BMR', 'Protein', 'Body Age'];
+        const metricKeys = ['height', 'weight', 'body_fat_percentage', 'bmi', 'body_water_percentage', 'muscle_mass', 'bone_mass', 'visceral_fat', 'bmr', 'protein_percentage', 'body_age'];
 
         // Function to create/update radar chart
         function updateRadarChart(currentRecord, previousRecord) {
             console.log('updateRadarChart called', currentRecord, previousRecord);
             const ctx = document.getElementById('radarChart').getContext('2d');
-            console.log('ctx', ctx);
 
+            // Extract data for current and previous records
             const currentData = metricKeys.map(key => currentRecord ? (currentRecord[key] || 0) : 0);
             const previousData = metricKeys.map(key => previousRecord ? (previousRecord[key] || 0) : 0);
-            console.log('currentData', currentData);
-            console.log('previousData', previousData);
-            console.log('window.Chart', window.Chart);
 
             if (radarChart) {
                 radarChart.destroy();
@@ -967,30 +1301,36 @@
                     labels: metricLabels,
                     datasets: [
                         {
-                            label: 'From Record',
-                            data: previousData,
-                            borderColor: 'rgba(54, 162, 235, 1)',
+                            label: 'Current Reading',
+                            data: currentData,
+                            fill: true,
                             backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                            pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+                            borderColor: 'rgb(54, 162, 235)',
+                            pointBackgroundColor: 'rgb(54, 162, 235)',
                             pointBorderColor: '#fff',
                             pointHoverBackgroundColor: '#fff',
-                            pointHoverBorderColor: 'rgba(54, 162, 235, 1)',
+                            pointHoverBorderColor: 'rgb(54, 162, 235)'
                         },
                         {
-                            label: 'To Record',
-                            data: currentData,
-                            borderColor: 'rgba(255, 99, 132, 1)',
-                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                            pointBackgroundColor: 'rgba(255, 99, 132, 1)',
+                            label: 'Previous Reading',
+                            data: previousData,
+                            fill: false,
+                            borderColor: 'rgb(255, 99, 132)',
+                            pointBackgroundColor: 'rgb(255, 99, 132)',
                             pointBorderColor: '#fff',
                             pointHoverBackgroundColor: '#fff',
-                            pointHoverBorderColor: 'rgba(255, 99, 132, 1)',
+                            pointHoverBorderColor: 'rgb(255, 99, 132)'
                         }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    elements: {
+                        line: {
+                            borderWidth: 3
+                        }
+                    },
                     plugins: {
                         legend: {
                             position: 'top',
@@ -1020,12 +1360,32 @@
             });
         }
 
+        // Function to calculate BMI
+        function calculateBMI() {
+            const height = parseFloat(document.getElementById('height').value);
+            const weight = parseFloat(document.getElementById('weight').value);
+            const bmiField = document.getElementById('bmi');
+
+            if (height > 0 && weight > 0) {
+                const heightInMeters = height / 100;
+                const bmi = weight / (heightInMeters * heightInMeters);
+                bmiField.value = bmi.toFixed(1);
+            } else {
+                bmiField.value = '';
+            }
+        }
+
+        // Add event listeners for BMI calculation
+        document.getElementById('height').addEventListener('input', calculateBMI);
+        document.getElementById('weight').addEventListener('input', calculateBMI);
+
         // Function to reset modal for adding new record
         function resetHealthModal() {
             document.getElementById('healthUpdateModalLabel').textContent = 'Add Health Update';
             document.getElementById('healthUpdateForm').action = '{{ route("family.store-health", $relationship->dependent->id) }}';
             document.getElementById('healthUpdateForm').method = 'POST';
             document.getElementById('recorded_at').value = '{{ \Carbon\Carbon::now()->format("Y-m-d") }}';
+            document.getElementById('height').value = '';
             document.getElementById('weight').value = '';
             document.getElementById('body_fat_percentage').value = '';
             document.getElementById('bmi').value = '';
@@ -1059,6 +1419,7 @@
             methodInput.value = 'PUT';
 
             document.getElementById('recorded_at').value = record.recorded_at.split('T')[0];
+            document.getElementById('height').value = record.height || '';
             document.getElementById('weight').value = record.weight || '';
             document.getElementById('body_fat_percentage').value = record.body_fat_percentage || '';
             document.getElementById('bmi').value = record.bmi || '';
@@ -1099,6 +1460,7 @@
                 document.getElementById('timeDifference').innerHTML = `<strong>Time between records:</strong> ${timeDiff}`;
 
                 // Update the table rows
+                updateTableRow('height', currentRecord.height, previousRecord.height);
                 updateTableRow('weight', currentRecord.weight, previousRecord.weight);
                 updateTableRow('body_fat', currentRecord.body_fat_percentage, previousRecord.body_fat_percentage);
                 updateTableRow('bmi', currentRecord.bmi, previousRecord.bmi);
@@ -1138,7 +1500,9 @@
                 const cells = row.querySelectorAll('td');
                 if (cells.length >= 4) {
                     // Update current value
-                    if (metric === 'weight' || metric === 'muscle_mass' || metric === 'bone_mass') {
+                    if (metric === 'height') {
+                        cells[1].textContent = currentValue ? `${currentValue}cm` : 'N/A';
+                    } else if (metric === 'weight' || metric === 'muscle_mass' || metric === 'bone_mass') {
                         cells[1].textContent = currentValue ? `${currentValue}kg` : 'N/A';
                     } else if (metric === 'body_fat' || metric === 'body_water' || metric === 'protein') {
                         cells[1].textContent = currentValue ? `${currentValue}%` : 'N/A';
@@ -1151,7 +1515,9 @@
                     }
 
                     // Update previous value
-                    if (metric === 'weight' || metric === 'muscle_mass' || metric === 'bone_mass') {
+                    if (metric === 'height') {
+                        cells[2].textContent = previousValue ? `${previousValue}cm` : 'N/A';
+                    } else if (metric === 'weight' || metric === 'muscle_mass' || metric === 'bone_mass') {
                         cells[2].textContent = previousValue ? `${previousValue}kg` : 'N/A';
                     } else if (metric === 'body_fat' || metric === 'body_water' || metric === 'protein') {
                         cells[2].textContent = previousValue ? `${previousValue}%` : 'N/A';
@@ -1211,6 +1577,214 @@
                 }
             }
         }, 1000);
+
+        // Tournament filtering functionality
+        const sportFilter = document.getElementById('sportFilter');
+        const tournamentsTable = document.getElementById('tournamentsTable');
+        const awardCards = document.getElementById('awardCards');
+
+        if (sportFilter && tournamentsTable) {
+            sportFilter.addEventListener('change', function() {
+                const selectedSport = this.value;
+                const rows = tournamentsTable.querySelectorAll('tbody tr');
+
+                let visibleRows = 0;
+                let specialCount = 0, firstCount = 0, secondCount = 0, thirdCount = 0;
+
+                rows.forEach(row => {
+                    const sport = row.getAttribute('data-sport');
+                    if (selectedSport === 'all' || sport === selectedSport) {
+                        row.style.display = '';
+                        visibleRows++;
+
+                        // Count awards in visible rows
+                        const performanceCell = row.querySelector('td:nth-child(2)');
+                        if (performanceCell) {
+                            const badges = performanceCell.querySelectorAll('.badge');
+                            badges.forEach(badge => {
+                                if (badge.textContent.includes('Special Award')) specialCount++;
+                                else if (badge.textContent.includes('1st Place')) firstCount++;
+                                else if (badge.textContent.includes('2nd Place')) secondCount++;
+                                else if (badge.textContent.includes('3rd Place')) thirdCount++;
+                            });
+                        }
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+
+                // Update award counts
+                document.getElementById('specialCount').textContent = specialCount;
+                document.getElementById('firstCount').textContent = firstCount;
+                document.getElementById('secondCount').textContent = secondCount;
+                document.getElementById('thirdCount').textContent = thirdCount;
+
+                // Show/hide award cards based on visible rows
+                if (visibleRows === 0) {
+                    awardCards.style.display = 'none';
+                } else {
+                    awardCards.style.display = '';
+                }
+            });
+        }
+
+        // Goals filtering functionality
+        const goalFilterCards = document.querySelectorAll('.goal-filter-card');
+        const goalsContainer = document.querySelector('.row.g-4'); // Container with goal cards
+        const goalsTitle = document.querySelector('h5.fw-bold'); // The "Goal Tracking" title
+
+        if (goalFilterCards.length > 0 && goalsContainer) {
+            // Add click event to filter cards
+            goalFilterCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    const filterType = this.getAttribute('data-filter');
+                    filterGoals(filterType);
+
+                    // Update card styles to show active filter
+                    goalFilterCards.forEach(c => c.classList.remove('border', 'border-primary', 'shadow-lg'));
+                    this.classList.add('border', 'border-primary', 'shadow-lg');
+                });
+            });
+
+            // Add click event to title to show all goals
+            if (goalsTitle) {
+                goalsTitle.style.cursor = 'pointer';
+                goalsTitle.addEventListener('click', function() {
+                    filterGoals('all');
+                    // Remove active styles from filter cards
+                    goalFilterCards.forEach(c => c.classList.remove('border', 'border-primary', 'shadow-lg'));
+                });
+            }
+        }
+
+        function filterGoals(filterType) {
+            const goalCards = goalsContainer.querySelectorAll('.col-lg-6');
+
+            goalCards.forEach(card => {
+                const statusBadge = card.querySelector('.badge');
+                if (!statusBadge) return;
+
+                const statusText = statusBadge.textContent.toLowerCase();
+
+                if (filterType === 'all') {
+                    card.style.display = '';
+                } else if (filterType === 'active' && statusText === 'active') {
+                    card.style.display = '';
+                } else if (filterType === 'completed' && statusText === 'completed') {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // Update title to show current filter
+            const titleElement = document.querySelector('h5.fw-bold');
+            if (titleElement) {
+                const baseTitle = 'Goal Tracking';
+                if (filterType === 'all') {
+                    titleElement.innerHTML = `<i class="bi bi-bullseye me-2"></i>${baseTitle}`;
+                } else {
+                    const filterLabel = filterType === 'active' ? 'Active' : 'Completed';
+                    titleElement.innerHTML = `<i class="bi bi-bullseye me-2"></i>${baseTitle} - ${filterLabel} Goals`;
+                }
+            }
+        }
+
+        // Goal editing functionality
+        const editGoalButtons = document.querySelectorAll('.edit-goal-btn');
+        const goalEditModal = new bootstrap.Modal(document.getElementById('goalEditModal'));
+        const goalEditForm = document.getElementById('goalEditForm');
+        let currentGoalId = null;
+
+        // Store goals data for editing
+        const goalsData = @json($goals);
+
+        if (editGoalButtons.length > 0) {
+            editGoalButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const goalId = this.getAttribute('data-goal-id');
+                    populateGoalEditModal(goalId);
+                    goalEditModal.show();
+                });
+            });
+        }
+
+        function populateGoalEditModal(goalId) {
+            const goal = goalsData.find(g => g.id == goalId);
+            if (!goal) return;
+
+            currentGoalId = goalId;
+
+            // Update form action
+            goalEditForm.action = `/family/goal/${goalId}`;
+
+            // Populate modal fields
+            document.getElementById('goalTitleDisplay').textContent = goal.title;
+            document.getElementById('goalDescriptionDisplay').textContent = goal.description || 'No description';
+            document.getElementById('current_progress_value').value = goal.current_progress_value;
+            document.getElementById('goal_status').value = goal.status;
+            document.getElementById('goalUnitDisplay').textContent = goal.unit;
+            document.getElementById('goalTargetDisplay').textContent = `${goal.target_value} ${goal.unit}`;
+
+            // Update icon
+            const iconElement = document.getElementById('goalIconDisplay').querySelector('i');
+            if (goal.icon_type === 'dumbbell') {
+                iconElement.className = 'bi bi-dumbbell text-white';
+            } else if (goal.icon_type === 'clock') {
+                iconElement.className = 'bi bi-clock text-white';
+            } else {
+                iconElement.className = 'bi bi-bullseye text-white';
+            }
+
+            // Update progress preview
+            updateProgressPreview();
+        }
+
+        function updateProgressPreview() {
+            const currentValue = parseFloat(document.getElementById('current_progress_value').value) || 0;
+            const goal = goalsData.find(g => g.id == currentGoalId);
+            if (!goal) return;
+
+            const targetValue = goal.target_value;
+            const percentage = targetValue > 0 ? Math.min(100, (currentValue / targetValue) * 100) : 0;
+
+            document.getElementById('progressPreview').style.width = `${percentage}%`;
+            document.getElementById('progressTextPreview').textContent = `Progress: ${currentValue.toFixed(1)} / ${targetValue.toFixed(1)} ${goal.unit} (${percentage.toFixed(1)}%)`;
+        }
+
+        // Update progress preview on input change
+        document.getElementById('current_progress_value').addEventListener('input', updateProgressPreview);
+
+        // Handle form submission
+        goalEditForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            formData.append('_method', 'PUT');
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    goalEditModal.hide();
+                    // Reload the page to show updated data
+                    window.location.reload();
+                } else {
+                    alert('Error updating goal: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating goal. Please try again.');
+            });
+        });
     });
 </script>
 @endsection

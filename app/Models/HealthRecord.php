@@ -11,6 +11,7 @@ class HealthRecord extends Model
 
     protected $fillable = [
         'user_id',
+        'height',
         'recorded_at',
         'weight',
         'body_fat_percentage',
@@ -26,6 +27,7 @@ class HealthRecord extends Model
 
     protected $casts = [
         'recorded_at' => 'date',
+        'height' => 'decimal:2',
         'weight' => 'decimal:2',
         'body_fat_percentage' => 'decimal:2',
         'bmi' => 'decimal:2',

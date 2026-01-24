@@ -6,6 +6,8 @@ use App\Models\User;
 use App\Models\UserRelationship;
 use App\Models\HealthRecord;
 use App\Models\Invoice;
+use App\Models\TournamentEvent;
+use App\Models\Goal;
 use App\Services\FamilyService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -55,6 +57,29 @@ class FamilyController extends Controller
         // Fetch invoices
         $invoices = Invoice::where('student_user_id', $user->id)->orWhere('payer_user_id', $user->id)->with(['student', 'tenant'])->get();
 
+        // Fetch tournament data
+        $tournamentEvents = $user->tournamentEvents()
+            ->with(['performanceResults', 'notesMedia'])
+            ->orderBy('date', 'desc')
+            ->get();
+
+        // Calculate award counts
+        $awardCounts = [
+            'special' => $tournamentEvents->flatMap->performanceResults->where('medal_type', 'special')->count(),
+            '1st' => $tournamentEvents->flatMap->performanceResults->where('medal_type', '1st')->count(),
+            '2nd' => $tournamentEvents->flatMap->performanceResults->where('medal_type', '2nd')->count(),
+            '3rd' => $tournamentEvents->flatMap->performanceResults->where('medal_type', '3rd')->count(),
+        ];
+
+        // Get unique sports for filter
+        $sports = $tournamentEvents->pluck('sport')->unique()->sort()->values();
+
+        // Fetch goals data
+        $goals = $user->goals()->orderBy('created_at', 'desc')->get();
+        $activeGoalsCount = $goals->where('status', 'active')->count();
+        $completedGoalsCount = $goals->where('status', 'completed')->count();
+        $successRate = $goals->count() > 0 ? round(($completedGoalsCount / $goals->count()) * 100) : 0;
+
         // Pass user directly and a flag to indicate it's the current user's profile
         return view('family.show', [
             'relationship' => (object)[
@@ -67,6 +92,13 @@ class FamilyController extends Controller
             'healthRecords' => $healthRecords,
             'comparisonRecords' => $comparisonRecords,
             'invoices' => $invoices,
+            'tournamentEvents' => $tournamentEvents,
+            'awardCounts' => $awardCounts,
+            'sports' => $sports,
+            'goals' => $goals,
+            'activeGoalsCount' => $activeGoalsCount,
+            'completedGoalsCount' => $completedGoalsCount,
+            'successRate' => $successRate,
         ]);
     }
 
@@ -234,7 +266,30 @@ class FamilyController extends Controller
         // Fetch invoices for the dependent
         $invoices = Invoice::where('student_user_id', $relationship->dependent->id)->orWhere('payer_user_id', $relationship->dependent->id)->with(['student', 'tenant'])->get();
 
-        return view('family.show', compact('relationship', 'latestHealthRecord', 'healthRecords', 'comparisonRecords', 'invoices'));
+        // Fetch tournament data for the dependent
+        $tournamentEvents = $relationship->dependent->tournamentEvents()
+            ->with(['performanceResults', 'notesMedia'])
+            ->orderBy('date', 'desc')
+            ->get();
+
+        // Calculate award counts
+        $awardCounts = [
+            'special' => $tournamentEvents->flatMap->performanceResults->where('medal_type', 'special')->count(),
+            '1st' => $tournamentEvents->flatMap->performanceResults->where('medal_type', '1st')->count(),
+            '2nd' => $tournamentEvents->flatMap->performanceResults->where('medal_type', '2nd')->count(),
+            '3rd' => $tournamentEvents->flatMap->performanceResults->where('medal_type', '3rd')->count(),
+        ];
+
+        // Get unique sports for filter
+        $sports = $tournamentEvents->pluck('sport')->unique()->sort()->values();
+
+        // Fetch goals data for the dependent
+        $goals = $relationship->dependent->goals()->orderBy('created_at', 'desc')->get();
+        $activeGoalsCount = $goals->where('status', 'active')->count();
+        $completedGoalsCount = $goals->where('status', 'completed')->count();
+        $successRate = $goals->count() > 0 ? round(($completedGoalsCount / $goals->count()) * 100) : 0;
+
+        return view('family.show', compact('relationship', 'latestHealthRecord', 'healthRecords', 'comparisonRecords', 'invoices', 'tournamentEvents', 'awardCounts', 'sports', 'goals', 'activeGoalsCount', 'completedGoalsCount', 'successRate'));
     }
 
     /**
@@ -386,6 +441,7 @@ class FamilyController extends Controller
     {
         $validated = $request->validate([
             'recorded_at' => 'required|date',
+            'height' => 'nullable|numeric|min:50|max:250',
             'weight' => 'nullable|numeric|min:0|max:999.9',
             'body_fat_percentage' => 'nullable|numeric|min:0|max:100',
             'bmi' => 'nullable|numeric|min:0|max:100',
@@ -456,6 +512,7 @@ class FamilyController extends Controller
     {
         $validated = $request->validate([
             'recorded_at' => 'required|date',
+            'height' => 'nullable|numeric|min:50|max:250',
             'weight' => 'nullable|numeric|min:0|max:999.9',
             'body_fat_percentage' => 'nullable|numeric|min:0|max:100',
             'bmi' => 'nullable|numeric|min:0|max:100',
@@ -518,6 +575,44 @@ class FamilyController extends Controller
 
         return redirect()->back()->withFragment('health')
             ->with('success', 'Health record updated successfully.');
+    }
+
+    /**
+     * Update the specified goal.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $goalId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateGoal(Request $request, $goalId)
+    {
+        $user = Auth::user();
+
+        // Find the goal
+        $goal = Goal::findOrFail($goalId);
+
+        // Check if user is authorized to update this goal
+        if ($goal->user_id !== $user->id) {
+            // Check if user is guardian of the goal owner
+            $relationship = UserRelationship::where('guardian_user_id', $user->id)
+                ->where('dependent_user_id', $goal->user_id)
+                ->first();
+
+            if (!$relationship) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+        }
+
+        // Validate the request
+        $validated = $request->validate([
+            'current_progress_value' => 'required|numeric|min:0',
+            'status' => 'required|in:active,completed',
+        ]);
+
+        // Update the goal
+        $goal->update($validated);
+
+        return response()->json(['success' => true, 'message' => 'Goal updated successfully']);
     }
 
     /**
