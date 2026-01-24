@@ -9,6 +9,7 @@ use App\Models\Invoice;
 use App\Models\TournamentEvent;
 use App\Models\Goal;
 use App\Models\Attendance;
+use App\Models\ClubAffiliation;
 use App\Services\FamilyService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -60,7 +61,7 @@ class FamilyController extends Controller
 
         // Fetch tournament data
         $tournamentEvents = $user->tournamentEvents()
-            ->with(['performanceResults', 'notesMedia'])
+            ->with(['performanceResults', 'notesMedia', 'clubAffiliation'])
             ->orderBy('date', 'desc')
             ->get();
 
@@ -88,6 +89,24 @@ class FamilyController extends Controller
         $totalSessions = $attendanceRecords->count();
         $attendanceRate = $totalSessions > 0 ? round(($sessionsCompleted / $totalSessions) * 100, 1) : 0;
 
+        // Fetch affiliations data
+        $clubAffiliations = $user->clubAffiliations()
+            ->with(['skillAcquisitions', 'affiliationMedia'])
+            ->orderBy('start_date', 'desc')
+            ->get();
+
+        // Add icon_class to media items for JavaScript
+        $clubAffiliations->each(function($affiliation) {
+            $affiliation->affiliationMedia->each(function($media) {
+                $media->icon_class = $media->icon_class;
+            });
+        });
+
+        // Calculate summary stats
+        $totalAffiliations = $clubAffiliations->count();
+        $distinctSkills = $clubAffiliations->flatMap->skillAcquisitions->pluck('skill_name')->unique()->count();
+        $totalMembershipDuration = $clubAffiliations->sum('duration_in_months');
+
         // Pass user directly and a flag to indicate it's the current user's profile
         return view('family.show', [
             'relationship' => (object)[
@@ -111,6 +130,10 @@ class FamilyController extends Controller
             'sessionsCompleted' => $sessionsCompleted,
             'noShows' => $noShows,
             'attendanceRate' => $attendanceRate,
+            'clubAffiliations' => $clubAffiliations,
+            'totalAffiliations' => $totalAffiliations,
+            'distinctSkills' => $distinctSkills,
+            'totalMembershipDuration' => $totalMembershipDuration,
         ]);
     }
 
@@ -280,7 +303,7 @@ class FamilyController extends Controller
 
         // Fetch tournament data for the dependent
         $tournamentEvents = $relationship->dependent->tournamentEvents()
-            ->with(['performanceResults', 'notesMedia'])
+            ->with(['performanceResults', 'notesMedia', 'clubAffiliation'])
             ->orderBy('date', 'desc')
             ->get();
 
@@ -308,7 +331,46 @@ class FamilyController extends Controller
         $totalSessions = $attendanceRecords->count();
         $attendanceRate = $totalSessions > 0 ? round(($sessionsCompleted / $totalSessions) * 100, 1) : 0;
 
-        return view('family.show', compact('relationship', 'latestHealthRecord', 'healthRecords', 'comparisonRecords', 'invoices', 'tournamentEvents', 'awardCounts', 'sports', 'goals', 'activeGoalsCount', 'completedGoalsCount', 'successRate', 'attendanceRecords', 'sessionsCompleted', 'noShows', 'attendanceRate'));
+        // Fetch affiliations data for the dependent
+        $clubAffiliations = $relationship->dependent->clubAffiliations()
+            ->with(['skillAcquisitions', 'affiliationMedia'])
+            ->orderBy('start_date', 'desc')
+            ->get();
+
+        // Add icon_class to media items for JavaScript
+        $clubAffiliations->each(function($affiliation) {
+            $affiliation->affiliationMedia->each(function($media) {
+                $media->icon_class = $media->icon_class;
+            });
+        });
+
+        // Calculate summary stats
+        $totalAffiliations = $clubAffiliations->count();
+        $distinctSkills = $clubAffiliations->flatMap->skillAcquisitions->pluck('skill_name')->unique()->count();
+        $totalMembershipDuration = $clubAffiliations->sum('duration_in_months');
+
+        return view('family.show', [
+            'relationship' => $relationship,
+            'latestHealthRecord' => $latestHealthRecord,
+            'healthRecords' => $healthRecords,
+            'comparisonRecords' => $comparisonRecords,
+            'invoices' => $invoices,
+            'tournamentEvents' => $tournamentEvents,
+            'awardCounts' => $awardCounts,
+            'sports' => $sports,
+            'goals' => $goals,
+            'activeGoalsCount' => $activeGoalsCount,
+            'completedGoalsCount' => $completedGoalsCount,
+            'successRate' => $successRate,
+            'attendanceRecords' => $attendanceRecords,
+            'sessionsCompleted' => $sessionsCompleted,
+            'noShows' => $noShows,
+            'attendanceRate' => $attendanceRate,
+            'clubAffiliations' => $clubAffiliations,
+            'totalAffiliations' => $totalAffiliations,
+            'distinctSkills' => $distinctSkills,
+            'totalMembershipDuration' => $totalMembershipDuration,
+        ]);
     }
 
     /**
@@ -632,6 +694,81 @@ class FamilyController extends Controller
         $goal->update($validated);
 
         return response()->json(['success' => true, 'message' => 'Goal updated successfully']);
+    }
+
+    /**
+     * Store a new tournament participation record.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function storeTournament(Request $request, $id)
+    {
+        $user = Auth::user();
+
+        // Check if user is authorized to add tournament for this dependent
+        if ($user->id !== (int)$id) {
+            $relationship = UserRelationship::where('guardian_user_id', $user->id)
+                ->where('dependent_user_id', $id)
+                ->first();
+
+            if (!$relationship) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+        }
+
+        // Validate the request
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'type' => 'required|in:championship,tournament,competition,exhibition',
+            'sport' => 'required|string|max:100',
+            'date' => 'required|date',
+            'time' => 'nullable|date_format:H:i',
+            'location' => 'nullable|string|max:255',
+            'participants_count' => 'nullable|integer|min:1',
+            'club_affiliation_id' => 'nullable|exists:club_affiliations,id',
+            'performance_results' => 'nullable|array',
+            'performance_results.*.medal_type' => 'nullable|in:special,1st,2nd,3rd',
+            'performance_results.*.points' => 'nullable|numeric|min:0',
+            'performance_results.*.description' => 'nullable|string|max:500',
+            'notes_media' => 'nullable|array',
+            'notes_media.*.note_text' => 'nullable|string|max:1000',
+            'notes_media.*.media_link' => 'nullable|url',
+        ]);
+
+        // Create the tournament event
+        $tournament = TournamentEvent::create([
+            'user_id' => $id,
+            'club_affiliation_id' => $validated['club_affiliation_id'] ?? null,
+            'title' => $validated['title'],
+            'type' => $validated['type'],
+            'sport' => $validated['sport'],
+            'date' => $validated['date'],
+            'time' => $validated['time'],
+            'location' => $validated['location'],
+            'participants_count' => $validated['participants_count'],
+        ]);
+
+        // Create performance results
+        if (isset($validated['performance_results'])) {
+            foreach ($validated['performance_results'] as $resultData) {
+                if (!empty($resultData['medal_type'])) {
+                    $tournament->performanceResults()->create($resultData);
+                }
+            }
+        }
+
+        // Create notes and media
+        if (isset($validated['notes_media'])) {
+            foreach ($validated['notes_media'] as $noteData) {
+                if (!empty($noteData['note_text']) || !empty($noteData['media_link'])) {
+                    $tournament->notesMedia()->create($noteData);
+                }
+            }
+        }
+
+        return response()->json(['success' => true, 'message' => 'Tournament record added successfully']);
     }
 
     /**

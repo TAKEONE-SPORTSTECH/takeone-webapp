@@ -66,7 +66,7 @@
                                     <li><a class="dropdown-item" href="#"><i class="bi bi-calendar-check me-2"></i>Add Attendance Record</a></li>
                                     <li><a class="dropdown-item" href="#"><i class="bi bi-calendar-event me-2"></i>Add Event Participation</a></li>
                                     <li><a class="dropdown-item" href="#" data-bs-target="#healthUpdateModal"><i class="bi bi-heart-pulse me-2"></i>Add Health Update</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-award me-2"></i>Add Tournament Participation</a></li>
+                                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#tournamentParticipationModal"><i class="bi bi-award me-2"></i>Add Tournament Participation</a></li>
                                     <li><a class="dropdown-item" href="@if($relationship->relationship_type == 'self'){{ route('profile.edit') }}@else{{ route('family.edit', $relationship->dependent->id) }}@endif">
                                         <i class="bi bi-pencil me-2"></i>Edit Info
                                     </a></li>
@@ -86,12 +86,12 @@
 
                             <!-- Achievement Badges -->
                             <div class="d-flex gap-2 mb-3 flex-wrap">
-                                <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none" style="font-size: 1rem;">🏆 <span class="fw-semibold text-dark">3</span></a>
-                                <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none" style="font-size: 1rem;">🥇 <span class="fw-semibold text-dark">4</span></a>
-                                <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none" style="font-size: 1rem;">🥈 <span class="fw-semibold text-dark">6</span></a>
-                                <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none" style="font-size: 1rem;">🥉 <span class="fw-semibold text-dark">3</span></a>
-                                <a href="#goals" class="border bg-white rounded px-2 py-1 text-decoration-none" style="font-size: 1rem;" onclick="document.getElementById('goals-tab').click();">🎯 <span class="fw-semibold text-dark">8</span></a>
-                                <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none" style="font-size: 1rem;">⭐ <span class="fw-semibold text-dark">12</span></a>
+                                <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none achievement-badge" style="font-size: 1rem;" data-medal-type="special" onclick="filterTournamentsByMedal('special')">🏆 <span class="fw-semibold text-dark">{{ $awardCounts['special'] }}</span></a>
+                                <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none achievement-badge" style="font-size: 1rem;" data-medal-type="1st" onclick="filterTournamentsByMedal('1st')">🥇 <span class="fw-semibold text-dark">{{ $awardCounts['1st'] }}</span></a>
+                                <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none achievement-badge" style="font-size: 1rem;" data-medal-type="2nd" onclick="filterTournamentsByMedal('2nd')">🥈 <span class="fw-semibold text-dark">{{ $awardCounts['2nd'] }}</span></a>
+                                <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none achievement-badge" style="font-size: 1rem;" data-medal-type="3rd" onclick="filterTournamentsByMedal('3rd')">🥉 <span class="fw-semibold text-dark">{{ $awardCounts['3rd'] }}</span></a>
+                                <a href="#goals" class="border bg-white rounded px-2 py-1 text-decoration-none" style="font-size: 1rem;" onclick="document.getElementById('goals-tab').click();">🎯 <span class="fw-semibold text-dark">{{ $activeGoalsCount + $completedGoalsCount }}</span></a>
+                                <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none" style="font-size: 1rem;">⭐ <span class="fw-semibold text-dark">{{ $totalAffiliations }}</span></a>
                             </div>
 
                             <!-- Status Badges -->
@@ -990,8 +990,120 @@
         <div class="tab-pane fade" id="affiliations" role="tabpanel">
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <h5 class="fw-bold mb-3"><i class="bi bi-diagram-3 me-2"></i>Affiliations & Badges</h5>
-                    <p class="text-muted">Affiliation system coming soon...</p>
+                    <h5 class="fw-bold mb-3"><i class="bi bi-diagram-3 me-2"></i>Affiliations & Skills</h5>
+
+                    @if($clubAffiliations->count() > 0)
+                        <!-- Summary Stats -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <div class="card shadow-sm bg-primary text-white">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-building display-4 mb-2"></i>
+                                        <h4 class="fw-bold mb-1">{{ $totalAffiliations }}</h4>
+                                        <small>Total Affiliations</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card shadow-sm bg-success text-white">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-star display-4 mb-2"></i>
+                                        <h4 class="fw-bold mb-1">{{ $distinctSkills }}</h4>
+                                        <small>Distinct Skills</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card shadow-sm bg-info text-white">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-calendar-check display-4 mb-2"></i>
+                                        <h4 class="fw-bold mb-1">{{ floor($totalMembershipDuration / 12) }}y {{ $totalMembershipDuration % 12 }}m</h4>
+                                        <small>Total Membership</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Timeline and Skills Wheel Container -->
+                        <div class="row">
+                            <!-- Timeline -->
+                            <div class="col-lg-6 mb-4">
+                                <div class="card shadow-sm">
+                                    <div class="card-header bg-light">
+                                        <h6 class="card-title mb-0"><i class="bi bi-timeline me-2"></i>Club Affiliations Timeline</h6>
+                                    </div>
+                                    <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                                        <div class="timeline">
+                                            @foreach($clubAffiliations as $index => $affiliation)
+                                                <div class="timeline-item mb-4 position-relative" data-affiliation-id="{{ $affiliation->id }}">
+                                                    <div class="timeline-marker bg-primary"></div>
+                                                    <div class="timeline-content card border {{ $index === 0 ? 'border-primary' : '' }} affiliation-card" style="cursor: pointer;" data-affiliation-id="{{ $affiliation->id }}">
+                                                        <div class="card-body p-3">
+                                                            <div class="d-flex align-items-center mb-2">
+                                                                @if($affiliation->logo)
+                                                                    <img src="{{ asset('storage/' . $affiliation->logo) }}" alt="{{ $affiliation->club_name }}" class="me-3 rounded" style="width: 40px; height: 40px; object-fit: cover;">
+                                                                @else
+                                                                    <div class="bg-primary text-white rounded d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                                                                        <i class="bi bi-building"></i>
+                                                                    </div>
+                                                                @endif
+                                                                <div class="flex-grow-1">
+                                                                    <h6 class="mb-0 fw-bold">{{ $affiliation->club_name }}</h6>
+                                                                    <small class="text-muted">{{ $affiliation->date_range }}</small>
+                                                                    <br>
+                                                                    <span class="badge bg-info text-dark small">{{ $affiliation->formatted_duration }}</span>
+                                                                </div>
+                                                            </div>
+                                                            @if($affiliation->location)
+                                                                <div class="text-muted small mb-1">
+                                                                    <i class="bi bi-geo-alt me-1"></i>{{ $affiliation->location }}
+                                                                </div>
+                                                            @endif
+                                                            <div class="text-muted small">
+                                                                <i class="bi bi-star me-1"></i>{{ $affiliation->skillAcquisitions->count() }} skills acquired
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Skills Wheel and Details -->
+                            <div class="col-lg-6">
+                                <!-- Skills Wheel -->
+                                <div class="card shadow-sm mb-4">
+                                    <div class="card-header bg-light">
+                                        <h6 class="card-title mb-0"><i class="bi bi-pie-chart me-2"></i>Skills Wheel</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="text-center">
+                                            <canvas id="skillsChart" width="300" height="300"></canvas>
+                                            <p id="noSkillsMessage" class="text-muted mt-3 d-none">Select an affiliation to view skills</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Affiliation Details -->
+                                <div class="card shadow-sm">
+                                    <div class="card-header bg-light">
+                                        <h6 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>Affiliation Details</h6>
+                                    </div>
+                                    <div class="card-body" id="affiliationDetails">
+                                        <p class="text-muted">Select an affiliation from the timeline to view details</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @else
+                        <div class="text-center py-5">
+                            <i class="bi bi-diagram-3 text-muted" style="font-size: 3rem;"></i>
+                            <h5 class="text-muted mt-3 mb-2">No Affiliations Yet</h5>
+                            <p class="text-muted mb-0">Club affiliations and skills will appear here once added</p>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -1069,6 +1181,7 @@
                                         <thead class="table-light">
                                             <tr>
                                                 <th class="text-muted small fw-semibold">Tournament Details</th>
+                                                <th class="text-muted small fw-semibold">Club Affiliation</th>
                                                 <th class="text-muted small fw-semibold">Performance & Result</th>
                                                 <th class="text-muted small fw-semibold">Notes & Media</th>
                                             </tr>
@@ -1094,6 +1207,16 @@
                                                                 <i class="bi bi-people me-1 ms-2"></i>{{ $event->participants_count }} participants
                                                             @endif
                                                         </div>
+                                                    </td>
+                                                    <td>
+                                                        @if($event->clubAffiliation)
+                                                            <div>
+                                                                <div class="small fw-semibold">{{ $event->clubAffiliation->club_name }}</div>
+                                                                <div class="text-muted small">{{ $event->clubAffiliation->location }}</div>
+                                                            </div>
+                                                        @else
+                                                            <span class="text-muted small">Individual</span>
+                                                        @endif
                                                     </td>
                                                     <td>
                                                         @if($event->performanceResults->count() > 0)
@@ -1297,9 +1420,214 @@
     </div>
 </div>
 
+<!-- Tournament Participation Modal -->
+<div class="modal fade" id="tournamentParticipationModal" tabindex="-1" aria-labelledby="tournamentParticipationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tournamentParticipationModalLabel">Add Tournament Participation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="tournamentParticipationForm" method="POST" action="{{ route('family.store-tournament', $relationship->dependent->id) }}">
+                @csrf
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <!-- Tournament Details -->
+                        <div class="col-md-6">
+                            <label for="tournament_title" class="form-label">Tournament Title <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="tournament_title" name="title" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="tournament_type" class="form-label">Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="tournament_type" name="type" required>
+                                <option value="">Select Type</option>
+                                <option value="championship">Championship</option>
+                                <option value="tournament">Tournament</option>
+                                <option value="competition">Competition</option>
+                                <option value="exhibition">Exhibition</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="tournament_sport" class="form-label">Sport <span class="text-danger">*</span></label>
+                            <select class="form-select" id="tournament_sport" name="sport" required>
+                                <option value="">Select Sport</option>
+                                <option value="Boxing">Boxing</option>
+                                <option value="Taekwondo">Taekwondo</option>
+                                <option value="Karate">Karate</option>
+                                <option value="Martial Arts">Martial Arts</option>
+                                <option value="Fitness">Fitness</option>
+                                <option value="Weightlifting">Weightlifting</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="tournament_date" class="form-label">Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="tournament_date" name="date" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="tournament_time" class="form-label">Time</label>
+                            <input type="time" class="form-control" id="tournament_time" name="time">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="tournament_location" class="form-label">Location</label>
+                            <input type="text" class="form-control" id="tournament_location" name="location" placeholder="Venue name or address">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="participants_count" class="form-label">Number of Participants</label>
+                            <input type="number" class="form-control" id="participants_count" name="participants_count" min="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="club_affiliation_id" class="form-label">Club Affiliation</label>
+                            <select class="form-select" id="club_affiliation_id" name="club_affiliation_id">
+                                <option value="">Select Club (Optional)</option>
+                                @foreach($clubAffiliations ?? [] as $affiliation)
+                                    <option value="{{ $affiliation->id }}">{{ $affiliation->club_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- Performance Results Section -->
+                        <div class="col-12">
+                            <hr>
+                            <h6 class="mb-3">Performance Results</h6>
+                            <div id="performanceResultsContainer">
+                                <div class="performance-result-item mb-3 p-3 border rounded">
+                                    <div class="row g-2">
+                                        <div class="col-md-4">
+                                            <label class="form-label">Medal Type</label>
+                                            <select class="form-select medal-type" name="performance_results[0][medal_type]">
+                                                <option value="">Select Medal</option>
+                                                <option value="special">Special Award</option>
+                                                <option value="1st">1st Place</option>
+                                                <option value="2nd">2nd Place</option>
+                                                <option value="3rd">3rd Place</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Points</label>
+                                            <input type="number" class="form-control" name="performance_results[0][points]" min="0" step="0.1">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Description</label>
+                                            <input type="text" class="form-control" name="performance_results[0][description]" placeholder="Optional description">
+                                        </div>
+                                        <div class="col-md-1 d-flex align-items-end">
+                                            <button type="button" class="btn btn-outline-danger btn-sm remove-result" style="display: none;">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="addPerformanceResult">
+                                <i class="bi bi-plus me-1"></i>Add Another Result
+                            </button>
+                        </div>
+
+                        <!-- Notes & Media Section -->
+                        <div class="col-12">
+                            <hr>
+                            <h6 class="mb-3">Notes & Media</h6>
+                            <div id="notesMediaContainer">
+                                <div class="notes-media-item mb-3 p-3 border rounded">
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Note Text</label>
+                                            <textarea class="form-control" name="notes_media[0][note_text]" rows="2" placeholder="Optional notes about the tournament"></textarea>
+                                        </div>
+                                        <div class="col-md-5">
+                                            <label class="form-label">Media Link</label>
+                                            <input type="url" class="form-control" name="notes_media[0][media_link]" placeholder="https://example.com/photo.jpg">
+                                        </div>
+                                        <div class="col-md-1 d-flex align-items-end">
+                                            <button type="button" class="btn btn-outline-danger btn-sm remove-note" style="display: none;">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="addNotesMedia">
+                                <i class="bi bi-plus me-1"></i>Add Another Note/Media
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Tournament Record</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <style>
     .history-row:hover .edit-record-btn {
         opacity: 1 !important;
+    }
+
+    /* Timeline Styles */
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+
+    .timeline::before {
+        content: '';
+        position: absolute;
+        left: 15px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #e9ecef;
+    }
+
+    .timeline-item {
+        position: relative;
+        margin-bottom: 20px;
+    }
+
+    .timeline-marker {
+        position: absolute;
+        left: -22px;
+        top: 20px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #6c757d;
+        border: 2px solid #fff;
+        z-index: 1;
+    }
+
+    .timeline-marker.bg-primary {
+        background: #0d6efd;
+    }
+
+    .timeline-content {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+
+    .timeline-content:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+
+    .affiliation-card {
+        transition: all 0.3s ease;
+    }
+
+    .affiliation-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+        transform: translateY(-2px);
+    }
+
+    .affiliation-card.border-primary {
+        border-color: #0d6efd !important;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25) !important;
     }
 </style>
 
@@ -1666,50 +1994,102 @@
         const tournamentsTable = document.getElementById('tournamentsTable');
         const awardCards = document.getElementById('awardCards');
 
-        if (sportFilter && tournamentsTable) {
-            sportFilter.addEventListener('change', function() {
-                const selectedSport = this.value;
-                const rows = tournamentsTable.querySelectorAll('tbody tr');
+        // Global variables for current filters
+        let currentSportFilter = 'all';
+        let currentMedalFilter = 'all';
 
-                let visibleRows = 0;
-                let specialCount = 0, firstCount = 0, secondCount = 0, thirdCount = 0;
+        function applyTournamentFilters() {
+            const rows = tournamentsTable.querySelectorAll('tbody tr');
 
-                rows.forEach(row => {
-                    const sport = row.getAttribute('data-sport');
-                    if (selectedSport === 'all' || sport === selectedSport) {
-                        row.style.display = '';
-                        visibleRows++;
+            let visibleRows = 0;
+            let specialCount = 0, firstCount = 0, secondCount = 0, thirdCount = 0;
 
-                        // Count awards in visible rows
-                        const performanceCell = row.querySelector('td:nth-child(2)');
-                        if (performanceCell) {
-                            const badges = performanceCell.querySelectorAll('.badge');
-                            badges.forEach(badge => {
-                                if (badge.textContent.includes('Special Award')) specialCount++;
-                                else if (badge.textContent.includes('1st Place')) firstCount++;
-                                else if (badge.textContent.includes('2nd Place')) secondCount++;
-                                else if (badge.textContent.includes('3rd Place')) thirdCount++;
-                            });
+            rows.forEach(row => {
+                const sport = row.getAttribute('data-sport');
+                const performanceCell = row.querySelector('td:nth-child(3)');
+                let hasMatchingMedal = false;
+
+                if (performanceCell) {
+                    const badges = performanceCell.querySelectorAll('.badge');
+                    badges.forEach(badge => {
+                        if (currentMedalFilter === 'all') {
+                            hasMatchingMedal = true;
+                        } else if (currentMedalFilter === 'special' && badge.textContent.includes('Special Award')) {
+                            hasMatchingMedal = true;
+                        } else if (currentMedalFilter === '1st' && badge.textContent.includes('1st Place')) {
+                            hasMatchingMedal = true;
+                        } else if (currentMedalFilter === '2nd' && badge.textContent.includes('2nd Place')) {
+                            hasMatchingMedal = true;
+                        } else if (currentMedalFilter === '3rd' && badge.textContent.includes('3rd Place')) {
+                            hasMatchingMedal = true;
                         }
-                    } else {
-                        row.style.display = 'none';
+                    });
+                }
+
+                const sportMatch = currentSportFilter === 'all' || sport === currentSportFilter;
+                const medalMatch = currentMedalFilter === 'all' || hasMatchingMedal;
+
+                if (sportMatch && medalMatch) {
+                    row.style.display = '';
+                    visibleRows++;
+
+                    // Count awards in visible rows
+                    if (performanceCell) {
+                        const badges = performanceCell.querySelectorAll('.badge');
+                        badges.forEach(badge => {
+                            if (badge.textContent.includes('Special Award')) specialCount++;
+                            else if (badge.textContent.includes('1st Place')) firstCount++;
+                            else if (badge.textContent.includes('2nd Place')) secondCount++;
+                            else if (badge.textContent.includes('3rd Place')) thirdCount++;
+                        });
                     }
-                });
-
-                // Update award counts
-                document.getElementById('specialCount').textContent = specialCount;
-                document.getElementById('firstCount').textContent = firstCount;
-                document.getElementById('secondCount').textContent = secondCount;
-                document.getElementById('thirdCount').textContent = thirdCount;
-
-                // Show/hide award cards based on visible rows
-                if (visibleRows === 0) {
-                    awardCards.style.display = 'none';
                 } else {
-                    awardCards.style.display = '';
+                    row.style.display = 'none';
                 }
             });
+
+            // Update award counts
+            document.getElementById('specialCount').textContent = specialCount;
+            document.getElementById('firstCount').textContent = firstCount;
+            document.getElementById('secondCount').textContent = secondCount;
+            document.getElementById('thirdCount').textContent = thirdCount;
+
+            // Show/hide award cards based on visible rows
+            if (visibleRows === 0) {
+                awardCards.style.display = 'none';
+            } else {
+                awardCards.style.display = '';
+            }
         }
+
+        if (sportFilter && tournamentsTable) {
+            sportFilter.addEventListener('change', function() {
+                currentSportFilter = this.value;
+                applyTournamentFilters();
+            });
+        }
+
+        // Function to filter tournaments by medal type (called from achievement badges)
+        window.filterTournamentsByMedal = function(medalType) {
+            // Switch to tournaments tab
+            const tournamentsTab = document.getElementById('tournaments-tab');
+            if (tournamentsTab) {
+                const tab = new bootstrap.Tab(tournamentsTab);
+                tab.show();
+            }
+
+            // Set medal filter
+            currentMedalFilter = medalType;
+            currentSportFilter = 'all'; // Reset sport filter
+
+            // Reset sport filter dropdown
+            if (sportFilter) {
+                sportFilter.value = 'all';
+            }
+
+            // Apply filters
+            applyTournamentFilters();
+        };
 
         // Goals filtering functionality
         const goalFilterCards = document.querySelectorAll('.goal-filter-card');
@@ -1869,5 +2249,390 @@
             });
         });
     });
+</script>
+
+<!-- Chart.js for Skills Wheel -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Affiliations Tab JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Affiliations data
+    const affiliationsData = @json($clubAffiliations);
+
+    let skillsChart = null;
+    let selectedAffiliationId = null;
+
+    // Initialize affiliations functionality
+    function initAffiliations() {
+        // Set up timeline click handlers
+        document.querySelectorAll('.affiliation-card').forEach(card => {
+            card.addEventListener('click', function() {
+                const affiliationId = this.getAttribute('data-affiliation-id');
+                selectAffiliation(affiliationId);
+
+                // Update visual selection
+                document.querySelectorAll('.affiliation-card').forEach(c => {
+                    c.classList.remove('border-primary');
+                });
+                this.classList.add('border-primary');
+            });
+        });
+
+        // Select first affiliation by default if available
+        if (affiliationsData.length > 0) {
+            selectAffiliation(affiliationsData[0].id);
+        }
+    }
+
+    function selectAffiliation(affiliationId) {
+        selectedAffiliationId = affiliationId;
+        const affiliation = affiliationsData.find(a => a.id == affiliationId);
+
+        if (!affiliation) return;
+
+        // Update skills chart
+        updateSkillsChart(affiliation.skill_acquisitions || []);
+
+        // Update affiliation details
+        updateAffiliationDetails(affiliation);
+    }
+
+    function updateSkillsChart(skills) {
+        const ctx = document.getElementById('skillsChart').getContext('2d');
+        const noSkillsMessage = document.getElementById('noSkillsMessage');
+
+        if (skills.length === 0) {
+            if (skillsChart) {
+                skillsChart.destroy();
+                skillsChart = null;
+            }
+            document.getElementById('skillsChart').style.display = 'none';
+            noSkillsMessage.classList.remove('d-none');
+            return;
+        }
+
+        document.getElementById('skillsChart').style.display = 'block';
+        noSkillsMessage.classList.add('d-none');
+
+        // Prepare data for polar area chart
+        const labels = skills.map(skill => skill.skill_name);
+        const data = skills.map(skill => skill.duration_months);
+        const backgroundColors = [
+            'rgba(54, 162, 235, 0.8)',
+            'rgba(255, 99, 132, 0.8)',
+            'rgba(255, 205, 86, 0.8)',
+            'rgba(75, 192, 192, 0.8)',
+            'rgba(153, 102, 255, 0.8)',
+            'rgba(255, 159, 64, 0.8)',
+            'rgba(199, 199, 199, 0.8)',
+            'rgba(83, 102, 255, 0.8)',
+            'rgba(255, 99, 255, 0.8)',
+            'rgba(99, 255, 132, 0.8)'
+        ];
+
+        if (skillsChart) {
+            skillsChart.destroy();
+        }
+
+        skillsChart = new Chart(ctx, {
+            type: 'polarArea',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: backgroundColors.slice(0, skills.length),
+                    borderWidth: 2,
+                    borderColor: backgroundColors.slice(0, skills.length).map(color => color.replace('0.8', '1')),
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 20,
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const skill = skills[context.dataIndex];
+                                const duration = skill.formatted_duration || `${skill.duration_months} months`;
+                                return `${context.label}: ${duration}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        ticks: {
+                            display: false
+                        }
+                    }
+                },
+                animation: {
+                    animateScale: true,
+                    animateRotate: true
+                }
+            }
+        });
+    }
+
+    function updateAffiliationDetails(affiliation) {
+        const detailsContainer = document.getElementById('affiliationDetails');
+
+        let html = `
+            <div class="d-flex align-items-center mb-3">
+                ${affiliation.logo ?
+                    `<img src="${affiliation.logo}" alt="${affiliation.club_name}" class="me-3 rounded" style="width: 50px; height: 50px; object-fit: cover;">` :
+                    `<div class="bg-primary text-white rounded d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                        <i class="bi bi-building"></i>
+                    </div>`
+                }
+                <div>
+                    <h5 class="mb-1">${affiliation.club_name}</h5>
+                    <p class="text-muted mb-0">${affiliation.date_range}</p>
+                    <span class="badge bg-info text-dark small">${affiliation.formatted_duration}</span>
+                </div>
+            </div>
+        `;
+
+        if (affiliation.location) {
+            html += `<p class="mb-2"><i class="bi bi-geo-alt me-2"></i><strong>Location:</strong> ${affiliation.location}</p>`;
+        }
+
+        if (affiliation.description) {
+            html += `<p class="mb-2"><strong>Description:</strong> ${affiliation.description}</p>`;
+        }
+
+        if (affiliation.coaches && affiliation.coaches.length > 0) {
+            html += `<p class="mb-2"><strong>Coaches:</strong> ${affiliation.coaches.join(', ')}</p>`;
+        }
+
+        if (affiliation.affiliation_media && affiliation.affiliation_media.length > 0) {
+            html += `<div class="mt-3"><strong>Media & Certificates:</strong></div>`;
+            html += `<div class="row g-2 mt-1">`;
+
+            affiliation.affiliation_media.forEach(media => {
+                const iconClass = media.icon_class || 'bi-file';
+                html += `
+                    <div class="col-6">
+                        <a href="${media.full_url}" target="_blank" class="btn btn-outline-secondary btn-sm w-100">
+                            <i class="bi ${iconClass} me-1"></i>${media.title || media.media_type}
+                        </a>
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+        }
+
+        detailsContainer.innerHTML = html;
+    }
+
+    // Initialize when affiliations tab is shown
+    const affiliationsTab = document.getElementById('affiliations-tab');
+    if (affiliationsTab) {
+        affiliationsTab.addEventListener('shown.bs.tab', function() {
+            initAffiliations();
+        });
+    }
+
+    // Initialize immediately if affiliations tab is active
+    if (document.getElementById('affiliations').classList.contains('show')) {
+        initAffiliations();
+    }
+});
+
+// Tournament Participation Modal Functionality
+document.addEventListener('DOMContentLoaded', function() {
+    let performanceResultIndex = 1;
+    let notesMediaIndex = 1;
+
+    // Add Performance Result
+    document.getElementById('addPerformanceResult').addEventListener('click', function() {
+        const container = document.getElementById('performanceResultsContainer');
+        const newItem = document.createElement('div');
+        newItem.className = 'performance-result-item mb-3 p-3 border rounded';
+        newItem.innerHTML = `
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <label class="form-label">Medal Type</label>
+                    <select class="form-select medal-type" name="performance_results[${performanceResultIndex}][medal_type]">
+                        <option value="">Select Medal</option>
+                        <option value="special">Special Award</option>
+                        <option value="1st">1st Place</option>
+                        <option value="2nd">2nd Place</option>
+                        <option value="3rd">3rd Place</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Points</label>
+                    <input type="number" class="form-control" name="performance_results[${performanceResultIndex}][points]" min="0" step="0.1">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Description</label>
+                    <input type="text" class="form-control" name="performance_results[${performanceResultIndex}][description]" placeholder="Optional description">
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-result">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        container.appendChild(newItem);
+        performanceResultIndex++;
+
+        // Show remove buttons if more than one result
+        updateRemoveButtons('performance-result-item', 'remove-result');
+    });
+
+    // Add Notes & Media
+    document.getElementById('addNotesMedia').addEventListener('click', function() {
+        const container = document.getElementById('notesMediaContainer');
+        const newItem = document.createElement('div');
+        newItem.className = 'notes-media-item mb-3 p-3 border rounded';
+        newItem.innerHTML = `
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label class="form-label">Note Text</label>
+                    <textarea class="form-control" name="notes_media[${notesMediaIndex}][note_text]" rows="2" placeholder="Optional notes about the tournament"></textarea>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label">Media Link</label>
+                    <input type="url" class="form-control" name="notes_media[${notesMediaIndex}][media_link]" placeholder="https://example.com/photo.jpg">
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-note">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        container.appendChild(newItem);
+        notesMediaIndex++;
+
+        // Show remove buttons if more than one note
+        updateRemoveButtons('notes-media-item', 'remove-note');
+    });
+
+    // Remove Performance Result
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-result')) {
+            e.target.closest('.performance-result-item').remove();
+            updateRemoveButtons('performance-result-item', 'remove-result');
+        }
+    });
+
+    // Remove Notes & Media
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-note')) {
+            e.target.closest('.notes-media-item').remove();
+            updateRemoveButtons('notes-media-item', 'remove-note');
+        }
+    });
+
+    function updateRemoveButtons(itemClass, buttonClass) {
+        const items = document.querySelectorAll('.' + itemClass);
+        const buttons = document.querySelectorAll('.' + buttonClass);
+
+        if (items.length > 1) {
+            buttons.forEach(button => button.style.display = 'block');
+        } else {
+            buttons.forEach(button => button.style.display = 'none');
+        }
+    }
+
+    // Reset modal when opened
+    document.getElementById('tournamentParticipationModal').addEventListener('show.bs.modal', function() {
+        // Reset form
+        document.getElementById('tournamentParticipationForm').reset();
+
+        // Reset dynamic content
+        const performanceContainer = document.getElementById('performanceResultsContainer');
+        const notesContainer = document.getElementById('notesMediaContainer');
+
+        // Keep only the first item in each container
+        const performanceItems = performanceContainer.querySelectorAll('.performance-result-item');
+        const notesItems = notesContainer.querySelectorAll('.notes-media-item');
+
+        for (let i = 1; i < performanceItems.length; i++) {
+            performanceItems[i].remove();
+        }
+        for (let i = 1; i < notesItems.length; i++) {
+            notesItems[i].remove();
+        }
+
+        // Reset indices
+        performanceResultIndex = 1;
+        notesMediaIndex = 1;
+
+        // Hide remove buttons
+        document.querySelectorAll('.remove-result, .remove-note').forEach(button => {
+            button.style.display = 'none';
+        });
+    });
+
+    // Handle form submission
+    document.getElementById('tournamentParticipationForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+
+        fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('tournamentParticipationModal'));
+                modal.hide();
+
+                // Show success message
+                showAlert('Tournament record added successfully!', 'success');
+
+                // Reload page to show new data
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                showAlert('Error adding tournament record: ' + (data.message || 'Unknown error'), 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('Error adding tournament record. Please try again.', 'danger');
+        });
+    });
+
+    function showAlert(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        document.body.appendChild(alertDiv);
+
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+});
 </script>
 @endsection

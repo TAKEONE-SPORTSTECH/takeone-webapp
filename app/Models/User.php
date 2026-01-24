@@ -251,6 +251,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the club affiliations for the user.
+     */
+    public function clubAffiliations(): HasMany
+    {
+        return $this->hasMany(ClubAffiliation::class, 'member_id');
+    }
+
+    /**
      * Send the email verification notification.
      * Override to prevent sending the default Laravel notification.
      * We send our custom welcome email instead.
