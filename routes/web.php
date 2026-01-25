@@ -82,7 +82,9 @@ Route::middleware(['auth'])->group(function () {
 
 // Platform Admin routes (Super Admin only)
 Route::middleware(['auth', 'verified', 'role:super-admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/', [App\Http\Controllers\Admin\PlatformController::class, 'index'])->name('platform.index');
+    Route::get('/', function () {
+        return redirect()->route('admin.platform.clubs');
+    })->name('platform.index');
 
     // All Clubs Management
     Route::get('/clubs', [App\Http\Controllers\Admin\PlatformController::class, 'clubs'])->name('platform.clubs');

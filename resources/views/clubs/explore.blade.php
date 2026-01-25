@@ -249,13 +249,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!navigator.geolocation) {
         showAlert('Geolocation is not supported by your browser', 'danger');
         document.getElementById('loadingSpinner').style.display = 'none';
+        // If no geolocation, fetch all clubs
+        fetchAllClubs();
     } else {
         // Automatically start watching user's location
+        // This will fetch clubs once location is detected
         startWatchingLocation();
     }
-
-    // Initial load: fetch all clubs since 'all' is default
-    fetchAllClubs();
 
     // Category buttons
     document.querySelectorAll('.category-btn').forEach(btn => {
@@ -331,8 +331,8 @@ function startWatchingLocation() {
 
             updateLocationDisplay(userLocation.latitude, userLocation.longitude);
 
-            // Fetch nearby clubs
-            fetchNearbyClubs(userLocation.latitude, userLocation.longitude);
+            // Fetch all clubs with location-based sorting (since 'all' is default)
+            fetchAllClubs();
 
             // Stop watching after first successful location
             if (watchId) {
@@ -497,16 +497,37 @@ function displayClubs(clubs) {
     clubs.forEach(club => {
         const card = document.createElement('div');
         card.className = 'col';
+
+        // Prepare cover image
+        let coverImageHtml = '';
+        if (club.cover_image) {
+            coverImageHtml = `<img src="/storage/${club.cover_image}" alt="${club.club_name}" loading="lazy" class="w-100 h-100 club-cover-img" style="object-fit: cover; transition: transform 0.3s ease;">`;
+        } else {
+            coverImageHtml = `<div class="w-100 h-100 d-flex align-items-center justify-content-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <i class="bi bi-image text-white" style="font-size: 3rem; opacity: 0.3;"></i>
+            </div>`;
+        }
+
+        // Prepare logo
+        let logoHtml = '';
+        if (club.logo) {
+            logoHtml = `<img src="/storage/${club.logo}" alt="${club.club_name} logo" loading="lazy" class="w-100 h-100 rounded-circle" style="object-fit: contain;">`;
+        } else {
+            logoHtml = `<div class="w-100 h-100 rounded-circle bg-primary d-flex align-items-center justify-content-center">
+                <span class="text-white fw-bold fs-4">${club.club_name.charAt(0)}</span>
+            </div>`;
+        }
+
         card.innerHTML = `
             <div class="card border shadow-sm overflow-hidden club-card" style="border-radius: 0; cursor: pointer; transition: all 0.3s ease;">
                 <!-- Cover Image -->
                 <div class="position-relative overflow-hidden" style="height: 192px;">
-                    <img src="https://via.placeholder.com/400x200?text=${encodeURIComponent(club.club_name)}" alt="${club.club_name}" loading="lazy" class="w-100 h-100 club-cover-img" style="object-fit: cover; transition: transform 0.3s ease;">
+                    ${coverImageHtml}
 
                     <!-- Club Logo - Bottom Left -->
                     <div class="position-absolute" style="bottom: 8px; left: 8px;">
                         <div class="bg-white shadow border p-0.5" style="width: 80px; height: 80px; border-radius: 50%; border-color: rgba(0,0,0,0.1) !important;">
-                            <img src="https://via.placeholder.com/80x80?text=Logo" alt="${club.club_name} logo" loading="lazy" class="w-100 h-100 rounded-circle" style="object-fit: contain;">
+                            ${logoHtml}
                         </div>
                     </div>
 
