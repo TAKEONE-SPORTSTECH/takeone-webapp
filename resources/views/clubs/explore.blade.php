@@ -84,12 +84,16 @@
 
     <!-- Clubs Grid -->
     <div class="row justify-content-center" id="clubsGrid" style="display: none;">
-        <div class="col-lg-10">
-            <div class="row g-4" id="clubsContainer">
+        <div class="col-12">
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="clubsContainer">
                 <!-- Club cards will be inserted here -->
             </div>
         </div>
-        <div class="col-12 d-flex justify-content-center" id="noResultsContainer" style="display: none;">
+    </div>
+
+    <!-- No Results -->
+    <div class="row justify-content-center" id="noResultsContainer" style="display: none;">
+        <div class="col-12 d-flex justify-content-center">
             <div id="noResults" class="d-flex flex-column align-items-center justify-content-center text-center" style="min-height: 400px;">
                 <i class="bi bi-inbox" style="font-size: 4rem; color: #dee2e6;"></i>
                 <h4 class="mt-3 text-muted">No Results Found</h4>
@@ -97,7 +101,6 @@
             </div>
         </div>
     </div>
-
 
 </div>
 
@@ -114,17 +117,17 @@
             <div class="modal-body p-0">
                 <div id="map" style="height: 600px; width: 100%;"></div>
             </div>
-    <div class="modal-footer border-0 bg-light">
-        <div class="w-100 d-flex justify-content-between align-items-center">
-            <small class="text-muted">
-                <i class="bi bi-geo-alt-fill me-1"></i>
-                <span id="modalLocationCoordinates">Drag the marker to set your location</span>
-            </small>
-            <button type="button" class="btn btn-primary" id="applyLocationBtn">
-                <i class="bi bi-check-circle me-2"></i>Apply Location
-            </button>
-        </div>
-    </div>
+            <div class="modal-footer border-0 bg-light">
+                <div class="w-100 d-flex justify-content-between align-items-center">
+                    <small class="text-muted">
+                        <i class="bi bi-geo-alt-fill me-1"></i>
+                        <span id="modalLocationCoordinates">Drag the marker to set your location</span>
+                    </small>
+                    <button type="button" class="btn btn-primary" id="applyLocationBtn">
+                        <i class="bi bi-check-circle me-2"></i>Apply Location
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -155,56 +158,20 @@
     }
 
     .club-card {
-        transition: all 0.3s ease;
-        border: none;
-        border-radius: 12px;
-        overflow: hidden;
+        transition: all 0.3s ease-in-out;
     }
 
     .club-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        transform: translateY(-8px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
     }
 
-    .club-card-img {
-        height: 200px;
-        object-fit: cover;
-        width: 100%;
+    .club-card:hover .club-cover-img {
+        transform: scale(1.1);
     }
 
-    .club-badge {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background: #0d6efd;
-        color: white;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-
-    .stat-box {
-        background: hsl(var(--muted));
-        border-radius: 8px;
-        padding: 0.75rem;
-        text-align: center;
-    }
-
-    .stat-box i {
-        font-size: 1.25rem;
-        color: hsl(var(--primary));
-    }
-
-    .stat-box .stat-number {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: hsl(var(--foreground));
-    }
-
-    .stat-box .stat-label {
-        font-size: 0.75rem;
-        color: hsl(var(--muted-foreground));
+    .club-card:hover .club-title {
+        color: #dc3545 !important;
     }
 
     /* Pulsing animation for location marker */
@@ -259,6 +226,7 @@
 
 <script>
 let map;
+let pageMap;
 let userMarker;
 let searchRadiusCircle;
 let userLocation = null;
@@ -300,7 +268,9 @@ document.addEventListener('DOMContentLoaded', function() {
             this.classList.add('active', 'btn-primary');
 
             currentCategory = this.dataset.category;
-            if (currentCategory === 'all') {
+
+            // For 'all' and 'sports-clubs' (Clubs) categories, fetch all clubs with location-based sorting
+            if (currentCategory === 'all' || currentCategory === 'sports-clubs') {
                 fetchAllClubs();
             } else if (userLocation) {
                 fetchNearbyClubs(userLocation.latitude, userLocation.longitude);
@@ -364,9 +334,6 @@ function startWatchingLocation() {
             // Fetch nearby clubs
             fetchNearbyClubs(userLocation.latitude, userLocation.longitude);
 
-            // Initialize page map
-            initPageMap(userLocation.latitude, userLocation.longitude);
-
             // Stop watching after first successful location
             if (watchId) {
                 navigator.geolocation.clearWatch(watchId);
@@ -406,42 +373,6 @@ function updateLocationDisplay(lat, lng) {
         `<i class="bi bi-geo-alt-fill me-1 fs-5"></i>${lat.toFixed(4)}, ${lng.toFixed(4)}`;
 }
 
-// Initialize page map
-function initPageMap(lat, lng) {
-    if (pageMap) {
-        pageMap.remove();
-    }
-
-    pageMap = L.map('pageMap').setView([lat, lng], 13);
-
-    L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
-        maxZoom: 19
-    }).addTo(pageMap);
-
-    // Add user marker
-    userMarker = L.marker([lat, lng], {
-        icon: L.divIcon({
-            className: 'user-location-marker',
-            html: '<i class="bi bi-geo-alt-fill pulse-marker" style="font-size: 36px; color: #dc3545; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));"></i>',
-            iconSize: [36, 36],
-            iconAnchor: [18, 36]
-        })
-    }).addTo(pageMap);
-
-    // Add club markers
-    if (allClubs.length > 0) {
-        allClubs.forEach(club => {
-            if (club.gps_lat && club.gps_long) {
-                L.marker([club.gps_lat, club.gps_long]).addTo(pageMap)
-                    .bindPopup(`<b>${club.club_name}</b><br>${club.owner_name || 'N/A'}`);
-            }
-        });
-    }
-
-    setTimeout(() => pageMap.invalidateSize(), 100);
-    document.getElementById('mapSection').style.display = 'block';
-}
 
 // Initialize map in modal
 function initMap(lat, lng) {
@@ -477,14 +408,6 @@ function initMap(lat, lng) {
         updateLocationDisplay(position.lat, position.lng);
         updateModalLocation(position.lat, position.lng);
     });
-
-    // Search radius circle (removed - no red tint on map)
-    // searchRadiusCircle = L.circle([lat, lng], {
-    //     color: '#dc3545',
-    //     fillColor: '#dc3545',
-    //     fillOpacity: 0.1,
-    //     radius: 50000
-    // }).addTo(map);
 
     setTimeout(() => map.invalidateSize(), 100);
 }
@@ -525,7 +448,13 @@ function fetchAllClubs() {
     document.getElementById('loadingSpinner').style.display = 'block';
     document.getElementById('clubsGrid').style.display = 'none';
 
-    fetch(`{{ route('clubs.all') }}`, {
+    // Build URL with location parameters if available
+    let url = `{{ route('clubs.all') }}`;
+    if (userLocation) {
+        url += `?latitude=${userLocation.latitude}&longitude=${userLocation.longitude}`;
+    }
+
+    fetch(url, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -565,99 +494,94 @@ function displayClubs(clubs) {
 
     noResultsContainer.style.display = 'none';
 
-    // Update map markers if page map exists
-    if (pageMap) {
-        // Clear existing club markers (assuming user marker is the first)
-        pageMap.eachLayer(function(layer) {
-            if (layer instanceof L.Marker && layer !== userMarker) {
-                pageMap.removeLayer(layer);
-            }
-        });
-
-        // Add new club markers
-        clubs.forEach(club => {
-            if (club.gps_lat && club.gps_long) {
-                L.marker([club.gps_lat, club.gps_long]).addTo(pageMap)
-                    .bindPopup(`<b>${club.club_name}</b><br>${club.owner_name || 'N/A'}`);
-            }
-        });
-    }
-
     clubs.forEach(club => {
         const card = document.createElement('div');
-        card.className = 'col-md-6 col-lg-4';
+        card.className = 'col';
         card.innerHTML = `
-            <div class="rounded-none border bg-card text-card-foreground shadow-sm hover:shadow-elevated transition-all cursor-pointer overflow-hidden group">
-                <div class="relative h-64 overflow-hidden">
-                    <img src="https://via.placeholder.com/400x200?text=${encodeURIComponent(club.club_name)}" alt="${club.club_name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
-                    <div class="absolute bottom-3 right-3 z-10">
-                        <div class="w-14 h-14 rounded-full border-2 border-white/90 shadow-lg overflow-hidden bg-white/95 backdrop-blur">
-                            <img src="https://via.placeholder.com/50x50?text=Logo" alt="${club.club_name} logo" class="w-full h-full object-contain rounded-full">
+            <div class="card border shadow-sm overflow-hidden club-card" style="border-radius: 0; cursor: pointer; transition: all 0.3s ease;">
+                <!-- Cover Image -->
+                <div class="position-relative overflow-hidden" style="height: 192px;">
+                    <img src="https://via.placeholder.com/400x200?text=${encodeURIComponent(club.club_name)}" alt="${club.club_name}" loading="lazy" class="w-100 h-100 club-cover-img" style="object-fit: cover; transition: transform 0.3s ease;">
+
+                    <!-- Club Logo - Bottom Left -->
+                    <div class="position-absolute" style="bottom: 8px; left: 8px;">
+                        <div class="bg-white shadow border p-0.5" style="width: 80px; height: 80px; border-radius: 50%; border-color: rgba(0,0,0,0.1) !important;">
+                            <img src="https://via.placeholder.com/80x80?text=Logo" alt="${club.club_name} logo" loading="lazy" class="w-100 h-100 rounded-circle" style="object-fit: contain;">
                         </div>
                     </div>
-                    <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent absolute top-4 right-4 bg-brand-red text-white hover:bg-brand-red-dark">Sports Club</div>
+
+                    <!-- Sports Club Badge - Top Left -->
+                    <div class="position-absolute" style="top: 8px; left: 8px;">
+                        <span class="badge text-white px-3 py-1" style="background-color: #dc3545; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">Sports Club</span>
+                    </div>
                 </div>
-                <div class="px-5 pt-4 pb-2">
-                    <h3 class="text-2xl font-bold text-foreground leading-tight line-clamp-2">${club.club_name}</h3>
-                </div>
-                <div class="p-6 px-5 pb-5 pt-2 space-y-3">
-                    <div>
-                        <div class="flex items-center gap-1 text-sm text-brand-red mb-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-navigation w-4 h-4">
+
+                <!-- Card Body -->
+                <div class="p-4" style="background-color: white;">
+                    <div class="mb-3">
+                        <!-- Club Name -->
+                        <h3 class="fw-semibold mb-2 club-title" style="font-size: 1.125rem; color: #1f2937; transition: color 0.3s ease;">${club.club_name}</h3>
+
+                        <!-- Distance -->
+                        <div class="d-flex align-items-center mb-1" style="font-size: 0.875rem; color: #dc3545;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1 flex-shrink-0">
                                 <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
                             </svg>
-                            <span class="font-medium">${club.distance ? club.distance + ' km away' : 'Location available'}</span>
+                            <span class="fw-semibold">${club.distance ? club.distance + ' km away' : 'Location available'}</span>
                         </div>
-                        <div class="flex items-center gap-1 text-sm text-muted-foreground">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-building w-4 h-4">
-                                <rect width="16" height="20" x="4" y="2" rx="2" ry="2"></rect>
-                                <path d="M9 22v-4h6v4"></path>
-                                <path d="M8 6h.01"></path>
-                                <path d="M16 6h.01"></path>
-                                <path d="M12 6h.01"></path>
-                                <path d="M12 10h.01"></path>
-                                <path d="M12 14h.01"></path>
-                                <path d="M16 10h.01"></path>
-                                <path d="M16 14h.01"></path>
-                                <path d="M8 10h.01"></path>
-                                <path d="M8 14h.01"></path>
+
+                        <!-- Address/Owner -->
+                        <div class="d-flex align-items-center text-muted" style="font-size: 0.875rem;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1 flex-shrink-0">
+                                <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
                             </svg>
-                            <span>${club.owner_name || 'N/A'}</span>
+                            <span class="text-truncate">${club.owner_name || 'N/A'}</span>
                         </div>
                     </div>
-                    <div class="grid grid-cols-3 gap-2 border-t pt-3">
-                        <div class="bg-brand-red/5 rounded-lg p-2 border border-brand-red/10 hover:border-brand-red/20 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users w-4 h-4 mx-auto mb-1 text-brand-red">
-                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="9" cy="7" r="4"></circle>
-                                <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                            </svg>
-                            <p class="text-lg font-bold text-center">0</p>
-                            <p class="text-[10px] text-muted-foreground text-center font-medium">Members</p>
+
+                    <!-- Stats Grid -->
+                    <div class="row g-2 text-center mb-3" style="font-size: 0.75rem;">
+                        <div class="col-4">
+                            <div class="p-2 rounded" style="background-color: rgba(220, 53, 69, 0.05);">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-1" style="color: #dc3545;">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                </svg>
+                                <p class="fw-semibold mb-0" style="color: #1f2937;">13</p>
+                                <p class="text-muted mb-0">Members</p>
+                            </div>
                         </div>
-                        <div class="bg-brand-red/5 rounded-lg p-2 border border-brand-red/10 hover:border-brand-red/20 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-package w-4 h-4 mx-auto mb-1 text-brand-red">
-                                <path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"></path>
-                                <path d="M12 22V12"></path>
-                                <path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"></path>
-                                <path d="m7.5 4.27 9 5.15"></path>
-                            </svg>
-                            <p class="text-lg font-bold text-center">0</p>
-                            <p class="text-[10px] text-muted-foreground text-center font-medium">Packages</p>
+                        <div class="col-4">
+                            <div class="p-2 rounded" style="background-color: rgba(220, 53, 69, 0.05);">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-1" style="color: #dc3545;">
+                                    <path d="M14.4 14.4 9.6 9.6"></path>
+                                    <path d="M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"></path>
+                                    <path d="m21.5 21.5-1.4-1.4"></path>
+                                    <path d="M3.9 3.9 2.5 2.5"></path>
+                                    <path d="M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"></path>
+                                </svg>
+                                <p class="fw-semibold mb-0" style="color: #1f2937;">0</p>
+                                <p class="text-muted mb-0">Packages</p>
+                            </div>
                         </div>
-                        <div class="bg-brand-red/5 rounded-lg p-2 border border-brand-red/10 hover:border-brand-red/20 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user w-4 h-4 mx-auto mb-1 text-brand-red">
-                                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="12" cy="7" r="4"></circle>
-                            </svg>
-                            <p class="text-lg font-bold text-center">0</p>
-                            <p class="text-[10px] text-muted-foreground text-center font-medium">Trainers</p>
+                        <div class="col-4">
+                            <div class="p-2 rounded" style="background-color: rgba(220, 53, 69, 0.05);">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-1" style="color: #dc3545;">
+                                    <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path>
+                                </svg>
+                                <p class="fw-semibold mb-0" style="color: #1f2937;">0</p>
+                                <p class="text-muted mb-0">Trainers</p>
+                            </div>
                         </div>
                     </div>
-                    <div class="flex gap-2">
-                        <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:shadow-medium hover:scale-105 h-10 px-4 py-2 flex-1 bg-brand-red hover:bg-brand-red-dark text-white font-semibold shadow-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-plus w-4 h-4 mr-2">
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-danger flex-fill fw-semibold" style="font-size: 0.875rem;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1">
                                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
                                 <circle cx="9" cy="7" r="4"></circle>
                                 <line x1="19" x2="19" y1="8" y2="14"></line>
@@ -665,9 +589,7 @@ function displayClubs(clubs) {
                             </svg>
                             Join Club
                         </button>
-                        <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:text-accent-foreground h-10 px-4 py-2 flex-1 text-brand-red hover:bg-brand-red/10 font-semibold">
-                            View Details
-                        </button>
+                        <button class="btn btn-outline-danger flex-fill fw-semibold" style="font-size: 0.875rem;">View Details</button>
                     </div>
                 </div>
             </div>

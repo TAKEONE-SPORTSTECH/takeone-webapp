@@ -259,6 +259,154 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the roles for the user.
+     */
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class, 'user_roles')
+                    ->withPivot('tenant_id')
+                    ->withTimestamps();
+    }
+
+    /**
+     * Get the subscriptions for the user.
+     */
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(ClubMemberSubscription::class);
+    }
+
+    /**
+     * Get the transactions for the user.
+     */
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(ClubTransaction::class);
+    }
+
+    /**
+     * Get the sent messages for the user.
+     */
+    public function sentMessages(): HasMany
+    {
+        return $this->hasMany(ClubMessage::class, 'sender_id');
+    }
+
+    /**
+     * Get the received messages for the user.
+     */
+    public function receivedMessages(): HasMany
+    {
+        return $this->hasMany(ClubMessage::class, 'recipient_id');
+    }
+
+    /**
+     * Get the reviews written by the user.
+     */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(ClubReview::class);
+    }
+
+    /**
+     * Check if user has a specific role.
+     */
+    public function hasRole(string $roleSlug, ?int $tenantId = null): bool
+    {
+        $query = $this->roles()->where('slug', $roleSlug);
+
+        if ($tenantId !== null) {
+            $query->wherePivot('tenant_id', $tenantId);
+        }
+
+        return $query->exists();
+    }
+
+    /**
+     * Check if user has any of the given roles.
+     */
+    public function hasAnyRole(array $roleSlugs, ?int $tenantId = null): bool
+    {
+        $query = $this->roles()->whereIn('slug', $roleSlugs);
+
+        if ($tenantId !== null) {
+            $query->wherePivot('tenant_id', $tenantId);
+        }
+
+        return $query->exists();
+    }
+
+    /**
+     * Check if user has a specific permission.
+     */
+    public function hasPermission(string $permissionSlug, ?int $tenantId = null): bool
+    {
+        $roles = $tenantId !== null
+            ? $this->roles()->wherePivot('tenant_id', $tenantId)->get()
+            : $this->roles;
+
+        foreach ($roles as $role) {
+            if ($role->hasPermission($permissionSlug)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if user is super admin.
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasRole('super-admin');
+    }
+
+    /**
+     * Check if user is club admin for a specific club.
+     */
+    public function isClubAdmin(?int $tenantId = null): bool
+    {
+        return $this->hasRole('club-admin', $tenantId);
+    }
+
+    /**
+     * Check if user is instructor for a specific club.
+     */
+    public function isInstructor(?int $tenantId = null): bool
+    {
+        return $this->hasRole('instructor', $tenantId);
+    }
+
+    /**
+     * Assign a role to the user.
+     */
+    public function assignRole(string $roleSlug, ?int $tenantId = null): void
+    {
+        $role = Role::where('slug', $roleSlug)->firstOrFail();
+
+        $this->roles()->attach($role->id, ['tenant_id' => $tenantId]);
+    }
+
+    /**
+     * Remove a role from the user.
+     */
+    public function removeRole(string $roleSlug, ?int $tenantId = null): void
+    {
+        $role = Role::where('slug', $roleSlug)->first();
+
+        if (!$role) {
+            return;
+        }
+
+        if ($tenantId !== null) {
+            $this->roles()->wherePivot('tenant_id', $tenantId)->detach($role->id);
+        } else {
+            $this->roles()->detach($role->id);
+        }
+    }
+
+    /**
      * Send the email verification notification.
      * Override to prevent sending the default Laravel notification.
      * We send our custom welcome email instead.

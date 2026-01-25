@@ -80,6 +80,28 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/clubs/all', [ClubController::class, 'all'])->name('clubs.all');
 });
 
+// Platform Admin routes (Super Admin only)
+Route::middleware(['auth', 'verified', 'role:super-admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/', [App\Http\Controllers\Admin\PlatformController::class, 'index'])->name('platform.index');
+
+    // All Clubs Management
+    Route::get('/clubs', [App\Http\Controllers\Admin\PlatformController::class, 'clubs'])->name('platform.clubs');
+    Route::get('/clubs/create', [App\Http\Controllers\Admin\PlatformController::class, 'createClub'])->name('platform.clubs.create');
+    Route::post('/clubs', [App\Http\Controllers\Admin\PlatformController::class, 'storeClub'])->name('platform.clubs.store');
+    Route::get('/clubs/{club}/edit', [App\Http\Controllers\Admin\PlatformController::class, 'editClub'])->name('platform.clubs.edit');
+    Route::put('/clubs/{club}', [App\Http\Controllers\Admin\PlatformController::class, 'updateClub'])->name('platform.clubs.update');
+    Route::delete('/clubs/{club}', [App\Http\Controllers\Admin\PlatformController::class, 'destroyClub'])->name('platform.clubs.destroy');
+
+    // All Members Management
+    Route::get('/members', [App\Http\Controllers\Admin\PlatformController::class, 'members'])->name('platform.members');
+
+    // Database Backup & Restore
+    Route::get('/backup', [App\Http\Controllers\Admin\PlatformController::class, 'backup'])->name('platform.backup');
+    Route::get('/backup/download', [App\Http\Controllers\Admin\PlatformController::class, 'downloadBackup'])->name('platform.backup.download');
+    Route::post('/backup/restore', [App\Http\Controllers\Admin\PlatformController::class, 'restoreBackup'])->name('platform.backup.restore');
+    Route::get('/backup/export-users', [App\Http\Controllers\Admin\PlatformController::class, 'exportAuthUsers'])->name('platform.backup.export-users');
+});
+
 // Family routes
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [FamilyController::class, 'profile'])->name('profile.show');

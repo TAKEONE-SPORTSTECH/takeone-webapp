@@ -415,15 +415,11 @@
                                     <i class="bi bi-gear me-2"></i>Settings
                                 </a>
                                 <div class="dropdown-divider"></div>
-                                @if(Auth::user()->has_business ?? false)
-                                <a class="dropdown-item small" href="#">
-                                    <i class="bi bi-building me-2"></i>Manage My Business
+                                @if(Auth::user()->isSuperAdmin())
+                                <a class="dropdown-item small" href="{{ route('admin.platform.index') }}">
+                                    <i class="bi bi-shield-check me-2"></i>Admin Panel
                                 </a>
-                                @endif
-                                @if((Auth::user()->is_super_admin ?? false) || (Auth::user()->is_moderator ?? false))
-                                <a class="dropdown-item small" href="#">
-                                    <i class="bi bi-shield me-2"></i>Admin Panel
-                                </a>
+                                <div class="dropdown-divider"></div>
                                 @endif
                                 @if((Auth::user()->has_business ?? false) || ((Auth::user()->is_super_admin ?? false) || (Auth::user()->is_moderator ?? false)))
                                 <div class="dropdown-divider"></div>
@@ -450,8 +446,70 @@
         @yield('content')
     </main>
 
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+        @if(session('success'))
+            <div class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true" id="successToast">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        @endif
+        @if(session('error'))
+            <div class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true" id="errorToast">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="bi bi-exclamation-triangle me-2"></i>{{ session('error') }}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        @endif
+        @if(session('info'))
+            <div class="toast align-items-center text-white bg-info border-0" role="alert" aria-live="assertive" aria-atomic="true" id="infoToast">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="bi bi-info-circle me-2"></i>{{ session('info') }}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        @endif
+        @if(session('warning'))
+            <div class="toast align-items-center text-dark bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true" id="warningToast">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="bi bi-exclamation-triangle me-2"></i>{{ session('warning') }}
+                    </div>
+                    <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        @endif
+    </div>
+
     <!-- Bootstrap JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Auto-show and auto-hide toasts
+        document.addEventListener('DOMContentLoaded', function() {
+            const toasts = ['successToast', 'errorToast', 'infoToast', 'warningToast'];
+
+            toasts.forEach(function(toastId) {
+                const toastElement = document.getElementById(toastId);
+                if (toastElement) {
+                    const toast = new bootstrap.Toast(toastElement, {
+                        autohide: true,
+                        delay: 3000
+                    });
+                    toast.show();
+                }
+            });
+        });
+    </script>
 
     <!-- jQuery (required for Select2) -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

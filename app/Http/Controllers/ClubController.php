@@ -104,12 +104,30 @@ class ClubController extends Controller
 
     /**
      * Get all clubs for the map view.
+     * If latitude and longitude are provided, calculate distance and sort by nearest.
      */
-    public function all()
+    public function all(Request $request)
     {
-        $clubs = Tenant::with('owner')
-            ->get()
-            ->map(function ($club) {
+        $userLat = $request->input('latitude');
+        $userLng = $request->input('longitude');
+
+        $clubs = Tenant::with('owner')->get();
+
+        // If user location is provided, calculate distance for each club
+        if ($userLat !== null && $userLng !== null) {
+            $clubsWithDistance = $clubs->map(function ($club) use ($userLat, $userLng) {
+                $distance = null;
+
+                // Calculate distance only if club has GPS coordinates
+                if ($club->gps_lat && $club->gps_long) {
+                    $distance = $this->calculateDistance(
+                        $userLat,
+                        $userLng,
+                        $club->gps_lat,
+                        $club->gps_long
+                    );
+                }
+
                 return [
                     'id' => $club->id,
                     'club_name' => $club->club_name,
@@ -117,14 +135,57 @@ class ClubController extends Controller
                     'logo' => $club->logo,
                     'gps_lat' => $club->gps_lat ? (float) $club->gps_lat : null,
                     'gps_long' => $club->gps_long ? (float) $club->gps_long : null,
+                    'distance' => $distance !== null ? round($distance, 2) : null,
                     'owner_name' => $club->owner ? $club->owner->full_name : 'N/A',
                 ];
             });
 
+            // Sort by distance (nearest first), clubs without GPS coordinates go to the end
+            $clubsWithDistance = $clubsWithDistance->sort(function ($a, $b) {
+                // If both have distance, sort by distance
+                if ($a['distance'] !== null && $b['distance'] !== null) {
+                    return $a['distance'] <=> $b['distance'];
+                }
+                // If only one has distance, prioritize it
+                if ($a['distance'] !== null) {
+                    return -1;
+                }
+                if ($b['distance'] !== null) {
+                    return 1;
+                }
+                // If neither has distance, maintain original order
+                return 0;
+            })->values();
+
+            return response()->json([
+                'success' => true,
+                'clubs' => $clubsWithDistance,
+                'total' => $clubsWithDistance->count(),
+                'user_location' => [
+                    'latitude' => $userLat,
+                    'longitude' => $userLng,
+                ],
+            ]);
+        }
+
+        // If no location provided, return clubs without distance calculation
+        $clubsData = $clubs->map(function ($club) {
+            return [
+                'id' => $club->id,
+                'club_name' => $club->club_name,
+                'slug' => $club->slug,
+                'logo' => $club->logo,
+                'gps_lat' => $club->gps_lat ? (float) $club->gps_lat : null,
+                'gps_long' => $club->gps_long ? (float) $club->gps_long : null,
+                'distance' => null,
+                'owner_name' => $club->owner ? $club->owner->full_name : 'N/A',
+            ];
+        });
+
         return response()->json([
             'success' => true,
-            'clubs' => $clubs,
-            'total' => $clubs->count(),
+            'clubs' => $clubsData,
+            'total' => $clubsData->count(),
         ]);
     }
 }
