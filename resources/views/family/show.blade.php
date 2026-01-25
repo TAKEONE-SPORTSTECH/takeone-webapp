@@ -42,8 +42,8 @@
         <div class="d-flex">
             <!-- Profile Picture -->
             <div style="width: 180px; min-height: 250px; border-radius: 0.375rem 0 0 0.375rem;">
-                @if($relationship->dependent->media_gallery[0] ?? false)
-                    <img src="{{ $relationship->dependent->media_gallery[0] }}" alt="{{ $relationship->dependent->full_name }}" class="w-100 h-100" style="object-fit: cover; border-radius: 0.375rem 0 0 0.375rem;">
+                @if($relationship->dependent->profile_picture)
+                    <img src="{{ asset('storage/' . $relationship->dependent->profile_picture) }}" alt="{{ $relationship->dependent->full_name }}" class="w-100 h-100" style="object-fit: cover; border-radius: 0.375rem 0 0 0.375rem;">
                 @else
                     <div class="w-100 h-100 d-flex align-items-center justify-content-center text-white fw-bold" style="font-size: 3rem; background: linear-gradient(135deg, {{ $relationship->dependent->gender == 'm' ? '#0d6efd 0%, #0a58ca 100%' : '#d63384 0%, #a61e4d 100%' }}); border-radius: 0.375rem 0 0 0.375rem;">
                         {{ strtoupper(substr($relationship->dependent->full_name, 0, 1)) }}

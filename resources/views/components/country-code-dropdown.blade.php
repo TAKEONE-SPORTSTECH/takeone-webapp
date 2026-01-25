@@ -162,8 +162,8 @@
                 }
             }
 
-            // Initialize all country code dropdowns on the page
-            document.querySelectorAll('[id$="List"]').forEach(function(listElement) {
+            // Initialize only country code dropdowns (not nationality dropdowns)
+            document.querySelectorAll('[id$="country_codeList"]').forEach(function(listElement) {
                 const componentId = listElement.id.replace('List', '');
                 initializeCountryDropdown(componentId, countries);
             });

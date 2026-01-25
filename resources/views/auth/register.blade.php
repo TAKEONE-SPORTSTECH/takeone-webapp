@@ -285,15 +285,6 @@
     }
 </style>
 
-<!-- Flag Icons CSS -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@6.6.6/css/flag-icons.min.css">
-
-<!-- Select2 CSS (for nationality dropdown) -->
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-
-<!-- Flatpickr CSS -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-
 <div class="login-page">
     <div class="login-box">
         <div class="card">
@@ -311,11 +302,11 @@
 
                     <!-- Full Name -->
                     <div class="mb-3">
+                        <label for="full_name" class="form-label">Full Name</label>
                         <input id="full_name" type="text"
                                class="form-control @error('full_name') is-invalid @enderror"
                                name="full_name"
                                value="{{ old('full_name') }}"
-                               placeholder="Full Name"
                                required autocomplete="name">
                         @error('full_name')
                             <span class="invalid-feedback" role="alert">
@@ -326,11 +317,11 @@
 
                     <!-- Email Address -->
                     <div class="mb-3">
+                        <label for="email" class="form-label">Email Address</label>
                         <input id="email" type="email"
                                class="form-control @error('email') is-invalid @enderror"
                                name="email"
                                value="{{ old('email') }}"
-                               placeholder="Email Address"
                                required autocomplete="email">
                         @error('email')
                             <span class="invalid-feedback" role="alert">
@@ -341,10 +332,10 @@
 
                     <!-- Password -->
                     <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
                         <input id="password" type="password"
                                class="form-control @error('password') is-invalid @enderror"
                                name="password"
-                               placeholder="Password"
                                required autocomplete="new-password">
                         @error('password')
                             <span class="invalid-feedback" role="alert">
@@ -355,15 +346,16 @@
 
                     <!-- Confirm Password -->
                     <div class="mb-3">
+                        <label for="password-confirm" class="form-label">Confirm Password</label>
                         <input id="password-confirm" type="password"
                                class="form-control"
                                name="password_confirmation"
-                               placeholder="Confirm Password"
                                required autocomplete="new-password">
                     </div>
 
                     <!-- Mobile Number with Country Code -->
                     <div class="mb-3">
+                        <label for="mobile_number" class="form-label">Mobile Number</label>
                         <x-country-code-dropdown
                             name="country_code"
                             id="country_code"
@@ -374,7 +366,6 @@
                                    class="form-control @error('mobile_number') is-invalid @enderror"
                                    name="mobile_number"
                                    value="{{ old('mobile_number') }}"
-                                   placeholder="Mobile Number"
                                    required autocomplete="tel">
                         </x-country-code-dropdown>
                         @error('mobile_number')
@@ -386,11 +377,12 @@
 
                     <!-- Gender -->
                     <div class="mb-3">
+                        <label for="gender" class="form-label">Gender</label>
                         <select id="gender" class="form-select @error('gender') is-invalid @enderror"
                                 name="gender" required>
                             <option value="">Select Gender</option>
-                            <option value="m" {{ old('gender') == 'm' ? 'selected' : '' }}>Male</option>
-                            <option value="f" {{ old('gender') == 'f' ? 'selected' : '' }}>Female</option>
+                            <option value="m" {{ old('gender') == 'm' ? 'selected' : '' }}>♂️ Male</option>
+                            <option value="f" {{ old('gender') == 'f' ? 'selected' : '' }}>♀️ Female</option>
                         </select>
                         @error('gender')
                             <span class="invalid-feedback" role="alert">
@@ -401,15 +393,54 @@
 
                     <!-- Birthdate -->
                     <div class="mb-3">
-                        <input id="birthdate" type="text"
-                               class="flatpickr-input @error('birthdate') is-invalid @enderror"
-                               name="birthdate"
-                               value="{{ old('birthdate') }}"
-                               placeholder="Birthdate"
-                               required
-                               readonly>
+                        <label for="birthdate" class="form-label">Birthdate</label>
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <select id="birth_day" class="form-select @error('birthdate') is-invalid @enderror" required>
+                                    <option value="">Day</option>
+                                    @for($day = 1; $day <= 31; $day++)
+                                        <option value="{{ str_pad($day, 2, '0', STR_PAD_LEFT) }}" {{ old('birth_day') == str_pad($day, 2, '0', STR_PAD_LEFT) ? 'selected' : '' }}>
+                                            {{ $day }}
+                                        </option>
+                                    @endfor
+                                </select>
+                            </div>
+                            <div class="col-4">
+                                <select id="birth_month" class="form-select @error('birthdate') is-invalid @enderror" required>
+                                    <option value="">Month</option>
+                                    <option value="01" {{ old('birth_month') == '01' ? 'selected' : '' }}>January</option>
+                                    <option value="02" {{ old('birth_month') == '02' ? 'selected' : '' }}>February</option>
+                                    <option value="03" {{ old('birth_month') == '03' ? 'selected' : '' }}>March</option>
+                                    <option value="04" {{ old('birth_month') == '04' ? 'selected' : '' }}>April</option>
+                                    <option value="05" {{ old('birth_month') == '05' ? 'selected' : '' }}>May</option>
+                                    <option value="06" {{ old('birth_month') == '06' ? 'selected' : '' }}>June</option>
+                                    <option value="07" {{ old('birth_month') == '07' ? 'selected' : '' }}>July</option>
+                                    <option value="08" {{ old('birth_month') == '08' ? 'selected' : '' }}>August</option>
+                                    <option value="09" {{ old('birth_month') == '09' ? 'selected' : '' }}>September</option>
+                                    <option value="10" {{ old('birth_month') == '10' ? 'selected' : '' }}>October</option>
+                                    <option value="11" {{ old('birth_month') == '11' ? 'selected' : '' }}>November</option>
+                                    <option value="12" {{ old('birth_month') == '12' ? 'selected' : '' }}>December</option>
+                                </select>
+                            </div>
+                            <div class="col-4">
+                                <select id="birth_year" class="form-select @error('birthdate') is-invalid @enderror" required>
+                                    <option value="">Year</option>
+                                    @php
+                                        $currentYear = date('Y');
+                                        $startYear = $currentYear - 10; // Start from 10 years ago
+                                        $endYear = 1900;
+                                    @endphp
+                                    @for($year = $startYear; $year >= $endYear; $year--)
+                                        <option value="{{ $year }}" {{ old('birth_year') == $year ? 'selected' : '' }}>
+                                            {{ $year }}
+                                        </option>
+                                    @endfor
+                                </select>
+                            </div>
+                        </div>
+                        <input type="hidden" id="birthdate" name="birthdate" value="{{ old('birthdate') }}">
                         @error('birthdate')
-                            <span class="invalid-feedback" role="alert">
+                            <span class="invalid-feedback d-block" role="alert">
                                 <strong>{{ $message }}</strong>
                             </span>
                         @enderror
@@ -417,7 +448,7 @@
 
                     <!-- Nationality -->
                     <div class="mb-3">
-                        <x-country-dropdown
+                        <x-nationality-dropdown
                             name="nationality"
                             id="nationality"
                             :value="old('nationality')"
@@ -434,38 +465,40 @@
     <!-- /.login-box -->
 </div>
 
-<!-- jQuery (required for Select2) -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-<!-- Select2 JS -->
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
-<!-- Flatpickr JS -->
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize Flatpickr for birthdate
-        flatpickr('#birthdate', {
-            dateFormat: 'Y-m-d',
-            maxDate: 'today',
-            yearRange: [1900, new Date().getFullYear()],
-            disableMobile: true,
-            showMonths: 1,
-            clickOpens: true,
-            onReady: function(selectedDates, dateStr, instance) {
-                const calendar = instance.calendarContainer;
-                calendar.style.fontSize = '14px';
-            }
-        });
+        // Combine birth date dropdowns into hidden field
+        const birthDay = document.getElementById('birth_day');
+        const birthMonth = document.getElementById('birth_month');
+        const birthYear = document.getElementById('birth_year');
+        const birthdateHidden = document.getElementById('birthdate');
 
-        // Form submission handler
-        $('#registrationForm').on('submit', function(e) {
-            console.log('Form submitting...');
-            console.log('Country code:', $('#country_code').val());
-            console.log('Nationality:', $('#nationality').val());
-            console.log('Mobile number:', $('#mobile_number').val());
-        });
+        function updateBirthdate() {
+            const day = birthDay.value;
+            const month = birthMonth.value;
+            const year = birthYear.value;
+
+            if (day && month && year) {
+                birthdateHidden.value = `${year}-${month}-${day}`;
+            } else {
+                birthdateHidden.value = '';
+            }
+        }
+
+        // Update hidden field when any dropdown changes
+        birthDay.addEventListener('change', updateBirthdate);
+        birthMonth.addEventListener('change', updateBirthdate);
+        birthYear.addEventListener('change', updateBirthdate);
+
+        // Initialize from old value if exists
+        if (birthdateHidden.value) {
+            const parts = birthdateHidden.value.split('-');
+            if (parts.length === 3) {
+                birthYear.value = parts[0];
+                birthMonth.value = parts[1];
+                birthDay.value = parts[2];
+            }
+        }
 
         // Error handler
         window.onerror = function(message, source, lineno, colno, error) {
@@ -475,8 +508,16 @@
             console.error('Error:', error);
         };
     });
+
+    // Form submission handler
+    document.getElementById('registrationForm').addEventListener('submit', function(e) {
+        console.log('Form submitting...');
+        console.log('Country code:', document.getElementById('country_code').value);
+        console.log('Nationality:', document.getElementById('nationality').value);
+        console.log('Mobile number:', document.getElementById('mobile_number').value);
+        console.log('Birthdate:', document.getElementById('birthdate').value);
+    });
 </script>
 
 @stack('styles')
-@stack('scripts')
 @endsection

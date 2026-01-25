@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "d3c16cb86c42230c6c023d9a5d9bcf42",
+    "content-hash": "d81f57cbd65389eb9d9702b5825564c1",
     "packages": [
         {
             "name": "brick/math",
@@ -5855,6 +5855,44 @@
             "time": "2025-12-18T07:04:31+00:00"
         },
         {
+            "name": "takeone/cropper",
+            "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://git.innovator.bh/ghassan/laravel-image-cropper",
+                "reference": "155876bd2165271116f7d8ea3cf3afddd9511ec9"
+            },
+            "require": {
+                "laravel/framework": "^11.0|^12.0",
+                "php": "^8.2"
+            },
+            "default-branch": true,
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Takeone\\Cropper\\CropperServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Takeone\\Cropper\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Ghassan",
+                    "email": "ghassan.yousif.83@gmail.com"
+                }
+            ],
+            "description": "A professional image cropping component for Laravel using Bootstrap and Cropme.",
+            "time": "2026-01-25T11:58:48+00:00"
+        },
+        {
             "name": "tijsverkoyen/css-to-inline-styles",
             "version": "v2.4.0",
             "source": {
@@ -8434,12 +8472,14 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": {
+        "takeone/cropper": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
         "php": "^8.2"
     },
-    "platform-dev": {},
+    "platform-dev": [],
     "plugin-api-version": "2.6.0"
 }

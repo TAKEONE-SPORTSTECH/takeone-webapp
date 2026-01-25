@@ -12,14 +12,40 @@
                     <!-- Profile Picture Section -->
                     <div class="mb-4 text-center">
                         <div class="mb-3">
-                            <img src="{{ $user->profile_picture ? asset('storage/' . $user->profile_picture) : asset('images/default-avatar.png') }}"
-                                 alt="Profile Picture"
-                                 class="rounded-circle"
-                                 style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #dee2e6;">
+                            @if($user->profile_picture && file_exists(public_path('storage/' . $user->profile_picture)))
+                                <img src="{{ asset('storage/' . $user->profile_picture) }}"
+                                     alt="Profile Picture"
+                                     style="width: 300px; height: 400px; object-fit: cover; border: 3px solid #dee2e6; border-radius: 8px;">
+                            @elseif(file_exists(public_path('storage/images/profiles/profile_' . $user->id . '.png')))
+                                <img src="{{ asset('storage/images/profiles/profile_' . $user->id . '.png') }}"
+                                     alt="Profile Picture"
+                                     style="width: 300px; height: 400px; object-fit: cover; border: 3px solid #dee2e6; border-radius: 8px;">
+                            @elseif(file_exists(public_path('storage/images/profiles/profile_' . $user->id . '.jpg')))
+                                <img src="{{ asset('storage/images/profiles/profile_' . $user->id . '.jpg') }}"
+                                     alt="Profile Picture"
+                                     style="width: 300px; height: 400px; object-fit: cover; border: 3px solid #dee2e6; border-radius: 8px;">
+                            @elseif(file_exists(public_path('storage/images/profiles/profile_' . $user->id . '.jpeg')))
+                                <img src="{{ asset('storage/images/profiles/profile_' . $user->id . '.jpeg') }}"
+                                     alt="Profile Picture"
+                                     style="width: 300px; height: 400px; object-fit: cover; border: 3px solid #dee2e6; border-radius: 8px;">
+                            @else
+                                <div style="width: 300px; height: 400px; background-color: #f0f0f0; border: 3px solid #dee2e6; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                                    <div class="text-center">
+                                        <i class="bi bi-person-circle" style="font-size: 100px; color: #dee2e6;"></i>
+                                        <p class="text-muted mt-2">No profile picture</p>
+                                    </div>
+                                </div>
+                            @endif
                         </div>
-                        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#profilePictureModal">
-                            <i class="fas fa-camera"></i> Change Profile Picture
-                        </button>
+                        <x-takeone-cropper
+                            id="profile_picture"
+                            width="300"
+                            height="400"
+                            shape="square"
+                            folder="images/profiles"
+                            filename="profile_{{ $user->id }}"
+                            uploadUrl="{{ route('profile.upload-picture') }}"
+                        />
                     </div>
 
                     <form method="POST" action="{{ route('profile.update') }}">
@@ -196,14 +222,6 @@
         </div>
     </div>
 
-    <!-- Profile Picture Upload Modal -->
-    <x-image-upload-modal
-        id="profilePictureModal"
-        aspectRatio="1"
-        maxSizeMB="1"
-        title="Upload Profile Picture"
-        uploadUrl="{{ route('profile.upload-picture') }}"
-    />
 </div>
 
 @push('scripts')

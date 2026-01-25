@@ -447,5 +447,8 @@
     @vite(['resources/js/app.js'])
 
     @stack('scripts')
+
+    <!-- Modals Stack (for cropper and other modals) -->
+    @stack('modals')
 </body>
 </html>

@@ -1,114 +1,166 @@
-@props(['name' => 'nationality', 'id' => 'nationality', 'value' => '', 'required' => false, 'error' => null])
+@props(['name' => 'nationality', 'id' => 'nationality', 'value' => '', 'required' => false, 'error' => null, 'label' => 'Nationality'])
 
-<select id="{{ $id }}"
-        class="form-select nationality-select @error($name) is-invalid @enderror"
-        name="{{ $name }}"
-        {{ $required ? 'required' : '' }}>
-    <option value="">Select Nationality</option>
-</select>
+<label for="{{ $id }}" class="form-label">{{ $label }}</label>
+<div class="dropdown w-100" onclick="event.stopPropagation()">
+    <button class="form-select dropdown-toggle d-flex align-items-center justify-content-between @error($name) is-invalid @enderror"
+            type="button"
+            id="{{ $id }}Dropdown"
+            data-bs-toggle="dropdown"
+            data-bs-auto-close="outside"
+            aria-expanded="false"
+            style="text-align: left; background-color: rgba(255,255,255,0.8);">
+        <span class="d-flex align-items-center">
+            <span id="{{ $id }}SelectedFlag"></span>
+            <span class="country-label" id="{{ $id }}SelectedCountry">Select Nationality</span>
+        </span>
+    </button>
+
+    <div class="dropdown-menu p-2 w-100" aria-labelledby="{{ $id }}Dropdown" onclick="event.stopPropagation()">
+        <input type="text"
+               class="form-control form-control-sm mb-2"
+               placeholder="Search country..."
+               id="{{ $id }}Search"
+               onmousedown="event.stopPropagation()"
+               onfocus="event.stopPropagation()"
+               oninput="event.stopPropagation()"
+               onkeydown="event.stopPropagation()"
+               onkeyup="event.stopPropagation()">
+
+        <div class="country-list" id="{{ $id }}List" style="max-height: 300px; overflow-y: auto;">
+            <!-- Countries will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <input type="hidden" id="{{ $id }}" name="{{ $name }}" value="{{ $value }}" {{ $required ? 'required' : '' }}>
+</div>
 
 @if($error)
-    <span class="invalid-feedback" role="alert">
+    <span class="invalid-feedback d-block" role="alert">
         <strong>{{ $error }}</strong>
     </span>
 @endif
 
 @once
+    @push('styles')
+    <style>
+        .country-dropdown-btn {
+            min-width: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .country-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .dropdown-item {
+            cursor: pointer;
+        }
+
+        .dropdown-item:hover {
+            background-color: #f8f9fa;
+        }
+    </style>
+    @endpush
+
     @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Country data for nationality
-            const countries = [
-                { name: 'United States', flagCode: 'us' },
-                { name: 'Canada', flagCode: 'ca' },
-                { name: 'United Kingdom', flagCode: 'gb' },
-                { name: 'United Arab Emirates', flagCode: 'ae' },
-                { name: 'Saudi Arabia', flagCode: 'sa' },
-                { name: 'Qatar', flagCode: 'qa' },
-                { name: 'Kuwait', flagCode: 'kw' },
-                { name: 'Bahrain', flagCode: 'bh' },
-                { name: 'Oman', flagCode: 'om' },
-                { name: 'Egypt', flagCode: 'eg' },
-                { name: 'India', flagCode: 'in' },
-                { name: 'Pakistan', flagCode: 'pk' },
-                { name: 'Bangladesh', flagCode: 'bd' },
-                { name: 'Malaysia', flagCode: 'my' },
-                { name: 'Singapore', flagCode: 'sg' },
-                { name: 'Japan', flagCode: 'jp' },
-                { name: 'China', flagCode: 'cn' },
-                { name: 'South Korea', flagCode: 'kr' },
-                { name: 'Australia', flagCode: 'au' },
-                { name: 'Germany', flagCode: 'de' },
-                { name: 'France', flagCode: 'fr' },
-                { name: 'Italy', flagCode: 'it' },
-                { name: 'Spain', flagCode: 'es' },
-                { name: 'Netherlands', flagCode: 'nl' },
-                { name: 'Sweden', flagCode: 'se' },
-                { name: 'Norway', flagCode: 'no' },
-                { name: 'Denmark', flagCode: 'dk' },
-                { name: 'Finland', flagCode: 'fi' },
-                { name: 'Switzerland', flagCode: 'ch' },
-                { name: 'Austria', flagCode: 'at' },
-                { name: 'Poland', flagCode: 'pl' },
-                { name: 'Czech Republic', flagCode: 'cz' },
-                { name: 'Hungary', flagCode: 'hu' },
-                { name: 'Romania', flagCode: 'ro' },
-                { name: 'Greece', flagCode: 'gr' },
-                { name: 'Turkey', flagCode: 'tr' },
-                { name: 'Russia', flagCode: 'ru' },
-                { name: 'Brazil', flagCode: 'br' },
-                { name: 'Mexico', flagCode: 'mx' },
-                { name: 'Argentina', flagCode: 'ar' },
-                { name: 'Chile', flagCode: 'cl' },
-                { name: 'Colombia', flagCode: 'co' },
-                { name: 'South Africa', flagCode: 'za' },
-                { name: 'Nigeria', flagCode: 'ng' },
-                { name: 'Kenya', flagCode: 'ke' },
-                { name: 'Sri Lanka', flagCode: 'lk' },
-                { name: 'Vietnam', flagCode: 'vn' },
-                { name: 'Thailand', flagCode: 'th' },
-                { name: 'Indonesia', flagCode: 'id' },
-                { name: 'Philippines', flagCode: 'ph' },
-                { name: 'New Zealand', flagCode: 'nz' },
-                { name: 'Portugal', flagCode: 'pt' },
-                { name: 'Ireland', flagCode: 'ie' },
-                { name: 'Israel', flagCode: 'il' },
-                { name: 'Jordan', flagCode: 'jo' },
-                { name: 'Lebanon', flagCode: 'lb' },
-                { name: 'Iraq', flagCode: 'iq' },
-            ];
-
-            // Initialize all nationality dropdowns on the page
-            document.querySelectorAll('.nationality-select').forEach(function(selectElement) {
-                if (typeof $ !== 'undefined' && $.fn.select2) {
-                    const $select = $(selectElement);
-
-                    $select.select2({
-                        data: countries.map(country => ({
-                            id: country.name,
-                            text: country.name,
-                            flagCode: country.flagCode
-                        })),
-                        templateResult: function(data) {
-                            if (!data.id) return data.text;
-                            return $(`<span><span class="fi fi-${data.flagCode} me-2"></span> ${data.text}</span>`);
-                        },
-                        templateSelection: function(data) {
-                            if (!data.id) return data.text;
-                            return $(`<span><span class="fi fi-${data.flagCode} me-2"></span> ${data.text}</span>`);
-                        },
-                        placeholder: 'Select Nationality',
-                        allowClear: true,
-                        width: '100%'
+            // Load countries from JSON file
+            fetch('/data/countries.json')
+                .then(response => response.json())
+                .then(countries => {
+                    // Initialize only nationality dropdowns (not country code dropdowns)
+                    document.querySelectorAll('[id$="nationalityList"]').forEach(function(listElement) {
+                        const componentId = listElement.id.replace('List', '');
+                        initializeNationalityDropdown(componentId, countries);
                     });
+                })
+                .catch(error => console.error('Error loading countries:', error));
 
-                    // Restore value if provided
-                    const initialValue = selectElement.getAttribute('data-value') || '{{ $value }}';
-                    if (initialValue) {
-                        $select.val(initialValue).trigger('change');
+            function initializeNationalityDropdown(componentId, countries) {
+                const countryList = document.getElementById(componentId + 'List');
+                if (!countryList) return;
+
+                // Clear existing items
+                countryList.innerHTML = '';
+
+                // Populate country dropdown
+                countries.forEach(country => {
+                    const button = document.createElement('button');
+                    button.className = 'dropdown-item d-flex align-items-center';
+                    button.type = 'button';
+                    button.setAttribute('data-country-name', country.name);
+                    button.setAttribute('data-flag', country.flag);
+                    button.setAttribute('data-search', country.name.toLowerCase());
+
+                    // Convert flag code to emoji
+                    const flagEmoji = country.iso2
+                        .toUpperCase()
+                        .split('')
+                        .map(char => String.fromCodePoint(127397 + char.charCodeAt(0)))
+                        .join('');
+
+                    button.innerHTML = `
+                        <span class="me-2">${flagEmoji}</span>
+                        <span>${country.name}</span>
+                    `;
+                    button.addEventListener('click', function() {
+                        selectNationality(componentId, country.name, flagEmoji);
+                    });
+                    countryList.appendChild(button);
+                });
+
+                // Search functionality
+                const searchInput = document.getElementById(componentId + 'Search');
+                if (searchInput) {
+                    searchInput.addEventListener('input', function(e) {
+                        const searchTerm = e.target.value.toLowerCase();
+                        const items = countryList.querySelectorAll('.dropdown-item');
+                        items.forEach(item => {
+                            const searchText = item.getAttribute('data-search') || '';
+                            if (searchText.includes(searchTerm)) {
+                                item.classList.remove('d-none');
+                            } else {
+                                item.classList.add('d-none');
+                            }
+                        });
+                    });
+                }
+
+                // Set initial value if provided
+                const hiddenInput = document.getElementById(componentId);
+                if (hiddenInput && hiddenInput.value) {
+                    const initialCountry = countries.find(c => c.name === hiddenInput.value);
+                    if (initialCountry) {
+                        const flagEmoji = initialCountry.iso2
+                            .toUpperCase()
+                            .split('')
+                            .map(char => String.fromCodePoint(127397 + char.charCodeAt(0)))
+                            .join('');
+                        selectNationality(componentId, initialCountry.name, flagEmoji);
                     }
                 }
-            });
+            }
+
+            function selectNationality(componentId, name, flag) {
+                const flagElement = document.getElementById(componentId + 'SelectedFlag');
+                const countryElement = document.getElementById(componentId + 'SelectedCountry');
+                const hiddenInput = document.getElementById(componentId);
+
+                if (flagElement) flagElement.textContent = flag + ' ';
+                if (countryElement) countryElement.textContent = name;
+                if (hiddenInput) hiddenInput.value = name;
+
+                // Close the dropdown after selection
+                const dropdownButton = document.getElementById(componentId + 'Dropdown');
+                if (dropdownButton) {
+                    const dropdown = bootstrap.Dropdown.getInstance(dropdownButton);
+                    if (dropdown) dropdown.hide();
+                }
+            }
         });
     </script>
     @endpush

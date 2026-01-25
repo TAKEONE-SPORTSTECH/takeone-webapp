@@ -158,39 +158,44 @@ class FamilyController extends Controller
     public function uploadProfilePicture(Request $request)
     {
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
+            'image' => 'required',
+            'folder' => 'required|string',
+            'filename' => 'required|string',
         ]);
 
-        $user = Auth::user();
+        try {
+            $user = Auth::user();
 
-        if ($request->hasFile('image')) {
-            $image = $request->file('image');
+            // Handle base64 image from cropper
+            $imageData = $request->image;
+            $imageParts = explode(";base64,", $imageData);
+            $imageTypeAux = explode("image/", $imageParts[0]);
+            $extension = $imageTypeAux[1];
+            $imageBinary = base64_decode($imageParts[1]);
 
-            // Generate unique filename
-            $filename = 'profile_' . $user->id . '_' . time() . '.' . $image->getClientOriginalExtension();
-
-            // Store in public/images/profiles
-            $path = $image->storeAs('images/profiles', $filename, 'public');
+            $folder = trim($request->folder, '/');
+            $fileName = $request->filename . '.' . $extension;
+            $fullPath = $folder . '/' . $fileName;
 
             // Delete old profile picture if exists
             if ($user->profile_picture && \Storage::disk('public')->exists($user->profile_picture)) {
                 \Storage::disk('public')->delete($user->profile_picture);
             }
 
-            // Update user
-            $user->update(['profile_picture' => $path]);
+            // Store in the public disk (storage/app/public)
+            \Storage::disk('public')->put($fullPath, $imageBinary);
+
+            // Update user's profile_picture field
+            $user->update(['profile_picture' => $fullPath]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Profile picture uploaded successfully.',
-                'path' => $path,
+                'path' => $fullPath,
+                'url' => asset('storage/' . $fullPath)
             ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
-
-        return response()->json([
-            'success' => false,
-            'message' => 'No image file provided.',
-        ], 400);
     }
 
     /**
