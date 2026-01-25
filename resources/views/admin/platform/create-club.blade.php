@@ -20,8 +20,13 @@
                         <select class="form-select @error('owner_user_id') is-invalid @enderror" id="owner_user_id" name="owner_user_id" required>
                             <option value="">Select Owner</option>
                             @foreach($users as $user)
-                                <option value="{{ $user->id }}" {{ old('owner_user_id') == $user->id ? 'selected' : '' }}>
-                                    {{ $user->full_name }} ({{ $user->email }})
+                                <option value="{{ $user['id'] }}"
+                                        data-name="{{ $user['full_name'] }}"
+                                        data-email="{{ $user['email'] }}"
+                                        data-mobile="{{ $user['mobile'] ?? '' }}"
+                                        data-picture="{{ $user['profile_picture'] ?? '' }}"
+                                        {{ old('owner_user_id') == $user['id'] ? 'selected' : '' }}>
+                                    {{ $user['full_name'] }}
                                 </option>
                             @endforeach
                         </select>
@@ -173,6 +178,124 @@
 </div>
 @endsection
 
+@push('styles')
+<style>
+    /* Custom Select2 Styling for User Dropdown */
+    .select2-container--default .select2-results__option {
+        padding: 0 !important;
+    }
+
+    .user-option {
+        display: flex;
+        align-items: center;
+        padding: 10px 12px;
+        gap: 12px;
+    }
+
+    .user-option:hover {
+        background-color: hsl(var(--primary) / 0.1);
+    }
+
+    .user-avatar {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+        border: 2px solid hsl(var(--border));
+    }
+
+    .user-avatar-placeholder {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-hover)));
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 18px;
+        flex-shrink: 0;
+        border: 2px solid hsl(var(--border));
+    }
+
+    .user-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .user-name {
+        font-weight: 600;
+        font-size: 14px;
+        color: hsl(var(--foreground));
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .user-details {
+        font-size: 12px;
+        color: hsl(var(--muted-foreground));
+        margin: 2px 0 0 0;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .user-detail-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .select2-container--default .select2-selection--single {
+        height: 38px;
+        border: 1px solid hsl(var(--border));
+        border-radius: 0.375rem;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 36px;
+        padding-left: 12px;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px;
+    }
+
+    .select2-dropdown {
+        border: 1px solid hsl(var(--border));
+        border-radius: 0.375rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .select2-search--dropdown .select2-search__field {
+        border: 1px solid hsl(var(--border));
+        border-radius: 0.375rem;
+        padding: 8px 12px;
+    }
+
+    .select2-search--dropdown .select2-search__field:focus {
+        outline: none;
+        border-color: hsl(var(--primary));
+        box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+    }
+
+    .select2-results__option--highlighted {
+        background-color: hsl(var(--primary)) !important;
+        color: white !important;
+    }
+
+    .select2-results__option--highlighted .user-name,
+    .select2-results__option--highlighted .user-details,
+    .select2-results__option--highlighted .user-detail-item {
+        color: white !important;
+    }
+</style>
+@endpush
+
 @push('scripts')
 <script>
 // Auto-generate slug from club name
@@ -182,6 +305,101 @@ document.getElementById('club_name').addEventListener('input', function(e) {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '');
     document.getElementById('slug').value = slug;
+});
+
+// Initialize Select2 for owner dropdown
+$(document).ready(function() {
+    $('#owner_user_id').select2({
+        placeholder: 'Search by name, email, or phone...',
+        allowClear: true,
+        width: '100%',
+        templateResult: formatUser,
+        templateSelection: formatUserSelection,
+        matcher: customMatcher
+    });
+
+    // Custom template for dropdown options
+    function formatUser(user) {
+        if (!user.id) {
+            return user.text;
+        }
+
+        var $user = $(user.element);
+        var name = $user.data('name');
+        var email = $user.data('email');
+        var mobile = $user.data('mobile');
+        var picture = $user.data('picture');
+
+        var avatarHtml = '';
+        if (picture) {
+            avatarHtml = '<img src="' + picture + '" class="user-avatar" alt="' + name + '">';
+        } else {
+            var initial = name ? name.charAt(0).toUpperCase() : '?';
+            avatarHtml = '<div class="user-avatar-placeholder">' + initial + '</div>';
+        }
+
+        var detailsHtml = '<div class="user-details">';
+        if (email) {
+            detailsHtml += '<span class="user-detail-item"><i class="bi bi-envelope"></i> ' + email + '</span>';
+        }
+        if (mobile) {
+            detailsHtml += '<span class="user-detail-item"><i class="bi bi-phone"></i> ' + mobile + '</span>';
+        }
+        detailsHtml += '</div>';
+
+        var $container = $(
+            '<div class="user-option">' +
+                avatarHtml +
+                '<div class="user-info">' +
+                    '<div class="user-name">' + name + '</div>' +
+                    detailsHtml +
+                '</div>' +
+            '</div>'
+        );
+
+        return $container;
+    }
+
+    // Custom template for selected option
+    function formatUserSelection(user) {
+        if (!user.id) {
+            return user.text;
+        }
+
+        var $user = $(user.element);
+        var name = $user.data('name');
+        return name || user.text;
+    }
+
+    // Custom matcher for searching by name, email, or phone
+    function customMatcher(params, data) {
+        // If there are no search terms, return all data
+        if ($.trim(params.term) === '') {
+            return data;
+        }
+
+        // Do not display the item if there is no 'text' property
+        if (typeof data.text === 'undefined') {
+            return null;
+        }
+
+        var $option = $(data.element);
+        var name = $option.data('name') || '';
+        var email = $option.data('email') || '';
+        var mobile = $option.data('mobile') || '';
+
+        var searchTerm = params.term.toLowerCase();
+
+        // Check if the search term matches name, email, or mobile
+        if (name.toLowerCase().indexOf(searchTerm) > -1 ||
+            email.toLowerCase().indexOf(searchTerm) > -1 ||
+            mobile.toLowerCase().indexOf(searchTerm) > -1) {
+            return data;
+        }
+
+        // Return null if the term should not be displayed
+        return null;
+    }
 });
 </script>
 @endpush

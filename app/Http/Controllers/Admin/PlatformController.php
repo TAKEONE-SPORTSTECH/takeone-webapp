@@ -73,7 +73,17 @@ class PlatformController extends Controller
      */
     public function createClub()
     {
-        $users = User::orderBy('full_name')->get();
+        $users = User::orderBy('full_name')->get()->map(function ($user) {
+            return [
+                'id' => $user->id,
+                'full_name' => $user->full_name,
+                'email' => $user->email,
+                'mobile' => $user->mobile_formatted,
+                'profile_picture' => $user->profile_picture
+                    ? asset('storage/' . $user->profile_picture)
+                    : null,
+            ];
+        });
         return view('admin.platform.create-club', compact('users'));
     }
 
@@ -132,7 +142,17 @@ class PlatformController extends Controller
      */
     public function editClub(Tenant $club)
     {
-        $users = User::orderBy('full_name')->get();
+        $users = User::orderBy('full_name')->get()->map(function ($user) {
+            return [
+                'id' => $user->id,
+                'full_name' => $user->full_name,
+                'email' => $user->email,
+                'mobile' => $user->mobile_formatted,
+                'profile_picture' => $user->profile_picture
+                    ? asset('storage/' . $user->profile_picture)
+                    : null,
+            ];
+        });
         return view('admin.platform.edit-club', compact('club', 'users'));
     }
 
