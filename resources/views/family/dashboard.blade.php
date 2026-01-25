@@ -20,8 +20,8 @@
                         <div class="d-flex align-items-start gap-3">
                             <div class="position-relative">
                                 <div class="rounded-circle border border-4 border-white shadow" style="width: 80px; height: 80px; overflow: hidden; box-shadow: 0 0 0 2px {{ $relationship->dependent->gender == 'm' ? 'rgba(147, 51, 234, 0.3)' : 'rgba(214, 51, 132, 0.3)' }} !important;">
-                                @if($relationship->dependent->media_gallery[0] ?? false)
-                                    <img src="{{ $relationship->dependent->media_gallery[0] }}" alt="{{ $relationship->dependent->full_name }}" class="w-100 h-100" style="object-fit: cover;">
+                                @if($relationship->dependent->profile_picture)
+                                    <img src="{{ asset('storage/' . $relationship->dependent->profile_picture) }}" alt="{{ $relationship->dependent->full_name }}" class="w-100 h-100" style="object-fit: cover;">
                                 @else
                                     <div class="w-100 h-100 d-flex align-items-center justify-content-center text-white fw-bold fs-4" style="background: linear-gradient(135deg, {{ $relationship->dependent->gender == 'm' ? '#8b5cf6 0%, #7c3aed 100%' : '#d63384 0%, #a61e4d 100%' }});">
                                         {{ strtoupper(substr($relationship->dependent->full_name, 0, 1)) }}

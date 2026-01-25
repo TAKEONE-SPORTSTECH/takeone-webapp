@@ -12,14 +12,27 @@
                     <!-- Profile Picture Section -->
                     <div class="mb-4 text-center">
                         <div class="mb-3">
-                            <img src="{{ $relationship->dependent->profile_picture ? asset('storage/' . $relationship->dependent->profile_picture) : asset('images/default-avatar.png') }}"
-                                 alt="Profile Picture"
-                                 class="rounded-circle"
-                                 style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #dee2e6;">
+                            @if($relationship->dependent->profile_picture)
+                                <img src="{{ asset('storage/' . $relationship->dependent->profile_picture) }}"
+                                     alt="Profile Picture"
+                                     class="rounded-circle"
+                                     style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #dee2e6;">
+                            @else
+                                <div class="rounded-circle d-inline-flex align-items-center justify-content-center text-white fw-bold"
+                                     style="width: 120px; height: 120px; font-size: 3rem; background: linear-gradient(135deg, {{ $relationship->dependent->gender == 'm' ? '#0d6efd 0%, #0a58ca 100%' : '#d63384 0%, #a61e4d 100%' }}); border: 3px solid #dee2e6;">
+                                    {{ strtoupper(substr($relationship->dependent->full_name, 0, 1)) }}
+                                </div>
+                            @endif
                         </div>
-                        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#profilePictureModal">
-                            <i class="fas fa-camera"></i> Change Profile Picture
-                        </button>
+                        <x-takeone-cropper
+                            id="family_member_{{ $relationship->dependent->id }}"
+                            width="300"
+                            height="400"
+                            shape="square"
+                            folder="images/profiles"
+                            filename="profile_{{ $relationship->dependent->id }}"
+                            uploadUrl="{{ route('family.upload-picture', $relationship->dependent->id) }}"
+                        />
                     </div>
 
                     <form method="POST" action="{{ route('family.update', $relationship->dependent->id) }}">
@@ -246,14 +259,6 @@
         </div>
     </div>
 
-    <!-- Profile Picture Upload Modal -->
-    <x-image-upload-modal
-        id="profilePictureModal"
-        aspectRatio="1"
-        maxSizeMB="1"
-        title="Upload Profile Picture"
-        uploadUrl="{{ route('family.upload-picture', $relationship->dependent->id) }}"
-    />
 </div>
 
 <script>

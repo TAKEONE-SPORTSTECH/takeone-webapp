@@ -279,6 +279,22 @@
         .nav-icon-btn.dropdown-toggle::after {
             display: none;
         }
+
+        /* Vertical alignment fix for navbar items */
+        .navbar-nav {
+            display: flex;
+            align-items: center;
+        }
+
+        .navbar-nav .nav-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .navbar-nav .nav-link {
+            display: flex;
+            align-items: center;
+        }
     </style>
 
     @stack('styles')
