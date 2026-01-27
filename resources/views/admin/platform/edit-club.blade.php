@@ -12,7 +12,7 @@
                 <span class="badge bg-secondary">{{ $club->slug }}</span>
             </div>
             <div class="card-body">
-                <form action="{{ route('admin.platform.clubs.update', $club) }}" method="POST" enctype="multipart/form-data">
+                <form action="{{ route('admin.platform.clubs.update', $club) }}" method="POST">
                     @csrf
                     @method('PUT')
 
@@ -146,33 +146,45 @@
                     <h6 class="border-bottom pb-2 mb-3 mt-4">Branding</h6>
 
                     <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="logo" class="form-label">Club Logo</label>
-                            @if($club->logo)
-                                <div class="mb-2">
-                                    <img src="{{ asset('storage/' . $club->logo) }}" alt="Current Logo" class="img-thumbnail" style="max-width: 100px;">
-                                    <small class="d-block text-muted">Current logo</small>
-                                </div>
-                            @endif
-                            <input type="file" class="form-control @error('logo') is-invalid @enderror" id="logo" name="logo" accept="image/*">
-                            @error('logo')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                            <small class="text-muted">Leave empty to keep current logo</small>
+                        <div class="col-md-6 text-center">
+                            <label class="form-label d-block">Club Logo</label>
+                            <x-image-upload
+                                id="club_logo"
+                                name="logo"
+                                :width="200"
+                                :height="200"
+                                shape="square"
+                                folder="clubs/{{ $club->id }}/logos"
+                                filename="logo_{{ $club->id }}"
+                                uploadUrl="{{ route('admin.platform.clubs.upload-logo', $club) }}"
+                                :currentImage="$club->logo ? asset('storage/' . $club->logo) : ''"
+                                placeholder="No logo"
+                                placeholderIcon="bi-building"
+                                buttonText="Change Logo"
+                                buttonClass="btn btn-success btn-sm"
+                                :rounded="false"
+                            />
+                            <small class="text-muted d-block mt-2">Recommended: Square image, max 2MB</small>
                         </div>
-                        <div class="col-md-6">
-                            <label for="cover_image" class="form-label">Cover Image</label>
-                            @if($club->cover_image)
-                                <div class="mb-2">
-                                    <img src="{{ asset('storage/' . $club->cover_image) }}" alt="Current Cover" class="img-thumbnail" style="max-width: 200px;">
-                                    <small class="d-block text-muted">Current cover image</small>
-                                </div>
-                            @endif
-                            <input type="file" class="form-control @error('cover_image') is-invalid @enderror" id="cover_image" name="cover_image" accept="image/*">
-                            @error('cover_image')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                            <small class="text-muted">Leave empty to keep current cover</small>
+                        <div class="col-md-6 text-center">
+                            <label class="form-label d-block">Cover Image</label>
+                            <x-image-upload
+                                id="club_cover"
+                                name="cover_image"
+                                :width="600"
+                                :height="200"
+                                shape="square"
+                                folder="clubs/{{ $club->id }}/covers"
+                                filename="cover_{{ $club->id }}"
+                                uploadUrl="{{ route('admin.platform.clubs.upload-cover', $club) }}"
+                                :currentImage="$club->cover_image ? asset('storage/' . $club->cover_image) : ''"
+                                placeholder="No cover"
+                                placeholderIcon="bi-image"
+                                buttonText="Change Cover"
+                                buttonClass="btn btn-success btn-sm"
+                                :rounded="false"
+                            />
+                            <small class="text-muted d-block mt-2">Recommended: 1200x400px, max 2MB</small>
                         </div>
                     </div>
 

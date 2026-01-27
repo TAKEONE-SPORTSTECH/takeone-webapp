@@ -22,7 +22,7 @@
                onkeydown="event.stopPropagation()"
                onkeyup="event.stopPropagation()">
 
-        <div class="country-list" id="{{ $id }}List" style="max-height: 300px; overflow-y: auto;">
+        <div class="country-list country-code-dropdown-list" id="{{ $id }}List" data-component-id="{{ $id }}" style="max-height: 300px; overflow-y: auto;">
             <!-- Countries will be populated by JavaScript -->
         </div>
     </div>
@@ -162,9 +162,9 @@
                 }
             }
 
-            // Initialize only country code dropdowns (not nationality dropdowns)
-            document.querySelectorAll('[id$="country_codeList"]').forEach(function(listElement) {
-                const componentId = listElement.id.replace('List', '');
+            // Initialize all country code dropdowns
+            document.querySelectorAll('.country-code-dropdown-list').forEach(function(listElement) {
+                const componentId = listElement.getAttribute('data-component-id');
                 initializeCountryDropdown(componentId, countries);
             });
 

@@ -206,7 +206,7 @@
             right: -2px;
             width: 10px;
             height: 10px;
-            background-color: #28a745;
+            background-color: hsl(var(--success));
             border-radius: 50%;
             border: 2px solid white;
         }

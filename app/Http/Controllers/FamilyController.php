@@ -13,6 +13,7 @@ use App\Models\ClubAffiliation;
 use App\Services\FamilyService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class FamilyController extends Controller
 {
@@ -89,9 +90,17 @@ class FamilyController extends Controller
         $totalSessions = $attendanceRecords->count();
         $attendanceRate = $totalSessions > 0 ? round(($sessionsCompleted / $totalSessions) * 100, 1) : 0;
 
-        // Fetch affiliations data
+        // Fetch affiliations data with enhanced relationships
         $clubAffiliations = $user->clubAffiliations()
-            ->with(['skillAcquisitions', 'affiliationMedia'])
+            ->with([
+                'skillAcquisitions.package',
+                'skillAcquisitions.activity',
+                'skillAcquisitions.instructor.user',
+                'affiliationMedia',
+                'subscriptions.package.activities',
+                'subscriptions.package.packageActivities.activity',
+                'subscriptions.package.packageActivities.instructor.user',
+            ])
             ->orderBy('start_date', 'desc')
             ->get();
 
@@ -106,6 +115,16 @@ class FamilyController extends Controller
         $totalAffiliations = $clubAffiliations->count();
         $distinctSkills = $clubAffiliations->flatMap->skillAcquisitions->pluck('skill_name')->unique()->count();
         $totalMembershipDuration = $clubAffiliations->sum('duration_in_months');
+
+        // Get all unique skills for filter dropdown
+        $allSkills = $clubAffiliations->flatMap(function($affiliation) {
+            return $affiliation->skillAcquisitions->pluck('skill_name');
+        })->unique()->sort()->values();
+
+        // Count total instructors
+        $totalInstructors = $clubAffiliations->flatMap(function($affiliation) {
+            return $affiliation->skillAcquisitions->pluck('instructor');
+        })->filter()->unique('id')->count();
 
         // Pass user directly and a flag to indicate it's the current user's profile
         return view('family.show', [
@@ -134,6 +153,9 @@ class FamilyController extends Controller
             'totalAffiliations' => $totalAffiliations,
             'distinctSkills' => $distinctSkills,
             'totalMembershipDuration' => $totalMembershipDuration,
+            'allSkills' => $allSkills,
+            'totalInstructors' => $totalInstructors,
+            'user' => $user,
         ]);
     }
 
@@ -177,16 +199,36 @@ class FamilyController extends Controller
             $fileName = $request->filename . '.' . $extension;
             $fullPath = $folder . '/' . $fileName;
 
+            // Use public/storage directory directly (not through Storage facade)
+            $publicStoragePath = public_path('storage');
+
             // Delete old profile picture if exists
-            if ($user->profile_picture && \Storage::disk('public')->exists($user->profile_picture)) {
-                \Storage::disk('public')->delete($user->profile_picture);
+            $oldPath = $user->profile_picture;
+            if ($oldPath && file_exists($publicStoragePath . '/' . $oldPath)) {
+                unlink($publicStoragePath . '/' . $oldPath);
             }
 
-            // Store in the public disk (storage/app/public)
-            \Storage::disk('public')->put($fullPath, $imageBinary);
+            // Also delete any existing files with different extensions
+            $basePath = $folder . '/' . $request->filename;
+            foreach (['png', 'jpg', 'jpeg', 'webp', 'gif'] as $ext) {
+                $checkPath = $publicStoragePath . '/' . $basePath . '.' . $ext;
+                if (file_exists($checkPath)) {
+                    unlink($checkPath);
+                }
+            }
 
-            // Update user's profile_picture field
-            $user->update(['profile_picture' => $fullPath]);
+            // Ensure directory exists
+            $fullDir = $publicStoragePath . '/' . $folder;
+            if (!is_dir($fullDir)) {
+                mkdir($fullDir, 0755, true);
+            }
+
+            // Save file directly to public/storage
+            file_put_contents($publicStoragePath . '/' . $fullPath, $imageBinary);
+
+            // Update user's profile_picture field (use save() for reliable persistence)
+            $user->profile_picture = $fullPath;
+            $user->save();
 
             return response()->json([
                 'success' => true,
@@ -336,9 +378,17 @@ class FamilyController extends Controller
         $totalSessions = $attendanceRecords->count();
         $attendanceRate = $totalSessions > 0 ? round(($sessionsCompleted / $totalSessions) * 100, 1) : 0;
 
-        // Fetch affiliations data for the dependent
+        // Fetch affiliations data for the dependent with enhanced relationships
         $clubAffiliations = $relationship->dependent->clubAffiliations()
-            ->with(['skillAcquisitions', 'affiliationMedia'])
+            ->with([
+                'skillAcquisitions.package',
+                'skillAcquisitions.activity',
+                'skillAcquisitions.instructor.user',
+                'affiliationMedia',
+                'subscriptions.package.activities',
+                'subscriptions.package.packageActivities.activity',
+                'subscriptions.package.packageActivities.instructor.user',
+            ])
             ->orderBy('start_date', 'desc')
             ->get();
 
@@ -353,6 +403,16 @@ class FamilyController extends Controller
         $totalAffiliations = $clubAffiliations->count();
         $distinctSkills = $clubAffiliations->flatMap->skillAcquisitions->pluck('skill_name')->unique()->count();
         $totalMembershipDuration = $clubAffiliations->sum('duration_in_months');
+
+        // Get all unique skills for filter dropdown
+        $allSkills = $clubAffiliations->flatMap(function($affiliation) {
+            return $affiliation->skillAcquisitions->pluck('skill_name');
+        })->unique()->sort()->values();
+
+        // Count total instructors
+        $totalInstructors = $clubAffiliations->flatMap(function($affiliation) {
+            return $affiliation->skillAcquisitions->pluck('instructor');
+        })->filter()->unique('id')->count();
 
         return view('family.show', [
             'relationship' => $relationship,
@@ -375,6 +435,9 @@ class FamilyController extends Controller
             'totalAffiliations' => $totalAffiliations,
             'distinctSkills' => $distinctSkills,
             'totalMembershipDuration' => $totalMembershipDuration,
+            'allSkills' => $allSkills,
+            'totalInstructors' => $totalInstructors,
+            'user' => $relationship->dependent,
         ]);
     }
 
@@ -501,12 +564,12 @@ class FamilyController extends Controller
             $fullPath = $folder . '/' . $fileName;
 
             // Delete old profile picture if exists
-            if ($familyMember->profile_picture && \Storage::disk('public')->exists($familyMember->profile_picture)) {
-                \Storage::disk('public')->delete($familyMember->profile_picture);
+            if ($familyMember->profile_picture && Storage::disk('public')->exists($familyMember->profile_picture)) {
+                Storage::disk('public')->delete($familyMember->profile_picture);
             }
 
             // Store in the public disk (storage/app/public)
-            \Storage::disk('public')->put($fullPath, $imageBinary);
+            Storage::disk('public')->put($fullPath, $imageBinary);
 
             // Update family member's profile_picture field
             $familyMember->update(['profile_picture' => $fullPath]);

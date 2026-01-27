@@ -9,14 +9,22 @@ class SkillAcquisition extends Model
 {
     protected $fillable = [
         'club_affiliation_id',
+        'package_id',
+        'activity_id',
+        'instructor_id',
         'skill_name',
         'icon',
         'duration_months',
+        'start_date',
+        'end_date',
         'proficiency_level',
+        'notes',
     ];
 
     protected $casts = [
         'duration_months' => 'integer',
+        'start_date' => 'date',
+        'end_date' => 'date',
     ];
 
     /**
@@ -25,6 +33,30 @@ class SkillAcquisition extends Model
     public function clubAffiliation(): BelongsTo
     {
         return $this->belongsTo(ClubAffiliation::class);
+    }
+
+    /**
+     * Get the package associated with this skill.
+     */
+    public function package(): BelongsTo
+    {
+        return $this->belongsTo(ClubPackage::class, 'package_id');
+    }
+
+    /**
+     * Get the activity associated with this skill.
+     */
+    public function activity(): BelongsTo
+    {
+        return $this->belongsTo(ClubActivity::class, 'activity_id');
+    }
+
+    /**
+     * Get the instructor who taught this skill.
+     */
+    public function instructor(): BelongsTo
+    {
+        return $this->belongsTo(ClubInstructor::class, 'instructor_id');
     }
 
     /**

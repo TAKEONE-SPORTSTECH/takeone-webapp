@@ -11,7 +11,7 @@
                 <h5 class="mb-0"><i class="bi bi-building me-2"></i>Club Information</h5>
             </div>
             <div class="card-body">
-                <form action="{{ route('admin.platform.clubs.store') }}" method="POST" enctype="multipart/form-data">
+                <form action="{{ route('admin.platform.clubs.store') }}" method="POST">
                     @csrf
 
                     <!-- Owner Selection -->
@@ -70,45 +70,50 @@
                         </div>
                         <div class="col-md-6">
                             <label for="phone_number" class="form-label">Phone Number</label>
-                            <div class="input-group">
-                                <select class="form-select" name="phone_code" style="max-width: 120px;">
-                                    <option value="+973" {{ old('phone_code') == '+973' ? 'selected' : '' }}>+973 (BH)</option>
-                                    <option value="+966" {{ old('phone_code') == '+966' ? 'selected' : '' }}>+966 (SA)</option>
-                                    <option value="+971" {{ old('phone_code') == '+971' ? 'selected' : '' }}>+971 (AE)</option>
-                                    <option value="+965" {{ old('phone_code') == '+965' ? 'selected' : '' }}>+965 (KW)</option>
-                                </select>
-                                <input type="text" class="form-control" name="phone_number" value="{{ old('phone_number') }}" placeholder="12345678">
-                            </div>
+                            <x-country-code-dropdown
+                                name="phone_code"
+                                id="phone_code"
+                                :value="old('phone_code', '+973')"
+                                :required="false"
+                                :error="$errors->first('phone_code')">
+                                <input type="text"
+                                       class="form-control @error('phone_number') is-invalid @enderror"
+                                       name="phone_number"
+                                       id="phone_number"
+                                       value="{{ old('phone_number') }}"
+                                       placeholder="12345678">
+                            </x-country-code-dropdown>
+                            @error('phone_number')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
                         </div>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-4">
-                            <label for="currency" class="form-label">Currency</label>
-                            <select class="form-select" id="currency" name="currency">
-                                <option value="BHD" {{ old('currency', 'BHD') == 'BHD' ? 'selected' : '' }}>BHD - Bahrain Dinar</option>
-                                <option value="SAR" {{ old('currency') == 'SAR' ? 'selected' : '' }}>SAR - Saudi Riyal</option>
-                                <option value="AED" {{ old('currency') == 'AED' ? 'selected' : '' }}>AED - UAE Dirham</option>
-                                <option value="KWD" {{ old('currency') == 'KWD' ? 'selected' : '' }}>KWD - Kuwaiti Dinar</option>
-                            </select>
+                            <x-currency-dropdown
+                                name="currency"
+                                id="currency"
+                                :value="old('currency', 'BHD')"
+                                :required="false"
+                                :error="$errors->first('currency')" />
                         </div>
                         <div class="col-md-4">
-                            <label for="timezone" class="form-label">Timezone</label>
-                            <select class="form-select" id="timezone" name="timezone">
-                                <option value="Asia/Bahrain" {{ old('timezone', 'Asia/Bahrain') == 'Asia/Bahrain' ? 'selected' : '' }}>Asia/Bahrain</option>
-                                <option value="Asia/Riyadh" {{ old('timezone') == 'Asia/Riyadh' ? 'selected' : '' }}>Asia/Riyadh</option>
-                                <option value="Asia/Dubai" {{ old('timezone') == 'Asia/Dubai' ? 'selected' : '' }}>Asia/Dubai</option>
-                                <option value="Asia/Kuwait" {{ old('timezone') == 'Asia/Kuwait' ? 'selected' : '' }}>Asia/Kuwait</option>
-                            </select>
+                            <x-timezone-dropdown
+                                name="timezone"
+                                id="timezone"
+                                :value="old('timezone', 'Asia/Bahrain')"
+                                :required="false"
+                                :error="$errors->first('timezone')" />
                         </div>
                         <div class="col-md-4">
-                            <label for="country" class="form-label">Country</label>
-                            <select class="form-select" id="country" name="country">
-                                <option value="BH" {{ old('country', 'BH') == 'BH' ? 'selected' : '' }}>Bahrain</option>
-                                <option value="SA" {{ old('country') == 'SA' ? 'selected' : '' }}>Saudi Arabia</option>
-                                <option value="AE" {{ old('country') == 'AE' ? 'selected' : '' }}>United Arab Emirates</option>
-                                <option value="KW" {{ old('country') == 'KW' ? 'selected' : '' }}>Kuwait</option>
-                            </select>
+                            <x-nationality-dropdown
+                                name="country"
+                                id="country"
+                                label="Country"
+                                :value="old('country', 'Bahrain')"
+                                :required="false"
+                                :error="$errors->first('country')" />
                         </div>
                     </div>
 
@@ -144,21 +149,47 @@
                     <h6 class="border-bottom pb-2 mb-3 mt-4">Branding</h6>
 
                     <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="logo" class="form-label">Club Logo</label>
-                            <input type="file" class="form-control @error('logo') is-invalid @enderror" id="logo" name="logo" accept="image/*">
+                        <div class="col-md-6 text-center">
+                            <label class="form-label d-block">Club Logo</label>
+                            <x-takeone-cropper
+                                id="create_club_logo"
+                                mode="form"
+                                inputName="logo"
+                                :width="200"
+                                :height="200"
+                                :previewWidth="150"
+                                :previewHeight="150"
+                                shape="square"
+                                folder="clubs/logos"
+                                filename="logo_{{ time() }}"
+                                buttonText="Select Logo"
+                                buttonClass="btn btn-outline-success btn-sm"
+                            />
                             @error('logo')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="text-danger small mt-1">{{ $message }}</div>
                             @enderror
-                            <small class="text-muted">Recommended: Square image, max 2MB</small>
+                            <small class="text-muted d-block mt-2">Recommended: Square image, max 2MB</small>
                         </div>
-                        <div class="col-md-6">
-                            <label for="cover_image" class="form-label">Cover Image</label>
-                            <input type="file" class="form-control @error('cover_image') is-invalid @enderror" id="cover_image" name="cover_image" accept="image/*">
+                        <div class="col-md-6 text-center">
+                            <label class="form-label d-block">Cover Image</label>
+                            <x-takeone-cropper
+                                id="create_club_cover"
+                                mode="form"
+                                inputName="cover_image"
+                                :width="600"
+                                :height="200"
+                                :previewWidth="250"
+                                :previewHeight="83"
+                                shape="square"
+                                folder="clubs/covers"
+                                filename="cover_{{ time() }}"
+                                buttonText="Select Cover"
+                                buttonClass="btn btn-outline-success btn-sm"
+                            />
                             @error('cover_image')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="text-danger small mt-1">{{ $message }}</div>
                             @enderror
-                            <small class="text-muted">Recommended: 1200x400px, max 2MB</small>
+                            <small class="text-muted d-block mt-2">Recommended: 1200x400px, max 2MB</small>
                         </div>
                     </div>
 
@@ -401,5 +432,94 @@ $(document).ready(function() {
         return null;
     }
 });
+
+// Auto-fill currency, timezone, and phone code when country is selected
+let countriesData = null;
+
+// Load countries data once
+fetch('/data/countries.json')
+    .then(response => response.json())
+    .then(countries => {
+        countriesData = countries;
+    })
+    .catch(error => console.error('Error loading countries for auto-fill:', error));
+
+// Watch for changes on the country hidden input
+const countryInput = document.getElementById('country');
+if (countryInput) {
+    // Use MutationObserver to detect value changes on hidden input
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+                autoFillFromCountry(countryInput.value);
+            }
+        });
+    });
+    observer.observe(countryInput, { attributes: true });
+
+    // Also listen for direct changes
+    countryInput.addEventListener('change', function() {
+        autoFillFromCountry(this.value);
+    });
+
+    // Check periodically for value changes (fallback)
+    let lastCountryValue = countryInput.value;
+    setInterval(function() {
+        if (countryInput.value !== lastCountryValue) {
+            lastCountryValue = countryInput.value;
+            autoFillFromCountry(countryInput.value);
+        }
+    }, 500);
+}
+
+function autoFillFromCountry(countryName) {
+    if (!countriesData || !countryName) return;
+
+    // Find the country in our data
+    const country = countriesData.find(c => c.name.toLowerCase() === countryName.toLowerCase());
+    if (!country) return;
+
+    // Update currency dropdown
+    const currencySelect = document.getElementById('currency');
+    if (currencySelect && country.currency) {
+        currencySelect.value = country.currency;
+        // Trigger change event for Select2
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $(currencySelect).trigger('change');
+        }
+    }
+
+    // Update timezone dropdown
+    const timezoneSelect = document.getElementById('timezone');
+    if (timezoneSelect && country.timezone) {
+        timezoneSelect.value = country.timezone;
+        // Trigger change event for Select2
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $(timezoneSelect).trigger('change');
+        }
+    }
+
+    // Update phone country code dropdown
+    const phoneCodeInput = document.getElementById('phone_code');
+    const phoneCodeFlag = document.getElementById('phone_codeSelectedFlag');
+    const phoneCodeCountry = document.getElementById('phone_codeSelectedCountry');
+    if (phoneCodeInput && country.call_code) {
+        phoneCodeInput.value = country.call_code;
+        if (phoneCodeFlag) {
+            // Convert ISO2 to flag emoji
+            const flagEmoji = country.iso2
+                .toUpperCase()
+                .split('')
+                .map(char => String.fromCodePoint(127397 + char.charCodeAt(0)))
+                .join('');
+            phoneCodeFlag.textContent = flagEmoji;
+        }
+        if (phoneCodeCountry) {
+            phoneCodeCountry.textContent = `${country.name} (${country.call_code})`;
+        }
+    }
+
+    console.log(`Auto-filled from country: ${countryName} -> Currency: ${country.currency}, Timezone: ${country.timezone}, Phone: ${country.call_code}`);
+}
 </script>
 @endpush

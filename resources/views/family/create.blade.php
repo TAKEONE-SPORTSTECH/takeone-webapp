@@ -30,44 +30,43 @@
 
                         <div class="mb-3">
                             <label for="mobile" class="form-label">Mobile Number</label>
-                            <div class="input-group" onclick="event.stopPropagation()">
-                                <button class="btn btn-outline-secondary dropdown-toggle country-dropdown-btn d-flex align-items-center" type="button" id="country_codeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <span class="fi fi-bh me-2" id="country_codeSelectedFlag"></span>
-                                    <span class="country-label" id="country_codeSelectedCountry">{{ old('mobile_code', '+973') }}</span>
-                                </button>
-                                <div class="dropdown-menu p-2" aria-labelledby="country_codeDropdown" style="min-width: 200px;" onclick="event.stopPropagation()">
-                                    <input type="text" class="form-control form-control-sm mb-2" placeholder="Search country..." id="country_codeSearch" onkeydown="event.stopPropagation()">
-                                    <div class="country-list" id="country_codeList" style="max-height: 300px; overflow-y: auto;"></div>
-                                </div>
-                                <input type="hidden" id="country_code" name="mobile_code" value="{{ old('mobile_code', '+973') }}">
-                                <input id="mobile_number" type="tel" class="form-control @error('mobile') is-invalid @enderror" name="mobile" value="{{ old('mobile') }}" autocomplete="tel" placeholder="Phone number">
-                            </div>
+                            <x-country-code-dropdown
+                                name="mobile_code"
+                                id="country_code"
+                                :value="old('mobile_code', '+973')"
+                                :required="false"
+                                :error="$errors->first('mobile_code')">
+                                <input id="mobile_number" type="tel"
+                                       class="form-control @error('mobile') is-invalid @enderror"
+                                       name="mobile"
+                                       value="{{ old('mobile') }}"
+                                       autocomplete="tel"
+                                       placeholder="Phone number">
+                            </x-country-code-dropdown>
                             @error('mobile')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                            @enderror
-                            @error('mobile_code')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
 
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <label for="gender" class="form-label">Gender</label>
-                                <select class="form-select @error('gender') is-invalid @enderror" id="gender" name="gender" required>
-                                    <option value="">Select Gender</option>
-                                    <option value="m" {{ old('gender') == 'm' ? 'selected' : '' }}>Male</option>
-                                    <option value="f" {{ old('gender') == 'f' ? 'selected' : '' }}>Female</option>
-                                </select>
-                                @error('gender')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                                <x-gender-dropdown
+                                    name="gender"
+                                    id="gender"
+                                    :value="old('gender')"
+                                    :required="true"
+                                    :error="$errors->first('gender')" />
                             </div>
                             <div class="col-md-6">
-                                <label for="birthdate" class="form-label">Birthdate</label>
-                                <input type="date" class="form-control @error('birthdate') is-invalid @enderror" id="birthdate" name="birthdate" value="{{ old('birthdate') }}" required>
-                                @error('birthdate')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                                <x-birthdate-dropdown
+                                    name="birthdate"
+                                    id="birthdate"
+                                    label="Birthdate"
+                                    :value="old('birthdate')"
+                                    :required="true"
+                                    :min-age="0"
+                                    :max-age="120"
+                                    :error="$errors->first('birthdate')" />
                             </div>
                         </div>
 
@@ -91,7 +90,7 @@
                                 @enderror
                             </div>
                             <div class="col-md-6">
-                                <x-country-dropdown
+                                <x-nationality-dropdown
                                     name="nationality"
                                     id="nationality"
                                     :value="old('nationality')"
@@ -205,6 +204,7 @@
     </div>
 </div>
 
+@push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     let socialLinkIndex = {{ count($formLinks ?? []) }};
@@ -269,74 +269,6 @@ document.addEventListener('DOMContentLoaded', function() {
         container.appendChild(row);
         socialLinkIndex++;
     }
-});
-</script>
-
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Load countries for mobile code dropdown
-    fetch('/data/countries.json')
-        .then(response => response.json())
-        .then(countries => {
-            const listElement = document.getElementById('country_codeList');
-            const selectedFlag = document.getElementById('country_codeSelectedFlag');
-            const selectedCountry = document.getElementById('country_codeSelectedCountry');
-            const hiddenInput = document.getElementById('country_code');
-            const searchInput = document.getElementById('country_codeSearch');
-
-            if (!listElement) return;
-
-            // Populate dropdown
-            countries.forEach(country => {
-                const button = document.createElement('button');
-                button.className = 'dropdown-item d-flex align-items-center';
-                button.type = 'button';
-                button.setAttribute('data-country-code', country.call_code);
-                button.setAttribute('data-country-name', country.name);
-                button.setAttribute('data-flag-code', country.flag);
-                button.setAttribute('data-search', `${country.name.toLowerCase()} ${country.call_code}`);
-                button.innerHTML = `<span class="fi fi-${country.flag.toLowerCase()} me-2"></span><span>${country.name} (${country.call_code})</span>`;
-                button.addEventListener('click', function() {
-                    const code = this.getAttribute('data-country-code');
-                    const flag = this.getAttribute('data-flag-code');
-                    const name = this.getAttribute('data-country-name');
-                    selectedFlag.className = `fi fi-${flag.toLowerCase()} me-2`;
-                    selectedCountry.textContent = code;
-                    hiddenInput.value = code;
-                    // Close dropdown
-                    const dropdown = bootstrap.Dropdown.getInstance(document.getElementById('country_codeDropdown'));
-                    if (dropdown) dropdown.hide();
-                });
-                listElement.appendChild(button);
-            });
-
-            // Set initial value
-            const initialValue = '{{ old('mobile_code', '+973') }}';
-            if (initialValue) {
-                hiddenInput.value = initialValue;
-                selectedCountry.textContent = initialValue;
-                const country = countries.find(c => c.call_code === initialValue);
-                if (country) {
-                    selectedFlag.className = `fi fi-${country.flag.toLowerCase()} me-2`;
-                }
-            }
-
-            // Search functionality
-            searchInput.addEventListener('input', function() {
-                const searchTerm = this.value.toLowerCase();
-                const items = listElement.querySelectorAll('.dropdown-item');
-                items.forEach(item => {
-                    const searchData = item.getAttribute('data-search');
-                    if (searchData.includes(searchTerm)) {
-                        item.style.display = '';
-                    } else {
-                        item.style.display = 'none';
-                    }
-                });
-            });
-        })
-        .catch(error => console.error('Error loading countries:', error));
 });
 </script>
 @endpush

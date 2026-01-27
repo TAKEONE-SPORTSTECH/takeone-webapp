@@ -27,6 +27,7 @@ class ClubMemberSubscription extends Model
     protected $fillable = [
         'tenant_id',
         'user_id',
+        'club_affiliation_id',
         'package_id',
         'start_date',
         'end_date',
@@ -71,6 +72,14 @@ class ClubMemberSubscription extends Model
     public function package(): BelongsTo
     {
         return $this->belongsTo(ClubPackage::class, 'package_id');
+    }
+
+    /**
+     * Get the club affiliation associated with the subscription.
+     */
+    public function clubAffiliation(): BelongsTo
+    {
+        return $this->belongsTo(ClubAffiliation::class, 'club_affiliation_id');
     }
 
     /**

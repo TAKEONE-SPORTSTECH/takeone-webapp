@@ -26,7 +26,7 @@
                onkeydown="event.stopPropagation()"
                onkeyup="event.stopPropagation()">
 
-        <div class="country-list" id="{{ $id }}List" style="max-height: 300px; overflow-y: auto;">
+        <div class="country-list nationality-dropdown-list" id="{{ $id }}List" data-component-id="{{ $id }}" style="max-height: 300px; overflow-y: auto;">
             <!-- Countries will be populated by JavaScript -->
         </div>
     </div>
@@ -72,9 +72,9 @@
             fetch('/data/countries.json')
                 .then(response => response.json())
                 .then(countries => {
-                    // Initialize only nationality dropdowns (not country code dropdowns)
-                    document.querySelectorAll('[id$="nationalityList"]').forEach(function(listElement) {
-                        const componentId = listElement.id.replace('List', '');
+                    // Initialize all nationality/country dropdowns by finding elements with data attribute
+                    document.querySelectorAll('.nationality-dropdown-list').forEach(function(listElement) {
+                        const componentId = listElement.getAttribute('data-component-id');
                         initializeNationalityDropdown(componentId, countries);
                     });
                 })

@@ -87,4 +87,12 @@ class ClubPackage extends Model
         return $this->hasMany(ClubMemberSubscription::class, 'package_id')
                     ->where('status', 'active');
     }
+
+    /**
+     * Get the package activities (with instructors).
+     */
+    public function packageActivities(): HasMany
+    {
+        return $this->hasMany(ClubPackageActivity::class, 'package_id');
+    }
 }

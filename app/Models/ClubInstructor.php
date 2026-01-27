@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ClubInstructor extends Model
 {
@@ -67,5 +68,29 @@ class ClubInstructor extends Model
     {
         return $this->belongsToMany(ClubPackage::class, 'club_package_activities', 'instructor_id', 'package_id')
                     ->withTimestamps();
+    }
+
+    /**
+     * Get the reviews for the instructor.
+     */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(InstructorReview::class, 'instructor_id');
+    }
+
+    /**
+     * Get average rating from reviews.
+     */
+    public function getAverageRatingAttribute(): float
+    {
+        return $this->reviews()->avg('rating') ?? 0;
+    }
+
+    /**
+     * Get total number of reviews.
+     */
+    public function getReviewsCountAttribute(): int
+    {
+        return $this->reviews()->count();
     }
 }

@@ -988,129 +988,13 @@
 
         <!-- Affiliations Tab -->
         <div class="tab-pane fade" id="affiliations" role="tabpanel">
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-4">
-                    <h5 class="fw-bold mb-3"><i class="bi bi-diagram-3 me-2"></i>Affiliations & Skills</h5>
-
-                    @if($clubAffiliations->count() > 0)
-                        <!-- Summary Stats -->
-                        <div class="row g-3 mb-4">
-                            <div class="col-md-4">
-                                <div class="card shadow-sm bg-primary text-white">
-                                    <div class="card-body text-center">
-                                        <i class="bi bi-building display-4 mb-2"></i>
-                                        <h4 class="fw-bold mb-1">{{ $totalAffiliations }}</h4>
-                                        <small>Total Affiliations</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="card shadow-sm bg-success text-white">
-                                    <div class="card-body text-center">
-                                        <i class="bi bi-star display-4 mb-2"></i>
-                                        <h4 class="fw-bold mb-1">{{ $distinctSkills }}</h4>
-                                        <small>Distinct Skills</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="card shadow-sm bg-info text-white">
-                                    <div class="card-body text-center">
-                                        <i class="bi bi-calendar-check display-4 mb-2"></i>
-                                        <h4 class="fw-bold mb-1">{{ floor($totalMembershipDuration / 12) }}y {{ $totalMembershipDuration % 12 }}m</h4>
-                                        <small>Total Membership</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Timeline and Skills Wheel Container -->
-                        <div class="row">
-                            <!-- Timeline -->
-                            <div class="col-lg-6 mb-4">
-                                <div class="card shadow-sm">
-                                    <div class="card-header bg-light">
-                                        <h6 class="card-title mb-0"><i class="bi bi-timeline me-2"></i>Club Affiliations Timeline</h6>
-                                    </div>
-                                    <div class="card-body" style="max-height: 600px; overflow-y: auto;">
-                                        <div class="timeline">
-                                            @foreach($clubAffiliations as $index => $affiliation)
-                                                <div class="timeline-item mb-4 position-relative" data-affiliation-id="{{ $affiliation->id }}">
-                                                    <div class="timeline-marker bg-primary"></div>
-                                                    <div class="timeline-content card border {{ $index === 0 ? 'border-primary' : '' }} affiliation-card" style="cursor: pointer;" data-affiliation-id="{{ $affiliation->id }}">
-                                                        <div class="card-body p-3">
-                                                            <div class="d-flex align-items-center mb-2">
-                                                                @if($affiliation->logo)
-                                                                    <img src="{{ asset('storage/' . $affiliation->logo) }}" alt="{{ $affiliation->club_name }}" class="me-3 rounded" style="width: 40px; height: 40px; object-fit: cover;">
-                                                                @else
-                                                                    <div class="bg-primary text-white rounded d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
-                                                                        <i class="bi bi-building"></i>
-                                                                    </div>
-                                                                @endif
-                                                                <div class="flex-grow-1">
-                                                                    <h6 class="mb-0 fw-bold">{{ $affiliation->club_name }}</h6>
-                                                                    <small class="text-muted">{{ $affiliation->date_range }}</small>
-                                                                    <br>
-                                                                    <span class="badge bg-info text-dark small">{{ $affiliation->formatted_duration }}</span>
-                                                                </div>
-                                                            </div>
-                                                            @if($affiliation->location)
-                                                                <div class="text-muted small mb-1">
-                                                                    <i class="bi bi-geo-alt me-1"></i>{{ $affiliation->location }}
-                                                                </div>
-                                                            @endif
-                                                            <div class="text-muted small">
-                                                                <i class="bi bi-star me-1"></i>{{ $affiliation->skillAcquisitions->count() }} skills acquired
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Skills Wheel and Details -->
-                            <div class="col-lg-6">
-                                <!-- Skills Wheel -->
-                                <div class="card shadow-sm mb-4">
-                                    <div class="card-header bg-light">
-                                        <h6 class="card-title mb-0"><i class="bi bi-pie-chart me-2"></i>Skills Wheel</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="text-center">
-                                            <canvas id="skillsChart" width="300" height="300"></canvas>
-                                            <p id="noSkillsMessage" class="text-muted mt-3 d-none">Select an affiliation to view skills</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Affiliation Details -->
-                                <div class="card shadow-sm">
-                                    <div class="card-header bg-light">
-                                        <h6 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>Affiliation Details</h6>
-                                    </div>
-                                    <div class="card-body" id="affiliationDetails">
-                                        <p class="text-muted">Select an affiliation from the timeline to view details</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    @else
-                        <div class="text-center py-5">
-                            <i class="bi bi-diagram-3 text-muted" style="font-size: 3rem;"></i>
-                            <h5 class="text-muted mt-3 mb-2">No Affiliations Yet</h5>
-                            <p class="text-muted mb-0">Club affiliations and skills will appear here once added</p>
-                        </div>
-                    @endif
-                </div>
-            </div>
+            @include('family.partials.affiliations-enhanced')
         </div>
 
         <!-- Tournaments Tab -->
         <div class="tab-pane fade" id="tournaments" role="tabpanel">
-            <div class="card shadow-sm border-0">
+            <!-- Tournament & Event Participation Card -->
+            <div class="card shadow-sm border-0 mb-4">
                 <div class="card-body p-4">
                     <!-- Section Title & Subtitle -->
                     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -1131,7 +1015,7 @@
                     </div>
 
                     <!-- Award Summary Cards -->
-                    <div class="row g-3 mb-4" id="awardCards">
+                    <div class="row g-3" id="awardCards">
                         <div class="col-md-3">
                             <div class="card shadow-sm border-0 text-center" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
                                 <div class="card-body p-3">
@@ -1169,114 +1053,114 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    <!-- Tournament History Table -->
-                    <div class="card shadow-sm border-0">
-                        <div class="card-body p-4">
-                            <h6 class="fw-bold mb-3"><i class="bi bi-list-ul me-2"></i>Tournament & Championships History</h6>
+            <!-- Tournament & Championships History Card -->
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-list-ul me-2"></i>Tournament & Championships History</h6>
 
-                            @if($tournamentEvents->count() > 0)
-                                <div class="table-responsive">
-                                    <table class="table table-hover align-middle" id="tournamentsTable">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th class="text-muted small fw-semibold">Tournament Details</th>
-                                                <th class="text-muted small fw-semibold">Club Affiliation</th>
-                                                <th class="text-muted small fw-semibold">Performance & Result</th>
-                                                <th class="text-muted small fw-semibold">Notes & Media</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($tournamentEvents as $event)
-                                                <tr data-sport="{{ $event->sport }}">
-                                                    <td>
-                                                        <div class="fw-bold">{{ $event->title }}</div>
-                                                        <div class="d-flex gap-2 mt-1 flex-wrap">
-                                                            <span class="badge bg-{{ $event->type == 'championship' ? 'primary' : 'secondary' }} small">{{ ucfirst($event->type) }}</span>
-                                                            <span class="badge bg-info small">{{ $event->sport }}</span>
+                    @if($tournamentEvents->count() > 0)
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle" id="tournamentsTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="text-muted small fw-semibold">Tournament Details</th>
+                                        <th class="text-muted small fw-semibold">Club Affiliation</th>
+                                        <th class="text-muted small fw-semibold">Performance & Result</th>
+                                        <th class="text-muted small fw-semibold">Notes & Media</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($tournamentEvents as $event)
+                                        <tr data-sport="{{ $event->sport }}">
+                                            <td>
+                                                <div class="fw-bold">{{ $event->title }}</div>
+                                                <div class="d-flex gap-2 mt-1 flex-wrap">
+                                                    <span class="badge bg-{{ $event->type == 'championship' ? 'primary' : 'secondary' }} small">{{ ucfirst($event->type) }}</span>
+                                                    <span class="badge bg-info small">{{ $event->sport }}</span>
+                                                </div>
+                                                <div class="text-muted small mt-1">
+                                                    <i class="bi bi-calendar-event me-1"></i>{{ $event->date->format('M j, Y') }}
+                                                    @if($event->time)
+                                                        <i class="bi bi-clock me-1 ms-2"></i>{{ $event->time->format('H:i') }}
+                                                    @endif
+                                                    @if($event->location)
+                                                        <i class="bi bi-geo-alt me-1 ms-2"></i>{{ $event->location }}
+                                                    @endif
+                                                    @if($event->participants_count)
+                                                        <i class="bi bi-people me-1 ms-2"></i>{{ $event->participants_count }} participants
+                                                    @endif
+                                                </div>
+                                            </td>
+                                            <td>
+                                                @if($event->clubAffiliation)
+                                                    <div>
+                                                        <div class="small fw-semibold">{{ $event->clubAffiliation->club_name }}</div>
+                                                        <div class="text-muted small">{{ $event->clubAffiliation->location }}</div>
+                                                    </div>
+                                                @else
+                                                    <span class="text-muted small">Individual</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if($event->performanceResults->count() > 0)
+                                                    @foreach($event->performanceResults as $result)
+                                                        <div class="d-flex align-items-center gap-2 mb-1">
+                                                            @if($result->medal_type == '1st')
+                                                                <i class="bi bi-award-fill text-warning"></i>
+                                                                <span class="badge bg-warning text-dark small">1st Place</span>
+                                                            @elseif($result->medal_type == '2nd')
+                                                                <i class="bi bi-award-fill text-secondary"></i>
+                                                                <span class="badge bg-secondary small">2nd Place</span>
+                                                            @elseif($result->medal_type == '3rd')
+                                                                <i class="bi bi-award-fill" style="color: #CD7F32;"></i>
+                                                                <span class="badge" style="background-color: #CD7F32; color: white;" small>3rd Place</span>
+                                                            @elseif($result->medal_type == 'special')
+                                                                <i class="bi bi-trophy-fill text-warning"></i>
+                                                                <span class="badge bg-warning text-dark small">Special Award</span>
+                                                            @endif
+                                                            @if($result->points)
+                                                                <small class="text-muted">{{ $result->points }} pts</small>
+                                                            @endif
                                                         </div>
-                                                        <div class="text-muted small mt-1">
-                                                            <i class="bi bi-calendar-event me-1"></i>{{ $event->date->format('M j, Y') }}
-                                                            @if($event->time)
-                                                                <i class="bi bi-clock me-1 ms-2"></i>{{ $event->time->format('H:i') }}
-                                                            @endif
-                                                            @if($event->location)
-                                                                <i class="bi bi-geo-alt me-1 ms-2"></i>{{ $event->location }}
-                                                            @endif
-                                                            @if($event->participants_count)
-                                                                <i class="bi bi-people me-1 ms-2"></i>{{ $event->participants_count }} participants
-                                                            @endif
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        @if($event->clubAffiliation)
-                                                            <div>
-                                                                <div class="small fw-semibold">{{ $event->clubAffiliation->club_name }}</div>
-                                                                <div class="text-muted small">{{ $event->clubAffiliation->location }}</div>
-                                                            </div>
-                                                        @else
-                                                            <span class="text-muted small">Individual</span>
+                                                        @if($result->description)
+                                                            <small class="text-muted">{{ $result->description }}</small>
                                                         @endif
-                                                    </td>
-                                                    <td>
-                                                        @if($event->performanceResults->count() > 0)
-                                                            @foreach($event->performanceResults as $result)
-                                                                <div class="d-flex align-items-center gap-2 mb-1">
-                                                                    @if($result->medal_type == '1st')
-                                                                        <i class="bi bi-award-fill text-warning"></i>
-                                                                        <span class="badge bg-warning text-dark small">1st Place</span>
-                                                                    @elseif($result->medal_type == '2nd')
-                                                                        <i class="bi bi-award-fill text-secondary"></i>
-                                                                        <span class="badge bg-secondary small">2nd Place</span>
-                                                                    @elseif($result->medal_type == '3rd')
-                                                                        <i class="bi bi-award-fill" style="color: #CD7F32;"></i>
-                                                                        <span class="badge" style="background-color: #CD7F32; color: white;" small>3rd Place</span>
-                                                                    @elseif($result->medal_type == 'special')
-                                                                        <i class="bi bi-trophy-fill text-warning"></i>
-                                                                        <span class="badge bg-warning text-dark small">Special Award</span>
-                                                                    @endif
-                                                                    @if($result->points)
-                                                                        <small class="text-muted">{{ $result->points }} pts</small>
-                                                                    @endif
-                                                                </div>
-                                                                @if($result->description)
-                                                                    <small class="text-muted">{{ $result->description }}</small>
-                                                                @endif
-                                                            @endforeach
-                                                        @else
-                                                            <span class="text-muted small">No results recorded</span>
+                                                    @endforeach
+                                                @else
+                                                    <span class="text-muted small">No results recorded</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if($event->notesMedia->count() > 0)
+                                                    @foreach($event->notesMedia as $note)
+                                                        @if($note->note_text)
+                                                            <p class="mb-1 small">{{ $note->note_text }}</p>
                                                         @endif
-                                                    </td>
-                                                    <td>
-                                                        @if($event->notesMedia->count() > 0)
-                                                            @foreach($event->notesMedia as $note)
-                                                                @if($note->note_text)
-                                                                    <p class="mb-1 small">{{ $note->note_text }}</p>
-                                                                @endif
-                                                                @if($note->media_link)
-                                                                    <a href="{{ $note->media_link }}" target="_blank" class="btn btn-sm btn-outline-primary small">
-                                                                        <i class="bi bi-image me-1"></i>View Media
-                                                                    </a>
-                                                                @endif
-                                                            @endforeach
-                                                        @else
-                                                            <span class="text-muted small">No notes available</span>
+                                                        @if($note->media_link)
+                                                            <a href="{{ $note->media_link }}" target="_blank" class="btn btn-sm btn-outline-primary small">
+                                                                <i class="bi bi-image me-1"></i>View Media
+                                                            </a>
                                                         @endif
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
-                            @else
-                                <div class="text-center py-5">
-                                    <i class="bi bi-trophy text-muted" style="font-size: 3rem;"></i>
-                                    <p class="text-muted mt-3">No tournament records found</p>
-                                    <small class="text-muted">Tournament participation will appear here once records are added</small>
-                                </div>
-                            @endif
+                                                    @endforeach
+                                                @else
+                                                    <span class="text-muted small">No notes available</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
+                    @else
+                        <div class="text-center py-5">
+                            <i class="bi bi-trophy text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-3">No tournament records found</p>
+                            <small class="text-muted">Tournament participation will appear here once records are added</small>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -1461,8 +1345,14 @@
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label for="tournament_date" class="form-label">Date <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" id="tournament_date" name="date" required>
+                            <x-birthdate-dropdown
+                                name="date"
+                                id="tournament_date"
+                                label="Date"
+                                :required="true"
+                                :min-year="2000"
+                                :max-year="date('Y')"
+                                :error="$errors->first('date')" />
                         </div>
                         <div class="col-md-6">
                             <label for="tournament_time" class="form-label">Time</label>

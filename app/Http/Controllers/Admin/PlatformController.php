@@ -105,8 +105,8 @@ class PlatformController extends Controller
             'address' => 'nullable|string',
             'gps_lat' => 'nullable|numeric|between:-90,90',
             'gps_long' => 'nullable|numeric|between:-180,180',
-            'logo' => 'nullable|image|max:2048',
-            'cover_image' => 'nullable|image|max:2048',
+            'logo' => 'nullable',
+            'cover_image' => 'nullable',
         ]);
 
         // Handle phone as JSON
@@ -117,14 +117,48 @@ class PlatformController extends Controller
             ];
         }
 
-        // Handle logo upload
-        if ($request->hasFile('logo')) {
+        // Handle logo - base64 from cropper (form mode)
+        if ($request->filled('logo') && str_starts_with($request->logo, 'data:image')) {
+            $imageData = $request->logo;
+            $imageParts = explode(";base64,", $imageData);
+            $imageTypeAux = explode("image/", $imageParts[0]);
+            $extension = $imageTypeAux[1];
+            $imageBinary = base64_decode($imageParts[1]);
+
+            $folder = $request->input('logo_folder', 'clubs/logos');
+            $filename = $request->input('logo_filename', 'logo_' . time());
+            $fullPath = $folder . '/' . $filename . '.' . $extension;
+
+            Storage::disk('public')->put($fullPath, $imageBinary);
+            $validated['logo'] = $fullPath;
+        }
+        // Handle logo - traditional file upload
+        elseif ($request->hasFile('logo')) {
             $validated['logo'] = $request->file('logo')->store('clubs/logos', 'public');
+        } else {
+            unset($validated['logo']);
         }
 
-        // Handle cover image upload
-        if ($request->hasFile('cover_image')) {
+        // Handle cover image - base64 from cropper (form mode)
+        if ($request->filled('cover_image') && str_starts_with($request->cover_image, 'data:image')) {
+            $imageData = $request->cover_image;
+            $imageParts = explode(";base64,", $imageData);
+            $imageTypeAux = explode("image/", $imageParts[0]);
+            $extension = $imageTypeAux[1];
+            $imageBinary = base64_decode($imageParts[1]);
+
+            $folder = $request->input('cover_image_folder', 'clubs/covers');
+            $filename = $request->input('cover_image_filename', 'cover_' . time());
+            $fullPath = $folder . '/' . $filename . '.' . $extension;
+
+            Storage::disk('public')->put($fullPath, $imageBinary);
+            $validated['cover_image'] = $fullPath;
+        }
+        // Handle cover image - traditional file upload
+        elseif ($request->hasFile('cover_image')) {
             $validated['cover_image'] = $request->file('cover_image')->store('clubs/covers', 'public');
+        } else {
+            unset($validated['cover_image']);
         }
 
         $club = Tenant::create($validated);
@@ -354,5 +388,93 @@ class PlatformController extends Controller
             'Content-Type' => 'application/json',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ]);
+    }
+
+    /**
+     * Upload club logo via AJAX (cropper).
+     */
+    public function uploadClubLogo(Request $request, Tenant $club)
+    {
+        $request->validate([
+            'image' => 'required',
+            'folder' => 'required|string',
+            'filename' => 'required|string',
+        ]);
+
+        try {
+            // Handle base64 image from cropper
+            $imageData = $request->image;
+            $imageParts = explode(";base64,", $imageData);
+            $imageTypeAux = explode("image/", $imageParts[0]);
+            $extension = $imageTypeAux[1];
+            $imageBinary = base64_decode($imageParts[1]);
+
+            $folder = trim($request->folder, '/');
+            $fileName = $request->filename . '.' . $extension;
+            $fullPath = $folder . '/' . $fileName;
+
+            // Delete old logo if exists
+            if ($club->logo && Storage::disk('public')->exists($club->logo)) {
+                Storage::disk('public')->delete($club->logo);
+            }
+
+            // Store in the public disk
+            Storage::disk('public')->put($fullPath, $imageBinary);
+
+            // Update club's logo field
+            $club->update(['logo' => $fullPath]);
+
+            return response()->json([
+                'success' => true,
+                'path' => $fullPath,
+                'url' => asset('storage/' . $fullPath)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Upload club cover image via AJAX (cropper).
+     */
+    public function uploadClubCover(Request $request, Tenant $club)
+    {
+        $request->validate([
+            'image' => 'required',
+            'folder' => 'required|string',
+            'filename' => 'required|string',
+        ]);
+
+        try {
+            // Handle base64 image from cropper
+            $imageData = $request->image;
+            $imageParts = explode(";base64,", $imageData);
+            $imageTypeAux = explode("image/", $imageParts[0]);
+            $extension = $imageTypeAux[1];
+            $imageBinary = base64_decode($imageParts[1]);
+
+            $folder = trim($request->folder, '/');
+            $fileName = $request->filename . '.' . $extension;
+            $fullPath = $folder . '/' . $fileName;
+
+            // Delete old cover if exists
+            if ($club->cover_image && Storage::disk('public')->exists($club->cover_image)) {
+                Storage::disk('public')->delete($club->cover_image);
+            }
+
+            // Store in the public disk
+            Storage::disk('public')->put($fullPath, $imageBinary);
+
+            // Update club's cover_image field
+            $club->update(['cover_image' => $fullPath]);
+
+            return response()->json([
+                'success' => true,
+                'path' => $fullPath,
+                'url' => asset('storage/' . $fullPath)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 }

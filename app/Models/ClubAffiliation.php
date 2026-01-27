@@ -50,6 +50,29 @@ class ClubAffiliation extends Model
     }
 
     /**
+     * Get the subscriptions associated with this affiliation.
+     */
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(ClubMemberSubscription::class, 'club_affiliation_id');
+    }
+
+    /**
+     * Get the packages through subscriptions.
+     */
+    public function packages()
+    {
+        return $this->hasManyThrough(
+            ClubPackage::class,
+            ClubMemberSubscription::class,
+            'club_affiliation_id', // Foreign key on subscriptions table
+            'id', // Foreign key on packages table
+            'id', // Local key on affiliations table
+            'package_id' // Local key on subscriptions table
+        );
+    }
+
+    /**
      * Get the duration of the affiliation in months.
      */
     public function getDurationInMonthsAttribute(): int

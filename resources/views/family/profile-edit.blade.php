@@ -10,34 +10,26 @@
                 </div>
                 <div class="card-body">
                     <!-- Profile Picture Section -->
-                    <div class="mb-4 text-center">
-                        <div class="mb-3">
-                            @if($user->profile_picture && file_exists(public_path('storage/' . $user->profile_picture)))
-                                <img src="{{ asset('storage/' . $user->profile_picture) }}"
-                                     alt="Profile Picture"
-                                     style="width: 300px; height: 400px; object-fit: cover; border: 3px solid #dee2e6; border-radius: 8px;">
-                            @elseif(file_exists(public_path('storage/images/profiles/profile_' . $user->id . '.png')))
-                                <img src="{{ asset('storage/images/profiles/profile_' . $user->id . '.png') }}"
-                                     alt="Profile Picture"
-                                     style="width: 300px; height: 400px; object-fit: cover; border: 3px solid #dee2e6; border-radius: 8px;">
-                            @elseif(file_exists(public_path('storage/images/profiles/profile_' . $user->id . '.jpg')))
-                                <img src="{{ asset('storage/images/profiles/profile_' . $user->id . '.jpg') }}"
-                                     alt="Profile Picture"
-                                     style="width: 300px; height: 400px; object-fit: cover; border: 3px solid #dee2e6; border-radius: 8px;">
-                            @elseif(file_exists(public_path('storage/images/profiles/profile_' . $user->id . '.jpeg')))
-                                <img src="{{ asset('storage/images/profiles/profile_' . $user->id . '.jpeg') }}"
-                                     alt="Profile Picture"
-                                     style="width: 300px; height: 400px; object-fit: cover; border: 3px solid #dee2e6; border-radius: 8px;">
-                            @else
-                                <div style="width: 300px; height: 400px; background-color: #f0f0f0; border: 3px solid #dee2e6; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
-                                    <div class="text-center">
-                                        <i class="bi bi-person-circle" style="font-size: 100px; color: #dee2e6;"></i>
-                                        <p class="text-muted mt-2">No profile picture</p>
-                                    </div>
-                                </div>
-                            @endif
-                        </div>
-                        <x-takeone-cropper
+                    @php
+                        $currentProfileImage = '';
+
+                        // Check user's profile_picture field first (set by upload controller)
+                        if ($user->profile_picture && file_exists(public_path('storage/' . $user->profile_picture))) {
+                            $currentProfileImage = asset('storage/' . $user->profile_picture);
+                        } else {
+                            // Fallback: check for files with common extensions
+                            $extensions = ['png', 'jpg', 'jpeg', 'webp'];
+                            foreach ($extensions as $ext) {
+                                $path = 'storage/images/profiles/profile_' . $user->id . '.' . $ext;
+                                if (file_exists(public_path($path))) {
+                                    $currentProfileImage = asset($path);
+                                    break;
+                                }
+                            }
+                        }
+                    @endphp
+                    <div class="mb-4">
+                        <x-image-upload
                             id="profile_picture"
                             width="300"
                             height="400"
@@ -45,6 +37,10 @@
                             folder="images/profiles"
                             filename="profile_{{ $user->id }}"
                             uploadUrl="{{ route('profile.upload-picture') }}"
+                            currentImage="{{ $currentProfileImage }}"
+                            placeholder="No profile picture"
+                            placeholderIcon="bi-person-circle"
+                            buttonText="Change Photo"
                         />
                     </div>
 
@@ -69,45 +65,44 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="mobile" class="form-label">Mobile Number</label>
-                            <div class="input-group" onclick="event.stopPropagation()">
-                                <button class="btn btn-outline-secondary dropdown-toggle country-dropdown-btn d-flex align-items-center" type="button" id="country_codeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <span class="fi fi-bh me-2" id="country_codeSelectedFlag"></span>
-                                    <span class="country-label" id="country_codeSelectedCountry">{{ old('mobile_code', $user->mobile_code ?? '+973') }}</span>
-                                </button>
-                                <div class="dropdown-menu p-2" aria-labelledby="country_codeDropdown" style="min-width: 200px;" onclick="event.stopPropagation()">
-                                    <input type="text" class="form-control form-control-sm mb-2" placeholder="Search country..." id="country_codeSearch" onkeydown="event.stopPropagation()">
-                                    <div class="country-list" id="country_codeList" style="max-height: 300px; overflow-y: auto;"></div>
-                                </div>
-                                <input type="hidden" id="country_code" name="mobile_code" value="{{ old('mobile_code', $user->mobile['code'] ?? '+973') }}" required="">
-                                <input id="mobile_number" type="tel" class="form-control @error('mobile') is-invalid @enderror" name="mobile" value="{{ old('mobile', $user->mobile['number'] ?? '') }}" required="" autocomplete="tel" placeholder="Phone number">
-                            </div>
+                            <label for="mobile_number" class="form-label">Mobile Number</label>
+                            <x-country-code-dropdown
+                                name="mobile_code"
+                                id="country_code"
+                                :value="old('mobile_code', $user->mobile['code'] ?? '+973')"
+                                :required="true"
+                                :error="$errors->first('mobile_code')">
+                                <input id="mobile_number" type="tel"
+                                       class="form-control @error('mobile') is-invalid @enderror"
+                                       name="mobile"
+                                       value="{{ old('mobile', $user->mobile['number'] ?? '') }}"
+                                       required autocomplete="tel"
+                                       placeholder="Phone number">
+                            </x-country-code-dropdown>
                             @error('mobile')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                            @enderror
-                            @error('mobile_code')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
 
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <label for="gender" class="form-label">Gender</label>
-                                <select class="form-select @error('gender') is-invalid @enderror" id="gender" name="gender" required>
-                                    <option value="">Select Gender</option>
-                                    <option value="m" {{ old('gender', $user->gender) == 'm' ? 'selected' : '' }}>Male</option>
-                                    <option value="f" {{ old('gender', $user->gender) == 'f' ? 'selected' : '' }}>Female</option>
-                                </select>
-                                @error('gender')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                                <x-gender-dropdown
+                                    name="gender"
+                                    id="gender"
+                                    :value="old('gender', $user->gender)"
+                                    :required="true"
+                                    :error="$errors->first('gender')" />
                             </div>
                             <div class="col-md-6">
-                                <label for="birthdate" class="form-label">Birthdate</label>
-                                <input type="date" class="form-control @error('birthdate') is-invalid @enderror" id="birthdate" name="birthdate" value="{{ old('birthdate', $user->birthdate->format('Y-m-d')) }}" required>
-                                @error('birthdate')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                                <x-birthdate-dropdown
+                                    name="birthdate"
+                                    id="birthdate"
+                                    label="Birthdate"
+                                    :value="old('birthdate', $user->birthdate?->format('Y-m-d'))"
+                                    :required="true"
+                                    :min-age="10"
+                                    :max-age="120"
+                                    :error="$errors->first('birthdate')" />
                             </div>
                         </div>
 
@@ -131,7 +126,7 @@
                                 @enderror
                             </div>
                             <div class="col-md-6">
-                                <x-country-dropdown
+                                <x-nationality-dropdown
                                     name="nationality"
                                     id="nationality"
                                     :value="old('nationality', $user->nationality)"
@@ -227,69 +222,6 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Load countries for mobile code dropdown
-    fetch('/data/countries.json')
-        .then(response => response.json())
-        .then(countries => {
-            const listElement = document.getElementById('country_codeList');
-            const selectedFlag = document.getElementById('country_codeSelectedFlag');
-            const selectedCountry = document.getElementById('country_codeSelectedCountry');
-            const hiddenInput = document.getElementById('country_code');
-            const searchInput = document.getElementById('country_codeSearch');
-
-            if (!listElement) return;
-
-            // Populate dropdown
-            countries.forEach(country => {
-                const button = document.createElement('button');
-                button.className = 'dropdown-item d-flex align-items-center';
-                button.type = 'button';
-                button.setAttribute('data-country-code', country.call_code);
-                button.setAttribute('data-country-name', country.name);
-                button.setAttribute('data-flag-code', country.flag);
-                button.setAttribute('data-search', `${country.name.toLowerCase()} ${country.call_code}`);
-                button.innerHTML = `<span class="fi fi-${country.flag.toLowerCase()} me-2"></span><span>${country.name} (${country.call_code})</span>`;
-                button.addEventListener('click', function() {
-                    const code = this.getAttribute('data-country-code');
-                    const flag = this.getAttribute('data-flag-code');
-                    const name = this.getAttribute('data-country-name');
-                    selectedFlag.className = `fi fi-${flag.toLowerCase()} me-2`;
-                    selectedCountry.textContent = code;
-                    hiddenInput.value = code;
-                    // Close dropdown
-                    const dropdown = bootstrap.Dropdown.getInstance(document.getElementById('country_codeDropdown'));
-                    if (dropdown) dropdown.hide();
-                });
-                listElement.appendChild(button);
-            });
-
-            // Set initial value
-            const initialValue = '{{ old('mobile_code', $user->mobile['code'] ?? '+973') }}';
-            if (initialValue) {
-                hiddenInput.value = initialValue;
-                selectedCountry.textContent = initialValue;
-                const country = countries.find(c => c.call_code === initialValue);
-                if (country) {
-                    selectedFlag.className = `fi fi-${country.flag.toLowerCase()} me-2`;
-                }
-            }
-
-            // Search functionality
-            searchInput.addEventListener('input', function() {
-                const searchTerm = this.value.toLowerCase();
-                const items = listElement.querySelectorAll('.dropdown-item');
-                items.forEach(item => {
-                    const searchData = item.getAttribute('data-search');
-                    if (searchData.includes(searchTerm)) {
-                        item.style.display = '';
-                    } else {
-                        item.style.display = 'none';
-                    }
-                });
-            });
-        })
-        .catch(error => console.error('Error loading countries:', error));
-
     let socialLinkIndex = {{ count($formLinks ?? []) }};
 
     // Add new social link row
@@ -355,4 +287,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 @endpush
+
+@stack('styles')
 @endsection
