@@ -32,7 +32,7 @@
                      data-member-phone="{{ $member->formatted_mobile ?? '' }}"
                      data-member-nationality="{{ $member->nationality ?? '' }}"
                      data-member-gender="{{ $member->gender ?? '' }}">
-                    <a href="{{ route('family.show', $member->id) }}" class="text-decoration-none">
+                    <a href="{{ route('member.show', $member->id) }}" class="text-decoration-none">
                         <div class="card h-100 shadow-sm border overflow-hidden d-flex flex-column family-card">
                             <!-- Header with gradient background -->
                             <div class="p-4 pb-3" style="background: linear-gradient(135deg, {{ $member->gender == 'm' ? 'rgba(147, 51, 234, 0.1) 0%, rgba(147, 51, 234, 0.05) 50%' : 'rgba(214, 51, 132, 0.1) 0%, rgba(214, 51, 132, 0.05) 50%' }}, transparent 100%);">
@@ -40,7 +40,7 @@
                                     <div class="position-relative">
                                         <div class="rounded-circle border border-4 border-white shadow" style="width: 80px; height: 80px; overflow: hidden; box-shadow: 0 0 0 2px {{ $member->gender == 'm' ? 'rgba(147, 51, 234, 0.3)' : 'rgba(214, 51, 132, 0.3)' }} !important;">
                                             @if($member->profile_picture)
-                                                <img src="{{ asset('storage/' . $member->profile_picture) }}" alt="{{ $member->full_name }}" class="w-100 h-100" style="object-fit: cover;">
+                                                <img src="{{ asset('storage/' . $member->profile_picture) }}" alt="{{ $member->full_name }}" class="w-100 h-100" style="object-fit: cover; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges;">
                                             @else
                                                 <div class="w-100 h-100 d-flex align-items-center justify-content-center text-white fw-bold fs-4" style="background: linear-gradient(135deg, {{ $member->gender == 'm' ? '#8b5cf6 0%, #7c3aed 100%' : '#d63384 0%, #a61e4d 100%' }});">
                                                     {{ strtoupper(substr($member->full_name, 0, 1)) }}
@@ -223,6 +223,16 @@
 
     .member-card-wrapper.hidden {
         display: none;
+    }
+
+    /* Improve image quality */
+    .rounded-circle img {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
     }
 </style>
 @endpush

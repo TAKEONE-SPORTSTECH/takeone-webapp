@@ -254,6 +254,7 @@ class FamilyController extends Controller
             'mobile_code' => 'nullable|string|max:5',
             'mobile' => 'nullable|string|max:20',
             'gender' => 'required|in:m,f',
+            'marital_status' => 'nullable|in:single,married,divorced,widowed',
             'birthdate' => 'required|date',
             'blood_type' => 'nullable|string|max:10',
             'nationality' => 'required|string|max:100',
@@ -261,9 +262,31 @@ class FamilyController extends Controller
             'social_links.*.platform' => 'required_with:social_links.*.url|string',
             'social_links.*.url' => 'required_with:social_links.*.platform|url',
             'motto' => 'nullable|string|max:500',
+            'remove_profile_picture' => 'nullable|boolean',
+            'profile_picture_is_public' => 'nullable|boolean',
         ]);
 
         $user = Auth::user();
+
+        // Handle profile picture removal
+        if ($request->input('remove_profile_picture') == '1') {
+            // Delete the profile picture file if it exists
+            if ($user->profile_picture && Storage::disk('public')->exists($user->profile_picture)) {
+                Storage::disk('public')->delete($user->profile_picture);
+            }
+
+            // Also check for old format profile pictures
+            $extensions = ['png', 'jpg', 'jpeg', 'webp'];
+            foreach ($extensions as $ext) {
+                $path = 'images/profiles/profile_' . $user->id . '.' . $ext;
+                if (Storage::disk('public')->exists($path)) {
+                    Storage::disk('public')->delete($path);
+                }
+            }
+
+            // Set profile_picture to null
+            $user->profile_picture = null;
+        }
 
         // Process social links - convert from array of objects to associative array
         $socialLinks = [];
@@ -283,6 +306,9 @@ class FamilyController extends Controller
             'number' => $validated['mobile'] ?? null,
         ];
         unset($validated['mobile_code']);
+
+        // Handle profile picture visibility
+        $validated['profile_picture_is_public'] = $request->has('profile_picture_is_public') ? true : false;
 
         $user->update($validated);
 
@@ -335,10 +361,30 @@ class FamilyController extends Controller
     public function show($id)
     {
         $user = Auth::user();
-        $relationship = UserRelationship::where('guardian_user_id', $user->id)
-            ->where('dependent_user_id', $id)
-            ->with('dependent')
-            ->firstOrFail();
+
+        // Check if user is super-admin or viewing their own profile
+        $isSuperAdmin = $user->hasRole('super-admin');
+        $isOwnProfile = $user->id == $id;
+
+        // Get the member to display
+        $member = User::findOrFail($id);
+
+        // For super-admin or own profile, create a mock relationship
+        // For regular users, verify family relationship exists
+        if ($isSuperAdmin || $isOwnProfile) {
+            $relationship = (object)[
+                'dependent' => $member,
+                'relationship_type' => $isOwnProfile ? 'self' : 'admin_view',
+                'guardian_user_id' => $user->id,
+                'dependent_user_id' => $member->id,
+            ];
+        } else {
+            // Regular user - must have family relationship
+            $relationship = UserRelationship::where('guardian_user_id', $user->id)
+                ->where('dependent_user_id', $id)
+                ->with('dependent')
+                ->firstOrFail();
+        }
 
         // Fetch health data for the dependent
         $latestHealthRecord = $relationship->dependent->healthRecords()->latest('recorded_at')->first();
@@ -450,10 +496,31 @@ class FamilyController extends Controller
     public function edit($id)
     {
         $user = Auth::user();
-        $relationship = UserRelationship::where('guardian_user_id', $user->id)
-            ->where('dependent_user_id', $id)
-            ->with('dependent')
-            ->firstOrFail();
+
+        // Check if user is super-admin or viewing their own profile
+        $isSuperAdmin = $user->hasRole('super-admin');
+        $isOwnProfile = $user->id == $id;
+
+        // Get the member to edit
+        $member = User::findOrFail($id);
+
+        // For super-admin or own profile, create a mock relationship
+        // For regular users, verify family relationship exists
+        if ($isSuperAdmin || $isOwnProfile) {
+            $relationship = (object)[
+                'dependent' => $member,
+                'relationship_type' => $isOwnProfile ? 'self' : 'admin_view',
+                'guardian_user_id' => $user->id,
+                'dependent_user_id' => $member->id,
+                'is_billing_contact' => false,
+            ];
+        } else {
+            // Regular user - must have family relationship
+            $relationship = UserRelationship::where('guardian_user_id', $user->id)
+                ->where('dependent_user_id', $id)
+                ->with('dependent')
+                ->firstOrFail();
+        }
 
         return view('family.edit', compact('relationship'));
     }
@@ -473,6 +540,7 @@ class FamilyController extends Controller
             'mobile_code' => 'nullable|string|max:5',
             'mobile' => 'nullable|string|max:20',
             'gender' => 'required|in:m,f',
+            'marital_status' => 'nullable|in:single,married,divorced,widowed',
             'birthdate' => 'required|date',
             'blood_type' => 'nullable|string|max:10',
             'nationality' => 'required|string|max:100',
@@ -480,14 +548,46 @@ class FamilyController extends Controller
             'social_links.*.platform' => 'required_with:social_links.*.url|string',
             'social_links.*.url' => 'required_with:social_links.*.platform|url',
             'motto' => 'nullable|string|max:500',
-            'relationship_type' => 'required|string|max:50',
+            'relationship_type' => 'nullable|string|max:50',
             'is_billing_contact' => 'boolean',
+            'remove_profile_picture' => 'nullable|boolean',
+            'profile_picture_is_public' => 'nullable|boolean',
         ]);
 
         $user = Auth::user();
-        $relationship = UserRelationship::where('guardian_user_id', $user->id)
-            ->where('dependent_user_id', $id)
-            ->firstOrFail();
+
+        // Check if user is super-admin or updating their own profile
+        $isSuperAdmin = $user->hasRole('super-admin');
+        $isOwnProfile = $user->id == $id;
+
+        // For regular users, verify family relationship exists
+        if (!$isSuperAdmin && !$isOwnProfile) {
+            $relationship = UserRelationship::where('guardian_user_id', $user->id)
+                ->where('dependent_user_id', $id)
+                ->firstOrFail();
+        }
+
+        $dependent = User::findOrFail($id);
+
+        // Handle profile picture removal
+        if ($request->input('remove_profile_picture') == '1') {
+            // Delete the profile picture file if it exists
+            if ($dependent->profile_picture && Storage::disk('public')->exists($dependent->profile_picture)) {
+                Storage::disk('public')->delete($dependent->profile_picture);
+            }
+
+            // Also check for old format profile pictures
+            $extensions = ['png', 'jpg', 'jpeg', 'webp'];
+            foreach ($extensions as $ext) {
+                $path = 'images/profiles/profile_' . $dependent->id . '.' . $ext;
+                if (Storage::disk('public')->exists($path)) {
+                    Storage::disk('public')->delete($path);
+                }
+            }
+
+            // Set profile_picture to null
+            $dependent->profile_picture = null;
+        }
 
         // Process social links - convert from array of objects to associative array
         $socialLinks = [];
@@ -505,23 +605,33 @@ class FamilyController extends Controller
             'number' => $validated['mobile'] ?? null,
         ];
 
-        $dependent = User::findOrFail($id);
         $dependent->update([
             'full_name' => $validated['full_name'],
             'email' => $validated['email'],
             'mobile' => $mobile,
             'gender' => $validated['gender'],
+            'marital_status' => $validated['marital_status'] ?? null,
             'birthdate' => $validated['birthdate'],
             'blood_type' => $validated['blood_type'],
             'nationality' => $validated['nationality'],
             'social_links' => $socialLinks,
             'motto' => $validated['motto'],
+            'profile_picture_is_public' => $request->has('profile_picture_is_public') ? true : false,
         ]);
 
-        $relationship->update([
-            'relationship_type' => $validated['relationship_type'],
-            'is_billing_contact' => $validated['is_billing_contact'] ?? false,
-        ]);
+        // Update relationship if it exists (not for admin or own profile)
+        if (!$isSuperAdmin && !$isOwnProfile && isset($relationship)) {
+            $relationship->update([
+                'relationship_type' => $validated['relationship_type'] ?? $relationship->relationship_type,
+                'is_billing_contact' => $validated['is_billing_contact'] ?? false,
+            ]);
+        }
+
+        // Redirect based on user type
+        if ($isSuperAdmin) {
+            return redirect()->route('admin.platform.members')
+                ->with('success', 'Member updated successfully.');
+        }
 
         return redirect()->route('family.dashboard')
             ->with('success', 'Family member updated successfully.');
@@ -853,12 +963,32 @@ class FamilyController extends Controller
     public function destroy($id)
     {
         $user = Auth::user();
-        $relationship = UserRelationship::where('guardian_user_id', $user->id)
-            ->where('dependent_user_id', $id)
-            ->firstOrFail();
+
+        // Check if user is super-admin
+        $isSuperAdmin = $user->hasRole('super-admin');
+
+        // Prevent deleting own account
+        if ($user->id == $id) {
+            return redirect()->back()
+                ->with('error', 'You cannot delete your own account.');
+        }
+
+        // For regular users, verify family relationship exists
+        if (!$isSuperAdmin) {
+            $relationship = UserRelationship::where('guardian_user_id', $user->id)
+                ->where('dependent_user_id', $id)
+                ->firstOrFail();
+        }
 
         $dependent = User::findOrFail($id);
+        $memberName = $dependent->full_name;
         $dependent->delete();
+
+        // Redirect based on user type
+        if ($isSuperAdmin) {
+            return redirect()->route('admin.platform.members')
+                ->with('success', $memberName . ' has been removed successfully.');
+        }
 
         return redirect()->route('family.dashboard')
             ->with('success', 'Family member removed successfully.');

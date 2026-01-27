@@ -396,7 +396,7 @@
                             <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                                 <h6 class="dropdown-header small"><strong>{{ Auth::user()->full_name }}</strong><br><small>{{ Auth::user()->email }}</small></h6>
                                 <div class="dropdown-divider"></div>
-                                <a class="dropdown-item small" href="{{ url('profile') }}">
+                                <a class="dropdown-item small" href="{{ route('member.show', Auth::id()) }}">
                                     <i class="bi bi-person me-2"></i>My Profile
                                 </a>
                                 <a class="dropdown-item small" href="#">
@@ -405,8 +405,8 @@
                                 <a class="dropdown-item small" href="#">
                                     <i class="bi bi-calendar-event me-2"></i>My Sessions
                                 </a>
-                                <a class="dropdown-item small" href="{{ route('family.dashboard') }}">
-                                    <i class="bi bi-people me-2"></i>My Family
+                                <a class="dropdown-item small" href="{{ route('members.index') }}">
+                                    <i class="bi bi-people me-2"></i>Members
                                 </a>
                                 <a class="dropdown-item small" href="{{ route('bills.index') }}">
                                     <i class="bi bi-receipt me-2"></i>My Bills

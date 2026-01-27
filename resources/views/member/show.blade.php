@@ -87,13 +87,19 @@
                                     <span class="fw-semibold text-dark nationality-display" data-iso3="{{ $relationship->dependent->nationality }}">{{ $relationship->dependent->nationality }}</span>
                                 </span>
                                 <span class="text-muted small">
-                                    <i class="bi bi-{{ $relationship->dependent->gender == 'm' ? 'gender-male' : 'gender-female' }} me-1"></i>
+                                    <i class="bi bi-{{ $relationship->dependent->gender == 'm' ? 'gender-male text-primary' : 'gender-female text-danger' }} me-1" style="font-size: 1.1rem;"></i>
                                     <span class="fw-semibold text-dark">{{ $relationship->dependent->gender == 'm' ? 'Male' : 'Female' }}</span>
                                 </span>
                                 <span class="text-muted small">
                                     <i class="bi bi-calendar-event me-1"></i>
                                     Age <span class="fw-semibold text-dark">{{ $relationship->dependent->age }}</span>
                                 </span>
+                                @if($relationship->dependent->blood_type)
+                                <span class="text-muted small">
+                                    <i class="bi bi-droplet-fill text-danger me-1"></i>
+                                    <span class="fw-semibold text-dark">{{ $relationship->dependent->blood_type }}</span>
+                                </span>
+                                @endif
                                 <span class="text-muted small">
                                     @php
                                         $horoscopeSymbols = [
@@ -115,6 +121,24 @@
                                     @endphp
                                     {{ $symbol }} <span class="fw-semibold text-dark">{{ $horoscope }}</span>
                                 </span>
+                                @if($relationship->dependent->birthdate)
+                                <span class="text-muted small">
+                                    🎂
+                                    <span class="fw-semibold text-dark">
+                                        @php
+                                            $nextBirthday = $relationship->dependent->birthdate->copy()->year(now()->year);
+                                            if ($nextBirthday->isPast()) {
+                                                $nextBirthday->addYear();
+                                            }
+                                            $diff = now()->diff($nextBirthday);
+                                            $parts = [];
+                                            if ($diff->m > 0) $parts[] = $diff->m . ' month' . ($diff->m > 1 ? 's' : '');
+                                            if ($diff->d > 0) $parts[] = $diff->d . ' day' . ($diff->d > 1 ? 's' : '');
+                                            echo !empty($parts) ? implode(' ', $parts) : 'Today!';
+                                        @endphp
+                                    </span>
+                                </span>
+                                @endif
                                 <span class="text-muted small">
                                     <i class="bi bi-check-circle-fill text-success me-1"></i>
                                     <span class="fw-semibold text-success">Active</span>
@@ -975,7 +999,7 @@
 
         <!-- Affiliations Tab -->
         <div class="tab-pane fade" id="affiliations" role="tabpanel">
-            @include('family.partials.affiliations-enhanced')
+            @include('member.partials.affiliations-enhanced')
         </div>
 
         <!-- Tournaments Tab -->
@@ -1228,7 +1252,7 @@
                 <h5 class="modal-title" id="healthUpdateModalLabel">Add Health Update</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="healthUpdateForm" method="POST" action="{{ $relationship->relationship_type === 'admin_view' ? route('admin.platform.members.store-health', $relationship->dependent->id) : route('family.store-health', $relationship->dependent->id) }}">
+            <form id="healthUpdateForm" method="POST" action="{{ $relationship->relationship_type === 'admin_view' ? route('admin.platform.members.store-health', $relationship->dependent->id) : route('member.store-health', $relationship->dependent->id) }}">
                 @csrf
                 <div class="modal-body">
                     <div class="row g-3">
@@ -1299,7 +1323,7 @@
                 <h5 class="modal-title" id="tournamentParticipationModalLabel">Add Tournament Participation</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="tournamentParticipationForm" method="POST" action="{{ $relationship->relationship_type === 'admin_view' ? route('admin.platform.members.store-tournament', $relationship->dependent->id) : route('family.store-tournament', $relationship->dependent->id) }}">
+            <form id="tournamentParticipationForm" method="POST" action="{{ $relationship->relationship_type === 'admin_view' ? route('admin.platform.members.store-tournament', $relationship->dependent->id) : route('member.store-tournament', $relationship->dependent->id) }}">
                 @csrf
                 <div class="modal-body">
                     <div class="row g-3">
@@ -1670,7 +1694,7 @@
         // Function to reset modal for adding new record
         function resetHealthModal() {
             document.getElementById('healthUpdateModalLabel').textContent = 'Add Health Update';
-            document.getElementById('healthUpdateForm').action = '{{ route("family.store-health", $relationship->dependent->id) }}';
+            document.getElementById('healthUpdateForm').action = '{{ route("member.store-health", $relationship->dependent->id) }}';
             document.getElementById('healthUpdateForm').method = 'POST';
             document.getElementById('recorded_at').value = '{{ \Carbon\Carbon::now()->format("Y-m-d") }}';
             document.getElementById('height').value = '';
@@ -1693,7 +1717,7 @@
             if (!record) return;
 
             document.getElementById('healthUpdateModalLabel').textContent = 'Edit Health Update';
-            document.getElementById('healthUpdateForm').action = '{{ route("family.update-health", ["id" => $relationship->dependent->id, "recordId" => "__RECORD_ID__"]) }}'.replace('__RECORD_ID__', recordId);
+            document.getElementById('healthUpdateForm').action = '{{ route("member.update-health", ["id" => $relationship->dependent->id, "recordId" => "__RECORD_ID__"]) }}'.replace('__RECORD_ID__', recordId);
             document.getElementById('healthUpdateForm').method = 'POST';
 
             // Add method spoofing for PUT
@@ -2057,7 +2081,7 @@
             currentGoalId = goalId;
 
             // Update form action
-            goalEditForm.action = `/family/goal/${goalId}`;
+            goalEditForm.action = `/member/goal/${goalId}`;
 
             // Populate modal fields
             document.getElementById('goalTitleDisplay').textContent = goal.title;
@@ -2515,10 +2539,10 @@ document.addEventListener('DOMContentLoaded', function() {
 <!-- Edit Profile Modal Component -->
 <x-edit-profile-modal
     :user="$relationship->dependent"
-    :formAction="$relationship->relationship_type === 'admin_view' ? route('admin.platform.members.update', $relationship->dependent->id) : ($relationship->relationship_type === 'self' ? route('profile.update') : route('family.update', $relationship->dependent->id))"
+    :formAction="$relationship->relationship_type === 'admin_view' ? route('admin.platform.members.update', $relationship->dependent->id) : route('member.update', $relationship->dependent->id)"
     formMethod="PUT"
     :cancelUrl="null"
-    :uploadUrl="$relationship->relationship_type === 'admin_view' ? route('admin.platform.members.upload-picture', $relationship->dependent->id) : ($relationship->relationship_type === 'self' ? route('profile.upload-picture') : route('family.upload-picture', $relationship->dependent->id))"
+    :uploadUrl="$relationship->relationship_type === 'admin_view' ? route('admin.platform.members.upload-picture', $relationship->dependent->id) : route('member.upload-picture', $relationship->dependent->id)"
     :showRelationshipFields="$relationship->relationship_type !== 'admin_view' && $relationship->relationship_type !== 'self'"
     :relationship="$relationship"
 />

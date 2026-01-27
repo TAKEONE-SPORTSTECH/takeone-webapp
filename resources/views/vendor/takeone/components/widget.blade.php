@@ -27,7 +27,6 @@
         .cropme-wrapper { overflow: hidden !important; border-radius: 8px; }
         .cropme-slider { display: none !important; }
         .takeone-canvas {
-            height: 400px;
             background: #111;
             border-radius: 8px;
             position: relative;
@@ -117,15 +116,15 @@
 
 @push('modals')
 <div class="modal fade" id="cropperModal_{{ $id }}" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 75%; width: 1000px;">
         <div class="modal-content modal-content-clean shadow-lg">
-            <div class="modal-body p-4 text-start">
+            <div class="modal-body p-4 text-start" style="max-height: 85vh; overflow-y: auto;">
                 <div class="mb-3 d-flex align-items-center">
                     <input type="file" id="input_{{ $id }}" class="form-control form-control-sm" accept="image/*">
                     <button type="button" class="btn-close ms-2" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
 
-                <div id="box_{{ $id }}" class="takeone-canvas"></div>
+                <div id="box_{{ $id }}" class="takeone-canvas" style="height: 500px;"></div>
 
                 <div class="row mt-4">
                     <div class="col-md-6 mb-3">
@@ -172,7 +171,7 @@ $(function() {
         if (cropper_{{ $id }}) cropper_{{ $id }}.destroy();
 
         cropper_{{ $id }} = new Cropme(el_{{ $id }}, {
-            container: { width: '100%', height: 400 },
+            container: { width: '100%', height: 500 },
             viewport: {
                 width: {{ $width }},
                 height: {{ $height }},
@@ -265,8 +264,19 @@ $(function() {
                 }).done((res) => {
                     $('#cropperModal_{{ $id }}').modal('hide');
                     Toast.success('Photo Updated!', 'Your image has been saved successfully.');
-                    // Reload page after toast shows
-                    setTimeout(() => location.reload(), 1500);
+
+                    // Update the profile picture in the current page without reload
+                    if (res.url) {
+                        // Update all profile picture images on the page
+                        $('img[src*="profile_{{ str_replace("profile_picture", "", $id) }}"]').attr('src', res.url + '?t=' + new Date().getTime());
+                        // Update any background images
+                        $('[style*="profile_{{ str_replace("profile_picture", "", $id) }}"]').each(function() {
+                            const style = $(this).attr('style');
+                            if (style && style.includes('background-image')) {
+                                $(this).attr('style', style.replace(/url\([^)]+\)/, 'url(' + res.url + '?t=' + new Date().getTime() + ')'));
+                            }
+                        });
+                    }
                 }).fail((err) => {
                     Toast.error('Upload Failed', err.responseJSON?.message || 'An error occurred while uploading.');
                 }).always(() => {

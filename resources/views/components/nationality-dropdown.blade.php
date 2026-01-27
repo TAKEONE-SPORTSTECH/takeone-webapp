@@ -108,7 +108,7 @@
                         <span>${country.name}</span>
                     `;
                     button.addEventListener('click', function() {
-                        selectNationality(componentId, country.name, flagEmoji);
+                        selectNationality(componentId, country.iso3, flagEmoji, country.name);
                     });
                     countryList.appendChild(button);
                 });
@@ -133,26 +133,31 @@
                 // Set initial value if provided
                 const hiddenInput = document.getElementById(componentId);
                 if (hiddenInput && hiddenInput.value) {
-                    const initialCountry = countries.find(c => c.name === hiddenInput.value);
+                    // Try to find by ISO3 code first, then by name
+                    let initialCountry = countries.find(c => c.iso3 === hiddenInput.value);
+                    if (!initialCountry) {
+                        initialCountry = countries.find(c => c.name === hiddenInput.value);
+                    }
+
                     if (initialCountry) {
                         const flagEmoji = initialCountry.iso2
                             .toUpperCase()
                             .split('')
                             .map(char => String.fromCodePoint(127397 + char.charCodeAt(0)))
                             .join('');
-                        selectNationality(componentId, initialCountry.name, flagEmoji);
+                        selectNationality(componentId, initialCountry.iso3, flagEmoji, initialCountry.name);
                     }
                 }
             }
 
-            function selectNationality(componentId, name, flag) {
+            function selectNationality(componentId, iso3, flag, displayName) {
                 const flagElement = document.getElementById(componentId + 'SelectedFlag');
                 const countryElement = document.getElementById(componentId + 'SelectedCountry');
                 const hiddenInput = document.getElementById(componentId);
 
                 if (flagElement) flagElement.textContent = flag + ' ';
-                if (countryElement) countryElement.textContent = name;
-                if (hiddenInput) hiddenInput.value = name;
+                if (countryElement) countryElement.textContent = displayName;
+                if (hiddenInput) hiddenInput.value = iso3;
 
                 // Close the dropdown after selection
                 const dropdownButton = document.getElementById(componentId + 'Dropdown');

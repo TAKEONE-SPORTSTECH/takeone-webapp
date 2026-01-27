@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use App\Http\Controllers\FamilyController;
+use App\Http\Controllers\MemberController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ClubController;
 use App\Http\Controllers\InstructorReviewController;
@@ -99,6 +100,14 @@ Route::middleware(['auth', 'verified', 'role:super-admin'])->prefix('admin')->na
 
     // All Members Management
     Route::get('/members', [App\Http\Controllers\Admin\PlatformController::class, 'members'])->name('platform.members');
+    Route::get('/members/{id}', [App\Http\Controllers\Admin\PlatformController::class, 'showMember'])->name('platform.members.show');
+    Route::get('/members/{id}/edit', [App\Http\Controllers\Admin\PlatformController::class, 'editMember'])->name('platform.members.edit');
+    Route::put('/members/{id}', [App\Http\Controllers\Admin\PlatformController::class, 'updateMember'])->name('platform.members.update');
+    Route::delete('/members/{id}', [App\Http\Controllers\Admin\PlatformController::class, 'destroyMember'])->name('platform.members.destroy');
+    Route::post('/members/{id}/upload-picture', [App\Http\Controllers\Admin\PlatformController::class, 'uploadMemberPicture'])->name('platform.members.upload-picture');
+    Route::post('/members/{id}/health', [App\Http\Controllers\Admin\PlatformController::class, 'storeMemberHealth'])->name('platform.members.store-health');
+    Route::put('/members/{id}/health/{recordId}', [App\Http\Controllers\Admin\PlatformController::class, 'updateMemberHealth'])->name('platform.members.update-health');
+    Route::post('/members/{id}/tournament', [App\Http\Controllers\Admin\PlatformController::class, 'storeMemberTournament'])->name('platform.members.store-tournament');
 
     // Database Backup & Restore
     Route::get('/backup', [App\Http\Controllers\Admin\PlatformController::class, 'backup'])->name('platform.backup');
@@ -135,24 +144,54 @@ Route::middleware(['auth', 'verified'])->prefix('admin/club/{club}')->name('admi
     Route::get('/analytics', [App\Http\Controllers\Admin\ClubAdminController::class, 'analytics'])->name('analytics');
 });
 
-// Family routes
+// Unified Member routes
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/profile', [FamilyController::class, 'profile'])->name('profile.show');
-    Route::get('/profile/edit', [FamilyController::class, 'editProfile'])->name('profile.edit');
-    Route::put('/profile', [FamilyController::class, 'updateProfile'])->name('profile.update');
-    Route::post('/profile/upload-picture', [FamilyController::class, 'uploadProfilePicture'])->name('profile.upload-picture');
-    Route::get('/family', [FamilyController::class, 'dashboard'])->name('family.dashboard');
-    Route::get('/family/create', [FamilyController::class, 'create'])->name('family.create');
-    Route::post('/family', [FamilyController::class, 'store'])->name('family.store');
-    Route::get('/family/{id}', [FamilyController::class, 'show'])->name('family.show');
-    Route::get('/family/{id}/edit', [FamilyController::class, 'edit'])->name('family.edit');
-    Route::put('/family/{id}', [FamilyController::class, 'update'])->name('family.update');
-    Route::post('/family/{id}/health', [FamilyController::class, 'storeHealth'])->name('family.store-health');
-    Route::put('/family/{id}/health/{recordId}', [FamilyController::class, 'updateHealth'])->name('family.update-health');
-    Route::put('/family/goal/{goalId}', [FamilyController::class, 'updateGoal'])->name('family.update-goal');
-    Route::post('/family/{id}/tournament', [FamilyController::class, 'storeTournament'])->name('family.store-tournament');
-    Route::post('/family/{id}/upload-picture', [FamilyController::class, 'uploadFamilyMemberPicture'])->name('family.upload-picture');
-    Route::delete('/family/{id}', [FamilyController::class, 'destroy'])->name('family.destroy');
+    // Redirect old /profile route to /member/{id}
+    Route::get('/profile', function () {
+        return redirect()->route('member.show', Auth::id());
+    });
+
+    // Redirect old /family route to /members
+    Route::get('/family', function () {
+        return redirect()->route('members.index');
+    });
+
+    // Members listing (family dashboard)
+    Route::get('/members', [MemberController::class, 'index'])->name('members.index');
+    Route::get('/members/create', [MemberController::class, 'create'])->name('members.create');
+    Route::post('/members', [MemberController::class, 'store'])->name('members.store');
+
+    // Individual member routes
+    Route::get('/member/{id}', [MemberController::class, 'show'])->name('member.show');
+    Route::get('/member/{id}/edit', [MemberController::class, 'edit'])->name('member.edit');
+    Route::put('/member/{id}', [MemberController::class, 'update'])->name('member.update');
+    Route::delete('/member/{id}', [MemberController::class, 'destroy'])->name('member.destroy');
+    Route::post('/member/{id}/upload-picture', [MemberController::class, 'uploadPicture'])->name('member.upload-picture');
+    Route::post('/member/{id}/health', [MemberController::class, 'storeHealth'])->name('member.store-health');
+    Route::put('/member/{id}/health/{recordId}', [MemberController::class, 'updateHealth'])->name('member.update-health');
+    Route::post('/member/{id}/tournament', [MemberController::class, 'storeTournament'])->name('member.store-tournament');
+    Route::put('/member/goal/{goalId}', [MemberController::class, 'updateGoal'])->name('member.update-goal');
+
+    // Keep old family routes for backward compatibility (redirect to new routes)
+    Route::get('/family/create', function () {
+        return redirect()->route('members.create');
+    })->name('family.create');
+    Route::get('/family/{id}', function ($id) {
+        return redirect()->route('member.show', $id);
+    })->name('family.show');
+    Route::get('/family/{id}/edit', function ($id) {
+        return redirect()->route('member.edit', $id);
+    })->name('family.edit');
+    Route::put('/family/{id}', [MemberController::class, 'update'])->name('family.update');
+    Route::post('/family/{id}/health', [MemberController::class, 'storeHealth'])->name('family.store-health');
+    Route::put('/family/{id}/health/{recordId}', [MemberController::class, 'updateHealth'])->name('family.update-health');
+    Route::put('/family/goal/{goalId}', [MemberController::class, 'updateGoal'])->name('family.update-goal');
+    Route::post('/family/{id}/tournament', [MemberController::class, 'storeTournament'])->name('family.store-tournament');
+    Route::post('/family/{id}/upload-picture', [MemberController::class, 'uploadPicture'])->name('family.upload-picture');
+    Route::delete('/family/{id}', [MemberController::class, 'destroy'])->name('family.destroy');
+    Route::get('/family/dashboard', function () {
+        return redirect()->route('members.index');
+    })->name('family.dashboard');
 
     // Bills routes
     Route::get('/bills', [InvoiceController::class, 'index'])->name('bills.index');

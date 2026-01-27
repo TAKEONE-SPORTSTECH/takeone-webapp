@@ -29,6 +29,7 @@ class User extends Authenticatable
         'mobile',
         'password',
         'gender',
+        'marital_status',
         'birthdate',
         'blood_type',
         'nationality',
@@ -36,6 +37,7 @@ class User extends Authenticatable
         'social_links',
         'media_gallery',
         'profile_picture',
+        'profile_picture_is_public',
         'motto',
     ];
 
