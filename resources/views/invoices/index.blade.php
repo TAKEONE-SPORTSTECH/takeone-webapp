@@ -3,32 +3,36 @@
 @section('content')
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="mb-0">My Bills</h1>
+        <div>
+            <h1 class="mb-0">Payments & Subscriptions</h1>
+            <p class="text-muted mb-0">Manage your club membership payments, subscriptions, and billing history</p>
+        </div>
+        <a href="{{ url()->previous() }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back
+        </a>
     </div>
 
     <div class="card shadow-sm">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center">
-            <h4 class="mb-0">All Bills</h4>
-            <div class="btn-group" role="group">
-                <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-funnel"></i> Filter
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="{{ route('bills.index') }}">All</a></li>
-                    <li><a class="dropdown-item" href="{{ route('bills.index', ['status' => 'pending']) }}">Pending</a></li>
-                    <li><a class="dropdown-item" href="{{ route('bills.index', ['status' => 'paid']) }}">Paid</a></li>
-                    <li><a class="dropdown-item" href="{{ route('bills.index', ['status' => 'overdue']) }}">Overdue</a></li>
-                </ul>
+        <div class="card-header bg-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">All Bills</h4>
+                <div class="d-flex align-items-center gap-3">
+                    <form method="GET" action="{{ route('bills.index') }}" class="d-flex gap-2 align-items-center">
+                        <label for="start_date" class="form-label mb-0 me-1">From:</label>
+                        <input type="date" name="start_date" id="start_date" class="form-control form-control-sm" value="{{ request('start_date') }}">
+                        <label for="end_date" class="form-label mb-0 me-1 ms-2">To:</label>
+                        <input type="date" name="end_date" id="end_date" class="form-control form-control-sm" value="{{ request('end_date') }}">
+                        <button type="submit" class="btn btn-primary btn-sm ms-2">Filter</button>
+                    </form>
+                    <div class="d-flex gap-2">
+                        <a href="{{ route('bills.index') }}" class="btn btn-outline-secondary {{ !request('status') ? 'active' : '' }}">All</a>
+                        <a href="{{ route('bills.index', ['status' => 'pending']) }}" class="btn btn-warning {{ request('status') === 'pending' ? 'active' : '' }}">Pending</a>
+                        <a href="{{ route('bills.index', ['status' => 'paid']) }}" class="btn btn-success {{ request('status') === 'paid' ? 'active' : '' }}">Paid</a>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="card-body">
-            @if(session('success'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{ session('success') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            @endif
-
             @if($invoices->count() > 0)
                 <div class="table-responsive">
                     <table class="table table-hover">
@@ -36,7 +40,6 @@
                             <tr>
                                 <th>Invoice #</th>
                                 <th>Student</th>
-                                <th>Club</th>
                                 <th>Amount</th>
                                 <th>Status</th>
                                 <th>Due Date</th>
@@ -47,94 +50,36 @@
                             @foreach($invoices as $invoice)
                                 <tr>
                                     <td>{{ $invoice->id }}</td>
-                                    <td>{{ $invoice->student->full_name }}</td>
-                                    <td>{{ $invoice->tenant->club_name }}</td>
+                                    <td>{{ $invoice->student_user->full_name ?? 'N/A' }}</td>
                                     <td>${{ number_format($invoice->amount, 2) }}</td>
                                     <td>
-                                        @if($invoice->status === 'paid')
-                                            <span class="badge bg-success">Paid</span>
-                                        @elseif($invoice->status === 'pending')
-                                            <span class="badge bg-warning text-dark">Pending</span>
-                                        @else
-                                            <span class="badge bg-danger">Overdue</span>
-                                        @endif
+                                        <span class="badge bg-{{ $invoice->status === 'paid' ? 'success' : 'warning' }}">
+                                            {{ ucfirst($invoice->status) }}
+                                        </span>
                                     </td>
-                                    <td>{{ $invoice->due_date->format('M j, Y') }}</td>
+                                    <td>{{ $invoice->due_date->format('M d, Y') }}</td>
                                     <td>
-                                        <div class="btn-group" role="group">
-                                            <a href="#" class="btn btn-sm btn-outline-primary view-invoice" data-id="{{ $invoice->id }}">
-                                                <i class="bi bi-eye"></i> View
-                                            </a>
-                                            @if($invoice->status !== 'paid')
-                                                <a href="{{ route('bills.pay', $invoice->id) }}" class="btn btn-sm btn-success">
-                                                    <i class="bi bi-credit-card"></i> Pay
-                                                </a>
-                                            @else
-                                                <a href="{{ route('bills.receipt', $invoice->id) }}" class="btn btn-sm btn-outline-info" target="_blank">
-                                                    <i class="bi bi-receipt"></i> Receipt
-                                                </a>
-                                            @endif
-                                        </div>
+                                        <a href="{{ route('bills.show', $invoice->id) }}" class="btn btn-sm btn-outline-primary">View</a>
+                                        @if($invoice->status === 'pending')
+                                            <a href="{{ route('bills.pay', $invoice->id) }}" class="btn btn-sm btn-success">Pay Now</a>
+                                        @else
+                                            <a href="{{ route('bills.receipt', $invoice->id) }}" class="btn btn-sm btn-outline-secondary">Receipt</a>
+                                        @endif
                                     </td>
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
+                {{ $invoices->links() }}
             @else
                 <div class="text-center py-5">
-                    <i class="bi bi-receipt" style="font-size: 3rem;"></i>
-                    <h4 class="mt-3">No Bills Found</h4>
-                    <p class="text-muted">There are no bills matching your criteria.</p>
+                    <i class="fas fa-receipt fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No invoices found</h5>
+                    <p class="text-muted">You don't have any invoices yet.</p>
                 </div>
             @endif
         </div>
-        @if($invoices->where('status', '!=', 'paid')->count() > 0)
-            <div class="card-footer bg-white d-flex justify-content-end">
-                <a href="{{ route('bills.pay-all') }}" class="btn btn-success">
-                    <i class="bi bi-credit-card"></i> Pay All
-                </a>
-            </div>
-        @endif
     </div>
 </div>
-
-<!-- Invoice Modal -->
-<div class="modal fade" id="invoiceModal" tabindex="-1" aria-labelledby="invoiceModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="invoiceModalLabel">Invoice Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" id="invoiceModalBody">
-                <!-- Content will be loaded here -->
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.view-invoice').forEach(function(button) {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            var invoiceId = this.getAttribute('data-id');
-            fetch('/bills/' + invoiceId, {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json',
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('invoiceModalBody').innerHTML = data.html;
-                var modal = new bootstrap.Modal(document.getElementById('invoiceModal'));
-                modal.show();
-            });
-        });
-    });
-});
-</script>
 @endsection

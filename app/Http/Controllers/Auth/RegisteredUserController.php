@@ -56,6 +56,11 @@ class RegisteredUserController extends Controller
             'nationality' => $request->nationality,
         ]);
 
+        // Assign super-admin role to the first registered user
+        if (User::count() === 1) {
+            $user->assignRole('super-admin');
+        }
+
         event(new Registered($user));
 
         // Send welcome email

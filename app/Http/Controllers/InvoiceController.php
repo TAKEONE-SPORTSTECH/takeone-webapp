@@ -18,12 +18,26 @@ class InvoiceController extends Controller
      *
      * @return \Illuminate\View\View
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
-        $invoices = Invoice::where('payer_user_id', $user->id)
-            ->with(['student', 'tenant'])
-            ->get();
+        $query = Invoice::where('payer_user_id', $user->id)
+            ->with(['student', 'tenant']);
+
+        // Filter by status
+        if ($request->has('status') && in_array($request->status, ['pending', 'paid'])) {
+            $query->where('status', $request->status);
+        }
+
+        // Filter by date range
+        if ($request->has('start_date') && $request->start_date) {
+            $query->where('due_date', '>=', $request->start_date);
+        }
+        if ($request->has('end_date') && $request->end_date) {
+            $query->where('due_date', '<=', $request->end_date);
+        }
+
+        $invoices = $query->get();
 
         return view('invoices.index', compact('invoices'));
     }

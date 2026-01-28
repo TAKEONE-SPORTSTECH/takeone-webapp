@@ -397,22 +397,22 @@
                                 <h6 class="dropdown-header small"><strong>{{ Auth::user()->full_name }}</strong><br><small>{{ Auth::user()->email }}</small></h6>
                                 <div class="dropdown-divider"></div>
                                 <a class="dropdown-item small" href="{{ route('member.show', Auth::id()) }}">
-                                    <i class="bi bi-person me-2"></i>My Profile
+                                    <i class="bi bi-person me-2"></i>Profile
                                 </a>
                                 <a class="dropdown-item small" href="#">
                                     <i class="bi bi-diagram-3 me-2"></i>Affiliations
                                 </a>
                                 <a class="dropdown-item small" href="#">
-                                    <i class="bi bi-calendar-event me-2"></i>My Sessions
+                                    <i class="bi bi-calendar-event me-2"></i>Sessions
                                 </a>
                                 <a class="dropdown-item small" href="{{ route('members.index') }}">
-                                    <i class="bi bi-people me-2"></i>Members
+                                    <i class="bi bi-people me-2"></i>Family
                                 </a>
                                 <a class="dropdown-item small" href="{{ route('bills.index') }}">
-                                    <i class="bi bi-receipt me-2"></i>My Bills
+                                    <i class="bi bi-receipt me-2"></i>Payments & Subscriptions
                                 </a>
                                 <a class="dropdown-item small" href="#">
-                                    <i class="bi bi-gear me-2"></i>Settings
+                                    <i class="bi bi-gear me-2"></i>Manage Business
                                 </a>
                                 <div class="dropdown-divider"></div>
                                 @if(Auth::user()->isSuperAdmin())

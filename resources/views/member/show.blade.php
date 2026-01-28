@@ -22,6 +22,11 @@
             <h2 class="fw-bold mb-1">Member Profile</h2>
             <p class="text-muted mb-0">Comprehensive member information and analytics</p>
         </div>
+        <div>
+            <button onclick="window.history.back()" class="btn btn-outline-primary">
+                <i class="bi bi-arrow-left me-2"></i>Back
+            </button>
+        </div>
     </div>
 
     <!-- Profile Card -->
@@ -58,6 +63,10 @@
                                         <i class="bi bi-pencil me-2"></i>Edit Info
                                     </a></li>
                                     <li><a class="dropdown-item" href="#"><i class="bi bi-bullseye me-2"></i>Set a Goal</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
+                                        <i class="bi bi-trash me-2"></i>Delete Account
+                                    </a></li>
                                 </ul>
                             </div>
                         </div>
@@ -2480,6 +2489,51 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Delete Account Modal functionality
+    const deleteAccountModal = document.getElementById('deleteAccountModal');
+    const confirmNameInput = document.getElementById('confirmName');
+    const deleteAccountBtn = document.getElementById('deleteAccountBtn');
+    const expectedName = '{{ $relationship->dependent->full_name }}';
+
+    if (deleteAccountModal && confirmNameInput && deleteAccountBtn) {
+        // Function to check if confirmation name matches
+        function checkConfirmationName() {
+            const enteredName = confirmNameInput.value.trim();
+            const matches = enteredName === expectedName;
+            deleteAccountBtn.disabled = !matches;
+
+            // Add visual feedback
+            if (matches) {
+                confirmNameInput.classList.remove('is-invalid');
+                confirmNameInput.classList.add('is-valid');
+            } else {
+                confirmNameInput.classList.remove('is-valid');
+                if (enteredName.length > 0) {
+                    confirmNameInput.classList.add('is-invalid');
+                } else {
+                    confirmNameInput.classList.remove('is-invalid');
+                }
+            }
+        }
+
+        // Listen for input changes
+        confirmNameInput.addEventListener('input', checkConfirmationName);
+
+        // Reset modal when opened
+        deleteAccountModal.addEventListener('show.bs.modal', function() {
+            confirmNameInput.value = '';
+            confirmNameInput.classList.remove('is-valid', 'is-invalid');
+            deleteAccountBtn.disabled = true;
+        });
+
+        // Reset modal when closed
+        deleteAccountModal.addEventListener('hidden.bs.modal', function() {
+            confirmNameInput.value = '';
+            confirmNameInput.classList.remove('is-valid', 'is-invalid');
+            deleteAccountBtn.disabled = true;
+        });
+    }
+
     // Handle form submission
     document.getElementById('tournamentParticipationForm').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -2546,5 +2600,50 @@ document.addEventListener('DOMContentLoaded', function() {
     :showRelationshipFields="$relationship->relationship_type !== 'admin_view' && $relationship->relationship_type !== 'self'"
     :relationship="$relationship"
 />
+
+<!-- Delete Account Modal -->
+<div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-danger">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteAccountModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Delete Account
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="deleteAccountForm" method="POST" action="{{ $relationship->relationship_type === 'admin_view' ? route('admin.platform.members.destroy', $relationship->dependent->id) : route('member.confirm-delete', $relationship->dependent->id) }}">
+                @csrf
+                @method('DELETE')
+                <div class="modal-body">
+                    <div class="text-center mb-4">
+                        <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 3rem;"></i>
+                    </div>
+
+                    <div class="alert alert-danger">
+                        <strong>Warning!</strong> This action cannot be undone. This will permanently delete the account for <strong>{{ $relationship->dependent->full_name }}</strong> and remove all associated data.
+                    </div>
+
+                    <p class="text-muted small mb-3">
+                        To confirm deletion, please type the full name of the account holder below:
+                    </p>
+
+                    <div class="mb-3">
+                        <label for="confirmName" class="form-label fw-semibold">Type "{{ $relationship->dependent->full_name }}" to confirm:</label>
+                        <input type="text" class="form-control" id="confirmName" name="confirm_name" required>
+                        <div class="form-text text-muted">
+                            This action will soft delete the account. The account can be restored by an administrator if needed.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger" id="deleteAccountBtn" disabled>
+                        <i class="bi bi-trash me-2"></i>Delete Account
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 @endsection

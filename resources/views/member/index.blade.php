@@ -3,7 +3,10 @@
 @section('content')
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="mb-0">Members</h1>
+        <div>
+            <h1 class="mb-1">Family Members</h1>
+            <p class="text-muted mb-0">Manage and view your family members</p>
+        </div>
     </div>
 
     <!-- Family Members Card Grid -->
@@ -88,11 +91,17 @@
                         <div class="row g-3 mb-3">
                             <div class="col-6">
                                 <div class="small text-muted text-uppercase fw-medium mb-1" style="font-size: 0.7rem; letter-spacing: 0.5px;">Gender</div>
-                                <div class="fw-semibold text-muted text-capitalize">{{ $relationship->dependent->gender == 'm' ? 'Male' : 'Female' }}</div>
+                                <div class="fw-semibold text-muted text-capitalize">
+                                    <i class="bi {{ $relationship->dependent->gender == 'm' ? 'bi-man text-primary' : 'bi-woman text-danger' }} me-1"></i>
+                                    {{ $relationship->dependent->gender == 'm' ? 'Male' : 'Female' }}
+                                </div>
                             </div>
                             <div class="col-6">
                                 <div class="small text-muted text-uppercase fw-medium mb-1" style="font-size: 0.7rem; letter-spacing: 0.5px;">Age</div>
-                                <div class="fw-semibold text-muted">{{ $relationship->dependent->age }} years</div>
+                                <div class="fw-semibold text-muted">
+                                    <i class="bi bi-cake text-warning me-1"></i>
+                                    {{ $relationship->dependent->age }} years
+                                </div>
                             </div>
                         </div>
                         <div class="row g-3 mb-3">

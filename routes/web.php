@@ -165,6 +165,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/member/{id}', [MemberController::class, 'show'])->name('member.show');
     Route::get('/member/{id}/edit', [MemberController::class, 'edit'])->name('member.edit');
     Route::put('/member/{id}', [MemberController::class, 'update'])->name('member.update');
+    Route::delete('/member/{id}/confirm-delete', [MemberController::class, 'confirmDelete'])->name('member.confirm-delete');
     Route::delete('/member/{id}', [MemberController::class, 'destroy'])->name('member.destroy');
     Route::post('/member/{id}/upload-picture', [MemberController::class, 'uploadPicture'])->name('member.upload-picture');
     Route::post('/member/{id}/health', [MemberController::class, 'storeHealth'])->name('member.store-health');

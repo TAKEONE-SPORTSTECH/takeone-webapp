@@ -102,7 +102,10 @@
                                 <div class="row g-3 mb-3">
                                     <div class="col-6">
                                         <div class="small text-muted text-uppercase fw-medium mb-1" style="font-size: 0.7rem; letter-spacing: 0.5px;">Gender</div>
-                                        <div class="fw-semibold text-muted text-capitalize">{{ $member->gender == 'm' ? 'Male' : 'Female' }}</div>
+                                <div class="fw-semibold text-muted text-capitalize">
+                                    <i class="bi {{ $member->gender == 'm' ? 'bi-man text-primary' : 'bi-woman text-danger' }} me-1"></i>
+                                    {{ $member->gender == 'm' ? 'Male' : 'Female' }}
+                                </div>
                                     </div>
                                     <div class="col-6">
                                         <div class="small text-muted text-uppercase fw-medium mb-1" style="font-size: 0.7rem; letter-spacing: 0.5px;">Age</div>

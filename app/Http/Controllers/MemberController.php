@@ -668,6 +668,58 @@ class MemberController extends Controller
     }
 
     /**
+     * Confirm and remove the specified member from storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function confirmDelete(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'confirm_name' => 'required|string',
+        ]);
+
+        $user = Auth::user();
+
+        // Check if user is super-admin
+        $isSuperAdmin = $user->hasRole('super-admin');
+
+        // Prevent deleting own account
+        if ($user->id == $id) {
+            return redirect()->back()
+                ->with('error', 'You cannot delete your own account.');
+        }
+
+        // For regular users, verify family relationship exists
+        if (!$isSuperAdmin) {
+            UserRelationship::where('guardian_user_id', $user->id)
+                ->where('dependent_user_id', $id)
+                ->firstOrFail();
+        }
+
+        $member = User::findOrFail($id);
+
+        // Verify the confirmation name matches
+        if ($validated['confirm_name'] !== $member->full_name) {
+            return redirect()->back()
+                ->with('error', 'Confirmation name does not match. Account deletion cancelled.');
+        }
+
+        $memberName = $member->full_name;
+        $member->delete();
+
+        // Redirect based on user type
+        if ($isSuperAdmin) {
+            return redirect()->route('admin.platform.members')
+                ->with('success', $memberName . ' has been removed successfully.');
+        }
+
+        return redirect()->route('members.index')
+            ->with('success', 'Member removed successfully.');
+    }
+
+    /**
      * Remove the specified member from storage.
      *
      * @param  int  $id
