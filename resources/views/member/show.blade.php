@@ -96,9 +96,15 @@
                                     <span class="fw-semibold text-dark nationality-display" data-iso3="{{ $relationship->dependent->nationality }}">{{ $relationship->dependent->nationality }}</span>
                                 </span>
                                 <span class="text-muted small">
-                                    <i class="bi bi-{{ $relationship->dependent->gender == 'm' ? 'gender-male text-primary' : 'gender-female text-danger' }} me-1" style="font-size: 1.1rem;"></i>
+                                    <i class="bi bi-{{ $relationship->dependent->gender == 'm' ? 'gender-male' : 'gender-female' }} me-1" style="font-size: 1.1rem; color: {{ $relationship->dependent->gender == 'm' ? '#17a2b8' : '#6f42c1' }};"></i>
                                     <span class="fw-semibold text-dark">{{ $relationship->dependent->gender == 'm' ? 'Male' : 'Female' }}</span>
                                 </span>
+                                @if($relationship->dependent->marital_status)
+                                <span class="text-muted small">
+                                    <i class="bi bi-heart me-1" style="color: #e91e63;"></i>
+                                    <span class="fw-semibold text-dark">{{ ucfirst($relationship->dependent->marital_status) }}</span>
+                                </span>
+                                @endif
                                 <span class="text-muted small">
                                     <i class="bi bi-calendar-event me-1"></i>
                                     Age <span class="fw-semibold text-dark">{{ $relationship->dependent->age }}</span>

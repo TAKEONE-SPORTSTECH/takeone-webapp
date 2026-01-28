@@ -211,17 +211,26 @@
                     });
                 }
 
-                // Detect user's country and set as default
-                detectUserCountry(function(defaultCode) {
-                    const hiddenInput = document.getElementById(componentId);
-                    if (hiddenInput) {
-                        hiddenInput.value = defaultCode;
-                    }
-                    const initialCountry = countries.find(c => c.code === defaultCode);
+                // Set initial value from database or detect user's country as fallback
+                const hiddenInput = document.getElementById(componentId);
+                if (hiddenInput && hiddenInput.value) {
+                    // Value already set from database, find and display the corresponding country
+                    const initialCountry = countries.find(c => c.code === hiddenInput.value);
                     if (initialCountry) {
                         selectCountry(componentId, initialCountry.code, initialCountry.name, initialCountry.flag);
                     }
-                });
+                } else {
+                    // No database value, detect user's country as default
+                    detectUserCountry(function(defaultCode) {
+                        if (hiddenInput) {
+                            hiddenInput.value = defaultCode;
+                        }
+                        const initialCountry = countries.find(c => c.code === defaultCode);
+                        if (initialCountry) {
+                            selectCountry(componentId, initialCountry.code, initialCountry.name, initialCountry.flag);
+                        }
+                    });
+                }
             }
 
             function selectCountry(componentId, code, name, flag) {
