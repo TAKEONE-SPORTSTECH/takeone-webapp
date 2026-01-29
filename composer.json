@@ -8,7 +8,7 @@
     "repositories": [
         {
             "type": "vcs",
-            "url": "https://git.innovator.bh/ghassan/laravel-image-cropper"
+            "url": "https://github.com/TAKEONE-SPORTSTECH/laravel-image-cropper.git"
         }
     ],
     "require": {
