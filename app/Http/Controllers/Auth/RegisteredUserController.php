@@ -45,27 +45,46 @@ class RegisteredUserController extends Controller
             'nationality' => ['required', 'string', 'max:255'],
         ]);
 
-        $user = User::create([
-            'name' => $request->full_name,
-            'full_name' => $request->full_name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'mobile' => ['code' => $request->country_code, 'number' => $request->mobile_number],
-            'gender' => $request->gender,
-            'birthdate' => $request->birthdate,
-            'nationality' => $request->nationality,
-        ]);
+        try {
+            $user = User::create([
+                'name' => $request->full_name,
+                'full_name' => $request->full_name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'mobile' => ['code' => $request->country_code, 'number' => $request->mobile_number],
+                'gender' => $request->gender,
+                'birthdate' => $request->birthdate,
+                'nationality' => $request->nationality,
+            ]);
 
-        // Assign super-admin role to the first registered user
-        if (User::count() === 1) {
-            $user->assignRole('super-admin');
+            // Assign super-admin role to the first registered user if no super-admin exists
+            $hasSuperAdmin = User::whereHas('roles', function ($query) {
+                $query->where('slug', 'super-admin');
+            })->exists();
+
+            if (!$hasSuperAdmin) {
+                $user->assignRole('super-admin');
+                // Refresh the user to load the role relationship
+                $user->load('roles');
+            }
+
+            event(new Registered($user));
+
+            // Log the user in
+            Auth::login($user);
+
+            // Send welcome email with verification link
+            try {
+                Mail::to($user->email)->send(new WelcomeEmail($user, $user, null));
+            } catch (\Exception $e) {
+                // Log the error but don't stop the registration process
+                \Log::error('Failed to send welcome email: ' . $e->getMessage());
+            }
+
+            return redirect()->route('verification.notice')->with('success', 'Registration successful! Please check your email to verify your account.');
+        } catch (\Exception $e) {
+            \Log::error('Registration failed: ' . $e->getMessage());
+            return back()->withInput()->withErrors(['error' => 'Registration failed. Please try again.']);
         }
-
-        event(new Registered($user));
-
-        // Send welcome email
-        Mail::to($user->email)->send(new WelcomeEmail($user, $user, null));
-
-        return redirect()->route('verification.notice')->with('success', 'Registration successful! Please check your email to verify your account.');
     }
 }

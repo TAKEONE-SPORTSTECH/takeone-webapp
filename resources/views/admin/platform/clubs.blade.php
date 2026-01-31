@@ -13,9 +13,9 @@
         <div class="flex-grow-1 me-3">
             <input type="text" id="clubSearch" class="form-control" placeholder="Search clubs by name, location, or description..." value="{{ $search ?? '' }}">
         </div>
-        <a href="{{ route('admin.platform.clubs.create') }}" class="btn btn-primary">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#clubModal" onclick="openClubModal('create')">
             <i class="bi bi-plus-circle me-2"></i>Add New Club
-        </a>
+        </button>
     </div>
 
     <!-- Clubs Grid -->
@@ -51,11 +51,21 @@
                                     </div>
                                 </div>
 
-                                <!-- Admin Badge - Top Left -->
-                                <div class="position-absolute" style="top: 8px; left: 8px;">
-                                    <span class="badge text-white px-3 py-1" style="background-color: rgba(147, 51, 234, 0.9); border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">Admin</span>
-                                </div>
+                            <!-- Admin Badge - Top Left -->
+                            <div class="position-absolute" style="top: 8px; left: 8px;">
+                                <span class="badge text-white px-3 py-1" style="background-color: rgba(147, 51, 234, 0.9); border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">Admin</span>
                             </div>
+
+                            <!-- Edit Button - Top Right -->
+                            <div class="position-absolute" style="top: 8px; right: 8px;">
+                                <button type="button"
+                                        class="btn btn-sm btn-light shadow-sm"
+                                        onclick="event.stopPropagation(); openClubModal('edit', {{ $club->id }})"
+                                        title="Edit Club">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            </div>
+                        </div>
 
                             <!-- Card Body -->
                             <div class="p-4" style="background-color: white;">
@@ -136,14 +146,17 @@
                     @endif
                 </p>
                 @if(!$search)
-                    <a href="{{ route('admin.platform.clubs.create') }}" class="btn btn-primary">
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#clubModal" onclick="openClubModal('create')">
                         <i class="bi bi-plus-circle me-2"></i>Add New Club
-                    </a>
+                    </button>
                 @endif
             </div>
         </div>
     @endif
 </div>
+
+<!-- Include Club Modal -->
+<x-club-modal mode="create" />
 
 @push('styles')
 <style>
@@ -193,6 +206,87 @@
             }
         });
     });
+
+    // Open club modal
+    async function openClubModal(mode, clubId = null) {
+        const modal = document.getElementById('clubModal');
+        const form = document.getElementById('clubForm');
+
+        if (!modal || !form) return;
+
+        // Set mode
+        form.dataset.mode = mode;
+        form.dataset.clubId = clubId || '';
+
+        // Update modal title
+        const modalTitle = modal.querySelector('.modal-title');
+        if (modalTitle) {
+            modalTitle.textContent = mode === 'edit' ? 'Edit Club' : 'Create New Club';
+        }
+
+        // Update submit button text
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) {
+            submitBtn.innerHTML = mode === 'edit'
+                ? '<i class="bi bi-check-circle me-2"></i>Update Club'
+                : '<i class="bi bi-check-circle me-2"></i>Create Club';
+        }
+
+        // If edit mode, load club data
+        if (mode === 'edit' && clubId) {
+            try {
+                const response = await fetch(`/admin/api/clubs/${clubId}`);
+                if (response.ok) {
+                    const club = await response.json();
+                    populateFormWithClubData(club);
+                }
+            } catch (error) {
+                console.error('Error loading club data:', error);
+            }
+        } else {
+            // Reset form for create mode
+            form.reset();
+        }
+    }
+
+    // Populate form with club data (for edit mode)
+    function populateFormWithClubData(club) {
+        console.log('Loading club data:', club);
+
+        // Populate basic fields
+        if (club.club_name) document.getElementById('club_name').value = club.club_name;
+        if (club.slug) document.getElementById('slug').value = club.slug;
+        if (club.slogan) document.getElementById('slogan').value = club.slogan;
+        if (club.description) document.getElementById('description').value = club.description;
+        if (club.established_date) document.getElementById('established_date').value = club.established_date;
+        if (club.commercial_reg_number) document.getElementById('commercial_reg_number').value = club.commercial_reg_number;
+        if (club.vat_reg_number) document.getElementById('vat_reg_number').value = club.vat_reg_number;
+        if (club.vat_percentage) document.getElementById('vat_percentage').value = club.vat_percentage;
+
+        // Populate owner
+        if (club.owner_user_id) document.getElementById('owner_user_id').value = club.owner_user_id;
+
+        // Populate location fields
+        if (club.country) document.getElementById('country').value = club.country;
+        if (club.timezone) document.getElementById('timezone').value = club.timezone;
+        if (club.currency) document.getElementById('currency').value = club.currency;
+        if (club.address) document.getElementById('address').value = club.address;
+        if (club.gps_lat) document.getElementById('gps_lat').value = club.gps_lat;
+        if (club.gps_long) document.getElementById('gps_long').value = club.gps_long;
+
+        // Populate contact fields
+        if (club.email) {
+            document.getElementById('email_option_custom').checked = true;
+            document.getElementById('email').value = club.email;
+        }
+
+        // Populate finance fields
+        if (club.enrollment_fee) document.getElementById('enrollment_fee').value = club.enrollment_fee;
+        if (club.status) document.getElementById('club_status').value = club.status;
+        if (club.public_profile_enabled !== undefined) {
+            document.getElementById('public_profile_enabled').checked = club.public_profile_enabled;
+        }
+    }
 </script>
 @endpush
 @endsection

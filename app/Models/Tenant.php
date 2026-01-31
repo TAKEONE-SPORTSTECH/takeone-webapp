@@ -42,6 +42,9 @@ class Tenant extends Model
         'gps_lat',
         'gps_long',
         'settings',
+        'established_date',
+        'status',
+        'public_profile_enabled',
     ];
 
     /**

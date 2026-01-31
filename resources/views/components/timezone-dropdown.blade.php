@@ -41,12 +41,13 @@
                             }
                         });
 
-                        // Populate dropdown
+                        // Populate dropdown with country name and timezone
                         Object.values(uniqueTimezones).forEach(timezoneData => {
                             const option = document.createElement('option');
                             option.value = timezoneData.timezone;
-                            option.textContent = `${timezoneData.name} (${timezoneData.timezone})`;
+                            option.textContent = `${timezoneData.timezone}`;
                             option.setAttribute('data-flag', timezoneData.flag);
+                            option.setAttribute('data-country', timezoneData.name);
                             selectElement.appendChild(option);
                         });
 
@@ -55,7 +56,7 @@
                             selectElement.value = initialValue;
                         }
 
-                        // Initialize Select2 for searchable dropdown
+                        // Initialize Select2 for searchable dropdown with flag emojis
                         if (typeof $ !== 'undefined' && $.fn.select2) {
                             $(selectElement).select2({
                                 templateResult: function(state) {
@@ -64,7 +65,9 @@
                                     }
                                     const option = $(state.element);
                                     const flagCode = option.data('flag');
-                                    return $(`<span><span class="fi fi-${flagCode} me-2"></span>${state.text}</span>`);
+                                    // Convert ISO2 code to flag emoji
+                                    const flagEmoji = flagCode ? String.fromCodePoint(...[...flagCode.toUpperCase()].map(c => 127397 + c.charCodeAt())) : '';
+                                    return $(`<span>${flagEmoji} ${state.text}</span>`);
                                 },
                                 templateSelection: function(state) {
                                     if (!state.id) {
@@ -72,7 +75,9 @@
                                     }
                                     const option = $(state.element);
                                     const flagCode = option.data('flag');
-                                    return $(`<span><span class="fi fi-${flagCode} me-2"></span>${state.text}</span>`);
+                                    // Convert ISO2 code to flag emoji
+                                    const flagEmoji = flagCode ? String.fromCodePoint(...[...flagCode.toUpperCase()].map(c => 127397 + c.charCodeAt())) : '';
+                                    return $(`<span>${flagEmoji} ${state.text}</span>`);
                                 },
                                 width: '100%'
                             });

@@ -91,12 +91,17 @@ Route::middleware(['auth', 'verified', 'role:super-admin'])->prefix('admin')->na
     // All Clubs Management
     Route::get('/clubs', [App\Http\Controllers\Admin\PlatformController::class, 'clubs'])->name('platform.clubs');
     Route::get('/clubs/create', [App\Http\Controllers\Admin\PlatformController::class, 'createClub'])->name('platform.clubs.create');
-    Route::post('/clubs', [App\Http\Controllers\Admin\PlatformController::class, 'storeClub'])->name('platform.clubs.store');
+    Route::post('/clubs', [App\Http\Controllers\Admin\ClubApiController::class, 'store'])->name('platform.clubs.store');
     Route::get('/clubs/{club}/edit', [App\Http\Controllers\Admin\PlatformController::class, 'editClub'])->name('platform.clubs.edit');
-    Route::put('/clubs/{club}', [App\Http\Controllers\Admin\PlatformController::class, 'updateClub'])->name('platform.clubs.update');
+    Route::put('/clubs/{club}', [App\Http\Controllers\Admin\ClubApiController::class, 'update'])->name('platform.clubs.update');
     Route::delete('/clubs/{club}', [App\Http\Controllers\Admin\PlatformController::class, 'destroyClub'])->name('platform.clubs.destroy');
     Route::post('/clubs/{club}/upload-logo', [App\Http\Controllers\Admin\PlatformController::class, 'uploadClubLogo'])->name('platform.clubs.upload-logo');
     Route::post('/clubs/{club}/upload-cover', [App\Http\Controllers\Admin\PlatformController::class, 'uploadClubCover'])->name('platform.clubs.upload-cover');
+
+    // Club API endpoints for modal
+    Route::get('/api/users', [App\Http\Controllers\Admin\ClubApiController::class, 'getUsers']);
+    Route::get('/api/clubs/{id}', [App\Http\Controllers\Admin\ClubApiController::class, 'getClub']);
+    Route::post('/api/clubs/check-slug', [App\Http\Controllers\Admin\ClubApiController::class, 'checkSlug']);
 
     // All Members Management
     Route::get('/members', [App\Http\Controllers\Admin\PlatformController::class, 'members'])->name('platform.members');

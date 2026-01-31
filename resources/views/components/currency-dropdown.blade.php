@@ -42,12 +42,14 @@
                             }
                         });
 
-                        // Populate dropdown
+                        // Populate dropdown with enhanced format: Flag + Country Name – Currency Code
                         Object.values(uniqueCurrencies).forEach(currencyData => {
                             const option = document.createElement('option');
                             option.value = currencyData.currency;
-                            option.textContent = `${currencyData.currency} - ${currencyData.name} ${currencyData.currency_symbol}`;
+                            // Format: "Bahrain – BHD"
+                            option.textContent = `${currencyData.name} – ${currencyData.currency}`;
                             option.setAttribute('data-flag', currencyData.flag);
+                            option.setAttribute('data-country', currencyData.name);
                             selectElement.appendChild(option);
                         });
 
@@ -56,7 +58,7 @@
                             selectElement.value = initialValue;
                         }
 
-                        // Initialize Select2 for searchable dropdown
+                        // Initialize Select2 for searchable dropdown with flags
                         if (typeof $ !== 'undefined' && $.fn.select2) {
                             $(selectElement).select2({
                                 templateResult: function(state) {
@@ -65,7 +67,9 @@
                                     }
                                     const option = $(state.element);
                                     const flagCode = option.data('flag');
-                                    return $(`<span><span class="fi fi-${flagCode} me-2"></span>${state.text}</span>`);
+                                    // Show flag emoji + text
+                                    const flagEmoji = flagCode ? String.fromCodePoint(...[...flagCode.toUpperCase()].map(c => 127397 + c.charCodeAt())) : '';
+                                    return $(`<span>${flagEmoji} ${state.text}</span>`);
                                 },
                                 templateSelection: function(state) {
                                     if (!state.id) {
@@ -73,9 +77,25 @@
                                     }
                                     const option = $(state.element);
                                     const flagCode = option.data('flag');
-                                    return $(`<span><span class="fi fi-${flagCode} me-2"></span>${state.text}</span>`);
+                                    // Show flag emoji + text
+                                    const flagEmoji = flagCode ? String.fromCodePoint(...[...flagCode.toUpperCase()].map(c => 127397 + c.charCodeAt())) : '';
+                                    return $(`<span>${flagEmoji} ${state.text}</span>`);
                                 },
-                                width: '100%'
+                                width: '100%',
+                                // Enable search by country name or currency code
+                                matcher: function(params, data) {
+                                    if ($.trim(params.term) === '') {
+                                        return data;
+                                    }
+                                    const term = params.term.toLowerCase();
+                                    const text = data.text.toLowerCase();
+                                    const country = $(data.element).data('country');
+
+                                    if (text.indexOf(term) > -1 || (country && country.toLowerCase().indexOf(term) > -1)) {
+                                        return data;
+                                    }
+                                    return null;
+                                }
                             });
                         }
                     });

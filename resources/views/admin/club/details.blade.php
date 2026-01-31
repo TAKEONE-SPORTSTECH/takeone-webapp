@@ -7,7 +7,7 @@
             <h2 class="h3 fw-bold mb-1">Club Details</h2>
             <p class="text-muted mb-0">Manage your club information</p>
         </div>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editClubModal">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#clubModal">
             <i class="bi bi-pencil me-2"></i>Edit Details
         </button>
     </div>
@@ -124,4 +124,8 @@
         </div>
     </div>
 </div>
+
+<!-- Include Club Modal in Edit Mode -->
+<x-club-modal mode="edit" :club="$club" />
+
 @endsection

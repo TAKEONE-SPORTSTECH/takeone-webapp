@@ -32,6 +32,7 @@ class ClubBankAccount extends Model
         'iban',
         'swift_code',
         'is_primary',
+        'benefitpay_account',
     ];
 
     /**
