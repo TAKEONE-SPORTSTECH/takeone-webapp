@@ -291,7 +291,7 @@
     }
 
     /* ISSUE 4 FIX: Map container styles */
-    #clubMap {
+    #modalClubMap {
         height: 400px;
         width: 100%;
         border-radius: 0.5rem;

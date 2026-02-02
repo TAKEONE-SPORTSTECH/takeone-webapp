@@ -182,6 +182,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/family/create', function () {
         return redirect()->route('members.create');
     })->name('family.create');
+    Route::post('/family', [FamilyController::class, 'store'])->name('family.store');
     Route::get('/family/{id}', function ($id) {
         return redirect()->route('member.show', $id);
     })->name('family.show');

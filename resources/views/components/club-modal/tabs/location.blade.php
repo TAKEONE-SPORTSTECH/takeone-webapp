@@ -266,7 +266,7 @@
         const lng = parseFloat(document.getElementById('gps_long')?.value) || 50.5577;
 
         // ISSUE 4 FIX: Initialize map without attribution control
-        clubMap = L.map('clubMap', {
+        clubMap = L.map('modalClubMap', {
             attributionControl: false  // Disable attribution
         }).setView([lat, lng], 13);
 
