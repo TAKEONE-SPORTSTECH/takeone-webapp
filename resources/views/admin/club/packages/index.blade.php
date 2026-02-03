@@ -72,45 +72,5 @@
     @endif
 </div>
 
-<!-- Add Package Modal -->
-<div class="modal fade" id="addPackageModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header border-0">
-                <h5 class="modal-title">Add Package</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form action="{{ route('admin.club.packages.store', $club->id) }}" method="POST">
-                    @csrf
-                    <div class="mb-3">
-                        <label class="form-label">Package Name</label>
-                        <input type="text" name="name" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Description</label>
-                        <textarea name="description" class="form-control" rows="2"></textarea>
-                    </div>
-                    <div class="row g-3">
-                        <div class="col-6">
-                            <label class="form-label">Price ({{ $club->currency ?? 'BHD' }})</label>
-                            <input type="number" name="price" class="form-control" step="0.01" required>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label">Duration (days)</label>
-                            <input type="number" name="duration_days" class="form-control" value="30" required>
-                        </div>
-                    </div>
-                    <div class="mb-3 mt-3">
-                        <div class="form-check">
-                            <input type="checkbox" name="is_popular" class="form-check-input" id="isPopular">
-                            <label class="form-check-label" for="isPopular">Mark as Popular</label>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">Add Package</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+@include('admin.club.packages.add')
 @endsection

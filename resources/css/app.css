@@ -1,4 +1,33 @@
-@import 'tailwindcss';
+/* Import Tailwind without preflight to avoid conflicts with Bootstrap */
+@import 'tailwindcss/theme';
+@import 'tailwindcss/utilities';
+
+/*
+ * Minimal reset for Tailwind components that need clean base styles
+ * This won't affect Bootstrap components (they use .btn, .form-control, etc.)
+ */
+@layer base {
+    /* Reset buttons that use Tailwind classes (not Bootstrap .btn class) */
+    button:where(:not(.btn):not(.btn-close):not(.navbar-toggler)) {
+        background-color: transparent;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+    }
+
+    /* Reset inputs that use Tailwind classes (not Bootstrap .form-control) */
+    input:where(:not(.form-control):not(.form-check-input)),
+    textarea:where(:not(.form-control)),
+    select:where(:not(.form-control):not(.form-select)) {
+        border: 1px solid #d1d5db;
+        background-color: transparent;
+    }
+
+    /* Ensure box-sizing is consistent */
+    *, *::before, *::after {
+        box-sizing: border-box;
+    }
+}
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';

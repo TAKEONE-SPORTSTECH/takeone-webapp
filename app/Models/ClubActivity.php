@@ -31,6 +31,8 @@ class ClubActivity extends Model
         'facility_id',
         'schedule',
         'description',
+        'picture_url',
+        'notes',
     ];
 
     /**

@@ -381,6 +381,17 @@ class User extends Authenticatable
     }
 
     /**
+     * Get roles for a specific tenant/club.
+     */
+    public function getRolesForTenant(?int $tenantId = null)
+    {
+        if ($tenantId !== null) {
+            return $this->roles()->wherePivot('tenant_id', $tenantId)->get();
+        }
+        return $this->roles;
+    }
+
+    /**
      * Assign a role to the user.
      */
     public function assignRole(string $roleSlug, ?int $tenantId = null): void

@@ -173,6 +173,14 @@ class Tenant extends Model
     }
 
     /**
+     * Get the memberships for the club.
+     */
+    public function memberships(): HasMany
+    {
+        return $this->hasMany(Membership::class);
+    }
+
+    /**
      * Get approved reviews for the club.
      */
     public function approvedReviews(): HasMany

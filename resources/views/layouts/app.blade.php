@@ -24,8 +24,47 @@
     <!-- Select2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <!-- Alpine.js cloak style -->
+    <style>[x-cloak] { display: none !important; }</style>
+
+    <!-- Tailwind CSS (utilities only, no preflight - works with Bootstrap) -->
+    @vite(['resources/css/app.css'])
+
     <!-- Custom Styles -->
     <style>
+        /* Fix Bootstrap collapse conflict with Tailwind */
+        .collapse:not(.show) {
+            display: none !important;
+        }
+        .collapse.show, .navbar-collapse.collapsing {
+            display: block !important;
+        }
+        .navbar-collapse.collapse.show {
+            display: flex !important;
+        }
+
+        /* Ensure dropdowns aren't clipped */
+        .navbar, .navbar-collapse, .navbar-nav {
+            overflow: visible !important;
+        }
+
+        /* Profile dropdown menu items */
+        .profile-dropdown-item {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            color: #374151;
+            text-decoration: none;
+        }
+        .profile-dropdown-item:hover {
+            background-color: hsl(var(--primary));
+            color: white;
+        }
+
         :root {
           /* Base Colors */
           --background: 220 15% 97%;
@@ -379,8 +418,9 @@
                     @endauth
 
                     @auth
-                        <li class="nav-item dropdown">
-                            <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>
+                        <!-- Profile Dropdown with Alpine.js -->
+                        <li class="nav-item" style="position: relative;" x-data="{ open: false }" x-on:click.outside="open = false">
+                            <button x-on:click="open = !open" class="nav-link dropdown-toggle" style="display: flex; align-items: center; background: none; border: none; cursor: pointer;" type="button">
                                 <div class="avatar-container">
                                     @if(Auth::user()->profile_picture)
                                         <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}" alt="{{ Auth::user()->full_name }}" class="user-avatar">
@@ -391,50 +431,65 @@
                                     @endif
                                     <span class="online-indicator"></span>
                                 </div>
-                            </a>
+                            </button>
 
-                            <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                <h6 class="dropdown-header small"><strong>{{ Auth::user()->full_name }}</strong><br><small>{{ Auth::user()->email }}</small></h6>
-                                <div class="dropdown-divider"></div>
-                                <a class="dropdown-item small" href="{{ route('member.show', Auth::id()) }}">
+                            <div x-show="open"
+                                 x-cloak
+                                 style="position: absolute; right: 0; margin-top: 0.5rem; width: 14rem; background: white; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border: 1px solid #e5e7eb; padding: 0.25rem 0; z-index: 9999;">
+                                <div style="padding: 0.5rem 1rem; border-bottom: 1px solid #f3f4f6;">
+                                    <p style="font-size: 0.875rem; font-weight: 600; color: #111827; margin: 0;">{{ Auth::user()->full_name }}</p>
+                                    <p style="font-size: 0.75rem; color: #6b7280; margin: 0;">{{ Auth::user()->email }}</p>
+                                </div>
+                                <a class="profile-dropdown-item" href="{{ route('member.show', Auth::id()) }}">
                                     <i class="bi bi-person me-2"></i>Profile
                                 </a>
-                                <a class="dropdown-item small" href="#">
+                                <a class="profile-dropdown-item" href="#">
                                     <i class="bi bi-diagram-3 me-2"></i>Affiliations
                                 </a>
-                                <a class="dropdown-item small" href="#">
+                                <a class="profile-dropdown-item" href="#">
                                     <i class="bi bi-calendar-event me-2"></i>Sessions
                                 </a>
-                                <a class="dropdown-item small" href="{{ route('members.index') }}">
+                                <a class="profile-dropdown-item" href="{{ route('members.index') }}">
                                     <i class="bi bi-people me-2"></i>Family
                                 </a>
-                                <a class="dropdown-item small" href="{{ route('bills.index') }}">
+                                <a class="profile-dropdown-item" href="{{ route('bills.index') }}">
                                     <i class="bi bi-receipt me-2"></i>Payments & Subscriptions
                                 </a>
-                                <a class="dropdown-item small" href="#">
+                                <a class="profile-dropdown-item" href="#">
                                     <i class="bi bi-gear me-2"></i>Manage Business
                                 </a>
-                                <div class="dropdown-divider"></div>
+                                <div style="border-top: 1px solid #f3f4f6; margin: 0.25rem 0;"></div>
                                 @if(Auth::user()->isSuperAdmin())
-                                <a class="dropdown-item small" href="{{ route('admin.platform.index') }}">
+                                <a class="profile-dropdown-item" href="{{ route('admin.platform.index') }}">
                                     <i class="bi bi-shield-check me-2"></i>Admin Panel
                                 </a>
-                                <div class="dropdown-divider"></div>
+                                <div style="border-top: 1px solid #f3f4f6; margin: 0.25rem 0;"></div>
                                 @endif
-                                @if((Auth::user()->has_business ?? false) || ((Auth::user()->is_super_admin ?? false) || (Auth::user()->is_moderator ?? false)))
-                                <div class="dropdown-divider"></div>
-                                @endif
-                                <a class="dropdown-item small" href="{{ route('logout') }}"
-                                   onclick="event.preventDefault();
-                                                 document.getElementById('logout-form').submit();">
+                                <a class="profile-dropdown-item" href="{{ route('logout') }}"
+                                   onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                                     <i class="bi bi-box-arrow-right me-2"></i>Sign Out
                                 </a>
 
-                                <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
+                                <form id="logout-form" action="{{ route('logout') }}" method="POST" class="hidden">
                                     @csrf
                                 </form>
                             </div>
                         </li>
+                    @endauth
+
+                    @guest
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('login') }}">
+                                <i class="bi bi-box-arrow-in-right me-1"></i>Login
+                            </a>
+                        </li>
+                        @if (Route::has('register'))
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ route('register') }}">
+                                    <i class="bi bi-person-plus me-1"></i>Register
+                                </a>
+                            </li>
+                        @endif
                     @endguest
                 </ul>
             </div>
