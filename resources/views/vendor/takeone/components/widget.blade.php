@@ -110,7 +110,7 @@
 @else
 {{-- AJAX mode: Just the button --}}
 <button type="button" class="{{ $buttonClass }}" data-bs-toggle="modal" data-bs-target="#cropperModal_{{ $id }}">
-    <i class="bi bi-camera me-2"></i>{{ $buttonText }}
+    <i class="bi bi-camera{{ $buttonText ? ' me-2' : '' }}"></i>{{ $buttonText }}
 </button>
 @endif
 
@@ -265,15 +265,39 @@ $(function() {
                     $('#cropperModal_{{ $id }}').modal('hide');
                     Toast.success('Photo Updated!', 'Your image has been saved successfully.');
 
-                    // Update the profile picture in the current page without reload
+                    // Update the image on the page without reload
                     if (res.url) {
-                        // Update all profile picture images on the page
-                        $('img[src*="profile_{{ str_replace("profile_picture", "", $id) }}"]').attr('src', res.url + '?t=' + new Date().getTime());
+                        const cacheBuster = '?t=' + new Date().getTime();
+                        const newUrl = res.url + cacheBuster;
+
+                        // Try to find the image in the parent card (for facility/instructor cards)
+                        const button = $('[data-bs-target="#cropperModal_{{ $id }}"]');
+                        const card = button.closest('.card');
+                        if (card.length) {
+                            const cardImg = card.find('.card-img-top');
+                            if (cardImg.length && cardImg.is('img')) {
+                                // Update existing image
+                                cardImg.attr('src', newUrl);
+                            } else {
+                                // Replace placeholder div with img
+                                const placeholder = card.find('.card-img-top, .bg-light').first();
+                                if (placeholder.length && !placeholder.is('img')) {
+                                    placeholder.replaceWith(`<img src="${newUrl}" alt="Image" class="card-img-top" style="height: 180px; object-fit: cover;">`);
+                                }
+                            }
+                        }
+
+                        // Also update any image with matching data-cropper-id
+                        $('img[data-cropper-id="{{ $id }}"]').attr('src', newUrl);
+
+                        // Fallback: Update all profile picture images on the page
+                        $('img[src*="profile_{{ str_replace("profile_picture", "", $id) }}"]').attr('src', newUrl);
+
                         // Update any background images
                         $('[style*="profile_{{ str_replace("profile_picture", "", $id) }}"]').each(function() {
                             const style = $(this).attr('style');
                             if (style && style.includes('background-image')) {
-                                $(this).attr('style', style.replace(/url\([^)]+\)/, 'url(' + res.url + '?t=' + new Date().getTime() + ')'));
+                                $(this).attr('style', style.replace(/url\([^)]+\)/, 'url(' + newUrl + ')'));
                             }
                         });
                     }

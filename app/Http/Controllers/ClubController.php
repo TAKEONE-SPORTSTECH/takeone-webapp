@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Tenant;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class ClubController extends Controller
 {
@@ -102,6 +101,34 @@ class ClubController extends Controller
         $distance = $earthRadius * $c;
 
         return $distance;
+    }
+
+    /**
+     * Display a specific club's details page.
+     */
+    public function show($id)
+    {
+        $club = Tenant::with([
+            'owner',
+            'facilities',
+            'instructors',
+            'activities.packages',
+            'activities.facility',
+            'packages.activities',
+            'galleryImages',
+            'reviews.user',
+            'socialLinks',
+            'memberships'
+        ])->findOrFail($id);
+
+        // Calculate active members count
+        $activeMembersCount = $club->memberships()->where('status', 'active')->count();
+
+        // Get club reviews with average rating
+        $reviews = $club->reviews()->with('user')->latest()->get();
+        $averageRating = $reviews->avg('rating') ?? 0;
+
+        return view('clubs.show', compact('club', 'activeMembersCount', 'reviews', 'averageRating'));
     }
 
     /**

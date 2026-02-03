@@ -749,7 +749,7 @@ function displayClubs(clubs) {
         }
 
         card.innerHTML = `
-            <div class="card border shadow-sm overflow-hidden club-card" style="border-radius: 0; cursor: pointer; transition: all 0.3s ease;">
+            <div class="card border shadow-sm overflow-hidden club-card" style="border-radius: 0; cursor: pointer; transition: all 0.3s ease;" onclick="window.location.href='/clubs/${club.id}'">
                 <!-- Cover Image -->
                 <div class="position-relative overflow-hidden" style="height: 192px;">
                     ${coverImageHtml}
@@ -840,7 +840,11 @@ function displayClubs(clubs) {
                             </svg>
                             Join Club
                         </button>
+<<<<<<< HEAD
                         <button class="btn btn-outline-primary flex-fill fw-semibold" style="font-size: 0.875rem;">View Details</button>
+=======
+                        <a href="/clubs/${club.id}" class="btn btn-outline-danger flex-fill fw-semibold" style="font-size: 0.875rem;">View Details</a>
+>>>>>>> yousif
                     </div>
                 </div>
             </div>
