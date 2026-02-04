@@ -129,21 +129,21 @@
                 <i class="bi bi-building"></i>
                 <div class="nav-item-content">
                     <p class="nav-item-text">All Clubs</p>
-                    <p class="nav-item-subtitle">Manage {{ $clubsCount ?? 0 }} {{ ($clubsCount ?? 0) === 1 ? 'club' : 'clubs' }}</p>
+                    <p class="nav-item-subtitle">Manage {{ $clubsCount ?? 0 }} {{ ($clubsCount ?? 0) === 1 ? 'club' : 'Clubs' }}</p>
                 </div>
             </a>
             <a href="{{ route('admin.platform.members') }}" class="admin-nav-item {{ request()->routeIs('admin.platform.members*') ? 'active' : '' }}">
                 <i class="bi bi-people"></i>
                 <div class="nav-item-content">
                     <p class="nav-item-text">All Members</p>
-                    <p class="nav-item-subtitle">View all platform members</p>
+                    <p class="nav-item-subtitle">View All Members</p>
                 </div>
             </a>
             <a href="{{ route('admin.platform.backup') }}" class="admin-nav-item {{ request()->routeIs('admin.platform.backup*') ? 'active' : '' }}">
                 <i class="bi bi-database"></i>
                 <div class="nav-item-content">
                     <p class="nav-item-text">Backup & Restore</p>
-                    <p class="nav-item-subtitle">Database management</p>
+                    <p class="nav-item-subtitle">Database Management</p>
                 </div>
             </a>
             <div class="admin-nav-divider"></div>
