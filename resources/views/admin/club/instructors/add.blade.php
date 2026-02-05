@@ -1,11 +1,24 @@
 <!-- Add Instructor Modal -->
-<div class="modal fade" id="addInstructorModal" tabindex="-1" aria-labelledby="addInstructorModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg rounded-xl overflow-hidden">
+<div x-show="showAddInstructorModal"
+     x-cloak
+     class="fixed inset-0 z-50 overflow-y-auto"
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-200"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0">
+    <!-- Backdrop -->
+    <div class="fixed inset-0 bg-black/50" @click="showAddInstructorModal = false; resetInstructorWizard()"></div>
+
+    <!-- Modal Content -->
+    <div class="flex min-h-full items-center justify-center p-4">
+        <div class="modal-content border-0 shadow-lg w-full max-w-2xl relative rounded-xl overflow-hidden"
+             @click.stop>
             <!-- Header -->
             <div class="modal-header border-b border-gray-200 px-6 py-4">
-                <h5 class="modal-title text-lg font-semibold" id="addInstructorModalLabel">Let's Add a New Instructor</h5>
-                <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" data-bs-dismiss="modal" aria-label="Close">
+                <h5 class="modal-title text-lg font-semibold">Let's Add a New Instructor</h5>
+                <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" @click="showAddInstructorModal = false; resetInstructorForm()">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
@@ -390,7 +403,7 @@
 
             <!-- Footer -->
             <div class="modal-footer border-t border-gray-200 px-6 py-4 flex justify-between">
-                <button type="button" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors" data-bs-dismiss="modal">
+                <button type="button" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors" @click="showAddInstructorModal = false; resetInstructorForm()">
                     Cancel
                 </button>
 
@@ -414,6 +427,13 @@
 
 @push('scripts')
 <script>
+// Global reset function for Alpine.js
+window.resetInstructorForm = function() {
+    if (window.instructorWizardReset) {
+        window.instructorWizardReset();
+    }
+};
+
 document.addEventListener('DOMContentLoaded', function() {
     let currentStep = 1;
     let creationType = 'new';
@@ -422,7 +442,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let skillsExisting = [];
     let selectedMemberId = null;
 
-    const modal = document.getElementById('addInstructorModal');
     const progressContainer = document.getElementById('wizardProgress');
     const prevBtn = document.getElementById('prevStepBtn');
     const nextBtn = document.getElementById('nextStepBtn');
@@ -680,8 +699,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 300);
     });
 
-    // Reset on modal close
-    modal.addEventListener('hidden.bs.modal', function() {
+    // Global reset function for Alpine.js modal close
+    window.instructorWizardReset = function() {
         currentStep = 1;
         creationType = 'new';
         totalSteps = 6;
@@ -694,10 +713,24 @@ document.addEventListener('DOMContentLoaded', function() {
         photoPreview?.classList.add('hidden');
         photoPlaceholder?.classList.remove('hidden');
         selectedMemberCard?.classList.add('hidden');
+
+        // Reset creation type selection visuals
+        document.querySelectorAll('.creation-type-option').forEach(opt => {
+            opt.classList.remove('border-primary', 'bg-primary/5');
+            opt.classList.add('border-gray-200');
+        });
+        const newOption = document.querySelector('.creation-type-option[data-type="new"]');
+        if (newOption) {
+            newOption.classList.remove('border-gray-200');
+            newOption.classList.add('border-primary', 'bg-primary/5');
+            const radio = newOption.querySelector('input[type="radio"]');
+            if (radio) radio.checked = true;
+        }
+
         renderSkills();
         renderSkillsExisting();
         showStep(1);
-    });
+    };
 
     // Initialize
     showStep(1);

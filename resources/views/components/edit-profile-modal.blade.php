@@ -7,49 +7,196 @@
     'relationship' => null,
 ])
 
-<!-- Profile Edit Modal -->
-<div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 75%; width: 1000px;">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="editProfileModalLabel">
-                    <i class="bi bi-person-circle me-2"></i>Edit Profile
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+<!-- Profile Edit Modal (Alpine.js + Tailwind) -->
+<div x-data="{
+    open: {{ $cancelUrl ? 'true' : 'false' }},
+    activeTab: 'photo',
+    tabs: ['photo', 'personal', 'social', 'additional'],
+    socialLinkIndex: {{ count(old('social_links', $user->social_links ?? [])) }},
+    isPublic: {{ old('profile_picture_is_public', $user->profile_picture_is_public ?? true) ? 'true' : 'false' }},
+    isSubmitting: false,
+    cropperOpen: false,
+    removeProfilePicture: false,
+    get currentTabIndex() {
+        return this.tabs.indexOf(this.activeTab);
+    },
+    nextTab() {
+        const idx = this.currentTabIndex;
+        if (idx < this.tabs.length - 1) {
+            this.activeTab = this.tabs[idx + 1];
+        }
+    },
+    prevTab() {
+        const idx = this.currentTabIndex;
+        if (idx > 0) {
+            this.activeTab = this.tabs[idx - 1];
+        }
+    },
+    closeModal() {
+        if (this.cropperOpen) return;
+        this.open = false;
+        @if($cancelUrl)
+        setTimeout(() => { window.location.href = '{{ $cancelUrl }}'; }, 300);
+        @endif
+    },
+    addSocialLink() {
+        const container = document.getElementById('socialLinksContainer');
+        const row = document.createElement('div');
+        row.className = 'social-link-row';
+        row.innerHTML = this.getSocialLinkTemplate(this.socialLinkIndex);
+        container.appendChild(row);
+        this.socialLinkIndex++;
+    },
+    getSocialLinkTemplate(index) {
+        return `
+            <div class='flex items-end gap-2 mb-3' x-data='{ platform: \"\", dropdownOpen: false }'>
+                <div class='flex-1'>
+                    <label class='form-label'>Platform</label>
+                    <div class='relative'>
+                        <button type='button' @click='dropdownOpen = !dropdownOpen' class='form-select text-left flex items-center justify-between'>
+                            <span x-text='platform || \"Select Platform\"'></span>
+                            <i class='bi bi-chevron-down text-muted-foreground'></i>
+                        </button>
+                        <input type='hidden' name='social_links[${index}][platform]' x-model='platform' required>
+                        <div x-show='dropdownOpen' @click.away='dropdownOpen = false' x-cloak class='dropdown-menu show'>
+                            <div @click='platform = \"facebook\"; dropdownOpen = false' class='dropdown-item'><i class='bi bi-facebook mr-2 text-blue-600'></i>Facebook</div>
+                            <div @click='platform = \"twitter\"; dropdownOpen = false' class='dropdown-item'><i class='bi bi-twitter-x mr-2'></i>Twitter/X</div>
+                            <div @click='platform = \"instagram\"; dropdownOpen = false' class='dropdown-item'><i class='bi bi-instagram mr-2 text-pink-500'></i>Instagram</div>
+                            <div @click='platform = \"linkedin\"; dropdownOpen = false' class='dropdown-item'><i class='bi bi-linkedin mr-2 text-blue-700'></i>LinkedIn</div>
+                            <div @click='platform = \"youtube\"; dropdownOpen = false' class='dropdown-item'><i class='bi bi-youtube mr-2 text-red-600'></i>YouTube</div>
+                            <div @click='platform = \"tiktok\"; dropdownOpen = false' class='dropdown-item'><i class='bi bi-tiktok mr-2'></i>TikTok</div>
+                            <div @click='platform = \"snapchat\"; dropdownOpen = false' class='dropdown-item'><i class='bi bi-snapchat mr-2 text-yellow-400'></i>Snapchat</div>
+                            <div @click='platform = \"whatsapp\"; dropdownOpen = false' class='dropdown-item'><i class='bi bi-whatsapp mr-2 text-green-500'></i>WhatsApp</div>
+                            <div @click='platform = \"telegram\"; dropdownOpen = false' class='dropdown-item'><i class='bi bi-telegram mr-2 text-blue-400'></i>Telegram</div>
+                            <div @click='platform = \"github\"; dropdownOpen = false' class='dropdown-item'><i class='bi bi-github mr-2'></i>GitHub</div>
+                        </div>
+                    </div>
+                </div>
+                <div class='flex-1'>
+                    <label class='form-label'>URL</label>
+                    <input type='url' class='form-control' name='social_links[${index}][url]' placeholder='https://example.com/username' required>
+                </div>
+                <div class='mb-0'>
+                    <button type='button' @click='$el.closest(\".social-link-row\").remove()' class='btn btn-outline-danger btn-sm'>
+                        <i class='bi bi-trash'></i>
+                    </button>
+                </div>
             </div>
-            <div class="modal-body p-0">
+        `;
+    }
+}"
+x-init="
+    @if($errors->any())
+    open = true;
+    @endif
+    window.addEventListener('cropperOpened', () => { cropperOpen = true; });
+    window.addEventListener('cropperClosed', () => { cropperOpen = false; });
+    window.imageUploadSuccess = function(result) {
+        const url = result.url || (result.path ? window.location.origin + '/storage/' + result.path : null);
+        if (url) {
+            const preview = document.getElementById('profile_picture_preview');
+            const placeholder = document.getElementById('profile_picture_placeholder');
+            if (placeholder) placeholder.style.display = 'none';
+            if (preview) {
+                preview.src = url + '?v=' + Date.now();
+                preview.style.display = 'block';
+            } else {
+                const container = document.querySelector('.image-preview');
+                const img = document.createElement('img');
+                img.src = url + '?v=' + Date.now();
+                img.alt = 'Profile Picture';
+                img.id = 'profile_picture_preview';
+                img.className = 'image-upload-preview';
+                img.style.cssText = 'width: 300px; height: 400px; object-fit: cover; border: 3px solid #dee2e6; border-radius: 8px;';
+                container.appendChild(img);
+            }
+            document.getElementById('removeProfilePicture').style.display = 'block';
+        }
+    };
+"
+@keydown.escape.window="closeModal()"
+x-cloak
+id="editProfileModal">
+
+    <!-- Modal Backdrop -->
+    <div x-show="open"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="modal-backdrop"
+         @click="closeModal()">
+    </div>
+
+    <!-- Modal Dialog -->
+    <div x-show="open"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 -translate-y-4"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 -translate-y-4"
+         class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="modal-content flex flex-col" style="max-width: 75%; width: 1000px; max-height: 90vh;" @click.stop>
+
+            <!-- Modal Header -->
+            <div class="modal-header bg-primary text-white rounded-t-xl">
+                <h5 class="modal-title flex items-center text-white">
+                    <i class="bi bi-person-circle mr-2"></i>Edit Profile
+                </h5>
+                <button type="button" @click="closeModal()" class="btn-close text-white opacity-80 hover:opacity-100">
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body p-0 flex-1 overflow-hidden flex flex-col">
                 <!-- Tab Navigation -->
-                <ul class="nav nav-tabs nav-fill border-bottom" id="profileEditTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="photo-tab" data-bs-toggle="tab" data-bs-target="#photo" type="button" role="tab" aria-controls="photo" aria-selected="true">
-                            <i class="bi bi-camera me-1"></i>Profile Photo
+                <ul class="nav nav-tabs nav-fill border-b border-border">
+                    <li class="nav-item flex-1">
+                        <button type="button"
+                                @click="activeTab = 'photo'"
+                                :class="activeTab === 'photo' ? 'active' : ''"
+                                class="nav-link w-full">
+                            <i class="bi bi-camera mr-1"></i>Profile Photo
                         </button>
                     </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="personal-tab" data-bs-toggle="tab" data-bs-target="#personal" type="button" role="tab" aria-controls="personal" aria-selected="false">
-                            <i class="bi bi-person-badge me-1"></i>Personal Info
+                    <li class="nav-item flex-1">
+                        <button type="button"
+                                @click="activeTab = 'personal'"
+                                :class="activeTab === 'personal' ? 'active' : ''"
+                                class="nav-link w-full">
+                            <i class="bi bi-person-badge mr-1"></i>Personal Info
                         </button>
                     </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="social-tab" data-bs-toggle="tab" data-bs-target="#social" type="button" role="tab" aria-controls="social" aria-selected="false">
-                            <i class="bi bi-share me-1"></i>Social Media
+                    <li class="nav-item flex-1">
+                        <button type="button"
+                                @click="activeTab = 'social'"
+                                :class="activeTab === 'social' ? 'active' : ''"
+                                class="nav-link w-full">
+                            <i class="bi bi-share mr-1"></i>Social Media
                         </button>
                     </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="additional-tab" data-bs-toggle="tab" data-bs-target="#additional" type="button" role="tab" aria-controls="additional" aria-selected="false">
-                            <i class="bi bi-info-circle me-1"></i>Additional Info
+                    <li class="nav-item flex-1">
+                        <button type="button"
+                                @click="activeTab = 'additional'"
+                                :class="activeTab === 'additional' ? 'active' : ''"
+                                class="nav-link w-full">
+                            <i class="bi bi-info-circle mr-1"></i>Additional Info
                         </button>
                     </li>
                 </ul>
 
-                <form method="POST" action="{{ $formAction }}" id="profileEditForm">
+                <form method="POST" action="{{ $formAction }}" id="profileEditForm" class="flex-1 overflow-hidden">
                     @csrf
                     @method($formMethod)
 
                     <!-- Tab Content -->
-                    <div class="tab-content p-4" id="profileEditTabContent" style="height: 500px; overflow-y: auto;">
+                    <div class="p-4 overflow-y-auto" style="height: 500px;">
+
                         <!-- Profile Photo Tab -->
-                        <div class="tab-pane fade show active" id="photo" role="tabpanel" aria-labelledby="photo-tab">
+                        <div x-show="activeTab === 'photo'" x-transition.opacity>
                             @php
                                 $currentProfileImage = '';
                                 if ($user->profile_picture && file_exists(public_path('storage/' . $user->profile_picture))) {
@@ -66,9 +213,9 @@
                                 }
                             @endphp
 
-                            <div class="row g-4">
-                                <!-- Left Side - Profile Picture -->
-                                <div class="col-md-5">
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                                <!-- Left Side - Profile Picture (5 cols) -->
+                                <div class="md:col-span-5">
                                     <div class="profile-photo-preview-container text-center">
                                         <div class="image-preview mb-3">
                                             @if($currentProfileImage)
@@ -83,29 +230,29 @@
                                                      style="width: 300px; height: 400px; background-color: #f0f0f0; border: 3px solid #dee2e6; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
                                                     <div class="text-center">
                                                         <i class="bi bi-person-circle" style="font-size: 60px; color: #dee2e6;"></i>
-                                                        <p class="text-muted mt-2 mb-0">No profile picture</p>
+                                                        <p class="text-muted-foreground mt-2 mb-0">No profile picture</p>
                                                     </div>
                                                 </div>
                                             @endif
                                         </div>
-                                        <input type="hidden" name="remove_profile_picture" id="removeProfilePictureInput" value="0">
+                                        <input type="hidden" name="remove_profile_picture" id="removeProfilePictureInput" :value="removeProfilePicture ? '1' : '0'">
                                     </div>
                                 </div>
 
-                                <!-- Right Side - Information & Controls -->
-                                <div class="col-md-7">
+                                <!-- Right Side - Information & Controls (7 cols) -->
+                                <div class="md:col-span-7">
                                     <div class="profile-photo-info" style="max-height: 400px; overflow: hidden;">
                                         <!-- Motivational Header -->
                                         <div class="mb-3">
                                             <h6 class="text-primary mb-2">
-                                                <i class="bi bi-camera-fill me-2"></i>Your Athletic Identity
+                                                <i class="bi bi-camera-fill mr-2"></i>Your Athletic Identity
                                             </h6>
-                                            <div class="alert alert-info border-0 shadow-sm p-2" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-                                                <div class="d-flex align-items-start">
-                                                    <i class="bi bi-lightbulb-fill fs-5 me-2"></i>
+                                            <div class="alert-gradient border-0 shadow-sm p-2 rounded-md text-white">
+                                                <div class="flex items-start">
+                                                    <i class="bi bi-lightbulb-fill text-lg mr-2"></i>
                                                     <div>
-                                                        <p class="mb-1 small"><strong>Make Your Profile Stand Out!</strong></p>
-                                                        <p class="mb-0" style="font-size: 0.75rem;">Your profile picture is your athletic CV and first impression. Use a clear, professional photo to help coaches and teammates recognize you!</p>
+                                                        <p class="mb-1 text-sm font-semibold">Make Your Profile Stand Out!</p>
+                                                        <p class="mb-0 text-xs opacity-90">Your profile picture is your athletic CV and first impression. Use a clear, professional photo to help coaches and teammates recognize you!</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -115,28 +262,30 @@
                                         <div class="privacy-settings-card mb-3">
                                             <div class="card border-0 shadow-sm">
                                                 <div class="card-body p-3">
-                                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                                        <div class="flex-grow-1 me-2">
-                                                            <h6 class="mb-1">
-                                                                <i class="bi bi-shield-lock-fill text-primary me-1"></i>Privacy Settings
+                                                    <div class="flex justify-between items-center mb-2">
+                                                        <div class="flex-1 mr-2">
+                                                            <h6 class="mb-1 font-medium">
+                                                                <i class="bi bi-shield-lock-fill text-primary mr-1"></i>Privacy Settings
                                                             </h6>
-                                                            <p class="text-muted mb-0 small">Toggle to control visibility</p>
+                                                            <p class="text-muted-foreground mb-0 text-sm">Toggle to control visibility</p>
                                                         </div>
-                                                        <div class="form-check form-switch" style="font-size: 1.2rem;">
-                                                            <input class="form-check-input" type="checkbox" role="switch"
+                                                        <div class="form-switch">
+                                                            <input type="checkbox"
                                                                    id="profilePictureVisibility"
                                                                    name="profile_picture_is_public"
                                                                    value="1"
-                                                                   {{ old('profile_picture_is_public', $user->profile_picture_is_public ?? true) ? 'checked' : '' }}>
+                                                                   x-model="isPublic"
+                                                                   class="form-check-input"
+                                                                   role="switch">
                                                         </div>
                                                     </div>
 
-                                                    <div id="visibilityStatus" class="alert mb-0 p-2" role="alert">
-                                                        <div class="d-flex align-items-start">
-                                                            <i class="bi me-2 mt-1" id="visibilityIcon" style="font-size: 1.3rem;"></i>
+                                                    <div :class="isPublic ? 'alert-success' : 'alert-warning'" class="alert mb-0 p-2">
+                                                        <div class="flex items-start">
+                                                            <i :class="isPublic ? 'bi-globe' : 'bi-lock-fill'" class="bi mr-2 mt-0.5 text-xl"></i>
                                                             <div style="flex: 1; min-width: 0;">
-                                                                <strong class="d-block" id="visibilityTitle" style="font-size: 0.9rem;"></strong>
-                                                                <p class="mb-0 small" id="visibilityDescription"></p>
+                                                                <strong class="block text-sm" x-text="isPublic ? 'Public' : 'Private'"></strong>
+                                                                <p class="mb-0 text-sm" x-text="isPublic ? 'Everyone can see your profile picture' : 'Only you and your family can see your profile picture'"></p>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -145,21 +294,21 @@
                                         </div>
 
                                         <!-- Photo Guidelines & Action Buttons -->
-                                        <div class="d-flex gap-3">
+                                        <div class="flex gap-3">
                                             <div style="flex: 1; min-width: 0;">
-                                                <h6 class="text-muted mb-2 small">
-                                                    <i class="bi bi-check-circle-fill me-1"></i>Quick Tips
+                                                <h6 class="text-muted-foreground mb-2 text-sm">
+                                                    <i class="bi bi-check-circle-fill mr-1"></i>Quick Tips
                                                 </h6>
-                                                <ul class="list-unstyled text-muted mb-0 small">
-                                                    <li class="mb-1"><i class="bi bi-check text-success me-1"></i>Recent, high-quality</li>
-                                                    <li class="mb-1"><i class="bi bi-check text-success me-1"></i>Face clearly visible</li>
-                                                    <li class="mb-1"><i class="bi bi-check text-success me-1"></i>Professional look</li>
-                                                    <li class="mb-0"><i class="bi bi-check text-success me-1"></i>Good lighting</li>
+                                                <ul class="list-none text-muted-foreground mb-0 text-sm space-y-1">
+                                                    <li><i class="bi bi-check text-success mr-1"></i>Recent, high-quality</li>
+                                                    <li><i class="bi bi-check text-success mr-1"></i>Face clearly visible</li>
+                                                    <li><i class="bi bi-check text-success mr-1"></i>Professional look</li>
+                                                    <li><i class="bi bi-check text-success mr-1"></i>Good lighting</li>
                                                 </ul>
                                             </div>
                                             <div style="min-width: 120px;">
-                                                <h6 class="text-muted mb-2 small">
-                                                    <i class="bi bi-gear-fill me-1"></i>Actions
+                                                <h6 class="text-muted-foreground mb-2 text-sm">
+                                                    <i class="bi bi-gear-fill mr-1"></i>Actions
                                                 </h6>
                                                 <x-takeone-cropper
                                                     id="profile_picture"
@@ -171,10 +320,14 @@
                                                     uploadUrl="{{ $attributes->get('uploadUrl') }}"
                                                     currentImage="{{ $currentProfileImage }}"
                                                     buttonText="Change Photo"
-                                                    buttonClass="btn btn-success btn-sm w-100"
+                                                    buttonClass="btn btn-success btn-sm w-full"
                                                 />
-                                                <button type="button" class="btn btn-outline-danger btn-sm w-100 mt-2" id="removeProfilePicture" @if(!$currentProfileImage) style="display: none;" @endif>
-                                                    <i class="bi bi-trash me-1"></i>Remove
+                                                <button type="button"
+                                                        class="btn btn-outline-danger btn-sm w-full mt-2"
+                                                        id="removeProfilePicture"
+                                                        @click="removeProfilePicture = true; document.getElementById('profile_picture_preview')?.style.setProperty('display', 'none'); document.getElementById('profile_picture_placeholder')?.style.setProperty('display', 'flex'); $el.style.display = 'none';"
+                                                        @if(!$currentProfileImage) style="display: none;" @endif>
+                                                    <i class="bi bi-trash mr-1"></i>Remove
                                                 </button>
                                             </div>
                                         </div>
@@ -184,7 +337,7 @@
                         </div>
 
                         <!-- Personal Info Tab -->
-                        <div class="tab-pane fade" id="personal" role="tabpanel" aria-labelledby="personal-tab">
+                        <div x-show="activeTab === 'personal'" x-transition.opacity>
                             <div class="mb-3">
                                 <label for="full_name" class="form-label">Full Name</label>
                                 <input type="text" class="form-control @error('full_name') is-invalid @enderror" id="full_name" name="full_name" value="{{ old('full_name', $user->full_name) }}" required>
@@ -217,36 +370,36 @@
                                            placeholder="Phone number">
                                 </x-country-code-dropdown>
                                 @error('mobile')
-                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    <div class="invalid-feedback block">{{ $message }}</div>
                                 @enderror
                             </div>
 
-                            <div class="row mb-3">
-                                <div class="col-md-3">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+                                <div>
                                     <label for="gender" class="form-label">Gender</label>
                                     <select class="form-select @error('gender') is-invalid @enderror" id="gender" name="gender" required>
                                         <option value="">Select Gender</option>
-                                        <option value="m" {{ old('gender', $user->gender) == 'm' ? 'selected' : '' }}>♂️ Male</option>
-                                        <option value="f" {{ old('gender', $user->gender) == 'f' ? 'selected' : '' }}>♀️ Female</option>
+                                        <option value="m" {{ old('gender', $user->gender) == 'm' ? 'selected' : '' }}>Male</option>
+                                        <option value="f" {{ old('gender', $user->gender) == 'f' ? 'selected' : '' }}>Female</option>
                                     </select>
                                     @error('gender')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
-                                <div class="col-md-3">
+                                <div>
                                     <label for="marital_status" class="form-label">Marital Status</label>
                                     <select class="form-select @error('marital_status') is-invalid @enderror" id="marital_status" name="marital_status">
                                         <option value="">Select Status</option>
-                                        <option value="single" {{ old('marital_status', $user->marital_status) == 'single' ? 'selected' : '' }}>💍 Single</option>
-                                        <option value="married" {{ old('marital_status', $user->marital_status) == 'married' ? 'selected' : '' }}>💑 Married</option>
-                                        <option value="divorced" {{ old('marital_status', $user->marital_status) == 'divorced' ? 'selected' : '' }}>📋 Divorced</option>
-                                        <option value="widowed" {{ old('marital_status', $user->marital_status) == 'widowed' ? 'selected' : '' }}>🕊️ Widowed</option>
+                                        <option value="single" {{ old('marital_status', $user->marital_status) == 'single' ? 'selected' : '' }}>Single</option>
+                                        <option value="married" {{ old('marital_status', $user->marital_status) == 'married' ? 'selected' : '' }}>Married</option>
+                                        <option value="divorced" {{ old('marital_status', $user->marital_status) == 'divorced' ? 'selected' : '' }}>Divorced</option>
+                                        <option value="widowed" {{ old('marital_status', $user->marital_status) == 'widowed' ? 'selected' : '' }}>Widowed</option>
                                     </select>
                                     @error('marital_status')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
-                                <div class="col-md-6">
+                                <div class="md:col-span-2">
                                     <x-birthdate-dropdown
                                         name="birthdate"
                                         id="birthdate"
@@ -259,26 +412,26 @@
                                 </div>
                             </div>
 
-                            <div class="row mb-3">
-                                <div class="col-md-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                <div>
                                     <label for="blood_type" class="form-label">Blood Type</label>
                                     <select class="form-select @error('blood_type') is-invalid @enderror" id="blood_type" name="blood_type">
                                         <option value="">Select Blood Type</option>
-                                        <option value="A+" {{ old('blood_type', $user->blood_type) == 'A+' ? 'selected' : '' }}>🩸 A+</option>
-                                        <option value="A-" {{ old('blood_type', $user->blood_type) == 'A-' ? 'selected' : '' }}>🩸 A-</option>
-                                        <option value="B+" {{ old('blood_type', $user->blood_type) == 'B+' ? 'selected' : '' }}>🩸 B+</option>
-                                        <option value="B-" {{ old('blood_type', $user->blood_type) == 'B-' ? 'selected' : '' }}>🩸 B-</option>
-                                        <option value="AB+" {{ old('blood_type', $user->blood_type) == 'AB+' ? 'selected' : '' }}>🩸 AB+</option>
-                                        <option value="AB-" {{ old('blood_type', $user->blood_type) == 'AB-' ? 'selected' : '' }}>🩸 AB-</option>
-                                        <option value="O+" {{ old('blood_type', $user->blood_type) == 'O+' ? 'selected' : '' }}>🩸 O+</option>
-                                        <option value="O-" {{ old('blood_type', $user->blood_type) == 'O-' ? 'selected' : '' }}>🩸 O-</option>
-                                        <option value="Unknown" {{ old('blood_type', $user->blood_type) == 'Unknown' ? 'selected' : '' }}>❓ Unknown</option>
+                                        <option value="A+" {{ old('blood_type', $user->blood_type) == 'A+' ? 'selected' : '' }}>A+</option>
+                                        <option value="A-" {{ old('blood_type', $user->blood_type) == 'A-' ? 'selected' : '' }}>A-</option>
+                                        <option value="B+" {{ old('blood_type', $user->blood_type) == 'B+' ? 'selected' : '' }}>B+</option>
+                                        <option value="B-" {{ old('blood_type', $user->blood_type) == 'B-' ? 'selected' : '' }}>B-</option>
+                                        <option value="AB+" {{ old('blood_type', $user->blood_type) == 'AB+' ? 'selected' : '' }}>AB+</option>
+                                        <option value="AB-" {{ old('blood_type', $user->blood_type) == 'AB-' ? 'selected' : '' }}>AB-</option>
+                                        <option value="O+" {{ old('blood_type', $user->blood_type) == 'O+' ? 'selected' : '' }}>O+</option>
+                                        <option value="O-" {{ old('blood_type', $user->blood_type) == 'O-' ? 'selected' : '' }}>O-</option>
+                                        <option value="Unknown" {{ old('blood_type', $user->blood_type) == 'Unknown' ? 'selected' : '' }}>Unknown</option>
                                     </select>
                                     @error('blood_type')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
-                                <div class="col-md-6">
+                                <div>
                                     <x-nationality-dropdown
                                         name="nationality"
                                         id="nationality"
@@ -289,8 +442,8 @@
                             </div>
 
                             @if($showRelationshipFields && $relationship)
-                                <div class="row mb-3">
-                                    <div class="col-md-6">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                    <div>
                                         <label for="relationship_type" class="form-label">Relationship</label>
                                         <select class="form-select @error('relationship_type') is-invalid @enderror" id="relationship_type" name="relationship_type">
                                             <option value="">Select Relationship</option>
@@ -314,11 +467,11 @@
                         </div>
 
                         <!-- Social Media Tab -->
-                        <div class="tab-pane fade" id="social" role="tabpanel" aria-labelledby="social-tab">
+                        <div x-show="activeTab === 'social'" x-transition.opacity>
                             <div class="mb-3">
-                                <h5 class="form-label d-flex justify-content-between align-items-center">
+                                <h5 class="form-label flex justify-between items-center">
                                     Social Media Links
-                                    <button type="button" class="btn btn-outline-primary btn-sm" id="addSocialLink">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" @click="addSocialLink()">
                                         <i class="bi bi-plus"></i> Add Link
                                     </button>
                                 </h5>
@@ -341,7 +494,7 @@
                         </div>
 
                         <!-- Additional Info Tab -->
-                        <div class="tab-pane fade" id="additional" role="tabpanel" aria-labelledby="additional-tab">
+                        <div x-show="activeTab === 'additional'" x-transition.opacity>
                             <div class="mb-3">
                                 <label for="motto" class="form-label">Personal Motto</label>
                                 <textarea class="form-control @error('motto') is-invalid @enderror" id="motto" name="motto" rows="4" placeholder="Enter personal motto or quote...">{{ old('motto', $user->motto) }}</textarea>
@@ -354,24 +507,25 @@
                     </div>
                 </form>
             </div>
-            <div class="modal-footer bg-light">
-                <div class="d-flex justify-content-between align-items-center w-100">
-                    <div>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    </div>
-                    <div>
-                        <button type="submit" class="btn btn-success" id="submitBtn" form="profileEditForm">
-                            <i class="bi bi-check-circle me-1"></i>Update Profile
-                        </button>
-                    </div>
-                    <div>
-                        <button type="button" class="btn btn-outline-secondary me-2" id="prevBtn" style="display: none;">
-                            <i class="bi bi-arrow-left me-1"></i>Previous
-                        </button>
-                        <button type="button" class="btn btn-primary" id="nextBtn">
-                            Next<i class="bi bi-arrow-right ms-1"></i>
-                        </button>
-                    </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer bg-muted/30 justify-between rounded-b-xl">
+                <div>
+                    <button type="button" class="btn btn-secondary" @click="closeModal()">Cancel</button>
+                </div>
+                <div>
+                    <button type="submit" class="btn btn-success" id="submitBtn" form="profileEditForm" :disabled="isSubmitting">
+                        <span x-show="!isSubmitting"><i class="bi bi-check-circle mr-1"></i>Update Profile</span>
+                        <span x-show="isSubmitting" x-cloak><span class="spinner-border spinner-border-sm mr-1"></span>Updating...</span>
+                    </button>
+                </div>
+                <div class="flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary" x-show="currentTabIndex > 0" @click="prevTab()">
+                        <i class="bi bi-arrow-left mr-1"></i>Previous
+                    </button>
+                    <button type="button" class="btn btn-primary" x-show="currentTabIndex < tabs.length - 1" @click="nextTab()">
+                        Next<i class="bi bi-arrow-right ml-1"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -380,7 +534,7 @@
 
 @push('styles')
 <style>
-/* Profile Photo Tab Styles */
+/* Profile Photo Tab Styles - preserving original animations */
 .profile-photo-preview-container {
     position: relative;
     transition: transform 0.3s ease;
@@ -413,50 +567,21 @@
     transform: translateY(-2px);
 }
 
-.privacy-settings-card .card {
-    transition: box-shadow 0.3s ease;
-}
-
 .privacy-settings-card .card:hover {
     box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15) !important;
 }
 
-.form-check-input:checked {
-    background-color: #28a745;
-    border-color: #28a745;
-}
-
-.form-check-input:focus {
-    border-color: #86b7fe;
-    outline: 0;
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-}
-
 /* Animated gradient background for motivational section */
-.alert-info {
-    animation: gradientShift 3s ease infinite;
+.alert-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     background-size: 200% 200%;
+    animation: gradientShift 3s ease infinite;
 }
 
 @keyframes gradientShift {
-    0% {
-        background-position: 0% 50%;
-    }
-    50% {
-        background-position: 100% 50%;
-    }
-    100% {
-        background-position: 0% 50%;
-    }
-}
-
-/* Guidelines list - no animation to save space */
-.profile-photo-info ul li {
-    transition: color 0.2s ease;
-}
-
-.profile-photo-info ul li:hover {
-    color: #495057;
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 /* Button hover effects */
@@ -489,517 +614,10 @@
     box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
 }
 
-/* Custom select wrapper */
-.custom-select-wrapper {
-    position: relative;
-}
-
-.custom-select-btn {
-    width: 100%;
-    text-align: left;
-    background: white;
-    border: 1px solid #dee2e6;
-    padding: 0.375rem 2.25rem 0.375rem 0.75rem;
-    border-radius: 0.375rem;
-    cursor: pointer;
-    position: relative;
-}
-
-.custom-select-btn::after {
-    content: "";
-    position: absolute;
-    right: 0.75rem;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 0;
-    height: 0;
-    border-left: 0.3em solid transparent;
-    border-right: 0.3em solid transparent;
-    border-top: 0.3em solid;
-}
-
-.custom-select-btn:hover {
-    border-color: #86b7fe;
-}
-
-.custom-select-dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 0.375rem;
-    max-height: 300px;
-    overflow-y: auto;
-    z-index: 1000;
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-    margin-top: 0.125rem;
-}
-
-.custom-select-option {
-    padding: 0.5rem 0.75rem;
-    cursor: pointer;
-    transition: background-color 0.15s ease-in-out;
-}
-
-.custom-select-option:hover {
-    background-color: #f8f9fa;
-}
-
-.custom-select-option i {
-    width: 20px;
-    display: inline-block;
+/* Form switch - green when checked */
+.form-switch .form-check-input:checked {
+    background-color: #28a745;
+    border-color: #28a745;
 }
 </style>
-@endpush
-
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    let socialLinkIndex = {{ count($formLinks ?? []) }};
-
-    // Tab navigation
-    const tabs = ['photo', 'personal', 'social', 'additional'];
-    let currentTab = 0;
-
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const submitBtn = document.getElementById('submitBtn');
-
-    function updateButtons() {
-        prevBtn.style.display = currentTab === 0 ? 'none' : 'inline-block';
-        nextBtn.style.display = currentTab === tabs.length - 1 ? 'none' : 'inline-block';
-    }
-
-    function showTab(index) {
-        const tabButton = document.getElementById(tabs[index] + '-tab');
-        const tab = new bootstrap.Tab(tabButton);
-        tab.show();
-        currentTab = index;
-        updateButtons();
-    }
-
-    nextBtn.addEventListener('click', function() {
-        if (currentTab < tabs.length - 1) {
-            showTab(currentTab + 1);
-        }
-    });
-
-    prevBtn.addEventListener('click', function() {
-        if (currentTab > 0) {
-            showTab(currentTab - 1);
-        }
-    });
-
-    document.querySelectorAll('#profileEditTabs button[data-bs-toggle="tab"]').forEach((tabButton, index) => {
-        tabButton.addEventListener('shown.bs.tab', function() {
-            currentTab = index;
-            updateButtons();
-        });
-    });
-
-    updateButtons();
-
-    // Auto-open modal on page load (only if cancelUrl is set, meaning it's a dedicated edit page)
-    const editModalEl = document.getElementById('editProfileModal');
-    const editModal = new bootstrap.Modal(editModalEl);
-    @if($cancelUrl)
-        editModal.show();
-    @endif
-
-    // Prevent edit modal from closing when cropper modal opens
-    let cropperModalOpen = false;
-    let isSubmitting = false;
-
-    document.addEventListener('show.bs.modal', function(event) {
-        if (event.target.id !== 'editProfileModal') {
-            cropperModalOpen = true;
-        }
-    });
-
-    document.addEventListener('hidden.bs.modal', function(event) {
-        if (event.target.id !== 'editProfileModal') {
-            cropperModalOpen = false;
-            // Re-show edit modal after cropper closes, unless we're submitting
-            if (!editModalEl.classList.contains('show') && !isSubmitting) {
-                editModal.show();
-            }
-        }
-    });
-
-    editModalEl.addEventListener('hide.bs.modal', function(e) {
-        if (cropperModalOpen && !isSubmitting) {
-            e.preventDefault();
-            e.stopPropagation();
-            return false;
-        }
-    });
-
-    editModalEl.addEventListener('hidden.bs.modal', function() {
-        if (!cropperModalOpen && !isSubmitting) {
-            @if($cancelUrl)
-                window.location.href = "{{ $cancelUrl }}";
-            @endif
-        }
-    });
-
-    @if($errors->any())
-        editModal.show();
-    @endif
-
-    // Handle form submission with AJAX
-    const profileForm = document.getElementById('profileEditForm');
-    submitBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-
-        // Disable submit button to prevent double submission
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Updating...';
-
-        const formData = new FormData(profileForm);
-
-        fetch(profileForm.action, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Update profile picture on the page if it was changed
-                if (data.profile_picture_url) {
-                    // Update all profile pictures on the page
-                    document.querySelectorAll('img[alt*="Profile"], img[src*="profile"]').forEach(img => {
-                        if (img.src.includes('profile_') || img.alt.toLowerCase().includes('profile')) {
-                            img.src = data.profile_picture_url + '?v=' + new Date().getTime();
-                        }
-                    });
-                }
-
-                // Show success message
-                const alertDiv = document.createElement('div');
-                alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
-                alertDiv.style.zIndex = '9999';
-                alertDiv.innerHTML = `
-                    <i class="bi bi-check-circle me-2"></i>${data.message || 'Profile updated successfully!'}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                `;
-                document.body.appendChild(alertDiv);
-
-                // Close modal and reload page after short delay
-                isSubmitting = true;
-                setTimeout(() => {
-                    editModal.hide();
-                    window.location.reload();
-                }, 1500);
-            } else {
-                throw new Error(data.message || 'Update failed');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            const alertDiv = document.createElement('div');
-            alertDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
-            alertDiv.style.zIndex = '9999';
-            alertDiv.innerHTML = `
-                <i class="bi bi-exclamation-triangle me-2"></i>${error.message || 'Failed to update profile. Please try again.'}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            document.body.appendChild(alertDiv);
-
-            // Re-enable submit button
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Update Profile';
-        });
-    });
-
-    // Add new social link row
-    document.getElementById('addSocialLink').addEventListener('click', function() {
-        addSocialLinkRow();
-    });
-
-    // Remove social link row
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('remove-social-link') || e.target.closest('.remove-social-link')) {
-            e.target.closest('.social-link-row').remove();
-        }
-    });
-
-    // Custom select dropdown functionality
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('custom-select-btn') || e.target.closest('.custom-select-btn')) {
-            const btn = e.target.classList.contains('custom-select-btn') ? e.target : e.target.closest('.custom-select-btn');
-            const dropdown = btn.nextElementSibling.nextElementSibling;
-            document.querySelectorAll('.custom-select-dropdown').forEach(d => {
-                if (d !== dropdown) d.style.display = 'none';
-            });
-            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
-            e.stopPropagation();
-        }
-        else if (e.target.classList.contains('custom-select-option') || e.target.closest('.custom-select-option')) {
-            const option = e.target.classList.contains('custom-select-option') ? e.target : e.target.closest('.custom-select-option');
-            const value = option.getAttribute('data-value');
-            const wrapper = option.closest('.custom-select-wrapper');
-            const btn = wrapper.querySelector('.custom-select-btn');
-            const hiddenInput = wrapper.querySelector('.platform-value');
-            const dropdown = wrapper.querySelector('.custom-select-dropdown');
-            btn.innerHTML = option.innerHTML;
-            hiddenInput.value = value;
-            dropdown.style.display = 'none';
-        }
-        else {
-            document.querySelectorAll('.custom-select-dropdown').forEach(d => {
-                d.style.display = 'none';
-            });
-        }
-    });
-
-    // Listen for image upload success from cropper
-    document.addEventListener('imageUploaded', function(e) {
-        if (e.detail && e.detail.url) {
-            updateProfilePicturePreview(e.detail.url);
-        }
-    });
-
-    // Also listen for global image upload success callback
-    window.imageUploadSuccess = function(result) {
-        console.log('Image upload success callback called:', result);
-        if (result && result.url) {
-            console.log('Updating preview with URL:', result.url);
-            updateProfilePicturePreview(result.url);
-            // Clear the remove checkbox since we now have a new image
-            const removeCheckbox = document.getElementById('remove_profile_picture');
-            if (removeCheckbox) {
-                removeCheckbox.checked = false;
-                console.log('Remove checkbox cleared after successful upload');
-            }
-        } else if (result && result.path) {
-            // Some components might return 'path' instead of 'url'
-            console.log('Updating preview with path:', result.path);
-            const fullUrl = window.location.origin + '/storage/' + result.path;
-            console.log('Constructed URL:', fullUrl);
-            updateProfilePicturePreview(fullUrl);
-            // Clear the remove checkbox since we now have a new image
-            const removeCheckbox = document.getElementById('remove_profile_picture');
-            if (removeCheckbox) {
-                removeCheckbox.checked = false;
-                console.log('Remove checkbox cleared after successful upload');
-            }
-        } else {
-            console.log('No URL or path in result:', result);
-        }
-    };
-
-    function updateProfilePicturePreview(imageUrl) {
-        console.log('updateProfilePicturePreview called with URL:', imageUrl);
-
-        const preview = document.getElementById('profile_picture_preview');
-        const placeholder = document.getElementById('profile_picture_placeholder');
-
-        console.log('Current preview element:', preview);
-        console.log('Current placeholder element:', placeholder);
-
-        if (placeholder) {
-            console.log('Replacing placeholder with new image');
-            // Replace placeholder with image
-            placeholder.style.display = 'none';
-            const previewContainer = placeholder.parentElement;
-            const newImg = document.createElement('img');
-            newImg.src = imageUrl + '?v=' + new Date().getTime();
-            newImg.alt = 'Profile Picture';
-            newImg.id = 'profile_picture_preview';
-            newImg.className = 'image-upload-preview';
-            newImg.style.cssText = 'width: 300px; height: 400px; object-fit: cover; border: 3px solid #dee2e6; border-radius: 8px;';
-            previewContainer.appendChild(newImg);
-            console.log('New image element created and appended');
-        } else if (preview) {
-            console.log('Updating existing preview image');
-            // Update existing image
-            preview.src = imageUrl + '?v=' + new Date().getTime();
-        } else {
-            console.log('No placeholder or preview found!');
-        }
-
-        // Show remove button
-        const removeBtn = document.getElementById('removeProfilePicture');
-        if (removeBtn) {
-            removeBtn.style.display = 'block';
-            console.log('Remove button shown');
-        } else {
-            console.log('Remove button not found');
-        }
-    }
-
-    // Privacy toggle functionality
-    const visibilityToggle = document.getElementById('profilePictureVisibility');
-    const visibilityStatus = document.getElementById('visibilityStatus');
-    const visibilityIcon = document.getElementById('visibilityIcon');
-    const visibilityTitle = document.getElementById('visibilityTitle');
-    const visibilityDescription = document.getElementById('visibilityDescription');
-
-    function updateVisibilityStatus() {
-        const isPublic = visibilityToggle.checked;
-
-        if (isPublic) {
-            visibilityStatus.className = 'alert alert-success mb-0 p-2';
-            visibilityIcon.className = 'bi bi-globe me-2 mt-1';
-            visibilityTitle.textContent = 'Public';
-            visibilityDescription.textContent = 'Everyone can see your profile picture';
-        } else {
-            visibilityStatus.className = 'alert alert-warning mb-0 p-2';
-            visibilityIcon.className = 'bi bi-lock-fill me-2 mt-1';
-            visibilityTitle.textContent = 'Private';
-            visibilityDescription.textContent = 'Only you and your family can see your profile picture';
-        }
-    }
-
-    if (visibilityToggle) {
-        // Initialize on page load
-        updateVisibilityStatus();
-
-        // Update on toggle change
-        visibilityToggle.addEventListener('change', function() {
-            updateVisibilityStatus();
-
-            // Add a subtle animation
-            visibilityStatus.style.opacity = '0';
-            setTimeout(() => {
-                visibilityStatus.style.transition = 'opacity 0.3s ease-in-out';
-                visibilityStatus.style.opacity = '1';
-            }, 100);
-        });
-    }
-
-    // Remove profile picture functionality
-    function attachRemovePhotoListener() {
-        const removeProfilePictureBtn = document.getElementById('removeProfilePicture');
-        if (removeProfilePictureBtn && !removeProfilePictureBtn.hasAttribute('data-listener-attached')) {
-            removeProfilePictureBtn.setAttribute('data-listener-attached', 'true');
-            removeProfilePictureBtn.addEventListener('click', function() {
-                // Set the hidden input to indicate removal
-                document.getElementById('removeProfilePictureInput').value = '1';
-
-                // Get user gender for default avatar
-                const gender = document.getElementById('gender').value || 'm';
-
-                // Update preview to show default avatar
-                const preview = document.getElementById('profile_picture_preview');
-                const placeholder = document.getElementById('profile_picture_placeholder');
-
-                if (preview) {
-                    preview.style.display = 'none';
-                }
-
-                if (placeholder) {
-                    placeholder.style.display = 'flex';
-                    // Update icon based on gender
-                    const icon = placeholder.querySelector('i');
-                    if (icon) {
-                        icon.className = gender === 'f' ? 'bi bi-person-circle' : 'bi bi-person-circle';
-                        icon.style.color = gender === 'f' ? '#e91e63' : '#2196f3';
-                    }
-                    const text = placeholder.querySelector('p');
-                    if (text) {
-                        text.textContent = 'Default avatar will be used';
-                    }
-                } else {
-                    // Create placeholder if it doesn't exist
-                    const previewContainer = preview ? preview.parentElement : document.querySelector('.image-preview');
-                    if (previewContainer) {
-                        const newPlaceholder = document.createElement('div');
-                        newPlaceholder.className = 'image-placeholder';
-                        newPlaceholder.id = 'profile_picture_placeholder';
-                        newPlaceholder.style.cssText = 'width: 300px; height: 400px; background-color: #f0f0f0; border: 3px solid #dee2e6; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto;';
-                        newPlaceholder.innerHTML = `
-                            <div class="text-center">
-                                <i class="bi bi-person-circle" style="font-size: 60px; color: ${gender === 'f' ? '#e91e63' : '#2196f3'};"></i>
-                                <p class="text-muted mt-2 mb-0">Default avatar will be used</p>
-                            </div>
-                        `;
-                        if (preview) {
-                            preview.parentElement.appendChild(newPlaceholder);
-                        } else {
-                            previewContainer.appendChild(newPlaceholder);
-                        }
-                    }
-                }
-
-                // Hide the remove button
-                removeProfilePictureBtn.style.display = 'none';
-
-                // No notification needed - just remove the picture directly
-            });
-        }
-    }
-
-    // Attach listener on page load
-    attachRemovePhotoListener();
-
-    function addSocialLinkRow(platform = '', url = '') {
-        const container = document.getElementById('socialLinksContainer');
-        const row = document.createElement('div');
-        row.className = 'social-link-row mb-3 d-flex align-items-end';
-
-        const platformIcons = {
-            'facebook': '<i class="bi bi-facebook me-2"></i>Facebook',
-            'twitter': '<i class="bi bi-twitter-x me-2"></i>Twitter/X',
-            'instagram': '<i class="bi bi-instagram me-2"></i>Instagram',
-            'linkedin': '<i class="bi bi-linkedin me-2"></i>LinkedIn',
-            'youtube': '<i class="bi bi-youtube me-2"></i>YouTube',
-            'tiktok': '<i class="bi bi-tiktok me-2"></i>TikTok',
-            'snapchat': '<i class="bi bi-snapchat me-2"></i>Snapchat',
-            'whatsapp': '<i class="bi bi-whatsapp me-2"></i>WhatsApp',
-            'telegram': '<i class="bi bi-telegram me-2"></i>Telegram',
-            'discord': '<i class="bi bi-discord me-2"></i>Discord',
-            'reddit': '<i class="bi bi-reddit me-2"></i>Reddit',
-            'pinterest': '<i class="bi bi-pinterest me-2"></i>Pinterest',
-            'twitch': '<i class="bi bi-twitch me-2"></i>Twitch',
-            'github': '<i class="bi bi-github me-2"></i>GitHub',
-            'spotify': '<i class="bi bi-spotify me-2"></i>Spotify',
-            'skype': '<i class="bi bi-skype me-2"></i>Skype',
-            'slack': '<i class="bi bi-slack me-2"></i>Slack',
-            'medium': '<i class="bi bi-medium me-2"></i>Medium',
-            'vimeo': '<i class="bi bi-vimeo me-2"></i>Vimeo',
-            'messenger': '<i class="bi bi-messenger me-2"></i>Messenger',
-            'wechat': '<i class="bi bi-wechat me-2"></i>WeChat',
-            'line': '<i class="bi bi-line me-2"></i>Line'
-        };
-
-        const selectedPlatform = platform ? platformIcons[platform] : 'Select Platform';
-
-        row.innerHTML = `
-            <div class="me-2 flex-grow-1">
-                <label class="form-label">Platform</label>
-                <div class="custom-select-wrapper">
-                    <button type="button" class="form-select text-start custom-select-btn" data-index="${socialLinkIndex}">
-                        ${selectedPlatform}
-                    </button>
-                    <input type="hidden" name="social_links[${socialLinkIndex}][platform]" value="${platform}" class="platform-value" required>
-                    <div class="custom-select-dropdown" style="display: none;">
-                        ${Object.entries(platformIcons).map(([key, value]) =>
-                            `<div class="custom-select-option" data-value="${key}">${value}</div>`
-                        ).join('')}
-                    </div>
-                </div>
-            </div>
-            <div class="me-2 flex-grow-1">
-                <label class="form-label">URL</label>
-                <input type="url" class="form-control" name="social_links[${socialLinkIndex}][url]" value="${url}" placeholder="https://example.com/username" required>
-            </div>
-            <div class="mb-0">
-                <button type="button" class="btn btn-outline-danger btn-sm remove-social-link">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </div>
-        `;
-
-        container.appendChild(row);
-        socialLinkIndex++;
-    }
-});
-</script>
 @endpush

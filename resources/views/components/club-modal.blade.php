@@ -6,113 +6,138 @@
     $modalTitle = $isEdit ? 'Edit Club' : 'Create New Club';
 @endphp
 
-<!-- Club Modal -->
-<div class="modal fade" id="{{ $modalId }}" tabindex="-1" aria-labelledby="{{ $modalId }}Label" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-dialog-centered modal-xl">
-        <div class="modal-content" style="border-radius: 1rem; border: none; max-height: 90vh; display: flex; flex-direction: column;">
+<!-- Club Modal (Alpine.js) -->
+<div x-data="clubModalController({{ json_encode(['mode' => $mode, 'clubId' => $club->id ?? null, 'isEdit' => $isEdit]) }})"
+     x-show="open"
+     x-cloak
+     @open-club-modal.window="openModal()"
+     @close-club-modal.window="closeModal()"
+     @keydown.escape.window="closeModal()"
+     class="fixed inset-0 z-50"
+     id="{{ $modalId }}">
+
+    <!-- Backdrop -->
+    <div x-show="open"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-black/50"
+         @click="closeModal()">
+    </div>
+
+    <!-- Modal Dialog -->
+    <div x-show="open"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95"
+         class="fixed inset-0 flex items-center justify-center p-4">
+
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col" @click.stop>
             <!-- Modal Header -->
-            <div class="modal-header border-0 pb-0" style="padding: 1.5rem 1.5rem 0;">
-                <div class="w-100">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div>
-                            <h4 class="modal-title fw-bold mb-1" id="{{ $modalId }}Label">{{ $modalTitle }}</h4>
-                            <p class="text-muted small mb-0">Fill in the information across all tabs</p>
-                        </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="px-6 pt-6 pb-0">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <h4 class="text-xl font-bold mb-1">{{ $modalTitle }}</h4>
+                        <p class="text-muted-foreground text-sm mb-0">Fill in the information across all tabs</p>
                     </div>
+                    <button @click="closeModal()" class="text-muted-foreground hover:text-foreground transition-colors">
+                        <i class="bi bi-x-lg text-xl"></i>
+                    </button>
+                </div>
 
-                    <!-- Progress Indicator -->
-                    <div class="d-flex align-items-center gap-2 mb-3">
-                        <span class="badge bg-primary" id="stepIndicator">Step 1 of 5</span>
-                        <div class="progress flex-grow-1" style="height: 6px;">
-                            <div class="progress-bar" id="progressBar" role="progressbar" style="width: 20%;" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
+                <!-- Progress Indicator -->
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="badge bg-primary text-white" x-text="'Step ' + (currentTab + 1) + ' of ' + tabs.length"></span>
+                    <div class="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div class="h-full bg-primary transition-all duration-300 rounded-full"
+                             :style="'width: ' + ((currentTab + 1) / tabs.length * 100) + '%'"></div>
                     </div>
+                </div>
 
-                    <!-- Tab Navigation -->
-                    <ul class="nav nav-tabs border-0" id="clubModalTabs" role="tablist" style="gap: 0.5rem; flex-wrap: nowrap; overflow-x: auto;">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic" type="button" role="tab" aria-controls="basic" aria-selected="true" data-step="1">
-                                <i class="bi bi-info-circle me-2"></i>
-                                <span class="d-none d-md-inline">Basic Info</span>
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="identity-tab" data-bs-toggle="tab" data-bs-target="#identity" type="button" role="tab" aria-controls="identity" aria-selected="false" data-step="2">
-                                <i class="bi bi-palette me-2"></i>
-                                <span class="d-none d-md-inline">Identity & Branding</span>
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="location-tab" data-bs-toggle="tab" data-bs-target="#location" type="button" role="tab" aria-controls="location" aria-selected="false" data-step="3">
-                                <i class="bi bi-geo-alt me-2"></i>
-                                <span class="d-none d-md-inline">Location</span>
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="contact-tab" data-bs-toggle="tab" data-bs-target="#contact" type="button" role="tab" aria-controls="contact" aria-selected="false" data-step="4">
-                                <i class="bi bi-telephone me-2"></i>
-                                <span class="d-none d-md-inline">Contact</span>
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="finance-tab" data-bs-toggle="tab" data-bs-target="#finance" type="button" role="tab" aria-controls="finance" aria-selected="false" data-step="5">
-                                <i class="bi bi-bank me-2"></i>
-                                <span class="d-none d-md-inline">Finance & Settings</span>
-                            </button>
-                        </li>
-                    </ul>
+                <!-- Tab Navigation -->
+                <div class="flex gap-2 border-b-2 border-border overflow-x-auto scrollbar-hide">
+                    <template x-for="(tab, index) in tabs" :key="tab.id">
+                        <button @click="goToTab(index)"
+                                :class="currentTab === index
+                                    ? 'text-primary border-primary'
+                                    : 'text-muted-foreground border-transparent hover:text-primary hover:border-primary/30'"
+                                class="flex items-center gap-2 px-4 py-3 border-b-3 font-medium text-sm whitespace-nowrap transition-all -mb-0.5">
+                            <i :class="tab.icon"></i>
+                            <span class="hidden md:inline" x-text="tab.name"></span>
+                        </button>
+                    </template>
                 </div>
             </div>
 
             <!-- Modal Body (Scrollable) -->
-            <div class="modal-body" style="padding: 1.5rem; overflow-y: auto; flex: 1;">
-                <form id="clubForm" data-mode="{{ $mode }}" data-club-id="{{ $club->id ?? '' }}">
+            <div class="px-6 py-6 overflow-y-auto flex-1">
+                <form id="clubForm" x-ref="form" data-mode="{{ $mode }}" data-club-id="{{ $club->id ?? '' }}">
                     @csrf
                     @if($isEdit)
                         @method('PUT')
                     @endif
 
-                    <div class="tab-content" id="clubModalTabContent">
-                        <!-- Tab 1: Basic Information -->
-                        <div class="tab-pane fade show active" id="basic" role="tabpanel" aria-labelledby="basic-tab">
-                            <x-club-modal.tabs.basic-info :club="$club" :mode="$mode" />
-                        </div>
+                    <!-- Tab 1: Basic Information -->
+                    <div x-show="currentTab === 0" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
+                        <x-club-modal.tabs.basic-info :club="$club" :mode="$mode" />
+                    </div>
 
-                        <!-- Tab 2: Identity & Branding -->
-                        <div class="tab-pane fade" id="identity" role="tabpanel" aria-labelledby="identity-tab">
-                            <x-club-modal.tabs.identity-branding :club="$club" :mode="$mode" />
-                        </div>
+                    <!-- Tab 2: Identity & Branding -->
+                    <div x-show="currentTab === 1" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
+                        <x-club-modal.tabs.identity-branding :club="$club" :mode="$mode" />
+                    </div>
 
-                        <!-- Tab 3: Location -->
-                        <div class="tab-pane fade" id="location" role="tabpanel" aria-labelledby="location-tab">
-                            <x-club-modal.tabs.location :club="$club" :mode="$mode" />
-                        </div>
+                    <!-- Tab 3: Location -->
+                    <div x-show="currentTab === 2" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
+                        <x-club-modal.tabs.location :club="$club" :mode="$mode" />
+                    </div>
 
-                        <!-- Tab 4: Contact -->
-                        <div class="tab-pane fade" id="contact" role="tabpanel" aria-labelledby="contact-tab">
-                            <x-club-modal.tabs.contact :club="$club" :mode="$mode" />
-                        </div>
+                    <!-- Tab 4: Contact -->
+                    <div x-show="currentTab === 3" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
+                        <x-club-modal.tabs.contact :club="$club" :mode="$mode" />
+                    </div>
 
-                        <!-- Tab 5: Finance & Settings -->
-                        <div class="tab-pane fade" id="finance" role="tabpanel" aria-labelledby="finance-tab">
-                            <x-club-modal.tabs.finance-settings :club="$club" :mode="$mode" />
-                        </div>
+                    <!-- Tab 5: Finance & Settings -->
+                    <div x-show="currentTab === 4" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
+                        <x-club-modal.tabs.finance-settings :club="$club" :mode="$mode" />
                     </div>
                 </form>
             </div>
 
             <!-- Modal Footer -->
-            <div class="modal-footer border-0" style="padding: 1rem 1.5rem 1.5rem; gap: 0.75rem;">
-                <button type="button" class="btn btn-secondary" id="prevBtn" style="display: none;">
-                    <i class="bi bi-arrow-left me-2"></i>Back
+            <div class="px-6 pb-6 pt-4 flex items-center justify-end gap-3 border-t border-border">
+                <button x-show="currentTab > 0"
+                        @click="goToTab(currentTab - 1)"
+                        class="btn btn-secondary">
+                    <i class="bi bi-arrow-left mr-2"></i>Back
                 </button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="nextBtn">
-                    Next<i class="bi bi-arrow-right ms-2"></i>
+                <button @click="closeModal()" class="btn btn-secondary">Cancel</button>
+                <button x-show="currentTab < tabs.length - 1"
+                        @click="goToTab(currentTab + 1)"
+                        class="btn btn-primary">
+                    Next<i class="bi bi-arrow-right ml-2"></i>
                 </button>
-                <button type="button" class="btn text-white" id="submitBtn" style="display: none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                    <i class="bi bi-check-circle me-2"></i>{{ $isEdit ? 'Update Club' : 'Create Club' }}
+                <button x-show="currentTab === tabs.length - 1"
+                        @click="handleSubmit()"
+                        :disabled="isSubmitting"
+                        class="btn text-white"
+                        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <template x-if="isSubmitting">
+                        <span class="flex items-center">
+                            <span class="spinner-border mr-2"></span>Saving...
+                        </span>
+                    </template>
+                    <template x-if="!isSubmitting">
+                        <span>
+                            <i class="bi bi-check-circle mr-2"></i>{{ $isEdit ? 'Update Club' : 'Create Club' }}
+                        </span>
+                    </template>
                 </button>
             </div>
         </div>
@@ -122,110 +147,35 @@
 @push('styles')
 <style>
     /* Club Modal Custom Styles */
-
-    /* PART 3 FIX: Prevent vertical scrollbar in tabs header */
-    #clubModal .modal-header {
-        overflow-y: visible;
-        overflow-x: hidden;
+    .scrollbar-hide {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
     }
-
-    #clubModal .nav-tabs {
-        border-bottom: 2px solid hsl(var(--border));
-        overflow-y: hidden; /* PART 2 FIX: No vertical scroll */
-        overflow-x: auto; /* Allow horizontal scroll for many tabs */
-        flex-wrap: nowrap;
-        scrollbar-width: none; /* PART 2 FIX: Hide scrollbar in Firefox */
-        -ms-overflow-style: none; /* PART 2 FIX: Hide scrollbar in IE/Edge */
-    }
-
-    /* PART 2 FIX: Hide scrollbar in Chrome/Safari */
-    #clubModal .nav-tabs::-webkit-scrollbar {
+    .scrollbar-hide::-webkit-scrollbar {
         display: none;
-    }
-
-    #clubModal .nav-tabs .nav-link {
-        border: none;
-        border-bottom: 3px solid transparent;
-        color: hsl(var(--muted-foreground));
-        font-weight: 500;
-        padding: 0.75rem 1rem;
-        transition: all 0.2s;
-        white-space: nowrap;
-        flex-shrink: 0; /* Prevent tabs from shrinking */
-    }
-
-    #clubModal .nav-tabs .nav-link:hover {
-        color: hsl(var(--primary));
-        border-bottom-color: hsl(var(--primary) / 0.3);
-    }
-
-    #clubModal .nav-tabs .nav-link.active {
-        color: hsl(var(--primary));
-        border-bottom-color: hsl(var(--primary));
-        background-color: transparent;
-    }
-
-    #clubModal .nav-tabs .nav-link i {
-        font-size: 1.1rem;
-    }
-
-    /* PART 3 FIX: Only modal body should have vertical scroll */
-    #clubModal .modal-body {
-        overflow-y: auto; /* Vertical scroll for content */
-        overflow-x: hidden; /* No horizontal scroll */
-        scrollbar-width: thin;
-        scrollbar-color: hsl(var(--border)) transparent;
-    }
-
-    #clubModal .modal-body::-webkit-scrollbar {
-        width: 8px;
-    }
-
-    #clubModal .modal-body::-webkit-scrollbar-track {
-        background: transparent;
-    }
-
-    #clubModal .modal-body::-webkit-scrollbar-thumb {
-        background-color: hsl(var(--border));
-        border-radius: 4px;
     }
 
     #clubModal .form-label {
         font-weight: 600;
-        color: hsl(var(--foreground));
+        color: hsl(220 15% 27%);
         margin-bottom: 0.5rem;
     }
 
     #clubModal .form-control:focus,
     #clubModal .form-select:focus {
-        border-color: hsl(var(--primary));
-        box-shadow: 0 0 0 0.2rem hsl(var(--primary) / 0.15);
+        border-color: hsl(250 60% 70%);
+        box-shadow: 0 0 0 0.2rem hsl(250 60% 70% / 0.15);
     }
 
-    #clubModal .tab-pane {
-        animation: fadeIn 0.3s ease-in-out;
-    }
-
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    /* ISSUE 1 FIX: Internal User Picker Overlay Styles */
+    /* User Picker Overlay Styles */
     .user-picker-overlay {
-        position: absolute;
+        position: fixed;
         top: 0;
         left: 0;
         right: 0;
         bottom: 0;
         background-color: rgba(0, 0, 0, 0.5);
-        z-index: 1060;
+        z-index: 60;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -243,23 +193,9 @@
         flex-direction: column;
     }
 
-    .user-picker-header {
-        padding: 1.5rem;
-        border-bottom: 1px solid hsl(var(--border));
-        display: flex;
-        justify-content: space-between;
-        align-items: start;
-    }
-
-    .user-picker-body {
-        padding: 1.5rem;
-        overflow-y: auto;
-        flex: 1;
-    }
-
     .user-picker-item {
         padding: 1rem;
-        border: 1px solid hsl(var(--border));
+        border: 1px solid hsl(220 15% 88%);
         border-radius: 0.5rem;
         margin-bottom: 0.75rem;
         cursor: pointer;
@@ -267,30 +203,11 @@
     }
 
     .user-picker-item:hover {
-        border-color: hsl(var(--primary));
-        background-color: hsl(var(--muted) / 0.3);
+        border-color: hsl(250 60% 70%);
+        background-color: hsl(220 15% 94% / 0.3);
     }
 
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-        #clubModal .modal-xl {
-            margin: 0.5rem;
-        }
-
-        #clubModal .nav-tabs .nav-link span {
-            display: none !important;
-        }
-
-        #clubModal .nav-tabs .nav-link {
-            padding: 0.75rem 0.5rem;
-        }
-
-        .user-picker-panel {
-            max-height: 90vh;
-        }
-    }
-
-    /* ISSUE 4 FIX: Map container styles */
+    /* Map container styles */
     #modalClubMap {
         height: 400px;
         width: 100%;
@@ -298,9 +215,14 @@
         z-index: 1;
     }
 
-    /* Hide Leaflet attribution */
     .leaflet-control-attribution {
         display: none !important;
+    }
+
+    @media (max-width: 768px) {
+        .user-picker-panel {
+            max-height: 90vh;
+        }
     }
 </style>
 @endpush
@@ -311,16 +233,14 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // ISSUE 1 FIX: Internal User Picker Functions
+    // Internal User Picker Functions
     let allUsersData = [];
 
     async function showUserPicker() {
         const overlay = document.getElementById('userPickerOverlay');
         if (overlay) {
             overlay.style.display = 'flex';
-            // Load users
             await loadUsersInternal();
-            // Focus on search input
             document.getElementById('userSearchInputInternal')?.focus();
         }
     }
@@ -370,16 +290,16 @@
 
         resultsDiv.innerHTML = users.map(user => `
             <div class="user-picker-item" onclick="selectUserInternal(${user.id}, '${user.full_name}', '${user.email}', '${user.mobile_formatted || ''}', '${user.profile_picture || ''}')">
-                <div class="d-flex align-items-center gap-3">
+                <div class="flex items-center gap-3">
                     ${user.profile_picture
-                        ? `<img src="/storage/${user.profile_picture}" alt="${user.full_name}" class="rounded-circle" style="width: 50px; height: 50px; object-fit: cover;">`
-                        : `<div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; font-size: 1.25rem; font-weight: 600;">${user.full_name.charAt(0)}</div>`
+                        ? `<img src="/storage/${user.profile_picture}" alt="${user.full_name}" class="rounded-full w-12 h-12 object-cover">`
+                        : `<div class="rounded-full bg-primary text-white flex items-center justify-center w-12 h-12 text-xl font-semibold">${user.full_name.charAt(0)}</div>`
                     }
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">${user.full_name}</div>
-                        <div class="small text-muted">
-                            <i class="bi bi-envelope me-1"></i>${user.email}
-                            ${user.mobile_formatted ? `<span class="ms-2"><i class="bi bi-phone me-1"></i>${user.mobile_formatted}</span>` : ''}
+                    <div class="flex-1">
+                        <div class="font-semibold">${user.full_name}</div>
+                        <div class="text-sm text-muted-foreground">
+                            <i class="bi bi-envelope mr-1"></i>${user.email}
+                            ${user.mobile_formatted ? `<span class="ml-2"><i class="bi bi-phone mr-1"></i>${user.mobile_formatted}</span>` : ''}
                         </div>
                     </div>
                 </div>
@@ -388,34 +308,31 @@
     }
 
     function selectUserInternal(id, name, email, mobile, picture) {
-        // Set hidden input
         const ownerInput = document.getElementById('owner_user_id');
         if (ownerInput) {
             ownerInput.value = id;
             ownerInput.dispatchEvent(new Event('change'));
         }
 
-        // Update display
         const ownerDisplay = document.getElementById('ownerDisplay');
         if (ownerDisplay) {
             ownerDisplay.innerHTML = `
-                <div class="d-flex align-items-center gap-3">
+                <div class="flex items-center gap-3">
                     ${picture
-                        ? `<img src="/storage/${picture}" alt="${name}" class="rounded-circle" style="width: 50px; height: 50px; object-fit: cover;">`
-                        : `<div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; font-size: 1.25rem; font-weight: 600;">${name.charAt(0)}</div>`
+                        ? `<img src="/storage/${picture}" alt="${name}" class="rounded-full w-12 h-12 object-cover">`
+                        : `<div class="rounded-full bg-primary text-white flex items-center justify-center w-12 h-12 text-xl font-semibold">${name.charAt(0)}</div>`
                     }
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">${name}</div>
-                        <div class="small text-muted">
-                            <i class="bi bi-envelope me-1"></i>${email}
-                            ${mobile ? `<span class="ms-2"><i class="bi bi-phone me-1"></i>${mobile}</span>` : ''}
+                    <div class="flex-1">
+                        <div class="font-semibold">${name}</div>
+                        <div class="text-sm text-muted-foreground">
+                            <i class="bi bi-envelope mr-1"></i>${email}
+                            ${mobile ? `<span class="ml-2"><i class="bi bi-phone mr-1"></i>${mobile}</span>` : ''}
                         </div>
                     </div>
                 </div>
             `;
         }
 
-        // Hide picker
         hideUserPicker();
     }
 
@@ -439,281 +356,212 @@
         }
     });
 
-    // Club Modal Controller
-    (function() {
-        const modal = document.getElementById('clubModal');
-        if (!modal) return;
+    // Club Modal Alpine.js Controller
+    function clubModalController(config) {
+        return {
+            open: false,
+            currentTab: 0,
+            isSubmitting: false,
+            draftLoaded: false,
+            toastShown: {},
+            mode: config.mode,
+            clubId: config.clubId,
+            isEdit: config.isEdit,
 
-        const form = document.getElementById('clubForm');
-        const tabs = ['basic', 'identity', 'location', 'contact', 'finance'];
-        let currentTab = 0;
-        let draftLoaded = false; // ISSUE 2 & 5 FIX: Track if draft was loaded
-        let toastShown = {}; // ISSUE 5 FIX: Track shown toasts per tab
+            tabs: [
+                { id: 'basic', name: 'Basic Info', icon: 'bi bi-info-circle' },
+                { id: 'identity', name: 'Identity & Branding', icon: 'bi bi-palette' },
+                { id: 'location', name: 'Location', icon: 'bi bi-geo-alt' },
+                { id: 'contact', name: 'Contact', icon: 'bi bi-telephone' },
+                { id: 'finance', name: 'Finance & Settings', icon: 'bi bi-bank' }
+            ],
 
-        const prevBtn = document.getElementById('prevBtn');
-        const nextBtn = document.getElementById('nextBtn');
-        const submitBtn = document.getElementById('submitBtn');
-        const stepIndicator = document.getElementById('stepIndicator');
-        const progressBar = document.getElementById('progressBar');
-
-        // Initialize
-        function init() {
-            updateButtons();
-            attachEventListeners();
-            // ISSUE 2 & 5 FIX: Load draft only once on modal open
-            if (!draftLoaded && form.dataset.mode === 'create') {
-                loadDraft();
-                draftLoaded = true;
-            }
-        }
-
-        // Update button visibility and progress
-        function updateButtons() {
-            prevBtn.style.display = currentTab === 0 ? 'none' : 'inline-block';
-            nextBtn.style.display = currentTab === tabs.length - 1 ? 'none' : 'inline-block';
-            submitBtn.style.display = currentTab === tabs.length - 1 ? 'inline-block' : 'none';
-
-            stepIndicator.textContent = `Step ${currentTab + 1} of ${tabs.length}`;
-            const progress = ((currentTab + 1) / tabs.length) * 100;
-            progressBar.style.width = progress + '%';
-            progressBar.setAttribute('aria-valuenow', progress);
-        }
-
-        // Navigate to specific tab
-        function goToTab(index) {
-            if (index < 0 || index >= tabs.length) return;
-
-            // Validate current tab before moving forward
-            if (index > currentTab && !validateCurrentTab()) {
-                return;
-            }
-
-            currentTab = index;
-            const tabId = tabs[index];
-            const tabButton = document.getElementById(tabId + '-tab');
-
-            if (tabButton) {
-                const tab = new bootstrap.Tab(tabButton);
-                tab.show();
-            }
-
-            updateButtons();
-            saveDraft();
-        }
-
-        // ISSUE 5 FIX: Validate current tab with single toast
-        function validateCurrentTab() {
-            const currentTabPane = document.getElementById(tabs[currentTab]);
-            if (!currentTabPane) return true;
-
-            const inputs = currentTabPane.querySelectorAll('input[required], select[required], textarea[required]');
-            let isValid = true;
-            let errorCount = 0;
-
-            inputs.forEach(input => {
-                // Skip file inputs for validation
-                if (input.type === 'file') return;
-
-                if (!input.value || (input.type === 'email' && !isValidEmail(input.value))) {
-                    input.classList.add('is-invalid');
-                    isValid = false;
-                    errorCount++;
-
-                    // Show inline error message
-                    let errorDiv = input.nextElementSibling;
-                    if (!errorDiv || !errorDiv.classList.contains('invalid-feedback')) {
-                        errorDiv = document.createElement('div');
-                        errorDiv.className = 'invalid-feedback';
-                        input.parentNode.insertBefore(errorDiv, input.nextSibling);
-                    }
-                    errorDiv.textContent = input.dataset.errorMessage || 'This field is required.';
-                    errorDiv.style.display = 'block';
-                } else {
-                    input.classList.remove('is-invalid');
+            openModal() {
+                this.open = true;
+                document.body.classList.add('overflow-hidden');
+                if (!this.draftLoaded && this.mode === 'create') {
+                    this.loadDraft();
+                    this.draftLoaded = true;
                 }
-            });
+            },
 
-            // ISSUE 5 FIX: Show only ONE toast per tab validation
-            if (!isValid && !toastShown[currentTab]) {
-                showToast(`Please fill in all required fields (${errorCount} field${errorCount > 1 ? 's' : ''} missing)`, 'error');
-                toastShown[currentTab] = true;
-            }
+            closeModal() {
+                this.open = false;
+                document.body.classList.remove('overflow-hidden');
+                this.currentTab = 0;
+                this.draftLoaded = false;
+                this.toastShown = {};
+                if (this.$refs.form) {
+                    this.$refs.form.reset();
+                }
+            },
 
-            return isValid;
-        }
+            goToTab(index) {
+                if (index < 0 || index >= this.tabs.length) return;
 
-        // Email validation
-        function isValidEmail(email) {
-            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-        }
+                // Validate current tab before moving forward
+                if (index > this.currentTab && !this.validateCurrentTab()) {
+                    return;
+                }
 
-        // Attach event listeners
-        function attachEventListeners() {
-            prevBtn.addEventListener('click', () => goToTab(currentTab - 1));
-            nextBtn.addEventListener('click', () => goToTab(currentTab + 1));
-            submitBtn.addEventListener('click', handleSubmit);
+                this.currentTab = index;
+                this.saveDraft();
+            },
 
-            // Tab click navigation
-            document.querySelectorAll('#clubModalTabs button[data-bs-toggle="tab"]').forEach((button, index) => {
-                button.addEventListener('click', (e) => {
-                    // Reset toast tracking for the new tab
-                    toastShown[index] = false;
+            validateCurrentTab() {
+                const form = this.$refs.form;
+                if (!form) return true;
 
-                    // Allow clicking on previous tabs, but validate before going forward
-                    if (index > currentTab && !validateCurrentTab()) {
-                        e.preventDefault();
+                // Get all required inputs in the current tab (visible ones)
+                const tabPanes = form.querySelectorAll('[x-show]');
+                let currentPane = null;
+
+                // Find visible pane by checking currentTab
+                const allInputs = form.querySelectorAll('input[required], select[required], textarea[required]');
+                let isValid = true;
+                let errorCount = 0;
+
+                allInputs.forEach(input => {
+                    if (input.type === 'file') return;
+
+                    // Check if input is in currently visible tab
+                    let parent = input.closest('[x-show]');
+                    if (!parent) return;
+
+                    const showAttr = parent.getAttribute('x-show');
+                    if (!showAttr || !showAttr.includes(`currentTab === ${this.currentTab}`)) return;
+
+                    if (!input.value || (input.type === 'email' && !this.isValidEmail(input.value))) {
+                        input.classList.add('is-invalid');
+                        isValid = false;
+                        errorCount++;
+
+                        let errorDiv = input.nextElementSibling;
+                        if (!errorDiv || !errorDiv.classList.contains('invalid-feedback')) {
+                            errorDiv = document.createElement('div');
+                            errorDiv.className = 'invalid-feedback';
+                            input.parentNode.insertBefore(errorDiv, input.nextSibling);
+                        }
+                        errorDiv.textContent = input.dataset.errorMessage || 'This field is required.';
+                        errorDiv.style.display = 'block';
+                    } else {
+                        input.classList.remove('is-invalid');
+                    }
+                });
+
+                if (!isValid && !this.toastShown[this.currentTab]) {
+                    this.showToast(`Please fill in all required fields (${errorCount} field${errorCount > 1 ? 's' : ''} missing)`, 'error');
+                    this.toastShown[this.currentTab] = true;
+                }
+
+                return isValid;
+            },
+
+            isValidEmail(email) {
+                return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+            },
+
+            async handleSubmit() {
+                // Validate all tabs
+                for (let i = 0; i < this.tabs.length; i++) {
+                    this.currentTab = i;
+                    if (!this.validateCurrentTab()) {
                         return;
                     }
-                    currentTab = index;
-                    updateButtons();
-                });
-            });
-
-            // Clear validation on input
-            form.addEventListener('input', (e) => {
-                if (e.target.classList.contains('is-invalid')) {
-                    e.target.classList.remove('is-invalid');
-                    // Reset toast for this tab
-                    toastShown[currentTab] = false;
                 }
-            });
 
-            // Save draft periodically
-            setInterval(saveDraft, 30000); // Every 30 seconds
-        }
-
-        // Handle form submission
-        async function handleSubmit() {
-            // Validate all tabs
-            let allValid = true;
-            for (let i = 0; i < tabs.length; i++) {
-                currentTab = i;
-                if (!validateCurrentTab()) {
-                    allValid = false;
-                    goToTab(i);
-                    break;
-                }
-            }
-
-            if (!allValid) return;
-
-            const formData = new FormData(form);
-            const mode = form.dataset.mode;
-            const clubId = form.dataset.clubId;
-
-            // Show loading state
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
-
-            try {
-                const url = mode === 'edit'
-                    ? `/admin/clubs/${clubId}`
-                    : '/admin/clubs';
-
-                const response = await fetch(url, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json'
-                    }
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    showToast(data.message || 'Club saved successfully!', 'success');
-                    clearDraft();
-
-                    // Close modal and reload page
-                    setTimeout(() => {
-                        bootstrap.Modal.getInstance(modal).hide();
-                        window.location.reload();
-                    }, 1500);
-                } else {
-                    showToast(data.message || 'An error occurred', 'error');
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>' + (mode === 'edit' ? 'Update Club' : 'Create Club');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showToast('An error occurred while saving', 'error');
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>' + (mode === 'edit' ? 'Update Club' : 'Create Club');
-            }
-        }
-
-        // Save draft to localStorage
-        function saveDraft() {
-            if (form.dataset.mode === 'create') {
+                const form = this.$refs.form;
                 const formData = new FormData(form);
-                const draft = {};
-                for (let [key, value] of formData.entries()) {
-                    // ISSUE 2 FIX: Skip file inputs
-                    const input = form.querySelector(`[name="${key}"]`);
-                    if (input && input.type !== 'file') {
-                        draft[key] = value;
+
+                this.isSubmitting = true;
+
+                try {
+                    const url = this.mode === 'edit'
+                        ? `/admin/clubs/${this.clubId}`
+                        : '/admin/clubs';
+
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        this.showToast(data.message || 'Club saved successfully!', 'success');
+                        this.clearDraft();
+
+                        setTimeout(() => {
+                            this.closeModal();
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        this.showToast(data.message || 'An error occurred', 'error');
+                        this.isSubmitting = false;
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    this.showToast('An error occurred while saving', 'error');
+                    this.isSubmitting = false;
+                }
+            },
+
+            saveDraft() {
+                if (this.mode === 'create') {
+                    const form = this.$refs.form;
+                    if (!form) return;
+
+                    const formData = new FormData(form);
+                    const draft = {};
+                    for (let [key, value] of formData.entries()) {
+                        const input = form.querySelector(`[name="${key}"]`);
+                        if (input && input.type !== 'file') {
+                            draft[key] = value;
+                        }
+                    }
+                    localStorage.setItem('clubModalDraft', JSON.stringify(draft));
+                }
+            },
+
+            loadDraft() {
+                if (this.mode === 'create') {
+                    const draft = localStorage.getItem('clubModalDraft');
+                    if (draft) {
+                        try {
+                            const data = JSON.parse(draft);
+                            const form = this.$refs.form;
+                            if (!form) return;
+
+                            Object.keys(data).forEach(key => {
+                                const input = form.querySelector(`[name="${key}"]`);
+                                if (input && input.type !== 'file' && !input.value) {
+                                    input.value = data[key];
+                                }
+                            });
+                        } catch (e) {
+                            console.error('Error loading draft:', e);
+                        }
                     }
                 }
-                localStorage.setItem('clubModalDraft', JSON.stringify(draft));
-            }
-        }
+            },
 
-        // ISSUE 2 FIX: Load draft from localStorage (skip file inputs)
-        function loadDraft() {
-            if (form.dataset.mode === 'create') {
-                const draft = localStorage.getItem('clubModalDraft');
-                if (draft) {
-                    try {
-                        const data = JSON.parse(draft);
-                        Object.keys(data).forEach(key => {
-                            const input = form.querySelector(`[name="${key}"]`);
-                            // ISSUE 2 FIX: Never set value on file inputs
-                            if (input && input.type !== 'file' && !input.value) {
-                                input.value = data[key];
-                            }
-                        });
-                    } catch (e) {
-                        console.error('Error loading draft:', e);
-                        // Don't show toast for draft loading errors
-                    }
-                }
-            }
-        }
+            clearDraft() {
+                localStorage.removeItem('clubModalDraft');
+            },
 
-        // Clear draft
-        function clearDraft() {
-            localStorage.removeItem('clubModalDraft');
-        }
-
-        // Show toast notification
-        function showToast(message, type = 'info') {
-            // Use your existing toast notification system
-            if (typeof Toast !== 'undefined') {
-                if (type === 'success') {
-                    Toast.success('Success', message);
-                } else if (type === 'error') {
-                    Toast.error('Error', message);
+            showToast(message, type = 'info') {
+                if (typeof window.showToast === 'function') {
+                    window.showToast(type, message);
                 } else {
-                    Toast.info('Info', message);
+                    alert(message);
                 }
-            } else {
-                alert(message);
             }
         }
-
-        // Initialize when modal is shown
-        modal.addEventListener('shown.bs.modal', init);
-
-        // Reset on modal close
-        modal.addEventListener('hidden.bs.modal', () => {
-            currentTab = 0;
-            draftLoaded = false;
-            toastShown = {};
-            form.reset();
-            updateButtons();
-        });
-    })();
+    }
 </script>
 @endpush
 @endonce

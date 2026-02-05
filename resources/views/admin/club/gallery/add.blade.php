@@ -1,11 +1,25 @@
 <!-- Add Picture Modal -->
-<div class="modal fade" id="uploadImageModal" tabindex="-1" aria-labelledby="uploadImageModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" style="max-width: 28rem;">
-        <div class="modal-content border-0 shadow-lg rounded-lg overflow-hidden">
+<div x-show="showUploadModal"
+     x-cloak
+     class="fixed inset-0 z-50 overflow-y-auto"
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-200"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0">
+    <!-- Backdrop -->
+    <div class="fixed inset-0 bg-black/50" @click="showUploadModal = false"></div>
+
+    <!-- Modal Content -->
+    <div class="flex min-h-full items-center justify-center p-4">
+        <div class="modal-content border-0 shadow-lg w-full max-w-md relative rounded-lg overflow-hidden"
+             x-data="{ currentTab: 'file' }"
+             @click.stop>
             <!-- Header -->
-            <div class="modal-header border-b border-gray-200 px-6 py-4">
-                <h5 class="modal-title text-lg font-semibold" id="uploadImageModalLabel">Add Picture to Gallery</h5>
-                <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" data-bs-dismiss="modal" aria-label="Close">
+            <div class="modal-header border-b border-border px-6 py-4">
+                <h5 class="modal-title text-lg font-semibold">Add Picture to Gallery</h5>
+                <button type="button" class="text-muted-foreground hover:text-foreground transition-colors" @click="showUploadModal = false">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
@@ -14,20 +28,18 @@
             <div class="modal-body px-6 py-4">
                 <!-- Tabs -->
                 <div class="w-full mb-4">
-                    <div class="grid grid-cols-2 gap-1 p-1 bg-gray-100 rounded-lg" role="tablist">
+                    <div class="grid grid-cols-2 gap-1 p-1 bg-muted/30 rounded-lg" role="tablist">
                         <button type="button"
-                                class="gallery-tab-btn flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all bg-white shadow-sm text-gray-900"
-                                data-tab="file"
-                                role="tab"
-                                aria-selected="true">
+                                class="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all"
+                                :class="currentTab === 'file' ? 'bg-white shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'"
+                                @click="currentTab = 'file'">
                             <i class="bi bi-image"></i>
                             Upload File
                         </button>
                         <button type="button"
-                                class="gallery-tab-btn flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all text-gray-500 hover:text-gray-700"
-                                data-tab="url"
-                                role="tab"
-                                aria-selected="false">
+                                class="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all"
+                                :class="currentTab === 'url' ? 'bg-white shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'"
+                                @click="currentTab = 'url'">
                             <i class="bi bi-link-45deg"></i>
                             Image URL
                         </button>
@@ -35,22 +47,22 @@
                 </div>
 
                 <!-- File Upload Tab Content -->
-                <div class="gallery-tab-content" id="gallery-tab-file">
+                <div x-show="currentTab === 'file'">
                     <form id="fileUploadForm" action="{{ route('admin.club.gallery.upload', $club->id) }}" method="POST" enctype="multipart/form-data">
                         @csrf
                         <input type="hidden" name="upload_type" value="file">
 
                         <div class="space-y-4">
                             <div class="space-y-2">
-                                <label for="imageFile" class="block text-sm font-medium text-gray-700">Select Image</label>
+                                <label for="imageFile" class="block text-sm font-medium text-foreground">Select Image</label>
                                 <div class="flex flex-col gap-3">
                                     <input type="file"
                                            id="imageFile"
                                            name="images[]"
                                            accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
                                            multiple
-                                           class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white hover:file:bg-primary/90 cursor-pointer border border-gray-300 rounded-md">
-                                    <p class="text-xs text-gray-500">
+                                           class="form-control">
+                                    <p class="text-xs text-muted-foreground">
                                         Supported formats: JPEG, PNG, GIF, WebP. Max size: 10MB
                                     </p>
                                 </div>
@@ -59,10 +71,10 @@
                             <!-- Preview Section -->
                             <div id="filePreviewSection" class="space-y-2 hidden">
                                 <div class="flex items-center justify-between">
-                                    <label class="block text-sm font-medium text-gray-700">Preview</label>
+                                    <label class="block text-sm font-medium text-foreground">Preview</label>
                                     <button type="button"
                                             id="clearFileBtn"
-                                            class="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-100 transition-colors">
+                                            class="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted/30 transition-colors">
                                         Clear
                                     </button>
                                 </div>
@@ -73,50 +85,50 @@
 
                             <!-- Caption -->
                             <div class="space-y-2">
-                                <label for="fileCaption" class="block text-sm font-medium text-gray-700">Caption (optional)</label>
+                                <label for="fileCaption" class="block text-sm font-medium text-foreground">Caption (optional)</label>
                                 <input type="text"
                                        id="fileCaption"
                                        name="caption"
                                        placeholder="Enter caption..."
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                       class="form-control">
                             </div>
                         </div>
                     </form>
                 </div>
 
                 <!-- URL Tab Content -->
-                <div class="gallery-tab-content hidden" id="gallery-tab-url">
+                <div x-show="currentTab === 'url'" x-cloak>
                     <form id="urlUploadForm" action="{{ route('admin.club.gallery.upload', $club->id) }}" method="POST">
                         @csrf
                         <input type="hidden" name="upload_type" value="url">
 
                         <div class="space-y-4">
                             <div class="space-y-2">
-                                <label for="imageUrl" class="block text-sm font-medium text-gray-700">Image URL</label>
+                                <label for="imageUrl" class="block text-sm font-medium text-foreground">Image URL</label>
                                 <input type="url"
                                        id="imageUrl"
                                        name="image_url"
                                        placeholder="https://example.com/image.jpg"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                       class="form-control">
                             </div>
 
                             <!-- URL Preview Section -->
                             <div id="urlPreviewSection" class="space-y-2 hidden">
-                                <label class="block text-sm font-medium text-gray-700">Preview</label>
+                                <label class="block text-sm font-medium text-foreground">Preview</label>
                                 <img id="urlPreviewImage"
                                      src=""
                                      alt="Preview"
-                                     class="w-full h-48 object-cover rounded-md border border-gray-200">
+                                     class="w-full h-48 object-cover rounded-md border border-border">
                             </div>
 
                             <!-- Caption -->
                             <div class="space-y-2">
-                                <label for="urlCaption" class="block text-sm font-medium text-gray-700">Caption (optional)</label>
+                                <label for="urlCaption" class="block text-sm font-medium text-foreground">Caption (optional)</label>
                                 <input type="text"
                                        id="urlCaption"
                                        name="caption"
                                        placeholder="Enter caption..."
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                       class="form-control">
                             </div>
                         </div>
                     </form>
@@ -124,15 +136,15 @@
             </div>
 
             <!-- Footer -->
-            <div class="modal-footer border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
+            <div class="modal-footer border-t border-border px-6 py-4 flex justify-end gap-3">
                 <button type="button"
-                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                        data-bs-dismiss="modal">
+                        class="btn btn-outline-secondary"
+                        @click="showUploadModal = false">
                     Cancel
                 </button>
                 <button type="button"
                         id="submitUploadBtn"
-                        class="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        class="btn btn-primary flex items-center gap-2"
                         disabled>
                     <i class="bi bi-upload" id="uploadIcon"></i>
                     <span id="uploadBtnText">Upload</span>
@@ -145,8 +157,6 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const tabBtns = document.querySelectorAll('#uploadImageModal .gallery-tab-btn');
-    const tabContents = document.querySelectorAll('#uploadImageModal .gallery-tab-content');
     const fileInput = document.getElementById('imageFile');
     const filePreviewSection = document.getElementById('filePreviewSection');
     const filePreviewContainer = document.getElementById('filePreviewContainer');
@@ -160,35 +170,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let currentTab = 'file';
 
-    // Tab switching
-    tabBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const tab = this.dataset.tab;
-            currentTab = tab;
-
-            // Update tab button styles
-            tabBtns.forEach(b => {
-                b.classList.remove('bg-white', 'shadow-sm', 'text-gray-900');
-                b.classList.add('text-gray-500', 'hover:text-gray-700');
-                b.setAttribute('aria-selected', 'false');
-            });
-            this.classList.remove('text-gray-500', 'hover:text-gray-700');
-            this.classList.add('bg-white', 'shadow-sm', 'text-gray-900');
-            this.setAttribute('aria-selected', 'true');
-
-            // Show/hide tab content
-            tabContents.forEach(content => {
-                content.classList.add('hidden');
-            });
-            document.getElementById('gallery-tab-' + tab).classList.remove('hidden');
-
-            // Update button text
-            updateSubmitButton();
-        });
+    // Watch for tab changes via Alpine.js
+    document.addEventListener('alpine:initialized', () => {
+        // The tab is managed by Alpine.js now
     });
 
     // File input change
-    fileInput.addEventListener('change', function() {
+    fileInput?.addEventListener('change', function() {
         const files = this.files;
         if (files.length > 0) {
             filePreviewContainer.innerHTML = '';
@@ -200,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const div = document.createElement('div');
                     div.className = 'relative';
                     div.innerHTML = `
-                        <img src="${e.target.result}" alt="Preview ${index + 1}" class="w-full h-24 object-cover rounded-md border border-gray-200">
+                        <img src="${e.target.result}" alt="Preview ${index + 1}" class="w-full h-24 object-cover rounded-md border border-border">
                         <span class="absolute bottom-1 right-1 bg-black/50 text-white text-xs px-1 rounded">${(file.size / 1024 / 1024).toFixed(2)} MB</span>
                     `;
                     filePreviewContainer.appendChild(div);
@@ -213,7 +201,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Clear file selection
-    clearFileBtn.addEventListener('click', function() {
+    clearFileBtn?.addEventListener('click', function() {
         fileInput.value = '';
         filePreviewContainer.innerHTML = '';
         filePreviewSection.classList.add('hidden');
@@ -222,7 +210,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // URL input change
     let urlTimeout;
-    urlInput.addEventListener('input', function() {
+    urlInput?.addEventListener('input', function() {
         clearTimeout(urlTimeout);
         const url = this.value.trim();
 
@@ -238,25 +226,34 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // URL image error handling
-    urlPreviewImage.addEventListener('error', function() {
+    urlPreviewImage?.addEventListener('error', function() {
         urlPreviewSection.classList.add('hidden');
     });
 
     // Update submit button state
     function updateSubmitButton() {
+        // Get current tab from Alpine.js state
+        const modalContent = document.querySelector('[x-data*="currentTab"]');
+        const alpineData = modalContent?.__x?.$data;
+        currentTab = alpineData?.currentTab || 'file';
+
         let isValid = false;
         if (currentTab === 'file') {
-            isValid = fileInput.files && fileInput.files.length > 0;
+            isValid = fileInput?.files && fileInput.files.length > 0;
             uploadBtnText.textContent = 'Upload';
         } else {
-            isValid = urlInput.value.trim() !== '';
+            isValid = urlInput?.value.trim() !== '';
             uploadBtnText.textContent = 'Add Picture';
         }
         submitBtn.disabled = !isValid;
     }
 
     // Submit button click
-    submitBtn.addEventListener('click', function() {
+    submitBtn?.addEventListener('click', function() {
+        const modalContent = document.querySelector('[x-data*="currentTab"]');
+        const alpineData = modalContent?.__x?.$data;
+        currentTab = alpineData?.currentTab || 'file';
+
         const form = currentTab === 'file' ? document.getElementById('fileUploadForm') : document.getElementById('urlUploadForm');
 
         // Show loading state
@@ -268,26 +265,12 @@ document.addEventListener('DOMContentLoaded', function() {
         form.submit();
     });
 
-    // Reset on modal close
-    const modal = document.getElementById('uploadImageModal');
-    modal.addEventListener('hidden.bs.modal', function() {
-        fileInput.value = '';
-        filePreviewContainer.innerHTML = '';
-        filePreviewSection.classList.add('hidden');
-        urlInput.value = '';
-        urlPreviewSection.classList.add('hidden');
-        document.getElementById('fileCaption').value = '';
-        document.getElementById('urlCaption').value = '';
-        uploadIcon.classList.remove('bi-arrow-repeat', 'animate-spin');
-        uploadIcon.classList.add('bi-upload');
-        uploadBtnText.textContent = 'Upload';
-        updateSubmitButton();
-    });
+    // Re-check submit button when tab changes
+    setInterval(updateSubmitButton, 500);
 });
 </script>
 @endpush
 
-@push('styles')
 <style>
     @keyframes spin {
         from { transform: rotate(0deg); }
@@ -296,11 +279,4 @@ document.addEventListener('DOMContentLoaded', function() {
     .animate-spin {
         animation: spin 1s linear infinite;
     }
-    .space-y-2 > * + * {
-        margin-top: 0.5rem;
-    }
-    .space-y-4 > * + * {
-        margin-top: 1rem;
-    }
 </style>
-@endpush

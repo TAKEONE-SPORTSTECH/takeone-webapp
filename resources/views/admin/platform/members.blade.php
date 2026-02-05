@@ -4,53 +4,53 @@
 <div>
     <!-- Page Header -->
     <div class="mb-4">
-        <h1 class="h2 fw-bold mb-2">All Members</h1>
-        <p class="text-muted">Manage all platform members</p>
+        <h1 class="text-2xl font-bold mb-2">All Members</h1>
+        <p class="text-muted-foreground">Manage all platform members</p>
     </div>
 
     <!-- Search and Actions Bar -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div class="flex-grow-1 me-3">
+    <div class="flex justify-between items-center mb-4">
+        <div class="grow mr-3">
             <input type="text" id="memberSearch" class="form-control" placeholder="Search members by name, phone, nationality, or gender..." value="{{ $search ?? '' }}">
         </div>
-        <div class="d-flex gap-2">
+        <div class="flex gap-2">
             <button class="btn btn-outline-primary">
-                <i class="bi bi-person-plus me-2"></i>Add Child Member
+                <i class="bi bi-person-plus mr-2"></i>Add Child Member
             </button>
             <button class="btn btn-primary">
-                <i class="bi bi-plus-circle me-2"></i>Create Member
+                <i class="bi bi-plus-circle mr-2"></i>Create Member
             </button>
         </div>
     </div>
 
     <!-- Members Grid -->
     @if($members->count() > 0)
-        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4" id="membersGrid">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4" id="membersGrid">
             @foreach($members as $member)
-                <div class="col member-card-wrapper"
+                <div class="member-card-wrapper"
                      data-member-name="{{ $member->full_name }}"
                      data-member-phone="{{ $member->formatted_mobile ?? '' }}"
                      data-member-nationality="{{ $member->nationality ?? '' }}"
                      data-member-gender="{{ $member->gender ?? '' }}">
-                    <a href="{{ route('member.show', $member->id) }}" class="text-decoration-none">
-                        <div class="card h-100 shadow-sm border overflow-hidden d-flex flex-column family-card">
+                    <a href="{{ route('member.show', $member->id) }}" class="no-underline">
+                        <div class="card h-full shadow-sm border overflow-hidden flex flex-col family-card">
                             <!-- Header with gradient background -->
                             <div class="p-4 pb-3" style="background: linear-gradient(135deg, {{ $member->gender == 'm' ? 'rgba(147, 51, 234, 0.1) 0%, rgba(147, 51, 234, 0.05) 50%' : 'rgba(214, 51, 132, 0.1) 0%, rgba(214, 51, 132, 0.05) 50%' }}, transparent 100%);">
-                                <div class="d-flex align-items-start gap-3">
-                                    <div class="position-relative">
-                                        <div class="rounded-circle border border-4 border-white shadow" style="width: 80px; height: 80px; overflow: hidden; box-shadow: 0 0 0 2px {{ $member->gender == 'm' ? 'rgba(147, 51, 234, 0.3)' : 'rgba(214, 51, 132, 0.3)' }} !important;">
+                                <div class="flex items-start gap-3">
+                                    <div class="relative">
+                                        <div class="rounded-full border-4 border-white shadow w-20 h-20 overflow-hidden" style="box-shadow: 0 0 0 2px {{ $member->gender == 'm' ? 'rgba(147, 51, 234, 0.3)' : 'rgba(214, 51, 132, 0.3)' }} !important;">
                                             @if($member->profile_picture)
-                                                <img src="{{ asset('storage/' . $member->profile_picture) }}" alt="{{ $member->full_name }}" class="w-100 h-100" style="object-fit: cover; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges;">
+                                                <img src="{{ asset('storage/' . $member->profile_picture) }}" alt="{{ $member->full_name }}" class="w-full h-full object-cover" style="image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges;">
                                             @else
-                                                <div class="w-100 h-100 d-flex align-items-center justify-content-center text-white fw-bold fs-4" style="background: linear-gradient(135deg, {{ $member->gender == 'm' ? '#8b5cf6 0%, #7c3aed 100%' : '#d63384 0%, #a61e4d 100%' }});">
+                                                <div class="w-full h-full flex items-center justify-center text-white font-bold text-xl" style="background: linear-gradient(135deg, {{ $member->gender == 'm' ? '#8b5cf6 0%, #7c3aed 100%' : '#d63384 0%, #a61e4d 100%' }});">
                                                     {{ strtoupper(substr($member->full_name, 0, 1)) }}
                                                 </div>
                                             @endif
                                         </div>
                                     </div>
-                                    <div class="flex-grow-1 min-w-0">
-                                        <h5 class="fw-bold mb-2 text-truncate">{{ $member->full_name }}</h5>
-                                        <div class="d-flex flex-wrap gap-2">
+                                    <div class="grow min-w-0">
+                                        <h5 class="font-bold mb-2 truncate">{{ $member->full_name }}</h5>
+                                        <div class="flex flex-wrap gap-2">
                                             @php
                                                 $age = $member->age;
                                                 $ageGroup = 'Adult';
@@ -82,44 +82,44 @@
                             </div>
 
                             <!-- Contact Info -->
-                            <div class="px-4 py-3 bg-light border-top border-bottom">
+                            <div class="px-4 py-3 bg-muted border-t border-b">
                                 @if($member->mobile && isset($member->mobile['number']))
-                                    <div class="d-flex align-items-center gap-2 small mb-2">
-                                        <i class="bi bi-telephone-fill {{ $member->gender == 'm' ? 'text-primary' : 'text-danger' }}"></i>
-                                        <span class="fw-medium text-muted">{{ $member->mobile['code'] ?? '' }} {{ $member->mobile['number'] }}</span>
+                                    <div class="flex items-center gap-2 text-sm mb-2">
+                                        <i class="bi bi-telephone-fill {{ $member->gender == 'm' ? 'text-primary' : 'text-destructive' }}"></i>
+                                        <span class="font-medium text-muted-foreground">{{ $member->mobile['code'] ?? '' }} {{ $member->mobile['number'] }}</span>
                                     </div>
                                 @endif
                                 @if($member->email)
-                                    <div class="d-flex align-items-center gap-2 small">
-                                        <i class="bi bi-envelope-fill {{ $member->gender == 'm' ? 'text-primary' : 'text-danger' }}"></i>
-                                        <span class="fw-medium text-muted text-truncate">{{ $member->email }}</span>
+                                    <div class="flex items-center gap-2 text-sm">
+                                        <i class="bi bi-envelope-fill {{ $member->gender == 'm' ? 'text-primary' : 'text-destructive' }}"></i>
+                                        <span class="font-medium text-muted-foreground truncate">{{ $member->email }}</span>
                                     </div>
                                 @endif
                             </div>
 
                             <!-- Details -->
-                            <div class="px-4 py-3 flex-grow-1">
-                                <div class="row g-3 mb-3">
-                                    <div class="col-6">
-                                        <div class="small text-muted text-uppercase fw-medium mb-1" style="font-size: 0.7rem; letter-spacing: 0.5px;">Gender</div>
-                                <div class="fw-semibold text-muted text-capitalize">
-                                    <i class="bi {{ $member->gender == 'm' ? 'bi-man text-primary' : 'bi-woman text-danger' }} me-1"></i>
-                                    {{ $member->gender == 'm' ? 'Male' : 'Female' }}
+                            <div class="px-4 py-3 grow">
+                                <div class="grid grid-cols-2 gap-3 mb-3">
+                                    <div>
+                                        <div class="text-xs text-muted-foreground uppercase font-medium mb-1 tracking-wide">Gender</div>
+                                        <div class="font-semibold text-muted-foreground capitalize">
+                                            <i class="bi {{ $member->gender == 'm' ? 'bi-man text-primary' : 'bi-woman text-destructive' }} mr-1"></i>
+                                            {{ $member->gender == 'm' ? 'Male' : 'Female' }}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs text-muted-foreground uppercase font-medium mb-1 tracking-wide">Age</div>
+                                        <div class="font-semibold text-muted-foreground">{{ $member->age }} years</div>
+                                    </div>
                                 </div>
+                                <div class="grid grid-cols-2 gap-3 mb-3">
+                                    <div>
+                                        <div class="text-xs text-muted-foreground uppercase font-medium mb-1 tracking-wide">Nationality</div>
+                                        <div class="font-semibold text-muted-foreground text-lg nationality-display" data-iso3="{{ $member->nationality }}">{{ $member->nationality }}</div>
                                     </div>
-                                    <div class="col-6">
-                                        <div class="small text-muted text-uppercase fw-medium mb-1" style="font-size: 0.7rem; letter-spacing: 0.5px;">Age</div>
-                                        <div class="fw-semibold text-muted">{{ $member->age }} years</div>
-                                    </div>
-                                </div>
-                                <div class="row g-3 mb-3">
-                                    <div class="col-6">
-                                        <div class="small text-muted text-uppercase fw-medium mb-1" style="font-size: 0.7rem; letter-spacing: 0.5px;">Nationality</div>
-                                        <div class="fw-semibold text-muted fs-5 nationality-display" data-iso3="{{ $member->nationality }}">{{ $member->nationality }}</div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="small text-muted text-uppercase fw-medium mb-1" style="font-size: 0.7rem; letter-spacing: 0.5px;">Horoscope</div>
-                                        <div class="fw-semibold text-muted">
+                                    <div>
+                                        <div class="text-xs text-muted-foreground uppercase font-medium mb-1 tracking-wide">Horoscope</div>
+                                        <div class="font-semibold text-muted-foreground">
                                             @php
                                                 $horoscopeSymbols = [
                                                     'Aries' => '♈',
@@ -142,10 +142,10 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="pt-2 border-top">
-                                    <div class="d-flex justify-content-between align-items-center small mb-2">
-                                        <span class="text-muted fw-medium">Next Birthday</span>
-                                        <span class="fw-semibold text-muted">
+                                <div class="pt-2 border-t">
+                                    <div class="flex justify-between items-center text-sm mb-2">
+                                        <span class="text-muted-foreground font-medium">Next Birthday</span>
+                                        <span class="font-semibold text-muted-foreground">
                                             @if($member->birthdate)
                                                 {{ $member->birthdate->copy()->year(now()->year)->isFuture()
                                                     ? $member->birthdate->copy()->year(now()->year)->diffForHumans(['parts' => 2, 'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE])
@@ -155,17 +155,17 @@
                                             @endif
                                         </span>
                                     </div>
-                                    <div class="d-flex justify-content-between align-items-center small">
-                                        <span class="text-muted fw-medium">Member Since</span>
-                                        <span class="fw-semibold text-muted">{{ $member->created_at->format('d/m/Y') }}</span>
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span class="text-muted-foreground font-medium">Member Since</span>
+                                        <span class="font-semibold text-muted-foreground">{{ $member->created_at->format('d/m/Y') }}</span>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Footer -->
-                            <div class="px-4 py-2 {{ $member->gender == 'm' ? 'bg-primary' : 'bg-danger' }} bg-opacity-10 border-top">
-                                <div class="d-flex align-items-center justify-content-center gap-2 small">
-                                    <span class="fw-medium text-white">
+                            <div class="px-4 py-2 {{ $member->gender == 'm' ? 'bg-primary' : 'bg-destructive' }} border-t">
+                                <div class="flex items-center justify-center gap-2 text-sm">
+                                    <span class="font-medium text-white">
                                         PLATFORM MEMBER
                                     </span>
                                 </div>
@@ -177,15 +177,15 @@
         </div>
 
         <!-- Pagination -->
-        <div class="d-flex justify-content-center mb-4">
+        <div class="flex justify-center mb-4">
             {{ $members->links() }}
         </div>
     @else
         <div class="card border-0 shadow-sm mb-4">
-            <div class="card-body text-center py-5">
-                <i class="bi bi-people text-muted" style="font-size: 4rem;"></i>
+            <div class="card-body text-center py-12">
+                <i class="bi bi-people text-muted-foreground text-6xl"></i>
                 <h5 class="mt-3 mb-2">No Members Found</h5>
-                <p class="text-muted mb-0">
+                <p class="text-muted-foreground mb-0">
                     @if($search)
                         No members match your search criteria.
                     @else

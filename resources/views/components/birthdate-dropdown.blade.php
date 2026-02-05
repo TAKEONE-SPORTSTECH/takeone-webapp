@@ -41,14 +41,19 @@
             $selectedDay = $parts[2];
         }
     }
+
+    $selectClasses = 'w-full px-3 py-3 text-base border-2 rounded-xl bg-white/80 shadow-inner transition-all duration-300 focus:bg-white focus:ring-4 focus:ring-primary/10 focus:outline-none appearance-none cursor-pointer';
+    $errorClasses = $error ? 'border-red-500' : 'border-primary/20 focus:border-primary';
 @endphp
 
-<div class="mb-3">
-    <label class="form-label">{{ $label }}@if($required) <span class="text-danger">*</span>@endif</label>
-    <div class="row g-2">
-        <div class="col-4">
+<div class="mb-4">
+    <label class="block text-sm font-medium text-gray-600 mb-1">
+        {{ $label }}@if($required) <span class="text-red-500">*</span>@endif
+    </label>
+    <div class="grid grid-cols-3 gap-2">
+        <div>
             <select id="{{ $id }}_day"
-                    class="form-select @if($error) is-invalid @endif"
+                    class="{{ $selectClasses }} {{ $errorClasses }}"
                     {{ $required ? 'required' : '' }}
                     onchange="updateDate_{{ $id }}()">
                 <option value="">Day</option>
@@ -60,9 +65,9 @@
                 @endfor
             </select>
         </div>
-        <div class="col-4">
+        <div>
             <select id="{{ $id }}_month"
-                    class="form-select @if($error) is-invalid @endif"
+                    class="{{ $selectClasses }} {{ $errorClasses }}"
                     {{ $required ? 'required' : '' }}
                     onchange="updateDate_{{ $id }}()">
                 <option value="">Month</option>
@@ -80,9 +85,9 @@
                 <option value="12" {{ $selectedMonth == '12' ? 'selected' : '' }}>December</option>
             </select>
         </div>
-        <div class="col-4">
+        <div>
             <select id="{{ $id }}_year"
-                    class="form-select @if($error) is-invalid @endif"
+                    class="{{ $selectClasses }} {{ $errorClasses }}"
                     {{ $required ? 'required' : '' }}
                     onchange="updateDate_{{ $id }}()">
                 <option value="">Year</option>
@@ -96,7 +101,7 @@
     </div>
     <input type="hidden" id="{{ $id }}" name="{{ $name }}" value="{{ $value }}">
     @if($error)
-        <span class="invalid-feedback d-block" role="alert">
+        <span class="text-red-500 text-sm mt-1 block" role="alert">
             <strong>{{ $error }}</strong>
         </span>
     @endif

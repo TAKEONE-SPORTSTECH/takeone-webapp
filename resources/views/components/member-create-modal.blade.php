@@ -1,184 +1,204 @@
 <!-- Member Create Modal -->
-<div class="modal fade" id="memberCreateModal" tabindex="-1" aria-labelledby="memberCreateModalLabel" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content" style="border-radius: 1rem; border: none;">
-            <!-- Modal Header -->
-            <div class="modal-header border-0">
-                <div>
-                    <h5 class="modal-title fw-bold" id="memberCreateModalLabel">Add Family Member</h5>
-                    <p class="text-muted small mb-0">Fill in the details to add a new family member</p>
+<div x-data="memberCreateModal()" x-cloak>
+    <!-- Modal Backdrop -->
+    <div x-show="open"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-black/50 z-50"
+         @click="close()">
+    </div>
+
+    <!-- Modal Content -->
+    <div x-show="open"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95"
+         class="fixed inset-0 z-50 overflow-y-auto"
+         @click.self="close()">
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div class="w-full max-w-2xl bg-white rounded-2xl shadow-xl" @click.stop>
+                <!-- Modal Header -->
+                <div class="p-6 border-b border-gray-100">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-900">Add Family Member</h3>
+                            <p class="text-sm text-gray-500 mt-1">Fill in the details to add a new family member</p>
+                        </div>
+                        <button @click="close()" class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="bi bi-x-lg text-gray-500"></i>
+                        </button>
+                    </div>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
 
-            <!-- Modal Body -->
-            <div class="modal-body">
-                <form method="POST" action="{{ route('family.store') }}" id="memberCreateForm">
-                    @csrf
+                <!-- Modal Body -->
+                <div class="p-6 max-h-[60vh] overflow-y-auto">
+                    <form method="POST" action="{{ route('family.store') }}" id="memberCreateForm">
+                        @csrf
 
-                    <div class="mb-3">
-                        <label for="full_name" class="form-label">Full Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control @error('full_name') is-invalid @enderror" id="full_name" name="full_name" value="{{ old('full_name') }}" required>
-                        @error('full_name')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email Address <span class="text-muted">(Optional for children)</span></label>
-                        <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email') }}">
-                        @error('email')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="mobile" class="form-label">Mobile Number</label>
-                        <x-country-code-dropdown
-                            name="mobile_code"
-                            id="country_code"
-                            :value="old('mobile_code', '+973')"
-                            :required="false"
-                            :error="$errors->first('mobile_code')">
-                            <input id="mobile_number" type="tel"
-                                   class="form-control @error('mobile') is-invalid @enderror"
-                                   name="mobile"
-                                   value="{{ old('mobile') }}"
-                                   autocomplete="tel"
-                                   placeholder="Phone number">
-                        </x-country-code-dropdown>
-                        @error('mobile')
-                            <div class="invalid-feedback d-block">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <x-gender-dropdown
-                                name="gender"
-                                id="gender"
-                                :value="old('gender')"
-                                :required="true"
-                                :error="$errors->first('gender')" />
-                        </div>
-                        <div class="col-md-6">
-                            <x-birthdate-dropdown
-                                name="birthdate"
-                                id="birthdate"
-                                label="Birthdate"
-                                :value="old('birthdate')"
-                                :required="true"
-                                :min-age="0"
-                                :max-age="120"
-                                :error="$errors->first('birthdate')" />
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="blood_type" class="form-label">Blood Type</label>
-                            <select class="form-select @error('blood_type') is-invalid @enderror" id="blood_type" name="blood_type">
-                                <option value="">Select Blood Type</option>
-                                <option value="A+" {{ old('blood_type') == 'A+' ? 'selected' : '' }}>A+</option>
-                                <option value="A-" {{ old('blood_type') == 'A-' ? 'selected' : '' }}>A-</option>
-                                <option value="B+" {{ old('blood_type') == 'B+' ? 'selected' : '' }}>B+</option>
-                                <option value="B-" {{ old('blood_type') == 'B-' ? 'selected' : '' }}>B-</option>
-                                <option value="AB+" {{ old('blood_type') == 'AB+' ? 'selected' : '' }}>AB+</option>
-                                <option value="AB-" {{ old('blood_type') == 'AB-' ? 'selected' : '' }}>AB-</option>
-                                <option value="O+" {{ old('blood_type') == 'O+' ? 'selected' : '' }}>O+</option>
-                                <option value="O-" {{ old('blood_type') == 'O-' ? 'selected' : '' }}>O-</option>
-                                <option value="Unknown" {{ old('blood_type') == 'Unknown' ? 'selected' : '' }}>Unknown</option>
-                            </select>
-                            @error('blood_type')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                        <!-- Full Name -->
+                        <div class="mb-4">
+                            <label for="full_name" class="block text-sm font-medium text-gray-600 mb-1">
+                                Full Name <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text"
+                                   class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none @error('full_name') border-red-500 @enderror"
+                                   id="full_name"
+                                   name="full_name"
+                                   value="{{ old('full_name') }}"
+                                   required>
+                            @error('full_name')
+                                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
                             @enderror
                         </div>
-                        <div class="col-md-6">
-                            <x-nationality-dropdown
-                                name="nationality"
-                                id="nationality"
-                                :value="old('nationality')"
-                                :required="true"
-                                :error="$errors->first('nationality')" />
+
+                        <!-- Email -->
+                        <div class="mb-4">
+                            <label for="email" class="block text-sm font-medium text-gray-600 mb-1">
+                                Email Address <span class="text-gray-400">(Optional for children)</span>
+                            </label>
+                            <input type="email"
+                                   class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none @error('email') border-red-500 @enderror"
+                                   id="email"
+                                   name="email"
+                                   value="{{ old('email') }}">
+                            @error('email')
+                                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
+                            @enderror
                         </div>
-                    </div>
 
-                    <div class="mb-3">
-                        <h5 class="form-label d-flex justify-content-between align-items-center">
-                            Social Media Links
-                            <button type="button" class="btn btn-outline-primary btn-sm" id="addSocialLink">
-                                <i class="bi bi-plus"></i> Add Link
-                            </button>
-                        </h5>
-                        <div id="socialLinksContainer">
-                            @php
-                                $existingLinks = old('social_links', []);
-                                if (!is_array($existingLinks)) {
-                                    $existingLinks = [];
-                                }
-                                // Convert associative array to array of arrays for form display
-                                $formLinks = [];
-                                foreach ($existingLinks as $platform => $url) {
-                                    $formLinks[] = ['platform' => $platform, 'url' => $url];
-                                }
-                            @endphp
-                            @foreach($formLinks as $index => $link)
-                                <div class="social-link-row mb-3 d-flex align-items-end">
-                                    <div class="me-2 flex-grow-1">
-                                        <label class="form-label">Platform</label>
-                                        <select class="form-select platform-select" name="social_links[{{ $index }}][platform]" required>
-                                            <option value="">Select Platform</option>
-                                            <option value="facebook" {{ ($link['platform'] ?? '') == 'facebook' ? 'selected' : '' }}>Facebook</option>
-                                            <option value="twitter" {{ ($link['platform'] ?? '') == 'twitter' ? 'selected' : '' }}>Twitter/X</option>
-                                            <option value="instagram" {{ ($link['platform'] ?? '') == 'instagram' ? 'selected' : '' }}>Instagram</option>
-                                            <option value="linkedin" {{ ($link['platform'] ?? '') == 'linkedin' ? 'selected' : '' }}>LinkedIn</option>
-                                            <option value="youtube" {{ ($link['platform'] ?? '') == 'youtube' ? 'selected' : '' }}>YouTube</option>
-                                            <option value="tiktok" {{ ($link['platform'] ?? '') == 'tiktok' ? 'selected' : '' }}>TikTok</option>
-                                            <option value="snapchat" {{ ($link['platform'] ?? '') == 'snapchat' ? 'selected' : '' }}>Snapchat</option>
-                                            <option value="whatsapp" {{ ($link['platform'] ?? '') == 'whatsapp' ? 'selected' : '' }}>WhatsApp</option>
-                                            <option value="telegram" {{ ($link['platform'] ?? '') == 'telegram' ? 'selected' : '' }}>Telegram</option>
-                                            <option value="discord" {{ ($link['platform'] ?? '') == 'discord' ? 'selected' : '' }}>Discord</option>
-                                            <option value="reddit" {{ ($link['platform'] ?? '') == 'reddit' ? 'selected' : '' }}>Reddit</option>
-                                            <option value="pinterest" {{ ($link['platform'] ?? '') == 'pinterest' ? 'selected' : '' }}>Pinterest</option>
-                                            <option value="twitch" {{ ($link['platform'] ?? '') == 'twitch' ? 'selected' : '' }}>Twitch</option>
-                                            <option value="github" {{ ($link['platform'] ?? '') == 'github' ? 'selected' : '' }}>GitHub</option>
-                                            <option value="spotify" {{ ($link['platform'] ?? '') == 'spotify' ? 'selected' : '' }}>Spotify</option>
-                                            <option value="skype" {{ ($link['platform'] ?? '') == 'skype' ? 'selected' : '' }}>Skype</option>
-                                            <option value="slack" {{ ($link['platform'] ?? '') == 'slack' ? 'selected' : '' }}>Slack</option>
-                                            <option value="medium" {{ ($link['platform'] ?? '') == 'medium' ? 'selected' : '' }}>Medium</option>
-                                            <option value="vimeo" {{ ($link['platform'] ?? '') == 'vimeo' ? 'selected' : '' }}>Vimeo</option>
-                                            <option value="messenger" {{ ($link['platform'] ?? '') == 'messenger' ? 'selected' : '' }}>Messenger</option>
-                                            <option value="wechat" {{ ($link['platform'] ?? '') == 'wechat' ? 'selected' : '' }}>WeChat</option>
-                                            <option value="line" {{ ($link['platform'] ?? '') == 'line' ? 'selected' : '' }}>Line</option>
-                                        </select>
-                                    </div>
-                                    <div class="me-2 flex-grow-1">
-                                        <label class="form-label">URL</label>
-                                        <input type="url" class="form-control" name="social_links[{{ $index }}][url]" value="{{ $link['url'] ?? '' }}" placeholder="https://example.com/username" required>
-                                    </div>
-                                    <div class="mb-0">
-                                        <button type="button" class="btn btn-outline-danger btn-sm remove-social-link">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            @endforeach
+                        <!-- Mobile Number -->
+                        <div class="mb-4">
+                            <label for="mobile" class="block text-sm font-medium text-gray-600 mb-1">Mobile Number</label>
+                            <x-country-code-dropdown
+                                name="mobile_code"
+                                id="country_code"
+                                :value="old('mobile_code', '+973')"
+                                :required="false"
+                                :error="$errors->first('mobile_code')">
+                                <input id="mobile_number" type="tel"
+                                       class="w-full px-4 py-3 text-base bg-transparent focus:outline-none @error('mobile') border-red-500 @enderror"
+                                       name="mobile"
+                                       value="{{ old('mobile') }}"
+                                       autocomplete="tel"
+                                       placeholder="Phone number">
+                            </x-country-code-dropdown>
+                            @error('mobile')
+                                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
+                            @enderror
                         </div>
-                    </div>
 
-                    <div class="mb-3">
-                        <label for="motto" class="form-label">Personal Motto</label>
-                        <textarea class="form-control @error('motto') is-invalid @enderror" id="motto" name="motto" rows="3" placeholder="Enter personal motto or quote...">{{ old('motto') }}</textarea>
-                        <div class="form-text">Share a personal motto or quote that inspires them.</div>
-                        @error('motto')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
+                        <!-- Gender & Birthdate -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <x-gender-dropdown
+                                    name="gender"
+                                    id="gender"
+                                    :value="old('gender')"
+                                    :required="true"
+                                    :error="$errors->first('gender')" />
+                            </div>
+                            <div>
+                                <x-birthdate-dropdown
+                                    name="birthdate"
+                                    id="birthdate"
+                                    label="Birthdate"
+                                    :value="old('birthdate')"
+                                    :required="true"
+                                    :min-age="0"
+                                    :max-age="120"
+                                    :error="$errors->first('birthdate')" />
+                            </div>
+                        </div>
 
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="relationship_type" class="form-label">Relationship <span class="text-danger">*</span></label>
-                            <select class="form-select @error('relationship_type') is-invalid @enderror" id="relationship_type" name="relationship_type" required>
+                        <!-- Blood Type & Nationality -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label for="blood_type" class="block text-sm font-medium text-gray-600 mb-1">Blood Type</label>
+                                <select class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none appearance-none cursor-pointer @error('blood_type') border-red-500 @enderror"
+                                        id="blood_type"
+                                        name="blood_type">
+                                    <option value="">Select Blood Type</option>
+                                    <option value="A+" {{ old('blood_type') == 'A+' ? 'selected' : '' }}>A+</option>
+                                    <option value="A-" {{ old('blood_type') == 'A-' ? 'selected' : '' }}>A-</option>
+                                    <option value="B+" {{ old('blood_type') == 'B+' ? 'selected' : '' }}>B+</option>
+                                    <option value="B-" {{ old('blood_type') == 'B-' ? 'selected' : '' }}>B-</option>
+                                    <option value="AB+" {{ old('blood_type') == 'AB+' ? 'selected' : '' }}>AB+</option>
+                                    <option value="AB-" {{ old('blood_type') == 'AB-' ? 'selected' : '' }}>AB-</option>
+                                    <option value="O+" {{ old('blood_type') == 'O+' ? 'selected' : '' }}>O+</option>
+                                    <option value="O-" {{ old('blood_type') == 'O-' ? 'selected' : '' }}>O-</option>
+                                    <option value="Unknown" {{ old('blood_type') == 'Unknown' ? 'selected' : '' }}>Unknown</option>
+                                </select>
+                                @error('blood_type')
+                                    <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
+                                @enderror
+                            </div>
+                            <div>
+                                <x-nationality-dropdown
+                                    name="nationality"
+                                    id="nationality"
+                                    :value="old('nationality')"
+                                    :required="true"
+                                    :error="$errors->first('nationality')" />
+                            </div>
+                        </div>
+
+                        <!-- Social Media Links -->
+                        <div class="mb-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="text-sm font-medium text-gray-600">Social Media Links</label>
+                                <button type="button"
+                                        @click="addSocialLink()"
+                                        class="px-3 py-1 text-sm text-primary border border-primary rounded-lg hover:bg-primary hover:text-white transition-colors">
+                                    <i class="bi bi-plus mr-1"></i> Add Link
+                                </button>
+                            </div>
+                            <div id="socialLinksContainer">
+                                @php
+                                    $existingLinks = old('social_links', []);
+                                    if (!is_array($existingLinks)) {
+                                        $existingLinks = [];
+                                    }
+                                    $formLinks = [];
+                                    foreach ($existingLinks as $platform => $url) {
+                                        $formLinks[] = ['platform' => $platform, 'url' => $url];
+                                    }
+                                @endphp
+                                @foreach($formLinks as $index => $link)
+                                    @include('components.social-link-row', ['index' => $index, 'link' => $link])
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <!-- Motto -->
+                        <div class="mb-4">
+                            <label for="motto" class="block text-sm font-medium text-gray-600 mb-1">Personal Motto</label>
+                            <textarea class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none resize-none @error('motto') border-red-500 @enderror"
+                                      id="motto"
+                                      name="motto"
+                                      rows="3"
+                                      placeholder="Enter personal motto or quote...">{{ old('motto') }}</textarea>
+                            <p class="text-xs text-gray-400 mt-1">Share a personal motto or quote that inspires them.</p>
+                            @error('motto')
+                                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
+                            @enderror
+                        </div>
+
+                        <!-- Relationship -->
+                        <div class="mb-4">
+                            <label for="relationship_type" class="block text-sm font-medium text-gray-600 mb-1">
+                                Relationship <span class="text-red-500">*</span>
+                            </label>
+                            <select class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none appearance-none cursor-pointer @error('relationship_type') border-red-500 @enderror"
+                                    id="relationship_type"
+                                    name="relationship_type"
+                                    required>
                                 <option value="">Select Relationship</option>
                                 <option value="son" {{ old('relationship_type') == 'son' ? 'selected' : '' }}>Son</option>
                                 <option value="daughter" {{ old('relationship_type') == 'daughter' ? 'selected' : '' }}>Daughter</option>
@@ -187,100 +207,109 @@
                                 <option value="other" {{ old('relationship_type') == 'other' ? 'selected' : '' }}>Other</option>
                             </select>
                             @error('relationship_type')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
                             @enderror
                         </div>
-                    </div>
 
-                    <div class="mb-3 form-check">
-                        <input type="checkbox" class="form-check-input" id="is_billing_contact" name="is_billing_contact" value="1" {{ old('is_billing_contact') ? 'checked' : '' }}>
-                        <label class="form-check-label" for="is_billing_contact">Is Billing Contact</label>
-                    </div>
-                </form>
-            </div>
+                        <!-- Is Billing Contact -->
+                        <div class="mb-4">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox"
+                                       class="w-4 h-4 rounded border-primary/30 text-primary focus:ring-primary/25"
+                                       id="is_billing_contact"
+                                       name="is_billing_contact"
+                                       value="1"
+                                       {{ old('is_billing_contact') ? 'checked' : '' }}>
+                                <span class="text-sm text-gray-700">Is Billing Contact</span>
+                            </label>
+                        </div>
+                    </form>
+                </div>
 
-            <!-- Modal Footer -->
-            <div class="modal-footer border-0">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" form="memberCreateForm" class="btn btn-primary">Add Family Member</button>
+                <!-- Modal Footer -->
+                <div class="p-6 border-t border-gray-100 flex justify-end gap-3">
+                    <button type="button"
+                            @click="close()"
+                            class="px-6 py-2 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            form="memberCreateForm"
+                            class="px-6 py-2 text-white bg-primary rounded-xl hover:bg-primary/90 transition-colors">
+                        Add Family Member
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-@push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    let socialLinkIndex = {{ count($formLinks ?? []) }};
+function memberCreateModal() {
+    return {
+        open: false,
+        socialLinkIndex: {{ count($formLinks ?? []) }},
 
-    // Add new social link row
-    document.getElementById('addSocialLink')?.addEventListener('click', function() {
-        addSocialLinkRow();
-    });
+        init() {
+            // Global function to open modal
+            window.openMemberCreateModal = () => this.open = true;
 
-    // Remove social link row
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('remove-social-link') || e.target.closest('.remove-social-link')) {
-            e.target.closest('.social-link-row').remove();
+            // Auto-open if validation errors
+            @if ($errors->any())
+                this.open = true;
+            @endif
+        },
+
+        close() {
+            this.open = false;
+        },
+
+        addSocialLink() {
+            const container = document.getElementById('socialLinksContainer');
+            if (!container) return;
+
+            const row = document.createElement('div');
+            row.className = 'social-link-row mb-4 flex items-end gap-2';
+            row.setAttribute('x-data', '{ open: false }');
+
+            row.innerHTML = `
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Platform</label>
+                    <select class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none appearance-none cursor-pointer"
+                            name="social_links[${this.socialLinkIndex}][platform]"
+                            required>
+                        <option value="">Select Platform</option>
+                        <option value="facebook">Facebook</option>
+                        <option value="twitter">Twitter/X</option>
+                        <option value="instagram">Instagram</option>
+                        <option value="linkedin">LinkedIn</option>
+                        <option value="youtube">YouTube</option>
+                        <option value="tiktok">TikTok</option>
+                        <option value="snapchat">Snapchat</option>
+                        <option value="whatsapp">WhatsApp</option>
+                        <option value="telegram">Telegram</option>
+                    </select>
+                </div>
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-gray-600 mb-1">URL</label>
+                    <input type="url"
+                           class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none"
+                           name="social_links[${this.socialLinkIndex}][url]"
+                           placeholder="https://example.com/username"
+                           required>
+                </div>
+                <div>
+                    <button type="button"
+                            onclick="this.closest('.social-link-row').remove()"
+                            class="p-3 text-red-500 border-2 border-red-200 rounded-xl hover:bg-red-50 hover:border-red-300 transition-all duration-300">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `;
+
+            container.appendChild(row);
+            this.socialLinkIndex++;
         }
-    });
-
-    function addSocialLinkRow(platform = '', url = '') {
-        const container = document.getElementById('socialLinksContainer');
-        if (!container) return;
-
-        const row = document.createElement('div');
-        row.className = 'social-link-row mb-3 d-flex align-items-end';
-
-        row.innerHTML = `
-            <div class="me-2 flex-grow-1">
-                <label class="form-label">Platform</label>
-                <select class="form-select platform-select" name="social_links[${socialLinkIndex}][platform]" required>
-                    <option value="">Select Platform</option>
-                    <option value="facebook" ${platform === 'facebook' ? 'selected' : ''}>Facebook</option>
-                    <option value="twitter" ${platform === 'twitter' ? 'selected' : ''}>Twitter/X</option>
-                    <option value="instagram" ${platform === 'instagram' ? 'selected' : ''}>Instagram</option>
-                    <option value="linkedin" ${platform === 'linkedin' ? 'selected' : ''}>LinkedIn</option>
-                    <option value="youtube" ${platform === 'youtube' ? 'selected' : ''}>YouTube</option>
-                    <option value="tiktok" ${platform === 'tiktok' ? 'selected' : ''}>TikTok</option>
-                    <option value="snapchat" ${platform === 'snapchat' ? 'selected' : ''}>Snapchat</option>
-                    <option value="whatsapp" ${platform === 'whatsapp' ? 'selected' : ''}>WhatsApp</option>
-                    <option value="telegram" ${platform === 'telegram' ? 'selected' : ''}>Telegram</option>
-                    <option value="discord" ${platform === 'discord' ? 'selected' : ''}>Discord</option>
-                    <option value="reddit" ${platform === 'reddit' ? 'selected' : ''}>Reddit</option>
-                    <option value="pinterest" ${platform === 'pinterest' ? 'selected' : ''}>Pinterest</option>
-                    <option value="twitch" ${platform === 'twitch' ? 'selected' : ''}>Twitch</option>
-                    <option value="github" ${platform === 'github' ? 'selected' : ''}>GitHub</option>
-                    <option value="spotify" ${platform === 'spotify' ? 'selected' : ''}>Spotify</option>
-                    <option value="skype" ${platform === 'skype' ? 'selected' : ''}>Skype</option>
-                    <option value="slack" ${platform === 'slack' ? 'selected' : ''}>Slack</option>
-                    <option value="medium" ${platform === 'medium' ? 'selected' : ''}>Medium</option>
-                    <option value="vimeo" ${platform === 'vimeo' ? 'selected' : ''}>Vimeo</option>
-                    <option value="messenger" ${platform === 'messenger' ? 'selected' : ''}>Messenger</option>
-                    <option value="wechat" ${platform === 'wechat' ? 'selected' : ''}>WeChat</option>
-                    <option value="line" ${platform === 'line' ? 'selected' : ''}>Line</option>
-                </select>
-            </div>
-            <div class="me-2 flex-grow-1">
-                <label class="form-label">URL</label>
-                <input type="url" class="form-control" name="social_links[${socialLinkIndex}][url]" value="${url}" placeholder="https://example.com/username" required>
-            </div>
-            <div class="mb-0">
-                <button type="button" class="btn btn-outline-danger btn-sm remove-social-link">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </div>
-        `;
-
-        container.appendChild(row);
-        socialLinkIndex++;
     }
-
-    // Auto-open modal if there are validation errors
-    @if ($errors->any())
-        const modal = new bootstrap.Modal(document.getElementById('memberCreateModal'));
-        modal.show();
-    @endif
-});
+}
 </script>
-@endpush

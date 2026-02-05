@@ -1,188 +1,216 @@
 @props(['aspectRatio' => 1, 'maxSize' => 1024 * 1024, 'title' => 'Upload Image', 'uploadUrl' => '#'])
 
-<div class="modal fade" id="imageUploadModal" tabindex="-1" aria-labelledby="imageUploadModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="imageUploadModalLabel">{{ $title }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <!-- File Input -->
-                <div class="mb-3" id="fileInputContainer">
-                    <label for="imageFile" class="form-label">Select Image</label>
-                    <input type="file" class="form-control" id="imageFile" accept="image/*" required>
+<!-- Modal using Alpine.js -->
+<div x-data="imageUploadModal()" x-cloak>
+    <!-- Modal Backdrop -->
+    <div x-show="open"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-black/50 z-50"
+         @click="close()">
+    </div>
+
+    <!-- Modal Content -->
+    <div x-show="open"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95"
+         class="fixed inset-0 z-50 overflow-y-auto"
+         @click.self="close()">
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div class="w-full max-w-2xl bg-white rounded-2xl shadow-xl" @click.stop>
+                <!-- Modal Header -->
+                <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900">{{ $title }}</h3>
+                    <button @click="close()" class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                        <i class="bi bi-x-lg text-gray-500"></i>
+                    </button>
                 </div>
 
-                <!-- Cropper Container -->
-                <div id="cropperContainer" class="d-none">
-                    <div class="text-center mb-3">
-                        <div id="cropboxContainer" style="width: 400px; height: 400px; margin: 0 auto; border: 1px solid #ccc;">
-                            <img id="imagePreview" alt="Image Preview" style="display: block;">
+                <!-- Modal Body -->
+                <div class="p-6">
+                    <!-- File Input -->
+                    <div x-show="!showCropper" class="mb-4">
+                        <label for="imageFile" class="block text-sm font-medium text-gray-600 mb-2">Select Image</label>
+                        <input type="file"
+                               id="imageFile"
+                               accept="image/*"
+                               @change="handleFileSelect($event)"
+                               class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white/80 transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary file:text-white file:cursor-pointer"
+                               required>
+                    </div>
+
+                    <!-- Cropper Container -->
+                    <div x-show="showCropper">
+                        <div class="text-center mb-4">
+                            <div id="cropboxContainer" class="mx-auto border border-gray-300 rounded-lg" style="width: 400px; height: 400px;">
+                                <img id="imagePreview" alt="Image Preview" class="block">
+                            </div>
+                        </div>
+                        <div class="flex justify-center gap-2 mb-4">
+                            <button type="button" @click="zoomIn()" class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                <i class="bi bi-zoom-in mr-1"></i> Zoom In
+                            </button>
+                            <button type="button" @click="zoomOut()" class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                <i class="bi bi-zoom-out mr-1"></i> Zoom Out
+                            </button>
+                            <button type="button" @click="reset()" class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                <i class="bi bi-arrow-counterclockwise mr-1"></i> Reset
+                            </button>
                         </div>
                     </div>
-                    <div class="d-flex justify-content-center gap-2 mb-3">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="zoomIn">
-                            <i class="fas fa-search-plus"></i> Zoom In
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="zoomOut">
-                            <i class="fas fa-search-minus"></i> Zoom Out
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="reset">
-                            <i class="fas fa-sync"></i> Reset
-                        </button>
+
+                    <!-- Upload Progress -->
+                    <div x-show="uploading">
+                        <div class="w-full h-2 bg-gray-200 rounded-full mb-3 overflow-hidden">
+                            <div class="h-full bg-primary rounded-full transition-all duration-300" :style="'width: ' + progress + '%'"></div>
+                        </div>
+                        <p class="text-center text-gray-600">Compressing and uploading...</p>
                     </div>
                 </div>
 
-                <!-- Upload Progress -->
-                <div id="uploadProgress" class="d-none">
-                    <div class="progress mb-3">
-                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
-                    </div>
-                    <p class="text-center">Compressing and uploading...</p>
+                <!-- Modal Footer -->
+                <div class="flex justify-end gap-3 p-6 border-t border-gray-200">
+                    <button type="button"
+                            @click="close()"
+                            class="px-6 py-2 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="button"
+                            @click="upload()"
+                            :disabled="!canUpload || uploading"
+                            class="px-6 py-2 text-white bg-primary rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        Upload
+                    </button>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="uploadBtn" disabled>Upload</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    let $cropbox = null;
-    const fileInput = document.getElementById('imageFile');
-    const cropperContainer = document.getElementById('cropperContainer');
-    const fileInputContainer = document.getElementById('fileInputContainer');
-    const imagePreview = document.getElementById('imagePreview');
-    const uploadBtn = document.getElementById('uploadBtn');
-    const uploadProgress = document.getElementById('uploadProgress');
+function imageUploadModal() {
+    return {
+        open: false,
+        showCropper: false,
+        canUpload: false,
+        uploading: false,
+        progress: 0,
+        $cropbox: null,
 
-    // File selection
-    fileInput.addEventListener('change', function(event) {
-        const file = event.target.files[0];
-        if (!file) return;
+        init() {
+            // Global function to open modal
+            window.openImageUploadModal = () => this.open = true;
+        },
 
-        // Validate file type
-        if (!file.type.startsWith('image/')) {
-            alert('Please select a valid image file.');
-            return;
-        }
+        close() {
+            this.open = false;
+            this.showCropper = false;
+            this.canUpload = false;
+            this.uploading = false;
+            this.progress = 0;
+            const fileInput = document.getElementById('imageFile');
+            if (fileInput) fileInput.value = '';
+        },
 
-        // Validate file size (rough check before compression)
-        if (file.size > {{ $maxSize }} * 2) {
-            alert('File is too large. Please select a smaller image.');
-            return;
-        }
+        handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            // Hide file input, show cropper
-            fileInputContainer.classList.add('d-none');
-            cropperContainer.classList.remove('d-none');
-            uploadBtn.disabled = false;
+            if (!file.type.startsWith('image/')) {
+                alert('Please select a valid image file.');
+                return;
+            }
 
-            // Set image source
-            imagePreview.src = e.target.result;
+            if (file.size > {{ $maxSize }} * 2) {
+                alert('File is too large. Please select a smaller image.');
+                return;
+            }
 
-            // Initialize jquery-cropbox with track ball controls
-            $cropbox = $('#imagePreview').cropbox({
-                width: 200,
-                height: 200,
-                showControls: true
-            });
-        };
-        reader.readAsDataURL(file);
-    });
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                this.showCropper = true;
+                this.canUpload = true;
 
-    // Zoom controls
-    document.getElementById('zoomIn').addEventListener('click', function() {
-        if ($cropbox) {
-            $cropbox.cropbox('zoomIn');
-        }
-    });
+                const imagePreview = document.getElementById('imagePreview');
+                imagePreview.src = e.target.result;
 
-    document.getElementById('zoomOut').addEventListener('click', function() {
-        if ($cropbox) {
-            $cropbox.cropbox('zoomOut');
-        }
-    });
+                // Initialize jquery-cropbox
+                this.$cropbox = $('#imagePreview').cropbox({
+                    width: 200,
+                    height: 200,
+                    showControls: true
+                });
+            };
+            reader.readAsDataURL(file);
+        },
 
-    document.getElementById('reset').addEventListener('click', function() {
-        if ($cropbox) {
-            $cropbox.cropbox('reset');
-        }
-    });
+        zoomIn() {
+            if (this.$cropbox) this.$cropbox.cropbox('zoomIn');
+        },
 
-    // Upload button
-    uploadBtn.addEventListener('click', async function() {
-        if (!$cropbox) return;
+        zoomOut() {
+            if (this.$cropbox) this.$cropbox.cropbox('zoomOut');
+        },
 
-        uploadBtn.disabled = true;
-        uploadProgress.classList.remove('d-none');
+        reset() {
+            if (this.$cropbox) this.$cropbox.cropbox('reset');
+        },
 
-        try {
-            // Get cropped blob from cropbox
-            const blob = $cropbox.cropbox('getBlob');
+        async upload() {
+            if (!this.$cropbox) return;
 
-            // Compress if needed
-            let finalBlob = blob;
-            if (blob.size > {{ $maxSize }}) {
-                const progressBar = uploadProgress.querySelector('.progress-bar');
-                finalBlob = await window.imageCompression(blob, {
-                    maxSizeMB: {{ $maxSize }} / (1024 * 1024),
-                    maxWidthOrHeight: 1920,
-                    onProgress: (progress) => {
-                        progressBar.style.width = progress + '%';
+            this.canUpload = false;
+            this.uploading = true;
+
+            try {
+                const blob = this.$cropbox.cropbox('getBlob');
+
+                let finalBlob = blob;
+                if (blob.size > {{ $maxSize }}) {
+                    finalBlob = await window.imageCompression(blob, {
+                        maxSizeMB: {{ $maxSize }} / (1024 * 1024),
+                        maxWidthOrHeight: 1920,
+                        onProgress: (p) => { this.progress = p; }
+                    });
+                }
+
+                const formData = new FormData();
+                formData.append('image', finalBlob, 'profile-picture.jpg');
+
+                const response = await fetch('{{ $uploadUrl }}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                     }
                 });
-            }
 
-            // Create form data
-            const formData = new FormData();
-            formData.append('image', finalBlob, 'profile-picture.jpg');
+                if (!response.ok) throw new Error('Upload failed');
 
-            // Upload
-            const response = await fetch('{{ $uploadUrl }}', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                const result = await response.json();
+                this.close();
+
+                if (window.imageUploadSuccess) {
+                    window.imageUploadSuccess(result);
+                } else {
+                    location.reload();
                 }
-            });
 
-            if (!response.ok) {
-                throw new Error('Upload failed');
+            } catch (error) {
+                console.error('Upload error:', error);
+                alert('Upload failed: ' + error.message);
+                this.canUpload = true;
+                this.uploading = false;
             }
-
-            const result = await response.json();
-
-            // Close modal and refresh
-            const modal = bootstrap.Modal.getInstance(document.getElementById('imageUploadModal'));
-            modal.hide();
-
-            // Reset form
-            fileInput.value = '';
-            cropperContainer.classList.add('d-none');
-            fileInputContainer.classList.remove('d-none');
-            uploadProgress.classList.add('d-none');
-            uploadBtn.disabled = true;
-
-            // Trigger success callback or reload
-            if (window.imageUploadSuccess) {
-                window.imageUploadSuccess(result);
-            } else {
-                location.reload();
-            }
-
-        } catch (error) {
-            console.error('Upload error:', error);
-            alert('Upload failed: ' + error.message);
-            uploadBtn.disabled = false;
-            uploadProgress.classList.add('d-none');
         }
-    });
-});
+    }
+}
 </script>

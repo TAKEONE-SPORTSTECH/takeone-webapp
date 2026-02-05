@@ -46,7 +46,7 @@ if (!function_exists('getHoroscope')) {
 @endpush
 
 @section('club-admin-content')
-<div class="space-y-6">
+<div class="space-y-6" x-data="{ showAddInstructorModal: false }">
     @if(session('success'))
     <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg relative" role="alert">
         {{ session('success') }}
@@ -81,7 +81,7 @@ if (!function_exists('getHoroscope')) {
             <h2 class="text-3xl font-bold text-gray-900">Instructors</h2>
             <p class="text-gray-500 mt-1">Manage your club instructors and trainers</p>
         </div>
-        <button class="inline-flex items-center px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors font-medium" data-bs-toggle="modal" data-bs-target="#addInstructorModal">
+        <button class="inline-flex items-center px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors font-medium" @click="showAddInstructorModal = true">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
             Add Instructor
         </button>
@@ -277,7 +277,7 @@ if (!function_exists('getHoroscope')) {
         </div>
         <h5 class="text-lg font-semibold text-gray-900 mb-2">No instructors yet</h5>
         <p class="text-gray-500 mb-4">Add instructors to your club</p>
-        <button class="inline-flex items-center px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors font-medium" data-bs-toggle="modal" data-bs-target="#addInstructorModal">
+        <button class="inline-flex items-center px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors font-medium" @click="showAddInstructorModal = true">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
             Add Instructor
         </button>

@@ -4,36 +4,147 @@
 @endsection
 
 @section('content')
+<!-- Flag Icons CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@6.6.6/css/flag-icons.min.css">
+<!-- Select2 CSS (for nationality dropdown) -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<!-- Flatpickr CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
+<div class="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-primary/70 to-emerald-300/75 py-8">
+    <!-- Background pattern overlay -->
+    <div class="absolute inset-0 opacity-30 pointer-events-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Cdefs%3E%3Cpattern%20id%3D%22grain%22%20width%3D%22100%22%20height%3D%22100%22%20patternUnits%3D%22userSpaceOnUse%22%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%2225%22%20r%3D%221%22%20fill%3D%22rgba(255%2C255%2C255%2C0.1)%22%2F%3E%3Ccircle%20cx%3D%2275%22%20cy%3D%2275%22%20r%3D%221%22%20fill%3D%22rgba(255%2C255%2C255%2C0.1)%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2210%22%20r%3D%220.5%22%20fill%3D%22rgba(255%2C255%2C255%2C0.05)%22%2F%3E%3C%2Fpattern%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%22%20height%3D%22100%22%20fill%3D%22url(%23grain)%22%2F%3E%3C%2Fsvg%3E')]"></div>
+
+    <!-- Register box -->
+    <div class="w-[500px] max-w-[90%] relative z-10 animate-[slideIn_0.6s_ease-out]">
+        <div class="bg-white/95 backdrop-blur-xl rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.1)] border border-white/30 p-10">
+            <!-- Logo -->
+            <div class="text-center mb-4">
+                <a href="{{ url('/') }}">
+                    <img src="{{ asset('images/logo.png') }}" alt="TAKEONE" class="h-12 mx-auto">
+                </a>
+            </div>
+
+            <p class="text-center text-gray-500 text-lg mb-8 tracking-tight">Register a new membership</p>
+
+            <form method="POST" action="{{ route('register') }}" id="registrationForm">
+                @csrf
+
+                <!-- Full Name -->
+                <div class="mb-4">
+                    <label for="full_name" class="block text-sm font-medium text-gray-600 mb-1">Full Name</label>
+                    <input id="full_name" type="text"
+                           class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white/80 shadow-inner transition-all duration-300 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 focus:outline-none @error('full_name') border-red-500 @enderror"
+                           name="full_name"
+                           value="{{ old('full_name') }}"
+                           required autocomplete="name">
+                    @error('full_name')
+                        <span class="text-red-500 text-sm mt-1 block" role="alert">
+                            <strong>{{ $message }}</strong>
+                        </span>
+                    @enderror
+                </div>
+
+                <!-- Email Address -->
+                <div class="mb-4">
+                    <label for="email" class="block text-sm font-medium text-gray-600 mb-1">Email Address</label>
+                    <input id="email" type="email"
+                           class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white/80 shadow-inner transition-all duration-300 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 focus:outline-none @error('email') border-red-500 @enderror"
+                           name="email"
+                           value="{{ old('email') }}"
+                           required autocomplete="email">
+                    @error('email')
+                        <span class="text-red-500 text-sm mt-1 block" role="alert">
+                            <strong>{{ $message }}</strong>
+                        </span>
+                    @enderror
+                </div>
+
+                <!-- Password -->
+                <div class="mb-4">
+                    <label for="password" class="block text-sm font-medium text-gray-600 mb-1">Password</label>
+                    <input id="password" type="password"
+                           class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white/80 shadow-inner transition-all duration-300 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 focus:outline-none @error('password') border-red-500 @enderror"
+                           name="password"
+                           required autocomplete="new-password">
+                    @error('password')
+                        <span class="text-red-500 text-sm mt-1 block" role="alert">
+                            <strong>{{ $message }}</strong>
+                        </span>
+                    @enderror
+                </div>
+
+                <!-- Confirm Password -->
+                <div class="mb-4">
+                    <label for="password-confirm" class="block text-sm font-medium text-gray-600 mb-1">Confirm Password</label>
+                    <input id="password-confirm" type="password"
+                           class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white/80 shadow-inner transition-all duration-300 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 focus:outline-none"
+                           name="password_confirmation"
+                           required autocomplete="new-password">
+                </div>
+
+                <!-- Mobile Number with Country Code -->
+                <div class="mb-4">
+                    <label for="mobile_number" class="block text-sm font-medium text-gray-600 mb-1">Mobile Number</label>
+                    <x-country-code-dropdown
+                        name="country_code"
+                        id="country_code"
+                        :value="old('country_code', '+1')"
+                        :required="true"
+                        :error="$errors->first('country_code')">
+                        <input id="mobile_number" type="tel"
+                               class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white/80 shadow-inner transition-all duration-300 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 focus:outline-none @error('mobile_number') border-red-500 @enderror"
+                               name="mobile_number"
+                               value="{{ old('mobile_number') }}"
+                               required autocomplete="tel">
+                    </x-country-code-dropdown>
+                    @error('mobile_number')
+                        <span class="text-red-500 text-sm mt-1 block" role="alert">
+                            <strong>{{ $message }}</strong>
+                        </span>
+                    @enderror
+                </div>
+
+                <!-- Gender -->
+                <x-gender-dropdown
+                    name="gender"
+                    id="gender"
+                    :value="old('gender')"
+                    :required="true"
+                    :error="$errors->first('gender')" />
+
+                <!-- Birthdate -->
+                <x-birthdate-dropdown
+                    name="birthdate"
+                    id="birthdate"
+                    label="Birthdate"
+                    :value="old('birthdate')"
+                    :required="true"
+                    :min-age="10"
+                    :max-age="120"
+                    :error="$errors->first('birthdate')" />
+
+                <!-- Nationality -->
+                <div class="mb-4">
+                    <x-nationality-dropdown
+                        name="nationality"
+                        id="nationality"
+                        :value="old('nationality')"
+                        :required="true"
+                        :error="$errors->first('nationality')" />
+                </div>
+
+                <!-- Register Button -->
+                <button type="submit" id="registerButton"
+                        class="w-full py-3 px-8 mt-2 text-base font-semibold text-white bg-gradient-to-br from-primary to-primary/90 rounded-xl shadow-lg shadow-primary/30 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/40 active:translate-y-0 cursor-pointer">
+                    REGISTER
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
 <style>
-    .login-page {
-        background: linear-gradient(135deg, hsl(250 60% 70%) 0%, hsl(140 30% 75%) 100%);
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .login-page::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.05)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-        opacity: 0.3;
-        pointer-events: none;
-    }
-
-    .login-box {
-        width: 500px;
-        position: relative;
-        z-index: 1;
-        animation: slideIn 0.6s ease-out;
-    }
-
     @keyframes slideIn {
         from {
             opacity: 0;
@@ -45,182 +156,10 @@
         }
     }
 
-    .login-card-body {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(20px);
-        border-radius: 20px;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.1), 0 0 0 1px rgba(255,255,255,0.2);
-        border: 1px solid rgba(255,255,255,0.3);
-        padding: 2.5rem;
-    }
-
-    .login-logo {
-        text-align: center;
-        margin-bottom: 1rem;
-    }
-
-    .login-logo a {
-        color: hsl(250 60% 40%);
-        font-size: 2rem;
-        font-weight: bold;
-        text-decoration: none;
-    }
-
-    .login-box-msg {
-        margin: 0 0 2rem 0;
-        padding: 0;
-        color: hsl(215 15% 50%);
-        text-align: center;
-        font-size: 1.1rem;
-        font-weight: 400;
-        letter-spacing: -0.025em;
-    }
-
-    .input-group {
-        margin-bottom: 1.5rem;
-        position: relative;
-    }
-
-    .form-control {
-        border: 2px solid rgba(250, 60, 70, 0.2);
-        border-radius: 12px;
-        padding: 0.75rem 1rem;
-        font-size: 1rem;
-        background: rgba(255,255,255,0.8);
-        transition: all 0.3s ease;
-        box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    .form-control:focus {
-        border-color: hsl(250 60% 70%);
-        background: #fff;
-        box-shadow: 0 0 0 3px rgba(250, 60, 70, 0.1), inset 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    .btn-primary {
-        background: linear-gradient(135deg, hsl(250 60% 70%), hsl(250 60% 65%));
-        border: none;
-        border-radius: 12px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        font-size: 1rem;
-        color: #fff;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(250, 60, 70, 0.3);
-        width: 100%;
-        margin-top: 0.5rem;
-    }
-
-    .btn-primary:hover {
-        background: linear-gradient(135deg, hsl(250 60% 75%), hsl(250 60% 70%));
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(250, 60, 70, 0.4);
-    }
-
-    .btn-primary:active {
-        transform: translateY(0);
-    }
-
-    .flatpickr-input {
-        width: 100%;
-        padding: 0.75rem 1rem;
-        font-size: 1rem;
-        border: 2px solid rgba(250, 60, 70, 0.2);
-        border-radius: 12px;
-        background: rgba(255,255,255,0.8);
-        transition: all 0.3s ease;
-        box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    .flatpickr-input:focus {
-        border-color: hsl(250 60% 70%);
-        background: #fff;
-        box-shadow: 0 0 0 3px rgba(250, 60, 70, 0.1), inset 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    .form-select {
-        border: 2px solid rgba(250, 60, 70, 0.2);
-        border-radius: 12px;
-        padding: 0.75rem 1rem;
-        background: rgba(255,255,255,0.8);
-        transition: all 0.3s ease;
-        box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    .form-select:focus {
-        border-color: hsl(250 60% 70%);
-        background: #fff;
-        box-shadow: 0 0 0 3px rgba(250, 60, 70, 0.1), inset 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    /* Seamless phone input styling */
-    .input-group {
-        border: 2px solid rgba(250, 60, 70, 0.2) !important;
-        border-radius: 12px !important;
-        background: rgba(255,255,255,0.8) !important;
-        transition: all 0.3s ease !important;
-        box-shadow: inset 0 1px 3px rgba(0,0,0,0.1) !important;
-        position: relative !important;
-    }
-
-    .input-group:focus-within {
-        border-color: hsl(250 60% 70%) !important;
-        background: #fff !important;
-        box-shadow: 0 0 0 3px rgba(250, 60, 70, 0.1), inset 0 1px 3px rgba(0,0,0,0.1) !important;
-    }
-
-    .country-dropdown-btn {
-        border: none !important;
-        border-radius: 0 !important;
-        border-right: 1px solid rgba(250, 60, 70, 0.2) !important;
-        padding: 0.75rem 1rem !important;
-        background: transparent !important;
-        transition: all 0.3s ease !important;
-        box-shadow: none !important;
-        color: hsl(215 25% 35%) !important;
-        font-size: 1rem !important;
-        height: auto !important;
-        min-height: 3rem !important;
-        width: auto !important;
-        flex: 0 0 auto !important;
-        justify-content: flex-start !important;
-    }
-
-    .country-dropdown-btn:hover {
-        background: rgba(250, 60, 70, 0.05) !important;
-    }
-
-    .country-dropdown-btn:focus {
-        background: rgba(250, 60, 70, 0.05) !important;
-        outline: none !important;
-    }
-
-    .input-group .form-control {
-        border: none !important;
-        border-radius: 0 !important;
-        padding: 0.75rem 1rem !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        flex: 1 !important;
-    }
-
-    .input-group .form-control:focus {
-        background: transparent !important;
-        box-shadow: none !important;
-    }
-
-    .country-dropdown-btn .dropdown-toggle::after {
-        margin-left: auto !important;
-        border-top-color: hsl(215 25% 35%) !important;
-    }
-
-    .form-select {
-        min-height: 3rem !important;
-    }
-
+    /* Select2 styling to match auth theme */
     .select2-container--default .select2-selection--single {
-        border: 2px solid rgba(250, 60, 70, 0.2) !important;
-        border-radius: 12px !important;
+        border: 2px solid rgba(139, 92, 246, 0.2) !important;
+        border-radius: 0.75rem !important;
         padding: 0.75rem 1rem !important;
         background: rgba(255,255,255,0.8) !important;
         transition: all 0.3s ease !important;
@@ -230,7 +169,7 @@
     }
 
     .select2-container--default .select2-selection--single .select2-selection__rendered {
-        color: hsl(215 25% 35%) !important;
+        color: #4b5563 !important;
         font-size: 1rem !important;
         line-height: 1.5 !important;
         padding: 0 !important;
@@ -243,25 +182,16 @@
         transform: translateY(-50%) !important;
     }
 
-    .select2-container--default .select2-selection--single .select2-selection__arrow b {
-        border-color: hsl(215 25% 35%) transparent transparent transparent !important;
-        border-width: 5px 5px 0 5px !important;
-    }
-
     .select2-container--default.select2-container--open .select2-selection--single {
         border-color: hsl(250 60% 70%) !important;
         background: #fff !important;
-        box-shadow: 0 0 0 3px rgba(250, 60, 70, 0.1), inset 0 1px 3px rgba(0,0,0,0.1) !important;
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1), inset 0 1px 3px rgba(0,0,0,0.1) !important;
     }
 
     .select2-dropdown {
-        border: 2px solid rgba(250, 60, 70, 0.2) !important;
-        border-radius: 12px !important;
+        border: 2px solid rgba(139, 92, 246, 0.2) !important;
+        border-radius: 0.75rem !important;
         box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
-    }
-
-    .select2-container--default .select2-results__option {
-        padding: 0.5rem 1rem !important;
     }
 
     .select2-container--default .select2-results__option--highlighted[aria-selected] {
@@ -269,153 +199,35 @@
         color: hsl(250 60% 30%) !important;
     }
 
-    @media (max-width: 480px) {
-        .login-box {
-            width: 90%;
-            margin: 1rem;
-        }
+    /* Flatpickr styling */
+    .flatpickr-input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        border: 2px solid rgba(139, 92, 246, 0.2);
+        border-radius: 0.75rem;
+        background: rgba(255,255,255,0.8);
+        transition: all 0.3s ease;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+    }
 
-        .login-card-body {
-            padding: 2rem;
-        }
-
-        .login-box-msg {
-            font-size: 1.3rem;
-        }
+    .flatpickr-input:focus {
+        border-color: hsl(250 60% 70%);
+        background: #fff;
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1), inset 0 1px 3px rgba(0,0,0,0.1);
+        outline: none;
     }
 </style>
 
-<div class="login-page">
-    <div class="login-box">
-        <div class="card">
-            <div class="card-body login-card-body">
-                <div class="login-logo">
-                    <a href="{{ url('/') }}">
-                        <img src="{{ asset('images/logo.png') }}" alt="TAKEONE" height="50">
-                    </a>
-                </div>
-                <!-- /.login-logo -->
-                <p class="login-box-msg">Register a new membership</p>
-
-                <form method="POST" action="{{ route('register') }}" id="registrationForm">
-                    @csrf
-
-                    <!-- Full Name -->
-                    <div class="mb-3">
-                        <label for="full_name" class="form-label">Full Name</label>
-                        <input id="full_name" type="text"
-                               class="form-control @error('full_name') is-invalid @enderror"
-                               name="full_name"
-                               value="{{ old('full_name') }}"
-                               required autocomplete="name">
-                        @error('full_name')
-                            <span class="invalid-feedback" role="alert">
-                                <strong>{{ $message }}</strong>
-                            </span>
-                        @enderror
-                    </div>
-
-                    <!-- Email Address -->
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email Address</label>
-                        <input id="email" type="email"
-                               class="form-control @error('email') is-invalid @enderror"
-                               name="email"
-                               value="{{ old('email') }}"
-                               required autocomplete="email">
-                        @error('email')
-                            <span class="invalid-feedback" role="alert">
-                                <strong>{{ $message }}</strong>
-                            </span>
-                        @enderror
-                    </div>
-
-                    <!-- Password -->
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
-                        <input id="password" type="password"
-                               class="form-control @error('password') is-invalid @enderror"
-                               name="password"
-                               required autocomplete="new-password">
-                        @error('password')
-                            <span class="invalid-feedback" role="alert">
-                                <strong>{{ $message }}</strong>
-                            </span>
-                        @enderror
-                    </div>
-
-                    <!-- Confirm Password -->
-                    <div class="mb-3">
-                        <label for="password-confirm" class="form-label">Confirm Password</label>
-                        <input id="password-confirm" type="password"
-                               class="form-control"
-                               name="password_confirmation"
-                               required autocomplete="new-password">
-                    </div>
-
-                    <!-- Mobile Number with Country Code -->
-                    <div class="mb-3">
-                        <label for="mobile_number" class="form-label">Mobile Number</label>
-                        <x-country-code-dropdown
-                            name="country_code"
-                            id="country_code"
-                            :value="old('country_code', '+1')"
-                            :required="true"
-                            :error="$errors->first('country_code')">
-                            <input id="mobile_number" type="tel"
-                                   class="form-control @error('mobile_number') is-invalid @enderror"
-                                   name="mobile_number"
-                                   value="{{ old('mobile_number') }}"
-                                   required autocomplete="tel">
-                        </x-country-code-dropdown>
-                        @error('mobile_number')
-                            <span class="invalid-feedback d-block" role="alert">
-                                <strong>{{ $message }}</strong>
-                            </span>
-                        @enderror
-                    </div>
-
-                    <!-- Gender -->
-                    <x-gender-dropdown
-                        name="gender"
-                        id="gender"
-                        :value="old('gender')"
-                        :required="true"
-                        :error="$errors->first('gender')" />
-
-                    <!-- Birthdate -->
-                    <x-birthdate-dropdown
-                        name="birthdate"
-                        id="birthdate"
-                        label="Birthdate"
-                        :value="old('birthdate')"
-                        :required="true"
-                        :min-age="10"
-                        :max-age="120"
-                        :error="$errors->first('birthdate')" />
-
-                    <!-- Nationality -->
-                    <div class="mb-3">
-                        <x-nationality-dropdown
-                            name="nationality"
-                            id="nationality"
-                            :value="old('nationality')"
-                            :required="true"
-                            :error="$errors->first('nationality')" />
-                    </div>
-
-                    <button type="submit" class="btn btn-primary" id="registerButton">REGISTER</button>
-                </form>
-            </div>
-            <!-- /.login-card-body -->
-        </div>
-    </div>
-    <!-- /.login-box -->
-</div>
+<!-- jQuery (required for Select2) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<!-- Flatpickr JS -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Error handler
         window.onerror = function(message, source, lineno, colno, error) {
             console.error('JavaScript Error:', message);
             console.error('Source:', source);
@@ -424,7 +236,6 @@
         };
     });
 
-    // Form submission handler (for debugging)
     document.getElementById('registrationForm').addEventListener('submit', function(e) {
         console.log('Form submitting...');
         console.log('Country code:', document.getElementById('country_code').value);

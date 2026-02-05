@@ -8,7 +8,7 @@
     $uploadUrl = $attributes->get('uploadUrl', '');
     $currentImage = $attributes->get('currentImage', '');
     $buttonText = $attributes->get('buttonText', 'Change Photo');
-    $buttonClass = $attributes->get('buttonClass', 'btn btn-success px-4 fw-bold shadow-sm');
+    $buttonClass = $attributes->get('buttonClass', 'btn btn-success px-4 font-bold shadow-sm');
     $mode = $attributes->get('mode', 'ajax'); // 'ajax' or 'form'
     $inputName = $attributes->get('inputName', 'image'); // For form mode - the hidden input name
     $previewWidth = $attributes->get('previewWidth', $width);
@@ -104,13 +104,13 @@
     <input type="hidden" name="{{ $inputName }}_folder" value="{{ $folder }}">
     <input type="hidden" name="{{ $inputName }}_filename" value="{{ $filename }}">
     <button type="button" class="{{ $buttonClass }}" data-bs-toggle="modal" data-bs-target="#cropperModal_{{ $id }}">
-        <i class="bi bi-camera me-2"></i>{{ $buttonText }}
+        <i class="bi bi-camera mr-2"></i>{{ $buttonText }}
     </button>
 </div>
 @else
 {{-- AJAX mode: Just the button --}}
 <button type="button" class="{{ $buttonClass }}" data-bs-toggle="modal" data-bs-target="#cropperModal_{{ $id }}">
-    <i class="bi bi-camera{{ $buttonText ? ' me-2' : '' }}"></i>{{ $buttonText }}
+    <i class="bi bi-camera{{ $buttonText ? ' mr-2' : '' }}"></i>{{ $buttonText }}
 </button>
 @endif
 
@@ -118,27 +118,27 @@
 <div class="modal fade" id="cropperModal_{{ $id }}" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 75%; width: 1000px;">
         <div class="modal-content modal-content-clean shadow-lg">
-            <div class="modal-body p-4 text-start" style="max-height: 85vh; overflow-y: auto;">
-                <div class="mb-3 d-flex align-items-center">
+            <div class="modal-body p-4 text-left" style="max-height: 85vh; overflow-y: auto;">
+                <div class="mb-3 flex items-center">
                     <input type="file" id="input_{{ $id }}" class="form-control form-control-sm" accept="image/*">
-                    <button type="button" class="btn-close ms-2" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close ml-2" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
 
                 <div id="box_{{ $id }}" class="takeone-canvas" style="height: 500px;"></div>
 
-                <div class="row mt-4">
-                    <div class="col-md-6 mb-3">
-                        <label class="custom-slider-label d-block mb-2">Zoom Level</label>
+                <div class="grid grid-cols-12 gap-4 mt-4">
+                    <div class="col-span-12 md:col-span-6 mb-3">
+                        <label class="custom-slider-label block mb-2">Zoom Level</label>
                         <input type="range" class="form-range" id="zoom_{{ $id }}" min="0" max="100" step="1" value="0">
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="custom-slider-label d-block mb-2">Rotation</label>
+                    <div class="col-span-12 md:col-span-6 mb-3">
+                        <label class="custom-slider-label block mb-2">Rotation</label>
                         <input type="range" class="form-range" id="rot_{{ $id }}" min="-180" max="180" step="1" value="0">
                     </div>
                 </div>
 
-                <div class="d-grid gap-2 mt-2">
-                    <button type="button" class="btn btn-success btn-lg fw-bold py-3" id="save_{{ $id }}">
+                <div class="grid gap-2 mt-2">
+                    <button type="button" class="btn btn-success btn-lg font-bold py-3" id="save_{{ $id }}">
                         @if($mode === 'form')
                             Crop & Apply
                         @else
@@ -280,7 +280,7 @@ $(function() {
                                 cardImg.attr('src', newUrl);
                             } else {
                                 // Replace placeholder div with img
-                                const placeholder = card.find('.card-img-top, .bg-light').first();
+                                const placeholder = card.find('.card-img-top, .bg-muted').first();
                                 if (placeholder.length && !placeholder.is('img')) {
                                     placeholder.replaceWith(`<img src="${newUrl}" alt="Image" class="card-img-top" style="height: 180px; object-fit: cover;">`);
                                 }

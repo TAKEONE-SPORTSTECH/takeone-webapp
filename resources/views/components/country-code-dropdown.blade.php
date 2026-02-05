@@ -1,73 +1,73 @@
 @props(['name' => 'country_code', 'id' => 'country_code', 'value' => '+1', 'required' => false, 'error' => null])
 
-<div class="input-group" onclick="event.stopPropagation()">
-    <button class="btn btn-outline-secondary dropdown-toggle country-dropdown-btn d-flex align-items-center"
-            type="button"
-            id="{{ $id }}Dropdown"
-            data-bs-toggle="dropdown"
-            data-bs-auto-close="outside"
-            aria-expanded="false">
-        <span id="{{ $id }}SelectedFlag">🇺🇸</span>
-        <span class="country-label" id="{{ $id }}SelectedCountry">{{ $value }}</span>
-    </button>
+<div class="flex border-2 border-primary/20 rounded-xl bg-white/80 shadow-inner transition-all duration-300 focus-within:border-primary focus-within:bg-white focus-within:ring-4 focus-within:ring-primary/10"
+     x-data="countryCodeDropdown_{{ $id }}()"
+     x-init="init()">
+    <!-- Country Code Button -->
+    <div class="relative">
+        <button type="button"
+                @click="open = !open"
+                @click.away="open = false"
+                class="h-full px-3 py-3 flex items-center gap-2 border-r border-primary/20 bg-transparent hover:bg-gray-50 transition-colors cursor-pointer rounded-l-xl"
+                id="{{ $id }}Dropdown">
+            <span x-text="selectedFlag">🇺🇸</span>
+            <span x-text="selectedCode" class="text-sm font-medium text-gray-700">{{ $value }}</span>
+            <i class="bi bi-chevron-down text-xs transition-transform" :class="{ 'rotate-180': open }"></i>
+        </button>
 
-    <div class="dropdown-menu p-2" aria-labelledby="{{ $id }}Dropdown" style="min-width: 200px;" onclick="event.stopPropagation()">
-        <input type="text"
-               class="form-control form-control-sm mb-2"
-               placeholder="Search country..."
-               id="{{ $id }}Search"
-               onmousedown="event.stopPropagation()"
-               onfocus="event.stopPropagation()"
-               oninput="event.stopPropagation()"
-               onkeydown="event.stopPropagation()"
-               onkeyup="event.stopPropagation()">
-
-        <div class="country-list country-code-dropdown-list" id="{{ $id }}List" data-component-id="{{ $id }}" style="max-height: 300px; overflow-y: auto;">
-            <!-- Countries will be populated by JavaScript -->
+        <!-- Dropdown Menu -->
+        <div x-show="open"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 -translate-y-1"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100 translate-y-0"
+             x-transition:leave-end="opacity-0 -translate-y-1"
+             class="absolute left-0 z-50 mt-1 w-64 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+            <!-- Search Input -->
+            <div class="p-2 border-b border-gray-100">
+                <input type="text"
+                       x-model="search"
+                       @click.stop
+                       class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                       placeholder="Search country...">
+            </div>
+            <!-- Country List -->
+            <div class="max-h-60 overflow-y-auto">
+                <template x-for="country in filteredCountries" :key="country.name">
+                    <div @click="selectCountry(country)"
+                         class="px-4 py-2 hover:bg-primary hover:text-white cursor-pointer flex items-center transition-colors">
+                        <span x-text="country.flag" class="mr-2"></span>
+                        <span x-text="country.name + ' (' + country.code + ')'" class="text-sm"></span>
+                    </div>
+                </template>
+                <div x-show="filteredCountries.length === 0" class="px-4 py-2 text-gray-500 text-sm">
+                    No countries found
+                </div>
+            </div>
         </div>
     </div>
 
-    <input type="hidden" id="{{ $id }}" name="{{ $name }}" value="{{ $value }}" {{ $required ? 'required' : '' }}>
+    <input type="hidden" id="{{ $id }}" name="{{ $name }}" x-model="selectedCode" {{ $required ? 'required' : '' }}>
 
-    {{ $slot }}
+    <!-- Phone Number Input Slot -->
+    <div class="flex-1">
+        {{ $slot }}
+    </div>
 </div>
 
 @if($error)
-    <span class="invalid-feedback d-block" role="alert">
+    <span class="text-red-500 text-sm mt-1 block" role="alert">
         <strong>{{ $error }}</strong>
     </span>
 @endif
 
-@once
-    @push('styles')
-    <style>
-        .country-dropdown-btn {
-            min-width: 150px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .country-list {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .dropdown-item {
-            cursor: pointer;
-        }
-
-        .dropdown-item:hover {
-            background-color: #f8f9fa;
-        }
-    </style>
-    @endpush
-
-    @push('scripts')
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Country data with flags and codes
-            const countries = [
+<script>
+    function countryCodeDropdown_{{ $id }}() {
+        return {
+            open: false,
+            search: '',
+            countries: [
                 { code: '+1', name: 'United States', flag: '🇺🇸' },
                 { code: '+1', name: 'Canada', flag: '🇨🇦' },
                 { code: '+44', name: 'United Kingdom', flag: '🇬🇧' },
@@ -125,131 +125,34 @@
                 { code: '+962', name: 'Jordan', flag: '🇯🇴' },
                 { code: '+961', name: 'Lebanon', flag: '🇱🇧' },
                 { code: '+964', name: 'Iraq', flag: '🇮🇶' },
-                { code: '+970', name: 'Palestine', flag: '🇵🇸' },
-                { code: '+972', name: 'Palestine', flag: '🇵🇸' }
-            ];
+                { code: '+970', name: 'Palestine', flag: '🇵🇸' }
+            ],
+            selectedCode: '{{ $value }}',
+            selectedFlag: '🇺🇸',
 
-            // Function to get user's country based on GPS
-            function detectUserCountry(callback) {
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(function(position) {
-                        const lat = position.coords.latitude;
-                        const lon = position.coords.longitude;
-                        // Use a reverse geocoding API
-                        fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)
-                            .then(response => response.json())
-                            .then(data => {
-                                const countryName = data.countryName;
-                                const iso2 = data.countryCode;
-                                // Find the country code based on country name or iso2
-                                let defaultCode = '+1'; // Default to US
-                                for (let country of countries) {
-                                    if (country.name.toLowerCase().includes(countryName.toLowerCase()) || country.name.toLowerCase().includes(iso2.toLowerCase())) {
-                                        defaultCode = country.code;
-                                        break;
-                                    }
-                                }
-                                callback(defaultCode);
-                            })
-                            .catch(() => {
-                                callback('+1'); // Default if error
-                            });
-                    }, function() {
-                        callback('+1'); // Default if geolocation denied
-                    });
-                } else {
-                    callback('+1'); // Default if no geolocation
+            init() {
+                // Find initial country by code
+                const initialCountry = this.countries.find(c => c.code === this.selectedCode);
+                if (initialCountry) {
+                    this.selectedFlag = initialCountry.flag;
                 }
+            },
+
+            get filteredCountries() {
+                if (!this.search) return this.countries;
+                const term = this.search.toLowerCase();
+                return this.countries.filter(c =>
+                    c.name.toLowerCase().includes(term) ||
+                    c.code.includes(term)
+                );
+            },
+
+            selectCountry(country) {
+                this.selectedFlag = country.flag;
+                this.selectedCode = country.code;
+                this.open = false;
+                this.search = '';
             }
-
-            // Initialize all country code dropdowns
-            document.querySelectorAll('.country-code-dropdown-list').forEach(function(listElement) {
-                const componentId = listElement.getAttribute('data-component-id');
-                initializeCountryDropdown(componentId, countries);
-            });
-
-            function initializeCountryDropdown(componentId, countries) {
-                const countryList = document.getElementById(componentId + 'List');
-                if (!countryList) return;
-
-                // Clear existing items
-                countryList.innerHTML = '';
-
-                // Populate country dropdown
-                countries.forEach(country => {
-                        const button = document.createElement('button');
-                        button.className = 'dropdown-item d-flex align-items-center';
-                        button.type = 'button';
-                        button.setAttribute('data-country-code', country.code);
-                        button.setAttribute('data-country-name', country.name);
-                        button.setAttribute('data-flag', country.flag);
-                        button.setAttribute('data-search', country.name.toLowerCase() + ' ' + country.code.toLowerCase());
-                        button.innerHTML = `
-                            <span class="me-2">${country.flag}</span>
-                            <span>${country.name} (${country.code})</span>
-                        `;
-                        button.addEventListener('click', function() {
-                            selectCountry(componentId, country.code, country.name, country.flag);
-                        });
-                        countryList.appendChild(button);
-                    });
-
-                // Search functionality
-                const searchInput = document.getElementById(componentId + 'Search');
-                if (searchInput) {
-                    searchInput.addEventListener('input', function(e) {
-                        const searchTerm = e.target.value.toLowerCase();
-                        const items = countryList.querySelectorAll('.dropdown-item');
-                        items.forEach(item => {
-                            const searchText = item.getAttribute('data-search') || '';
-                            if (searchText.includes(searchTerm)) {
-                                item.classList.remove('d-none');
-                            } else {
-                                item.classList.add('d-none');
-                            }
-                        });
-                    });
-                }
-
-                // Set initial value from database or detect user's country as fallback
-                const hiddenInput = document.getElementById(componentId);
-                if (hiddenInput && hiddenInput.value) {
-                    // Value already set from database, find and display the corresponding country
-                    const initialCountry = countries.find(c => c.code === hiddenInput.value);
-                    if (initialCountry) {
-                        selectCountry(componentId, initialCountry.code, initialCountry.name, initialCountry.flag);
-                    }
-                } else {
-                    // No database value, detect user's country as default
-                    detectUserCountry(function(defaultCode) {
-                        if (hiddenInput) {
-                            hiddenInput.value = defaultCode;
-                        }
-                        const initialCountry = countries.find(c => c.code === defaultCode);
-                        if (initialCountry) {
-                            selectCountry(componentId, initialCountry.code, initialCountry.name, initialCountry.flag);
-                        }
-                    });
-                }
-            }
-
-            function selectCountry(componentId, code, name, flag) {
-                const flagElement = document.getElementById(componentId + 'SelectedFlag');
-                const countryElement = document.getElementById(componentId + 'SelectedCountry');
-                const hiddenInput = document.getElementById(componentId);
-
-                if (flagElement) flagElement.textContent = flag;
-                if (countryElement) countryElement.textContent = `${name} (${code})`;
-                if (hiddenInput) hiddenInput.value = code;
-
-                // Close the dropdown after selection
-                const dropdownButton = document.getElementById(componentId + 'Dropdown');
-                if (dropdownButton) {
-                    const dropdown = bootstrap.Dropdown.getInstance(dropdownButton);
-                    if (dropdown) dropdown.hide();
-                }
-            }
-        });
-    </script>
-    @endpush
-@endonce
+        }
+    }
+</script>

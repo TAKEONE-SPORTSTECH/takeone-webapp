@@ -79,7 +79,7 @@
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="space-y-2">
                                     <label for="facilityLatitude" class="block text-xs font-medium text-gray-500">
-                                        <i class="bi bi-geo me-1"></i>Latitude
+                                        <i class="bi bi-geo mr-1"></i>Latitude
                                     </label>
                                     <input type="number"
                                            id="facilityLatitude"
@@ -91,7 +91,7 @@
                                 </div>
                                 <div class="space-y-2">
                                     <label for="facilityLongitude" class="block text-xs font-medium text-gray-500">
-                                        <i class="bi bi-geo me-1"></i>Longitude
+                                        <i class="bi bi-geo mr-1"></i>Longitude
                                     </label>
                                     <input type="number"
                                            id="facilityLongitude"

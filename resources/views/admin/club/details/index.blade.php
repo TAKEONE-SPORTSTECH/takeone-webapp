@@ -1,7 +1,7 @@
 @extends('layouts.admin-club')
 
 @section('club-admin-content')
-<div class="space-y-6">
+<div class="space-y-6" x-data="{ showDeleteClubModal: false, showChangeOwnerModal: false, showCreateOwnerModal: false, showLinkOwnerModal: false }">
     <!-- Page Header -->
     <div class="flex items-center justify-between">
         <div>
@@ -9,27 +9,31 @@
             <p class="text-sm text-muted-foreground">Manage your club's information and settings</p>
         </div>
         <button type="submit" form="clubDetailsForm" class="btn btn-primary">
-            <i class="bi bi-check-lg me-2"></i>Save All Changes
+            <i class="bi bi-check-lg mr-2"></i>Save All Changes
         </button>
     </div>
 
     <!-- Success/Error Messages -->
     @if(session('success'))
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <div class="alert alert-success relative" role="alert" x-data="{ show: true }" x-show="show">
+        <i class="bi bi-check-circle mr-2"></i>{{ session('success') }}
+        <button type="button" class="absolute top-3 right-3 text-green-600 hover:text-green-800" @click="show = false">
+            <i class="bi bi-x-lg"></i>
+        </button>
     </div>
     @endif
 
     @if($errors->any())
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <i class="bi bi-exclamation-triangle me-2"></i>
+    <div class="alert alert-danger relative" role="alert" x-data="{ show: true }" x-show="show">
+        <i class="bi bi-exclamation-triangle mr-2"></i>
         <ul class="mb-0">
             @foreach($errors->all() as $error)
                 <li>{{ $error }}</li>
             @endforeach
         </ul>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <button type="button" class="absolute top-3 right-3 text-red-600 hover:text-red-800" @click="show = false">
+            <i class="bi bi-x-lg"></i>
+        </button>
     </div>
     @endif
 
@@ -37,16 +41,16 @@
     <div class="border-b">
         <nav class="flex gap-1" role="tablist">
             <button type="button" class="tab-btn active" data-tab="basic" role="tab">
-                <i class="bi bi-info-circle me-2"></i>Basic
+                <i class="bi bi-info-circle mr-2"></i>Basic
             </button>
             <button type="button" class="tab-btn" data-tab="location" role="tab">
-                <i class="bi bi-geo-alt me-2"></i>Location
+                <i class="bi bi-geo-alt mr-2"></i>Location
             </button>
             <button type="button" class="tab-btn" data-tab="branding" role="tab">
-                <i class="bi bi-palette me-2"></i>Branding
+                <i class="bi bi-palette mr-2"></i>Branding
             </button>
             <button type="button" class="tab-btn" data-tab="settings" role="tab">
-                <i class="bi bi-gear me-2"></i>Settings
+                <i class="bi bi-gear mr-2"></i>Settings
             </button>
         </nav>
     </div>
@@ -62,7 +66,7 @@
                 <div class="card">
                     <div class="card-header">
                         <h5 class="card-title mb-0">
-                            <i class="bi bi-building text-primary me-2"></i>Basic Information
+                            <i class="bi bi-building text-primary mr-2"></i>Basic Information
                         </h5>
                     </div>
                     <div class="card-body space-y-4">
@@ -98,7 +102,7 @@
                             <input type="number" name="vat_percentage" class="form-control" step="0.01" value="{{ old('vat_percentage', $club->vat_percentage) }}" placeholder="0.00">
                             <small class="text-muted">Tax percentage for financial transactions (e.g., 5 for 5%, 10 for 10%)</small>
                             <div class="alert alert-warning mt-2 py-2 px-3 small">
-                                <i class="bi bi-exclamation-triangle me-1"></i>
+                                <i class="bi bi-exclamation-triangle mr-1"></i>
                                 This VAT rate applies to NEW transactions only. Past transactions preserve their original VAT rate.
                             </div>
                         </div>
@@ -109,11 +113,11 @@
                 <div class="card">
                     <div class="card-header">
                         <h5 class="card-title mb-0">
-                            <i class="bi bi-telephone text-primary me-2"></i>Contact Information
+                            <i class="bi bi-telephone text-primary mr-2"></i>Contact Information
                         </h5>
                     </div>
                     <div class="card-body space-y-4">
-                        <h6 class="text-muted text-uppercase small fw-semibold border-bottom pb-2">Club Contact</h6>
+                        <h6 class="text-muted text-uppercase small font-semibold border-bottom pb-2">Club Contact</h6>
 
                         <div>
                             <label class="form-label">Club Email</label>
@@ -193,8 +197,8 @@
                             @if($club->slug && $club->country)
                             <div class="mt-2 p-2 bg-light rounded">
                                 <small class="text-muted">Club URL:</small>
-                                <div class="d-flex align-items-center gap-2 mt-1">
-                                    <code class="flex-grow-1">{{ url('/club/' . strtolower($club->country) . '/' . $club->slug) }}</code>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <code class="flex-1">{{ url('/club/' . strtolower($club->country) . '/' . $club->slug) }}</code>
                                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyClubUrl()">
                                         <i class="bi bi-clipboard"></i>
                                     </button>
@@ -206,26 +210,26 @@
                             @endif
                         </div>
 
-                        <h6 class="text-muted text-uppercase small fw-semibold border-bottom pb-2 pt-4">Owner Information</h6>
+                        <h6 class="text-muted text-uppercase small font-semibold border-bottom pb-2 pt-4">Owner Information</h6>
 
                         @if($club->owner)
                         <div class="card bg-light">
                             <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex justify-between items-start">
                                     <div>
                                         <h6 class="mb-1">{{ $club->owner->full_name }}</h6>
                                         @if($club->owner->email)
                                         <p class="text-muted small mb-1">
-                                            <i class="bi bi-envelope me-1"></i>{{ $club->owner->email }}
+                                            <i class="bi bi-envelope mr-1"></i>{{ $club->owner->email }}
                                         </p>
                                         @endif
                                         @if($club->owner->formatted_mobile)
                                         <p class="text-muted small mb-0">
-                                            <i class="bi bi-phone me-1"></i>{{ $club->owner->formatted_mobile }}
+                                            <i class="bi bi-phone mr-1"></i>{{ $club->owner->formatted_mobile }}
                                         </p>
                                         @endif
                                     </div>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#changeOwnerModal">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" @click="showChangeOwnerModal = true">
                                         <i class="bi bi-pencil"></i>
                                     </button>
                                 </div>
@@ -235,12 +239,12 @@
                         <div class="text-center py-4 border-2 border-dashed rounded">
                             <i class="bi bi-person-plus text-muted" style="font-size: 2rem;"></i>
                             <p class="text-muted mt-2 mb-3">No owner assigned yet</p>
-                            <div class="d-flex gap-2 justify-content-center">
-                                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createOwnerModal">
-                                    <i class="bi bi-person-plus me-1"></i>Create Owner
+                            <div class="flex gap-2 justify-center">
+                                <button type="button" class="btn btn-outline-primary btn-sm" @click="showCreateOwnerModal = true">
+                                    <i class="bi bi-person-plus mr-1"></i>Create Owner
                                 </button>
-                                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#linkOwnerModal">
-                                    <i class="bi bi-link me-1"></i>Link Owner
+                                <button type="button" class="btn btn-outline-primary btn-sm" @click="showLinkOwnerModal = true">
+                                    <i class="bi bi-link mr-1"></i>Link Owner
                                 </button>
                             </div>
                         </div>
@@ -258,7 +262,7 @@
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
-                        <i class="bi bi-geo-alt text-primary me-2"></i>Location & GPS
+                        <i class="bi bi-geo-alt text-primary mr-2"></i>Location & GPS
                     </h5>
                 </div>
                 <div class="card-body space-y-4">
@@ -266,16 +270,16 @@
                         <label class="form-label">Address</label>
                         <input type="text" name="address" class="form-control" value="{{ old('address', $club->address) }}" placeholder="Enter full address">
                     </div>
-                    <div class="row">
-                        <div class="col-md-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
                             <label class="form-label">
-                                <i class="bi bi-geo me-1"></i>GPS Latitude
+                                <i class="bi bi-geo mr-1"></i>GPS Latitude
                             </label>
                             <input type="number" name="gps_lat" class="form-control" step="any" value="{{ old('gps_lat', $club->gps_lat) }}" placeholder="e.g., 26.2285">
                         </div>
-                        <div class="col-md-6">
+                        <div>
                             <label class="form-label">
-                                <i class="bi bi-geo me-1"></i>GPS Longitude
+                                <i class="bi bi-geo mr-1"></i>GPS Longitude
                             </label>
                             <input type="number" name="gps_long" class="form-control" step="any" value="{{ old('gps_long', $club->gps_long) }}" placeholder="e.g., 50.5860">
                         </div>
@@ -284,7 +288,7 @@
                         <label class="form-label">Interactive Map</label>
                         <p class="text-muted small mb-2">Click on the map to set location or drag the marker</p>
                         <div id="locationMap" class="rounded border" style="height: 400px; background: #f0f0f0;">
-                            <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                            <div class="flex items-center justify-center h-100 text-muted">
                                 <div class="text-center">
                                     <i class="bi bi-map" style="font-size: 3rem;"></i>
                                     <p class="mt-2">Map will load here</p>
@@ -294,11 +298,11 @@
                         </div>
                         <div class="mt-2">
                             <button type="button" class="btn btn-outline-primary btn-sm" id="useMyLocationBtn">
-                                <i class="bi bi-crosshair me-1"></i>Use My Location
+                                <i class="bi bi-crosshair mr-1"></i>Use My Location
                             </button>
                             @if($club->gps_lat && $club->gps_long)
                             <a href="https://www.google.com/maps?q={{ $club->gps_lat }},{{ $club->gps_long }}" target="_blank" class="btn btn-outline-secondary btn-sm">
-                                <i class="bi bi-box-arrow-up-right me-1"></i>View on Google Maps
+                                <i class="bi bi-box-arrow-up-right mr-1"></i>View on Google Maps
                             </a>
                             @endif
                         </div>
@@ -312,28 +316,28 @@
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
-                        <i class="bi bi-palette text-primary me-2"></i>Branding Assets
+                        <i class="bi bi-palette text-primary mr-2"></i>Branding Assets
                     </h5>
                 </div>
                 <div class="card-body space-y-5">
                     <!-- Logo -->
-                    <div class="row align-items-start">
-                        <div class="col-md-8">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                        <div class="md:col-span-2">
                             <label class="form-label">Logo</label>
                             <input type="file" name="logo" class="form-control" accept="image/*" id="logoInput">
                             <small class="text-muted">Recommended: Square image, at least 512x512px</small>
                         </div>
-                        <div class="col-md-4">
+                        <div>
                             <label class="form-label">Preview</label>
                             <div class="border rounded p-3 text-center" style="min-height: 120px;">
                                 @if($club->logo)
-                                <img src="{{ asset('storage/' . $club->logo) }}" alt="Logo" id="logoPreview" class="img-fluid" style="max-height: 100px;">
+                                <img src="{{ asset('storage/' . $club->logo) }}" alt="Logo" id="logoPreview" class="max-w-full h-auto" style="max-height: 100px;">
                                 @else
                                 <div class="text-muted" id="logoPlaceholder">
                                     <i class="bi bi-image" style="font-size: 3rem;"></i>
                                     <p class="small mb-0">No logo uploaded</p>
                                 </div>
-                                <img src="" alt="Logo" id="logoPreview" class="img-fluid d-none" style="max-height: 100px;">
+                                <img src="" alt="Logo" id="logoPreview" class="max-w-full h-auto hidden" style="max-height: 100px;">
                                 @endif
                             </div>
                         </div>
@@ -342,13 +346,13 @@
                     <hr>
 
                     <!-- Favicon -->
-                    <div class="row align-items-start">
-                        <div class="col-md-8">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                        <div class="md:col-span-2">
                             <label class="form-label">Favicon</label>
                             <input type="file" name="favicon" class="form-control" accept="image/*" id="faviconInput">
                             <small class="text-muted">Recommended: Square image, 32x32px or 64x64px</small>
                         </div>
-                        <div class="col-md-4">
+                        <div>
                             <label class="form-label">Preview</label>
                             <div class="border rounded p-3 text-center" style="min-height: 80px;">
                                 @if($club->favicon)
@@ -358,7 +362,7 @@
                                     <i class="bi bi-app" style="font-size: 2rem;"></i>
                                     <p class="small mb-0">No favicon</p>
                                 </div>
-                                <img src="" alt="Favicon" id="faviconPreview" class="d-none" style="width: 32px; height: 32px;">
+                                <img src="" alt="Favicon" id="faviconPreview" class="hidden" style="width: 32px; height: 32px;">
                                 @endif
                             </div>
                         </div>
@@ -367,23 +371,23 @@
                     <hr>
 
                     <!-- Cover Image -->
-                    <div class="row align-items-start">
-                        <div class="col-md-8">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                        <div class="md:col-span-2">
                             <label class="form-label">Cover Image</label>
                             <input type="file" name="cover_image" class="form-control" accept="image/*" id="coverInput">
                             <small class="text-muted">Recommended: 1920x600px or similar wide aspect ratio</small>
                         </div>
-                        <div class="col-md-4">
+                        <div>
                             <label class="form-label">Preview</label>
                             <div class="border rounded overflow-hidden" style="min-height: 100px;">
                                 @if($club->cover_image)
-                                <img src="{{ asset('storage/' . $club->cover_image) }}" alt="Cover" id="coverPreview" class="img-fluid w-100" style="max-height: 150px; object-fit: cover;">
+                                <img src="{{ asset('storage/' . $club->cover_image) }}" alt="Cover" id="coverPreview" class="max-w-full w-full h-auto" style="max-height: 150px; object-fit: cover;">
                                 @else
                                 <div class="text-muted text-center py-4" id="coverPlaceholder">
                                     <i class="bi bi-card-image" style="font-size: 2rem;"></i>
                                     <p class="small mb-0">No cover image</p>
                                 </div>
-                                <img src="" alt="Cover" id="coverPreview" class="img-fluid w-100 d-none" style="max-height: 150px; object-fit: cover;">
+                                <img src="" alt="Cover" id="coverPreview" class="max-w-full w-full h-auto hidden" style="max-height: 150px; object-fit: cover;">
                                 @endif
                             </div>
                         </div>
@@ -398,36 +402,36 @@
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
-                        <i class="bi bi-hash text-primary me-2"></i>Code Prefixes
+                        <i class="bi bi-hash text-primary mr-2"></i>Code Prefixes
                     </h5>
                 </div>
                 <div class="card-body">
                     @php
                         $settings = $club->settings ?? [];
                     @endphp
-                    <div class="row g-3">
-                        <div class="col-md-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
                             <label class="form-label">Member Code Prefix</label>
                             <input type="text" name="settings[member_code_prefix]" class="form-control text-uppercase" value="{{ old('settings.member_code_prefix', $settings['member_code_prefix'] ?? 'MEM') }}" placeholder="MEM">
                         </div>
-                        <div class="col-md-4">
+                        <div>
                             <label class="form-label">Child Code Prefix</label>
                             <input type="text" name="settings[child_code_prefix]" class="form-control text-uppercase" value="{{ old('settings.child_code_prefix', $settings['child_code_prefix'] ?? 'CHILD') }}" placeholder="CHILD">
                             <small class="text-muted">For children of members becoming members</small>
                         </div>
-                        <div class="col-md-4">
+                        <div>
                             <label class="form-label">Invoice Code Prefix</label>
                             <input type="text" name="settings[invoice_code_prefix]" class="form-control text-uppercase" value="{{ old('settings.invoice_code_prefix', $settings['invoice_code_prefix'] ?? 'INV') }}" placeholder="INV">
                         </div>
-                        <div class="col-md-4">
+                        <div>
                             <label class="form-label">Receipt Code Prefix</label>
                             <input type="text" name="settings[receipt_code_prefix]" class="form-control text-uppercase" value="{{ old('settings.receipt_code_prefix', $settings['receipt_code_prefix'] ?? 'REC') }}" placeholder="REC">
                         </div>
-                        <div class="col-md-4">
+                        <div>
                             <label class="form-label">Expense Code Prefix</label>
                             <input type="text" name="settings[expense_code_prefix]" class="form-control text-uppercase" value="{{ old('settings.expense_code_prefix', $settings['expense_code_prefix'] ?? 'EXP') }}" placeholder="EXP">
                         </div>
-                        <div class="col-md-4">
+                        <div>
                             <label class="form-label">Specialist Code Prefix</label>
                             <input type="text" name="settings[specialist_code_prefix]" class="form-control text-uppercase" value="{{ old('settings.specialist_code_prefix', $settings['specialist_code_prefix'] ?? 'SPEC') }}" placeholder="SPEC">
                         </div>
@@ -439,7 +443,7 @@
             <div class="card border-danger">
                 <div class="card-header bg-danger bg-opacity-10">
                     <h5 class="card-title mb-0 text-danger">
-                        <i class="bi bi-exclamation-triangle me-2"></i>Danger Zone
+                        <i class="bi bi-exclamation-triangle mr-2"></i>Danger Zone
                     </h5>
                 </div>
                 <div class="card-body">
@@ -451,8 +455,8 @@
                         <li>All uploaded images and files from storage</li>
                         <li>All reviews, statistics, and historical data</li>
                     </ul>
-                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteClubModal">
-                        <i class="bi bi-trash me-1"></i>Delete This Club
+                    <button type="button" class="btn btn-danger" @click="showDeleteClubModal = true">
+                        <i class="bi bi-trash mr-1"></i>Delete This Club
                     </button>
                 </div>
             </div>
@@ -461,29 +465,41 @@
 </div>
 
 <!-- Delete Club Modal -->
-<div class="modal fade" id="deleteClubModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header border-danger">
-                <h5 class="modal-title text-danger">
-                    <i class="bi bi-exclamation-triangle me-2"></i>Delete Club
+<div x-show="showDeleteClubModal"
+     x-cloak
+     class="fixed inset-0 z-50 overflow-y-auto"
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-200"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0">
+    <div class="fixed inset-0 bg-black/50" @click="showDeleteClubModal = false"></div>
+
+    <div class="flex min-h-full items-center justify-center p-4">
+        <div class="modal-content border-0 shadow-lg w-full max-w-md relative rounded-lg overflow-hidden" @click.stop>
+            <div class="modal-header border-b border-destructive/30 px-6 py-4">
+                <h5 class="modal-title text-destructive font-semibold">
+                    <i class="bi bi-exclamation-triangle mr-2"></i>Delete Club
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="text-muted-foreground hover:text-foreground" @click="showDeleteClubModal = false">
+                    <i class="bi bi-x-lg"></i>
+                </button>
             </div>
             <form action="{{ route('admin.club.destroy', $club->id) }}" method="POST">
                 @csrf
                 @method('DELETE')
-                <div class="modal-body">
-                    <div class="alert alert-danger">
+                <div class="modal-body px-6 py-4">
+                    <div class="alert alert-danger mb-4">
                         <strong>Warning!</strong> This action cannot be undone.
                     </div>
-                    <p>To confirm deletion, please type the club name: <strong>{{ $club->club_name }}</strong></p>
+                    <p class="mb-3">To confirm deletion, please type the club name: <strong>{{ $club->club_name }}</strong></p>
                     <input type="text" class="form-control" id="confirmClubName" placeholder="Type club name to confirm" required>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <div class="modal-footer border-t border-border px-6 py-4 flex justify-end gap-3">
+                    <button type="button" class="btn btn-secondary" @click="showDeleteClubModal = false">Cancel</button>
                     <button type="submit" class="btn btn-danger" id="confirmDeleteBtn" disabled>
-                        <i class="bi bi-trash me-1"></i>Delete Permanently
+                        <i class="bi bi-trash mr-1"></i>Delete Permanently
                     </button>
                 </div>
             </form>
@@ -496,33 +512,18 @@
         padding: 0.75rem 1.5rem;
         border: none;
         background: transparent;
-        color: var(--bs-gray-600);
+        color: hsl(var(--muted-foreground));
         font-weight: 500;
         border-bottom: 2px solid transparent;
         transition: all 0.2s;
     }
     .tab-btn:hover {
-        color: var(--bs-primary);
-        border-bottom-color: rgba(var(--bs-primary-rgb), 0.3);
+        color: hsl(var(--primary));
+        border-bottom-color: hsl(var(--primary) / 0.3);
     }
     .tab-btn.active {
-        color: var(--bs-primary);
-        border-bottom-color: var(--bs-primary);
-    }
-    .space-y-4 > * + * {
-        margin-top: 1rem;
-    }
-    .space-y-5 > * + * {
-        margin-top: 1.25rem;
-    }
-    .space-y-6 > * + * {
-        margin-top: 1.5rem;
-    }
-    .border-2 {
-        border-width: 2px !important;
-    }
-    .border-dashed {
-        border-style: dashed !important;
+        color: hsl(var(--primary));
+        border-bottom-color: hsl(var(--primary));
     }
 </style>
 
@@ -588,8 +589,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     const reader = new FileReader();
                     reader.onload = function(e) {
                         preview.src = e.target.result;
-                        preview.classList.remove('d-none');
-                        if (placeholder) placeholder.classList.add('d-none');
+                        preview.classList.remove('hidden');
+                        if (placeholder) placeholder.classList.add('hidden');
                     };
                     reader.readAsDataURL(this.files[0]);
                 }

@@ -1,30 +1,30 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="max-w-7xl mx-auto px-4 py-4">
+    <div class="flex justify-between items-center mb-4">
         <div>
-            <h1 class="mb-0">Payments & Subscriptions</h1>
-            <p class="text-muted mb-0">Manage your club membership payments, subscriptions, and billing history</p>
+            <h1 class="text-2xl font-bold mb-0">Payments & Subscriptions</h1>
+            <p class="text-muted-foreground mb-0">Manage your club membership payments, subscriptions, and billing history</p>
         </div>
         <a href="{{ url()->previous() }}" class="btn btn-outline-secondary">
-            <i class="fas fa-arrow-left"></i> Back
+            <i class="bi bi-arrow-left"></i> Back
         </a>
     </div>
 
     <div class="card shadow-sm">
-        <div class="card-header bg-white">
-            <div class="d-flex justify-content-between align-items-center">
+        <div class="card-header bg-card">
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 <h4 class="mb-0">All Bills</h4>
-                <div class="d-flex align-items-center gap-3">
-                    <form method="GET" action="{{ route('bills.index') }}" class="d-flex gap-2 align-items-center">
-                        <label for="start_date" class="form-label mb-0 me-1">From:</label>
+                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <form method="GET" action="{{ route('bills.index') }}" class="flex flex-wrap gap-2 items-center">
+                        <label for="start_date" class="form-label mb-0 mr-1">From:</label>
                         <input type="date" name="start_date" id="start_date" class="form-control form-control-sm" value="{{ request('start_date') }}">
-                        <label for="end_date" class="form-label mb-0 me-1 ms-2">To:</label>
+                        <label for="end_date" class="form-label mb-0 mr-1 ml-2">To:</label>
                         <input type="date" name="end_date" id="end_date" class="form-control form-control-sm" value="{{ request('end_date') }}">
-                        <button type="submit" class="btn btn-primary btn-sm ms-2">Filter</button>
+                        <button type="submit" class="btn btn-primary btn-sm ml-2">Filter</button>
                     </form>
-                    <div class="d-flex gap-2">
+                    <div class="flex gap-2">
                         <a href="{{ route('bills.index') }}" class="btn btn-outline-secondary {{ !request('status') ? 'active' : '' }}">All</a>
                         <a href="{{ route('bills.index', ['status' => 'pending']) }}" class="btn btn-warning {{ request('status') === 'pending' ? 'active' : '' }}">Pending</a>
                         <a href="{{ route('bills.index', ['status' => 'paid']) }}" class="btn btn-success {{ request('status') === 'paid' ? 'active' : '' }}">Paid</a>
@@ -73,10 +73,10 @@
                 </div>
                 {{ $invoices->links() }}
             @else
-                <div class="text-center py-5">
-                    <i class="fas fa-receipt fa-3x text-muted mb-3"></i>
-                    <h5 class="text-muted">No invoices found</h5>
-                    <p class="text-muted">You don't have any invoices yet.</p>
+                <div class="text-center py-12">
+                    <i class="bi bi-receipt text-muted-foreground text-5xl mb-3 block"></i>
+                    <h5 class="text-muted-foreground">No invoices found</h5>
+                    <p class="text-muted-foreground">You don't have any invoices yet.</p>
                 </div>
             @endif
         </div>

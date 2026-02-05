@@ -1,7 +1,7 @@
 @extends('layouts.admin-club')
 
 @section('club-admin-content')
-<div class="space-y-8">
+<div class="space-y-8" x-data="{ showAddFacilityModal: false, showEditFacilityModal: false, editingFacility: null }">
     <!-- Header -->
     <div class="flex justify-between items-center pb-6 border-b border-gray-200">
         <div>
@@ -9,8 +9,7 @@
             <p class="text-gray-500 mt-1">Manage your club's facilities, locations, and availability</p>
         </div>
         <button class="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-all shadow-md hover:shadow-lg"
-                data-bs-toggle="modal"
-                data-bs-target="#addFacilityModal">
+                @click="showAddFacilityModal = true">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -198,8 +197,11 @@ function editFacility(id) {
     .then(data => {
         if (data.success) {
             populateEditForm(data.data);
-            const modal = new bootstrap.Modal(document.getElementById('editFacilityModal'));
-            modal.show();
+            // Use Alpine.js to show modal
+            const container = document.querySelector('[x-data*="showEditFacilityModal"]');
+            if (container && container.__x) {
+                container.__x.$data.showEditFacilityModal = true;
+            }
         } else {
             alert(data.message || 'Failed to load facility data');
         }

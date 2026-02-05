@@ -4,11 +4,11 @@
 @section('page-subtitle', 'Add a new club to the platform')
 
 @section('content')
-    <div class="row">
-        <div class="col-lg-8 mx-auto">
+    <div class="grid grid-cols-1 lg:grid-cols-12">
+        <div class="lg:col-span-8 lg:col-start-3">
             <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white">
-                <h5 class="mb-0"><i class="bi bi-building me-2"></i>Club Information</h5>
+            <div class="card-header bg-card">
+                <h5 class="mb-0"><i class="bi bi-building mr-2"></i>Club Information</h5>
             </div>
             <div class="card-body">
                 <form action="{{ route('admin.platform.clubs.store') }}" method="POST">
@@ -16,7 +16,7 @@
 
                     <!-- Owner Selection -->
                     <div class="mb-4">
-                        <label for="owner_user_id" class="form-label">Club Owner <span class="text-danger">*</span></label>
+                        <label for="owner_user_id" class="form-label">Club Owner <span class="text-destructive">*</span></label>
                         <select class="form-select @error('owner_user_id') is-invalid @enderror" id="owner_user_id" name="owner_user_id" required>
                             <option value="">Select Owner</option>
                             @foreach($users as $user)
@@ -33,42 +33,42 @@
                         @error('owner_user_id')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
-                        <small class="text-muted">The user who will manage this club</small>
+                        <small class="text-muted-foreground">The user who will manage this club</small>
                     </div>
 
                     <!-- Basic Information -->
-                    <h6 class="border-bottom pb-2 mb-3">Basic Information</h6>
+                    <h6 class="border-b pb-2 mb-3">Basic Information</h6>
 
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="club_name" class="form-label">Club Name <span class="text-danger">*</span></label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                        <div>
+                            <label for="club_name" class="form-label">Club Name <span class="text-destructive">*</span></label>
                             <input type="text" class="form-control @error('club_name') is-invalid @enderror" id="club_name" name="club_name" value="{{ old('club_name') }}" required>
                             @error('club_name')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        <div class="col-md-6">
-                            <label for="slug" class="form-label">Club Slug <span class="text-danger">*</span></label>
+                        <div>
+                            <label for="slug" class="form-label">Club Slug <span class="text-destructive">*</span></label>
                             <input type="text" class="form-control @error('slug') is-invalid @enderror" id="slug" name="slug" value="{{ old('slug') }}" required>
                             @error('slug')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
-                            <small class="text-muted">URL-friendly identifier (e.g., bh-taekwondo)</small>
+                            <small class="text-muted-foreground">URL-friendly identifier (e.g., bh-taekwondo)</small>
                         </div>
                     </div>
 
                     <!-- Contact Information -->
-                    <h6 class="border-bottom pb-2 mb-3 mt-4">Contact Information</h6>
+                    <h6 class="border-b pb-2 mb-3 mt-4">Contact Information</h6>
 
-                    <div class="row mb-3">
-                        <div class="col-md-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                        <div>
                             <label for="email" class="form-label">Club Email</label>
                             <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email') }}">
                             @error('email')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        <div class="col-md-6">
+                        <div>
                             <label for="phone_number" class="form-label">Phone Number</label>
                             <x-country-code-dropdown
                                 name="phone_code"
@@ -84,13 +84,13 @@
                                        placeholder="12345678">
                             </x-country-code-dropdown>
                             @error('phone_number')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                                <div class="invalid-feedback block">{{ $message }}</div>
                             @enderror
                         </div>
                     </div>
 
-                    <div class="row mb-3">
-                        <div class="col-md-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                        <div>
                             <x-currency-dropdown
                                 name="currency"
                                 id="currency"
@@ -98,7 +98,7 @@
                                 :required="false"
                                 :error="$errors->first('currency')" />
                         </div>
-                        <div class="col-md-4">
+                        <div>
                             <x-timezone-dropdown
                                 name="timezone"
                                 id="timezone"
@@ -106,7 +106,7 @@
                                 :required="false"
                                 :error="$errors->first('timezone')" />
                         </div>
-                        <div class="col-md-4">
+                        <div>
                             <x-nationality-dropdown
                                 name="country"
                                 id="country"
@@ -118,7 +118,7 @@
                     </div>
 
                     <!-- Location -->
-                    <h6 class="border-bottom pb-2 mb-3 mt-4">Location</h6>
+                    <h6 class="border-b pb-2 mb-3 mt-4">Location</h6>
 
                     <div class="mb-3">
                         <label for="address" class="form-label">Address</label>
@@ -128,15 +128,15 @@
                         @enderror
                     </div>
 
-                    <div class="row mb-3">
-                        <div class="col-md-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                        <div>
                             <label for="gps_lat" class="form-label">GPS Latitude</label>
                             <input type="number" step="0.0000001" class="form-control @error('gps_lat') is-invalid @enderror" id="gps_lat" name="gps_lat" value="{{ old('gps_lat') }}" placeholder="26.0667">
                             @error('gps_lat')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        <div class="col-md-6">
+                        <div>
                             <label for="gps_long" class="form-label">GPS Longitude</label>
                             <input type="number" step="0.0000001" class="form-control @error('gps_long') is-invalid @enderror" id="gps_long" name="gps_long" value="{{ old('gps_long') }}" placeholder="50.5577">
                             @error('gps_long')
@@ -146,11 +146,11 @@
                     </div>
 
                     <!-- Branding -->
-                    <h6 class="border-bottom pb-2 mb-3 mt-4">Branding</h6>
+                    <h6 class="border-b pb-2 mb-3 mt-4">Branding</h6>
 
-                    <div class="row mb-3">
-                        <div class="col-md-6 text-center">
-                            <label class="form-label d-block">Club Logo</label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                        <div class="text-center">
+                            <label class="form-label block">Club Logo</label>
                             <x-takeone-cropper
                                 id="create_club_logo"
                                 mode="form"
@@ -166,12 +166,12 @@
                                 buttonClass="btn btn-outline-success btn-sm"
                             />
                             @error('logo')
-                                <div class="text-danger small mt-1">{{ $message }}</div>
+                                <div class="text-destructive text-sm mt-1">{{ $message }}</div>
                             @enderror
-                            <small class="text-muted d-block mt-2">Recommended: Square image, max 2MB</small>
+                            <small class="text-muted-foreground block mt-2">Recommended: Square image, max 2MB</small>
                         </div>
-                        <div class="col-md-6 text-center">
-                            <label class="form-label d-block">Cover Image</label>
+                        <div class="text-center">
+                            <label class="form-label block">Cover Image</label>
                             <x-takeone-cropper
                                 id="create_club_cover"
                                 mode="form"
@@ -187,19 +187,19 @@
                                 buttonClass="btn btn-outline-success btn-sm"
                             />
                             @error('cover_image')
-                                <div class="text-danger small mt-1">{{ $message }}</div>
+                                <div class="text-destructive text-sm mt-1">{{ $message }}</div>
                             @enderror
-                            <small class="text-muted d-block mt-2">Recommended: 1200x400px, max 2MB</small>
+                            <small class="text-muted-foreground block mt-2">Recommended: 1200x400px, max 2MB</small>
                         </div>
                     </div>
 
                     <!-- Actions -->
-                        <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+                        <div class="flex justify-between mt-4 pt-3 border-t">
                             <a href="{{ route('admin.platform.clubs') }}" class="btn btn-secondary">
-                                <i class="bi bi-arrow-left me-2"></i>Cancel
+                                <i class="bi bi-arrow-left mr-2"></i>Cancel
                             </a>
                             <button type="submit" class="btn text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                                <i class="bi bi-check-circle me-2"></i>Create Club
+                                <i class="bi bi-check-circle mr-2"></i>Create Club
                             </button>
                         </div>
                 </form>

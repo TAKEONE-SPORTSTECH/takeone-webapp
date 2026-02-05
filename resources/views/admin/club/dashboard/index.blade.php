@@ -4,101 +4,91 @@
 <div class="space-y-6">
     <!-- Header -->
     <div>
-        <h2 class="h3 fw-bold mb-2">Dashboard Overview</h2>
-        <p class="text-muted">Welcome to {{ $club->club_name }} management</p>
+        <h2 class="text-2xl font-bold mb-2">Dashboard Overview</h2>
+        <p class="text-muted-foreground">Welcome to {{ $club->club_name }} management</p>
     </div>
 
     <!-- Stats Cards -->
-    <div class="row g-3">
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
         <!-- Active Members -->
-        <div class="col-6 col-md-4 col-lg">
-            <div class="card h-100 border-0 shadow-sm" style="cursor: pointer;" onclick="window.location='{{ route('admin.club.members', $club->id) }}'">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="text-muted small">Active Members</span>
-                        <div class="rounded p-2" style="background-color: hsl(var(--primary) / 0.1);">
-                            <i class="bi bi-people text-primary"></i>
-                        </div>
+        <div class="card h-full border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onclick="window.location='{{ route('admin.club.members', $club->id) }}'">
+            <div class="card-body">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-muted-foreground text-sm">Active Members</span>
+                    <div class="rounded p-2 bg-primary/10">
+                        <i class="bi bi-people text-primary"></i>
                     </div>
-                    <h3 class="fw-bold text-primary mb-1">{{ $stats['members'] ?? 0 }}</h3>
-                    <p class="text-muted small mb-0">Members with valid packages</p>
                 </div>
+                <h3 class="font-bold text-primary mb-1">{{ $stats['members'] ?? 0 }}</h3>
+                <p class="text-muted-foreground text-sm mb-0">Members with valid packages</p>
             </div>
         </div>
 
         <!-- Activities -->
-        <div class="col-6 col-md-4 col-lg">
-            <div class="card h-100 border-0 shadow-sm" style="cursor: pointer;" onclick="window.location='{{ route('admin.club.activities', $club->id) }}'">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="text-muted small">Activities</span>
-                        <div class="rounded p-2" style="background-color: hsl(var(--warning) / 0.1);">
-                            <i class="bi bi-activity text-warning"></i>
-                        </div>
+        <div class="card h-full border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onclick="window.location='{{ route('admin.club.activities', $club->id) }}'">
+            <div class="card-body">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-muted-foreground text-sm">Activities</span>
+                    <div class="rounded p-2 bg-warning/10">
+                        <i class="bi bi-activity text-warning"></i>
                     </div>
-                    <h3 class="fw-bold text-warning mb-1">{{ $stats['activities'] ?? 0 }}</h3>
-                    <p class="text-muted small mb-0">Available activities</p>
                 </div>
+                <h3 class="font-bold text-warning mb-1">{{ $stats['activities'] ?? 0 }}</h3>
+                <p class="text-muted-foreground text-sm mb-0">Available activities</p>
             </div>
         </div>
 
         <!-- Packages -->
-        <div class="col-6 col-md-4 col-lg">
-            <div class="card h-100 border-0 shadow-sm" style="cursor: pointer;" onclick="window.location='{{ route('admin.club.packages', $club->id) }}'">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="text-muted small">Packages</span>
-                        <div class="rounded p-2" style="background-color: hsl(var(--success) / 0.1);">
-                            <i class="bi bi-box text-success"></i>
-                        </div>
+        <div class="card h-full border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onclick="window.location='{{ route('admin.club.packages', $club->id) }}'">
+            <div class="card-body">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-muted-foreground text-sm">Packages</span>
+                    <div class="rounded p-2 bg-success/10">
+                        <i class="bi bi-box text-success"></i>
                     </div>
-                    <h3 class="fw-bold text-success mb-1">{{ $stats['packages'] ?? 0 }}</h3>
-                    <p class="text-muted small mb-0">Available packages</p>
                 </div>
+                <h3 class="font-bold text-success mb-1">{{ $stats['packages'] ?? 0 }}</h3>
+                <p class="text-muted-foreground text-sm mb-0">Available packages</p>
             </div>
         </div>
 
         <!-- Trainers -->
-        <div class="col-6 col-md-4 col-lg">
-            <div class="card h-100 border-0 shadow-sm" style="cursor: pointer;" onclick="window.location='{{ route('admin.club.instructors', $club->id) }}'">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="text-muted small">Trainers</span>
-                        <div class="rounded p-2" style="background-color: hsl(var(--info) / 0.1);">
-                            <i class="bi bi-person-badge text-info"></i>
-                        </div>
+        <div class="card h-full border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onclick="window.location='{{ route('admin.club.instructors', $club->id) }}'">
+            <div class="card-body">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-muted-foreground text-sm">Trainers</span>
+                    <div class="rounded p-2 bg-info/10">
+                        <i class="bi bi-person-badge text-info"></i>
                     </div>
-                    <h3 class="fw-bold text-info mb-1">{{ $stats['instructors'] ?? 0 }}</h3>
-                    <p class="text-muted small mb-0">Available trainers</p>
                 </div>
+                <h3 class="font-bold text-info mb-1">{{ $stats['instructors'] ?? 0 }}</h3>
+                <p class="text-muted-foreground text-sm mb-0">Available trainers</p>
             </div>
         </div>
 
         <!-- Rating -->
-        <div class="col-6 col-md-4 col-lg">
-            <div class="card h-100 border-0 shadow-sm" style="cursor: pointer;" onclick="window.location='{{ route('admin.club.details', $club->id) }}'">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="text-muted small">Member Rating</span>
-                        <div class="rounded p-2" style="background-color: hsl(35 90% 55% / 0.1);">
-                            <i class="bi bi-star-fill" style="color: hsl(35, 90%, 55%);"></i>
-                        </div>
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <h3 class="fw-bold mb-1" style="color: hsl(35, 90%, 55%);">{{ number_format($stats['rating'] ?? 0, 1) }}</h3>
+        <div class="card h-full border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onclick="window.location='{{ route('admin.club.details', $club->id) }}'">
+            <div class="card-body">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-muted-foreground text-sm">Member Rating</span>
+                    <div class="rounded p-2" style="background-color: hsl(35 90% 55% / 0.1);">
                         <i class="bi bi-star-fill" style="color: hsl(35, 90%, 55%);"></i>
                     </div>
-                    <p class="text-muted small mb-0">Average from reviews</p>
                 </div>
+                <div class="flex items-center gap-2">
+                    <h3 class="font-bold mb-1" style="color: hsl(35, 90%, 55%);">{{ number_format($stats['rating'] ?? 0, 1) }}</h3>
+                    <i class="bi bi-star-fill" style="color: hsl(35, 90%, 55%);"></i>
+                </div>
+                <p class="text-muted-foreground text-sm mb-0">Average from reviews</p>
             </div>
         </div>
     </div>
 
     <!-- Financial Overview Chart -->
     <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white border-0 pb-0">
-            <h5 class="fw-bold mb-1">Financial Overview (Last 12 Months)</h5>
-            <p class="text-muted small">Monthly income, expenses, and profit trends</p>
+        <div class="px-6 pt-6 pb-0">
+            <h5 class="font-bold mb-1">Financial Overview (Last 12 Months)</h5>
+            <p class="text-muted-foreground text-sm">Monthly income, expenses, and profit trends</p>
         </div>
         <div class="card-body">
             <canvas id="financialChart" height="300"></canvas>
@@ -107,15 +97,15 @@
 
     <!-- Expiring Subscriptions -->
     @if(isset($expiringSubscriptions) && count($expiringSubscriptions) > 0)
-    <div class="card border-0 shadow-sm border-start border-warning border-4">
-        <div class="card-header bg-white border-0">
-            <h5 class="fw-bold mb-0">
-                <i class="bi bi-exclamation-triangle text-warning me-2"></i>
+    <div class="card border-0 shadow-sm border-l-4 border-l-warning">
+        <div class="px-6 py-4">
+            <h5 class="font-bold mb-0">
+                <i class="bi bi-exclamation-triangle text-warning mr-2"></i>
                 Expiring Subscriptions
             </h5>
         </div>
-        <div class="card-body">
-            <div class="table-responsive">
+        <div class="card-body pt-0">
+            <div class="overflow-x-auto">
                 <table class="table table-hover">
                     <thead>
                         <tr>

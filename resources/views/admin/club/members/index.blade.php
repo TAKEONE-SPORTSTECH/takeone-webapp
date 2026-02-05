@@ -184,7 +184,7 @@ if (!function_exists('getHoroscope')) {
                                          alt="{{ $profile->full_name }}"
                                          class="w-full h-full object-cover">
                                     @else
-                                    <div class="w-full h-full flex items-center justify-content-center text-white font-bold text-2xl" style="background: linear-gradient(135deg, {{ $isMale ? '#8b5cf6 0%, #7c3aed 100%' : '#d63384 0%, #a61e4d 100%' }}); display: flex; align-items: center; justify-content: center;">
+                                    <div class="w-full h-full flex items-center justify-center text-white font-bold text-2xl" style="background: linear-gradient(135deg, {{ $isMale ? '#8b5cf6 0%, #7c3aed 100%' : '#d63384 0%, #a61e4d 100%' }});">
                                         {{ strtoupper(substr($profile->full_name ?? 'M', 0, 1)) }}
                                     </div>
                                     @endif

@@ -2,12 +2,12 @@
 
 @section('club-admin-content')
 <div>
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="flex justify-between items-center mb-4">
         <div>
-            <h2 class="h3 fw-bold mb-1">Analytics</h2>
+            <h2 class="text-2xl font-bold mb-1">Analytics</h2>
             <p class="text-muted mb-0">Track your club's performance</p>
         </div>
-        <div class="d-flex gap-2">
+        <div class="flex gap-2">
             <select class="form-select" style="width: auto;">
                 <option value="7">Last 7 days</option>
                 <option value="30" selected>Last 30 days</option>
@@ -15,70 +15,62 @@
                 <option value="365">Last year</option>
             </select>
             <button class="btn btn-outline-primary">
-                <i class="bi bi-download me-2"></i>Export
+                <i class="bi bi-download mr-2"></i>Export
             </button>
         </div>
     </div>
 
     <!-- Key Metrics -->
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-lg-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <p class="text-muted small mb-1">New Members</p>
-                    <div class="d-flex align-items-center gap-2">
-                        <h4 class="fw-bold mb-0">{{ $analytics['new_members'] ?? 0 }}</h4>
-                        <span class="badge bg-success-subtle text-success">
-                            <i class="bi bi-arrow-up"></i> {{ $analytics['new_members_change'] ?? 0 }}%
-                        </span>
-                    </div>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <p class="text-muted small mb-1">New Members</p>
+                <div class="flex items-center gap-2">
+                    <h4 class="font-bold mb-0">{{ $analytics['new_members'] ?? 0 }}</h4>
+                    <span class="badge bg-success-subtle text-success">
+                        <i class="bi bi-arrow-up"></i> {{ $analytics['new_members_change'] ?? 0 }}%
+                    </span>
                 </div>
             </div>
         </div>
-        <div class="col-6 col-lg-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <p class="text-muted small mb-1">Retention Rate</p>
-                    <div class="d-flex align-items-center gap-2">
-                        <h4 class="fw-bold mb-0">{{ $analytics['retention_rate'] ?? 0 }}%</h4>
-                        <span class="badge bg-success-subtle text-success">
-                            <i class="bi bi-arrow-up"></i> {{ $analytics['retention_change'] ?? 0 }}%
-                        </span>
-                    </div>
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <p class="text-muted small mb-1">Retention Rate</p>
+                <div class="flex items-center gap-2">
+                    <h4 class="font-bold mb-0">{{ $analytics['retention_rate'] ?? 0 }}%</h4>
+                    <span class="badge bg-success-subtle text-success">
+                        <i class="bi bi-arrow-up"></i> {{ $analytics['retention_change'] ?? 0 }}%
+                    </span>
                 </div>
             </div>
         </div>
-        <div class="col-6 col-lg-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <p class="text-muted small mb-1">Avg. Revenue/Member</p>
-                    <div class="d-flex align-items-center gap-2">
-                        <h4 class="fw-bold mb-0">{{ $club->currency ?? 'BHD' }} {{ number_format($analytics['avg_revenue'] ?? 0, 2) }}</h4>
-                    </div>
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <p class="text-muted small mb-1">Avg. Revenue/Member</p>
+                <div class="flex items-center gap-2">
+                    <h4 class="font-bold mb-0">{{ $club->currency ?? 'BHD' }} {{ number_format($analytics['avg_revenue'] ?? 0, 2) }}</h4>
                 </div>
             </div>
         </div>
-        <div class="col-6 col-lg-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <p class="text-muted small mb-1">Check-ins</p>
-                    <div class="d-flex align-items-center gap-2">
-                        <h4 class="fw-bold mb-0">{{ $analytics['total_checkins'] ?? 0 }}</h4>
-                        <span class="badge bg-info-subtle text-info">
-                            <i class="bi bi-arrow-up"></i> {{ $analytics['checkins_change'] ?? 0 }}%
-                        </span>
-                    </div>
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <p class="text-muted small mb-1">Check-ins</p>
+                <div class="flex items-center gap-2">
+                    <h4 class="font-bold mb-0">{{ $analytics['total_checkins'] ?? 0 }}</h4>
+                    <span class="badge bg-info-subtle text-info">
+                        <i class="bi bi-arrow-up"></i> {{ $analytics['checkins_change'] ?? 0 }}%
+                    </span>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row g-4">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
         <!-- Membership Growth Chart -->
-        <div class="col-lg-8">
-            <div class="card border-0 shadow-sm h-100">
+        <div class="lg:col-span-8">
+            <div class="card border-0 shadow-sm h-full">
                 <div class="card-header bg-white border-0">
-                    <h5 class="fw-semibold mb-0">Membership Growth</h5>
+                    <h5 class="font-semibold mb-0">Membership Growth</h5>
                 </div>
                 <div class="card-body">
                     <canvas id="membershipChart" height="250"></canvas>
@@ -87,21 +79,21 @@
         </div>
 
         <!-- Popular Packages -->
-        <div class="col-lg-4">
-            <div class="card border-0 shadow-sm h-100">
+        <div class="lg:col-span-4">
+            <div class="card border-0 shadow-sm h-full">
                 <div class="card-header bg-white border-0">
-                    <h5 class="fw-semibold mb-0">Popular Packages</h5>
+                    <h5 class="font-semibold mb-0">Popular Packages</h5>
                 </div>
                 <div class="card-body">
                     @if(isset($popularPackages) && count($popularPackages) > 0)
                         @foreach($popularPackages as $package)
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="flex justify-between items-center mb-3">
                             <div>
-                                <p class="fw-semibold mb-0">{{ $package->name }}</p>
+                                <p class="font-semibold mb-0">{{ $package->name }}</p>
                                 <p class="text-muted small mb-0">{{ $package->subscriptions_count }} subscriptions</p>
                             </div>
-                            <div class="text-end">
-                                <p class="fw-bold text-primary mb-0">{{ $package->percentage ?? 0 }}%</p>
+                            <div class="text-right">
+                                <p class="font-bold text-primary mb-0">{{ $package->percentage ?? 0 }}%</p>
                             </div>
                         </div>
                         <div class="progress mb-3" style="height: 6px;">
@@ -118,10 +110,10 @@
         </div>
 
         <!-- Activity Breakdown -->
-        <div class="col-lg-6">
+        <div class="lg:col-span-6">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white border-0">
-                    <h5 class="fw-semibold mb-0">Activity Breakdown</h5>
+                    <h5 class="font-semibold mb-0">Activity Breakdown</h5>
                 </div>
                 <div class="card-body">
                     <canvas id="activityChart" height="200"></canvas>
@@ -130,10 +122,10 @@
         </div>
 
         <!-- Peak Hours -->
-        <div class="col-lg-6">
+        <div class="lg:col-span-6">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white border-0">
-                    <h5 class="fw-semibold mb-0">Peak Hours</h5>
+                    <h5 class="font-semibold mb-0">Peak Hours</h5>
                 </div>
                 <div class="card-body">
                     <canvas id="peakHoursChart" height="200"></canvas>

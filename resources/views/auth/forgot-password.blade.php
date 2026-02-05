@@ -4,48 +4,59 @@
 @endsection
 
 @section('content')
+<div class="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-primary/70 to-emerald-300/75">
+    <!-- Background pattern overlay -->
+    <div class="absolute inset-0 opacity-30 pointer-events-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Cdefs%3E%3Cpattern%20id%3D%22grain%22%20width%3D%22100%22%20height%3D%22100%22%20patternUnits%3D%22userSpaceOnUse%22%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%2225%22%20r%3D%221%22%20fill%3D%22rgba(255%2C255%2C255%2C0.1)%22%2F%3E%3Ccircle%20cx%3D%2275%22%20cy%3D%2275%22%20r%3D%221%22%20fill%3D%22rgba(255%2C255%2C255%2C0.1)%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2210%22%20r%3D%220.5%22%20fill%3D%22rgba(255%2C255%2C255%2C0.05)%22%2F%3E%3C%2Fpattern%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%22%20height%3D%22100%22%20fill%3D%22url(%23grain)%22%2F%3E%3C%2Fsvg%3E')]"></div>
+
+    <!-- Login box -->
+    <div class="w-[420px] max-w-[90%] relative z-10 animate-[slideIn_0.6s_ease-out]">
+        <div class="bg-white/95 backdrop-blur-xl rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.1)] border border-white/30 p-10">
+            <!-- Logo -->
+            <div class="text-center mb-4">
+                <a href="{{ url('/') }}">
+                    <img src="{{ asset('images/logo.png') }}" alt="TAKEONE" class="h-12 mx-auto">
+                </a>
+            </div>
+
+            <p class="text-center text-gray-500 text-lg mb-8 tracking-tight">Forgot your password?</p>
+
+            <form method="POST" action="{{ route('password.email') }}">
+                @csrf
+
+                <!-- Email -->
+                <div class="mb-4">
+                    <input id="email" type="email"
+                           class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white/80 shadow-inner transition-all duration-300 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 focus:outline-none @error('email') border-red-500 @enderror"
+                           name="email"
+                           value="{{ old('email') }}"
+                           placeholder="Email Address"
+                           required autocomplete="email"
+                           autofocus>
+                    @error('email')
+                        <span class="text-red-500 text-sm mt-1 block" role="alert">
+                            <strong>{{ $message }}</strong>
+                        </span>
+                    @enderror
+                </div>
+
+                <!-- Send Reset Link Button -->
+                <button type="submit"
+                        class="w-full py-3 px-8 mt-2 mb-6 text-base font-semibold text-white bg-gradient-to-br from-primary to-primary/90 rounded-xl shadow-lg shadow-primary/30 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/40 active:translate-y-0 cursor-pointer">
+                    SEND RESET LINK
+                </button>
+            </form>
+
+            <!-- Back to login link -->
+            <p class="text-center text-sm text-gray-500">
+                <a href="{{ route('login') }}" class="text-primary/80 font-medium no-underline transition-colors duration-300 hover:text-primary hover:underline">
+                    Back to Login
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+
 <style>
-    .login-page {
-        background: linear-gradient(135deg, hsl(250 60% 70%) 0%, hsl(140 30% 75%) 100%);
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .login-page::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.05)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-        opacity: 0.3;
-        pointer-events: none;
-    }
-
-    .login-box {
-        width: 420px;
-        position: relative;
-        z-index: 1;
-        animation: slideIn 0.6s ease-out;
-    }
-
-    .login-logo {
-        text-align: center;
-        margin-bottom: 1rem;
-    }
-
-    .login-logo a {
-        color: hsl(250 60% 40%);
-        font-size: 2rem;
-        font-weight: bold;
-        text-decoration: none;
-    }
-
     @keyframes slideIn {
         from {
             opacity: 0;
@@ -56,278 +67,5 @@
             transform: translateY(0);
         }
     }
-
-    .login-card-body {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(20px);
-        border-radius: 20px;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.1), 0 0 0 1px rgba(255,255,255,0.2);
-        border: 1px solid rgba(255,255,255,0.3);
-        padding: 2.5rem;
-    }
-
-    .login-box-msg {
-        margin: 0 0 2rem 0;
-        padding: 0;
-        color: hsl(215 15% 50%);
-        text-align: center;
-        font-size: 1.1rem;
-        font-weight: 400;
-        letter-spacing: -0.025em;
-    }
-
-    .input-group {
-        margin-bottom: 1.5rem;
-        position: relative;
-    }
-
-    .form-control {
-        border: 2px solid rgba(250, 60, 70, 0.2);
-        border-radius: 12px;
-        padding: 0.75rem 1rem;
-        font-size: 1rem;
-        background: rgba(255,255,255,0.8);
-        transition: all 0.3s ease;
-        box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    .form-control:focus {
-        border-color: hsl(250 60% 70%);
-        background: #fff;
-        box-shadow: 0 0 0 3px rgba(250, 60, 70, 0.1), inset 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    .btn-primary {
-        background: linear-gradient(135deg, hsl(250 60% 70%), hsl(250 60% 65%));
-        border: none;
-        border-radius: 12px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        font-size: 1rem;
-        color: #fff;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(250, 60, 70, 0.3);
-        width: 100%;
-        margin-top: 0.5rem;
-    }
-
-    .btn-primary:hover {
-        background: linear-gradient(135deg, hsl(250 60% 75%), hsl(250 60% 70%));
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(250, 60, 70, 0.4);
-    }
-
-    .btn-primary:active {
-        transform: translateY(0);
-    }
-
-    .btn-register {
-        background: #fff;
-        border: 2px solid hsl(250 60% 70%);
-        border-radius: 12px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        font-size: 1rem;
-        color: hsl(250 60% 70%);
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(250, 60, 70, 0.3);
-        width: 100%;
-        margin-top: 0.5rem;
-    }
-
-    .btn-register:hover {
-        background: hsl(250 60% 70%);
-        color: #fff;
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(250, 60, 70, 0.4);
-    }
-
-    .btn-register:active {
-        transform: translateY(0);
-    }
-
-    .form-check-input {
-        border-color: rgba(250, 60, 70, 0.3);
-        background-color: rgba(255,255,255,0.8);
-    }
-
-    .form-check-input:checked {
-        background-color: hsl(250 60% 70%);
-        border-color: hsl(250 60% 70%);
-    }
-
-    .form-check-input:focus {
-        border-color: hsl(250 60% 70%);
-        box-shadow: 0 0 0 0.25rem rgba(250, 60, 70, 0.25);
-    }
-
-    .form-check-label {
-        color: hsl(215 25% 50%);
-        font-size: 0.9rem;
-    }
-
-    .text-muted {
-        color: hsl(215 15% 60%) !important;
-        font-size: 0.9rem;
-    }
-
-    .text-muted a {
-        color: hsl(250 60% 60%);
-        text-decoration: none;
-        font-weight: 500;
-        transition: color 0.3s ease;
-    }
-
-    .text-muted a:hover {
-        color: hsl(250 60% 70%);
-        text-decoration: underline;
-    }
-
-    .social-auth-links {
-        margin-top: 1.5rem;
-    }
-
-    .social-auth-links p {
-        margin: 0.5rem 0;
-        color: hsl(215 15% 60%);
-        font-weight: 500;
-    }
-
-    .social-auth-links .btn {
-        margin-bottom: 0.5rem;
-        border-radius: 12px;
-        font-weight: 500;
-        transition: all 0.3s ease;
-    }
-
-    .social-auth-links .btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0,0,0,0.2);
-    }
-
-    .social-auth-links .btn-primary {
-        background: linear-gradient(135deg, #1877f2, #42a5f5);
-        border: none;
-    }
-
-    .social-auth-links .btn-danger {
-        background: linear-gradient(135deg, #db4437, #ff7043);
-        border: none;
-    }
-
-    .flatpickr-input {
-        width: 100%;
-        padding: 0.75rem 1rem;
-        font-size: 1rem;
-        border: 2px solid rgba(250, 60, 70, 0.2);
-        border-radius: 12px;
-        background: rgba(255,255,255,0.8);
-        transition: all 0.3s ease;
-        box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    .flatpickr-input:focus {
-        border-color: hsl(250 60% 70%);
-        background: #fff;
-        box-shadow: 0 0 0 3px rgba(250, 60, 70, 0.1), inset 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    .form-switch .form-check-input {
-        width: 3em;
-        height: 1.5em;
-        border-radius: 1em;
-        background-color: rgba(250, 60, 70, 0.2);
-        border: none;
-        transition: all 0.3s ease;
-    }
-
-    .form-switch .form-check-input:checked {
-        background-color: hsl(250 60% 70%);
-    }
-
-    .form-switch .form-check-input:focus {
-        box-shadow: 0 0 0 3px rgba(250, 60, 70, 0.2);
-    }
-
-    @media (max-width: 480px) {
-        .login-box {
-            width: 90%;
-            margin: 1rem;
-        }
-
-        .login-card-body {
-            padding: 2rem;
-        }
-
-        .login-box-msg {
-            font-size: 1.3rem;
-        }
-    }
 </style>
-
-<!-- Flag Icons CSS -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@6.6.6/css/flag-icons.min.css">
-
-<!-- Select2 CSS (for nationality dropdown) -->
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-
-<!-- Flatpickr CSS -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-
-<div class="login-page">
-    <div class="login-box">
-        <div class="card">
-            <div class="card-body login-card-body">
-                <div class="login-logo">
-                    <a href="{{ url('/') }}">
-                        <img src="{{ asset('images/logo.png') }}" alt="TAKEONE" height="50">
-                    </a>
-                </div>
-                <!-- /.login-logo -->
-                <p class="login-box-msg">Forgot your password?</p>
-
-                <form method="POST" action="{{ route('password.email') }}">
-                    @csrf
-
-                    <div class="mb-3">
-                        <input id="email" type="email"
-                               class="form-control @error('email') is-invalid @enderror"
-                               name="email"
-                               value="{{ old('email') }}"
-                               placeholder="Email Address"
-                               required autocomplete="email"
-                               autofocus>
-                        @error('email')
-                            <span class="invalid-feedback" role="alert">
-                                <strong>{{ $message }}</strong>
-                            </span>
-                        @enderror
-                    </div>
-
-                    <button type="submit" class="btn btn-primary w-100 mb-4">SEND RESET LINK</button>
-                </form>
-
-                <p class="mb-1 text-center">
-                    <a href="{{ route('login') }}">Back to Login</a>
-                </p>
-            </div>
-            <!-- /.login-card-body -->
-        </div>
-    </div>
-    <!-- /.login-box -->
-</div>
-
-<!-- jQuery (required for Select2) -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-<!-- Select2 JS -->
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
-<!-- Flatpickr JS -->
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-
-
-
-@stack('styles')
-@stack('scripts')
 @endsection

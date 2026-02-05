@@ -4,14 +4,14 @@
     $isEdit = $mode === 'edit' && $club;
 @endphp
 
-<div class="container-fluid px-0">
-    <h5 class="fw-bold mb-3">Basic Information</h5>
+<div class="px-0">
+    <h5 class="font-bold mb-3">Basic Information</h5>
     <p class="text-muted mb-4">Core details about the club</p>
 
     <!-- Club Name -->
     <div class="mb-4">
         <label for="club_name" class="form-label">
-            Club Name <span class="text-danger">*</span>
+            Club Name <span class="text-destructive">*</span>
         </label>
         <input type="text"
                class="form-control"
@@ -27,46 +27,44 @@
     <!-- Club Owner -->
     <div class="mb-4">
         <label class="form-label">
-            Club Owner <span class="text-danger">*</span>
+            Club Owner <span class="text-destructive">*</span>
         </label>
         <input type="hidden" id="owner_user_id" name="owner_user_id" value="{{ $club->owner_user_id ?? old('owner_user_id') }}" required>
 
-        <div id="ownerDisplay" class="border rounded p-3 mb-2" style="background-color: hsl(var(--muted) / 0.3);">
+        <div id="ownerDisplay" class="border border-border rounded-lg p-3 mb-2 bg-muted/30">
             @if($isEdit && $club->owner)
-                <div class="d-flex align-items-center gap-3">
+                <div class="flex items-center gap-3">
                     @if($club->owner->profile_picture)
                         <img src="{{ asset('storage/' . $club->owner->profile_picture) }}"
                              alt="{{ $club->owner->full_name }}"
-                             class="rounded-circle"
-                             style="width: 50px; height: 50px; object-fit: cover;">
+                             class="rounded-full w-12 h-12 object-cover">
                     @else
-                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
-                             style="width: 50px; height: 50px; font-size: 1.25rem; font-weight: 600;">
+                        <div class="rounded-full bg-primary text-white flex items-center justify-center w-12 h-12 text-xl font-semibold">
                             {{ substr($club->owner->full_name, 0, 1) }}
                         </div>
                     @endif
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">{{ $club->owner->full_name }}</div>
-                        <div class="small text-muted">
-                            <i class="bi bi-envelope me-1"></i>{{ $club->owner->email }}
+                    <div class="flex-1">
+                        <div class="font-semibold">{{ $club->owner->full_name }}</div>
+                        <div class="text-sm text-muted-foreground">
+                            <i class="bi bi-envelope mr-1"></i>{{ $club->owner->email }}
                             @if($club->owner->mobile)
-                                <span class="ms-2"><i class="bi bi-phone me-1"></i>{{ $club->owner->mobile_formatted }}</span>
+                                <span class="ml-2"><i class="bi bi-phone mr-1"></i>{{ $club->owner->mobile_formatted }}</span>
                             @endif
                         </div>
                     </div>
                 </div>
             @else
-                <div class="text-center text-muted py-3" id="noOwnerSelected">
-                    <i class="bi bi-person-plus fs-3 mb-2"></i>
+                <div class="text-center text-muted-foreground py-3" id="noOwnerSelected">
+                    <i class="bi bi-person-plus text-3xl mb-2 block"></i>
                     <p class="mb-0">No owner selected</p>
                 </div>
             @endif
         </div>
 
         <button type="button" class="btn btn-outline-primary btn-sm" onclick="showUserPicker()">
-            <i class="bi bi-search me-2"></i>Select Club Owner
+            <i class="bi bi-search mr-2"></i>Select Club Owner
         </button>
-        <div class="invalid-feedback d-block" id="ownerError" style="display: none !important;">
+        <div class="invalid-feedback block" id="ownerError" style="display: none !important;">
             Please select a club owner.
         </div>
     </div>
@@ -74,15 +72,15 @@
     <!-- Internal User Picker Overlay (NOT a separate modal) -->
     <div id="userPickerOverlay" class="user-picker-overlay" style="display: none;">
         <div class="user-picker-panel">
-            <div class="user-picker-header">
+            <div class="user-picker-header flex justify-between items-start p-4 border-b border-border">
                 <div>
-                    <h5 class="fw-bold mb-1">Select Club Owner</h5>
-                    <p class="text-muted small mb-0">Search and select a user to be the club owner</p>
+                    <h5 class="font-bold mb-1">Select Club Owner</h5>
+                    <p class="text-muted-foreground text-sm mb-0">Search and select a user to be the club owner</p>
                 </div>
                 <button type="button" class="btn-close" onclick="hideUserPicker()"></button>
             </div>
 
-            <div class="user-picker-body">
+            <div class="user-picker-body p-4">
                 <div class="mb-3">
                     <div class="input-group">
                         <span class="input-group-text bg-white">
@@ -98,17 +96,17 @@
 
                 <div id="userPickerLoadingInternal" class="text-center py-5" style="display: none;">
                     <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
+                        <span class="sr-only">Loading...</span>
                     </div>
-                    <p class="text-muted mt-2">Searching users...</p>
+                    <p class="text-muted-foreground mt-2">Searching users...</p>
                 </div>
 
                 <div id="userPickerResultsInternal" style="max-height: 400px; overflow-y: auto;"></div>
 
                 <div id="userPickerNoResultsInternal" class="text-center py-5" style="display: none;">
-                    <i class="bi bi-person-x fs-1 text-muted mb-3"></i>
-                    <p class="text-muted mb-0">No users found</p>
-                    <small class="text-muted">Try a different search term</small>
+                    <i class="bi bi-person-x text-4xl text-muted-foreground mb-3 block"></i>
+                    <p class="text-muted-foreground mb-0">No users found</p>
+                    <small class="text-muted-foreground">Try a different search term</small>
                 </div>
             </div>
         </div>
@@ -125,7 +123,7 @@
                name="established_date"
                value="{{ $club->established_date ?? old('established_date') }}"
                max="{{ date('Y-m-d') }}">
-        <small class="text-muted">When was the club founded?</small>
+        <small class="text-muted-foreground">When was the club founded?</small>
     </div>
 
     <!-- Slogan -->
@@ -140,7 +138,7 @@
                value="{{ $club->slogan ?? old('slogan') }}"
                placeholder="e.g., Excellence in Martial Arts"
                maxlength="100">
-        <small class="text-muted">A short, memorable tagline (max 100 characters)</small>
+        <small class="text-muted-foreground">A short, memorable tagline (max 100 characters)</small>
     </div>
 
     <!-- Description -->
@@ -154,14 +152,14 @@
                   rows="4"
                   placeholder="Describe your club, its mission, and what makes it unique..."
                   maxlength="1000">{{ $club->description ?? old('description') }}</textarea>
-        <small class="text-muted">
+        <small class="text-muted-foreground">
             <span id="descriptionCount">0</span>/1000 characters
         </small>
     </div>
 
     <!-- Commercial Registration -->
-    <div class="row mb-4">
-        <div class="col-md-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
             <label for="commercial_reg_number" class="form-label">
                 Commercial Registration Number
             </label>
@@ -171,9 +169,9 @@
                    name="commercial_reg_number"
                    value="{{ $club->commercial_reg_number ?? old('commercial_reg_number') }}"
                    placeholder="e.g., CR-123456">
-            <small class="text-muted">Official business registration number</small>
+            <small class="text-muted-foreground">Official business registration number</small>
         </div>
-        <div class="col-md-6">
+        <div>
             <label for="commercial_reg_file" class="form-label">
                 Registration Document
             </label>
@@ -182,13 +180,13 @@
                    id="commercial_reg_file"
                    name="commercial_reg_file"
                    accept=".pdf,.jpg,.jpeg,.png">
-            <small class="text-muted">Upload registration certificate (optional)</small>
+            <small class="text-muted-foreground">Upload registration certificate (optional)</small>
         </div>
     </div>
 
     <!-- VAT Information -->
-    <div class="row mb-4">
-        <div class="col-md-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
             <label for="vat_reg_number" class="form-label">
                 VAT Registration Number
             </label>
@@ -198,9 +196,9 @@
                    name="vat_reg_number"
                    value="{{ $club->vat_reg_number ?? old('vat_reg_number') }}"
                    placeholder="e.g., VAT-123456789">
-            <small class="text-muted">Tax registration number (if applicable)</small>
+            <small class="text-muted-foreground">Tax registration number (if applicable)</small>
         </div>
-        <div class="col-md-6">
+        <div>
             <label for="vat_percentage" class="form-label">
                 VAT Percentage (%)
             </label>
@@ -213,7 +211,7 @@
                    max="100"
                    step="0.01"
                    placeholder="e.g., 5.00">
-            <small class="text-muted">Default VAT rate for invoices</small>
+            <small class="text-muted-foreground">Default VAT rate for invoices</small>
         </div>
     </div>
 
@@ -227,7 +225,7 @@
                id="vat_certificate_file"
                name="vat_certificate_file"
                accept=".pdf,.jpg,.jpeg,.png">
-        <small class="text-muted">Upload VAT registration certificate (optional)</small>
+        <small class="text-muted-foreground">Upload VAT registration certificate (optional)</small>
     </div>
 </div>
 

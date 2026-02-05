@@ -19,12 +19,12 @@
 <div class="card shadow-sm border-0">
     <div class="card-body p-4">
         <!-- Header with Filter -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="flex justify-between items-center mb-4">
             <div>
-                <h5 class="fw-bold mb-1"><i class="bi bi-diagram-3 me-2"></i>Club Affiliations & Skills Journey</h5>
-                <p class="text-muted small mb-0">Complete history of club memberships, skills acquired, and instructors</p>
+                <h5 class="font-bold mb-1"><i class="bi bi-diagram-3 mr-2"></i>Club Affiliations & Skills Journey</h5>
+                <p class="text-muted-foreground text-sm mb-0">Complete history of club memberships, skills acquired, and instructors</p>
             </div>
-            <div class="d-flex gap-2">
+            <div class="flex gap-2">
                 <select class="form-select form-select-sm" id="skillFilter" style="width: 200px;">
                     <option value="all">All Skills</option>
                     @foreach($allSkills ?? [] as $skill)
@@ -39,39 +39,39 @@
 
         @if($clubAffiliations->count() > 0)
             <!-- Summary Stats -->
-            <div class="row g-3 mb-4">
-                <div class="col-md-3">
-                    <div class="card shadow-sm h-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+            <div class="grid grid-cols-12 gap-3 mb-4">
+                <div class="col-span-12 md:col-span-3">
+                    <div class="card shadow-sm h-full" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
                         <div class="card-body text-center text-white p-3">
-                            <i class="bi bi-building display-5 mb-2"></i>
-                            <h3 class="fw-bold mb-1">{{ $totalAffiliations }}</h3>
+                            <i class="bi bi-building text-5xl mb-2"></i>
+                            <h3 class="font-bold mb-1">{{ $totalAffiliations }}</h3>
                             <small class="opacity-75">Total Clubs</small>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <div class="card shadow-sm h-100" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border: none;">
+                <div class="col-span-12 md:col-span-3">
+                    <div class="card shadow-sm h-full" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border: none;">
                         <div class="card-body text-center text-white p-3">
-                            <i class="bi bi-star-fill display-5 mb-2"></i>
-                            <h3 class="fw-bold mb-1">{{ $distinctSkills }}</h3>
+                            <i class="bi bi-star-fill text-5xl mb-2"></i>
+                            <h3 class="font-bold mb-1">{{ $distinctSkills }}</h3>
                             <small class="opacity-75">Unique Skills</small>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <div class="card shadow-sm h-100" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border: none;">
+                <div class="col-span-12 md:col-span-3">
+                    <div class="card shadow-sm h-full" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border: none;">
                         <div class="card-body text-center text-white p-3">
-                            <i class="bi bi-calendar-check display-5 mb-2"></i>
-                            <h3 class="fw-bold mb-1">{{ floor($totalMembershipDuration / 12) }}y {{ $totalMembershipDuration % 12 }}m</h3>
+                            <i class="bi bi-calendar-check text-5xl mb-2"></i>
+                            <h3 class="font-bold mb-1">{{ floor($totalMembershipDuration / 12) }}y {{ $totalMembershipDuration % 12 }}m</h3>
                             <small class="opacity-75">Total Training</small>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <div class="card shadow-sm h-100" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); border: none;">
+                <div class="col-span-12 md:col-span-3">
+                    <div class="card shadow-sm h-full" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); border: none;">
                         <div class="card-body text-center text-white p-3">
-                            <i class="bi bi-people-fill display-5 mb-2"></i>
-                            <h3 class="fw-bold mb-1">{{ $totalInstructors ?? 0 }}</h3>
+                            <i class="bi bi-people-fill text-5xl mb-2"></i>
+                            <h3 class="font-bold mb-1">{{ $totalInstructors ?? 0 }}</h3>
                             <small class="opacity-75">Instructors</small>
                         </div>
                     </div>
@@ -79,12 +79,12 @@
             </div>
 
             <!-- Timeline -->
-            <div class="row">
-                <div class="col-12">
+            <div class="grid grid-cols-12 gap-4">
+                <div class="col-span-12">
                     <div class="card shadow-sm border-0">
                         <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
                             <h6 class="card-title mb-0 text-white">
-                                <i class="bi bi-clock-history me-2"></i>Membership Timeline
+                                <i class="bi bi-clock-history mr-2"></i>Membership Timeline
                             </h6>
                         </div>
                         <div class="card-body p-4" style="max-height: 800px; overflow-y: auto;">
@@ -108,37 +108,37 @@
                                         <div class="affiliation-card-enhanced card border-0 shadow-sm">
                                             <!-- Card Header with Gradient -->
                                             <div class="card-header border-0 p-3" style="background: linear-gradient(135deg, {{ $index % 4 == 0 ? '#667eea 0%, #764ba2' : ($index % 4 == 1 ? '#f093fb 0%, #f5576c' : ($index % 4 == 2 ? '#4facfe 0%, #00f2fe' : '#fa709a 0%, #fee140')) }} 100%);">
-                                                <div class="d-flex align-items-center">
+                                                <div class="flex items-center">
                                                     @if($affiliation->logo)
-                                                        <img src="{{ asset('storage/' . $affiliation->logo) }}" alt="{{ $affiliation->club_name }}" class="rounded-circle me-3" style="width: 50px; height: 50px; object-fit: cover; border: 3px solid white;">
+                                                        <img src="{{ asset('storage/' . $affiliation->logo) }}" alt="{{ $affiliation->club_name }}" class="rounded-full mr-3" style="width: 50px; height: 50px; object-fit: cover; border: 3px solid white;">
                                                     @else
-                                                        <div class="rounded-circle bg-white d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                                                        <div class="rounded-full bg-white flex items-center justify-center mr-3" style="width: 50px; height: 50px;">
                                                             <i class="bi bi-building" style="font-size: 1.5rem; color: #667eea;"></i>
                                                         </div>
                                                     @endif
-                                                    <div class="flex-grow-1 text-white">
-                                                        <h5 class="mb-1 fw-bold">{{ $affiliation->club_name }}</h5>
-                                                        <div class="d-flex gap-3 flex-wrap">
+                                                    <div class="grow text-white">
+                                                        <h5 class="mb-1 font-bold">{{ $affiliation->club_name }}</h5>
+                                                        <div class="flex gap-3 flex-wrap">
                                                             @if($affiliation->start_date)
                                                                 <small class="opacity-90">
-                                                                    <i class="bi bi-calendar-event me-1"></i>{{ $affiliation->start_date->format('M Y') }} - {{ $isOngoing ? 'Present' : ($affiliation->end_date ? $affiliation->end_date->format('M Y') : 'N/A') }}
+                                                                    <i class="bi bi-calendar-event mr-1"></i>{{ $affiliation->start_date->format('M Y') }} - {{ $isOngoing ? 'Present' : ($affiliation->end_date ? $affiliation->end_date->format('M Y') : 'N/A') }}
                                                                 </small>
                                                             @endif
                                                             @if($affiliation->formatted_duration)
                                                                 <small class="opacity-90">
-                                                                    <i class="bi bi-hourglass-split me-1"></i>{{ $affiliation->formatted_duration }}
+                                                                    <i class="bi bi-hourglass-split mr-1"></i>{{ $affiliation->formatted_duration }}
                                                                 </small>
                                                             @endif
                                                             @if($ageAtStart)
                                                                 <small class="opacity-90">
-                                                                    <i class="bi bi-person me-1"></i>Age: {{ $ageAtStart }}{{ $ageAtEnd && $ageAtEnd != $ageAtStart ? " to $ageAtEnd" : '' }}
+                                                                    <i class="bi bi-person mr-1"></i>Age: {{ $ageAtStart }}{{ $ageAtEnd && $ageAtEnd != $ageAtStart ? " to $ageAtEnd" : '' }}
                                                                 </small>
                                                             @endif
                                                         </div>
                                                     </div>
                                                     @if($isOngoing)
                                                         <span class="badge bg-success">
-                                                            <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>Active
+                                                            <i class="bi bi-circle-fill mr-1" style="font-size: 0.5rem;"></i>Active
                                                         </span>
                                                     @endif
                                                 </div>
@@ -148,18 +148,18 @@
                                             <div class="card-body p-3">
                                                 @if($affiliation->location)
                                                     <div class="mb-3">
-                                                        <i class="bi bi-geo-alt text-primary me-2"></i>
-                                                        <span class="text-muted">{{ $affiliation->location }}</span>
+                                                        <i class="bi bi-geo-alt text-primary mr-2"></i>
+                                                        <span class="text-muted-foreground">{{ $affiliation->location }}</span>
                                                     </div>
                                                 @endif
 
                                                 <!-- Skills Acquired as Badges -->
                                                 @if($affiliationSkills->count() > 0)
                                                     <div class="mb-3">
-                                                        <h6 class="fw-bold mb-2">
-                                                            <i class="bi bi-star-fill me-2 text-warning"></i>Skills Acquired ({{ $affiliationSkills->count() }})
+                                                        <h6 class="font-bold mb-2">
+                                                            <i class="bi bi-star-fill mr-2 text-warning"></i>Skills Acquired ({{ $affiliationSkills->count() }})
                                                         </h6>
-                                                        <div class="d-flex gap-2 flex-wrap">
+                                                        <div class="flex gap-2 flex-wrap">
                                                             @foreach($affiliationSkills as $skill)
                                                                 <span class="badge skill-badge bg-{{ $skill->proficiency_level == 'expert' ? 'danger' : ($skill->proficiency_level == 'advanced' ? 'warning' : ($skill->proficiency_level == 'intermediate' ? 'info' : 'secondary')) }}"
                                                                       data-bs-toggle="tooltip"
@@ -170,8 +170,8 @@
                                                                              Duration: {{ $skill->formatted_duration }}<br>
                                                                              @if($skill->instructor)Instructor: {{ $skill->instructor->user->full_name ?? 'Unknown' }}<br>@endif
                                                                              @if($skill->start_date)Started: {{ $skill->start_date->format('M Y') }}@endif">
-                                                                    <i class="bi bi-star-fill me-1"></i>{{ $skill->skill_name }}
-                                                                    <span class="badge bg-white text-dark ms-1" style="font-size: 0.65rem;">{{ ucfirst($skill->proficiency_level) }}</span>
+                                                                    <i class="bi bi-star-fill mr-1"></i>{{ $skill->skill_name }}
+                                                                    <span class="badge bg-white text-dark ml-1" style="font-size: 0.65rem;">{{ ucfirst($skill->proficiency_level) }}</span>
                                                                 </span>
                                                             @endforeach
                                                         </div>
@@ -181,16 +181,16 @@
                                                 <!-- Training Packages -->
                                                 @if($affiliation->subscriptions && $affiliation->subscriptions->count() > 0)
                                                     <div class="mb-3">
-                                                        <h6 class="fw-bold mb-2">
-                                                            <i class="bi bi-box-seam me-2 text-primary"></i>Training Packages ({{ $affiliation->subscriptions->count() }})
+                                                        <h6 class="font-bold mb-2">
+                                                            <i class="bi bi-box-seam mr-2 text-primary"></i>Training Packages ({{ $affiliation->subscriptions->count() }})
                                                         </h6>
-                                                        <div class="d-flex gap-2 flex-wrap">
+                                                        <div class="flex gap-2 flex-wrap">
                                                             @foreach($affiliation->subscriptions as $subIndex => $subscription)
                                                                 @if($subscription->package)
                                                                     <button type="button" class="btn btn-sm btn-outline-primary package-card-btn"
                                                                             data-bs-toggle="modal"
                                                                             data-bs-target="#packageModal_{{ $affiliation->id }}_{{ $subscription->id }}">
-                                                                        <i class="bi bi-box me-1"></i>{{ $subscription->package->name }}
+                                                                        <i class="bi bi-box mr-1"></i>{{ $subscription->package->name }}
                                                                     </button>
                                                                 @endif
                                                             @endforeach
@@ -204,21 +204,21 @@
                                                 @endphp
                                                 @if($instructors->count() > 0)
                                                     <div class="mb-2">
-                                                        <h6 class="fw-bold mb-2">
-                                                            <i class="bi bi-people-fill me-2 text-success"></i>Instructors ({{ $instructors->count() }})
+                                                        <h6 class="font-bold mb-2">
+                                                            <i class="bi bi-people-fill mr-2 text-success"></i>Instructors ({{ $instructors->count() }})
                                                         </h6>
-                                                        <div class="d-flex gap-2 flex-wrap">
+                                                        <div class="flex gap-2 flex-wrap">
                                                             @foreach($instructors as $instructor)
                                                                 <div class="instructor-badge" role="button"
                                                                      data-bs-toggle="modal"
                                                                      data-bs-target="#instructorModal_{{ $instructor->id }}">
-                                                                    <div class="d-flex align-items-center gap-2 p-2 bg-light rounded">
-                                                                        <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                                                                    <div class="flex items-center gap-2 p-2 bg-muted rounded">
+                                                                        <div class="rounded-full bg-success text-white flex items-center justify-center" style="width: 32px; height: 32px; font-size: 0.8rem;">
                                                                             {{ strtoupper(substr($instructor->user->full_name ?? 'I', 0, 1)) }}
                                                                         </div>
                                                                         <div>
-                                                                            <div class="fw-semibold small">{{ $instructor->user->full_name ?? 'Unknown' }}</div>
-                                                                            <div class="text-muted" style="font-size: 0.7rem;">{{ $instructor->role ?? 'Instructor' }}</div>
+                                                                            <div class="font-semibold text-sm">{{ $instructor->user->full_name ?? 'Unknown' }}</div>
+                                                                            <div class="text-muted-foreground" style="font-size: 0.7rem;">{{ $instructor->role ?? 'Instructor' }}</div>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -248,7 +248,7 @@
                                         <div class="modal-content">
                                             <div class="modal-header" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
                                                 <h5 class="modal-title text-white">
-                                                    <i class="bi bi-person-badge me-2"></i>Instructor Profile
+                                                    <i class="bi bi-person-badge mr-2"></i>Instructor Profile
                                                 </h5>
                                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                                             </div>
@@ -259,10 +259,10 @@
                                                         @if($instructor->user->profile_picture)
                                                             <img src="{{ asset('storage/' . $instructor->user->profile_picture) }}"
                                                                  alt="{{ $instructor->user->full_name }}"
-                                                                 class="rounded-circle"
+                                                                 class="rounded-full"
                                                                  style="width: 100px; height: 100px; object-fit: cover; border: 4px solid #11998e;">
                                                         @else
-                                                            <div class="rounded-circle mx-auto d-flex align-items-center justify-content-center text-white"
+                                                            <div class="rounded-full mx-auto flex items-center justify-center text-white"
                                                                  style="width: 100px; height: 100px; font-size: 2.5rem; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
                                                                 {{ strtoupper(substr($instructor->user->full_name ?? 'I', 0, 1)) }}
                                                             </div>
@@ -270,8 +270,8 @@
                                                     </div>
 
                                                     <!-- Name & Role -->
-                                                    <h5 class="fw-bold mb-1">{{ $instructor->user->full_name ?? 'Unknown Instructor' }}</h5>
-                                                    <p class="text-muted mb-2">{{ $instructor->role ?? 'Instructor' }}</p>
+                                                    <h5 class="font-bold mb-1">{{ $instructor->user->full_name ?? 'Unknown Instructor' }}</h5>
+                                                    <p class="text-muted-foreground mb-2">{{ $instructor->role ?? 'Instructor' }}</p>
 
                                                     <!-- Average Rating -->
                                                     @php
@@ -279,37 +279,37 @@
                                                         $reviewCount = $instructor->reviews()->count();
                                                     @endphp
                                                     <div class="mb-3">
-                                                        <div class="d-flex justify-content-center align-items-center gap-2">
+                                                        <div class="flex justify-center items-center gap-2">
                                                             <div class="stars-display">
                                                                 @for($i = 1; $i <= 5; $i++)
                                                                     <i class="bi bi-star{{ $i <= round($avgRating) ? '-fill' : '' }} text-warning"></i>
                                                                 @endfor
                                                             </div>
-                                                            <span class="text-muted small">({{ number_format($avgRating, 1) }} / {{ $reviewCount }} {{ $reviewCount == 1 ? 'review' : 'reviews' }})</span>
+                                                            <span class="text-muted-foreground text-sm">({{ number_format($avgRating, 1) }} / {{ $reviewCount }} {{ $reviewCount == 1 ? 'review' : 'reviews' }})</span>
                                                         </div>
                                                     </div>
                                                 </div>
 
                                                 <!-- Quick Stats -->
-                                                <div class="row g-2 mb-3">
+                                                <div class="grid grid-cols-12 gap-2 mb-3">
                                                     @php
                                                         $instructorSkills = \App\Models\SkillAcquisition::where('instructor_id', $instructor->id)->get();
                                                         $studentsCount = $instructorSkills->pluck('clubAffiliation.member_id')->unique()->count();
                                                         $skillsTaught = $instructorSkills->pluck('skill_name')->unique();
                                                     @endphp
-                                                    <div class="col-6">
-                                                        <div class="card bg-light border-0">
+                                                    <div class="col-span-6">
+                                                        <div class="card bg-muted border-0">
                                                             <div class="card-body p-2">
-                                                                <div class="h4 mb-0 text-primary">{{ $studentsCount }}</div>
-                                                                <small class="text-muted">Students</small>
+                                                                <div class="text-2xl mb-0 text-primary">{{ $studentsCount }}</div>
+                                                                <small class="text-muted-foreground">Students</small>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div class="col-6">
-                                                        <div class="card bg-light border-0">
+                                                    <div class="col-span-6">
+                                                        <div class="card bg-muted border-0">
                                                             <div class="card-body p-2">
-                                                                <div class="h4 mb-0 text-success">{{ $skillsTaught->count() }}</div>
-                                                                <small class="text-muted">Skills</small>
+                                                                <div class="text-2xl mb-0 text-success">{{ $skillsTaught->count() }}</div>
+                                                                <small class="text-muted-foreground">Skills</small>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -317,9 +317,9 @@
 
                                                 <!-- Skills Taught -->
                                                 @if($skillsTaught->count() > 0)
-                                                    <div class="mb-3 text-start">
-                                                        <label class="text-muted small fw-semibold mb-2">Specializes In:</label>
-                                                        <div class="d-flex gap-1 flex-wrap">
+                                                    <div class="mb-3 text-left">
+                                                        <label class="text-muted-foreground text-sm font-semibold mb-2">Specializes In:</label>
+                                                        <div class="flex gap-1 flex-wrap">
                                                             @foreach($skillsTaught as $skill)
                                                                 <span class="badge bg-success">{{ $skill }}</span>
                                                             @endforeach
@@ -329,25 +329,25 @@
 
                                                 <!-- Contact Info -->
                                                 @if($instructor->user->email)
-                                                    <div class="mb-2 text-start">
-                                                        <small class="text-muted">
-                                                            <i class="bi bi-envelope me-1"></i>{{ $instructor->user->email }}
+                                                    <div class="mb-2 text-left">
+                                                        <small class="text-muted-foreground">
+                                                            <i class="bi bi-envelope mr-1"></i>{{ $instructor->user->email }}
                                                         </small>
                                                     </div>
                                                 @endif
 
                                                 @if($instructor->user->mobile)
-                                                    <div class="mb-3 text-start">
-                                                        <small class="text-muted">
-                                                            <i class="bi bi-phone me-1"></i>{{ $instructor->user->mobile }}
+                                                    <div class="mb-3 text-left">
+                                                        <small class="text-muted-foreground">
+                                                            <i class="bi bi-phone mr-1"></i>{{ $instructor->user->mobile }}
                                                         </small>
                                                     </div>
                                                 @endif
 
                                                 <!-- Reviews Section -->
                                                 <div class="mt-4">
-                                                    <h6 class="fw-bold mb-3">
-                                                        <i class="bi bi-chat-left-text me-2"></i>Reviews
+                                                    <h6 class="font-bold mb-3">
+                                                        <i class="bi bi-chat-left-text mr-2"></i>Reviews
                                                     </h6>
 
                                                     <!-- Add/Edit Review Form -->
@@ -355,12 +355,12 @@
                                                         $userReview = $instructor->reviews()->where('reviewer_user_id', auth()->id())->first();
                                                     @endphp
 
-                                                    <div class="card bg-light mb-3" id="reviewForm_{{ $instructor->id }}">
+                                                    <div class="card bg-muted mb-3" id="reviewForm_{{ $instructor->id }}">
                                                         <div class="card-body">
                                                             <form class="instructor-review-form" data-instructor-id="{{ $instructor->id }}" data-review-id="{{ $userReview->id ?? '' }}">
                                                                 @csrf
                                                                 <div class="mb-3">
-                                                                    <label class="form-label small fw-semibold">Your Rating</label>
+                                                                    <label class="form-label text-sm font-semibold">Your Rating</label>
                                                                     <div class="star-rating" data-rating="{{ $userReview->rating ?? 0 }}">
                                                                         @for($i = 1; $i <= 5; $i++)
                                                                             <i class="bi bi-star{{ $userReview && $i <= $userReview->rating ? '-fill' : '' }} star-input" data-value="{{ $i }}"></i>
@@ -369,11 +369,11 @@
                                                                     <input type="hidden" name="rating" value="{{ $userReview->rating ?? 0 }}" required>
                                                                 </div>
                                                                 <div class="mb-3">
-                                                                    <label class="form-label small fw-semibold">Your Review</label>
+                                                                    <label class="form-label text-sm font-semibold">Your Review</label>
                                                                     <textarea name="comment" class="form-control form-control-sm" rows="3" placeholder="Share your experience...">{{ $userReview->comment ?? '' }}</textarea>
                                                                 </div>
-                                                                <button type="submit" class="btn btn-success btn-sm w-100">
-                                                                    <i class="bi bi-{{ $userReview ? 'pencil' : 'plus-circle' }} me-1"></i>
+                                                                <button type="submit" class="btn btn-success btn-sm w-full">
+                                                                    <i class="bi bi-{{ $userReview ? 'pencil' : 'plus-circle' }} mr-1"></i>
                                                                     {{ $userReview ? 'Update Review' : 'Submit Review' }}
                                                                 </button>
                                                             </form>
@@ -385,21 +385,21 @@
                                                         @foreach($instructor->reviews()->with('reviewer')->latest()->get() as $review)
                                                             <div class="card mb-2">
                                                                 <div class="card-body p-3">
-                                                                    <div class="d-flex align-items-start mb-2">
-                                                                        <div class="flex-grow-1">
-                                                                            <div class="fw-semibold small">{{ $review->reviewer->full_name }}</div>
-                                                                            <div class="stars-display small">
+                                                                    <div class="flex items-start mb-2">
+                                                                        <div class="grow">
+                                                                            <div class="font-semibold text-sm">{{ $review->reviewer->full_name }}</div>
+                                                                            <div class="stars-display text-sm">
                                                                                 @for($i = 1; $i <= 5; $i++)
                                                                                     <i class="bi bi-star{{ $i <= $review->rating ? '-fill' : '' }} text-warning"></i>
                                                                                 @endfor
                                                                             </div>
                                                                         </div>
-                                                                        <small class="text-muted">
+                                                                        <small class="text-muted-foreground">
                                                                             {{ $review->wasUpdated() ? 'Updated ' : '' }}{{ $review->wasUpdated() ? $review->updated_at->diffForHumans() : $review->reviewed_at->diffForHumans() }}
                                                                         </small>
                                                                     </div>
                                                                     @if($review->comment)
-                                                                        <p class="mb-0 small text-muted">{{ $review->comment }}</p>
+                                                                        <p class="mb-0 text-sm text-muted-foreground">{{ $review->comment }}</p>
                                                                     @endif
                                                                 </div>
                                                             </div>
@@ -409,7 +409,7 @@
                                             </div>
                                             <div class="modal-footer">
                                                 <a href="{{ route('family.show', $instructor->user_id) }}" class="btn btn-primary btn-sm">
-                                                    <i class="bi bi-person-lines-fill me-1"></i>View Full Profile
+                                                    <i class="bi bi-person-lines-fill mr-1"></i>View Full Profile
                                                 </a>
                                                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
                                             </div>
@@ -427,15 +427,15 @@
                                                 <div class="modal-content">
                                                     <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                                                         <h5 class="modal-title text-white">
-                                                            <i class="bi bi-box-seam me-2"></i>{{ $subscription->package->name }}
+                                                            <i class="bi bi-box-seam mr-2"></i>{{ $subscription->package->name }}
                                                         </h5>
                                                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                                                     </div>
                                                     <div class="modal-body">
                                                         <div class="mb-3">
-                                                            <label class="text-muted small fw-semibold">Subscription Period</label>
+                                                            <label class="text-muted-foreground text-sm font-semibold">Subscription Period</label>
                                                             <div>
-                                                                <i class="bi bi-calendar-range me-2 text-primary"></i>
+                                                                <i class="bi bi-calendar-range mr-2 text-primary"></i>
                                                                 {{ $subscription->start_date ? $subscription->start_date->format('M d, Y') : 'N/A' }} - {{ $subscription->end_date ? $subscription->end_date->format('M d, Y') : 'N/A' }}
                                                             </div>
                                                             @php
@@ -449,22 +449,22 @@
                                                                     $durationText = implode(' ', $durationParts) ?: 'Same day';
                                                                 }
                                                             @endphp
-                                                            <small class="text-muted">
-                                                                <i class="bi bi-hourglass-split me-1"></i>Duration: {{ $durationText }}
+                                                            <small class="text-muted-foreground">
+                                                                <i class="bi bi-hourglass-split mr-1"></i>Duration: {{ $durationText }}
                                                             </small>
                                                         </div>
 
                                                         @if($subscription->package->description)
                                                             <div class="mb-3">
-                                                                <label class="text-muted small fw-semibold">Description</label>
+                                                                <label class="text-muted-foreground text-sm font-semibold">Description</label>
                                                                 <p class="mb-0">{{ $subscription->package->description }}</p>
                                                             </div>
                                                         @endif
 
                                                         @if($subscription->package->price)
                                                             <div class="mb-3">
-                                                                <label class="text-muted small fw-semibold">Price</label>
-                                                                <div class="h5 mb-0 text-success">
+                                                                <label class="text-muted-foreground text-sm font-semibold">Price</label>
+                                                                <div class="text-xl mb-0 text-success">
                                                                     <i class="bi bi-currency-dollar"></i>{{ number_format($subscription->package->price, 2) }}
                                                                 </div>
                                                             </div>
@@ -472,17 +472,17 @@
 
                                                         @if($subscription->package->packageActivities && $subscription->package->packageActivities->count() > 0)
                                                             <div class="mb-3">
-                                                                <label class="text-muted small fw-semibold">Activities & Skills Included</label>
+                                                                <label class="text-muted-foreground text-sm font-semibold">Activities & Skills Included</label>
                                                                 <div class="list-group">
                                                                     @foreach($subscription->package->packageActivities as $pkgActivity)
                                                                         @if($pkgActivity->activity)
                                                                             <div class="list-group-item">
-                                                                                <div class="d-flex align-items-start mb-2">
-                                                                                    <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
-                                                                                    <div class="flex-grow-1">
-                                                                                        <div class="fw-semibold">{{ $pkgActivity->activity->name }}</div>
+                                                                                <div class="flex items-start mb-2">
+                                                                                    <i class="bi bi-check-circle-fill text-success mr-2 mt-1"></i>
+                                                                                    <div class="grow">
+                                                                                        <div class="font-semibold">{{ $pkgActivity->activity->name }}</div>
                                                                                         @if($pkgActivity->activity->description)
-                                                                                            <small class="text-muted d-block mb-2">{{ $pkgActivity->activity->description }}</small>
+                                                                                            <small class="text-muted-foreground block mb-2">{{ $pkgActivity->activity->description }}</small>
                                                                                         @endif
 
                                                                                         @php
@@ -494,11 +494,11 @@
 
                                                                                         @if($activitySkills->count() > 0)
                                                                                             <div class="mb-2">
-                                                                                                <small class="text-muted d-block mb-1">Skills Practiced:</small>
-                                                                                                <div class="d-flex gap-1 flex-wrap">
+                                                                                                <small class="text-muted-foreground block mb-1">Skills Practiced:</small>
+                                                                                                <div class="flex gap-1 flex-wrap">
                                                                                                     @foreach($activitySkills as $actSkill)
                                                                                                         <span class="badge bg-{{ $actSkill->proficiency_level == 'expert' ? 'danger' : ($actSkill->proficiency_level == 'advanced' ? 'warning' : ($actSkill->proficiency_level == 'intermediate' ? 'info' : 'secondary')) }}" style="font-size: 0.7rem;">
-                                                                                                            <i class="bi bi-star-fill me-1"></i>{{ $actSkill->skill_name }}
+                                                                                                            <i class="bi bi-star-fill mr-1"></i>{{ $actSkill->skill_name }}
                                                                                                         </span>
                                                                                                     @endforeach
                                                                                                 </div>
@@ -506,8 +506,8 @@
                                                                                         @endif
                                                                                     </div>
                                                                                     @if($pkgActivity->instructor && $pkgActivity->instructor->user)
-                                                                                        <div class="text-end">
-                                                                                            <small class="text-muted">
+                                                                                        <div class="text-right">
+                                                                                            <small class="text-muted-foreground">
                                                                                                 <i class="bi bi-person-badge"></i>
                                                                                                 {{ $pkgActivity->instructor->user->full_name }}
                                                                                             </small>
@@ -530,13 +530,13 @@
 
                                                         @if($samePackageSubscriptions->count() > 0)
                                                             <div class="mb-3">
-                                                                <label class="text-muted small fw-semibold">
-                                                                    <i class="bi bi-arrow-repeat me-1"></i>Other Subscriptions to This Package
+                                                                <label class="text-muted-foreground text-sm font-semibold">
+                                                                    <i class="bi bi-arrow-repeat mr-1"></i>Other Subscriptions to This Package
                                                                 </label>
                                                                 <div class="alert alert-info mb-0" style="font-size: 0.85rem;">
-                                                                    <div class="fw-semibold mb-1">You subscribed to this package {{ $samePackageSubscriptions->count() + 1 }} times:</div>
-                                                                    <ul class="mb-0 ps-3">
-                                                                        <li class="text-primary fw-semibold">
+                                                                    <div class="font-semibold mb-1">You subscribed to this package {{ $samePackageSubscriptions->count() + 1 }} times:</div>
+                                                                    <ul class="mb-0 pl-3">
+                                                                        <li class="text-primary font-semibold">
                                                                             {{ $subscription->start_date ? $subscription->start_date->format('M d, Y') : 'N/A' }} - {{ $subscription->end_date ? $subscription->end_date->format('M d, Y') : 'N/A' }} (Current)
                                                                         </li>
                                                                         @foreach($samePackageSubscriptions as $otherSub)
@@ -549,7 +549,7 @@
                                                                                     }
                                                                                 @endphp
                                                                                 @if($gap > 0)
-                                                                                    <small class="text-muted">({{ abs($gap) }} months {{ $subscription->start_date->gt($otherSub->start_date) ? 'before' : 'after' }} current)</small>
+                                                                                    <small class="text-muted-foreground">({{ abs($gap) }} months {{ $subscription->start_date->gt($otherSub->start_date) ? 'before' : 'after' }} current)</small>
                                                                                 @endif
                                                                             </li>
                                                                         @endforeach
@@ -559,12 +559,12 @@
                                                         @endif
 
                                                         <div class="mb-0">
-                                                            <label class="text-muted small fw-semibold">Status</label>
+                                                            <label class="text-muted-foreground text-sm font-semibold">Status</label>
                                                             <div>
                                                                 <span class="badge bg-{{ $subscription->status == 'active' ? 'success' : 'secondary' }}">
                                                                     {{ ucfirst($subscription->status) }}
                                                                 </span>
-                                                                <span class="badge bg-{{ $subscription->payment_status == 'paid' ? 'success' : 'warning' }} ms-2">
+                                                                <span class="badge bg-{{ $subscription->payment_status == 'paid' ? 'success' : 'warning' }} ml-2">
                                                                     Payment: {{ ucfirst($subscription->payment_status) }}
                                                                 </span>
                                                             </div>
@@ -585,9 +585,9 @@
             </div>
         @else
             <div class="text-center py-5">
-                <i class="bi bi-diagram-3 text-muted" style="font-size: 3rem;"></i>
-                <h5 class="text-muted mt-3 mb-2">No Affiliations Yet</h5>
-                <p class="text-muted mb-0">Club affiliations and skills will appear here once added</p>
+                <i class="bi bi-diagram-3 text-muted-foreground" style="font-size: 3rem;"></i>
+                <h5 class="text-muted-foreground mt-3 mb-2">No Affiliations Yet</h5>
+                <p class="text-muted-foreground mb-0">Club affiliations and skills will appear here once added</p>
             </div>
         @endif
     </div>
@@ -864,7 +864,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function showAlert(message, type) {
         const alertDiv = document.createElement('div');
-        alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show fixed`;
         alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
         alertDiv.innerHTML = `
             ${message}

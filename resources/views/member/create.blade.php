@@ -1,35 +1,35 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container py-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-white">
-                    <h4 class="mb-0">Add Family Member</h4>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <div class="flex justify-center">
+        <div class="w-full md:w-2/3">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h4 class="mb-0 font-semibold">Add Family Member</h4>
                 </div>
-                <div class="card-body">
+                <div class="p-6">
                     <form method="POST" action="{{ route('family.store') }}">
                         @csrf
 
                         <div class="mb-3">
-                            <label for="full_name" class="form-label">Full Name</label>
-                            <input type="text" class="form-control @error('full_name') is-invalid @enderror" id="full_name" name="full_name" value="{{ old('full_name') }}" required>
+                            <label for="full_name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                            <input type="text" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none transition @error('full_name') !border-red-500 @enderror" id="full_name" name="full_name" value="{{ old('full_name') }}" required>
                             @error('full_name')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="text-red-500 text-sm mt-1">{{ $message }}</div>
                             @enderror
                         </div>
 
                         <div class="mb-3">
-                            <label for="email" class="form-label">Email Address <span class="text-muted">(Optional for children)</span></label>
-                            <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email') }}">
+                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address <span class="text-gray-500">(Optional for children)</span></label>
+                            <input type="email" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none transition @error('email') !border-red-500 @enderror" id="email" name="email" value="{{ old('email') }}">
                             @error('email')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="text-red-500 text-sm mt-1">{{ $message }}</div>
                             @enderror
                         </div>
 
                         <div class="mb-3">
-                            <label for="mobile" class="form-label">Mobile Number</label>
+                            <label for="mobile" class="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
                             <x-country-code-dropdown
                                 name="mobile_code"
                                 id="country_code"
@@ -37,19 +37,19 @@
                                 :required="false"
                                 :error="$errors->first('mobile_code')">
                                 <input id="mobile_number" type="tel"
-                                       class="form-control @error('mobile') is-invalid @enderror"
+                                       class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none transition @error('mobile') !border-red-500 @enderror"
                                        name="mobile"
                                        value="{{ old('mobile') }}"
                                        autocomplete="tel"
                                        placeholder="Phone number">
                             </x-country-code-dropdown>
                             @error('mobile')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                                <div class="text-red-500 text-sm mt-1 block">{{ $message }}</div>
                             @enderror
                         </div>
 
-                        <div class="row mb-3">
-                            <div class="col-md-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                            <div>
                                 <x-gender-dropdown
                                     name="gender"
                                     id="gender"
@@ -57,7 +57,7 @@
                                     :required="true"
                                     :error="$errors->first('gender')" />
                             </div>
-                            <div class="col-md-6">
+                            <div>
                                 <x-birthdate-dropdown
                                     name="birthdate"
                                     id="birthdate"
@@ -70,10 +70,10 @@
                             </div>
                         </div>
 
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="blood_type" class="form-label">Blood Type</label>
-                                <select class="form-select @error('blood_type') is-invalid @enderror" id="blood_type" name="blood_type">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                            <div>
+                                <label for="blood_type" class="block text-sm font-medium text-gray-700 mb-1">Blood Type</label>
+                                <select class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none transition appearance-none @error('blood_type') !border-red-500 @enderror" id="blood_type" name="blood_type">
                                     <option value="">Select Blood Type</option>
                                     <option value="A+" {{ old('blood_type') == 'A+' ? 'selected' : '' }}>A+</option>
                                     <option value="A-" {{ old('blood_type') == 'A-' ? 'selected' : '' }}>A-</option>
@@ -86,10 +86,10 @@
                                     <option value="Unknown" {{ old('blood_type') == 'Unknown' ? 'selected' : '' }}>Unknown</option>
                                 </select>
                                 @error('blood_type')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="text-red-500 text-sm mt-1">{{ $message }}</div>
                                 @enderror
                             </div>
-                            <div class="col-md-6">
+                            <div>
                                 <x-nationality-dropdown
                                     name="nationality"
                                     id="nationality"
@@ -100,9 +100,9 @@
                         </div>
 
                         <div class="mb-3">
-                            <h5 class="form-label d-flex justify-content-between align-items-center">
+                            <h5 class="block text-sm font-medium text-gray-700 mb-1 flex justify-between items-center">
                                 Social Media Links
-                                <button type="button" class="btn btn-outline-primary btn-sm" id="addSocialLink">
+                                <button type="button" class="px-3 py-1 rounded-lg border border-purple-500 text-purple-500 text-sm font-medium hover:bg-purple-50 transition" id="addSocialLink">
                                     <i class="bi bi-plus"></i> Add Link
                                 </button>
                             </h5>
@@ -119,10 +119,10 @@
                                     }
                                 @endphp
                                 @foreach($formLinks as $index => $link)
-                                    <div class="social-link-row mb-3 d-flex align-items-end">
-                                        <div class="me-2 flex-grow-1">
-                                            <label class="form-label">Platform</label>
-                                            <select class="form-select platform-select" name="social_links[{{ $index }}][platform]" required>
+                                    <div class="social-link-row mb-3 flex items-end">
+                                        <div class="mr-2 flex-1">
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Platform</label>
+                                            <select class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none transition appearance-none platform-select" name="social_links[{{ $index }}][platform]" required>
                                                 <option value="">Select Platform</option>
                                                 <option value="facebook" {{ ($link['platform'] ?? '') == 'facebook' ? 'selected' : '' }}>Facebook</option>
                                                 <option value="twitter" {{ ($link['platform'] ?? '') == 'twitter' ? 'selected' : '' }}>Twitter/X</option>
@@ -148,12 +148,12 @@
                                                 <option value="line" {{ ($link['platform'] ?? '') == 'line' ? 'selected' : '' }}>Line</option>
                                             </select>
                                         </div>
-                                        <div class="me-2 flex-grow-1">
-                                            <label class="form-label">URL</label>
-                                            <input type="url" class="form-control" name="social_links[{{ $index }}][url]" value="{{ $link['url'] ?? '' }}" placeholder="https://example.com/username" required>
+                                        <div class="mr-2 flex-1">
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">URL</label>
+                                            <input type="url" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none transition" name="social_links[{{ $index }}][url]" value="{{ $link['url'] ?? '' }}" placeholder="https://example.com/username" required>
                                         </div>
                                         <div class="mb-0">
-                                            <button type="button" class="btn btn-outline-danger btn-sm remove-social-link">
+                                            <button type="button" class="px-3 py-1 rounded-lg border border-red-500 text-red-500 text-sm font-medium hover:bg-red-50 transition remove-social-link">
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                         </div>
@@ -163,18 +163,18 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="motto" class="form-label">Personal Motto</label>
-                            <textarea class="form-control @error('motto') is-invalid @enderror" id="motto" name="motto" rows="3" placeholder="Enter personal motto or quote...">{{ old('motto') }}</textarea>
-                            <div class="form-text">Share a personal motto or quote that inspires them.</div>
+                            <label for="motto" class="block text-sm font-medium text-gray-700 mb-1">Personal Motto</label>
+                            <textarea class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none transition @error('motto') !border-red-500 @enderror" id="motto" name="motto" rows="3" placeholder="Enter personal motto or quote...">{{ old('motto') }}</textarea>
+                            <div class="text-xs text-gray-500 mt-1">Share a personal motto or quote that inspires them.</div>
                             @error('motto')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="text-red-500 text-sm mt-1">{{ $message }}</div>
                             @enderror
                         </div>
 
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="relationship_type" class="form-label">Relationship</label>
-                                <select class="form-select @error('relationship_type') is-invalid @enderror" id="relationship_type" name="relationship_type" required>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                            <div>
+                                <label for="relationship_type" class="block text-sm font-medium text-gray-700 mb-1">Relationship</label>
+                                <select class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none transition appearance-none @error('relationship_type') !border-red-500 @enderror" id="relationship_type" name="relationship_type" required>
                                     <option value="">Select Relationship</option>
                                     <option value="son" {{ old('relationship_type') == 'son' ? 'selected' : '' }}>Son</option>
                                     <option value="daughter" {{ old('relationship_type') == 'daughter' ? 'selected' : '' }}>Daughter</option>
@@ -183,19 +183,19 @@
                                     <option value="other" {{ old('relationship_type') == 'other' ? 'selected' : '' }}>Other</option>
                                 </select>
                                 @error('relationship_type')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="text-red-500 text-sm mt-1">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
 
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="is_billing_contact" name="is_billing_contact" value="1" {{ old('is_billing_contact') ? 'checked' : '' }}>
-                            <label class="form-check-label" for="is_billing_contact">Is Billing Contact</label>
+                        <div class="mb-3 flex items-center gap-2">
+                            <input type="checkbox" class="rounded border-gray-300 text-purple-500 focus:ring-purple-500" id="is_billing_contact" name="is_billing_contact" value="1" {{ old('is_billing_contact') ? 'checked' : '' }}>
+                            <label class="text-sm text-gray-700" for="is_billing_contact">Is Billing Contact</label>
                         </div>
 
-                        <div class="d-flex justify-content-between">
-                            <a href="{{ route('family.dashboard') }}" class="btn btn-outline-secondary">Cancel</a>
-                            <button type="submit" class="btn btn-primary">Add Family Member</button>
+                        <div class="flex justify-between">
+                            <a href="{{ route('family.dashboard') }}" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition">Cancel</a>
+                            <button type="submit" class="px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 transition">Add Family Member</button>
                         </div>
                     </form>
                 </div>
@@ -224,12 +224,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function addSocialLinkRow(platform = '', url = '') {
         const container = document.getElementById('socialLinksContainer');
         const row = document.createElement('div');
-        row.className = 'social-link-row mb-3 d-flex align-items-end';
+        row.className = 'social-link-row mb-3 flex items-end';
 
         row.innerHTML = `
-            <div class="me-2 flex-grow-1">
-                <label class="form-label">Platform</label>
-                <select class="form-select platform-select" name="social_links[${socialLinkIndex}][platform]" required>
+            <div class="mr-2 flex-1">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Platform</label>
+                <select class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none transition appearance-none platform-select" name="social_links[${socialLinkIndex}][platform]" required>
                     <option value="">Select Platform</option>
                     <option value="facebook" ${platform === 'facebook' ? 'selected' : ''}>Facebook</option>
                     <option value="twitter" ${platform === 'twitter' ? 'selected' : ''}>Twitter/X</option>
@@ -255,12 +255,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     <option value="line" ${platform === 'line' ? 'selected' : ''}>Line</option>
                 </select>
             </div>
-            <div class="me-2 flex-grow-1">
-                <label class="form-label">URL</label>
-                <input type="url" class="form-control" name="social_links[${socialLinkIndex}][url]" value="${url}" placeholder="https://example.com/username" required>
+            <div class="mr-2 flex-1">
+                <label class="block text-sm font-medium text-gray-700 mb-1">URL</label>
+                <input type="url" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none transition" name="social_links[${socialLinkIndex}][url]" value="${url}" placeholder="https://example.com/username" required>
             </div>
             <div class="mb-0">
-                <button type="button" class="btn btn-outline-danger btn-sm remove-social-link">
+                <button type="button" class="px-3 py-1 rounded-lg border border-red-500 text-red-500 text-sm font-medium hover:bg-red-50 transition remove-social-link">
                     <i class="bi bi-trash"></i>
                 </button>
             </div>

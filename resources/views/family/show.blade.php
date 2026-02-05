@@ -14,56 +14,56 @@
 @endphp
 
 @section('content')
-<div class="container py-4">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
 
     <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="flex justify-between items-center mb-4">
         <div>
-            <h2 class="fw-bold mb-1">Member Profile</h2>
+            <h2 class="font-bold mb-1">Member Profile</h2>
             <p class="text-muted mb-0">Comprehensive member information and analytics</p>
         </div>
     </div>
 
     <!-- Profile Card -->
     <div class="card shadow-sm border-0 mb-4">
-        <div class="d-flex">
+        <div class="flex">
             <!-- Profile Picture -->
             <div style="width: 180px; min-height: 250px; border-radius: 0.375rem 0 0 0.375rem;">
                 @if($relationship->dependent->profile_picture)
-                    <img src="{{ asset('storage/' . $relationship->dependent->profile_picture) }}" alt="{{ $relationship->dependent->full_name }}" class="w-100 h-100" style="object-fit: cover; border-radius: 0.375rem 0 0 0.375rem;">
+                    <img src="{{ asset('storage/' . $relationship->dependent->profile_picture) }}" alt="{{ $relationship->dependent->full_name }}" class="w-full h-full" style="object-fit: cover; border-radius: 0.375rem 0 0 0.375rem;">
                 @else
-                    <div class="w-100 h-100 d-flex align-items-center justify-content-center text-white fw-bold" style="font-size: 3rem; background: linear-gradient(135deg, {{ $relationship->dependent->gender == 'm' ? '#0d6efd 0%, #0a58ca 100%' : '#d63384 0%, #a61e4d 100%' }}); border-radius: 0.375rem 0 0 0.375rem;">
+                    <div class="w-full h-full flex items-center justify-center text-white font-bold" style="font-size: 3rem; background: linear-gradient(135deg, {{ $relationship->dependent->gender == 'm' ? '#0d6efd 0%, #0a58ca 100%' : '#d63384 0%, #a61e4d 100%' }}); border-radius: 0.375rem 0 0 0.375rem;">
                         {{ strtoupper(substr($relationship->dependent->full_name, 0, 1)) }}
                     </div>
                 @endif
             </div>
 
             <!-- Profile Info -->
-            <div class="flex-grow-1 p-4">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <h3 class="fw-bold mb-0">{{ $relationship->dependent->full_name }}</h3>
+            <div class="flex-1 p-4">
+                <div class="flex justify-between items-start mb-2">
+                    <h3 class="font-bold mb-0">{{ $relationship->dependent->full_name }}</h3>
                     @if($relationship->relationship_type == 'self' || Auth::id() == $relationship->guardian_user_id)
                         <div>
                             <div class="dropdown">
                                 <button class="btn btn-primary rounded-pill dropdown-toggle" type="button" id="actionDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="bi bi-lightning me-1"></i>Action
+                                    <i class="bi bi-lightning mr-1"></i>Action
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionDropdown">
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-trophy me-2"></i>Add Achievement</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-calendar-check me-2"></i>Add Attendance Record</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-calendar-event me-2"></i>Add Event Participation</a></li>
-                                    <li><a class="dropdown-item" href="#" data-bs-target="#healthUpdateModal"><i class="bi bi-heart-pulse me-2"></i>Add Health Update</a></li>
-                                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#tournamentParticipationModal"><i class="bi bi-award me-2"></i>Add Tournament Participation</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-trophy mr-2"></i>Add Achievement</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-calendar-check mr-2"></i>Add Attendance Record</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-calendar-event mr-2"></i>Add Event Participation</a></li>
+                                    <li><a class="dropdown-item" href="#" data-bs-target="#healthUpdateModal"><i class="bi bi-heart-pulse mr-2"></i>Add Health Update</a></li>
+                                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#tournamentParticipationModal"><i class="bi bi-award mr-2"></i>Add Tournament Participation</a></li>
                                     <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editProfileModal">
-                                        <i class="bi bi-pencil me-2"></i>Edit Info
+                                        <i class="bi bi-pencil mr-2"></i>Edit Info
                                     </a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-bullseye me-2"></i>Set a Goal</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="bi bi-bullseye mr-2"></i>Set a Goal</a></li>
                                 </ul>
                             </div>
                         </div>
                     @else
                         <button class="btn btn-primary btn-sm rounded-pill">
-                            <i class="bi bi-person-plus me-1"></i>Follow
+                            <i class="bi bi-person-plus mr-1"></i>Follow
                         </button>
                     @endif
                 </div>
@@ -72,27 +72,27 @@
                             @endif
 
                             <!-- Achievement Badges -->
-                            <div class="d-flex gap-2 mb-3 flex-wrap">
-                                <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none achievement-badge" style="font-size: 1rem;" data-medal-type="special" onclick="filterTournamentsByMedal('special')">🏆 <span class="fw-semibold text-dark">{{ $awardCounts['special'] }}</span></a>
-                                <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none achievement-badge" style="font-size: 1rem;" data-medal-type="1st" onclick="filterTournamentsByMedal('1st')">🥇 <span class="fw-semibold text-dark">{{ $awardCounts['1st'] }}</span></a>
-                                <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none achievement-badge" style="font-size: 1rem;" data-medal-type="2nd" onclick="filterTournamentsByMedal('2nd')">🥈 <span class="fw-semibold text-dark">{{ $awardCounts['2nd'] }}</span></a>
-                                <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none achievement-badge" style="font-size: 1rem;" data-medal-type="3rd" onclick="filterTournamentsByMedal('3rd')">🥉 <span class="fw-semibold text-dark">{{ $awardCounts['3rd'] }}</span></a>
-                                <a href="#goals" class="border bg-white rounded px-2 py-1 text-decoration-none" style="font-size: 1rem;" onclick="document.getElementById('goals-tab').click();">🎯 <span class="fw-semibold text-dark">{{ $activeGoalsCount + $completedGoalsCount }}</span></a>
-                                <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none" style="font-size: 1rem;">⭐ <span class="fw-semibold text-dark">{{ $totalAffiliations }}</span></a>
+                            <div class="flex gap-2 mb-3 flex-wrap">
+                                <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none achievement-badge" style="font-size: 1rem;" data-medal-type="special" onclick="filterTournamentsByMedal('special')">🏆 <span class="font-semibold text-dark">{{ $awardCounts['special'] }}</span></a>
+                                <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none achievement-badge" style="font-size: 1rem;" data-medal-type="1st" onclick="filterTournamentsByMedal('1st')">🥇 <span class="font-semibold text-dark">{{ $awardCounts['1st'] }}</span></a>
+                                <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none achievement-badge" style="font-size: 1rem;" data-medal-type="2nd" onclick="filterTournamentsByMedal('2nd')">🥈 <span class="font-semibold text-dark">{{ $awardCounts['2nd'] }}</span></a>
+                                <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none achievement-badge" style="font-size: 1rem;" data-medal-type="3rd" onclick="filterTournamentsByMedal('3rd')">🥉 <span class="font-semibold text-dark">{{ $awardCounts['3rd'] }}</span></a>
+                                <a href="#goals" class="border bg-white rounded px-2 py-1 text-decoration-none" style="font-size: 1rem;" onclick="document.getElementById('goals-tab').click();">🎯 <span class="font-semibold text-dark">{{ $activeGoalsCount + $completedGoalsCount }}</span></a>
+                                <a href="#" class="border bg-white rounded px-2 py-1 text-decoration-none" style="font-size: 1rem;">⭐ <span class="font-semibold text-dark">{{ $totalAffiliations }}</span></a>
                             </div>
 
                             <!-- Status Badges -->
-                            <div class="d-flex gap-3 mb-3 align-items-center flex-wrap">
+                            <div class="flex gap-3 mb-3 items-center flex-wrap">
                                 <span class="text-muted small">
-                                    <span class="fw-semibold text-dark nationality-display" data-iso3="{{ $relationship->dependent->nationality }}">{{ $relationship->dependent->nationality }}</span>
+                                    <span class="font-semibold text-dark nationality-display" data-iso3="{{ $relationship->dependent->nationality }}">{{ $relationship->dependent->nationality }}</span>
                                 </span>
                                 <span class="text-muted small">
-                                    <i class="bi bi-{{ $relationship->dependent->gender == 'm' ? 'gender-male' : 'gender-female' }} me-1"></i>
-                                    <span class="fw-semibold text-dark">{{ $relationship->dependent->gender == 'm' ? 'Male' : 'Female' }}</span>
+                                    <i class="bi bi-{{ $relationship->dependent->gender == 'm' ? 'gender-male' : 'gender-female' }} mr-1"></i>
+                                    <span class="font-semibold text-dark">{{ $relationship->dependent->gender == 'm' ? 'Male' : 'Female' }}</span>
                                 </span>
                                 <span class="text-muted small">
-                                    <i class="bi bi-calendar-event me-1"></i>
-                                    Age <span class="fw-semibold text-dark">{{ $relationship->dependent->age }}</span>
+                                    <i class="bi bi-calendar-event mr-1"></i>
+                                    Age <span class="font-semibold text-dark">{{ $relationship->dependent->age }}</span>
                                 </span>
                                 <span class="text-muted small">
                                     @php
@@ -113,21 +113,21 @@
                                         $horoscope = $relationship->dependent->horoscope ?? 'N/A';
                                         $symbol = $horoscopeSymbols[$horoscope] ?? '';
                                     @endphp
-                                    {{ $symbol }} <span class="fw-semibold text-dark">{{ $horoscope }}</span>
+                                    {{ $symbol }} <span class="font-semibold text-dark">{{ $horoscope }}</span>
                                 </span>
                                 <span class="text-muted small">
-                                    <i class="bi bi-check-circle-fill text-success me-1"></i>
-                                    <span class="fw-semibold text-success">Active</span>
+                                    <i class="bi bi-check-circle-fill text-success mr-1"></i>
+                                    <span class="font-semibold text-success">Active</span>
                                 </span>
                                 <span class="text-muted small">
-                                    <i class="bi bi-calendar-check me-1"></i>
-                                    Joined <span class="fw-semibold text-dark">{{ $relationship->dependent->created_at->format('F Y') }}</span>
+                                    <i class="bi bi-calendar-check mr-1"></i>
+                                    Joined <span class="font-semibold text-dark">{{ $relationship->dependent->created_at->format('F Y') }}</span>
                                 </span>
                             </div>
 
                             <!-- Social Media Icons -->
                             @if($relationship->dependent->social_links && count($relationship->dependent->social_links) > 0)
-                                <div class="d-flex gap-2 flex-wrap">
+                                <div class="flex gap-2 flex-wrap">
                                     @php
                                         $socialLinks = $relationship->dependent->social_links;
                                         ksort($socialLinks); // Sort by platform name
@@ -202,37 +202,37 @@
     <ul class="nav nav-tabs nav-fill mb-4" id="profileTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active text-dark" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab">
-                <i class="bi bi-eye me-2"></i>Overview
+                <i class="bi bi-eye mr-2"></i>Overview
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link text-dark" id="attendance-tab" data-bs-toggle="tab" data-bs-target="#attendance" type="button" role="tab">
-                <i class="bi bi-calendar-check me-2"></i>Attendance
+                <i class="bi bi-calendar-check mr-2"></i>Attendance
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link text-dark" id="health-tab" data-bs-toggle="tab" data-bs-target="#health" type="button" role="tab">
-                <i class="bi bi-heart-pulse me-2"></i>Health
+                <i class="bi bi-heart-pulse mr-2"></i>Health
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link text-dark" id="goals-tab" data-bs-toggle="tab" data-bs-target="#goals" type="button" role="tab">
-                <i class="bi bi-bullseye me-2"></i>Goals
+                <i class="bi bi-bullseye mr-2"></i>Goals
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link text-dark" id="affiliations-tab" data-bs-toggle="tab" data-bs-target="#affiliations" type="button" role="tab">
-                <i class="bi bi-diagram-3 me-2"></i>Affiliations
+                <i class="bi bi-diagram-3 mr-2"></i>Affiliations
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link text-dark" id="tournaments-tab" data-bs-toggle="tab" data-bs-target="#tournaments" type="button" role="tab">
-                <i class="bi bi-award me-2"></i>Tournaments
+                <i class="bi bi-award mr-2"></i>Tournaments
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link text-dark" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab">
-                <i class="bi bi-calendar-event me-2"></i>Events
+                <i class="bi bi-calendar-event mr-2"></i>Events
             </button>
         </li>
     </ul>
@@ -245,24 +245,24 @@
             <div class="row mb-4">
                 <!-- Profile Statistics -->
                 <div class="col-lg-6">
-                    <div class="card shadow-sm border-0 h-100">
+                    <div class="card shadow-sm border-0 h-full">
                         <div class="card-body p-4">
-                            <div class="d-flex align-items-center mb-2">
-                                <i class="bi bi-bar-chart-line text-primary me-2"></i>
-                                <h5 class="mb-0 fw-bold">Profile Statistics</h5>
+                            <div class="flex items-center mb-2">
+                                <i class="bi bi-bar-chart-line text-primary mr-2"></i>
+                                <h5 class="mb-0 font-bold">Profile Statistics</h5>
                             </div>
                             <p class="text-muted small mb-4">Key performance metrics and milestones</p>
 
                             <div class="row g-3">
                                 <!-- Total Sessions -->
                                 <div class="col-md-6">
-                            <div class="d-flex align-items-center gap-3 p-3 bg-light rounded">
-                                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background-color: #6f42c1;">
+                            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded">
+                                <div class="rounded-circle flex items-center justify-center" style="width: 48px; height: 48px; background-color: #6f42c1;">
                                     <i class="bi bi-people-fill text-white"></i>
                                 </div>
-                                <div class="flex-grow-1">
+                                <div class="flex-1">
                                     <div class="small text-muted mb-1">Total Sessions</div>
-                                    <div class="h4 fw-bold mb-2">127</div>
+                                    <div class="h4 font-bold mb-2">127</div>
                                     <div class="progress" style="height: 4px; background-color: #e9ecef;">
                                         <div class="progress-bar" role="progressbar" style="width: 85%; background: linear-gradient(90deg, #6f42c1 0%, #8b5cf6 100%);"></div>
                                     </div>
@@ -275,13 +275,13 @@
 
                                 <!-- Attendance Rate -->
                                 <div class="col-md-6">
-                            <div class="d-flex align-items-center gap-3 p-3 bg-light rounded">
-                                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background-color: #3b82f6;">
+                            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded">
+                                <div class="rounded-circle flex items-center justify-center" style="width: 48px; height: 48px; background-color: #3b82f6;">
                                     <i class="bi bi-graph-up-arrow text-white"></i>
                                 </div>
-                                <div class="flex-grow-1">
+                                <div class="flex-1">
                                     <div class="small text-muted mb-1">Attendance Rate</div>
-                                    <div class="h4 fw-bold mb-2">85%</div>
+                                    <div class="h4 font-bold mb-2">85%</div>
                                     <div class="progress" style="height: 4px; background-color: #e9ecef;">
                                         <div class="progress-bar" role="progressbar" style="width: 85%; background: linear-gradient(90deg, #6f42c1 0%, #10b981 100%);"></div>
                                     </div>
@@ -294,13 +294,13 @@
 
                                 <!-- Achievements -->
                                 <div class="col-md-6">
-                            <div class="d-flex align-items-center gap-3 p-3 bg-light rounded">
-                                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background-color: #8b5cf6;">
+                            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded">
+                                <div class="rounded-circle flex items-center justify-center" style="width: 48px; height: 48px; background-color: #8b5cf6;">
                                     <i class="bi bi-trophy-fill text-white"></i>
                                 </div>
-                                <div class="flex-grow-1">
+                                <div class="flex-1">
                                     <div class="small text-muted mb-1">Achievements</div>
-                                    <div class="h4 fw-bold mb-2">8</div>
+                                    <div class="h4 font-bold mb-2">8</div>
                                     <div class="progress" style="height: 4px; background-color: #e9ecef;">
                                         <div class="progress-bar" role="progressbar" style="width: 40%; background: linear-gradient(90deg, #6f42c1 0%, #10b981 100%);"></div>
                                     </div>
@@ -311,13 +311,13 @@
 
                                 <!-- Goal Completion -->
                                 <div class="col-md-6">
-                            <div class="d-flex align-items-center gap-3 p-3 bg-light rounded">
-                                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background-color: #10b981;">
+                            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded">
+                                <div class="rounded-circle flex items-center justify-center" style="width: 48px; height: 48px; background-color: #10b981;">
                                     <i class="bi bi-check-circle-fill text-white"></i>
                                 </div>
-                                <div class="flex-grow-1">
+                                <div class="flex-1">
                                     <div class="small text-muted mb-1">Goal Completion</div>
-                                    <div class="h4 fw-bold mb-2">75%</div>
+                                    <div class="h4 font-bold mb-2">75%</div>
                                     <div class="progress" style="height: 4px; background-color: #e9ecef;">
                                         <div class="progress-bar" role="progressbar" style="width: 75%; background: linear-gradient(90deg, #6f42c1 0%, #10b981 100%);"></div>
                                     </div>
@@ -332,15 +332,15 @@
 
                 <!-- Self Investment Chart -->
                 <div class="col-lg-6">
-                    <div class="card shadow-sm border-0 h-100">
+                    <div class="card shadow-sm border-0 h-full">
                         <div class="card-body p-4">
-                            <div class="d-flex align-items-center mb-2">
-                                <i class="bi bi-bar-chart-line text-primary me-2"></i>
-                                <h5 class="mb-0 fw-bold">Self Investment Chart</h5>
+                            <div class="flex items-center mb-2">
+                                <i class="bi bi-bar-chart-line text-primary mr-2"></i>
+                                <h5 class="mb-0 font-bold">Self Investment Chart</h5>
                             </div>
                             <p class="text-muted small mb-4">Self investment analytics over time</p>
 
-                            <div class="d-flex align-items-center justify-content-center" style="min-height: 300px;">
+                            <div class="flex items-center justify-center" style="min-height: 300px;">
                                 <div class="text-center">
                                     <i class="bi bi-graph-up text-muted" style="font-size: 3rem;"></i>
                                     <p class="text-muted mt-3 mb-1">Revenue chart visualization coming soon...</p>
@@ -355,9 +355,9 @@
             <!-- Complete Payment & Revenue History -->
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-body p-4">
-                    <div class="d-flex align-items-center mb-2">
-                        <i class="bi bi-receipt text-primary me-2"></i>
-                        <h5 class="mb-0 fw-bold">Complete Payment & Revenue History</h5>
+                    <div class="flex items-center mb-2">
+                        <i class="bi bi-receipt text-primary mr-2"></i>
+                        <h5 class="mb-0 font-bold">Complete Payment & Revenue History</h5>
                     </div>
                     <p class="text-muted small mb-4">All package payments and revenue transactions in one view</p>
 
@@ -365,15 +365,15 @@
                         <table class="table table-hover align-middle">
                             <thead class="table-light">
                                 <tr>
-                                    <th class="text-muted small fw-semibold">Date</th>
-                                    <th class="text-muted small fw-semibold">Transaction Type</th>
-                                    <th class="text-muted small fw-semibold">Package/Item</th>
-                                    <th class="text-muted small fw-semibold">Duration</th>
-                                    <th class="text-muted small fw-semibold">Sessions</th>
-                                    <th class="text-muted small fw-semibold">Amount</th>
-                                    <th class="text-muted small fw-semibold">Status</th>
-                                    <th class="text-muted small fw-semibold">Method</th>
-                                    <th class="text-muted small fw-semibold">Evidence</th>
+                                    <th class="text-muted small font-semibold">Date</th>
+                                    <th class="text-muted small font-semibold">Transaction Type</th>
+                                    <th class="text-muted small font-semibold">Package/Item</th>
+                                    <th class="text-muted small font-semibold">Duration</th>
+                                    <th class="text-muted small font-semibold">Sessions</th>
+                                    <th class="text-muted small font-semibold">Amount</th>
+                                    <th class="text-muted small font-semibold">Status</th>
+                                    <th class="text-muted small font-semibold">Method</th>
+                                    <th class="text-muted small font-semibold">Evidence</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -384,7 +384,7 @@
                                     <td class="small">{{ $invoice->tenant->club_name ?? 'N/A' }}</td>
                                     <td class="small text-muted">-</td>
                                     <td class="small">-</td>
-                                    <td class="small fw-semibold" style="color: {{ $invoice->status == 'paid' ? '#10b981' : '#f59e0b' }};">{{ $invoice->amount }} BHD</td>
+                                    <td class="small font-semibold" style="color: {{ $invoice->status == 'paid' ? '#10b981' : '#f59e0b' }};">{{ $invoice->amount }} BHD</td>
                                     <td>
                                         @if($invoice->status == 'paid')
                                             <span class="badge bg-success-subtle text-success small">✓ Paid</span>
@@ -397,7 +397,7 @@
                                     <td class="small">-</td>
                                     <td class="small">
                                         <a href="{{ route('bills.receipt', $invoice->id) }}" target="_blank" title="View Receipt"><i class="bi bi-file-earmark-text text-primary"></i></a>
-                                        <a href="{{ route('bills.receipt', $invoice->id) }}?download=1" download title="Download Receipt"><i class="bi bi-download text-secondary ms-1"></i></a>
+                                        <a href="{{ route('bills.receipt', $invoice->id) }}?download=1" download title="Download Receipt"><i class="bi bi-download text-secondary ml-1"></i></a>
                                     </td>
                                 </tr>
                                 @empty
@@ -418,9 +418,9 @@
         <div class="tab-pane fade" id="attendance" role="tabpanel">
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <div class="d-flex align-items-center justify-content-between mb-4">
+                    <div class="flex items-center justify-between mb-4">
                         <div>
-                            <h1 class="h3 fw-bold">Member Attendance</h1>
+                            <h1 class="h3 font-bold">Member Attendance</h1>
                             <p class="text-muted">Track your gym session attendance and performance</p>
                         </div>
                     </div>
@@ -428,25 +428,25 @@
                     <!-- Summary Cards -->
                     <div class="row g-4 mb-4">
                         <div class="col-md-4">
-                            <div class="card shadow-sm bg-light">
+                            <div class="card shadow-sm bg-gray-50">
                                 <div class="card-body text-center">
-                                    <div class="display-4 fw-bold text-success mb-2">{{ $sessionsCompleted }}</div>
+                                    <div class="text-5xl font-bold text-success mb-2">{{ $sessionsCompleted }}</div>
                                     <h6 class="card-title text-muted">Sessions Completed</h6>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <div class="card shadow-sm bg-light">
+                            <div class="card shadow-sm bg-gray-50">
                                 <div class="card-body text-center">
-                                    <div class="display-4 fw-bold text-danger mb-2">{{ $noShows }}</div>
+                                    <div class="text-5xl font-bold text-danger mb-2">{{ $noShows }}</div>
                                     <h6 class="card-title text-muted">No Shows</h6>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <div class="card shadow-sm bg-light">
+                            <div class="card shadow-sm bg-gray-50">
                                 <div class="card-body text-center">
-                                    <div class="display-4 fw-bold text-primary mb-2">{{ $attendanceRate }}%</div>
+                                    <div class="text-5xl font-bold text-primary mb-2">{{ $attendanceRate }}%</div>
                                     <h6 class="card-title text-muted">Attendance Rate</h6>
                                 </div>
                             </div>
@@ -455,7 +455,7 @@
 
                     <!-- Attendance Table -->
                     <div class="card shadow-sm">
-                        <div class="card-header bg-light">
+                        <div class="card-header bg-gray-50">
                             <h6 class="card-title mb-0">Session History</h6>
                         </div>
                         <div class="card-body p-0">
@@ -463,18 +463,18 @@
                                 <table class="table table-hover mb-0">
                                     <thead class="table-light">
                                         <tr>
-                                            <th class="border-0 fw-semibold">Date & Time</th>
-                                            <th class="border-0 fw-semibold">Session Type</th>
-                                            <th class="border-0 fw-semibold">Trainer Name</th>
-                                            <th class="border-0 fw-semibold">Status</th>
-                                            <th class="border-0 fw-semibold">Notes</th>
+                                            <th class="border-0 font-semibold">Date & Time</th>
+                                            <th class="border-0 font-semibold">Session Type</th>
+                                            <th class="border-0 font-semibold">Trainer Name</th>
+                                            <th class="border-0 font-semibold">Status</th>
+                                            <th class="border-0 font-semibold">Notes</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @forelse($attendanceRecords as $record)
                                         <tr>
                                             <td class="align-middle">
-                                                <div class="fw-semibold">{{ $record->session_datetime->format('M j, Y') }}</div>
+                                                <div class="font-semibold">{{ $record->session_datetime->format('M j, Y') }}</div>
                                                 <small class="text-muted">{{ $record->session_datetime->format('g:i A') }}</small>
                                             </td>
                                             <td class="align-middle">{{ $record->session_type }}</td>
@@ -512,12 +512,12 @@
             <!-- Health Tracking Header -->
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-body p-4">
-                    <div class="d-flex align-items-center mb-2">
-                        <i class="bi bi-heart-pulse text-danger me-2"></i>
-                        <h5 class="mb-0 fw-bold">Health Metrics Overview</h5>
+                    <div class="flex items-center mb-2">
+                        <i class="bi bi-heart-pulse text-danger mr-2"></i>
+                        <h5 class="mb-0 font-bold">Health Metrics Overview</h5>
                     </div>
 
-                    <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="flex justify-between items-center mb-4">
                         <p class="text-muted small mb-0">Monitor health metrics and progress over time</p>
 
                         @if($latestHealthRecord)
@@ -527,16 +527,16 @@
                                 $diff = $latestDate->diff($now);
                             @endphp
 
-                            <div class="d-flex align-items-center gap-3">
-                                <div class="d-flex align-items-center gap-2">
+                            <div class="flex items-center gap-3">
+                                <div class="flex items-center gap-2">
                                     <i class="bi bi-calendar-event text-primary"></i>
-                                    <span class="fw-semibold">Snapshot Date:</span>
+                                    <span class="font-semibold">Snapshot Date:</span>
                                     <span class="text-muted">{{ $latestDate->format('F j, Y') }}</span>
                                 </div>
-                                <div class="vr"></div>
-                                <div class="d-flex align-items-center gap-2">
+                                <div class="w-px bg-gray-300 self-stretch"></div>
+                                <div class="flex items-center gap-2">
                                     <i class="bi bi-clock-history text-primary"></i>
-                                    <span class="fw-semibold">Time Since:</span>
+                                    <span class="font-semibold">Time Since:</span>
                                     <span class="text-muted">
                                         @if($diff->y > 0)
                                             {{ $diff->y }} {{ $diff->y == 1 ? 'year' : 'years' }}
@@ -561,54 +561,54 @@
                         @if($latestHealthRecord)
                             <!-- Weight -->
                             <div class="col-md-2">
-                                <div class="text-center p-3 bg-light rounded">
+                                <div class="text-center p-3 bg-gray-50 rounded">
                                     <i class="bi bi-speedometer2 text-purple mb-2" style="font-size: 1.5rem; color: #8b5cf6;"></i>
-                                    <div class="h4 fw-bold mb-0">{{ $latestHealthRecord->weight ?? 'N/A' }}</div>
+                                    <div class="h4 font-bold mb-0">{{ $latestHealthRecord->weight ?? 'N/A' }}</div>
                                     <small class="text-muted">Weight (kg)</small>
                                 </div>
                             </div>
 
                             <!-- Body Fat -->
                             <div class="col-md-2">
-                                <div class="text-center p-3 bg-light rounded">
+                                <div class="text-center p-3 bg-gray-50 rounded">
                                     <i class="bi bi-activity text-warning mb-2" style="font-size: 1.5rem;"></i>
-                                    <div class="h4 fw-bold mb-0">{{ $latestHealthRecord->body_fat_percentage ?? 'N/A' }}%</div>
+                                    <div class="h4 font-bold mb-0">{{ $latestHealthRecord->body_fat_percentage ?? 'N/A' }}%</div>
                                     <small class="text-muted">Body Fat</small>
                                 </div>
                             </div>
 
                             <!-- Body Water -->
                             <div class="col-md-2">
-                                <div class="text-center p-3 bg-light rounded">
+                                <div class="text-center p-3 bg-gray-50 rounded">
                                     <i class="bi bi-droplet text-info mb-2" style="font-size: 1.5rem;"></i>
-                                    <div class="h4 fw-bold mb-0">{{ $latestHealthRecord->body_water_percentage ?? 'N/A' }}%</div>
+                                    <div class="h4 font-bold mb-0">{{ $latestHealthRecord->body_water_percentage ?? 'N/A' }}%</div>
                                     <small class="text-muted">Body Water</small>
                                 </div>
                             </div>
 
                             <!-- Muscle Mass -->
                             <div class="col-md-2">
-                                <div class="text-center p-3 bg-light rounded">
+                                <div class="text-center p-3 bg-gray-50 rounded">
                                     <i class="bi bi-heart text-success mb-2" style="font-size: 1.5rem;"></i>
-                                    <div class="h4 fw-bold mb-0">{{ $latestHealthRecord->muscle_mass ?? 'N/A' }}</div>
+                                    <div class="h4 font-bold mb-0">{{ $latestHealthRecord->muscle_mass ?? 'N/A' }}</div>
                                     <small class="text-muted">Muscle Mass</small>
                                 </div>
                             </div>
 
                             <!-- Bone Mass -->
                             <div class="col-md-2">
-                                <div class="text-center p-3 bg-light rounded">
+                                <div class="text-center p-3 bg-gray-50 rounded">
                                     <i class="bi bi-capsule text-secondary mb-2" style="font-size: 1.5rem;"></i>
-                                    <div class="h4 fw-bold mb-0">{{ $latestHealthRecord->bone_mass ?? 'N/A' }}</div>
+                                    <div class="h4 font-bold mb-0">{{ $latestHealthRecord->bone_mass ?? 'N/A' }}</div>
                                     <small class="text-muted">Bone Mass</small>
                                 </div>
                             </div>
 
                             <!-- BMR -->
                             <div class="col-md-2">
-                                <div class="text-center p-3 bg-light rounded">
+                                <div class="text-center p-3 bg-gray-50 rounded">
                                     <i class="bi bi-lightning text-danger mb-2" style="font-size: 1.5rem;"></i>
-                                    <div class="h4 fw-bold mb-0">{{ $latestHealthRecord->bmr ?? 'N/A' }}</div>
+                                    <div class="h4 font-bold mb-0">{{ $latestHealthRecord->bmr ?? 'N/A' }}</div>
                                     <small class="text-muted">BMR (cal)</small>
                                 </div>
                             </div>
@@ -628,9 +628,9 @@
             <div class="row mb-4">
                 <!-- Body Composition Analysis -->
                 <div class="col-lg-7">
-                    <div class="card shadow-sm border-0 h-100">
+                    <div class="card shadow-sm border-0 h-full">
                         <div class="card-body p-4">
-                            <h5 class="fw-bold mb-4"><i class="bi bi-activity me-2"></i>Body Composition Analysis</h5>
+                            <h5 class="font-bold mb-4"><i class="bi bi-activity mr-2"></i>Body Composition Analysis</h5>
 
                             <div class="chart-container" style="position: relative; height: 500px; width: 100%;">
                                 <canvas id="radarChart" data-current='@json($comparisonRecords->first())' data-previous='@json($comparisonRecords->skip(1)->first())'></canvas>
@@ -641,9 +641,9 @@
 
                 <!-- Compare -->
                 <div class="col-lg-5">
-                    <div class="card shadow-sm border-0 h-100">
+                    <div class="card shadow-sm border-0 h-full">
                         <div class="card-body p-4">
-                            <h5 class="fw-bold mb-4"><i class="bi bi-bar-chart-line me-2"></i>Compare</h5>
+                            <h5 class="font-bold mb-4"><i class="bi bi-bar-chart-line mr-2"></i>Compare</h5>
 
                             @if($comparisonRecords->count() >= 2)
                                 @php
@@ -654,7 +654,7 @@
                                 <div class="mb-3">
                                     <div class="row g-2">
                                         <div class="col-6 text-center">
-                                            <label class="form-label fw-bold">From</label>
+                                            <label class="form-label font-bold">From</label>
                                             <select class="form-select form-select-sm" id="currentDate">
                                                 @foreach($healthRecords as $record)
                                                     <option value="{{ $record->id }}" {{ $record->id == $current->id ? 'selected' : '' }}>
@@ -664,7 +664,7 @@
                                             </select>
                                         </div>
                                         <div class="col-6 text-center">
-                                            <label class="form-label fw-bold">To</label>
+                                            <label class="form-label font-bold">To</label>
                                             <select class="form-select form-select-sm" id="previousDate">
                                                 @foreach($healthRecords as $record)
                                                     <option value="{{ $record->id }}" {{ $record->id == $previous->id ? 'selected' : '' }}>
@@ -689,10 +689,10 @@
                                     <table class="table table-sm align-middle">
                                         <thead>
                                             <tr class="border-bottom">
-                                                <th class="text-muted small fw-semibold">Metric</th>
-                                                <th class="text-muted small fw-semibold text-end">Current</th>
-                                                <th class="text-muted small fw-semibold text-end">Previous</th>
-                                                <th class="text-muted small fw-semibold text-center">Change</th>
+                                                <th class="text-muted small font-semibold">Metric</th>
+                                                <th class="text-muted small font-semibold text-end">Current</th>
+                                                <th class="text-muted small font-semibold text-end">Previous</th>
+                                                <th class="text-muted small font-semibold text-center">Change</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -704,68 +704,68 @@
                                                 }
                                             @endphp
                                             <tr data-metric="height">
-                                                <td class="small"><i class="bi bi-rulers me-2"></i>Height</td>
-                                                <td class="small text-end fw-semibold text-primary">{{ $current->height ?? 'N/A' }}cm</td>
+                                                <td class="small"><i class="bi bi-rulers mr-2"></i>Height</td>
+                                                <td class="small text-end font-semibold text-primary">{{ $current->height ?? 'N/A' }}cm</td>
                                                 <td class="small text-end text-danger">{{ $previous->height ?? 'N/A' }}cm</td>
                                                 <td class="text-center">{!! $current->height && $previous->height ? getChangeIcon($current->height, $previous->height) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="weight">
-                                                <td class="small"><i class="bi bi-speedometer2 me-2"></i>Weight</td>
-                                                <td class="small text-end fw-semibold text-primary">{{ $current->weight ?? 'N/A' }}kg</td>
+                                                <td class="small"><i class="bi bi-speedometer2 mr-2"></i>Weight</td>
+                                                <td class="small text-end font-semibold text-primary">{{ $current->weight ?? 'N/A' }}kg</td>
                                                 <td class="small text-end text-danger">{{ $previous->weight ?? 'N/A' }}kg</td>
                                                 <td class="text-center">{!! $current->weight && $previous->weight ? getChangeIcon($current->weight, $previous->weight) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="body_fat">
-                                                <td class="small"><i class="bi bi-activity me-2"></i>Body Fat</td>
-                                                <td class="small text-end fw-semibold text-primary">{{ $current->body_fat_percentage ?? 'N/A' }}%</td>
+                                                <td class="small"><i class="bi bi-activity mr-2"></i>Body Fat</td>
+                                                <td class="small text-end font-semibold text-primary">{{ $current->body_fat_percentage ?? 'N/A' }}%</td>
                                                 <td class="small text-end text-danger">{{ $previous->body_fat_percentage ?? 'N/A' }}%</td>
                                                 <td class="text-center">{!! $current->body_fat_percentage && $previous->body_fat_percentage ? getChangeIcon($current->body_fat_percentage, $previous->body_fat_percentage) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="bmi">
-                                                <td class="small"><i class="bi bi-calculator me-2"></i>BMI</td>
-                                                <td class="small text-end fw-semibold text-primary">{{ $current->bmi ?? 'N/A' }}</td>
+                                                <td class="small"><i class="bi bi-calculator mr-2"></i>BMI</td>
+                                                <td class="small text-end font-semibold text-primary">{{ $current->bmi ?? 'N/A' }}</td>
                                                 <td class="small text-end text-danger">{{ $previous->bmi ?? 'N/A' }}</td>
                                                 <td class="text-center">{!! $current->bmi && $previous->bmi ? getChangeIcon($current->bmi, $previous->bmi) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="body_water">
-                                                <td class="small"><i class="bi bi-droplet me-2"></i>Body Water</td>
-                                                <td class="small text-end fw-semibold text-primary">{{ $current->body_water_percentage ?? 'N/A' }}%</td>
+                                                <td class="small"><i class="bi bi-droplet mr-2"></i>Body Water</td>
+                                                <td class="small text-end font-semibold text-primary">{{ $current->body_water_percentage ?? 'N/A' }}%</td>
                                                 <td class="small text-end text-danger">{{ $previous->body_water_percentage ?? 'N/A' }}%</td>
                                                 <td class="text-center">{!! $current->body_water_percentage && $previous->body_water_percentage ? getChangeIcon($current->body_water_percentage, $previous->body_water_percentage) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="muscle_mass">
-                                                <td class="small"><i class="bi bi-heart me-2"></i>Muscle Mass</td>
-                                                <td class="small text-end fw-semibold text-primary">{{ $current->muscle_mass ?? 'N/A' }}kg</td>
+                                                <td class="small"><i class="bi bi-heart mr-2"></i>Muscle Mass</td>
+                                                <td class="small text-end font-semibold text-primary">{{ $current->muscle_mass ?? 'N/A' }}kg</td>
                                                 <td class="small text-end text-danger">{{ $previous->muscle_mass ?? 'N/A' }}kg</td>
                                                 <td class="text-center">{!! $current->muscle_mass && $previous->muscle_mass ? getChangeIcon($current->muscle_mass, $previous->muscle_mass) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="bone_mass">
-                                                <td class="small"><i class="bi bi-capsule me-2"></i>Bone Mass</td>
-                                                <td class="small text-end fw-semibold text-primary">{{ $current->bone_mass ?? 'N/A' }}kg</td>
+                                                <td class="small"><i class="bi bi-capsule mr-2"></i>Bone Mass</td>
+                                                <td class="small text-end font-semibold text-primary">{{ $current->bone_mass ?? 'N/A' }}kg</td>
                                                 <td class="small text-end text-danger">{{ $previous->bone_mass ?? 'N/A' }}kg</td>
                                                 <td class="text-center">{!! $current->bone_mass && $previous->bone_mass ? getChangeIcon($current->bone_mass, $previous->bone_mass) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="visceral_fat">
-                                                <td class="small"><i class="bi bi-activity me-2"></i>Visceral Fat</td>
-                                                <td class="small text-end fw-semibold text-primary">{{ $current->visceral_fat ?? 'N/A' }}</td>
+                                                <td class="small"><i class="bi bi-activity mr-2"></i>Visceral Fat</td>
+                                                <td class="small text-end font-semibold text-primary">{{ $current->visceral_fat ?? 'N/A' }}</td>
                                                 <td class="small text-end text-danger">{{ $previous->visceral_fat ?? 'N/A' }}</td>
                                                 <td class="text-center">{!! $current->visceral_fat && $previous->visceral_fat ? getChangeIcon($current->visceral_fat, $previous->visceral_fat) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="bmr">
-                                                <td class="small"><i class="bi bi-lightning me-2"></i>BMR</td>
-                                                <td class="small text-end fw-semibold text-primary">{{ $current->bmr ?? 'N/A' }}cal</td>
+                                                <td class="small"><i class="bi bi-lightning mr-2"></i>BMR</td>
+                                                <td class="small text-end font-semibold text-primary">{{ $current->bmr ?? 'N/A' }}cal</td>
                                                 <td class="small text-end text-danger">{{ $previous->bmr ?? 'N/A' }}cal</td>
                                                 <td class="text-center">{!! $current->bmr && $previous->bmr ? getChangeIcon($current->bmr, $previous->bmr) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="protein">
-                                                <td class="small"><i class="bi bi-heart-pulse me-2"></i>Protein</td>
-                                                <td class="small text-end fw-semibold text-primary">{{ $current->protein_percentage ?? 'N/A' }}%</td>
+                                                <td class="small"><i class="bi bi-heart-pulse mr-2"></i>Protein</td>
+                                                <td class="small text-end font-semibold text-primary">{{ $current->protein_percentage ?? 'N/A' }}%</td>
                                                 <td class="small text-end text-danger">{{ $previous->protein_percentage ?? 'N/A' }}%</td>
                                                 <td class="text-center">{!! $current->protein_percentage && $previous->protein_percentage ? getChangeIcon($current->protein_percentage, $previous->protein_percentage) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="body_age">
-                                                <td class="small"><i class="bi bi-calendar-heart me-2"></i>Body Age</td>
-                                                <td class="small text-end fw-semibold text-primary">{{ $current->body_age ?? 'N/A' }}yrs</td>
+                                                <td class="small"><i class="bi bi-calendar-heart mr-2"></i>Body Age</td>
+                                                <td class="small text-end font-semibold text-primary">{{ $current->body_age ?? 'N/A' }}yrs</td>
                                                 <td class="small text-end text-danger">{{ $previous->body_age ?? 'N/A' }}yrs</td>
                                                 <td class="text-center">{!! $current->body_age && $previous->body_age ? getChangeIcon($current->body_age, $previous->body_age) : '-' !!}</td>
                                             </tr>
@@ -786,31 +786,31 @@
             <!-- Health Tracking History -->
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <h5 class="fw-bold mb-4"><i class="bi bi-heart-pulse me-2"></i>Health Tracking</h5>
+                    <h5 class="font-bold mb-4"><i class="bi bi-heart-pulse mr-2"></i>Health Tracking</h5>
 
                     @if($healthRecords->count() > 0)
                         <div class="table-responsive">
                             <table class="table table-hover align-middle">
                                 <thead class="table-light">
                                 <tr>
-                                    <th class="text-muted small fw-semibold">Date</th>
-                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-rulers me-1"></i>Height (cm)</th>
-                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-speedometer2 me-1"></i>Weight (kg)</th>
-                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-activity me-1"></i>Body Fat %</th>
-                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-calculator me-1"></i>BMI</th>
-                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-droplet me-1"></i>Body Water %</th>
-                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-heart me-1"></i>Muscle Mass (kg)</th>
-                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-capsule me-1"></i>Bone Mass (kg)</th>
-                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-activity me-1"></i>Visceral Fat</th>
-                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-lightning me-1"></i>BMR</th>
-                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-heart-pulse me-1"></i>Protein %</th>
-                                    <th class="text-muted small fw-semibold text-center"><i class="bi bi-calendar-heart me-1"></i>Body Age</th>
+                                    <th class="text-muted small font-semibold">Date</th>
+                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-rulers mr-1"></i>Height (cm)</th>
+                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-speedometer2 mr-1"></i>Weight (kg)</th>
+                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-activity mr-1"></i>Body Fat %</th>
+                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-calculator mr-1"></i>BMI</th>
+                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-droplet mr-1"></i>Body Water %</th>
+                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-heart mr-1"></i>Muscle Mass (kg)</th>
+                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-capsule mr-1"></i>Bone Mass (kg)</th>
+                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-activity mr-1"></i>Visceral Fat</th>
+                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-lightning mr-1"></i>BMR</th>
+                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-heart-pulse mr-1"></i>Protein %</th>
+                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-calendar-heart mr-1"></i>Body Age</th>
                                 </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($healthRecords as $record)
-                                        <tr data-record-id="{{ $record->id }}" class="position-relative history-row">
-                                            <td class="small fw-semibold">{{ $record->recorded_at->format('M j, Y') }}</td>
+                                        <tr data-record-id="{{ $record->id }}" class="relative history-row">
+                                            <td class="small font-semibold">{{ $record->recorded_at->format('M j, Y') }}</td>
                                             <td class="small text-center">{{ $record->height ?? '-' }}</td>
                                             <td class="small text-center">{{ $record->weight ?? '-' }}</td>
                                             <td class="small text-center">{{ $record->body_fat_percentage ?? '-' }}</td>
@@ -822,7 +822,7 @@
                                             <td class="small text-center">{{ $record->bmr ?? '-' }}</td>
                                             <td class="small text-center">{{ $record->protein_percentage ?? '-' }}</td>
                                             <td class="small text-center">{{ $record->body_age ?? '-' }}</td>
-                                            <td class="position-absolute top-50 end-0 translate-middle-y opacity-0 edit-record-btn" style="cursor: pointer; right: 10px;">
+                                            <td class="absolute top-1/2 right-0 -translate-y-1/2 opacity-0 edit-record-btn" style="cursor: pointer; right: 10px;">
                                                 <i class="bi bi-pencil text-primary" style="font-size: 1.2rem;"></i>
                                             </td>
                                         </tr>
@@ -832,7 +832,7 @@
                         </div>
 
                         <!-- Pagination -->
-                        <div class="d-flex justify-content-center mt-4">
+                        <div class="flex justify-center mt-4">
                             {{ $healthRecords->links() }}
                         </div>
                     @else
@@ -851,9 +851,9 @@
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
                     <!-- Section Title & Subtitle -->
-                    <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="flex justify-between items-center mb-4">
                         <div>
-                            <h5 class="fw-bold mb-1"><i class="bi bi-bullseye me-2"></i>Goal Tracking</h5>
+                            <h5 class="font-bold mb-1"><i class="bi bi-bullseye mr-2"></i>Goal Tracking</h5>
                             <p class="text-muted small mb-0">Set, track, and achieve your fitness objectives.</p>
                         </div>
                     </div>
@@ -862,31 +862,31 @@
                     <div class="row g-3 mb-4">
                         <!-- Active Goals -->
                         <div class="col-md-4">
-                            <div class="card shadow-sm border-0 text-center h-100 goal-filter-card" style="background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%); min-height: 120px; cursor: pointer;" data-filter="active">
-                                <div class="card-body p-3 d-flex flex-column justify-content-center align-items-center h-100">
+                            <div class="card shadow-sm border-0 text-center h-full goal-filter-card" style="background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%); min-height: 120px; cursor: pointer;" data-filter="active">
+                                <div class="card-body p-3 flex flex-col justify-center items-center h-full">
                                     <i class="bi bi-bullseye text-white mb-2" style="font-size: 2rem;"></i>
-                                    <h4 class="text-white fw-bold mb-1">{{ $activeGoalsCount }}</h4>
-                                    <small class="text-white-50">Active Goals</small>
+                                    <h4 class="text-white font-bold mb-1">{{ $activeGoalsCount }}</h4>
+                                    <small class="text-white/50">Active Goals</small>
                                 </div>
                             </div>
                         </div>
                         <!-- Completed Goals -->
                         <div class="col-md-4">
-                            <div class="card shadow-sm border-0 text-center h-100 goal-filter-card" style="background: linear-gradient(135deg, #10b981 0%, #34d399 100%); min-height: 120px; cursor: pointer;" data-filter="completed">
-                                <div class="card-body p-3 d-flex flex-column justify-content-center align-items-center h-100">
+                            <div class="card shadow-sm border-0 text-center h-full goal-filter-card" style="background: linear-gradient(135deg, #10b981 0%, #34d399 100%); min-height: 120px; cursor: pointer;" data-filter="completed">
+                                <div class="card-body p-3 flex flex-col justify-center items-center h-full">
                                     <i class="bi bi-check-circle-fill text-white mb-2" style="font-size: 2rem;"></i>
-                                    <h4 class="text-white fw-bold mb-1">{{ $completedGoalsCount }}</h4>
-                                    <small class="text-white-50">Completed Goals</small>
+                                    <h4 class="text-white font-bold mb-1">{{ $completedGoalsCount }}</h4>
+                                    <small class="text-white/50">Completed Goals</small>
                                 </div>
                             </div>
                         </div>
                         <!-- Success Rate -->
                         <div class="col-md-4">
-                            <div class="card shadow-sm border-0 text-center h-100" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); min-height: 120px;">
-                                <div class="card-body p-3 d-flex flex-column justify-content-center align-items-center h-100">
+                            <div class="card shadow-sm border-0 text-center h-full" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); min-height: 120px;">
+                                <div class="card-body p-3 flex flex-col justify-center items-center h-full">
                                     <i class="bi bi-graph-up-arrow text-white mb-2" style="font-size: 2rem;"></i>
-                                    <h4 class="text-white fw-bold mb-1">{{ $successRate }}%</h4>
-                                    <small class="text-white-50">Success Rate</small>
+                                    <h4 class="text-white font-bold mb-1">{{ $successRate }}%</h4>
+                                    <small class="text-white/50">Success Rate</small>
                                 </div>
                             </div>
                         </div>
@@ -897,18 +897,18 @@
                         <div class="row g-4">
                             @foreach($goals as $goal)
                         <div class="col-lg-6">
-                            <div class="card shadow-sm border-0 h-100 position-relative">
+                            <div class="card shadow-sm border-0 h-full relative">
                                 <!-- Edit Button (only for active goals and authorized users) -->
                                 @if($goal->status == 'active' && ($relationship->relationship_type == 'self' || Auth::id() == $relationship->guardian_user_id))
-                                    <button class="btn btn-sm btn-outline-primary rounded-circle position-absolute top-0 end-0 mt-2 me-2 edit-goal-btn" style="width: 32px; height: 32px; padding: 0;" data-goal-id="{{ $goal->id }}" title="Edit Goal">
+                                    <button class="btn btn-sm btn-outline-primary rounded-circle absolute top-0 right-0 mt-2 mr-2 edit-goal-btn" style="width: 32px; height: 32px; padding: 0;" data-goal-id="{{ $goal->id }}" title="Edit Goal">
                                         <i class="bi bi-pencil"></i>
                                     </button>
                                 @endif
 
                                 <div class="card-body p-4">
                                     <!-- Title & Icon -->
-                                    <div class="d-flex align-items-center mb-3">
-                                        <div class="rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px; background-color: #8b5cf6;">
+                                    <div class="flex items-center mb-3">
+                                        <div class="rounded-circle flex items-center justify-center mr-3" style="width: 48px; height: 48px; background-color: #8b5cf6;">
                                             @if($goal->icon_type == 'dumbbell')
                                                 <i class="bi bi-dumbbell text-white"></i>
                                             @elseif($goal->icon_type == 'clock')
@@ -917,8 +917,8 @@
                                                 <i class="bi bi-bullseye text-white"></i>
                                             @endif
                                         </div>
-                                        <div class="flex-grow-1">
-                                            <h6 class="fw-bold mb-1">{{ $goal->title }}</h6>
+                                        <div class="flex-1">
+                                            <h6 class="font-bold mb-1">{{ $goal->title }}</h6>
                                             @if($goal->description)
                                                 <p class="text-muted small mb-0">{{ $goal->description }}</p>
                                             @endif
@@ -927,9 +927,9 @@
 
                                             <!-- Progress Indicator -->
                                             <div class="mb-3">
-                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <div class="flex justify-between items-center mb-2">
                                                     <small class="text-muted">Progress: {{ number_format($goal->current_progress_value, 1) }} / {{ number_format($goal->target_value, 1) }} {{ $goal->unit }}</small>
-                                                    <small class="fw-semibold">{{ number_format($goal->progress_percentage, 1) }}%</small>
+                                                    <small class="font-semibold">{{ number_format($goal->progress_percentage, 1) }}%</small>
                                                 </div>
                                                 <div class="progress" style="height: 8px;">
                                                     <div class="progress-bar" role="progressbar" style="width: {{ $goal->progress_percentage }}%; background: linear-gradient(90deg, #8b5cf6 0%, #10b981 100%);" aria-valuenow="{{ $goal->progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
@@ -939,17 +939,17 @@
                                             <!-- Dates & Status -->
                                             <div class="row g-2 mb-3">
                                                 <div class="col-6">
-                                                    <small class="text-muted d-block">Started:</small>
-                                                    <small class="fw-semibold">{{ $goal->start_date->format('M d, Y') }}</small>
+                                                    <small class="text-muted block">Started:</small>
+                                                    <small class="font-semibold">{{ $goal->start_date->format('M d, Y') }}</small>
                                                 </div>
                                                 <div class="col-6 text-end">
-                                                    <small class="text-muted d-block">Target:</small>
-                                                    <small class="fw-semibold">{{ $goal->target_date->format('M d, Y') }}</small>
+                                                    <small class="text-muted block">Target:</small>
+                                                    <small class="font-semibold">{{ $goal->target_date->format('M d, Y') }}</small>
                                                 </div>
                                             </div>
 
                                             <!-- Status Badges -->
-                                            <div class="d-flex gap-2 flex-wrap">
+                                            <div class="flex gap-2 flex-wrap">
                                                 <span class="badge {{ $goal->status == 'active' ? 'bg-primary' : 'bg-success' }} small">
                                                     {{ ucfirst($goal->status) }}
                                                 </span>
@@ -984,14 +984,14 @@
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-body p-4">
                     <!-- Section Title & Subtitle -->
-                    <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="flex justify-between items-center mb-4">
                         <div>
-                            <h5 class="fw-bold mb-1"><i class="bi bi-trophy-fill text-warning me-2"></i>Tournament & Event Participation</h5>
+                            <h5 class="font-bold mb-1"><i class="bi bi-trophy-fill text-warning mr-2"></i>Tournament & Event Participation</h5>
                             <p class="text-muted small mb-0">Proven champion with multiple championship wins and prestigious awards.</p>
                         </div>
                         <!-- Filter Section -->
-                        <div class="d-flex align-items-center">
-                            <label for="sportFilter" class="form-label me-2 mb-0 fw-semibold">Filter by Sport:</label>
+                        <div class="flex items-center">
+                            <label for="sportFilter" class="form-label mr-2 mb-0 font-semibold">Filter by Sport:</label>
                             <select class="form-select form-select-sm" id="sportFilter" style="width: 150px;">
                                 <option value="all">All Sports</option>
                                 @foreach($sports as $sport)
@@ -1007,8 +1007,8 @@
                             <div class="card shadow-sm border-0 text-center" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
                                 <div class="card-body p-3">
                                     <i class="bi bi-trophy-fill text-white mb-2" style="font-size: 2rem;"></i>
-                                    <h4 class="text-white fw-bold mb-1" id="specialCount">{{ $awardCounts['special'] }}</h4>
-                                    <small class="text-white-50">Special Award</small>
+                                    <h4 class="text-white font-bold mb-1" id="specialCount">{{ $awardCounts['special'] }}</h4>
+                                    <small class="text-white/50">Special Award</small>
                                 </div>
                             </div>
                         </div>
@@ -1016,8 +1016,8 @@
                             <div class="card shadow-sm border-0 text-center" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
                                 <div class="card-body p-3">
                                     <i class="bi bi-award-fill text-white mb-2" style="font-size: 2rem;"></i>
-                                    <h4 class="text-white fw-bold mb-1" id="firstCount">{{ $awardCounts['1st'] }}</h4>
-                                    <small class="text-white-50">1st Place</small>
+                                    <h4 class="text-white font-bold mb-1" id="firstCount">{{ $awardCounts['1st'] }}</h4>
+                                    <small class="text-white/50">1st Place</small>
                                 </div>
                             </div>
                         </div>
@@ -1025,8 +1025,8 @@
                             <div class="card shadow-sm border-0 text-center" style="background: linear-gradient(135deg, #C0C0C0 0%, #A8A8A8 100%);">
                                 <div class="card-body p-3">
                                     <i class="bi bi-award-fill text-white mb-2" style="font-size: 2rem;"></i>
-                                    <h4 class="text-white fw-bold mb-1" id="secondCount">{{ $awardCounts['2nd'] }}</h4>
-                                    <small class="text-white-50">2nd Place</small>
+                                    <h4 class="text-white font-bold mb-1" id="secondCount">{{ $awardCounts['2nd'] }}</h4>
+                                    <small class="text-white/50">2nd Place</small>
                                 </div>
                             </div>
                         </div>
@@ -1034,8 +1034,8 @@
                             <div class="card shadow-sm border-0 text-center" style="background: linear-gradient(135deg, #CD7F32 0%, #A0522D 100%);">
                                 <div class="card-body p-3">
                                     <i class="bi bi-award-fill text-white mb-2" style="font-size: 2rem;"></i>
-                                    <h4 class="text-white fw-bold mb-1" id="thirdCount">{{ $awardCounts['3rd'] }}</h4>
-                                    <small class="text-white-50">3rd Place</small>
+                                    <h4 class="text-white font-bold mb-1" id="thirdCount">{{ $awardCounts['3rd'] }}</h4>
+                                    <small class="text-white/50">3rd Place</small>
                                 </div>
                             </div>
                         </div>
@@ -1046,45 +1046,45 @@
             <!-- Tournament & Championships History Card -->
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <h6 class="fw-bold mb-3"><i class="bi bi-list-ul me-2"></i>Tournament & Championships History</h6>
+                    <h6 class="font-bold mb-3"><i class="bi bi-list-ul mr-2"></i>Tournament & Championships History</h6>
 
                     @if($tournamentEvents->count() > 0)
                         <div class="table-responsive">
                             <table class="table table-hover align-middle" id="tournamentsTable">
                                 <thead class="table-light">
                                     <tr>
-                                        <th class="text-muted small fw-semibold">Tournament Details</th>
-                                        <th class="text-muted small fw-semibold">Club Affiliation</th>
-                                        <th class="text-muted small fw-semibold">Performance & Result</th>
-                                        <th class="text-muted small fw-semibold">Notes & Media</th>
+                                        <th class="text-muted small font-semibold">Tournament Details</th>
+                                        <th class="text-muted small font-semibold">Club Affiliation</th>
+                                        <th class="text-muted small font-semibold">Performance & Result</th>
+                                        <th class="text-muted small font-semibold">Notes & Media</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($tournamentEvents as $event)
                                         <tr data-sport="{{ $event->sport }}">
                                             <td>
-                                                <div class="fw-bold">{{ $event->title }}</div>
-                                                <div class="d-flex gap-2 mt-1 flex-wrap">
+                                                <div class="font-bold">{{ $event->title }}</div>
+                                                <div class="flex gap-2 mt-1 flex-wrap">
                                                     <span class="badge bg-{{ $event->type == 'championship' ? 'primary' : 'secondary' }} small">{{ ucfirst($event->type) }}</span>
                                                     <span class="badge bg-info small">{{ $event->sport }}</span>
                                                 </div>
                                                 <div class="text-muted small mt-1">
-                                                    <i class="bi bi-calendar-event me-1"></i>{{ $event->date->format('M j, Y') }}
+                                                    <i class="bi bi-calendar-event mr-1"></i>{{ $event->date->format('M j, Y') }}
                                                     @if($event->time)
-                                                        <i class="bi bi-clock me-1 ms-2"></i>{{ $event->time->format('H:i') }}
+                                                        <i class="bi bi-clock mr-1 ml-2"></i>{{ $event->time->format('H:i') }}
                                                     @endif
                                                     @if($event->location)
-                                                        <i class="bi bi-geo-alt me-1 ms-2"></i>{{ $event->location }}
+                                                        <i class="bi bi-geo-alt mr-1 ml-2"></i>{{ $event->location }}
                                                     @endif
                                                     @if($event->participants_count)
-                                                        <i class="bi bi-people me-1 ms-2"></i>{{ $event->participants_count }} participants
+                                                        <i class="bi bi-people mr-1 ml-2"></i>{{ $event->participants_count }} participants
                                                     @endif
                                                 </div>
                                             </td>
                                             <td>
                                                 @if($event->clubAffiliation)
                                                     <div>
-                                                        <div class="small fw-semibold">{{ $event->clubAffiliation->club_name }}</div>
+                                                        <div class="small font-semibold">{{ $event->clubAffiliation->club_name }}</div>
                                                         <div class="text-muted small">{{ $event->clubAffiliation->location }}</div>
                                                     </div>
                                                 @else
@@ -1094,7 +1094,7 @@
                                             <td>
                                                 @if($event->performanceResults->count() > 0)
                                                     @foreach($event->performanceResults as $result)
-                                                        <div class="d-flex align-items-center gap-2 mb-1">
+                                                        <div class="flex items-center gap-2 mb-1">
                                                             @if($result->medal_type == '1st')
                                                                 <i class="bi bi-award-fill text-warning"></i>
                                                                 <span class="badge bg-warning text-dark small">1st Place</span>
@@ -1128,7 +1128,7 @@
                                                         @endif
                                                         @if($note->media_link)
                                                             <a href="{{ $note->media_link }}" target="_blank" class="btn btn-sm btn-outline-primary small">
-                                                                <i class="bi bi-image me-1"></i>View Media
+                                                                <i class="bi bi-image mr-1"></i>View Media
                                                             </a>
                                                         @endif
                                                     @endforeach
@@ -1156,7 +1156,7 @@
         <div class="tab-pane fade" id="events" role="tabpanel">
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <h5 class="fw-bold mb-3"><i class="bi bi-calendar-event me-2"></i>Event Participation</h5>
+                    <h5 class="font-bold mb-3"><i class="bi bi-calendar-event mr-2"></i>Event Participation</h5>
                     <p class="text-muted">Event history coming soon...</p>
                 </div>
             </div>
@@ -1178,12 +1178,12 @@
                 <div class="modal-body">
                     <div class="row g-3">
                         <div class="col-12">
-                            <div class="d-flex align-items-center mb-3">
-                                <div class="rounded-circle d-flex align-items-center justify-content-center me-3" id="goalIconDisplay" style="width: 48px; height: 48px; background-color: #8b5cf6;">
+                            <div class="flex items-center mb-3">
+                                <div class="rounded-circle flex items-center justify-center mr-3" id="goalIconDisplay" style="width: 48px; height: 48px; background-color: #8b5cf6;">
                                     <i class="bi bi-bullseye text-white"></i>
                                 </div>
                                 <div>
-                                    <h6 class="fw-bold mb-1" id="goalTitleDisplay">Goal Title</h6>
+                                    <h6 class="font-bold mb-1" id="goalTitleDisplay">Goal Title</h6>
                                     <p class="text-muted small mb-0" id="goalDescriptionDisplay">Goal description</p>
                                 </div>
                             </div>
@@ -1207,7 +1207,7 @@
                             <div class="progress" style="height: 8px;">
                                 <div class="progress-bar" role="progressbar" id="progressPreview" style="width: 0%; background: linear-gradient(90deg, #8b5cf6 0%, #10b981 100%);"></div>
                             </div>
-                            <small class="text-muted mt-1 d-block" id="progressTextPreview">Progress: 0.0 / 170.0 lbs (0.0%)</small>
+                            <small class="text-muted mt-1 block" id="progressTextPreview">Progress: 0.0 / 170.0 lbs (0.0%)</small>
                         </div>
                     </div>
                 </div>
@@ -1388,7 +1388,7 @@
                                             <label class="form-label">Description</label>
                                             <input type="text" class="form-control" name="performance_results[0][description]" placeholder="Optional description">
                                         </div>
-                                        <div class="col-md-1 d-flex align-items-end">
+                                        <div class="col-md-1 flex items-end">
                                             <button type="button" class="btn btn-outline-danger btn-sm remove-result" style="display: none;">
                                                 <i class="bi bi-trash"></i>
                                             </button>
@@ -1397,7 +1397,7 @@
                                 </div>
                             </div>
                             <button type="button" class="btn btn-outline-primary btn-sm" id="addPerformanceResult">
-                                <i class="bi bi-plus me-1"></i>Add Another Result
+                                <i class="bi bi-plus mr-1"></i>Add Another Result
                             </button>
                         </div>
 
@@ -1416,7 +1416,7 @@
                                             <label class="form-label">Media Link</label>
                                             <input type="url" class="form-control" name="notes_media[0][media_link]" placeholder="https://example.com/photo.jpg">
                                         </div>
-                                        <div class="col-md-1 d-flex align-items-end">
+                                        <div class="col-md-1 flex items-end">
                                             <button type="button" class="btn btn-outline-danger btn-sm remove-note" style="display: none;">
                                                 <i class="bi bi-trash"></i>
                                             </button>
@@ -1425,7 +1425,7 @@
                                 </div>
                             </div>
                             <button type="button" class="btn btn-outline-primary btn-sm" id="addNotesMedia">
-                                <i class="bi bi-plus me-1"></i>Add Another Note/Media
+                                <i class="bi bi-plus mr-1"></i>Add Another Note/Media
                             </button>
                         </div>
                     </div>
@@ -1971,7 +1971,7 @@
         // Goals filtering functionality
         const goalFilterCards = document.querySelectorAll('.goal-filter-card');
         const goalsContainer = document.querySelector('.row.g-4'); // Container with goal cards
-        const goalsTitle = document.querySelector('h5.fw-bold'); // The "Goal Tracking" title
+        const goalsTitle = document.querySelector('h5.font-bold'); // The "Goal Tracking" title
 
         if (goalFilterCards.length > 0 && goalsContainer) {
             // Add click event to filter cards
@@ -2018,14 +2018,14 @@
             });
 
             // Update title to show current filter
-            const titleElement = document.querySelector('h5.fw-bold');
+            const titleElement = document.querySelector('h5.font-bold');
             if (titleElement) {
                 const baseTitle = 'Goal Tracking';
                 if (filterType === 'all') {
-                    titleElement.innerHTML = `<i class="bi bi-bullseye me-2"></i>${baseTitle}`;
+                    titleElement.innerHTML = `<i class="bi bi-bullseye mr-2"></i>${baseTitle}`;
                 } else {
                     const filterLabel = filterType === 'active' ? 'Active' : 'Completed';
-                    titleElement.innerHTML = `<i class="bi bi-bullseye me-2"></i>${baseTitle} - ${filterLabel} Goals`;
+                    titleElement.innerHTML = `<i class="bi bi-bullseye mr-2"></i>${baseTitle} - ${filterLabel} Goals`;
                 }
             }
         }
@@ -2264,10 +2264,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const detailsContainer = document.getElementById('affiliationDetails');
 
         let html = `
-            <div class="d-flex align-items-center mb-3">
+            <div class="flex items-center mb-3">
                 ${affiliation.logo ?
-                    `<img src="${affiliation.logo}" alt="${affiliation.club_name}" class="me-3 rounded" style="width: 50px; height: 50px; object-fit: cover;">` :
-                    `<div class="bg-primary text-white rounded d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                    `<img src="${affiliation.logo}" alt="${affiliation.club_name}" class="mr-3 rounded" style="width: 50px; height: 50px; object-fit: cover;">` :
+                    `<div class="bg-primary text-white rounded flex items-center justify-center mr-3" style="width: 50px; height: 50px;">
                         <i class="bi bi-building"></i>
                     </div>`
                 }
@@ -2280,7 +2280,7 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
 
         if (affiliation.location) {
-            html += `<p class="mb-2"><i class="bi bi-geo-alt me-2"></i><strong>Location:</strong> ${affiliation.location}</p>`;
+            html += `<p class="mb-2"><i class="bi bi-geo-alt mr-2"></i><strong>Location:</strong> ${affiliation.location}</p>`;
         }
 
         if (affiliation.description) {
@@ -2299,8 +2299,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const iconClass = media.icon_class || 'bi-file';
                 html += `
                     <div class="col-6">
-                        <a href="${media.full_url}" target="_blank" class="btn btn-outline-secondary btn-sm w-100">
-                            <i class="bi ${iconClass} me-1"></i>${media.title || media.media_type}
+                        <a href="${media.full_url}" target="_blank" class="btn btn-outline-secondary btn-sm w-full">
+                            <i class="bi ${iconClass} mr-1"></i>${media.title || media.media_type}
                         </a>
                     </div>
                 `;
@@ -2356,7 +2356,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <label class="form-label">Description</label>
                     <input type="text" class="form-control" name="performance_results[${performanceResultIndex}][description]" placeholder="Optional description">
                 </div>
-                <div class="col-md-1 d-flex align-items-end">
+                <div class="col-md-1 flex items-end">
                     <button type="button" class="btn btn-outline-danger btn-sm remove-result">
                         <i class="bi bi-trash"></i>
                     </button>
@@ -2385,7 +2385,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <label class="form-label">Media Link</label>
                     <input type="url" class="form-control" name="notes_media[${notesMediaIndex}][media_link]" placeholder="https://example.com/photo.jpg">
                 </div>
-                <div class="col-md-1 d-flex align-items-end">
+                <div class="col-md-1 flex items-end">
                     <button type="button" class="btn btn-outline-danger btn-sm remove-note">
                         <i class="bi bi-trash"></i>
                     </button>

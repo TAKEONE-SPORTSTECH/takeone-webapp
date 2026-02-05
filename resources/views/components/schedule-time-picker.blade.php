@@ -28,58 +28,64 @@
     $uniqueId = $id . '-' . uniqid();
 @endphp
 
-<div class="row g-3 schedule-time-picker" data-picker-id="{{ $uniqueId }}">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 schedule-time-picker" data-picker-id="{{ $uniqueId }}" x-data="{ daysOpen: false }">
     <!-- Days Selector -->
-    <div class="col-md-4">
+    <div>
         @if($showLabels)
-            <label class="form-label fw-medium">
-                {{ $daysLabel }} @if($required)<span class="text-danger">*</span>@endif
+            <label class="block text-sm font-medium text-gray-600 mb-1">
+                {{ $daysLabel }} @if($required)<span class="text-red-500">*</span>@endif
             </label>
         @endif
-        <div class="dropdown">
+        <div class="relative">
             <button
-                class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center schedule-days-btn"
                 type="button"
+                @click="daysOpen = !daysOpen"
+                @click.away="daysOpen = false"
+                class="w-full h-12 px-4 text-left bg-white border-2 border-primary/20 rounded-xl flex items-center justify-between transition-all duration-300 hover:border-primary focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none"
                 id="daysDropdown-{{ $uniqueId }}"
-                data-bs-toggle="dropdown"
-                data-bs-auto-close="outside"
-                aria-expanded="false"
             >
-                <span class="selected-days-text text-truncate {{ count($selectedDays) > 0 ? '' : 'text-muted' }}">
+                <span class="selected-days-text truncate {{ count($selectedDays) > 0 ? 'text-gray-700' : 'text-gray-400' }}">
                     @if(count($selectedDays) > 0)
                         {{ collect($selectedDays)->map(fn($d) => substr(ucfirst($d), 0, 3))->join(', ') }}
                     @else
                         {{ $daysPlaceholder }}
                     @endif
                 </span>
-                <i class="bi bi-chevron-down ms-2"></i>
+                <i class="bi bi-chevron-down ml-2 transition-transform" :class="{ 'rotate-180': daysOpen }"></i>
             </button>
-            <div class="dropdown-menu w-100 p-3" aria-labelledby="daysDropdown-{{ $uniqueId }}">
+
+            <!-- Dropdown Menu -->
+            <div x-show="daysOpen"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 -translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 -translate-y-1"
+                 class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg p-3">
                 @foreach($days as $value => $label)
-                    <div class="form-check mb-2">
+                    <label class="flex items-center gap-2 py-2 px-1 hover:bg-gray-50 rounded-lg cursor-pointer">
                         <input
                             type="checkbox"
-                            class="form-check-input schedule-day-checkbox"
+                            class="w-4 h-4 rounded border-primary/30 text-primary focus:ring-primary/25 schedule-day-checkbox"
                             id="day-{{ $value }}-{{ $uniqueId }}"
                             name="{{ $daysName }}[]"
                             value="{{ $value }}"
                             data-day="{{ substr($label, 0, 3) }}"
                             {{ in_array($value, $selectedDays) ? 'checked' : '' }}
                         >
-                        <label class="form-check-label" for="day-{{ $value }}-{{ $uniqueId }}">
-                            {{ $label }}
-                        </label>
-                    </div>
+                        <span class="text-sm text-gray-700">{{ $label }}</span>
+                    </label>
                 @endforeach
             </div>
         </div>
     </div>
 
     <!-- Start Time -->
-    <div class="col-md-4">
+    <div>
         @if($showLabels)
-            <label for="startTime-{{ $uniqueId }}" class="form-label fw-medium">
-                {{ $startTimeLabel }} @if($required)<span class="text-danger">*</span>@endif
+            <label for="startTime-{{ $uniqueId }}" class="block text-sm font-medium text-gray-600 mb-1">
+                {{ $startTimeLabel }} @if($required)<span class="text-red-500">*</span>@endif
             </label>
         @endif
         <input
@@ -87,16 +93,16 @@
             id="startTime-{{ $uniqueId }}"
             name="{{ $startTimeName }}"
             value="{{ $startTime }}"
-            class="form-control form-control-lg schedule-start-time"
+            class="w-full h-12 px-4 text-base border-2 border-primary/20 rounded-xl bg-white transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none schedule-start-time"
             {{ $required ? 'required' : '' }}
         >
     </div>
 
     <!-- End Time -->
-    <div class="col-md-4">
+    <div>
         @if($showLabels)
-            <label for="endTime-{{ $uniqueId }}" class="form-label fw-medium">
-                {{ $endTimeLabel }} @if($required)<span class="text-danger">*</span>@endif
+            <label for="endTime-{{ $uniqueId }}" class="block text-sm font-medium text-gray-600 mb-1">
+                {{ $endTimeLabel }} @if($required)<span class="text-red-500">*</span>@endif
             </label>
         @endif
         <input
@@ -104,30 +110,13 @@
             id="endTime-{{ $uniqueId }}"
             name="{{ $endTimeName }}"
             value="{{ $endTime }}"
-            class="form-control form-control-lg schedule-end-time"
+            class="w-full h-12 px-4 text-base border-2 border-primary/20 rounded-xl bg-white transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none schedule-end-time"
             {{ $required ? 'required' : '' }}
         >
     </div>
 </div>
 
 @once
-@push('styles')
-<style>
-.schedule-time-picker .schedule-days-btn {
-    height: calc(3.5rem + 2px);
-    text-align: left;
-    background-color: #fff;
-}
-.schedule-time-picker .schedule-days-btn:hover,
-.schedule-time-picker .schedule-days-btn:focus {
-    border-color: var(--bs-primary);
-}
-.schedule-time-picker .dropdown-menu.show {
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-}
-</style>
-@endpush
-
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -142,10 +131,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (selected.length > 0) {
                 textEl.textContent = selected.join(', ');
-                textEl.classList.remove('text-muted');
+                textEl.classList.remove('text-gray-400');
+                textEl.classList.add('text-gray-700');
             } else {
                 textEl.textContent = '{{ $daysPlaceholder }}';
-                textEl.classList.add('text-muted');
+                textEl.classList.add('text-gray-400');
+                textEl.classList.remove('text-gray-700');
             }
         }
 
@@ -184,7 +175,6 @@ window.ScheduleTimePicker = {
             cb.checked = days.some(d => d.value === cb.value || d === cb.value);
         });
 
-        // Trigger update
         const event = new Event('change');
         picker.querySelector('.schedule-day-checkbox').dispatchEvent(event);
     },
@@ -209,7 +199,8 @@ window.ScheduleTimePicker = {
 
         const textEl = picker.querySelector('.selected-days-text');
         textEl.textContent = '{{ $daysPlaceholder }}';
-        textEl.classList.add('text-muted');
+        textEl.classList.add('text-gray-400');
+        textEl.classList.remove('text-gray-700');
     },
 
     validate: function(pickerId) {
