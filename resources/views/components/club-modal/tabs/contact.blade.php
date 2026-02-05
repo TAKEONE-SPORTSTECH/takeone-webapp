@@ -6,7 +6,7 @@
 
 <div class="px-0">
     <h5 class="font-bold mb-3">Contact Information</h5>
-    <p class="text-muted mb-4">Set up how members can reach your club</p>
+    <p class="text-muted-foreground mb-4">Set up how members can reach your club</p>
 
     <!-- Club Email -->
     <div class="mb-4">

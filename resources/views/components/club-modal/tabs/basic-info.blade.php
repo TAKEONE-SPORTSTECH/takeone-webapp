@@ -6,7 +6,7 @@
 
 <div class="px-0">
     <h5 class="font-bold mb-3">Basic Information</h5>
-    <p class="text-muted mb-4">Core details about the club</p>
+    <p class="text-muted-foreground mb-4">Core details about the club</p>
 
     <!-- Club Name -->
     <div class="mb-4">

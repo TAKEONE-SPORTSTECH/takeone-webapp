@@ -6,7 +6,7 @@
 
 <div class="px-0">
     <h5 class="font-bold mb-3">Finance & Settings</h5>
-    <p class="text-muted mb-4">Configure bank accounts and club status</p>
+    <p class="text-muted-foreground mb-4">Configure bank accounts and club status</p>
 
     <!-- Bank Accounts Section -->
     <div class="mb-5">

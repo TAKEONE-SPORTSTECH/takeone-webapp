@@ -10,7 +10,7 @@
 <div x-data="clubModalController({{ json_encode(['mode' => $mode, 'clubId' => $club->id ?? null, 'isEdit' => $isEdit]) }})"
      x-show="open"
      x-cloak
-     @open-club-modal.window="openModal()"
+     @open-club-modal.window="openModal($event.detail)"
      @close-club-modal.window="closeModal()"
      @keydown.escape.window="closeModal()"
      class="fixed inset-0 z-50"
@@ -43,7 +43,7 @@
             <div class="px-6 pt-6 pb-0">
                 <div class="flex justify-between items-start mb-3">
                     <div>
-                        <h4 class="text-xl font-bold mb-1">{{ $modalTitle }}</h4>
+                        <h4 class="text-xl font-bold mb-1" x-text="mode === 'edit' ? 'Edit Club' : 'Create New Club'"></h4>
                         <p class="text-muted-foreground text-sm mb-0">Fill in the information across all tabs</p>
                     </div>
                     <button @click="closeModal()" class="text-muted-foreground hover:text-foreground transition-colors">
@@ -135,7 +135,7 @@
                     </template>
                     <template x-if="!isSubmitting">
                         <span>
-                            <i class="bi bi-check-circle mr-2"></i>{{ $isEdit ? 'Update Club' : 'Create Club' }}
+                            <i class="bi bi-check-circle mr-2"></i><span x-text="mode === 'edit' ? 'Update Club' : 'Create Club'"></span>
                         </span>
                     </template>
                 </button>
@@ -376,12 +376,179 @@
                 { id: 'finance', name: 'Finance & Settings', icon: 'bi bi-bank' }
             ],
 
-            openModal() {
+            async openModal(detail = {}) {
+                // Set mode and clubId from event detail
+                if (detail.mode) {
+                    this.mode = detail.mode;
+                    this.isEdit = detail.mode === 'edit';
+                }
+                if (detail.clubId) {
+                    this.clubId = detail.clubId;
+                }
+
+                // Update form data attributes
+                if (this.$refs.form) {
+                    this.$refs.form.dataset.mode = this.mode;
+                    this.$refs.form.dataset.clubId = this.clubId || '';
+                }
+
                 this.open = true;
                 document.body.classList.add('overflow-hidden');
-                if (!this.draftLoaded && this.mode === 'create') {
-                    this.loadDraft();
-                    this.draftLoaded = true;
+
+                // Load club data if in edit mode
+                if (this.mode === 'edit' && this.clubId) {
+                    await this.loadClubData(this.clubId);
+                } else if (this.mode === 'create') {
+                    // Reset form for create mode
+                    if (this.$refs.form) {
+                        this.$refs.form.reset();
+                    }
+                    this.resetPreviews();
+                    if (!this.draftLoaded) {
+                        this.loadDraft();
+                        this.draftLoaded = true;
+                    }
+                }
+            },
+
+            async loadClubData(clubId) {
+                try {
+                    const response = await fetch(`/admin/api/clubs/${clubId}`);
+                    if (response.ok) {
+                        const club = await response.json();
+                        this.populateForm(club);
+                    } else {
+                        this.showToast('Failed to load club data', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error loading club data:', error);
+                    this.showToast('Error loading club data', 'error');
+                }
+            },
+
+            populateForm(club) {
+                console.log('Populating form with club data:', club);
+
+                // Basic fields
+                this.setFieldValue('club_name', club.club_name);
+                this.setFieldValue('slug', club.slug);
+                this.setFieldValue('slogan', club.slogan);
+                this.setFieldValue('description', club.description);
+                this.setFieldValue('established_date', club.established_date);
+                this.setFieldValue('commercial_reg_number', club.commercial_reg_number);
+                this.setFieldValue('vat_reg_number', club.vat_reg_number);
+                this.setFieldValue('vat_percentage', club.vat_percentage);
+
+                // Owner
+                this.setFieldValue('owner_user_id', club.owner_user_id);
+                if (club.owner) {
+                    this.updateOwnerDisplay(club.owner);
+                }
+
+                // Location fields
+                this.setFieldValue('country', club.country);
+                this.setFieldValue('timezone', club.timezone);
+                this.setFieldValue('currency', club.currency);
+                this.setFieldValue('address', club.address);
+                this.setFieldValue('gps_lat', club.gps_lat);
+                this.setFieldValue('gps_long', club.gps_long);
+
+                // Contact fields
+                if (club.email) {
+                    const customEmailRadio = document.getElementById('email_option_custom');
+                    if (customEmailRadio) customEmailRadio.checked = true;
+                    this.setFieldValue('email', club.email);
+                    const customEmailInput = document.getElementById('customEmailInput');
+                    const ownerEmailDisplay = document.getElementById('ownerEmailDisplay');
+                    if (customEmailInput) customEmailInput.style.display = 'block';
+                    if (ownerEmailDisplay) ownerEmailDisplay.style.display = 'none';
+                }
+
+                // Finance fields
+                this.setFieldValue('enrollment_fee', club.enrollment_fee);
+                this.setFieldValue('club_status', club.status);
+                const publicProfileCheckbox = document.getElementById('public_profile_enabled');
+                if (publicProfileCheckbox) {
+                    publicProfileCheckbox.checked = club.public_profile_enabled;
+                }
+
+                // Update URL preview
+                if (club.slug) {
+                    const urlPreview = document.getElementById('clubUrlPreview');
+                    if (urlPreview) {
+                        urlPreview.textContent = `{{ url('/club/') }}/${club.slug}`;
+                    }
+                }
+
+                // Update logo preview
+                if (club.logo) {
+                    const logoContainer = document.getElementById('logoPreviewContainer');
+                    if (logoContainer) {
+                        const logoUrl = club.logo.startsWith('http') ? club.logo : `/storage/${club.logo}`;
+                        logoContainer.innerHTML = `<img src="${logoUrl}" id="logoPreview" class="cropper-preview-image" style="width: 150px; height: 150px; border-radius: 8px; border: 2px solid #dee2e6;">`;
+                    }
+                }
+
+                // Update cover preview
+                if (club.cover_image) {
+                    const coverContainer = document.getElementById('coverPreviewContainer');
+                    if (coverContainer) {
+                        const coverUrl = club.cover_image.startsWith('http') ? club.cover_image : `/storage/${club.cover_image}`;
+                        coverContainer.innerHTML = `<img src="${coverUrl}" id="coverPreview" class="cropper-preview-image" style="width: 250px; height: 83px; border-radius: 8px; border: 2px solid #dee2e6;">`;
+                    }
+                }
+            },
+
+            setFieldValue(fieldId, value) {
+                const field = document.getElementById(fieldId);
+                if (field && value !== null && value !== undefined) {
+                    field.value = value;
+                }
+            },
+
+            updateOwnerDisplay(owner) {
+                const ownerDisplay = document.getElementById('ownerDisplay');
+                if (ownerDisplay && owner) {
+                    // Check if profile_picture is a full URL or a relative path
+                    const pictureUrl = owner.profile_picture
+                        ? (owner.profile_picture.startsWith('http') ? owner.profile_picture : `/storage/${owner.profile_picture}`)
+                        : null;
+                    const picture = pictureUrl
+                        ? `<img src="${pictureUrl}" alt="${owner.full_name}" class="rounded-full w-12 h-12 object-cover">`
+                        : `<div class="rounded-full bg-primary text-white flex items-center justify-center w-12 h-12 text-xl font-semibold">${owner.full_name.charAt(0)}</div>`;
+
+                    ownerDisplay.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            ${picture}
+                            <div class="flex-1">
+                                <div class="font-semibold">${owner.full_name}</div>
+                                <div class="text-sm text-muted-foreground">
+                                    <i class="bi bi-envelope mr-1"></i>${owner.email}
+                                    ${owner.mobile ? `<span class="ml-2"><i class="bi bi-phone mr-1"></i>${owner.mobile}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+
+            resetPreviews() {
+                // Reset logo preview
+                const logoContainer = document.getElementById('logoPreviewContainer');
+                if (logoContainer) {
+                    logoContainer.innerHTML = `<div id="logoPreview" class="cropper-preview-placeholder" style="width: 150px; height: 150px; border-radius: 8px; border: 2px dashed #dee2e6; display: flex; align-items: center; justify-content: center; background-color: #f0f0f0; color: #6c757d;"><i class="bi bi-image text-2xl"></i></div>`;
+                }
+
+                // Reset cover preview
+                const coverContainer = document.getElementById('coverPreviewContainer');
+                if (coverContainer) {
+                    coverContainer.innerHTML = `<div id="coverPreview" class="cropper-preview-placeholder" style="width: 250px; height: 83px; border-radius: 8px; border: 2px dashed #dee2e6; display: flex; align-items: center; justify-content: center; background-color: #f0f0f0; color: #6c757d;"><i class="bi bi-image text-2xl"></i></div>`;
+                }
+
+                // Reset owner display
+                const ownerDisplay = document.getElementById('ownerDisplay');
+                if (ownerDisplay) {
+                    ownerDisplay.innerHTML = `<div class="text-center text-muted-foreground py-3" id="noOwnerSelected"><i class="bi bi-person-plus text-3xl mb-2 block"></i><p class="mb-0">No owner selected</p></div>`;
                 }
             },
 
@@ -391,9 +558,16 @@
                 this.currentTab = 0;
                 this.draftLoaded = false;
                 this.toastShown = {};
+                // Reset mode to create for next open
+                this.mode = 'create';
+                this.isEdit = false;
+                this.clubId = null;
                 if (this.$refs.form) {
                     this.$refs.form.reset();
+                    this.$refs.form.dataset.mode = 'create';
+                    this.$refs.form.dataset.clubId = '';
                 }
+                this.resetPreviews();
             },
 
             goToTab(index) {
@@ -472,6 +646,11 @@
 
                 const form = this.$refs.form;
                 const formData = new FormData(form);
+
+                // Add _method for Laravel to handle PUT request
+                if (this.mode === 'edit') {
+                    formData.append('_method', 'PUT');
+                }
 
                 this.isSubmitting = true;
 

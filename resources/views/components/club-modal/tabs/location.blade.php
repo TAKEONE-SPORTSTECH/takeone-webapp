@@ -6,7 +6,7 @@
 
 <div class="px-0">
     <h5 class="font-bold mb-3">Location</h5>
-    <p class="text-muted mb-4">Set your club's geographic location and regional settings</p>
+    <p class="text-muted-foreground mb-4">Set your club's geographic location and regional settings</p>
 
     <!-- Country, Timezone, Currency Row -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">

@@ -6,7 +6,7 @@
 
 <div class="px-0">
     <h5 class="font-bold mb-3">Identity & Branding</h5>
-    <p class="text-muted mb-4">Define your club's public identity, URL, and visual branding</p>
+    <p class="text-muted-foreground mb-4">Define your club's public identity, URL, and visual branding</p>
 
     <!-- Club Slug -->
     <div class="mb-4">

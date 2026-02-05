@@ -51,7 +51,7 @@ class PlatformController extends Controller
             ->latest()
             ->paginate(12);
 
-        return view('admin.platform.clubs', compact('clubs', 'search'));
+        return view('admin.platform.clubs.index', compact('clubs', 'search'));
     }
 
     /**
@@ -72,7 +72,7 @@ class PlatformController extends Controller
             ->latest()
             ->paginate(20);
 
-        return view('admin.platform.members', compact('members', 'search'));
+        return view('admin.platform.members.index', compact('members', 'search'));
     }
 
     /**
@@ -91,7 +91,7 @@ class PlatformController extends Controller
                     : null,
             ];
         });
-        return view('admin.platform.create-club', compact('users'));
+        return view('admin.platform.clubs.add', compact('users'));
     }
 
     /**
@@ -194,7 +194,7 @@ class PlatformController extends Controller
                     : null,
             ];
         });
-        return view('admin.platform.edit-club', compact('club', 'users'));
+        return view('admin.platform.clubs.edit', compact('club', 'users'));
     }
 
     /**
@@ -279,7 +279,7 @@ class PlatformController extends Controller
      */
     public function backup()
     {
-        return view('admin.platform.backup');
+        return view('admin.platform.backup.index');
     }
 
     /**
