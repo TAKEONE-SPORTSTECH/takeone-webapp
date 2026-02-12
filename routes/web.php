@@ -8,6 +8,7 @@ use App\Http\Controllers\MemberController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ClubController;
 use App\Http\Controllers\InstructorReviewController;
+use App\Http\Controllers\TrainerController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -81,6 +82,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/clubs/nearby', [ClubController::class, 'nearby'])->name('clubs.nearby');
     Route::get('/clubs/all', [ClubController::class, 'all'])->name('clubs.all');
     Route::get('/clubs/{club}', [ClubController::class, 'show'])->name('clubs.show');
+    Route::get('/trainer/{instructor}', [TrainerController::class, 'show'])->name('trainer.show');
 });
 
 // Platform Admin routes (Super Admin only)
@@ -132,6 +134,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin/club/{club}')->name('admi
     Route::delete('/social-links/{link}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroySocialLink'])->name('social-links.destroy');
     Route::get('/gallery', [App\Http\Controllers\Admin\ClubAdminController::class, 'gallery'])->name('gallery');
     Route::post('/gallery/upload', [App\Http\Controllers\Admin\ClubAdminController::class, 'uploadGallery'])->name('gallery.upload');
+    Route::delete('/gallery/{image}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyGalleryImage'])->name('gallery.destroy');
     Route::get('/facilities', [App\Http\Controllers\Admin\ClubAdminController::class, 'facilities'])->name('facilities');
     Route::post('/facilities', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeFacility'])->name('facilities.store');
     Route::get('/facilities/{facility}', [App\Http\Controllers\Admin\ClubAdminController::class, 'getFacility'])->name('facilities.show');
@@ -147,6 +150,8 @@ Route::middleware(['auth', 'verified'])->prefix('admin/club/{club}')->name('admi
     Route::delete('/activities/{activity}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyActivity'])->name('activities.destroy');
     Route::get('/packages', [App\Http\Controllers\Admin\ClubAdminController::class, 'packages'])->name('packages');
     Route::post('/packages', [App\Http\Controllers\Admin\ClubAdminController::class, 'storePackage'])->name('packages.store');
+    Route::put('/packages/{package}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updatePackage'])->name('packages.update');
+    Route::delete('/packages/{package}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyPackage'])->name('packages.destroy');
     Route::get('/members', [App\Http\Controllers\Admin\ClubAdminController::class, 'members'])->name('members');
     Route::post('/members', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeMember'])->name('members.store');
     Route::get('/members/search', [App\Http\Controllers\Admin\ClubAdminController::class, 'searchUsers'])->name('members.search');
@@ -168,14 +173,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return redirect()->route('member.show', Auth::id());
     });
 
-    // Redirect old /family route to /members
+    // Redirect old routes to /family/members
     Route::get('/family', function () {
+        return redirect()->route('members.index');
+    });
+    Route::get('/members', function () {
         return redirect()->route('members.index');
     });
 
     // Members listing (family dashboard)
-    Route::get('/members', [MemberController::class, 'index'])->name('members.index');
-    Route::get('/members/create', [MemberController::class, 'create'])->name('members.create');
+    Route::get('/family/members', [MemberController::class, 'index'])->name('members.index');
+    Route::get('/family/members/create', [MemberController::class, 'create'])->name('members.create');
     Route::post('/members', [MemberController::class, 'store'])->name('members.store');
 
     // Individual member routes
@@ -210,7 +218,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/family/{id}', [MemberController::class, 'destroy'])->name('family.destroy');
     Route::get('/family/dashboard', function () {
         return redirect()->route('members.index');
-    })->name('family.dashboard');
+    });
 
     // Bills routes
     Route::get('/bills', [InvoiceController::class, 'index'])->name('bills.index');

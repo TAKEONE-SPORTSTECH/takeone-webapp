@@ -1,7 +1,7 @@
 @extends('layouts.admin-club')
 
 @section('club-admin-content')
-<div x-data="{
+<div id="activitiesContainer" x-data="{
     showAddModal: false,
     showEditModal: false,
     editData: {},
@@ -68,12 +68,14 @@
                                     name: '{{ addslashes($activity->name) }}',
                                     description: '{{ addslashes($activity->description) }}',
                                     notes: '{{ addslashes($activity->notes) }}',
+                                    durationMinutes: {{ $activity->duration_minutes ?? 'null' }},
                                     pictureUrl: '{{ $activity->picture_url ? asset('storage/' . $activity->picture_url) : '' }}',
                                     action: '{{ route('admin.club.activities.update', [$club->id, $activity->id]) }}'
                                 }; showEditModal = true">
                             <i class="bi bi-pencil"></i>
                         </button>
-                        <form action="{{ route('admin.club.activities.destroy', [$club->id, $activity->id]) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this activity?')">
+                        <form action="{{ route('admin.club.activities.destroy', [$club->id, $activity->id]) }}" method="POST" class="inline"
+                              onsubmit="event.preventDefault(); const f = this; confirmAction({ title: 'Delete Activity', message: 'This activity will be permanently removed.', confirmText: 'Delete', type: 'danger' }).then(ok => { if (ok) f.submit(); });">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Activity">
@@ -128,8 +130,8 @@
     </div>
     @endif
 
-    @include('admin.club.activities.add')
-    @include('admin.club.activities.edit')
+    <x-activity-modal :club="$club" mode="create" />
+    <x-activity-modal :club="$club" mode="edit" />
 </div>
 
 <style>

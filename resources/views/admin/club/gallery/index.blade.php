@@ -59,35 +59,40 @@
         </div>
         @endif
     </div>
-</div>
 
-@include('admin.club.gallery.add')
+    @include('admin.club.gallery.add')
+</div>
 
 @push('scripts')
 <script>
 function deleteImage(id) {
-    if (!confirm('Are you sure you want to delete this picture?')) {
-        return;
-    }
+    confirmAction({
+        title: 'Delete Picture',
+        message: 'This picture will be permanently removed from the gallery.',
+        confirmText: 'Delete',
+        type: 'danger',
+    }).then(confirmed => {
+        if (!confirmed) return;
 
-    fetch(`{{ url('admin/club/' . $club->id . '/gallery') }}/${id}`, {
-        method: 'DELETE',
-        headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'Accept': 'application/json',
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
-        } else {
-            alert(data.message || 'Failed to delete picture');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to delete picture');
+        fetch(`{{ url('admin/club/' . $club->id . '/gallery') }}/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message || 'Failed to delete picture');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to delete picture');
+        });
     });
 }
 </script>

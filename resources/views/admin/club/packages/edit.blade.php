@@ -1,5 +1,5 @@
-<!-- Add Package Modal -->
-<div x-show="showAddPackageModal"
+<!-- Edit Package Modal -->
+<div x-show="showEditPackageModal"
      x-cloak
      class="fixed inset-0 z-50 overflow-y-auto"
      x-transition:enter="transition ease-out duration-300"
@@ -9,7 +9,7 @@
      x-transition:leave-start="opacity-100"
      x-transition:leave-end="opacity-0">
     <!-- Backdrop -->
-    <div class="fixed inset-0 bg-black/50" @click="showAddPackageModal = false"></div>
+    <div class="fixed inset-0 bg-black/50" @click="showEditPackageModal = false"></div>
 
     <!-- Modal Content -->
     <div class="flex min-h-full items-center justify-center p-4">
@@ -24,8 +24,8 @@
                      const idx = this.tabs.indexOf(this.currentTab);
                      if (idx < this.tabs.length - 1) {
                          this.currentTab = this.tabs[idx + 1];
-                         if (this.currentTab === 'trainers' && window.updateTrainerAssignmentsUI) {
-                             window.updateTrainerAssignmentsUI();
+                         if (this.currentTab === 'trainers' && window.updateEditTrainerAssignmentsUI) {
+                             window.updateEditTrainerAssignmentsUI();
                          }
                      }
                  }
@@ -34,10 +34,10 @@
             <!-- Header -->
             <div class="modal-header border-b border-border px-6 py-4">
                 <div>
-                    <h5 class="modal-title font-bold text-xl">Create New Package</h5>
-                    <p class="text-muted-foreground text-sm mb-0">Configure your membership package with activities, pricing, and availability</p>
+                    <h5 class="modal-title font-bold text-xl">Edit Package</h5>
+                    <p class="text-muted-foreground text-sm mb-0">Update your membership package details</p>
                 </div>
-                <button type="button" class="btn-close" @click="showAddPackageModal = false"></button>
+                <button type="button" class="btn-close" @click="showEditPackageModal = false"></button>
             </div>
 
             <!-- Tabs Navigation -->
@@ -64,7 +64,7 @@
                     <li class="flex-1" role="presentation">
                         <button class="nav-link w-full flex items-center justify-center px-3 py-3"
                                 :class="{ 'active': currentTab === 'trainers' }"
-                                @click="currentTab = 'trainers'; if(window.updateTrainerAssignmentsUI) updateTrainerAssignmentsUI();"
+                                @click="currentTab = 'trainers'; if(window.updateEditTrainerAssignmentsUI) updateEditTrainerAssignmentsUI();"
                                 type="button">
                             <span>Trainers</span>
                         </button>
@@ -82,8 +82,9 @@
 
             <!-- Body -->
             <div class="modal-body px-6 py-6 max-h-[65vh] overflow-y-auto">
-                <form id="addPackageForm" action="{{ route('admin.club.packages.store', $club->id) }}" method="POST" enctype="multipart/form-data">
+                <form id="editPackageForm" method="POST" enctype="multipart/form-data">
                     @csrf
+                    @method('PUT')
 
                     <!-- Tab 1: Basic Info -->
                     <div x-show="currentTab === 'basic'" x-cloak>
@@ -99,20 +100,22 @@
 
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <x-takeone-cropper
-                                            id="packageImageCropper"
-                                            :width="400"
-                                            :height="225"
-                                            shape="square"
-                                            mode="form"
-                                            inputName="image"
-                                            folder="packages"
-                                            :filename="'package_' . time()"
-                                            :previewWidth="300"
-                                            :previewHeight="169"
-                                            buttonText="Upload Image"
-                                            buttonClass="btn btn-outline-secondary flex-1"
-                                        />
+                                        <div id="editPackageCropperContainer">
+                                            <x-takeone-cropper
+                                                id="editPackageImageCropper"
+                                                :width="400"
+                                                :height="225"
+                                                shape="square"
+                                                mode="form"
+                                                inputName="image"
+                                                folder="packages"
+                                                :filename="'package_' . time()"
+                                                :previewWidth="300"
+                                                :previewHeight="169"
+                                                buttonText="Change Image"
+                                                buttonClass="btn btn-outline-secondary flex-1"
+                                            />
+                                        </div>
                                     </div>
 
                                     <div>
@@ -136,10 +139,10 @@
 
                                         <div class="flex items-center gap-3 p-3 rounded-lg border border-border bg-white">
                                             <div class="form-check form-switch mb-0">
-                                                <input type="checkbox" id="packagePopular" name="is_popular" class="form-check-input" role="switch">
+                                                <input type="checkbox" id="editPackagePopular" name="is_popular" class="form-check-input" role="switch">
                                             </div>
                                             <div>
-                                                <label for="packagePopular" class="form-label mb-0 font-medium cursor-pointer">Featured Package</label>
+                                                <label for="editPackagePopular" class="form-label mb-0 font-medium cursor-pointer">Featured Package</label>
                                                 <p class="text-muted-foreground text-sm mb-0">Highlight this package on the main page</p>
                                             </div>
                                         </div>
@@ -161,62 +164,25 @@
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <div class="mb-3">
-                                            <label for="packageName" class="form-label font-medium">
+                                            <label for="editPackageName" class="form-label font-medium">
                                                 Package Name <span class="text-destructive">*</span>
                                             </label>
-                                            <input type="text" id="packageName" name="name" required placeholder="e.g., Premium Monthly Membership" class="form-control">
+                                            <input type="text" id="editPackageName" name="name" required placeholder="e.g., Premium Monthly Membership" class="form-control">
                                         </div>
 
                                         <div class="mb-3">
-                                            <label for="packageDuration" class="form-label font-medium">
+                                            <label for="editPackageDuration" class="form-label font-medium">
                                                 Duration (Months) <span class="text-destructive">*</span>
                                             </label>
-                                            <input type="number" id="packageDuration" name="duration_months" required value="1" min="1" class="form-control">
+                                            <input type="number" id="editPackageDuration" name="duration_months" required value="1" min="1" class="form-control">
                                         </div>
                                     </div>
 
                                     <div>
                                         <div class="mb-3">
-                                            <label for="packageDescription" class="form-label font-medium">Description</label>
-                                            <textarea id="packageDescription" name="description" rows="5" placeholder="Brief description of what this package includes..." class="form-control resize-none"></textarea>
+                                            <label for="editPackageDescription" class="form-label font-medium">Description</label>
+                                            <textarea id="editPackageDescription" name="description" rows="5" placeholder="Brief description of what this package includes..." class="form-control resize-none"></textarea>
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Facility & Capacity Section -->
-                        <div class="card border-0 shadow-sm mb-4">
-                            <div class="card-body p-4">
-                                <div class="flex items-center gap-2 mb-4">
-                                    <div class="section-icon">
-                                        <i class="bi bi-geo-alt text-primary"></i>
-                                    </div>
-                                    <h6 class="mb-0 font-semibold">Facility & Capacity</h6>
-                                </div>
-
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                    <div>
-                                        <label for="packageFacility" class="form-label font-medium">Facility</label>
-                                        <select id="packageFacility" name="facility_id" class="form-select">
-                                            <option value="">Select facility</option>
-                                            @if(isset($facilities))
-                                                @foreach($facilities as $facility)
-                                                    <option value="{{ $facility->id }}">{{ $facility->name }}</option>
-                                                @endforeach
-                                            @endif
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label for="packageCapacity" class="form-label font-medium">Max Capacity</label>
-                                        <input type="number" id="packageCapacity" name="max_capacity" min="1" placeholder="e.g., 20" class="form-control">
-                                    </div>
-                                    <div>
-                                        <label for="packageScheduleType" class="form-label font-medium">Schedule Type</label>
-                                        <select id="packageScheduleType" name="schedule_type" class="form-select">
-                                            <option value="fixed">Fixed</option>
-                                            <option value="flexible">Flexible</option>
-                                        </select>
                                     </div>
                                 </div>
                             </div>
@@ -234,58 +200,21 @@
 
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                                     <div>
-                                        <label for="packageGender" class="form-label font-medium">Gender</label>
-                                        <select id="packageGender" name="gender_restriction" class="form-select">
+                                        <label for="editPackageGender" class="form-label font-medium">Gender</label>
+                                        <select id="editPackageGender" name="gender_restriction" class="form-select">
                                             <option value="mixed">Mixed (All Genders)</option>
                                             <option value="male">Male Only</option>
                                             <option value="female">Female Only</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label for="packageMinAge" class="form-label font-medium">Minimum Age</label>
-                                        <input type="number" id="packageMinAge" name="age_min" min="0" placeholder="e.g., 5" class="form-control">
+                                        <label for="editPackageMinAge" class="form-label font-medium">Minimum Age</label>
+                                        <input type="number" id="editPackageMinAge" name="age_min" min="0" placeholder="e.g., 5" class="form-control">
                                     </div>
                                     <div>
-                                        <label for="packageMaxAge" class="form-label font-medium">Maximum Age</label>
-                                        <input type="number" id="packageMaxAge" name="age_max" min="0" placeholder="e.g., 18" class="form-control">
+                                        <label for="editPackageMaxAge" class="form-label font-medium">Maximum Age</label>
+                                        <input type="number" id="editPackageMaxAge" name="age_max" min="0" placeholder="e.g., 18" class="form-control">
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Availability Period Section -->
-                        <div class="card border-0 shadow-sm"
-                             x-data="{ alwaysAvailable: true }">
-                            <div class="card-body p-4">
-                                <div class="flex items-center justify-between mb-4">
-                                    <div class="flex items-center gap-2">
-                                        <div class="section-icon">
-                                            <i class="bi bi-calendar-event text-primary"></i>
-                                        </div>
-                                        <h6 class="mb-0 font-semibold">Availability Period</h6>
-                                    </div>
-
-                                    <div class="flex items-center gap-2">
-                                        <div class="form-check form-switch mb-0">
-                                            <input type="checkbox" id="alwaysAvailable" name="always_available" class="form-check-input" role="switch" checked x-model="alwaysAvailable">
-                                        </div>
-                                        <label for="alwaysAvailable" class="form-label mb-0 font-medium cursor-pointer">Always Available</label>
-                                    </div>
-                                </div>
-
-                                <div x-show="!alwaysAvailable" x-cloak class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label for="packageStartDate" class="form-label font-medium">Start Date</label>
-                                        <input type="date" id="packageStartDate" name="start_date" class="form-control">
-                                    </div>
-                                    <div>
-                                        <label for="packageEndDate" class="form-label font-medium">End Date</label>
-                                        <input type="date" id="packageEndDate" name="end_date" class="form-control">
-                                    </div>
-                                </div>
-
-                                <div x-show="alwaysAvailable" class="text-center p-4 rounded-lg border border-primary/20 bg-primary/5">
-                                    <p class="text-muted-foreground mb-0">This package is available year-round with no date restrictions</p>
                                 </div>
                             </div>
                         </div>
@@ -307,19 +236,17 @@
 
                                 <!-- Schedule Form -->
                                 <div class="rounded-lg border border-border p-4 mb-4 mt-4 bg-muted/10">
-                                    <!-- Days, Start Time, End Time - Using Component -->
                                     <div class="mb-4">
                                         <x-schedule-time-picker
-                                            id="packageSchedule"
+                                            id="editPackageSchedule"
                                             :required="false"
                                         />
                                     </div>
 
-                                    <!-- Activity & Notes - 2 column grid -->
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                                         <div>
-                                            <label for="scheduleActivity" class="form-label font-medium">Activity <span class="text-destructive">*</span></label>
-                                            <select id="scheduleActivity" class="form-select">
+                                            <label for="editScheduleActivity" class="form-label font-medium">Activity <span class="text-destructive">*</span></label>
+                                            <select id="editScheduleActivity" class="form-select">
                                                 <option value="">Select activity</option>
                                                 @if(isset($activities))
                                                     @foreach($activities as $activity)
@@ -329,31 +256,28 @@
                                             </select>
                                         </div>
                                         <div>
-                                            <label for="scheduleNotes" class="form-label font-medium">Notes (Optional)</label>
-                                            <input type="text" id="scheduleNotes" placeholder="Add any additional notes..." class="form-control">
+                                            <label for="editScheduleNotes" class="form-label font-medium">Notes (Optional)</label>
+                                            <input type="text" id="editScheduleNotes" placeholder="Add any additional notes..." class="form-control">
                                         </div>
                                     </div>
 
                                     <div class="flex justify-end">
-                                        <button type="button" id="addScheduleBtn" class="btn btn-outline-primary px-4 py-2">
-                                            <i class="bi bi-plus-lg mr-2"></i><span id="addScheduleBtnText">Add Schedule</span>
+                                        <button type="button" id="editAddScheduleBtn" class="btn btn-outline-primary px-4 py-2">
+                                            <i class="bi bi-plus-lg mr-2"></i><span id="editAddScheduleBtnText">Add Schedule</span>
                                         </button>
                                     </div>
                                 </div>
 
                                 <!-- Schedules List -->
-                                <div id="schedulesList">
-                                    <!-- Schedules will be added here dynamically -->
-                                </div>
+                                <div id="editSchedulesList"></div>
 
-                                <div id="noSchedulesMessage" class="text-center py-12 border-2 border-dashed border-border rounded-lg">
+                                <div id="editNoSchedulesMessage" class="text-center py-12 border-2 border-dashed border-border rounded-lg">
                                     <i class="bi bi-clock text-muted-foreground text-5xl"></i>
                                     <p class="text-muted-foreground mb-1 mt-3">No schedules added yet</p>
                                     <p class="text-muted-foreground text-sm">Add at least one schedule to continue</p>
                                 </div>
 
-                                <!-- Hidden input for schedules data -->
-                                <input type="hidden" id="schedulesData" name="schedules">
+                                <input type="hidden" id="editSchedulesData" name="schedules">
                             </div>
                         </div>
                     </div>
@@ -372,8 +296,7 @@
                                     </div>
                                 </div>
 
-                                <div id="trainerAssignments" class="mt-4">
-                                    <!-- Will be populated based on schedules -->
+                                <div id="editTrainerAssignments" class="mt-4">
                                     <div class="text-center py-12 border-2 border-dashed border-border rounded-lg">
                                         <i class="bi bi-person-check text-muted-foreground text-5xl"></i>
                                         <p class="text-muted-foreground mb-1 mt-3">No activities scheduled yet</p>
@@ -381,8 +304,7 @@
                                     </div>
                                 </div>
 
-                                <!-- Hidden input for trainer assignments data -->
-                                <input type="hidden" id="trainerAssignmentsData" name="trainer_assignments">
+                                <input type="hidden" id="editTrainerAssignmentsData" name="trainer_assignments">
                             </div>
                         </div>
                     </div>
@@ -395,7 +317,6 @@
                              get finalPrice() { return this.basePrice * (1 - this.discountPercent / 100) },
                              get showPreview() { return this.basePrice > 0 && this.discountPercent > 0 }
                          }">
-                        <!-- Base Price Section -->
                         <div class="card border-0 shadow-sm mb-4">
                             <div class="card-body p-4">
                                 <div class="flex items-center gap-2 mb-4">
@@ -405,19 +326,18 @@
                                     <h6 class="mb-0 font-semibold">Base Price</h6>
                                 </div>
 
-                                <label for="packagePrice" class="form-label font-medium">
+                                <label for="editPackagePrice" class="form-label font-medium">
                                     Package Price ({{ $club->currency ?? 'BHD' }}) <span class="text-destructive">*</span>
                                 </label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-muted/30">
                                         <i class="bi bi-currency-dollar text-muted-foreground"></i>
                                     </span>
-                                    <input type="number" id="packagePrice" name="price" required step="0.01" min="0" placeholder="199.99" class="form-control text-xl" x-model.number="basePrice">
+                                    <input type="number" id="editPackagePrice" name="price" required step="0.01" min="0" placeholder="199.99" class="form-control text-xl" x-model.number="basePrice">
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Discount Section -->
                         <div class="card border-0 shadow-sm mb-4">
                             <div class="card-body p-4">
                                 <div class="flex items-center gap-2 mb-4">
@@ -429,21 +349,20 @@
 
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label for="discountCode" class="form-label font-medium">Discount Code</label>
-                                        <input type="text" id="discountCode" name="discount_code" placeholder="e.g., SAVE20" class="form-control uppercase font-mono">
+                                        <label for="editDiscountCode" class="form-label font-medium">Discount Code</label>
+                                        <input type="text" id="editDiscountCode" name="discount_code" placeholder="e.g., SAVE20" class="form-control uppercase font-mono">
                                         <p class="text-muted-foreground text-sm mt-1">Optional promo code for customers</p>
                                     </div>
                                     <div>
-                                        <label for="discountPercent" class="form-label font-medium">Discount Percentage</label>
+                                        <label for="editDiscountPercent" class="form-label font-medium">Discount Percentage</label>
                                         <div class="input-group">
-                                            <input type="number" id="discountPercent" name="discount_percentage" min="0" max="100" step="0.01" placeholder="20" class="form-control" x-model.number="discountPercent">
+                                            <input type="number" id="editDiscountPercent" name="discount_percentage" min="0" max="100" step="0.01" placeholder="20" class="form-control" x-model.number="discountPercent">
                                             <span class="input-group-text bg-muted/30 text-muted-foreground">%</span>
                                         </div>
                                         <p class="text-muted-foreground text-sm mt-1">Percentage off the base price</p>
                                     </div>
                                 </div>
 
-                                <!-- Final Price Preview -->
                                 <div x-show="showPreview" x-cloak class="mt-4 p-4 rounded-xl border-2 border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5">
                                     <div class="flex items-center justify-between">
                                         <div>
@@ -470,12 +389,12 @@
                 </div>
 
                 <div class="ml-auto flex gap-2">
-                    <button type="button" class="btn btn-outline-secondary px-4" @click="showAddPackageModal = false">Cancel</button>
+                    <button type="button" class="btn btn-outline-secondary px-4" @click="showEditPackageModal = false">Cancel</button>
                     <button type="button" x-show="!isLastTab" class="btn btn-primary px-4" @click="nextTab()">
                         Next Step<i class="bi bi-arrow-right ml-2"></i>
                     </button>
-                    <button type="submit" form="addPackageForm" x-show="isLastTab" x-cloak class="btn btn-primary px-4">
-                        <i class="bi bi-plus-lg mr-2"></i>Create Package
+                    <button type="submit" form="editPackageForm" x-show="isLastTab" x-cloak class="btn btn-primary px-4">
+                        <i class="bi bi-check-lg mr-2"></i>Update Package
                     </button>
                 </div>
             </div>
@@ -483,47 +402,38 @@
     </div>
 </div>
 
-<style>
-.section-icon {
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 0.5rem;
-    background-color: hsl(var(--primary) / 0.1);
-}
-.section-icon i {
-    font-size: 1.125rem;
-}
-</style>
-
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    let schedules = [];
-    let trainerAssignments = {};
-    let editingScheduleIndex = null;
-    const currency = '{{ $club->currency ?? "BHD" }}';
+    let editSchedules = [];
+    let editTrainerAssignments = {};
+    let editEditingScheduleIndex = null;
 
-    // Schedule Time Picker ID
-    const schedulePickerId = document.querySelector('[data-picker-id]')?.dataset.pickerId;
+    // Find the schedule picker inside the edit modal form
+    const editForm = document.getElementById('editPackageForm');
+    const editSchedulePickerEl = editForm?.querySelector('[data-picker-id]');
+    const editSchedulePickerId = editSchedulePickerEl?.dataset.pickerId;
 
-    // Add Schedule
-    const addScheduleBtn = document.getElementById('addScheduleBtn');
-    const addScheduleBtnText = document.getElementById('addScheduleBtnText');
-    const schedulesList = document.getElementById('schedulesList');
-    const schedulesDataInput = document.getElementById('schedulesData');
-    const noSchedulesMessage = document.getElementById('noSchedulesMessage');
+    const editInstructors = @json($instructors ?? []).map(i => ({
+        id: i.id,
+        name: i.user?.full_name || i.user?.name || 'Unknown'
+    }));
 
-    addScheduleBtn?.addEventListener('click', function() {
-        const selectedDays = ScheduleTimePicker.getSelectedDays(schedulePickerId);
-        const startTime = ScheduleTimePicker.getStartTime(schedulePickerId);
-        const endTime = ScheduleTimePicker.getEndTime(schedulePickerId);
-        const activitySelect = document.getElementById('scheduleActivity');
+    // Schedule management
+    const editAddScheduleBtn = document.getElementById('editAddScheduleBtn');
+    const editAddScheduleBtnText = document.getElementById('editAddScheduleBtnText');
+    const editSchedulesList = document.getElementById('editSchedulesList');
+    const editSchedulesDataInput = document.getElementById('editSchedulesData');
+    const editNoSchedulesMessage = document.getElementById('editNoSchedulesMessage');
+
+    editAddScheduleBtn?.addEventListener('click', function() {
+        const selectedDays = ScheduleTimePicker.getSelectedDays(editSchedulePickerId);
+        const startTime = ScheduleTimePicker.getStartTime(editSchedulePickerId);
+        const endTime = ScheduleTimePicker.getEndTime(editSchedulePickerId);
+        const activitySelect = document.getElementById('editScheduleActivity');
         const activityId = activitySelect.value;
         const activityName = activitySelect.options[activitySelect.selectedIndex]?.dataset.name || '';
-        const notes = document.getElementById('scheduleNotes').value;
+        const notes = document.getElementById('editScheduleNotes').value;
 
         if (selectedDays.length === 0 || !startTime || !endTime || !activityId) {
             alert('Please select at least one day, activity, and specify start/end times');
@@ -536,7 +446,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         const schedule = {
-            id: editingScheduleIndex !== null ? schedules[editingScheduleIndex].id : Date.now(),
+            id: editEditingScheduleIndex !== null ? editSchedules[editEditingScheduleIndex].id : Date.now(),
             days: selectedDays,
             startTime,
             endTime,
@@ -545,19 +455,19 @@ document.addEventListener('DOMContentLoaded', function() {
             notes
         };
 
-        if (editingScheduleIndex !== null) {
-            schedules[editingScheduleIndex] = schedule;
-            editingScheduleIndex = null;
-            addScheduleBtnText.textContent = 'Add Schedule';
-            addScheduleBtn.classList.remove('btn-primary');
-            addScheduleBtn.classList.add('btn-outline-primary');
+        if (editEditingScheduleIndex !== null) {
+            editSchedules[editEditingScheduleIndex] = schedule;
+            editEditingScheduleIndex = null;
+            editAddScheduleBtnText.textContent = 'Add Schedule';
+            editAddScheduleBtn.classList.remove('btn-primary');
+            editAddScheduleBtn.classList.add('btn-outline-primary');
         } else {
-            schedules.push(schedule);
+            editSchedules.push(schedule);
         }
 
-        updateSchedulesUI();
-        updateTrainerAssignmentsUI();
-        resetScheduleForm();
+        updateEditSchedulesUI();
+        updateEditTrainerAssignmentsUI();
+        resetEditScheduleForm();
     });
 
     function formatTimeTo12Hour(time) {
@@ -567,22 +477,22 @@ document.addEventListener('DOMContentLoaded', function() {
         return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
     }
 
-    function updateSchedulesUI() {
-        if (schedules.length === 0) {
-            schedulesList.innerHTML = '';
-            noSchedulesMessage.classList.remove('hidden');
+    function updateEditSchedulesUI() {
+        if (editSchedules.length === 0) {
+            editSchedulesList.innerHTML = '';
+            editNoSchedulesMessage.classList.remove('hidden');
             return;
         }
 
-        noSchedulesMessage.classList.add('hidden');
+        editNoSchedulesMessage.classList.add('hidden');
 
-        schedulesList.innerHTML = `
+        editSchedulesList.innerHTML = `
             <div class="mb-3">
-                <label class="form-label font-medium">Added Schedules (${schedules.length})</label>
+                <label class="form-label font-medium">Added Schedules (${editSchedules.length})</label>
             </div>
             <div class="border border-border rounded-lg overflow-hidden">
-                ${schedules.map((schedule, index) => `
-                    <div class="flex items-start justify-between p-3 ${index < schedules.length - 1 ? 'border-b border-border' : ''} schedule-item hover:bg-muted/10 transition-colors">
+                ${editSchedules.map((schedule, index) => `
+                    <div class="flex items-start justify-between p-3 ${index < editSchedules.length - 1 ? 'border-b border-border' : ''} schedule-item hover:bg-muted/10 transition-colors">
                         <div class="flex-1">
                             <div class="flex flex-wrap items-center gap-2 mb-2">
                                 ${schedule.days.map(d => `<span class="badge bg-secondary">${d.name}</span>`).join('')}
@@ -592,10 +502,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             ${schedule.notes ? `<p class="text-muted-foreground text-sm mb-0"><span class="font-medium">Note:</span> ${schedule.notes}</p>` : ''}
                         </div>
                         <div class="flex gap-1 ml-2">
-                            <button type="button" class="btn btn-sm btn-light edit-schedule" data-index="${index}">
+                            <button type="button" class="btn btn-sm btn-light edit-edit-schedule" data-index="${index}">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <button type="button" class="btn btn-sm btn-light text-destructive delete-schedule" data-index="${index}">
+                            <button type="button" class="btn btn-sm btn-light text-destructive delete-edit-schedule" data-index="${index}">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>
@@ -604,76 +514,61 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
 
-        // Add edit handlers
-        document.querySelectorAll('.edit-schedule').forEach(btn => {
+        document.querySelectorAll('.edit-edit-schedule').forEach(btn => {
             btn.addEventListener('click', function() {
                 const index = parseInt(this.dataset.index);
-                editSchedule(index);
+                editEditSchedule(index);
             });
         });
 
-        // Add delete handlers
-        document.querySelectorAll('.delete-schedule').forEach(btn => {
+        document.querySelectorAll('.delete-edit-schedule').forEach(btn => {
             btn.addEventListener('click', function() {
                 const index = parseInt(this.dataset.index);
-                const scheduleId = schedules[index].id;
-                schedules.splice(index, 1);
-                delete trainerAssignments[scheduleId];
-                if (editingScheduleIndex === index) {
-                    editingScheduleIndex = null;
-                    addScheduleBtnText.textContent = 'Add Schedule';
-                    addScheduleBtn.classList.remove('btn-primary');
-                    addScheduleBtn.classList.add('btn-outline-primary');
-                    resetScheduleForm();
+                editSchedules.splice(index, 1);
+                if (editEditingScheduleIndex === index) {
+                    editEditingScheduleIndex = null;
+                    editAddScheduleBtnText.textContent = 'Add Schedule';
+                    editAddScheduleBtn.classList.remove('btn-primary');
+                    editAddScheduleBtn.classList.add('btn-outline-primary');
+                    resetEditScheduleForm();
                 }
-                updateSchedulesUI();
-                updateTrainerAssignmentsUI();
+                updateEditSchedulesUI();
+                updateEditTrainerAssignmentsUI();
             });
         });
 
-        schedulesDataInput.value = JSON.stringify(schedules);
+        editSchedulesDataInput.value = JSON.stringify(editSchedules);
     }
 
-    function editSchedule(index) {
-        const schedule = schedules[index];
-        editingScheduleIndex = index;
+    function editEditSchedule(index) {
+        const schedule = editSchedules[index];
+        editEditingScheduleIndex = index;
 
-        // Use ScheduleTimePicker helper functions
-        ScheduleTimePicker.setSelectedDays(schedulePickerId, schedule.days);
-        ScheduleTimePicker.setStartTime(schedulePickerId, schedule.startTime);
-        ScheduleTimePicker.setEndTime(schedulePickerId, schedule.endTime);
+        ScheduleTimePicker.setSelectedDays(editSchedulePickerId, schedule.days);
+        ScheduleTimePicker.setStartTime(editSchedulePickerId, schedule.startTime);
+        ScheduleTimePicker.setEndTime(editSchedulePickerId, schedule.endTime);
 
-        document.getElementById('scheduleActivity').value = schedule.activityId;
-        document.getElementById('scheduleNotes').value = schedule.notes || '';
+        document.getElementById('editScheduleActivity').value = schedule.activityId;
+        document.getElementById('editScheduleNotes').value = schedule.notes || '';
 
-        addScheduleBtnText.textContent = 'Update Schedule';
-        addScheduleBtn.classList.remove('btn-outline-primary');
-        addScheduleBtn.classList.add('btn-primary');
+        editAddScheduleBtnText.textContent = 'Update Schedule';
+        editAddScheduleBtn.classList.remove('btn-outline-primary');
+        editAddScheduleBtn.classList.add('btn-primary');
     }
 
-    function resetScheduleForm() {
-        ScheduleTimePicker.reset(schedulePickerId);
-        document.getElementById('scheduleActivity').value = '';
-        document.getElementById('scheduleNotes').value = '';
+    function resetEditScheduleForm() {
+        ScheduleTimePicker.reset(editSchedulePickerId);
+        document.getElementById('editScheduleActivity').value = '';
+        document.getElementById('editScheduleNotes').value = '';
     }
 
-    // Trainer Assignments
-    const trainerAssignmentsContainer = document.getElementById('trainerAssignments');
-    const trainerAssignmentsDataInput = document.getElementById('trainerAssignmentsData');
-    const instructors = @json($instructors ?? []).map(i => ({
-        id: i.id,
-        name: i.user?.full_name || i.user?.name || 'Unknown'
-    }));
+    // Trainer assignments
+    const editTrainerContainer = document.getElementById('editTrainerAssignments');
+    const editTrainerDataInput = document.getElementById('editTrainerAssignmentsData');
 
-    // Watch for tab changes to update trainer assignments
-    document.addEventListener('alpine:initialized', () => {
-        // Update trainer UI when switching to trainers tab
-    });
-
-    window.updateTrainerAssignmentsUI = function() {
-        // Get unique activities from schedules
+    window.updateEditTrainerAssignmentsUI = function() {
         const activityMap = {};
-        schedules.forEach(schedule => {
+        editSchedules.forEach(schedule => {
             if (schedule.activityId && !activityMap[schedule.activityId]) {
                 activityMap[schedule.activityId] = {
                     id: schedule.activityId,
@@ -685,7 +580,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const uniqueActivities = Object.values(activityMap);
 
         if (uniqueActivities.length === 0) {
-            trainerAssignmentsContainer.innerHTML = `
+            editTrainerContainer.innerHTML = `
                 <div class="text-center py-12 border-2 border-dashed border-border rounded-lg">
                     <i class="bi bi-person-check text-muted-foreground text-5xl"></i>
                     <p class="text-muted-foreground mb-1 mt-3">No activities scheduled yet</p>
@@ -695,7 +590,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        trainerAssignmentsContainer.innerHTML = `
+        editTrainerContainer.innerHTML = `
             <p class="text-muted-foreground text-sm mb-4">Activities from your schedules:</p>
             ${uniqueActivities.map(activity => `
                 <div class="flex items-center gap-3 p-4 border border-border rounded-lg mb-3 bg-muted/10">
@@ -703,27 +598,140 @@ document.addEventListener('DOMContentLoaded', function() {
                         <p class="font-semibold mb-0">${activity.name}</p>
                     </div>
                     <div class="w-64">
-                        <select class="form-select trainer-assignment" data-activity-id="${activity.id}">
+                        <select class="form-select edit-trainer-assignment" data-activity-id="${activity.id}">
                             <option value="">Select instructor</option>
-                            ${instructors.map(i => `<option value="${i.id}" ${trainerAssignments[activity.id] == i.id ? 'selected' : ''}>${i.name}</option>`).join('')}
+                            ${editInstructors.map(i => `<option value="${i.id}" ${editTrainerAssignments[activity.id] == i.id ? 'selected' : ''}>${i.name}</option>`).join('')}
                         </select>
                     </div>
                 </div>
             `).join('')}
         `;
 
-        // Add change handlers
-        document.querySelectorAll('.trainer-assignment').forEach(select => {
+        document.querySelectorAll('.edit-trainer-assignment').forEach(select => {
             select.addEventListener('change', function() {
                 const activityId = this.dataset.activityId;
                 if (this.value) {
-                    trainerAssignments[activityId] = this.value;
+                    editTrainerAssignments[activityId] = this.value;
                 } else {
-                    delete trainerAssignments[activityId];
+                    delete editTrainerAssignments[activityId];
                 }
-                trainerAssignmentsDataInput.value = JSON.stringify(trainerAssignments);
+                editTrainerDataInput.value = JSON.stringify(editTrainerAssignments);
             });
         });
+    };
+
+    // Populate edit form with package data
+    window.populateEditPackageForm = function(pkg) {
+        // Set form action
+        document.getElementById('editPackageForm').action =
+            `{{ url('admin/club/' . $club->id . '/packages') }}/${pkg.id}`;
+
+        // Basic info
+        document.getElementById('editPackageName').value = pkg.name || '';
+        document.getElementById('editPackageDescription').value = pkg.description || '';
+        document.getElementById('editPackageDuration').value = pkg.duration_months || 1;
+        document.getElementById('editPackageGender').value = pkg.gender || 'mixed';
+        document.getElementById('editPackageMinAge').value = pkg.age_min || '';
+        document.getElementById('editPackageMaxAge').value = pkg.age_max || '';
+        document.getElementById('editPackagePopular').checked = !!pkg.is_popular;
+
+        // Pricing
+        document.getElementById('editPackagePrice').value = pkg.price || '';
+        document.getElementById('editPackagePrice').dispatchEvent(new Event('input'));
+
+        // Image - update cropper preview
+        const editPreviewContainer = $('#previewContainer_editPackageImageCropper');
+        if (pkg.cover_image) {
+            const imgUrl = '{{ asset("storage") }}/' + pkg.cover_image;
+            editPreviewContainer.html(`
+                <img src="${imgUrl}" id="preview_editPackageImageCropper" class="cropper-preview-image" style="width: 300px; height: 169px; border-radius: 8px;">
+                <button type="button" class="cropper-remove-btn" id="removeBtn_editPackageImageCropper" onclick="removeImage_editPackageImageCropper()"><i class="bi bi-x"></i></button>
+            `);
+            editPreviewContainer.addClass('has-image');
+        } else {
+            editPreviewContainer.html(`
+                <div id="preview_editPackageImageCropper" class="cropper-preview-placeholder" style="width: 300px; height: 169px; border-radius: 8px;">
+                    <i class="bi bi-image" style="font-size: 2rem;"></i>
+                </div>
+            `);
+            editPreviewContainer.removeClass('has-image');
+        }
+        // Clear hidden input so old image is kept unless user crops new one
+        $('#hiddenInput_editPackageImageCropper').val('');
+
+        // Reconstruct schedules from package activities
+        editSchedules = [];
+        editTrainerAssignments = {};
+
+        if (pkg.activities && pkg.activities.length > 0) {
+            const dayAbbr = {
+                'saturday': 'Sat', 'sunday': 'Sun', 'monday': 'Mon',
+                'tuesday': 'Tue', 'wednesday': 'Wed', 'thursday': 'Thu', 'friday': 'Fri'
+            };
+
+            pkg.activities.forEach(activity => {
+                // Build trainer assignment
+                if (activity.instructor_id) {
+                    editTrainerAssignments[activity.id] = activity.instructor_id;
+                }
+
+                // Build schedule entries from activity's schedule data
+                if (activity.schedule && activity.schedule.length > 0) {
+                    const days = activity.schedule.map(s => {
+                        const dayValue = s.day || s.day_of_week || '';
+                        return {
+                            value: dayValue.toLowerCase(),
+                            name: dayAbbr[dayValue.toLowerCase()] || dayValue.substring(0, 3)
+                        };
+                    });
+
+                    // Group by time
+                    const timeGroups = {};
+                    activity.schedule.forEach(s => {
+                        const start = s.start_time || s.startTime || '';
+                        const end = s.end_time || s.endTime || '';
+                        const day = s.day || s.day_of_week || '';
+                        const key = `${start}-${end}`;
+                        if (!timeGroups[key]) {
+                            timeGroups[key] = { days: [], startTime: start, endTime: end };
+                        }
+                        timeGroups[key].days.push({
+                            value: day.toLowerCase(),
+                            name: dayAbbr[day.toLowerCase()] || day.substring(0, 3)
+                        });
+                    });
+
+                    Object.values(timeGroups).forEach(group => {
+                        editSchedules.push({
+                            id: Date.now() + Math.random(),
+                            days: group.days,
+                            startTime: group.startTime,
+                            endTime: group.endTime,
+                            activityId: String(activity.id),
+                            activityName: activity.title || activity.name,
+                            notes: ''
+                        });
+                    });
+                } else {
+                    // Activity has no schedule data — add a placeholder entry
+                    editSchedules.push({
+                        id: Date.now() + Math.random(),
+                        days: [],
+                        startTime: '',
+                        endTime: '',
+                        activityId: String(activity.id),
+                        activityName: activity.title || activity.name,
+                        notes: ''
+                    });
+                }
+            });
+        }
+
+        // Update trainer assignments hidden input
+        editTrainerDataInput.value = JSON.stringify(editTrainerAssignments);
+
+        // Update UIs
+        updateEditSchedulesUI();
     };
 });
 </script>

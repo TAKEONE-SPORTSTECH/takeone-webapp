@@ -200,21 +200,20 @@
                                 <p class="text-sm text-gray-500 mb-3">This helps members recognize you</p>
 
                                 <div class="flex items-center gap-6">
-                                    <div id="photoPreviewContainer" class="relative">
-                                        <div id="photoPlaceholder" class="w-32 h-32 border-2 border-dashed border-gray-300 rounded-full flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors">
-                                            <i class="bi bi-camera text-3xl text-gray-400 mb-1"></i>
-                                            <span class="text-xs text-gray-500">Upload</span>
-                                        </div>
-                                        <img id="photoPreview" src="" alt="Preview" class="w-32 h-32 rounded-full object-cover border-4 border-primary/20 hidden">
-                                    </div>
-
-                                    <div class="flex-1">
-                                        <input type="file" id="instructorPhotoInput" name="photo" accept="image/*" class="hidden">
-                                        <button type="button" id="uploadPhotoBtn" class="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
-                                            <i class="bi bi-upload"></i>
-                                            <span>Upload Photo</span>
-                                        </button>
-                                    </div>
+                                    <x-takeone-cropper
+                                        id="instructorPhotoCropper"
+                                        :width="300"
+                                        :height="300"
+                                        shape="circle"
+                                        mode="form"
+                                        inputName="photo"
+                                        folder="instructors"
+                                        :filename="'instructor_' . time()"
+                                        :previewWidth="128"
+                                        :previewHeight="128"
+                                        buttonText="Upload Photo"
+                                        buttonClass="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -533,28 +532,6 @@ document.addEventListener('DOMContentLoaded', function() {
         form.submit();
     });
 
-    // Photo upload
-    const photoInput = document.getElementById('instructorPhotoInput');
-    const uploadBtn = document.getElementById('uploadPhotoBtn');
-    const photoPreview = document.getElementById('photoPreview');
-    const photoPlaceholder = document.getElementById('photoPlaceholder');
-
-    uploadBtn?.addEventListener('click', () => photoInput?.click());
-    photoPlaceholder?.addEventListener('click', () => photoInput?.click());
-
-    photoInput?.addEventListener('change', function() {
-        const file = this.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                photoPreview.src = e.target.result;
-                photoPreview.classList.remove('hidden');
-                photoPlaceholder.classList.add('hidden');
-            };
-            reader.readAsDataURL(file);
-        }
-    });
-
     // Skills management for NEW
     const skillsContainer = document.getElementById('skillsContainer');
     const newSkillInput = document.getElementById('newSkillInput');
@@ -710,8 +687,10 @@ document.addEventListener('DOMContentLoaded', function() {
         form.reset();
         document.getElementById('creationType').value = 'new';
         document.getElementById('selectedMemberId').value = '';
-        photoPreview?.classList.add('hidden');
-        photoPlaceholder?.classList.remove('hidden');
+        // Reset cropper preview
+        if (typeof removeImage_instructorPhotoCropper === 'function') {
+            removeImage_instructorPhotoCropper();
+        }
         selectedMemberCard?.classList.add('hidden');
 
         // Reset creation type selection visuals

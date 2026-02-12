@@ -123,6 +123,20 @@ class ClubAdminController extends Controller
         return back()->with('success', 'Images uploaded successfully.');
     }
 
+    public function destroyGalleryImage($clubId, $imageId)
+    {
+        $club = $this->getClub($clubId);
+        $image = ClubGalleryImage::where('tenant_id', $clubId)->findOrFail($imageId);
+
+        if ($image->image_path && Storage::disk('public')->exists($image->image_path)) {
+            Storage::disk('public')->delete($image->image_path);
+        }
+
+        $image->delete();
+
+        return response()->json(['success' => true]);
+    }
+
     /**
      * Facilities management
      */
@@ -324,8 +338,11 @@ class ClubAdminController extends Controller
                 'nationality' => $request->nationality,
             ]);
 
-            // Handle photo upload for user
-            if ($request->hasFile('photo')) {
+            // Handle photo upload for user (base64 from cropper or file upload)
+            if ($request->filled('photo') && str_starts_with($request->input('photo'), 'data:image')) {
+                $photoPath = $this->storeBase64Image($request->input('photo'), 'users/' . $user->id, 'profile_' . time());
+                $user->update(['profile_picture' => $photoPath]);
+            } elseif ($request->hasFile('photo')) {
                 $photoPath = $request->file('photo')->store('users/' . $user->id, 'public');
                 $user->update(['profile_picture' => $photoPath]);
             }
@@ -385,15 +402,17 @@ class ClubAdminController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'notes' => 'nullable|string',
-            'picture' => 'nullable|image|max:2048',
+            'duration_minutes' => 'nullable|integer|min:1',
             'existing_picture_url' => 'nullable|string',
         ]);
 
-        $data = $request->only(['name', 'description', 'notes']);
+        $data = $request->only(['name', 'description', 'notes', 'duration_minutes']);
         $data['tenant_id'] = $clubId;
 
-        // Handle picture upload
-        if ($request->hasFile('picture')) {
+        // Handle picture upload (base64 from cropper or file upload)
+        if ($request->filled('picture') && str_starts_with($request->input('picture'), 'data:image')) {
+            $data['picture_url'] = $this->storeBase64Image($request->input('picture'), 'clubs/' . $clubId . '/activities', 'activity_' . time());
+        } elseif ($request->hasFile('picture')) {
             $data['picture_url'] = $request->file('picture')->store('clubs/' . $clubId . '/activities', 'public');
         }
         // Handle existing picture URL (when duplicating)
@@ -424,14 +443,18 @@ class ClubAdminController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'notes' => 'nullable|string',
-            'picture' => 'nullable|image|max:2048',
+            'duration_minutes' => 'nullable|integer|min:1',
         ]);
 
-        $data = $request->only(['name', 'description', 'notes']);
+        $data = $request->only(['name', 'description', 'notes', 'duration_minutes']);
 
-        // Handle picture upload
-        if ($request->hasFile('picture')) {
-            // Delete old picture if exists
+        // Handle picture upload (base64 from cropper or file upload)
+        if ($request->filled('picture') && str_starts_with($request->input('picture'), 'data:image')) {
+            if ($activity->picture_url && Storage::disk('public')->exists($activity->picture_url)) {
+                Storage::disk('public')->delete($activity->picture_url);
+            }
+            $data['picture_url'] = $this->storeBase64Image($request->input('picture'), 'clubs/' . $clubId . '/activities', 'activity_' . $activityId . '_' . time());
+        } elseif ($request->hasFile('picture')) {
             if ($activity->picture_url && Storage::disk('public')->exists($activity->picture_url)) {
                 Storage::disk('public')->delete($activity->picture_url);
             }
@@ -463,37 +486,200 @@ class ClubAdminController extends Controller
     public function packages($clubId)
     {
         $club = $this->getClub($clubId);
-        $packages = ClubPackage::where('tenant_id', $clubId)->get();
+        $packages = ClubPackage::where('tenant_id', $clubId)
+            ->with(['activities'])
+            ->get();
         $facilities = ClubFacility::where('tenant_id', $clubId)->get();
         $activities = ClubActivity::where('tenant_id', $clubId)->get();
-        $instructors = ClubInstructor::where('tenant_id', $clubId)->with('user')->get()->map(function ($instructor) {
-            return [
+        $instructors = ClubInstructor::where('tenant_id', $clubId)->with('user')->get();
+        $instructorsMap = $instructors->mapWithKeys(function ($instructor) {
+            return [$instructor->id => [
                 'id' => $instructor->id,
                 'name' => $instructor->user?->full_name ?? $instructor->user?->name ?? 'Unknown',
-            ];
+                'image' => $instructor->user?->profile_picture ?? null,
+            ]];
         });
-        return view('admin.club.packages.index', compact('club', 'packages', 'facilities', 'activities', 'instructors'));
+        return view('admin.club.packages.index', compact('club', 'packages', 'facilities', 'activities', 'instructors', 'instructorsMap'));
     }
 
     public function storePackage(Request $request, $clubId)
     {
-        $club = $this->getClub($clubId);
+        $this->getClub($clubId);
 
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
-            'duration_days' => 'required|integer|min:1',
-            'is_popular' => 'boolean',
+            'duration_months' => 'required|integer|min:1',
+            'gender_restriction' => 'nullable|string|in:mixed,male,female',
+            'age_min' => 'nullable|integer|min:0',
+            'age_max' => 'nullable|integer|min:0',
         ]);
 
-        $data = $request->only(['name', 'description', 'price', 'duration_days']);
-        $data['tenant_id'] = $clubId;
-        $data['is_popular'] = $request->boolean('is_popular');
+        $data = [
+            'tenant_id' => $clubId,
+            'name' => $request->name,
+            'description' => $request->description,
+            'price' => $request->price,
+            'duration_months' => $request->duration_months,
+            'gender' => $request->gender_restriction ?? 'mixed',
+            'age_min' => $request->age_min,
+            'age_max' => $request->age_max,
+            'is_active' => true,
+        ];
 
-        ClubPackage::create($data);
+        // Handle image upload (base64 from cropper or file upload)
+        if ($request->filled('image') && str_starts_with($request->input('image'), 'data:image')) {
+            $data['cover_image'] = $this->storeBase64Image($request->input('image'), 'packages', 'package_' . time());
+        } elseif ($request->hasFile('image')) {
+            $data['cover_image'] = $request->file('image')->store('packages', 'public');
+        }
 
-        return back()->with('success', 'Package added successfully.');
+        $package = ClubPackage::create($data);
+
+        // Save activity-instructor assignments and schedules
+        if ($request->schedules) {
+            $schedules = json_decode($request->schedules, true) ?? [];
+            $trainerAssignments = json_decode($request->trainer_assignments, true) ?? [];
+
+            // Group schedules by activityId: each activity gets its own schedule entries
+            $activitySchedules = [];
+            foreach ($schedules as $schedule) {
+                $activityId = $schedule['activityId'] ?? null;
+                if (!$activityId) continue;
+
+                $days = $schedule['days'] ?? [];
+                $startTime = $schedule['startTime'] ?? '';
+                $endTime = $schedule['endTime'] ?? '';
+
+                foreach ($days as $day) {
+                    // Days can be strings or objects {value, name} from ScheduleTimePicker
+                    $dayValue = is_array($day) ? ($day['value'] ?? $day['name'] ?? '') : $day;
+                    $activitySchedules[$activityId][] = [
+                        'day' => $dayValue,
+                        'start_time' => $startTime,
+                        'end_time' => $endTime,
+                    ];
+                }
+            }
+
+            $syncData = [];
+            foreach ($activitySchedules as $activityId => $scheduleEntries) {
+                $syncData[$activityId] = [
+                    'instructor_id' => $trainerAssignments[$activityId] ?? null,
+                    'schedule' => json_encode($scheduleEntries),
+                ];
+            }
+
+            $package->activities()->sync($syncData);
+        }
+
+        return back()->with('success', 'Package created successfully.');
+    }
+
+    /**
+     * Update a package
+     */
+    public function updatePackage(Request $request, $clubId, $packageId)
+    {
+        $this->getClub($clubId);
+
+        $package = ClubPackage::where('tenant_id', $clubId)
+            ->where('id', $packageId)
+            ->firstOrFail();
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'price' => 'required|numeric|min:0',
+            'duration_months' => 'required|integer|min:1',
+            'gender_restriction' => 'nullable|string|in:mixed,male,female',
+            'age_min' => 'nullable|integer|min:0',
+            'age_max' => 'nullable|integer|min:0',
+        ]);
+
+        $data = [
+            'name' => $request->name,
+            'description' => $request->description,
+            'price' => $request->price,
+            'duration_months' => $request->duration_months,
+            'gender' => $request->gender_restriction ?? 'mixed',
+            'age_min' => $request->age_min,
+            'age_max' => $request->age_max,
+        ];
+
+        // Handle image upload (base64 from cropper or file upload)
+        if ($request->filled('image') && str_starts_with($request->input('image'), 'data:image')) {
+            if ($package->cover_image && Storage::disk('public')->exists($package->cover_image)) {
+                Storage::disk('public')->delete($package->cover_image);
+            }
+            $data['cover_image'] = $this->storeBase64Image($request->input('image'), 'packages', 'package_' . $packageId . '_' . time());
+        } elseif ($request->hasFile('image')) {
+            if ($package->cover_image && Storage::disk('public')->exists($package->cover_image)) {
+                Storage::disk('public')->delete($package->cover_image);
+            }
+            $data['cover_image'] = $request->file('image')->store('packages', 'public');
+        }
+
+        $package->update($data);
+
+        // Sync activity-instructor assignments and schedules
+        if ($request->schedules) {
+            $schedules = json_decode($request->schedules, true) ?? [];
+            $trainerAssignments = json_decode($request->trainer_assignments, true) ?? [];
+
+            // Group schedules by activityId
+            $activitySchedules = [];
+            foreach ($schedules as $schedule) {
+                $activityId = $schedule['activityId'] ?? null;
+                if (!$activityId) continue;
+
+                $days = $schedule['days'] ?? [];
+                $startTime = $schedule['startTime'] ?? '';
+                $endTime = $schedule['endTime'] ?? '';
+
+                foreach ($days as $day) {
+                    // Days can be strings or objects {value, name} from ScheduleTimePicker
+                    $dayValue = is_array($day) ? ($day['value'] ?? $day['name'] ?? '') : $day;
+                    $activitySchedules[$activityId][] = [
+                        'day' => $dayValue,
+                        'start_time' => $startTime,
+                        'end_time' => $endTime,
+                    ];
+                }
+            }
+
+            $syncData = [];
+            foreach ($activitySchedules as $activityId => $scheduleEntries) {
+                $syncData[$activityId] = [
+                    'instructor_id' => $trainerAssignments[$activityId] ?? null,
+                    'schedule' => json_encode($scheduleEntries),
+                ];
+            }
+
+            $package->activities()->sync($syncData);
+        } else {
+            // No schedules submitted — clear all activity links
+            $package->activities()->detach();
+        }
+
+        return back()->with('success', 'Package updated successfully.');
+    }
+
+    /**
+     * Delete a package
+     */
+    public function destroyPackage($clubId, $packageId)
+    {
+        $this->getClub($clubId);
+
+        $package = ClubPackage::where('tenant_id', $clubId)
+            ->where('id', $packageId)
+            ->firstOrFail();
+
+        $package->delete();
+
+        return back()->with('success', 'Package deleted successfully.');
     }
 
     /**
@@ -822,9 +1008,9 @@ class ClubAdminController extends Controller
             'address' => 'nullable|string|max:500',
             'gps_lat' => 'nullable|numeric',
             'gps_long' => 'nullable|numeric',
-            'logo' => 'nullable|image|max:5120',
-            'favicon' => 'nullable|image|max:2048',
-            'cover_image' => 'nullable|image|max:10240',
+            'logo' => 'nullable',
+            'favicon' => 'nullable',
+            'cover_image' => 'nullable',
             'settings' => 'nullable|array',
         ]);
 
@@ -849,25 +1035,39 @@ class ClubAdminController extends Controller
             $data['settings'] = array_merge($currentSettings, $request->settings);
         }
 
-        // Handle logo upload
-        if ($request->hasFile('logo')) {
-            // Delete old logo
+        // Handle logo upload (base64 from cropper or file upload)
+        if ($request->filled('logo') && str_starts_with($request->input('logo'), 'data:image')) {
+            if ($club->logo && Storage::disk('public')->exists($club->logo)) {
+                Storage::disk('public')->delete($club->logo);
+            }
+            $data['logo'] = $this->storeBase64Image($request->input('logo'), 'clubs/' . $clubId . '/branding', 'logo_' . time());
+        } elseif ($request->hasFile('logo')) {
             if ($club->logo && Storage::disk('public')->exists($club->logo)) {
                 Storage::disk('public')->delete($club->logo);
             }
             $data['logo'] = $request->file('logo')->store('clubs/' . $clubId . '/branding', 'public');
         }
 
-        // Handle favicon upload
-        if ($request->hasFile('favicon')) {
+        // Handle favicon upload (base64 from cropper or file upload)
+        if ($request->filled('favicon') && str_starts_with($request->input('favicon'), 'data:image')) {
+            if ($club->favicon && Storage::disk('public')->exists($club->favicon)) {
+                Storage::disk('public')->delete($club->favicon);
+            }
+            $data['favicon'] = $this->storeBase64Image($request->input('favicon'), 'clubs/' . $clubId . '/branding', 'favicon_' . time());
+        } elseif ($request->hasFile('favicon')) {
             if ($club->favicon && Storage::disk('public')->exists($club->favicon)) {
                 Storage::disk('public')->delete($club->favicon);
             }
             $data['favicon'] = $request->file('favicon')->store('clubs/' . $clubId . '/branding', 'public');
         }
 
-        // Handle cover image upload
-        if ($request->hasFile('cover_image')) {
+        // Handle cover image upload (base64 from cropper or file upload)
+        if ($request->filled('cover_image') && str_starts_with($request->input('cover_image'), 'data:image')) {
+            if ($club->cover_image && Storage::disk('public')->exists($club->cover_image)) {
+                Storage::disk('public')->delete($club->cover_image);
+            }
+            $data['cover_image'] = $this->storeBase64Image($request->input('cover_image'), 'clubs/' . $clubId . '/branding', 'cover_' . time());
+        } elseif ($request->hasFile('cover_image')) {
             if ($club->cover_image && Storage::disk('public')->exists($club->cover_image)) {
                 Storage::disk('public')->delete($club->cover_image);
             }
@@ -940,6 +1140,27 @@ class ClubAdminController extends Controller
         $link->delete();
 
         return back()->with('success', 'Social link deleted successfully.');
+    }
+
+    /**
+     * Helper: Store a base64 image from the cropper component.
+     * Returns the stored path, or null if not a base64 image.
+     */
+    private function storeBase64Image(string $base64, string $folder, string $filenameBase): ?string
+    {
+        if (!str_starts_with($base64, 'data:image')) {
+            return null;
+        }
+
+        $imageParts = explode(';base64,', $base64);
+        $imageTypeAux = explode('image/', $imageParts[0]);
+        $extension = $imageTypeAux[1] ?? 'png';
+        $imageBinary = base64_decode($imageParts[1]);
+
+        $fullPath = trim($folder, '/') . '/' . $filenameBase . '.' . $extension;
+        Storage::disk('public')->put($fullPath, $imageBinary);
+
+        return $fullPath;
     }
 
     /**

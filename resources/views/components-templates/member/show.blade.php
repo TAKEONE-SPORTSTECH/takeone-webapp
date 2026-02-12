@@ -20,17 +20,17 @@
     <div class="flex justify-between items-center mb-4">
         <div>
             <h2 class="font-bold mb-1 text-xl">Member Profile</h2>
-            <p class="text-muted-foreground mb-0">Comprehensive member information and analytics</p>
+            <p class="text-gray-500-foreground mb-0">Comprehensive member information and analytics</p>
         </div>
         <div>
-            <button onclick="window.history.back()" class="btn btn-outline-primary">
+            <button onclick="window.history.back()" class="border border-primary text-primary bg-transparent px-4 py-2 rounded-md text-sm font-medium hover:bg-primary hover:text-white transition-colors">
                 <i class="bi bi-arrow-left mr-2"></i>Back
             </button>
         </div>
     </div>
 
     <!-- Profile Card -->
-    <div class="card shadow-sm border-0 mb-4">
+    <div class="bg-white rounded-xl shadow-sm mb-4">
         <div class="flex">
             <!-- Profile Picture -->
             <div style="width: 180px; min-height: 250px; border-radius: 0.375rem 0 0 0.375rem;">
@@ -48,74 +48,74 @@
                 <div class="flex justify-between items-start mb-2">
                     <h3 class="font-bold mb-0">{{ $relationship->dependent->full_name }}</h3>
                     @if($relationship->relationship_type == 'self' || Auth::id() == $relationship->guardian_user_id)
-                        <div>
-                            <div class="dropdown">
-                                <button class="btn btn-primary rounded-pill dropdown-toggle" type="button" id="actionDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="bi bi-lightning mr-1"></i>Action
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionDropdown">
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-trophy mr-2"></i>Add Achievement</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-calendar-check mr-2"></i>Add Attendance Record</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-calendar-event mr-2"></i>Add Event Participation</a></li>
-                                    <li><a class="dropdown-item" href="#" data-bs-target="#healthUpdateModal"><i class="bi bi-heart-pulse mr-2"></i>Add Health Update</a></li>
-                                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#tournamentParticipationModal"><i class="bi bi-award mr-2"></i>Add Tournament Participation</a></li>
-                                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editProfileModal">
-                                        <i class="bi bi-pencil mr-2"></i>Edit Info
-                                    </a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-bullseye mr-2"></i>Set a Goal</a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
-                                        <i class="bi bi-trash mr-2"></i>Delete Account
-                                    </a></li>
-                                </ul>
-                            </div>
+                        <div x-data="{ open: false }" class="relative">
+                            <button @click="open = !open" class="bg-primary text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-primary/90 transition-colors" type="button">
+                                <i class="bi bi-lightning mr-1"></i>Action
+                            </button>
+                            <ul x-show="open" x-cloak @click.outside="open = false"
+                                class="absolute right-0 mt-0.5 bg-gray-100 py-1 z-50 list-none"
+                                style="border: 1px solid rgba(0,0,0,.15); border-radius: 0.375rem; box-shadow: 0 0.5rem 1rem rgba(0,0,0,.175);">
+                                <li><a class="block py-1 pl-0 pr-3 text-gray-900 no-underline whitespace-nowrap hover:bg-[#e9ecef]" href="#"><i class="bi bi-trophy mr-2"></i>Add Achievement</a></li>
+                                <li><a class="block py-1 pl-0 pr-3 text-gray-900 no-underline whitespace-nowrap hover:bg-[#e9ecef]" href="#"><i class="bi bi-calendar-check mr-2"></i>Add Attendance Record</a></li>
+                                <li><a class="block py-1 pl-0 pr-3 text-gray-900 no-underline whitespace-nowrap hover:bg-[#e9ecef]" href="#"><i class="bi bi-calendar-event mr-2"></i>Add Event Participation</a></li>
+                                <li><a class="block py-1 pl-0 pr-3 text-gray-900 no-underline whitespace-nowrap hover:bg-[#e9ecef]" href="#" @click="$dispatch('open-health-update-modal'); open = false"><i class="bi bi-heart-pulse mr-2"></i>Add Health Update</a></li>
+                                <li><a class="block py-1 pl-0 pr-3 text-gray-900 no-underline whitespace-nowrap hover:bg-[#e9ecef]" href="#" @click="$dispatch('open-tournament-modal'); open = false"><i class="bi bi-award mr-2"></i>Add Tournament Participation</a></li>
+                                <li><a class="block py-1 pl-0 pr-3 text-gray-900 no-underline whitespace-nowrap hover:bg-[#e9ecef]" href="#" @click="$dispatch('open-profile-modal'); open = false">
+                                    <i class="bi bi-pencil mr-2"></i>Edit Info
+                                </a></li>
+                                <li><a class="block py-1 pl-0 pr-3 text-gray-900 no-underline whitespace-nowrap hover:bg-[#e9ecef]" href="#"><i class="bi bi-bullseye mr-2"></i>Set a Goal</a></li>
+                                <li><hr class="my-2 overflow-hidden border-0" style="border-top: 1px solid rgba(0,0,0,.15);"></li>
+                                <li><a class="block py-1 pl-0 pr-3 text-red-600 no-underline whitespace-nowrap hover:bg-[#e9ecef]" href="#" @click="$dispatch('open-delete-account-modal'); open = false">
+                                    <i class="bi bi-trash mr-2"></i>Delete Account
+                                </a></li>
+                            </ul>
                         </div>
                     @else
-                        <button class="btn btn-primary btn-sm rounded-pill">
+                        <button class="bg-primary text-white px-3 py-1.5 rounded-full text-xs font-medium hover:bg-primary/90 transition-colors">
                             <i class="bi bi-person-plus mr-1"></i>Follow
                         </button>
                     @endif
                 </div>
                             @if($relationship->dependent->motto)
-                                <p class="text-muted fst-italic mb-3">"{{ $relationship->dependent->motto }}"</p>
+                                <p class="text-gray-500 italic mb-3">"{{ $relationship->dependent->motto }}"</p>
                             @endif
 
                             <!-- Achievement Badges -->
                             <div class="flex gap-2 mb-3 flex-wrap">
-                                <a href="#" class="border bg-white rounded px-2 py-1 no-underline achievement-badge" style="font-size: 1rem;" data-medal-type="special" onclick="filterTournamentsByMedal('special')">🏆 <span class="font-semibold text-dark">{{ $awardCounts['special'] }}</span></a>
-                                <a href="#" class="border bg-white rounded px-2 py-1 no-underline achievement-badge" style="font-size: 1rem;" data-medal-type="1st" onclick="filterTournamentsByMedal('1st')">🥇 <span class="font-semibold text-dark">{{ $awardCounts['1st'] }}</span></a>
-                                <a href="#" class="border bg-white rounded px-2 py-1 no-underline achievement-badge" style="font-size: 1rem;" data-medal-type="2nd" onclick="filterTournamentsByMedal('2nd')">🥈 <span class="font-semibold text-dark">{{ $awardCounts['2nd'] }}</span></a>
-                                <a href="#" class="border bg-white rounded px-2 py-1 no-underline achievement-badge" style="font-size: 1rem;" data-medal-type="3rd" onclick="filterTournamentsByMedal('3rd')">🥉 <span class="font-semibold text-dark">{{ $awardCounts['3rd'] }}</span></a>
-                                <a href="#goals" class="border bg-white rounded px-2 py-1 no-underline" style="font-size: 1rem;" onclick="document.getElementById('goals-tab').click();">🎯 <span class="font-semibold text-dark">{{ $activeGoalsCount + $completedGoalsCount }}</span></a>
-                                <a href="#" class="border bg-white rounded px-2 py-1 no-underline" style="font-size: 1rem;">⭐ <span class="font-semibold text-dark">{{ $totalAffiliations }}</span></a>
+                                <a href="#" class="border border-gray-300 bg-white rounded px-2 py-1 no-underline achievement-badge" style="font-size: 1rem;" data-medal-type="special" onclick="filterTournamentsByMedal('special')">🏆 <span class="font-semibold text-gray-900">{{ $awardCounts['special'] }}</span></a>
+                                <a href="#" class="border border-gray-300 bg-white rounded px-2 py-1 no-underline achievement-badge" style="font-size: 1rem;" data-medal-type="1st" onclick="filterTournamentsByMedal('1st')">🥇 <span class="font-semibold text-gray-900">{{ $awardCounts['1st'] }}</span></a>
+                                <a href="#" class="border border-gray-300 bg-white rounded px-2 py-1 no-underline achievement-badge" style="font-size: 1rem;" data-medal-type="2nd" onclick="filterTournamentsByMedal('2nd')">🥈 <span class="font-semibold text-gray-900">{{ $awardCounts['2nd'] }}</span></a>
+                                <a href="#" class="border border-gray-300 bg-white rounded px-2 py-1 no-underline achievement-badge" style="font-size: 1rem;" data-medal-type="3rd" onclick="filterTournamentsByMedal('3rd')">🥉 <span class="font-semibold text-gray-900">{{ $awardCounts['3rd'] }}</span></a>
+                                <a href="#goals" class="border border-gray-300 bg-white rounded px-2 py-1 no-underline" style="font-size: 1rem;" onclick="document.getElementById('goals-tab').click();">🎯 <span class="font-semibold text-gray-900">{{ $activeGoalsCount + $completedGoalsCount }}</span></a>
+                                <a href="#" class="border border-gray-300 bg-white rounded px-2 py-1 no-underline" style="font-size: 1rem;">⭐ <span class="font-semibold text-gray-900">{{ $totalAffiliations }}</span></a>
                             </div>
 
                             <!-- Status Badges -->
                             <div class="flex gap-3 mb-3 items-center flex-wrap">
-                                <span class="text-muted small">
-                                    <span class="font-semibold text-dark nationality-display" data-iso3="{{ $relationship->dependent->nationality }}">{{ $relationship->dependent->nationality }}</span>
+                                <span class="text-gray-500 text-sm">
+                                    <span class="font-semibold text-gray-900 nationality-display" data-iso3="{{ $relationship->dependent->nationality }}">{{ $relationship->dependent->nationality }}</span>
                                 </span>
-                                <span class="text-muted small">
+                                <span class="text-gray-500 text-sm">
                                     <i class="bi bi-{{ $relationship->dependent->gender == 'm' ? 'gender-male' : 'gender-female' }} mr-1" style="font-size: 1.1rem; color: {{ $relationship->dependent->gender == 'm' ? '#17a2b8' : '#6f42c1' }};"></i>
-                                    <span class="font-semibold text-dark">{{ $relationship->dependent->gender == 'm' ? 'Male' : 'Female' }}</span>
+                                    <span class="font-semibold text-gray-900">{{ $relationship->dependent->gender == 'm' ? 'Male' : 'Female' }}</span>
                                 </span>
                                 @if($relationship->dependent->marital_status)
-                                <span class="text-muted small">
+                                <span class="text-gray-500 text-sm">
                                     <i class="bi bi-heart mr-1" style="color: #e91e63;"></i>
-                                    <span class="font-semibold text-dark">{{ ucfirst($relationship->dependent->marital_status) }}</span>
+                                    <span class="font-semibold text-gray-900">{{ ucfirst($relationship->dependent->marital_status) }}</span>
                                 </span>
                                 @endif
-                                <span class="text-muted small">
+                                <span class="text-gray-500 text-sm">
                                     <i class="bi bi-calendar-event mr-1"></i>
-                                    Age <span class="font-semibold text-dark">{{ $relationship->dependent->age }}</span>
+                                    Age <span class="font-semibold text-gray-900">{{ $relationship->dependent->age }}</span>
                                 </span>
                                 @if($relationship->dependent->blood_type)
-                                <span class="text-muted small">
-                                    <i class="bi bi-droplet-fill text-danger mr-1"></i>
-                                    <span class="font-semibold text-dark">{{ $relationship->dependent->blood_type }}</span>
+                                <span class="text-gray-500 text-sm">
+                                    <i class="bi bi-droplet-fill text-red-600 mr-1"></i>
+                                    <span class="font-semibold text-gray-900">{{ $relationship->dependent->blood_type }}</span>
                                 </span>
                                 @endif
-                                <span class="text-muted small">
+                                <span class="text-gray-500 text-sm">
                                     @php
                                         $horoscopeSymbols = [
                                             'Aries' => '♈',
@@ -134,12 +134,12 @@
                                         $horoscope = $relationship->dependent->horoscope ?? 'N/A';
                                         $symbol = $horoscopeSymbols[$horoscope] ?? '';
                                     @endphp
-                                    {{ $symbol }} <span class="font-semibold text-dark">{{ $horoscope }}</span>
+                                    {{ $symbol }} <span class="font-semibold text-gray-900">{{ $horoscope }}</span>
                                 </span>
                                 @if($relationship->dependent->birthdate)
-                                <span class="text-muted small">
+                                <span class="text-gray-500 text-sm">
                                     🎂
-                                    <span class="font-semibold text-dark">
+                                    <span class="font-semibold text-gray-900">
                                         @php
                                             $nextBirthday = $relationship->dependent->birthdate->copy()->year(now()->year);
                                             if ($nextBirthday->isPast()) {
@@ -154,13 +154,13 @@
                                     </span>
                                 </span>
                                 @endif
-                                <span class="text-muted small">
-                                    <i class="bi bi-check-circle-fill text-success mr-1"></i>
-                                    <span class="font-semibold text-success">Active</span>
+                                <span class="text-gray-500 text-sm">
+                                    <i class="bi bi-check-circle-fill text-green-600 mr-1"></i>
+                                    <span class="font-semibold text-green-600">Active</span>
                                 </span>
-                                <span class="text-muted small">
+                                <span class="text-gray-500 text-sm">
                                     <i class="bi bi-calendar-check mr-1"></i>
-                                    Joined <span class="font-semibold text-dark">{{ $relationship->dependent->created_at->format('F Y') }}</span>
+                                    Joined <span class="font-semibold text-gray-900">{{ $relationship->dependent->created_at->format('F Y') }}</span>
                                 </span>
                             </div>
 
@@ -222,7 +222,7 @@
                                     @endphp
                                     @foreach($socialLinks as $platform => $url)
                                         @if(!empty($url) && isset($socialIcons[$platform]))
-                                            <a href="{{ $url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="{{ $socialTitles[$platform] ?? ucfirst($platform) }}">
+                                            <a href="{{ $url }}" target="_blank" rel="noopener noreferrer" class="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors" title="{{ $socialTitles[$platform] ?? ucfirst($platform) }}">
                                                 @if($platform === 'twitter')
                                                     <span style="font-weight: bold; font-size: 1.2rem;">{{ $socialIcons[$platform] }}</span>
                                                 @else
@@ -238,74 +238,75 @@
     </div>
 
     <!-- Navigation Tabs -->
-    <ul class="nav nav-tabs nav-fill mb-4" id="profileTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active text-dark" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab">
-                <i class="bi bi-eye mr-2"></i>Overview
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link text-dark" id="attendance-tab" data-bs-toggle="tab" data-bs-target="#attendance" type="button" role="tab">
-                <i class="bi bi-calendar-check mr-2"></i>Attendance
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link text-dark" id="health-tab" data-bs-toggle="tab" data-bs-target="#health" type="button" role="tab">
-                <i class="bi bi-heart-pulse mr-2"></i>Health
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link text-dark" id="goals-tab" data-bs-toggle="tab" data-bs-target="#goals" type="button" role="tab">
-                <i class="bi bi-bullseye mr-2"></i>Goals
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link text-dark" id="affiliations-tab" data-bs-toggle="tab" data-bs-target="#affiliations" type="button" role="tab">
-                <i class="bi bi-diagram-3 mr-2"></i>Affiliations
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link text-dark" id="tournaments-tab" data-bs-toggle="tab" data-bs-target="#tournaments" type="button" role="tab">
-                <i class="bi bi-award mr-2"></i>Tournaments
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link text-dark" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab">
-                <i class="bi bi-calendar-event mr-2"></i>Events
-            </button>
-        </li>
-    </ul>
+    <div x-data="{ activeTab: 'overview' }">
+        <ul class="nav nav-tabs nav-fill mb-4" id="profileTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button @click="activeTab = 'overview'" :class="{ 'active': activeTab === 'overview' }" class="nav-link text-dark" id="overview-tab" type="button" role="tab">
+                    <i class="bi bi-eye me-2"></i>Overview
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button @click="activeTab = 'attendance'" :class="{ 'active': activeTab === 'attendance' }" class="nav-link text-dark" id="attendance-tab" type="button" role="tab">
+                    <i class="bi bi-calendar-check me-2"></i>Attendance
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button @click="activeTab = 'health'" :class="{ 'active': activeTab === 'health' }" class="nav-link text-dark" id="health-tab" type="button" role="tab">
+                    <i class="bi bi-heart-pulse me-2"></i>Health
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button @click="activeTab = 'goals'" :class="{ 'active': activeTab === 'goals' }" class="nav-link text-dark" id="goals-tab" type="button" role="tab">
+                    <i class="bi bi-bullseye me-2"></i>Goals
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button @click="activeTab = 'affiliations'" :class="{ 'active': activeTab === 'affiliations' }" class="nav-link text-dark" id="affiliations-tab" type="button" role="tab">
+                    <i class="bi bi-diagram-3 me-2"></i>Affiliations
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button @click="activeTab = 'tournaments'" :class="{ 'active': activeTab === 'tournaments' }" class="nav-link text-dark" id="tournaments-tab" type="button" role="tab">
+                    <i class="bi bi-award me-2"></i>Tournaments
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button @click="activeTab = 'events'" :class="{ 'active': activeTab === 'events' }" class="nav-link text-dark" id="events-tab" type="button" role="tab">
+                    <i class="bi bi-calendar-event me-2"></i>Events
+                </button>
+            </li>
+        </ul>
 
-    <!-- Tab Content -->
-    <div class="tab-content" id="profileTabsContent">
-        <!-- Overview Tab -->
-        <div class="tab-pane fade show active" id="overview" role="tabpanel">
+        <!-- Tab Content -->
+        <div id="profileTabsContent">
+            <!-- Overview Tab -->
+            <div x-show="activeTab === 'overview'" x-transition id="overview" role="tabpanel">
             <!-- Profile Statistics and Revenue Chart Row -->
-            <div class="row mb-4">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
                 <!-- Profile Statistics -->
-                <div class="col-lg-6">
-                    <div class="card shadow-sm border-0 h-full">
-                        <div class="card-body p-4">
+                <div>
+                    <div class="bg-white rounded-xl shadow-sm h-full">
+                        <div class="p-4">
                             <div class="flex items-center mb-2">
                                 <i class="bi bi-bar-chart-line text-primary mr-2"></i>
                                 <h5 class="mb-0 font-bold">Profile Statistics</h5>
                             </div>
-                            <p class="text-muted small mb-4">Key performance metrics and milestones</p>
+                            <p class="text-gray-500 text-sm mb-4">Key performance metrics and milestones</p>
 
-                            <div class="row g-3">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <!-- Total Sessions -->
-                                <div class="col-md-6">
-                            <div class="flex items-center gap-3 p-3 bg-light rounded">
-                                <div class="rounded-circle flex items-center justify-center" style="width: 48px; height: 48px; background-color: #6f42c1;">
+                                <div>
+                            <div class="flex items-center gap-3 p-3 bg-gray-100 rounded">
+                                <div class="rounded-full flex items-center justify-center" style="width: 48px; height: 48px; background-color: #6f42c1;">
                                     <i class="bi bi-people-fill text-white"></i>
                                 </div>
                                 <div class="flex-1">
-                                    <div class="small text-muted mb-1">Total Sessions</div>
-                                    <div class="h4 font-bold mb-2">127</div>
-                                    <div class="progress" style="height: 4px; background-color: #e9ecef;">
-                                        <div class="progress-bar" role="progressbar" style="width: 85%; background: linear-gradient(90deg, #6f42c1 0%, #8b5cf6 100%);"></div>
+                                    <div class="small text-gray-500 mb-1">Total Sessions</div>
+                                    <div class="text-xl font-bold mb-2">127</div>
+                                    <div class="h-2 bg-gray-200 rounded-full overflow-hidden" style="height: 4px; background-color: #e9ecef;">
+                                        <div class="h-full bg-primary transition-all" role="progressbar" style="width: 85%; background: linear-gradient(90deg, #6f42c1 0%, #8b5cf6 100%);"></div>
                                     </div>
-                                    <small class="text-muted" style="font-size: 0.75rem;">Sessions completed this year</small>
+                                    <small class="text-gray-500" style="font-size: 0.75rem;">Sessions completed this year</small>
                                 </div>
                             </div>
                         </div>
@@ -313,18 +314,18 @@
 
 
                                 <!-- Attendance Rate -->
-                                <div class="col-md-6">
-                            <div class="flex items-center gap-3 p-3 bg-light rounded">
-                                <div class="rounded-circle flex items-center justify-center" style="width: 48px; height: 48px; background-color: #3b82f6;">
+                                <div>
+                            <div class="flex items-center gap-3 p-3 bg-gray-100 rounded">
+                                <div class="rounded-full flex items-center justify-center" style="width: 48px; height: 48px; background-color: #3b82f6;">
                                     <i class="bi bi-graph-up-arrow text-white"></i>
                                 </div>
                                 <div class="flex-1">
-                                    <div class="small text-muted mb-1">Attendance Rate</div>
-                                    <div class="h4 font-bold mb-2">85%</div>
-                                    <div class="progress" style="height: 4px; background-color: #e9ecef;">
-                                        <div class="progress-bar" role="progressbar" style="width: 85%; background: linear-gradient(90deg, #6f42c1 0%, #10b981 100%);"></div>
+                                    <div class="small text-gray-500 mb-1">Attendance Rate</div>
+                                    <div class="text-xl font-bold mb-2">85%</div>
+                                    <div class="h-2 bg-gray-200 rounded-full overflow-hidden" style="height: 4px; background-color: #e9ecef;">
+                                        <div class="h-full bg-primary transition-all" role="progressbar" style="width: 85%; background: linear-gradient(90deg, #6f42c1 0%, #10b981 100%);"></div>
                                     </div>
-                                    <small class="text-muted" style="font-size: 0.75rem;">Average session attendance</small>
+                                    <small class="text-gray-500" style="font-size: 0.75rem;">Average session attendance</small>
                                 </div>
                             </div>
                         </div>
@@ -332,35 +333,35 @@
 
 
                                 <!-- Achievements -->
-                                <div class="col-md-6">
-                            <div class="flex items-center gap-3 p-3 bg-light rounded">
-                                <div class="rounded-circle flex items-center justify-center" style="width: 48px; height: 48px; background-color: #8b5cf6;">
+                                <div>
+                            <div class="flex items-center gap-3 p-3 bg-gray-100 rounded">
+                                <div class="rounded-full flex items-center justify-center" style="width: 48px; height: 48px; background-color: #8b5cf6;">
                                     <i class="bi bi-trophy-fill text-white"></i>
                                 </div>
                                 <div class="flex-1">
-                                    <div class="small text-muted mb-1">Achievements</div>
-                                    <div class="h4 font-bold mb-2">8</div>
-                                    <div class="progress" style="height: 4px; background-color: #e9ecef;">
-                                        <div class="progress-bar" role="progressbar" style="width: 40%; background: linear-gradient(90deg, #6f42c1 0%, #10b981 100%);"></div>
+                                    <div class="small text-gray-500 mb-1">Achievements</div>
+                                    <div class="text-xl font-bold mb-2">8</div>
+                                    <div class="h-2 bg-gray-200 rounded-full overflow-hidden" style="height: 4px; background-color: #e9ecef;">
+                                        <div class="h-full bg-primary transition-all" role="progressbar" style="width: 40%; background: linear-gradient(90deg, #6f42c1 0%, #10b981 100%);"></div>
                                     </div>
-                                    <small class="text-muted" style="font-size: 0.75rem;">Total badges earned</small>
+                                    <small class="text-gray-500" style="font-size: 0.75rem;">Total badges earned</small>
                                 </div>
                             </div>
                         </div>
 
                                 <!-- Goal Completion -->
-                                <div class="col-md-6">
-                            <div class="flex items-center gap-3 p-3 bg-light rounded">
-                                <div class="rounded-circle flex items-center justify-center" style="width: 48px; height: 48px; background-color: #10b981;">
+                                <div>
+                            <div class="flex items-center gap-3 p-3 bg-gray-100 rounded">
+                                <div class="rounded-full flex items-center justify-center" style="width: 48px; height: 48px; background-color: #10b981;">
                                     <i class="bi bi-check-circle-fill text-white"></i>
                                 </div>
                                 <div class="flex-1">
-                                    <div class="small text-muted mb-1">Goal Completion</div>
-                                    <div class="h4 font-bold mb-2">75%</div>
-                                    <div class="progress" style="height: 4px; background-color: #e9ecef;">
-                                        <div class="progress-bar" role="progressbar" style="width: 75%; background: linear-gradient(90deg, #6f42c1 0%, #10b981 100%);"></div>
+                                    <div class="small text-gray-500 mb-1">Goal Completion</div>
+                                    <div class="text-xl font-bold mb-2">75%</div>
+                                    <div class="h-2 bg-gray-200 rounded-full overflow-hidden" style="height: 4px; background-color: #e9ecef;">
+                                        <div class="h-full bg-primary transition-all" role="progressbar" style="width: 75%; background: linear-gradient(90deg, #6f42c1 0%, #10b981 100%);"></div>
                                     </div>
-                                    <small class="text-muted" style="font-size: 0.75rem;">Current goals achieved</small>
+                                    <small class="text-gray-500" style="font-size: 0.75rem;">Current goals achieved</small>
                                 </div>
                             </div>
                         </div>
@@ -370,20 +371,20 @@
                 </div>
 
                 <!-- Self Investment Chart -->
-                <div class="col-lg-6">
-                    <div class="card shadow-sm border-0 h-full">
-                        <div class="card-body p-4">
+                <div>
+                    <div class="bg-white rounded-xl shadow-sm h-full">
+                        <div class="p-4">
                             <div class="flex items-center mb-2">
                                 <i class="bi bi-bar-chart-line text-primary mr-2"></i>
                                 <h5 class="mb-0 font-bold">Self Investment Chart</h5>
                             </div>
-                            <p class="text-muted small mb-4">Self investment analytics over time</p>
+                            <p class="text-gray-500 text-sm mb-4">Self investment analytics over time</p>
 
                             <div class="flex items-center justify-center" style="min-height: 300px;">
                                 <div class="text-center">
-                                    <i class="bi bi-graph-up text-muted" style="font-size: 3rem;"></i>
-                                    <p class="text-muted mt-3 mb-1">Revenue chart visualization coming soon...</p>
-                                    <small class="text-muted">Chart will display revenue trends over time</small>
+                                    <i class="bi bi-graph-up text-gray-500" style="font-size: 3rem;"></i>
+                                    <p class="text-gray-500 mt-3 mb-1">Revenue chart visualization coming soon...</p>
+                                    <small class="text-gray-500">Chart will display revenue trends over time</small>
                                 </div>
                             </div>
                         </div>
@@ -392,27 +393,27 @@
             </div>
 
             <!-- Complete Payment & Revenue History -->
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-body p-4">
+            <div class="bg-white rounded-xl shadow-sm mb-4">
+                <div class="p-4">
                     <div class="flex items-center mb-2">
                         <i class="bi bi-receipt text-primary mr-2"></i>
                         <h5 class="mb-0 font-bold">Complete Payment & Revenue History</h5>
                     </div>
-                    <p class="text-muted small mb-4">All package payments and revenue transactions in one view</p>
+                    <p class="text-gray-500 text-sm mb-4">All package payments and revenue transactions in one view</p>
 
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead class="table-light">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 border-b border-gray-200">
                                 <tr>
-                                    <th class="text-muted small font-semibold">Date</th>
-                                    <th class="text-muted small font-semibold">Transaction Type</th>
-                                    <th class="text-muted small font-semibold">Package/Item</th>
-                                    <th class="text-muted small font-semibold">Duration</th>
-                                    <th class="text-muted small font-semibold">Sessions</th>
-                                    <th class="text-muted small font-semibold">Amount</th>
-                                    <th class="text-muted small font-semibold">Status</th>
-                                    <th class="text-muted small font-semibold">Method</th>
-                                    <th class="text-muted small font-semibold">Evidence</th>
+                                    <th class="text-gray-500 text-sm font-semibold">Date</th>
+                                    <th class="text-gray-500 text-sm font-semibold">Transaction Type</th>
+                                    <th class="text-gray-500 text-sm font-semibold">Package/Item</th>
+                                    <th class="text-gray-500 text-sm font-semibold">Duration</th>
+                                    <th class="text-gray-500 text-sm font-semibold">Sessions</th>
+                                    <th class="text-gray-500 text-sm font-semibold">Amount</th>
+                                    <th class="text-gray-500 text-sm font-semibold">Status</th>
+                                    <th class="text-gray-500 text-sm font-semibold">Method</th>
+                                    <th class="text-gray-500 text-sm font-semibold">Evidence</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -421,16 +422,16 @@
                                     <td class="small">{{ $invoice->created_at->format('Y-m-d') }}</td>
                                     <td class="small text-primary">Invoice</td>
                                     <td class="small">{{ $invoice->tenant->club_name ?? 'N/A' }}</td>
-                                    <td class="small text-muted">-</td>
+                                    <td class="small text-gray-500">-</td>
                                     <td class="small">-</td>
                                     <td class="small font-semibold" style="color: {{ $invoice->status == 'paid' ? '#10b981' : '#f59e0b' }};">{{ $invoice->amount }} BHD</td>
                                     <td>
                                         @if($invoice->status == 'paid')
-                                            <span class="badge bg-success-subtle text-success small">✓ Paid</span>
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">✓ Paid</span>
                                         @elseif($invoice->status == 'due')
-                                            <span class="badge bg-warning-subtle text-warning small">○ Due</span>
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">○ Due</span>
                                         @else
-                                            <span class="badge bg-secondary-subtle text-secondary small">{{ ucfirst($invoice->status) }}</span>
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">{{ ucfirst($invoice->status) }}</span>
                                         @endif
                                     </td>
                                     <td class="small">-</td>
@@ -441,7 +442,7 @@
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="9" class="text-center text-muted small">No invoices found</td>
+                                    <td colspan="9" class="text-center text-gray-500 text-sm">No invoices found</td>
                                 </tr>
                                 @endforelse
                             </tbody>
@@ -454,53 +455,53 @@
         </div>
 
         <!-- Attendance Tab -->
-        <div class="tab-pane fade" id="attendance" role="tabpanel">
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-4">
+        <div x-show="activeTab === 'attendance'" x-transition id="attendance" role="tabpanel">
+            <div class="bg-white rounded-xl shadow-sm">
+                <div class="p-4">
                     <div class="flex items-center justify-between mb-4">
                         <div>
                             <h1 class="h3 font-bold">Member Attendance</h1>
-                            <p class="text-muted">Track your gym session attendance and performance</p>
+                            <p class="text-gray-500">Track your gym session attendance and performance</p>
                         </div>
                     </div>
 
                     <!-- Summary Cards -->
-                    <div class="row g-4 mb-4">
-                        <div class="col-md-4">
-                            <div class="card shadow-sm bg-light">
-                                <div class="card-body text-center">
-                                    <div class="display-4 font-bold text-success mb-2">{{ $sessionsCompleted }}</div>
-                                    <h6 class="card-title text-muted">Sessions Completed</h6>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                            <div class="bg-white rounded-xl shadow-sm">
+                                <div class="p-6 text-center">
+                                    <div class="text-4xl font-bold text-green-600 mb-2">{{ $sessionsCompleted }}</div>
+                                    <h6 class="text-lg font-semibold text-gray-500">Sessions Completed</h6>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="card shadow-sm bg-light">
-                                <div class="card-body text-center">
-                                    <div class="display-4 font-bold text-danger mb-2">{{ $noShows }}</div>
-                                    <h6 class="card-title text-muted">No Shows</h6>
+                        <div>
+                            <div class="bg-white rounded-xl shadow-sm">
+                                <div class="p-6 text-center">
+                                    <div class="text-4xl font-bold text-red-600 mb-2">{{ $noShows }}</div>
+                                    <h6 class="text-lg font-semibold text-gray-500">No Shows</h6>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="card shadow-sm bg-light">
-                                <div class="card-body text-center">
-                                    <div class="display-4 font-bold text-primary mb-2">{{ $attendanceRate }}%</div>
-                                    <h6 class="card-title text-muted">Attendance Rate</h6>
+                        <div>
+                            <div class="bg-white rounded-xl shadow-sm">
+                                <div class="p-6 text-center">
+                                    <div class="text-4xl font-bold text-primary mb-2">{{ $attendanceRate }}%</div>
+                                    <h6 class="text-lg font-semibold text-gray-500">Attendance Rate</h6>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Attendance Table -->
-                    <div class="card shadow-sm">
-                        <div class="card-header bg-light">
-                            <h6 class="card-title mb-0">Session History</h6>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                        <div class="px-6 py-4 border-b border-gray-200 bg-gray-100">
+                            <h6 class="text-lg font-semibold mb-0">Session History</h6>
                         </div>
-                        <div class="card-body p-0">
-                            <div class="table-responsive">
-                                <table class="table table-hover mb-0">
-                                    <thead class="table-light">
+                        <div class="p-6 p-0">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-gray-50 border-b border-gray-200">
                                         <tr>
                                             <th class="border-0 font-semibold">Date & Time</th>
                                             <th class="border-0 font-semibold">Session Type</th>
@@ -514,26 +515,26 @@
                                         <tr>
                                             <td class="align-middle">
                                                 <div class="font-semibold">{{ $record->session_datetime->format('M j, Y') }}</div>
-                                                <small class="text-muted">{{ $record->session_datetime->format('g:i A') }}</small>
+                                                <small class="text-gray-500">{{ $record->session_datetime->format('g:i A') }}</small>
                                             </td>
                                             <td class="align-middle">{{ $record->session_type }}</td>
                                             <td class="align-middle">{{ $record->trainer_name }}</td>
                                             <td class="align-middle">
                                                 @if($record->status === 'completed')
-                                                    <span class="badge bg-success">Completed</span>
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Completed</span>
                                                 @else
-                                                    <span class="badge bg-danger">No Show</span>
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">No Show</span>
                                                 @endif
                                             </td>
                                             <td class="align-middle">
-                                                <small class="text-muted">{{ $record->notes ?: '-' }}</small>
+                                                <small class="text-gray-500">{{ $record->notes ?: '-' }}</small>
                                             </td>
                                         </tr>
                                         @empty
                                         <tr>
                                             <td colspan="5" class="text-center py-4">
-                                                <i class="bi bi-calendar-check text-muted" style="font-size: 2rem;"></i>
-                                                <p class="text-muted mt-2 mb-0">No attendance records found</p>
+                                                <i class="bi bi-calendar-check text-gray-500" style="font-size: 2rem;"></i>
+                                                <p class="text-gray-500 mt-2 mb-0">No attendance records found</p>
                                             </td>
                                         </tr>
                                         @endforelse
@@ -547,17 +548,17 @@
         </div>
 
         <!-- Health Tab -->
-        <div class="tab-pane fade" id="health" role="tabpanel">
+        <div x-show="activeTab === 'health'" x-transition id="health" role="tabpanel">
             <!-- Health Tracking Header -->
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-body p-4">
+            <div class="bg-white rounded-xl shadow-sm mb-4">
+                <div class="p-4">
                     <div class="flex items-center mb-2">
-                        <i class="bi bi-heart-pulse text-danger mr-2"></i>
+                        <i class="bi bi-heart-pulse text-red-600 mr-2"></i>
                         <h5 class="mb-0 font-bold">Health Metrics Overview</h5>
                     </div>
 
                     <div class="flex justify-between items-center mb-4">
-                        <p class="text-muted small mb-0">Monitor health metrics and progress over time</p>
+                        <p class="text-gray-500 text-sm mb-0">Monitor health metrics and progress over time</p>
 
                         @if($latestHealthRecord)
                             @php
@@ -570,13 +571,13 @@
                                 <div class="flex items-center gap-2">
                                     <i class="bi bi-calendar-event text-primary"></i>
                                     <span class="font-semibold">Snapshot Date:</span>
-                                    <span class="text-muted">{{ $latestDate->format('F j, Y') }}</span>
+                                    <span class="text-gray-500">{{ $latestDate->format('F j, Y') }}</span>
                                 </div>
-                                <div class="vr"></div>
+                                <div class="w-px h-6 bg-gray-300"></div>
                                 <div class="flex items-center gap-2">
                                     <i class="bi bi-clock-history text-primary"></i>
                                     <span class="font-semibold">Time Since:</span>
-                                    <span class="text-muted">
+                                    <span class="text-gray-500">
                                         @if($diff->y > 0)
                                             {{ $diff->y }} {{ $diff->y == 1 ? 'year' : 'years' }}
                                         @endif
@@ -591,71 +592,71 @@
                                 </div>
                             </div>
                         @else
-                            <div class="text-muted small">No health records available</div>
+                            <div class="text-gray-500 text-sm">No health records available</div>
                         @endif
                     </div>
 
                     <!-- Health Metrics Cards -->
-                    <div class="row g-3">
+                    <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
                         @if($latestHealthRecord)
                             <!-- Weight -->
-                            <div class="col-md-2">
-                                <div class="text-center p-3 bg-light rounded">
+                            <div>
+                                <div class="text-center p-3 bg-gray-100 rounded">
                                     <i class="bi bi-speedometer2 text-purple mb-2" style="font-size: 1.5rem; color: #8b5cf6;"></i>
-                                    <div class="h4 font-bold mb-0">{{ $latestHealthRecord->weight ?? 'N/A' }}</div>
-                                    <small class="text-muted">Weight (kg)</small>
+                                    <div class="text-xl font-bold mb-0">{{ $latestHealthRecord->weight ?? 'N/A' }}</div>
+                                    <small class="text-gray-500">Weight (kg)</small>
                                 </div>
                             </div>
 
                             <!-- Body Fat -->
-                            <div class="col-md-2">
-                                <div class="text-center p-3 bg-light rounded">
+                            <div>
+                                <div class="text-center p-3 bg-gray-100 rounded">
                                     <i class="bi bi-activity text-warning mb-2" style="font-size: 1.5rem;"></i>
-                                    <div class="h4 font-bold mb-0">{{ $latestHealthRecord->body_fat_percentage ?? 'N/A' }}%</div>
-                                    <small class="text-muted">Body Fat</small>
+                                    <div class="text-xl font-bold mb-0">{{ $latestHealthRecord->body_fat_percentage ?? 'N/A' }}%</div>
+                                    <small class="text-gray-500">Body Fat</small>
                                 </div>
                             </div>
 
                             <!-- Body Water -->
-                            <div class="col-md-2">
-                                <div class="text-center p-3 bg-light rounded">
+                            <div>
+                                <div class="text-center p-3 bg-gray-100 rounded">
                                     <i class="bi bi-droplet text-info mb-2" style="font-size: 1.5rem;"></i>
-                                    <div class="h4 font-bold mb-0">{{ $latestHealthRecord->body_water_percentage ?? 'N/A' }}%</div>
-                                    <small class="text-muted">Body Water</small>
+                                    <div class="text-xl font-bold mb-0">{{ $latestHealthRecord->body_water_percentage ?? 'N/A' }}%</div>
+                                    <small class="text-gray-500">Body Water</small>
                                 </div>
                             </div>
 
                             <!-- Muscle Mass -->
-                            <div class="col-md-2">
-                                <div class="text-center p-3 bg-light rounded">
-                                    <i class="bi bi-heart text-success mb-2" style="font-size: 1.5rem;"></i>
-                                    <div class="h4 font-bold mb-0">{{ $latestHealthRecord->muscle_mass ?? 'N/A' }}</div>
-                                    <small class="text-muted">Muscle Mass</small>
+                            <div>
+                                <div class="text-center p-3 bg-gray-100 rounded">
+                                    <i class="bi bi-heart text-green-600 mb-2" style="font-size: 1.5rem;"></i>
+                                    <div class="text-xl font-bold mb-0">{{ $latestHealthRecord->muscle_mass ?? 'N/A' }}</div>
+                                    <small class="text-gray-500">Muscle Mass</small>
                                 </div>
                             </div>
 
                             <!-- Bone Mass -->
-                            <div class="col-md-2">
-                                <div class="text-center p-3 bg-light rounded">
+                            <div>
+                                <div class="text-center p-3 bg-gray-100 rounded">
                                     <i class="bi bi-capsule text-secondary mb-2" style="font-size: 1.5rem;"></i>
-                                    <div class="h4 font-bold mb-0">{{ $latestHealthRecord->bone_mass ?? 'N/A' }}</div>
-                                    <small class="text-muted">Bone Mass</small>
+                                    <div class="text-xl font-bold mb-0">{{ $latestHealthRecord->bone_mass ?? 'N/A' }}</div>
+                                    <small class="text-gray-500">Bone Mass</small>
                                 </div>
                             </div>
 
                             <!-- BMR -->
-                            <div class="col-md-2">
-                                <div class="text-center p-3 bg-light rounded">
-                                    <i class="bi bi-lightning text-danger mb-2" style="font-size: 1.5rem;"></i>
-                                    <div class="h4 font-bold mb-0">{{ $latestHealthRecord->bmr ?? 'N/A' }}</div>
-                                    <small class="text-muted">BMR (cal)</small>
+                            <div>
+                                <div class="text-center p-3 bg-gray-100 rounded">
+                                    <i class="bi bi-lightning text-red-600 mb-2" style="font-size: 1.5rem;"></i>
+                                    <div class="text-xl font-bold mb-0">{{ $latestHealthRecord->bmr ?? 'N/A' }}</div>
+                                    <small class="text-gray-500">BMR (cal)</small>
                                 </div>
                             </div>
                         @else
-                            <div class="col-12">
+                            <div class="col-span-full">
                                 <div class="text-center py-4">
-                                    <i class="bi bi-heart-pulse text-muted" style="font-size: 3rem;"></i>
-                                    <p class="text-muted mt-3">No health metrics available</p>
+                                    <i class="bi bi-heart-pulse text-gray-500" style="font-size: 3rem;"></i>
+                                    <p class="text-gray-500 mt-3">No health metrics available</p>
                                 </div>
                             </div>
                         @endif
@@ -664,11 +665,11 @@
             </div>
 
             <!-- Body Composition Analysis & Compare Row -->
-            <div class="row mb-4">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-4">
                 <!-- Body Composition Analysis -->
-                <div class="col-lg-7">
-                    <div class="card shadow-sm border-0 h-full">
-                        <div class="card-body p-4">
+                <div class="lg:col-span-7">
+                    <div class="bg-white rounded-xl shadow-sm h-full">
+                        <div class="p-4">
                             <h5 class="font-bold mb-4"><i class="bi bi-activity mr-2"></i>Body Composition Analysis</h5>
 
                             <div class="chart-container" style="position: relative; height: 500px; width: 100%;">
@@ -679,9 +680,9 @@
                 </div>
 
                 <!-- Compare -->
-                <div class="col-lg-5">
-                    <div class="card shadow-sm border-0 h-full">
-                        <div class="card-body p-4">
+                <div class="lg:col-span-5">
+                    <div class="bg-white rounded-xl shadow-sm h-full">
+                        <div class="p-4">
                             <h5 class="font-bold mb-4"><i class="bi bi-bar-chart-line mr-2"></i>Compare</h5>
 
                             @if($comparisonRecords->count() >= 2)
@@ -691,10 +692,10 @@
                                 @endphp
 
                                 <div class="mb-3">
-                                    <div class="row g-2">
-                                        <div class="col-6 text-center">
-                                            <label class="form-label font-bold">From</label>
-                                            <select class="form-select form-select-sm" id="currentDate">
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div class="text-center">
+                                            <label class="block text-sm font-medium text-gray-700 mb-1 font-bold">From</label>
+                                            <select class="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="currentDate">
                                                 @foreach($healthRecords as $record)
                                                     <option value="{{ $record->id }}" {{ $record->id == $current->id ? 'selected' : '' }}>
                                                         {{ $record->recorded_at->format('M j, Y') }}
@@ -702,9 +703,9 @@
                                                 @endforeach
                                             </select>
                                         </div>
-                                        <div class="col-6 text-center">
-                                            <label class="form-label font-bold">To</label>
-                                            <select class="form-select form-select-sm" id="previousDate">
+                                        <div class="text-center">
+                                            <label class="block text-sm font-medium text-gray-700 mb-1 font-bold">To</label>
+                                            <select class="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="previousDate">
                                                 @foreach($healthRecords as $record)
                                                     <option value="{{ $record->id }}" {{ $record->id == $previous->id ? 'selected' : '' }}>
                                                         {{ $record->recorded_at->format('M j, Y') }}
@@ -714,7 +715,7 @@
                                         </div>
                                     </div>
                                     <div class="mt-3">
-                                        <div class="alert alert-secondary text-center py-2" id="timeDifference">
+                                        <div class="p-3 rounded-lg bg-gray-100 text-gray-700 text-center py-2" id="timeDifference">
                                             @if($current && $previous)
                                                 <strong>Time between records:</strong> {{ calculateTimeDifference($current->recorded_at, $previous->recorded_at) }}
                                             @else
@@ -724,88 +725,88 @@
                                     </div>
                                 </div>
 
-                                <div class="table-responsive">
-                                    <table class="table table-sm align-middle">
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-sm">
                                         <thead>
                                             <tr class="border-bottom">
-                                                <th class="text-muted small font-semibold">Metric</th>
-                                                <th class="text-muted small font-semibold text-end">Current</th>
-                                                <th class="text-muted small font-semibold text-end">Previous</th>
-                                                <th class="text-muted small font-semibold text-center">Change</th>
+                                                <th class="text-gray-500 text-sm font-semibold">Metric</th>
+                                                <th class="text-gray-500 text-sm font-semibold text-right">Current</th>
+                                                <th class="text-gray-500 text-sm font-semibold text-right">Previous</th>
+                                                <th class="text-gray-500 text-sm font-semibold text-center">Change</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             @php
                                                 function getChangeIcon($current, $previous) {
-                                                    if ($current > $previous) return '<i class="bi bi-arrow-up text-success"></i>';
-                                                    if ($current < $previous) return '<i class="bi bi-arrow-down text-danger"></i>';
-                                                    return '<i class="bi bi-dash text-muted"></i>';
+                                                    if ($current > $previous) return '<i class="bi bi-arrow-up text-green-600"></i>';
+                                                    if ($current < $previous) return '<i class="bi bi-arrow-down text-red-600"></i>';
+                                                    return '<i class="bi bi-dash text-gray-500"></i>';
                                                 }
                                             @endphp
                                             <tr data-metric="height">
                                                 <td class="small"><i class="bi bi-rulers mr-2"></i>Height</td>
-                                                <td class="small text-end font-semibold text-primary">{{ $current->height ?? 'N/A' }}cm</td>
-                                                <td class="small text-end text-danger">{{ $previous->height ?? 'N/A' }}cm</td>
+                                                <td class="small text-right font-semibold text-primary">{{ $current->height ?? 'N/A' }}cm</td>
+                                                <td class="small text-right text-red-600">{{ $previous->height ?? 'N/A' }}cm</td>
                                                 <td class="text-center">{!! $current->height && $previous->height ? getChangeIcon($current->height, $previous->height) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="weight">
                                                 <td class="small"><i class="bi bi-speedometer2 mr-2"></i>Weight</td>
-                                                <td class="small text-end font-semibold text-primary">{{ $current->weight ?? 'N/A' }}kg</td>
-                                                <td class="small text-end text-danger">{{ $previous->weight ?? 'N/A' }}kg</td>
+                                                <td class="small text-right font-semibold text-primary">{{ $current->weight ?? 'N/A' }}kg</td>
+                                                <td class="small text-right text-red-600">{{ $previous->weight ?? 'N/A' }}kg</td>
                                                 <td class="text-center">{!! $current->weight && $previous->weight ? getChangeIcon($current->weight, $previous->weight) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="body_fat">
                                                 <td class="small"><i class="bi bi-activity mr-2"></i>Body Fat</td>
-                                                <td class="small text-end font-semibold text-primary">{{ $current->body_fat_percentage ?? 'N/A' }}%</td>
-                                                <td class="small text-end text-danger">{{ $previous->body_fat_percentage ?? 'N/A' }}%</td>
+                                                <td class="small text-right font-semibold text-primary">{{ $current->body_fat_percentage ?? 'N/A' }}%</td>
+                                                <td class="small text-right text-red-600">{{ $previous->body_fat_percentage ?? 'N/A' }}%</td>
                                                 <td class="text-center">{!! $current->body_fat_percentage && $previous->body_fat_percentage ? getChangeIcon($current->body_fat_percentage, $previous->body_fat_percentage) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="bmi">
                                                 <td class="small"><i class="bi bi-calculator mr-2"></i>BMI</td>
-                                                <td class="small text-end font-semibold text-primary">{{ $current->bmi ?? 'N/A' }}</td>
-                                                <td class="small text-end text-danger">{{ $previous->bmi ?? 'N/A' }}</td>
+                                                <td class="small text-right font-semibold text-primary">{{ $current->bmi ?? 'N/A' }}</td>
+                                                <td class="small text-right text-red-600">{{ $previous->bmi ?? 'N/A' }}</td>
                                                 <td class="text-center">{!! $current->bmi && $previous->bmi ? getChangeIcon($current->bmi, $previous->bmi) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="body_water">
                                                 <td class="small"><i class="bi bi-droplet mr-2"></i>Body Water</td>
-                                                <td class="small text-end font-semibold text-primary">{{ $current->body_water_percentage ?? 'N/A' }}%</td>
-                                                <td class="small text-end text-danger">{{ $previous->body_water_percentage ?? 'N/A' }}%</td>
+                                                <td class="small text-right font-semibold text-primary">{{ $current->body_water_percentage ?? 'N/A' }}%</td>
+                                                <td class="small text-right text-red-600">{{ $previous->body_water_percentage ?? 'N/A' }}%</td>
                                                 <td class="text-center">{!! $current->body_water_percentage && $previous->body_water_percentage ? getChangeIcon($current->body_water_percentage, $previous->body_water_percentage) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="muscle_mass">
                                                 <td class="small"><i class="bi bi-heart mr-2"></i>Muscle Mass</td>
-                                                <td class="small text-end font-semibold text-primary">{{ $current->muscle_mass ?? 'N/A' }}kg</td>
-                                                <td class="small text-end text-danger">{{ $previous->muscle_mass ?? 'N/A' }}kg</td>
+                                                <td class="small text-right font-semibold text-primary">{{ $current->muscle_mass ?? 'N/A' }}kg</td>
+                                                <td class="small text-right text-red-600">{{ $previous->muscle_mass ?? 'N/A' }}kg</td>
                                                 <td class="text-center">{!! $current->muscle_mass && $previous->muscle_mass ? getChangeIcon($current->muscle_mass, $previous->muscle_mass) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="bone_mass">
                                                 <td class="small"><i class="bi bi-capsule mr-2"></i>Bone Mass</td>
-                                                <td class="small text-end font-semibold text-primary">{{ $current->bone_mass ?? 'N/A' }}kg</td>
-                                                <td class="small text-end text-danger">{{ $previous->bone_mass ?? 'N/A' }}kg</td>
+                                                <td class="small text-right font-semibold text-primary">{{ $current->bone_mass ?? 'N/A' }}kg</td>
+                                                <td class="small text-right text-red-600">{{ $previous->bone_mass ?? 'N/A' }}kg</td>
                                                 <td class="text-center">{!! $current->bone_mass && $previous->bone_mass ? getChangeIcon($current->bone_mass, $previous->bone_mass) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="visceral_fat">
                                                 <td class="small"><i class="bi bi-activity mr-2"></i>Visceral Fat</td>
-                                                <td class="small text-end font-semibold text-primary">{{ $current->visceral_fat ?? 'N/A' }}</td>
-                                                <td class="small text-end text-danger">{{ $previous->visceral_fat ?? 'N/A' }}</td>
+                                                <td class="small text-right font-semibold text-primary">{{ $current->visceral_fat ?? 'N/A' }}</td>
+                                                <td class="small text-right text-red-600">{{ $previous->visceral_fat ?? 'N/A' }}</td>
                                                 <td class="text-center">{!! $current->visceral_fat && $previous->visceral_fat ? getChangeIcon($current->visceral_fat, $previous->visceral_fat) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="bmr">
                                                 <td class="small"><i class="bi bi-lightning mr-2"></i>BMR</td>
-                                                <td class="small text-end font-semibold text-primary">{{ $current->bmr ?? 'N/A' }}cal</td>
-                                                <td class="small text-end text-danger">{{ $previous->bmr ?? 'N/A' }}cal</td>
+                                                <td class="small text-right font-semibold text-primary">{{ $current->bmr ?? 'N/A' }}cal</td>
+                                                <td class="small text-right text-red-600">{{ $previous->bmr ?? 'N/A' }}cal</td>
                                                 <td class="text-center">{!! $current->bmr && $previous->bmr ? getChangeIcon($current->bmr, $previous->bmr) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="protein">
                                                 <td class="small"><i class="bi bi-heart-pulse mr-2"></i>Protein</td>
-                                                <td class="small text-end font-semibold text-primary">{{ $current->protein_percentage ?? 'N/A' }}%</td>
-                                                <td class="small text-end text-danger">{{ $previous->protein_percentage ?? 'N/A' }}%</td>
+                                                <td class="small text-right font-semibold text-primary">{{ $current->protein_percentage ?? 'N/A' }}%</td>
+                                                <td class="small text-right text-red-600">{{ $previous->protein_percentage ?? 'N/A' }}%</td>
                                                 <td class="text-center">{!! $current->protein_percentage && $previous->protein_percentage ? getChangeIcon($current->protein_percentage, $previous->protein_percentage) : '-' !!}</td>
                                             </tr>
                                             <tr data-metric="body_age">
                                                 <td class="small"><i class="bi bi-calendar-heart mr-2"></i>Body Age</td>
-                                                <td class="small text-end font-semibold text-primary">{{ $current->body_age ?? 'N/A' }}yrs</td>
-                                                <td class="small text-end text-danger">{{ $previous->body_age ?? 'N/A' }}yrs</td>
+                                                <td class="small text-right font-semibold text-primary">{{ $current->body_age ?? 'N/A' }}yrs</td>
+                                                <td class="small text-right text-red-600">{{ $previous->body_age ?? 'N/A' }}yrs</td>
                                                 <td class="text-center">{!! $current->body_age && $previous->body_age ? getChangeIcon($current->body_age, $previous->body_age) : '-' !!}</td>
                                             </tr>
                                         </tbody>
@@ -813,8 +814,8 @@
                                 </div>
                             @else
                                 <div class="text-center py-4">
-                                    <i class="bi bi-bar-chart-line text-muted" style="font-size: 3rem;"></i>
-                                    <p class="text-muted mt-3">Need at least 2 health records to compare</p>
+                                    <i class="bi bi-bar-chart-line text-gray-500" style="font-size: 3rem;"></i>
+                                    <p class="text-gray-500 mt-3">Need at least 2 health records to compare</p>
                                 </div>
                             @endif
                         </div>
@@ -823,32 +824,32 @@
             </div>
 
             <!-- Health Tracking History -->
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-4">
+            <div class="bg-white rounded-xl shadow-sm">
+                <div class="p-4">
                     <h5 class="font-bold mb-4"><i class="bi bi-heart-pulse mr-2"></i>Health Tracking</h5>
 
                     @if($healthRecords->count() > 0)
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle">
-                                <thead class="table-light">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-50 border-b border-gray-200">
                                 <tr>
-                                    <th class="text-muted small font-semibold">Date</th>
-                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-rulers mr-1"></i>Height (cm)</th>
-                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-speedometer2 mr-1"></i>Weight (kg)</th>
-                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-activity mr-1"></i>Body Fat %</th>
-                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-calculator mr-1"></i>BMI</th>
-                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-droplet mr-1"></i>Body Water %</th>
-                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-heart mr-1"></i>Muscle Mass (kg)</th>
-                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-capsule mr-1"></i>Bone Mass (kg)</th>
-                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-activity mr-1"></i>Visceral Fat</th>
-                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-lightning mr-1"></i>BMR</th>
-                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-heart-pulse mr-1"></i>Protein %</th>
-                                    <th class="text-muted small font-semibold text-center"><i class="bi bi-calendar-heart mr-1"></i>Body Age</th>
+                                    <th class="text-gray-500 text-sm font-semibold">Date</th>
+                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-rulers mr-1"></i>Height (cm)</th>
+                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-speedometer2 mr-1"></i>Weight (kg)</th>
+                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-activity mr-1"></i>Body Fat %</th>
+                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-calculator mr-1"></i>BMI</th>
+                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-droplet mr-1"></i>Body Water %</th>
+                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-heart mr-1"></i>Muscle Mass (kg)</th>
+                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-capsule mr-1"></i>Bone Mass (kg)</th>
+                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-activity mr-1"></i>Visceral Fat</th>
+                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-lightning mr-1"></i>BMR</th>
+                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-heart-pulse mr-1"></i>Protein %</th>
+                                    <th class="text-gray-500 text-sm font-semibold text-center"><i class="bi bi-calendar-heart mr-1"></i>Body Age</th>
                                 </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($healthRecords as $record)
-                                        <tr data-record-id="{{ $record->id }}" class="position-relative history-row">
+                                        <tr data-record-id="{{ $record->id }}" class="relative history-row">
                                             <td class="small font-semibold">{{ $record->recorded_at->format('M j, Y') }}</td>
                                             <td class="small text-center">{{ $record->height ?? '-' }}</td>
                                             <td class="small text-center">{{ $record->weight ?? '-' }}</td>
@@ -861,7 +862,7 @@
                                             <td class="small text-center">{{ $record->bmr ?? '-' }}</td>
                                             <td class="small text-center">{{ $record->protein_percentage ?? '-' }}</td>
                                             <td class="small text-center">{{ $record->body_age ?? '-' }}</td>
-                                            <td class="position-absolute top-50 end-0 translate-middle-y opacity-0 edit-record-btn" style="cursor: pointer; right: 10px;">
+                                            <td class="absolute top-1/2 right-0 -translate-y-1/2 opacity-0 edit-record-btn" style="cursor: pointer; right: 10px;">
                                                 <i class="bi bi-pencil text-primary" style="font-size: 1.2rem;"></i>
                                             </td>
                                         </tr>
@@ -876,9 +877,9 @@
                         </div>
                     @else
                         <div class="text-center py-5">
-                            <i class="bi bi-clipboard-data text-muted" style="font-size: 3rem;"></i>
-                            <p class="text-muted mt-3">No health records found</p>
-                            <small class="text-muted">Health tracking data will appear here once records are added</small>
+                            <i class="bi bi-clipboard-data text-gray-500" style="font-size: 3rem;"></i>
+                            <p class="text-gray-500 mt-3">No health records found</p>
+                            <small class="text-gray-500">Health tracking data will appear here once records are added</small>
                         </div>
                     @endif
                 </div>
@@ -886,46 +887,46 @@
         </div>
 
         <!-- Goals Tab -->
-        <div class="tab-pane fade" id="goals" role="tabpanel">
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-4">
+        <div x-show="activeTab === 'goals'" x-transition id="goals" role="tabpanel">
+            <div class="bg-white rounded-xl shadow-sm">
+                <div class="p-4">
                     <!-- Section Title & Subtitle -->
                     <div class="flex justify-between items-center mb-4">
                         <div>
                             <h5 class="font-bold mb-1"><i class="bi bi-bullseye mr-2"></i>Goal Tracking</h5>
-                            <p class="text-muted small mb-0">Set, track, and achieve your fitness objectives.</p>
+                            <p class="text-gray-500 text-sm mb-0">Set, track, and achieve your fitness objectives.</p>
                         </div>
                     </div>
 
                     <!-- Summary Cards -->
-                    <div class="row g-3 mb-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                         <!-- Active Goals -->
-                        <div class="col-md-4">
-                            <div class="card shadow-sm border-0 text-center h-full goal-filter-card" style="background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%); min-height: 120px; cursor: pointer;" data-filter="active">
-                                <div class="card-body p-3 flex flex-col justify-center items-center h-full">
+                        <div>
+                            <div class="bg-white rounded-xl shadow-sm text-center h-full goal-filter-card" style="background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%); min-height: 120px; cursor: pointer;" data-filter="active">
+                                <div class="p-6 p-3 flex flex-col justify-center items-center h-full">
                                     <i class="bi bi-bullseye text-white mb-2" style="font-size: 2rem;"></i>
                                     <h4 class="text-white font-bold mb-1">{{ $activeGoalsCount }}</h4>
-                                    <small class="text-white-50">Active Goals</small>
+                                    <small class="text-white/50">Active Goals</small>
                                 </div>
                             </div>
                         </div>
                         <!-- Completed Goals -->
-                        <div class="col-md-4">
-                            <div class="card shadow-sm border-0 text-center h-full goal-filter-card" style="background: linear-gradient(135deg, #10b981 0%, #34d399 100%); min-height: 120px; cursor: pointer;" data-filter="completed">
-                                <div class="card-body p-3 flex flex-col justify-center items-center h-full">
+                        <div>
+                            <div class="bg-white rounded-xl shadow-sm text-center h-full goal-filter-card" style="background: linear-gradient(135deg, #10b981 0%, #34d399 100%); min-height: 120px; cursor: pointer;" data-filter="completed">
+                                <div class="p-6 p-3 flex flex-col justify-center items-center h-full">
                                     <i class="bi bi-check-circle-fill text-white mb-2" style="font-size: 2rem;"></i>
                                     <h4 class="text-white font-bold mb-1">{{ $completedGoalsCount }}</h4>
-                                    <small class="text-white-50">Completed Goals</small>
+                                    <small class="text-white/50">Completed Goals</small>
                                 </div>
                             </div>
                         </div>
                         <!-- Success Rate -->
-                        <div class="col-md-4">
-                            <div class="card shadow-sm border-0 text-center h-full" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); min-height: 120px;">
-                                <div class="card-body p-3 flex flex-col justify-center items-center h-full">
+                        <div>
+                            <div class="bg-white rounded-xl shadow-sm text-center h-full" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); min-height: 120px;">
+                                <div class="p-6 p-3 flex flex-col justify-center items-center h-full">
                                     <i class="bi bi-graph-up-arrow text-white mb-2" style="font-size: 2rem;"></i>
                                     <h4 class="text-white font-bold mb-1">{{ $successRate }}%</h4>
-                                    <small class="text-white-50">Success Rate</small>
+                                    <small class="text-white/50">Success Rate</small>
                                 </div>
                             </div>
                         </div>
@@ -933,21 +934,21 @@
 
                     <!-- Current Goals List -->
                     @if($goals->count() > 0)
-                        <div class="row g-4">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4" id="goalsGrid">
                             @foreach($goals as $goal)
-                        <div class="col-lg-6">
-                            <div class="card shadow-sm border-0 h-full position-relative">
+                        <div class="goal-card">
+                            <div class="bg-white rounded-xl shadow-sm h-full relative">
                                 <!-- Edit Button (only for active goals and authorized users) -->
                                 @if($goal->status == 'active' && ($relationship->relationship_type == 'self' || Auth::id() == $relationship->guardian_user_id))
-                                    <button class="btn btn-sm btn-outline-primary rounded-circle position-absolute top-0 end-0 mt-2 mr-2 edit-goal-btn" style="width: 32px; height: 32px; padding: 0;" data-goal-id="{{ $goal->id }}" title="Edit Goal">
+                                    <button class="w-8 h-8 rounded-full border border-primary text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-colors absolute top-0 right-0 mt-2 mr-2 edit-goal-btn" data-goal-id="{{ $goal->id }}" title="Edit Goal">
                                         <i class="bi bi-pencil"></i>
                                     </button>
                                 @endif
 
-                                <div class="card-body p-4">
+                                <div class="p-4">
                                     <!-- Title & Icon -->
                                     <div class="flex items-center mb-3">
-                                        <div class="rounded-circle flex items-center justify-center mr-3" style="width: 48px; height: 48px; background-color: #8b5cf6;">
+                                        <div class="rounded-full flex items-center justify-center mr-3" style="width: 48px; height: 48px; background-color: #8b5cf6;">
                                             @if($goal->icon_type == 'dumbbell')
                                                 <i class="bi bi-dumbbell text-white"></i>
                                             @elseif($goal->icon_type == 'clock')
@@ -959,7 +960,7 @@
                                         <div class="flex-1">
                                             <h6 class="font-bold mb-1">{{ $goal->title }}</h6>
                                             @if($goal->description)
-                                                <p class="text-muted small mb-0">{{ $goal->description }}</p>
+                                                <p class="text-gray-500 text-sm mb-0">{{ $goal->description }}</p>
                                             @endif
                                         </div>
                                     </div>
@@ -967,32 +968,32 @@
                                             <!-- Progress Indicator -->
                                             <div class="mb-3">
                                                 <div class="flex justify-between items-center mb-2">
-                                                    <small class="text-muted">Progress: {{ number_format($goal->current_progress_value, 1) }} / {{ number_format($goal->target_value, 1) }} {{ $goal->unit }}</small>
+                                                    <small class="text-gray-500">Progress: {{ number_format($goal->current_progress_value, 1) }} / {{ number_format($goal->target_value, 1) }} {{ $goal->unit }}</small>
                                                     <small class="font-semibold">{{ number_format($goal->progress_percentage, 1) }}%</small>
                                                 </div>
-                                                <div class="progress" style="height: 8px;">
-                                                    <div class="progress-bar" role="progressbar" style="width: {{ $goal->progress_percentage }}%; background: linear-gradient(90deg, #8b5cf6 0%, #10b981 100%);" aria-valuenow="{{ $goal->progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                                <div class="h-2 bg-gray-200 rounded-full overflow-hidden" style="height: 8px;">
+                                                    <div class="h-full bg-primary transition-all" role="progressbar" style="width: {{ $goal->progress_percentage }}%; background: linear-gradient(90deg, #8b5cf6 0%, #10b981 100%);" aria-valuenow="{{ $goal->progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
                                                 </div>
                                             </div>
 
                                             <!-- Dates & Status -->
-                                            <div class="row g-2 mb-3">
-                                                <div class="col-6">
-                                                    <small class="text-muted block">Started:</small>
+                                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                                <div>
+                                                    <small class="text-gray-500 block">Started:</small>
                                                     <small class="font-semibold">{{ $goal->start_date->format('M d, Y') }}</small>
                                                 </div>
-                                                <div class="col-6 text-end">
-                                                    <small class="text-muted block">Target:</small>
+                                                <div class="text-right">
+                                                    <small class="text-gray-500 block">Target:</small>
                                                     <small class="font-semibold">{{ $goal->target_date->format('M d, Y') }}</small>
                                                 </div>
                                             </div>
 
                                             <!-- Status Badges -->
                                             <div class="flex gap-2 flex-wrap">
-                                                <span class="badge {{ $goal->status == 'active' ? 'bg-primary' : 'bg-success' }} small">
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $goal->status == 'active' ? 'bg-primary/10 text-primary' : 'bg-green-100 text-green-800' }}">
                                                     {{ ucfirst($goal->status) }}
                                                 </span>
-                                                <span class="badge {{ $goal->priority_level == 'high' ? 'bg-danger' : ($goal->priority_level == 'medium' ? 'bg-warning text-dark' : 'bg-secondary') }} small">
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $goal->priority_level == 'high' ? 'bg-red-100 text-red-800' : ($goal->priority_level == 'medium' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800') }}">
                                                     {{ ucfirst($goal->priority_level) }}
                                                 </span>
                                             </div>
@@ -1003,9 +1004,9 @@
                         </div>
                     @else
                         <div class="text-center py-4">
-                            <i class="bi bi-bullseye text-muted" style="font-size: 3rem;"></i>
-                            <h5 class="text-muted mt-3 mb-2">No Goals Set Yet</h5>
-                            <p class="text-muted mb-0">Start your fitness journey by setting your first goal!</p>
+                            <i class="bi bi-bullseye text-gray-500" style="font-size: 3rem;"></i>
+                            <h5 class="text-gray-500 mt-3 mb-2">No Goals Set Yet</h5>
+                            <p class="text-gray-500 mb-0">Start your fitness journey by setting your first goal!</p>
                         </div>
                     @endif
                 </div>
@@ -1013,25 +1014,25 @@
         </div>
 
         <!-- Affiliations Tab -->
-        <div class="tab-pane fade" id="affiliations" role="tabpanel">
-            @include('member.partials.affiliations-enhanced')
+        <div x-show="activeTab === 'affiliations'" x-transition id="affiliations" role="tabpanel">
+            @include('components-templates.member.partials.affiliations-enhanced')
         </div>
 
         <!-- Tournaments Tab -->
-        <div class="tab-pane fade" id="tournaments" role="tabpanel">
+        <div x-show="activeTab === 'tournaments'" x-transition id="tournaments" role="tabpanel">
             <!-- Tournament & Event Participation Card -->
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-body p-4">
+            <div class="bg-white rounded-xl shadow-sm mb-4">
+                <div class="p-4">
                     <!-- Section Title & Subtitle -->
                     <div class="flex justify-between items-center mb-4">
                         <div>
                             <h5 class="font-bold mb-1"><i class="bi bi-trophy-fill text-warning mr-2"></i>Tournament & Event Participation</h5>
-                            <p class="text-muted small mb-0">Proven champion with multiple championship wins and prestigious awards.</p>
+                            <p class="text-gray-500 text-sm mb-0">Proven champion with multiple championship wins and prestigious awards.</p>
                         </div>
                         <!-- Filter Section -->
                         <div class="flex items-center">
-                            <label for="sportFilter" class="form-label mr-2 mb-0 font-semibold">Filter by Sport:</label>
-                            <select class="form-select form-select-sm" id="sportFilter" style="width: 150px;">
+                            <label for="sportFilter" class="block text-sm font-medium text-gray-700 mb-1 mr-2 mb-0 font-semibold">Filter by Sport:</label>
+                            <select class="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="sportFilter" style="width: 150px;">
                                 <option value="all">All Sports</option>
                                 @foreach($sports as $sport)
                                     <option value="{{ $sport }}">{{ $sport }}</option>
@@ -1041,40 +1042,40 @@
                     </div>
 
                     <!-- Award Summary Cards -->
-                    <div class="row g-3" id="awardCards">
-                        <div class="col-md-3">
-                            <div class="card shadow-sm border-0 text-center" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
-                                <div class="card-body p-3">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="awardCards">
+                        <div>
+                            <div class="bg-white rounded-xl shadow-sm text-center" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
+                                <div class="p-6 p-3">
                                     <i class="bi bi-trophy-fill text-white mb-2" style="font-size: 2rem;"></i>
                                     <h4 class="text-white font-bold mb-1" id="specialCount">{{ $awardCounts['special'] }}</h4>
-                                    <small class="text-white-50">Special Award</small>
+                                    <small class="text-white/50">Special Award</small>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="card shadow-sm border-0 text-center" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
-                                <div class="card-body p-3">
+                        <div>
+                            <div class="bg-white rounded-xl shadow-sm text-center" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);">
+                                <div class="p-6 p-3">
                                     <i class="bi bi-award-fill text-white mb-2" style="font-size: 2rem;"></i>
                                     <h4 class="text-white font-bold mb-1" id="firstCount">{{ $awardCounts['1st'] }}</h4>
-                                    <small class="text-white-50">1st Place</small>
+                                    <small class="text-white/50">1st Place</small>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="card shadow-sm border-0 text-center" style="background: linear-gradient(135deg, #C0C0C0 0%, #A8A8A8 100%);">
-                                <div class="card-body p-3">
+                        <div>
+                            <div class="bg-white rounded-xl shadow-sm text-center" style="background: linear-gradient(135deg, #C0C0C0 0%, #A8A8A8 100%);">
+                                <div class="p-6 p-3">
                                     <i class="bi bi-award-fill text-white mb-2" style="font-size: 2rem;"></i>
                                     <h4 class="text-white font-bold mb-1" id="secondCount">{{ $awardCounts['2nd'] }}</h4>
-                                    <small class="text-white-50">2nd Place</small>
+                                    <small class="text-white/50">2nd Place</small>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="card shadow-sm border-0 text-center" style="background: linear-gradient(135deg, #CD7F32 0%, #A0522D 100%);">
-                                <div class="card-body p-3">
+                        <div>
+                            <div class="bg-white rounded-xl shadow-sm text-center" style="background: linear-gradient(135deg, #CD7F32 0%, #A0522D 100%);">
+                                <div class="p-6 p-3">
                                     <i class="bi bi-award-fill text-white mb-2" style="font-size: 2rem;"></i>
                                     <h4 class="text-white font-bold mb-1" id="thirdCount">{{ $awardCounts['3rd'] }}</h4>
-                                    <small class="text-white-50">3rd Place</small>
+                                    <small class="text-white/50">3rd Place</small>
                                 </div>
                             </div>
                         </div>
@@ -1083,19 +1084,19 @@
             </div>
 
             <!-- Tournament & Championships History Card -->
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-4">
+            <div class="bg-white rounded-xl shadow-sm">
+                <div class="p-4">
                     <h6 class="font-bold mb-3"><i class="bi bi-list-ul mr-2"></i>Tournament & Championships History</h6>
 
                     @if($tournamentEvents->count() > 0)
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle" id="tournamentsTable">
-                                <thead class="table-light">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm" id="tournamentsTable">
+                                <thead class="bg-gray-50 border-b border-gray-200">
                                     <tr>
-                                        <th class="text-muted small font-semibold">Tournament Details</th>
-                                        <th class="text-muted small font-semibold">Club Affiliation</th>
-                                        <th class="text-muted small font-semibold">Performance & Result</th>
-                                        <th class="text-muted small font-semibold">Notes & Media</th>
+                                        <th class="text-gray-500 text-sm font-semibold">Tournament Details</th>
+                                        <th class="text-gray-500 text-sm font-semibold">Club Affiliation</th>
+                                        <th class="text-gray-500 text-sm font-semibold">Performance & Result</th>
+                                        <th class="text-gray-500 text-sm font-semibold">Notes & Media</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1104,10 +1105,10 @@
                                             <td>
                                                 <div class="font-bold">{{ $event->title }}</div>
                                                 <div class="flex gap-2 mt-1 flex-wrap">
-                                                    <span class="badge bg-{{ $event->type == 'championship' ? 'primary' : 'secondary' }} small">{{ ucfirst($event->type) }}</span>
-                                                    <span class="badge bg-info small">{{ $event->sport }}</span>
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $event->type == 'championship' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-800' }}">{{ ucfirst($event->type) }}</span>
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{{ $event->sport }}</span>
                                                 </div>
-                                                <div class="text-muted small mt-1">
+                                                <div class="text-gray-500 text-sm mt-1">
                                                     <i class="bi bi-calendar-event mr-1"></i>{{ $event->date->format('M j, Y') }}
                                                     @if($event->time)
                                                         <i class="bi bi-clock mr-1 ml-2"></i>{{ $event->time->format('H:i') }}
@@ -1124,10 +1125,10 @@
                                                 @if($event->clubAffiliation)
                                                     <div>
                                                         <div class="small font-semibold">{{ $event->clubAffiliation->club_name }}</div>
-                                                        <div class="text-muted small">{{ $event->clubAffiliation->location }}</div>
+                                                        <div class="text-gray-500 text-sm">{{ $event->clubAffiliation->location }}</div>
                                                     </div>
                                                 @else
-                                                    <span class="text-muted small">Individual</span>
+                                                    <span class="text-gray-500 text-sm">Individual</span>
                                                 @endif
                                             </td>
                                             <td>
@@ -1136,27 +1137,27 @@
                                                         <div class="flex items-center gap-2 mb-1">
                                                             @if($result->medal_type == '1st')
                                                                 <i class="bi bi-award-fill text-warning"></i>
-                                                                <span class="badge bg-warning text-dark small">1st Place</span>
+                                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">1st Place</span>
                                                             @elseif($result->medal_type == '2nd')
                                                                 <i class="bi bi-award-fill text-secondary"></i>
-                                                                <span class="badge bg-secondary small">2nd Place</span>
+                                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">2nd Place</span>
                                                             @elseif($result->medal_type == '3rd')
                                                                 <i class="bi bi-award-fill" style="color: #CD7F32;"></i>
-                                                                <span class="badge" style="background-color: #CD7F32; color: white;" small>3rd Place</span>
+                                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white" style="background-color: #CD7F32;">3rd Place</span>
                                                             @elseif($result->medal_type == 'special')
                                                                 <i class="bi bi-trophy-fill text-warning"></i>
-                                                                <span class="badge bg-warning text-dark small">Special Award</span>
+                                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Special Award</span>
                                                             @endif
                                                             @if($result->points)
-                                                                <small class="text-muted">{{ $result->points }} pts</small>
+                                                                <small class="text-gray-500">{{ $result->points }} pts</small>
                                                             @endif
                                                         </div>
                                                         @if($result->description)
-                                                            <small class="text-muted">{{ $result->description }}</small>
+                                                            <small class="text-gray-500">{{ $result->description }}</small>
                                                         @endif
                                                     @endforeach
                                                 @else
-                                                    <span class="text-muted small">No results recorded</span>
+                                                    <span class="text-gray-500 text-sm">No results recorded</span>
                                                 @endif
                                             </td>
                                             <td>
@@ -1166,13 +1167,13 @@
                                                             <p class="mb-1 small">{{ $note->note_text }}</p>
                                                         @endif
                                                         @if($note->media_link)
-                                                            <a href="{{ $note->media_link }}" target="_blank" class="btn btn-sm btn-outline-primary small">
+                                                            <a href="{{ $note->media_link }}" target="_blank" class="border border-primary text-primary px-2 py-1 rounded text-xs hover:bg-primary hover:text-white transition-colors">
                                                                 <i class="bi bi-image mr-1"></i>View Media
                                                             </a>
                                                         @endif
                                                     @endforeach
                                                 @else
-                                                    <span class="text-muted small">No notes available</span>
+                                                    <span class="text-gray-500 text-sm">No notes available</span>
                                                 @endif
                                             </td>
                                         </tr>
@@ -1182,9 +1183,9 @@
                         </div>
                     @else
                         <div class="text-center py-5">
-                            <i class="bi bi-trophy text-muted" style="font-size: 3rem;"></i>
-                            <p class="text-muted mt-3">No tournament records found</p>
-                            <small class="text-muted">Tournament participation will appear here once records are added</small>
+                            <i class="bi bi-trophy text-gray-500" style="font-size: 3rem;"></i>
+                            <p class="text-gray-500 mt-3">No tournament records found</p>
+                            <small class="text-gray-500">Tournament participation will appear here once records are added</small>
                         </div>
                     @endif
                 </div>
@@ -1192,288 +1193,310 @@
         </div>
 
         <!-- Events Tab -->
-        <div class="tab-pane fade" id="events" role="tabpanel">
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-4">
+        <div x-show="activeTab === 'events'" x-transition id="events" role="tabpanel">
+            <div class="bg-white rounded-xl shadow-sm">
+                <div class="p-4">
                     <h5 class="font-bold mb-3"><i class="bi bi-calendar-event mr-2"></i>Event Participation</h5>
-                    <p class="text-muted">Event history coming soon...</p>
+                    <p class="text-gray-500">Event history coming soon...</p>
                 </div>
             </div>
         </div>
     </div>
+    </div><!-- End of Alpine x-data for tabs -->
 </div>
 
 <!-- Goal Edit Modal -->
-<div class="modal fade" id="goalEditModal" tabindex="-1" aria-labelledby="goalEditModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="goalEditModalLabel">Edit Goal Progress</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="goalEditForm" method="POST">
-                @csrf
-                @method('PUT')
-                <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <div class="flex items-center mb-3">
-                                <div class="rounded-circle flex items-center justify-center mr-3" id="goalIconDisplay" style="width: 48px; height: 48px; background-color: #8b5cf6;">
-                                    <i class="bi bi-bullseye text-white"></i>
+<div x-data="{ open: false }" @open-goal-edit-modal.window="open = true" x-cloak>
+    <div x-show="open" class="fixed inset-0 z-50 overflow-y-auto" @keydown.escape.window="open = false">
+        <div x-show="open" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+             class="fixed inset-0 bg-black/50" @click="open = false"></div>
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div x-show="open" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                 class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl" @click.stop>
+                <div class="flex items-center justify-between p-4 border-b border-gray-200 flex items-center justify-between p-4 border-b">
+                    <h5 class="text-lg font-medium font-medium text-lg">Edit Goal Progress</h5>
+                    <button type="button" @click="open = false" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                </div>
+                <form id="goalEditForm" method="POST">
+                    @csrf
+                    @method('PUT')
+                    <div class="p-4 p-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div class="col-span-full">
+                                <div class="flex items-center mb-3">
+                                    <div class="rounded-full flex items-center justify-center mr-3" id="goalIconDisplay" style="width: 48px; height: 48px; background-color: #8b5cf6;">
+                                        <i class="bi bi-bullseye text-white"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="font-bold mb-1" id="goalTitleDisplay">Goal Title</h6>
+                                        <p class="text-gray-500 text-sm mb-0" id="goalDescriptionDisplay">Goal description</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h6 class="font-bold mb-1" id="goalTitleDisplay">Goal Title</h6>
-                                    <p class="text-muted small mb-0" id="goalDescriptionDisplay">Goal description</p>
+                            </div>
+                            <div>
+                                <label for="current_progress_value" class="block text-sm font-medium text-gray-700 mb-1">Current Progress <span class="text-red-600">*</span></label>
+                                <div class="flex">
+                                    <input type="number" step="0.1" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="current_progress_value" name="current_progress_value" required>
+                                    <span class="px-3 py-2 bg-gray-100 border border-gray-300 border-l-0 rounded-r-md text-sm flex items-center" id="goalUnitDisplay">lbs</span>
                                 </div>
+                                <div class="text-xs text-gray-500 mt-1">Target: <span id="goalTargetDisplay">170.0 lbs</span></div>
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="current_progress_value" class="form-label">Current Progress <span class="text-danger">*</span></label>
-                            <div class="input-group">
-                                <input type="number" step="0.1" class="form-control" id="current_progress_value" name="current_progress_value" required>
-                                <span class="input-group-text" id="goalUnitDisplay">lbs</span>
+                            <div>
+                                <label for="goal_status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                <select class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="goal_status" name="status">
+                                    <option value="active">Active</option>
+                                    <option value="completed">Completed</option>
+                                </select>
                             </div>
-                            <div class="form-text">Target: <span id="goalTargetDisplay">170.0 lbs</span></div>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="goal_status" class="form-label">Status</label>
-                            <select class="form-select" id="goal_status" name="status">
-                                <option value="active">Active</option>
-                                <option value="completed">Completed</option>
-                            </select>
-                        </div>
-                        <div class="col-12">
-                            <div class="progress" style="height: 8px;">
-                                <div class="progress-bar" role="progressbar" id="progressPreview" style="width: 0%; background: linear-gradient(90deg, #8b5cf6 0%, #10b981 100%);"></div>
+                            <div class="col-span-full">
+                                <div class="h-2 bg-gray-200 rounded-full overflow-hidden" style="height: 8px;">
+                                    <div class="h-full bg-primary transition-all" role="progressbar" id="progressPreview" style="width: 0%; background: linear-gradient(90deg, #8b5cf6 0%, #10b981 100%);"></div>
+                                </div>
+                                <small class="text-gray-500 mt-1 block" id="progressTextPreview">Progress: 0.0 / 170.0 lbs (0.0%)</small>
                             </div>
-                            <small class="text-muted mt-1 block" id="progressTextPreview">Progress: 0.0 / 170.0 lbs (0.0%)</small>
                         </div>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Update Goal</button>
-                </div>
-            </form>
+                    <div class="flex justify-end gap-2 p-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-2 p-4 border-t bg-gray-50">
+                        <button type="button" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 transition-colors" @click="open = false">Cancel</button>
+                        <button type="submit" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">Update Goal</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 
 <!-- Health Update Modal -->
-<div class="modal fade" id="healthUpdateModal" tabindex="-1" aria-labelledby="healthUpdateModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="healthUpdateModalLabel">Add Health Update</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="healthUpdateForm" method="POST" action="{{ $relationship->relationship_type === 'admin_view' ? route('admin.platform.members.store-health', $relationship->dependent->id) : route('member.store-health', $relationship->dependent->id) }}">
-                @csrf
-                <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="recorded_at" class="form-label">Date <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" id="recorded_at" name="recorded_at" value="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="height" class="form-label">Height (cm)</label>
-                            <input type="number" step="0.1" class="form-control" id="height" name="height">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="weight" class="form-label">Weight (kg)</label>
-                            <input type="number" step="0.1" class="form-control" id="weight" name="weight">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="body_fat_percentage" class="form-label">Body Fat (%)</label>
-                            <input type="number" step="0.1" class="form-control" id="body_fat_percentage" name="body_fat_percentage">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="bmi" class="form-label">BMI</label>
-                            <input type="number" step="0.1" class="form-control" id="bmi" name="bmi">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="body_water_percentage" class="form-label">Body Water (%)</label>
-                            <input type="number" step="0.1" class="form-control" id="body_water_percentage" name="body_water_percentage">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="muscle_mass" class="form-label">Muscle Mass (kg)</label>
-                            <input type="number" step="0.1" class="form-control" id="muscle_mass" name="muscle_mass">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="bone_mass" class="form-label">Bone Mass (kg)</label>
-                            <input type="number" step="0.1" class="form-control" id="bone_mass" name="bone_mass">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="visceral_fat" class="form-label">Visceral Fat</label>
-                            <input type="number" class="form-control" id="visceral_fat" name="visceral_fat">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="bmr" class="form-label">BMR (cal)</label>
-                            <input type="number" class="form-control" id="bmr" name="bmr">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="protein_percentage" class="form-label">Protein (%)</label>
-                            <input type="number" step="0.1" class="form-control" id="protein_percentage" name="protein_percentage">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="body_age" class="form-label">Body Age (years)</label>
-                            <input type="number" class="form-control" id="body_age" name="body_age">
+<div x-data="{ open: false }" @open-health-update-modal.window="open = true" x-cloak>
+    <div x-show="open" class="fixed inset-0 z-50 overflow-y-auto" @keydown.escape.window="open = false">
+        <div x-show="open" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+             class="fixed inset-0 bg-black/50" @click="open = false"></div>
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div x-show="open" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                 class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl" @click.stop>
+                <div class="flex items-center justify-between p-4 border-b border-gray-200 flex items-center justify-between p-4 border-b">
+                    <h5 class="text-lg font-medium font-medium text-lg">Add Health Update</h5>
+                    <button type="button" @click="open = false" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                </div>
+                <form id="healthUpdateForm" method="POST" action="{{ $relationship->relationship_type === 'admin_view' ? route('admin.platform.members.store-health', $relationship->dependent->id) : route('member.store-health', $relationship->dependent->id) }}">
+                    @csrf
+                    <div class="p-4 p-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label for="recorded_at" class="block text-sm font-medium text-gray-700 mb-1">Date <span class="text-red-600">*</span></label>
+                                <input type="date" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="recorded_at" name="recorded_at" value="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" required>
+                            </div>
+                            <div>
+                                <label for="height" class="block text-sm font-medium text-gray-700 mb-1">Height (cm)</label>
+                                <input type="number" step="0.1" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="height" name="height">
+                            </div>
+                            <div>
+                                <label for="weight" class="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
+                                <input type="number" step="0.1" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="weight" name="weight">
+                            </div>
+                            <div>
+                                <label for="body_fat_percentage" class="block text-sm font-medium text-gray-700 mb-1">Body Fat (%)</label>
+                                <input type="number" step="0.1" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="body_fat_percentage" name="body_fat_percentage">
+                            </div>
+                            <div>
+                                <label for="bmi" class="block text-sm font-medium text-gray-700 mb-1">BMI</label>
+                                <input type="number" step="0.1" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="bmi" name="bmi">
+                            </div>
+                            <div>
+                                <label for="body_water_percentage" class="block text-sm font-medium text-gray-700 mb-1">Body Water (%)</label>
+                                <input type="number" step="0.1" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="body_water_percentage" name="body_water_percentage">
+                            </div>
+                            <div>
+                                <label for="muscle_mass" class="block text-sm font-medium text-gray-700 mb-1">Muscle Mass (kg)</label>
+                                <input type="number" step="0.1" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="muscle_mass" name="muscle_mass">
+                            </div>
+                            <div>
+                                <label for="bone_mass" class="block text-sm font-medium text-gray-700 mb-1">Bone Mass (kg)</label>
+                                <input type="number" step="0.1" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="bone_mass" name="bone_mass">
+                            </div>
+                            <div>
+                                <label for="visceral_fat" class="block text-sm font-medium text-gray-700 mb-1">Visceral Fat</label>
+                                <input type="number" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="visceral_fat" name="visceral_fat">
+                            </div>
+                            <div>
+                                <label for="bmr" class="block text-sm font-medium text-gray-700 mb-1">BMR (cal)</label>
+                                <input type="number" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="bmr" name="bmr">
+                            </div>
+                            <div>
+                                <label for="protein_percentage" class="block text-sm font-medium text-gray-700 mb-1">Protein (%)</label>
+                                <input type="number" step="0.1" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="protein_percentage" name="protein_percentage">
+                            </div>
+                            <div>
+                                <label for="body_age" class="block text-sm font-medium text-gray-700 mb-1">Body Age (years)</label>
+                                <input type="number" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="body_age" name="body_age">
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Health Update</button>
-                </div>
-            </form>
+                    <div class="flex justify-end gap-2 p-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-2 p-4 border-t bg-gray-50">
+                        <button type="button" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 transition-colors" @click="open = false">Cancel</button>
+                        <button type="submit" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">Save Health Update</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 
 <!-- Tournament Participation Modal -->
-<div class="modal fade" id="tournamentParticipationModal" tabindex="-1" aria-labelledby="tournamentParticipationModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="tournamentParticipationModalLabel">Add Tournament Participation</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="tournamentParticipationForm" method="POST" action="{{ $relationship->relationship_type === 'admin_view' ? route('admin.platform.members.store-tournament', $relationship->dependent->id) : route('member.store-tournament', $relationship->dependent->id) }}">
-                @csrf
-                <div class="modal-body">
-                    <div class="row g-3">
-                        <!-- Tournament Details -->
-                        <div class="col-md-6">
-                            <label for="tournament_title" class="form-label">Tournament Title <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="tournament_title" name="title" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="tournament_type" class="form-label">Type <span class="text-danger">*</span></label>
-                            <select class="form-select" id="tournament_type" name="type" required>
-                                <option value="">Select Type</option>
-                                <option value="championship">Championship</option>
-                                <option value="tournament">Tournament</option>
-                                <option value="competition">Competition</option>
-                                <option value="exhibition">Exhibition</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="tournament_sport" class="form-label">Sport <span class="text-danger">*</span></label>
-                            <select class="form-select" id="tournament_sport" name="sport" required>
-                                <option value="">Select Sport</option>
-                                <option value="Boxing">Boxing</option>
-                                <option value="Taekwondo">Taekwondo</option>
-                                <option value="Karate">Karate</option>
-                                <option value="Martial Arts">Martial Arts</option>
-                                <option value="Fitness">Fitness</option>
-                                <option value="Weightlifting">Weightlifting</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <x-birthdate-dropdown
-                                name="date"
-                                id="tournament_date"
-                                label="Date"
-                                :required="true"
-                                :min-year="2000"
-                                :max-year="date('Y')"
-                                :error="$errors->first('date')" />
-                        </div>
-                        <div class="col-md-6">
-                            <label for="tournament_time" class="form-label">Time</label>
-                            <input type="time" class="form-control" id="tournament_time" name="time">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="tournament_location" class="form-label">Location</label>
-                            <input type="text" class="form-control" id="tournament_location" name="location" placeholder="Venue name or address">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="participants_count" class="form-label">Number of Participants</label>
-                            <input type="number" class="form-control" id="participants_count" name="participants_count" min="1">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="club_affiliation_id" class="form-label">Club Affiliation</label>
-                            <select class="form-select" id="club_affiliation_id" name="club_affiliation_id">
-                                <option value="">Select Club (Optional)</option>
-                                @foreach($clubAffiliations ?? [] as $affiliation)
-                                    <option value="{{ $affiliation->id }}">{{ $affiliation->club_name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
+<div x-data="{ open: false }" @open-tournament-modal.window="open = true" x-cloak>
+    <div x-show="open" class="fixed inset-0 z-50 overflow-y-auto" @keydown.escape.window="open = false">
+        <div x-show="open" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+             class="fixed inset-0 bg-black/50" @click="open = false"></div>
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div x-show="open" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                 class="relative bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden" @click.stop>
+                <div class="flex items-center justify-between p-4 border-b border-gray-200 flex items-center justify-between p-4 border-b">
+                    <h5 class="text-lg font-medium font-medium text-lg">Add Tournament Participation</h5>
+                    <button type="button" @click="open = false" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                </div>
+                <form id="tournamentParticipationForm" method="POST" action="{{ $relationship->relationship_type === 'admin_view' ? route('admin.platform.members.store-tournament', $relationship->dependent->id) : route('member.store-tournament', $relationship->dependent->id) }}">
+                    @csrf
+                    <div class="p-4 p-4 overflow-y-auto" style="max-height: calc(90vh - 140px);">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <!-- Tournament Details -->
+                            <div>
+                                <label for="tournament_title" class="block text-sm font-medium text-gray-700 mb-1">Tournament Title <span class="text-red-600">*</span></label>
+                                <input type="text" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="tournament_title" name="title" required>
+                            </div>
+                            <div>
+                                <label for="tournament_type" class="block text-sm font-medium text-gray-700 mb-1">Type <span class="text-red-600">*</span></label>
+                                <select class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="tournament_type" name="type" required>
+                                    <option value="">Select Type</option>
+                                    <option value="championship">Championship</option>
+                                    <option value="tournament">Tournament</option>
+                                    <option value="competition">Competition</option>
+                                    <option value="exhibition">Exhibition</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="tournament_sport" class="block text-sm font-medium text-gray-700 mb-1">Sport <span class="text-red-600">*</span></label>
+                                <select class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="tournament_sport" name="sport" required>
+                                    <option value="">Select Sport</option>
+                                    <option value="Boxing">Boxing</option>
+                                    <option value="Taekwondo">Taekwondo</option>
+                                    <option value="Karate">Karate</option>
+                                    <option value="Martial Arts">Martial Arts</option>
+                                    <option value="Fitness">Fitness</option>
+                                    <option value="Weightlifting">Weightlifting</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <x-birthdate-dropdown
+                                    name="date"
+                                    id="tournament_date"
+                                    label="Date"
+                                    :required="true"
+                                    :min-year="2000"
+                                    :max-year="date('Y')"
+                                    :error="$errors->first('date')" />
+                            </div>
+                            <div>
+                                <label for="tournament_time" class="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                                <input type="time" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="tournament_time" name="time">
+                            </div>
+                            <div>
+                                <label for="tournament_location" class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                                <input type="text" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="tournament_location" name="location" placeholder="Venue name or address">
+                            </div>
+                            <div>
+                                <label for="participants_count" class="block text-sm font-medium text-gray-700 mb-1">Number of Participants</label>
+                                <input type="number" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="participants_count" name="participants_count" min="1">
+                            </div>
+                            <div>
+                                <label for="club_affiliation_id" class="block text-sm font-medium text-gray-700 mb-1">Club Affiliation</label>
+                                <select class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="club_affiliation_id" name="club_affiliation_id">
+                                    <option value="">Select Club (Optional)</option>
+                                    @foreach($clubAffiliations ?? [] as $affiliation)
+                                        <option value="{{ $affiliation->id }}">{{ $affiliation->club_name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
 
-                        <!-- Performance Results Section -->
-                        <div class="col-12">
-                            <hr>
-                            <h6 class="mb-3">Performance Results</h6>
-                            <div id="performanceResultsContainer">
-                                <div class="performance-result-item mb-3 p-3 border rounded">
-                                    <div class="row g-2">
-                                        <div class="col-md-4">
-                                            <label class="form-label">Medal Type</label>
-                                            <select class="form-select medal-type" name="performance_results[0][medal_type]">
-                                                <option value="">Select Medal</option>
-                                                <option value="special">Special Award</option>
-                                                <option value="1st">1st Place</option>
-                                                <option value="2nd">2nd Place</option>
-                                                <option value="3rd">3rd Place</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <label class="form-label">Points</label>
-                                            <input type="number" class="form-control" name="performance_results[0][points]" min="0" step="0.1">
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label">Description</label>
-                                            <input type="text" class="form-control" name="performance_results[0][description]" placeholder="Optional description">
-                                        </div>
-                                        <div class="col-md-1 flex items-end">
-                                            <button type="button" class="btn btn-outline-danger btn-sm remove-result" style="display: none;">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
+                            <!-- Performance Results Section -->
+                            <div class="col-span-full">
+                                <hr class="my-3">
+                                <h6 class="mb-3 font-medium">Performance Results</h6>
+                                <div id="performanceResultsContainer">
+                                    <div class="performance-result-item mb-3 p-3 border rounded">
+                                        <div class="grid grid-cols-12 gap-2">
+                                            <div class="col-span-4">
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Medal Type</label>
+                                                <select class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary medal-type" name="performance_results[0][medal_type]">
+                                                    <option value="">Select Medal</option>
+                                                    <option value="special">Special Award</option>
+                                                    <option value="1st">1st Place</option>
+                                                    <option value="2nd">2nd Place</option>
+                                                    <option value="3rd">3rd Place</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-span-3">
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Points</label>
+                                                <input type="number" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" name="performance_results[0][points]" min="0" step="0.1">
+                                            </div>
+                                            <div class="col-span-4">
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                                <input type="text" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" name="performance_results[0][description]" placeholder="Optional description">
+                                            </div>
+                                            <div class="col-span-1 flex items-end">
+                                                <button type="button" class="border border-red-500 text-red-500 px-2 py-1 rounded text-xs hover:bg-red-500 hover:text-white transition-colors remove-result" style="display: none;">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
+                                <button type="button" class="border border-primary text-primary px-3 py-1.5 rounded text-sm hover:bg-primary hover:text-white transition-colors" id="addPerformanceResult">
+                                    <i class="bi bi-plus mr-1"></i>Add Another Result
+                                </button>
                             </div>
-                            <button type="button" class="btn btn-outline-primary btn-sm" id="addPerformanceResult">
-                                <i class="bi bi-plus mr-1"></i>Add Another Result
-                            </button>
-                        </div>
 
-                        <!-- Notes & Media Section -->
-                        <div class="col-12">
-                            <hr>
-                            <h6 class="mb-3">Notes & Media</h6>
-                            <div id="notesMediaContainer">
-                                <div class="notes-media-item mb-3 p-3 border rounded">
-                                    <div class="row g-2">
-                                        <div class="col-md-6">
-                                            <label class="form-label">Note Text</label>
-                                            <textarea class="form-control" name="notes_media[0][note_text]" rows="2" placeholder="Optional notes about the tournament"></textarea>
-                                        </div>
-                                        <div class="col-md-5">
-                                            <label class="form-label">Media Link</label>
-                                            <input type="url" class="form-control" name="notes_media[0][media_link]" placeholder="https://example.com/photo.jpg">
-                                        </div>
-                                        <div class="col-md-1 flex items-end">
-                                            <button type="button" class="btn btn-outline-danger btn-sm remove-note" style="display: none;">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
+                            <!-- Notes & Media Section -->
+                            <div class="col-span-full">
+                                <hr class="my-3">
+                                <h6 class="mb-3 font-medium">Notes & Media</h6>
+                                <div id="notesMediaContainer">
+                                    <div class="notes-media-item mb-3 p-3 border rounded">
+                                        <div class="grid grid-cols-12 gap-2">
+                                            <div class="col-span-6">
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Note Text</label>
+                                                <textarea class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" name="notes_media[0][note_text]" rows="2" placeholder="Optional notes about the tournament"></textarea>
+                                            </div>
+                                            <div class="col-span-5">
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Media Link</label>
+                                                <input type="url" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" name="notes_media[0][media_link]" placeholder="https://example.com/photo.jpg">
+                                            </div>
+                                            <div class="col-span-1 flex items-end">
+                                                <button type="button" class="border border-red-500 text-red-500 px-2 py-1 rounded text-xs hover:bg-red-500 hover:text-white transition-colors remove-note" style="display: none;">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
+                                <button type="button" class="border border-primary text-primary px-3 py-1.5 rounded text-sm hover:bg-primary hover:text-white transition-colors" id="addNotesMedia">
+                                    <i class="bi bi-plus mr-1"></i>Add Another Note/Media
+                                </button>
                             </div>
-                            <button type="button" class="btn btn-outline-primary btn-sm" id="addNotesMedia">
-                                <i class="bi bi-plus mr-1"></i>Add Another Note/Media
-                            </button>
                         </div>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Tournament Record</button>
-                </div>
-            </form>
+                    <div class="flex justify-end gap-2 p-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-2 p-4 border-t bg-gray-50">
+                        <button type="button" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 transition-colors" @click="open = false">Cancel</button>
+                        <button type="submit" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">Save Tournament Record</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
@@ -1573,32 +1596,22 @@
             })
             .catch(error => console.error('Error loading countries:', error));
 
-        // Handle Add Health Update click
-        document.querySelector('a[href="#"][data-bs-target="#healthUpdateModal"]').addEventListener('click', function(e) {
-            e.preventDefault();
-            resetHealthModal();
-            const modal = new bootstrap.Modal(document.getElementById('healthUpdateModal'));
-            modal.show();
-        });
+        // Handle Add Health Update click - Now using Alpine.js events
+        // The health update modal is triggered via @open-health-update-modal.window event
 
-        // Handle Edit Health Record click
+        // Handle Edit Health Record click - Now using Alpine.js events
         document.addEventListener('click', function(e) {
             if (e.target.closest('.edit-record-btn')) {
                 e.preventDefault();
                 const recordId = e.target.closest('tr').getAttribute('data-record-id');
                 populateHealthModalForEdit(recordId);
-                const modal = new bootstrap.Modal(document.getElementById('healthUpdateModal'));
-                modal.show();
+                window.dispatchEvent(new CustomEvent('open-health-update-modal'));
             }
         });
 
-        // Activate health tab if URL has #health
+        // Activate health tab if URL has #health - Now using Alpine.js
         if (window.location.hash === '#health') {
-            const healthTab = document.querySelector('#health-tab');
-            if (healthTab) {
-                const tab = new bootstrap.Tab(healthTab);
-                tab.show();
-            }
+            // The tab is controlled by Alpine.js x-data, will be handled by Alpine
         }
 
         // Store health records data for dynamic comparison
@@ -1861,17 +1874,17 @@
                     if (currentValue && previousValue) {
                         const change = currentValue - previousValue;
                         let arrow = '';
-                        let colorClass = 'text-muted';
+                        let colorClass = 'text-gray-500';
 
                         if (change > 0) {
                             arrow = '↑';
-                            colorClass = 'text-danger';
+                            colorClass = 'text-red-600';
                         } else if (change < 0) {
                             arrow = '↓';
-                            colorClass = 'text-success';
+                            colorClass = 'text-green-600';
                         } else {
                             arrow = '—';
-                            colorClass = 'text-muted';
+                            colorClass = 'text-gray-500';
                         }
 
                         changeCell.innerHTML = `<span class="${colorClass}">${arrow} ${Math.abs(change).toFixed(1)}</span>`;
@@ -1987,11 +2000,10 @@
 
         // Function to filter tournaments by medal type (called from achievement badges)
         window.filterTournamentsByMedal = function(medalType) {
-            // Switch to tournaments tab
+            // Switch to tournaments tab using Alpine.js
             const tournamentsTab = document.getElementById('tournaments-tab');
             if (tournamentsTab) {
-                const tab = new bootstrap.Tab(tournamentsTab);
-                tab.show();
+                tournamentsTab.click();
             }
 
             // Set medal filter
@@ -2037,7 +2049,7 @@
         }
 
         function filterGoals(filterType) {
-            const goalCards = goalsContainer.querySelectorAll('.col-lg-6');
+            const goalCards = document.querySelectorAll('.goal-card');
 
             goalCards.forEach(card => {
                 const statusBadge = card.querySelector('.badge');
@@ -2069,9 +2081,8 @@
             }
         }
 
-        // Goal editing functionality
+        // Goal editing functionality - Now using Alpine.js events
         const editGoalButtons = document.querySelectorAll('.edit-goal-btn');
-        const goalEditModal = new bootstrap.Modal(document.getElementById('goalEditModal'));
         const goalEditForm = document.getElementById('goalEditForm');
         let currentGoalId = null;
 
@@ -2084,7 +2095,7 @@
                     e.preventDefault();
                     const goalId = this.getAttribute('data-goal-id');
                     populateGoalEditModal(goalId);
-                    goalEditModal.show();
+                    window.dispatchEvent(new CustomEvent('open-goal-edit-modal'));
                 });
             });
         }
@@ -2152,8 +2163,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    goalEditModal.hide();
-                    // Reload the page to show updated data
+                    // Close modal via Alpine.js by dispatching escape key event or reload
                     window.location.reload();
                 } else {
                     alert('Error updating goal: ' + (data.message || 'Unknown error'));
@@ -2189,9 +2199,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Update visual selection
                 document.querySelectorAll('.affiliation-card').forEach(c => {
-                    c.classList.remove('border-primary');
+                    c.classList.remove('border-primary', 'border-2');
                 });
-                this.classList.add('border-primary');
+                this.classList.add('border-primary', 'border-2');
             });
         });
 
@@ -2224,12 +2234,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 skillsChart = null;
             }
             document.getElementById('skillsChart').style.display = 'none';
-            noSkillsMessage.classList.remove('d-none');
+            noSkillsMessage.classList.remove('hidden');
             return;
         }
 
         document.getElementById('skillsChart').style.display = 'block';
-        noSkillsMessage.classList.add('d-none');
+        noSkillsMessage.classList.add('hidden');
 
         // Prepare data for polar area chart
         const labels = skills.map(skill => skill.skill_name);
@@ -2312,8 +2322,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 <div>
                     <h5 class="mb-1">${affiliation.club_name}</h5>
-                    <p class="text-muted mb-0">${affiliation.date_range}</p>
-                    <span class="badge bg-info text-dark small">${affiliation.formatted_duration}</span>
+                    <p class="text-gray-500 mb-0">${affiliation.date_range}</p>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">${affiliation.formatted_duration}</span>
                 </div>
             </div>
         `;
@@ -2332,13 +2342,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (affiliation.affiliation_media && affiliation.affiliation_media.length > 0) {
             html += `<div class="mt-3"><strong>Media & Certificates:</strong></div>`;
-            html += `<div class="row g-2 mt-1">`;
+            html += `<div class="grid grid-cols-2 gap-2 mt-1">`;
 
             affiliation.affiliation_media.forEach(media => {
                 const iconClass = media.icon_class || 'bi-file';
                 html += `
-                    <div class="col-6">
-                        <a href="${media.full_url}" target="_blank" class="btn btn-outline-secondary btn-sm w-full">
+                    <div>
+                        <a href="${media.full_url}" target="_blank" class="border border-gray-300 text-gray-700 px-2 py-1 rounded text-xs hover:bg-gray-100 transition-colors w-full">
                             <i class="bi ${iconClass} mr-1"></i>${media.title || media.media_type}
                         </a>
                     </div>
@@ -2351,18 +2361,17 @@ document.addEventListener('DOMContentLoaded', function() {
         detailsContainer.innerHTML = html;
     }
 
-    // Initialize when affiliations tab is shown
+    // Initialize when affiliations tab is clicked (Alpine.js approach)
     const affiliationsTab = document.getElementById('affiliations-tab');
     if (affiliationsTab) {
-        affiliationsTab.addEventListener('shown.bs.tab', function() {
-            initAffiliations();
+        affiliationsTab.addEventListener('click', function() {
+            // Delay to allow tab content to be visible
+            setTimeout(initAffiliations, 100);
         });
     }
 
-    // Initialize immediately if affiliations tab is active
-    if (document.getElementById('affiliations').classList.contains('show')) {
-        initAffiliations();
-    }
+    // Initialize on page load after a delay
+    setTimeout(initAffiliations, 500);
 });
 
 // Tournament Participation Modal Functionality
@@ -2376,10 +2385,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const newItem = document.createElement('div');
         newItem.className = 'performance-result-item mb-3 p-3 border rounded';
         newItem.innerHTML = `
-            <div class="row g-2">
-                <div class="col-md-4">
-                    <label class="form-label">Medal Type</label>
-                    <select class="form-select medal-type" name="performance_results[${performanceResultIndex}][medal_type]">
+            <div class="grid grid-cols-12 gap-2">
+                <div class="col-span-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Medal Type</label>
+                    <select class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary medal-type" name="performance_results[${performanceResultIndex}][medal_type]">
                         <option value="">Select Medal</option>
                         <option value="special">Special Award</option>
                         <option value="1st">1st Place</option>
@@ -2387,16 +2396,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         <option value="3rd">3rd Place</option>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label">Points</label>
-                    <input type="number" class="form-control" name="performance_results[${performanceResultIndex}][points]" min="0" step="0.1">
+                <div class="col-span-3">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Points</label>
+                    <input type="number" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" name="performance_results[${performanceResultIndex}][points]" min="0" step="0.1">
                 </div>
-                <div class="col-md-4">
-                    <label class="form-label">Description</label>
-                    <input type="text" class="form-control" name="performance_results[${performanceResultIndex}][description]" placeholder="Optional description">
+                <div class="col-span-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <input type="text" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" name="performance_results[${performanceResultIndex}][description]" placeholder="Optional description">
                 </div>
-                <div class="col-md-1 flex items-end">
-                    <button type="button" class="btn btn-outline-danger btn-sm remove-result">
+                <div class="col-span-1 flex items-end">
+                    <button type="button" class="border border-red-500 text-red-500 px-2 py-1 rounded text-xs hover:bg-red-500 hover:text-white transition-colors remove-result">
                         <i class="bi bi-trash"></i>
                     </button>
                 </div>
@@ -2415,17 +2424,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const newItem = document.createElement('div');
         newItem.className = 'notes-media-item mb-3 p-3 border rounded';
         newItem.innerHTML = `
-            <div class="row g-2">
-                <div class="col-md-6">
-                    <label class="form-label">Note Text</label>
-                    <textarea class="form-control" name="notes_media[${notesMediaIndex}][note_text]" rows="2" placeholder="Optional notes about the tournament"></textarea>
+            <div class="grid grid-cols-12 gap-2">
+                <div class="col-span-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Note Text</label>
+                    <textarea class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" name="notes_media[${notesMediaIndex}][note_text]" rows="2" placeholder="Optional notes about the tournament"></textarea>
                 </div>
-                <div class="col-md-5">
-                    <label class="form-label">Media Link</label>
-                    <input type="url" class="form-control" name="notes_media[${notesMediaIndex}][media_link]" placeholder="https://example.com/photo.jpg">
+                <div class="col-span-5">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Media Link</label>
+                    <input type="url" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" name="notes_media[${notesMediaIndex}][media_link]" placeholder="https://example.com/photo.jpg">
                 </div>
-                <div class="col-md-1 flex items-end">
-                    <button type="button" class="btn btn-outline-danger btn-sm remove-note">
+                <div class="col-span-1 flex items-end">
+                    <button type="button" class="border border-red-500 text-red-500 px-2 py-1 rounded text-xs hover:bg-red-500 hover:text-white transition-colors remove-note">
                         <i class="bi bi-trash"></i>
                     </button>
                 </div>
@@ -2465,8 +2474,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Reset modal when opened
-    document.getElementById('tournamentParticipationModal').addEventListener('show.bs.modal', function() {
+    // Reset modal when opened - Listen for Alpine.js custom event
+    window.addEventListener('open-tournament-modal', function() {
         // Reset form
         document.getElementById('tournamentParticipationForm').reset();
 
@@ -2495,50 +2504,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Delete Account Modal functionality
-    const deleteAccountModal = document.getElementById('deleteAccountModal');
-    const confirmNameInput = document.getElementById('confirmName');
-    const deleteAccountBtn = document.getElementById('deleteAccountBtn');
-    const expectedName = '{{ $relationship->dependent->full_name }}';
-
-    if (deleteAccountModal && confirmNameInput && deleteAccountBtn) {
-        // Function to check if confirmation name matches
-        function checkConfirmationName() {
-            const enteredName = confirmNameInput.value.trim();
-            const matches = enteredName === expectedName;
-            deleteAccountBtn.disabled = !matches;
-
-            // Add visual feedback
-            if (matches) {
-                confirmNameInput.classList.remove('is-invalid');
-                confirmNameInput.classList.add('is-valid');
-            } else {
-                confirmNameInput.classList.remove('is-valid');
-                if (enteredName.length > 0) {
-                    confirmNameInput.classList.add('is-invalid');
-                } else {
-                    confirmNameInput.classList.remove('is-invalid');
-                }
-            }
-        }
-
-        // Listen for input changes
-        confirmNameInput.addEventListener('input', checkConfirmationName);
-
-        // Reset modal when opened
-        deleteAccountModal.addEventListener('show.bs.modal', function() {
-            confirmNameInput.value = '';
-            confirmNameInput.classList.remove('is-valid', 'is-invalid');
-            deleteAccountBtn.disabled = true;
-        });
-
-        // Reset modal when closed
-        deleteAccountModal.addEventListener('hidden.bs.modal', function() {
-            confirmNameInput.value = '';
-            confirmNameInput.classList.remove('is-valid', 'is-invalid');
-            deleteAccountBtn.disabled = true;
-        });
-    }
+    // Delete Account Modal functionality is now handled by Alpine.js
 
     // Handle form submission
     document.getElementById('tournamentParticipationForm').addEventListener('submit', function(e) {
@@ -2556,11 +2522,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Close modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('tournamentParticipationModal'));
-                modal.hide();
-
-                // Show success message
+                // Show success message and reload
                 showAlert('Tournament record added successfully!', 'success');
 
                 // Reload page to show new data
@@ -2579,11 +2541,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function showAlert(message, type) {
         const alertDiv = document.createElement('div');
-        alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        const bgColor = type === 'success' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200';
+        alertDiv.className = `fixed top-5 right-5 z-50 min-w-[300px] p-4 rounded-lg border ${bgColor} flex items-center justify-between`;
         alertDiv.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <span>${message}</span>
+            <button type="button" class="ml-4 text-gray-500 hover:text-gray-700" onclick="this.parentElement.remove()">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+            </button>
         `;
         document.body.appendChild(alertDiv);
 
@@ -2597,7 +2561,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 <!-- Edit Profile Modal Component -->
-<x-edit-profile-modal
+<x-profile-modal
     :user="$relationship->dependent"
     :formAction="$relationship->relationship_type === 'admin_view' ? route('admin.platform.members.update', $relationship->dependent->id) : route('member.update', $relationship->dependent->id)"
     formMethod="PUT"
@@ -2608,46 +2572,53 @@ document.addEventListener('DOMContentLoaded', function() {
 />
 
 <!-- Delete Account Modal -->
-<div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-danger">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="deleteAccountModalLabel">
-                    <i class="bi bi-exclamation-triangle-fill mr-2"></i>Delete Account
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="deleteAccountForm" method="POST" action="{{ $relationship->relationship_type === 'admin_view' ? route('admin.platform.members.destroy', $relationship->dependent->id) : route('member.confirm-delete', $relationship->dependent->id) }}">
-                @csrf
-                @method('DELETE')
-                <div class="modal-body">
-                    <div class="text-center mb-4">
-                        <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 3rem;"></i>
-                    </div>
+<div x-data="{ open: false, confirmName: '', expectedName: '{{ $relationship->dependent->full_name }}' }" @open-delete-account-modal.window="open = true; confirmName = ''" x-cloak>
+    <div x-show="open" class="fixed inset-0 z-50 overflow-y-auto" @keydown.escape.window="open = false">
+        <div x-show="open" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+             class="fixed inset-0 bg-black/50" @click="open = false"></div>
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div x-show="open" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                 class="relative bg-white rounded-lg shadow-xl w-full max-w-md border-2 border-danger" @click.stop>
+                <div class="flex items-center justify-between p-4 bg-danger text-white rounded-t-lg">
+                    <h5 class="font-medium text-lg flex items-center">
+                        <i class="bi bi-exclamation-triangle-fill mr-2"></i>Delete Account
+                    </h5>
+                    <button type="button" @click="open = false" class="text-white hover:text-gray-200 text-2xl leading-none">&times;</button>
+                </div>
+                <form id="deleteAccountForm" method="POST" action="{{ $relationship->relationship_type === 'admin_view' ? route('admin.platform.members.destroy', $relationship->dependent->id) : route('member.confirm-delete', $relationship->dependent->id) }}">
+                    @csrf
+                    @method('DELETE')
+                    <div class="p-4">
+                        <div class="text-center mb-4">
+                            <i class="bi bi-exclamation-triangle-fill text-red-600" style="font-size: 3rem;"></i>
+                        </div>
 
-                    <div class="alert alert-danger">
-                        <strong>Warning!</strong> This action cannot be undone. This will permanently delete the account for <strong>{{ $relationship->dependent->full_name }}</strong> and remove all associated data.
-                    </div>
+                        <div class="p-4 rounded-lg bg-red-50 text-red-700 border border-red-200">
+                            <strong>Warning!</strong> This action cannot be undone. This will permanently delete the account for <strong>{{ $relationship->dependent->full_name }}</strong> and remove all associated data.
+                        </div>
 
-                    <p class="text-muted small mb-3">
-                        To confirm deletion, please type the full name of the account holder below:
-                    </p>
+                        <p class="text-gray-500 text-sm mb-3">
+                            To confirm deletion, please type the full name of the account holder below:
+                        </p>
 
-                    <div class="mb-3">
-                        <label for="confirmName" class="form-label font-semibold">Type "{{ $relationship->dependent->full_name }}" to confirm:</label>
-                        <input type="text" class="form-control" id="confirmName" name="confirm_name" required>
-                        <div class="form-text text-muted">
-                            This action will soft delete the account. The account can be restored by an administrator if needed.
+                        <div class="mb-3">
+                            <label for="confirmName" class="block text-sm font-medium text-gray-700 mb-1 font-semibold">Type "{{ $relationship->dependent->full_name }}" to confirm:</label>
+                            <input type="text" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="confirmName" name="confirm_name" x-model="confirmName" required>
+                            <div class="text-xs text-gray-500 mt-1 text-gray-500">
+                                This action will soft delete the account. The account can be restored by an administrator if needed.
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger" id="deleteAccountBtn" disabled>
-                        <i class="bi bi-trash mr-2"></i>Delete Account
-                    </button>
-                </div>
-            </form>
+                    <div class="flex justify-end gap-2 p-4 border-t bg-gray-50">
+                        <button type="button" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 transition-colors" @click="open = false">Cancel</button>
+                        <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50" :disabled="confirmName !== expectedName">
+                            <i class="bi bi-trash mr-2"></i>Delete Account
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>

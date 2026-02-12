@@ -39,7 +39,7 @@ class InvoiceController extends Controller
 
         $invoices = $query->get();
 
-        return view('invoices.index', compact('invoices'));
+        return view('components-templates.invoices.index', compact('invoices'));
     }
 
     /**
@@ -57,10 +57,10 @@ class InvoiceController extends Controller
             ->firstOrFail();
 
         if ($request->ajax()) {
-            return response()->json(['html' => view('invoices._show_modal', compact('invoice'))->render()]);
+            return response()->json(['html' => view('components-templates.invoices._show_modal', compact('invoice'))->render()]);
         }
 
-        return view('invoices.show', compact('invoice'));
+        return view('components-templates.invoices.show', compact('invoice'));
     }
 
     /**
@@ -78,13 +78,13 @@ class InvoiceController extends Controller
             ->firstOrFail();
 
         if ($request->has('download')) {
-            $html = view('invoices.receipt', compact('invoice'))->render();
+            $html = view('components-templates.invoices.receipt', compact('invoice'))->render();
             return response($html)
                 ->header('Content-Type', 'text/html')
                 ->header('Content-Disposition', 'attachment; filename="receipt_' . $invoice->id . '.html"');
         }
 
-        return view('invoices.receipt', compact('invoice'));
+        return view('components-templates.invoices.receipt', compact('invoice'));
     }
 
     /**

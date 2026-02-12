@@ -65,9 +65,10 @@
                                 <!-- Example 3: Nationality Dropdown -->
                                 <div class="mb-3">
                                     <label for="nationality" class="form-label">Nationality</label>
-                                    <x-nationality-dropdown
+                                    <x-country-dropdown
                                         name="nationality"
                                         id="nationality"
+                                        label="Nationality"
                                         :value="old('nationality')"
                                         :required="true"
                                         :error="$errors->first('nationality')" />
@@ -76,9 +77,10 @@
                                 <!-- Example 4: Second Nationality (Optional) -->
                                 <div class="mb-3">
                                     <label for="second_nationality" class="form-label">Second Nationality (Optional)</label>
-                                    <x-nationality-dropdown
+                                    <x-country-dropdown
                                         name="second_nationality"
                                         id="second_nationality"
+                                        label="Second Nationality"
                                         :value="old('second_nationality')"
                                         :required="false"
                                         :error="$errors->first('second_nationality')" />
@@ -123,10 +125,11 @@
     &lt;input type="tel" class="form-control" name="mobile_number" placeholder="Phone number"&gt;
 &lt;/x-country-code-dropdown&gt;</code></pre>
 
-                    <h5 class="mt-4">2. Nationality Dropdown</h5>
-                    <pre class="bg-muted p-3 rounded"><code>&lt;x-nationality-dropdown
+                    <h5 class="mt-4">2. Country Dropdown (also for Nationality)</h5>
+                    <pre class="bg-muted p-3 rounded"><code>&lt;x-country-dropdown
     name="nationality"
     id="nationality"
+    label="Nationality"
     :value="old('nationality')"
     :required="true"
     :error="$errors->first('nationality')" /&gt;</code></pre>

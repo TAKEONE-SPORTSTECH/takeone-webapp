@@ -123,68 +123,35 @@
                             <label class="form-label">Club Email</label>
                             <input type="email" name="email" class="form-control" value="{{ old('email', $club->email) }}" placeholder="info@yourclub.com">
                         </div>
-                        <div>
-                            <label class="form-label">Country</label>
-                            <select name="country" class="form-select" id="countrySelect">
-                                <option value="">Select country</option>
-                                @php
-                                    $countries = [
-                                        'BH' => ['name' => 'Bahrain', 'currency' => 'BHD', 'timezone' => 'Asia/Bahrain', 'phone' => '+973'],
-                                        'SA' => ['name' => 'Saudi Arabia', 'currency' => 'SAR', 'timezone' => 'Asia/Riyadh', 'phone' => '+966'],
-                                        'AE' => ['name' => 'United Arab Emirates', 'currency' => 'AED', 'timezone' => 'Asia/Dubai', 'phone' => '+971'],
-                                        'KW' => ['name' => 'Kuwait', 'currency' => 'KWD', 'timezone' => 'Asia/Kuwait', 'phone' => '+965'],
-                                        'QA' => ['name' => 'Qatar', 'currency' => 'QAR', 'timezone' => 'Asia/Qatar', 'phone' => '+974'],
-                                        'OM' => ['name' => 'Oman', 'currency' => 'OMR', 'timezone' => 'Asia/Muscat', 'phone' => '+968'],
-                                        'US' => ['name' => 'United States', 'currency' => 'USD', 'timezone' => 'America/New_York', 'phone' => '+1'],
-                                        'GB' => ['name' => 'United Kingdom', 'currency' => 'GBP', 'timezone' => 'Europe/London', 'phone' => '+44'],
-                                    ];
-                                @endphp
-                                @foreach($countries as $code => $data)
-                                    <option value="{{ $code }}"
-                                            data-currency="{{ $data['currency'] }}"
-                                            data-timezone="{{ $data['timezone'] }}"
-                                            data-phone="{{ $data['phone'] }}"
-                                            {{ old('country', $club->country) == $code ? 'selected' : '' }}>
-                                        {{ $data['name'] }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <small class="text-muted">Selecting a country will automatically set currency, timezone, and phone code</small>
-                        </div>
+                        <x-country-dropdown
+                            name="country"
+                            id="countrySelect"
+                            :value="old('country', $club->country)"
+                            label="Country" />
                         <div>
                             <label class="form-label">Club Phone</label>
-                            <div class="input-group">
-                                <input type="text" name="phone_code" class="form-control" style="max-width: 80px;" value="{{ old('phone_code', $club->phone['code'] ?? '+973') }}" placeholder="+973">
-                                <input type="text" name="phone_number" class="form-control" value="{{ old('phone_number', $club->phone['number'] ?? '') }}" placeholder="12345678">
-                            </div>
+                            <x-country-code-dropdown
+                                name="phone_code"
+                                id="phoneCode"
+                                :value="old('phone_code', $club->phone['code'] ?? '+973')"
+                                :error="$errors->first('phone_code')">
+                                <input type="text"
+                                       class="form-control border-0"
+                                       name="phone_number"
+                                       value="{{ old('phone_number', $club->phone['number'] ?? '') }}"
+                                       placeholder="12345678">
+                            </x-country-code-dropdown>
                         </div>
-                        <div>
-                            <label class="form-label">Currency</label>
-                            <select name="currency" class="form-select" id="currencySelect">
-                                <option value="USD" {{ old('currency', $club->currency) == 'USD' ? 'selected' : '' }}>USD - US Dollar</option>
-                                <option value="BHD" {{ old('currency', $club->currency) == 'BHD' ? 'selected' : '' }}>BHD - Bahraini Dinar</option>
-                                <option value="SAR" {{ old('currency', $club->currency) == 'SAR' ? 'selected' : '' }}>SAR - Saudi Riyal</option>
-                                <option value="AED" {{ old('currency', $club->currency) == 'AED' ? 'selected' : '' }}>AED - UAE Dirham</option>
-                                <option value="KWD" {{ old('currency', $club->currency) == 'KWD' ? 'selected' : '' }}>KWD - Kuwaiti Dinar</option>
-                                <option value="QAR" {{ old('currency', $club->currency) == 'QAR' ? 'selected' : '' }}>QAR - Qatari Riyal</option>
-                                <option value="OMR" {{ old('currency', $club->currency) == 'OMR' ? 'selected' : '' }}>OMR - Omani Rial</option>
-                                <option value="GBP" {{ old('currency', $club->currency) == 'GBP' ? 'selected' : '' }}>GBP - British Pound</option>
-                                <option value="EUR" {{ old('currency', $club->currency) == 'EUR' ? 'selected' : '' }}>EUR - Euro</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="form-label">Timezone</label>
-                            <select name="timezone" class="form-select" id="timezoneSelect">
-                                <option value="UTC" {{ old('timezone', $club->timezone) == 'UTC' ? 'selected' : '' }}>UTC</option>
-                                <option value="Asia/Bahrain" {{ old('timezone', $club->timezone) == 'Asia/Bahrain' ? 'selected' : '' }}>Asia/Bahrain</option>
-                                <option value="Asia/Riyadh" {{ old('timezone', $club->timezone) == 'Asia/Riyadh' ? 'selected' : '' }}>Asia/Riyadh</option>
-                                <option value="Asia/Dubai" {{ old('timezone', $club->timezone) == 'Asia/Dubai' ? 'selected' : '' }}>Asia/Dubai</option>
-                                <option value="Asia/Kuwait" {{ old('timezone', $club->timezone) == 'Asia/Kuwait' ? 'selected' : '' }}>Asia/Kuwait</option>
-                                <option value="Asia/Qatar" {{ old('timezone', $club->timezone) == 'Asia/Qatar' ? 'selected' : '' }}>Asia/Qatar</option>
-                                <option value="America/New_York" {{ old('timezone', $club->timezone) == 'America/New_York' ? 'selected' : '' }}>America/New_York</option>
-                                <option value="Europe/London" {{ old('timezone', $club->timezone) == 'Europe/London' ? 'selected' : '' }}>Europe/London</option>
-                            </select>
-                        </div>
+                        <x-currency-dropdown
+                            name="currency"
+                            id="currencySelect"
+                            :value="old('currency', $club->currency)"
+                            label="Currency" />
+                        <x-timezone-dropdown
+                            name="timezone"
+                            id="timezoneSelect"
+                            :value="old('timezone', $club->timezone)"
+                            label="Timezone" />
                         <div>
                             <label class="form-label">Club Slug (Unique URL)</label>
                             <div class="input-group">
@@ -321,76 +288,70 @@
                 </div>
                 <div class="card-body space-y-5">
                     <!-- Logo -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-                        <div class="md:col-span-2">
-                            <label class="form-label">Logo</label>
-                            <input type="file" name="logo" class="form-control" accept="image/*" id="logoInput">
-                            <small class="text-muted">Recommended: Square image, at least 512x512px</small>
-                        </div>
-                        <div>
-                            <label class="form-label">Preview</label>
-                            <div class="border rounded p-3 text-center" style="min-height: 120px;">
-                                @if($club->logo)
-                                <img src="{{ asset('storage/' . $club->logo) }}" alt="Logo" id="logoPreview" class="max-w-full h-auto" style="max-height: 100px;">
-                                @else
-                                <div class="text-muted" id="logoPlaceholder">
-                                    <i class="bi bi-image" style="font-size: 3rem;"></i>
-                                    <p class="small mb-0">No logo uploaded</p>
-                                </div>
-                                <img src="" alt="Logo" id="logoPreview" class="max-w-full h-auto hidden" style="max-height: 100px;">
-                                @endif
-                            </div>
-                        </div>
+                    <div>
+                        <label class="form-label font-medium">Club Logo</label>
+                        <small class="text-muted block mb-3">Recommended: Square image, at least 512x512px</small>
+                        <x-takeone-cropper
+                            id="clubDetailLogo"
+                            :width="200"
+                            :height="200"
+                            shape="square"
+                            mode="form"
+                            inputName="logo"
+                            folder="clubs/{{ $club->id }}/branding"
+                            :filename="'logo_' . time()"
+                            :previewWidth="150"
+                            :previewHeight="150"
+                            :currentImage="$club->logo ? asset('storage/' . $club->logo) : ''"
+                            buttonText="Change Logo"
+                            buttonClass="btn btn-outline-secondary"
+                        />
                     </div>
 
                     <hr>
 
                     <!-- Favicon -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-                        <div class="md:col-span-2">
-                            <label class="form-label">Favicon</label>
-                            <input type="file" name="favicon" class="form-control" accept="image/*" id="faviconInput">
-                            <small class="text-muted">Recommended: Square image, 32x32px or 64x64px</small>
-                        </div>
-                        <div>
-                            <label class="form-label">Preview</label>
-                            <div class="border rounded p-3 text-center" style="min-height: 80px;">
-                                @if($club->favicon)
-                                <img src="{{ asset('storage/' . $club->favicon) }}" alt="Favicon" id="faviconPreview" style="width: 32px; height: 32px;">
-                                @else
-                                <div class="text-muted" id="faviconPlaceholder">
-                                    <i class="bi bi-app" style="font-size: 2rem;"></i>
-                                    <p class="small mb-0">No favicon</p>
-                                </div>
-                                <img src="" alt="Favicon" id="faviconPreview" class="hidden" style="width: 32px; height: 32px;">
-                                @endif
-                            </div>
-                        </div>
+                    <div>
+                        <label class="form-label font-medium">Favicon</label>
+                        <small class="text-muted block mb-3">Recommended: Square image, 32x32px or 64x64px</small>
+                        <x-takeone-cropper
+                            id="clubDetailFavicon"
+                            :width="64"
+                            :height="64"
+                            shape="square"
+                            mode="form"
+                            inputName="favicon"
+                            folder="clubs/{{ $club->id }}/branding"
+                            :filename="'favicon_' . time()"
+                            :previewWidth="64"
+                            :previewHeight="64"
+                            :currentImage="$club->favicon ? asset('storage/' . $club->favicon) : ''"
+                            buttonText="Change Favicon"
+                            buttonClass="btn btn-outline-secondary"
+                        />
                     </div>
 
                     <hr>
 
                     <!-- Cover Image -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-                        <div class="md:col-span-2">
-                            <label class="form-label">Cover Image</label>
-                            <input type="file" name="cover_image" class="form-control" accept="image/*" id="coverInput">
-                            <small class="text-muted">Recommended: 1920x600px or similar wide aspect ratio</small>
-                        </div>
-                        <div>
-                            <label class="form-label">Preview</label>
-                            <div class="border rounded overflow-hidden" style="min-height: 100px;">
-                                @if($club->cover_image)
-                                <img src="{{ asset('storage/' . $club->cover_image) }}" alt="Cover" id="coverPreview" class="max-w-full w-full h-auto" style="max-height: 150px; object-fit: cover;">
-                                @else
-                                <div class="text-muted text-center py-4" id="coverPlaceholder">
-                                    <i class="bi bi-card-image" style="font-size: 2rem;"></i>
-                                    <p class="small mb-0">No cover image</p>
-                                </div>
-                                <img src="" alt="Cover" id="coverPreview" class="max-w-full w-full h-auto hidden" style="max-height: 150px; object-fit: cover;">
-                                @endif
-                            </div>
-                        </div>
+                    <div>
+                        <label class="form-label font-medium">Cover Image</label>
+                        <small class="text-muted block mb-3">Recommended: 1920x600px or similar wide aspect ratio</small>
+                        <x-takeone-cropper
+                            id="clubDetailCover"
+                            :width="600"
+                            :height="200"
+                            shape="square"
+                            mode="form"
+                            inputName="cover_image"
+                            folder="clubs/{{ $club->id }}/branding"
+                            :filename="'cover_' . time()"
+                            :previewWidth="400"
+                            :previewHeight="133"
+                            :currentImage="$club->cover_image ? asset('storage/' . $club->cover_image) : ''"
+                            buttonText="Change Cover"
+                            buttonClass="btn btn-outline-secondary"
+                        />
                     </div>
                 </div>
             </div>
@@ -553,19 +514,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Country selector auto-fill
-    const countrySelect = document.getElementById('countrySelect');
-    if (countrySelect) {
-        countrySelect.addEventListener('change', function() {
-            const option = this.options[this.selectedIndex];
-            if (option.value) {
-                document.getElementById('currencySelect').value = option.dataset.currency || 'USD';
-                document.getElementById('timezoneSelect').value = option.dataset.timezone || 'UTC';
-                document.querySelector('input[name="phone_code"]').value = option.dataset.phone || '+1';
-            }
-        });
-    }
-
     // Delete club confirmation
     const confirmInput = document.getElementById('confirmClubName');
     const deleteBtn = document.getElementById('confirmDeleteBtn');
@@ -576,31 +524,6 @@ document.addEventListener('DOMContentLoaded', function() {
             deleteBtn.disabled = this.value !== clubName;
         });
     }
-
-    // Image previews
-    function setupImagePreview(inputId, previewId, placeholderId) {
-        const input = document.getElementById(inputId);
-        const preview = document.getElementById(previewId);
-        const placeholder = document.getElementById(placeholderId);
-
-        if (input && preview) {
-            input.addEventListener('change', function() {
-                if (this.files && this.files[0]) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        preview.src = e.target.result;
-                        preview.classList.remove('hidden');
-                        if (placeholder) placeholder.classList.add('hidden');
-                    };
-                    reader.readAsDataURL(this.files[0]);
-                }
-            });
-        }
-    }
-
-    setupImagePreview('logoInput', 'logoPreview', 'logoPlaceholder');
-    setupImagePreview('faviconInput', 'faviconPreview', 'faviconPlaceholder');
-    setupImagePreview('coverInput', 'coverPreview', 'coverPlaceholder');
 
     // Use my location button
     const useLocationBtn = document.getElementById('useMyLocationBtn');

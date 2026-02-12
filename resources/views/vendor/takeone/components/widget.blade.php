@@ -14,6 +14,13 @@
     $previewWidth = $attributes->get('previewWidth', $width);
     $previewHeight = $attributes->get('previewHeight', $height);
     $showPreview = $attributes->get('showPreview', $mode === 'form'); // Show preview by default in form mode
+
+    // Cropper canvas/viewport customization
+    $canvasHeight = $attributes->get('canvasHeight', 500);       // Height of the crop canvas area
+    $modalMaxWidth = $attributes->get('modalMaxWidth', '75%');    // Modal max-width CSS value
+    $modalWidth = $attributes->get('modalWidth', 1000);           // Modal width in px
+    $viewportFill = $attributes->get('viewportFill', 0.75);      // How much of the canvas the viewport fills (0-1)
+    $maxScale = $attributes->get('maxScale', 3);                  // Max scale multiplier for auto-sizing
 @endphp
 
 <x-toast-notification />
@@ -103,20 +110,20 @@
     <input type="hidden" name="{{ $inputName }}" id="hiddenInput_{{ $id }}" value="">
     <input type="hidden" name="{{ $inputName }}_folder" value="{{ $folder }}">
     <input type="hidden" name="{{ $inputName }}_filename" value="{{ $filename }}">
-    <button type="button" class="{{ $buttonClass }}" data-bs-toggle="modal" data-bs-target="#cropperModal_{{ $id }}">
+    <button type="button" class="{{ $buttonClass }}" onclick="window.bsModal.show(document.querySelector('#cropperModal_{{ $id }}'))">
         <i class="bi bi-camera mr-2"></i>{{ $buttonText }}
     </button>
 </div>
 @else
 {{-- AJAX mode: Just the button --}}
-<button type="button" class="{{ $buttonClass }}" data-bs-toggle="modal" data-bs-target="#cropperModal_{{ $id }}">
+<button type="button" class="{{ $buttonClass }}" onclick="window.bsModal.show(document.querySelector('#cropperModal_{{ $id }}'))">
     <i class="bi bi-camera{{ $buttonText ? ' mr-2' : '' }}"></i>{{ $buttonText }}
 </button>
 @endif
 
 @push('modals')
 <div class="modal fade" id="cropperModal_{{ $id }}" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 75%; width: 1000px;">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: {{ $modalMaxWidth }}; width: {{ $modalWidth }}px;">
         <div class="modal-content modal-content-clean shadow-lg">
             <div class="modal-body p-4 text-left" style="max-height: 85vh; overflow-y: auto;">
                 <div class="mb-3 flex items-center">
@@ -124,7 +131,7 @@
                     <button type="button" class="btn-close ml-2" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
 
-                <div id="box_{{ $id }}" class="takeone-canvas" style="height: 500px;"></div>
+                <div id="box_{{ $id }}" class="takeone-canvas" style="height: {{ $canvasHeight }}px;"></div>
 
                 <div class="grid grid-cols-12 gap-4 mt-4">
                     <div class="col-span-12 md:col-span-6 mb-3">
@@ -170,11 +177,25 @@ $(function() {
     function initCropper_{{ $id }}(imageUrl) {
         if (cropper_{{ $id }}) cropper_{{ $id }}.destroy();
 
+        // Auto-scale viewport to fill the canvas while keeping aspect ratio
+        const origW_{{ $id }} = {{ $width }};
+        const origH_{{ $id }} = {{ $height }};
+        const canvasH_{{ $id }} = {{ $canvasHeight }};
+        const containerW_{{ $id }} = el_{{ $id }}.offsetWidth || 900;
+        const fill_{{ $id }} = {{ $viewportFill }};
+        const maxSc_{{ $id }} = {{ $maxScale }};
+
+        const scW_{{ $id }} = (containerW_{{ $id }} * fill_{{ $id }}) / origW_{{ $id }};
+        const scH_{{ $id }} = (canvasH_{{ $id }} * fill_{{ $id }}) / origH_{{ $id }};
+        const sc_{{ $id }} = Math.max(1, Math.min(scW_{{ $id }}, scH_{{ $id }}, maxSc_{{ $id }}));
+        const vpW_{{ $id }} = Math.round(origW_{{ $id }} * sc_{{ $id }});
+        const vpH_{{ $id }} = Math.round(origH_{{ $id }} * sc_{{ $id }});
+
         cropper_{{ $id }} = new Cropme(el_{{ $id }}, {
-            container: { width: '100%', height: 500 },
+            container: { width: '100%', height: canvasH_{{ $id }} },
             viewport: {
-                width: {{ $width }},
-                height: {{ $height }},
+                width: vpW_{{ $id }},
+                height: vpH_{{ $id }},
                 type: '{{ $shape }}',
                 border: { enable: true, width: 2, color: '#fff' }
             },

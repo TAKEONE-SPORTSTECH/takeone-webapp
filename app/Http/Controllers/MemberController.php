@@ -32,7 +32,7 @@ class MemberController extends Controller
                 return $relationship->dependent->full_name;
             });
 
-        return view('member.index', compact('user', 'dependents'));
+        return view('family.index', compact('user', 'dependents'));
     }
 
     /**
@@ -42,7 +42,7 @@ class MemberController extends Controller
      */
     public function create()
     {
-        return view('member.create');
+        return view('family.create');
     }
 
     /**
@@ -185,7 +185,7 @@ class MemberController extends Controller
             return $affiliation->skillAcquisitions->pluck('instructor');
         })->filter()->unique('id')->count();
 
-        return view('member.show', [
+        return view('components-templates.member.show', [
             'relationship' => $relationship,
             'latestHealthRecord' => $latestHealthRecord,
             'healthRecords' => $healthRecords,
@@ -247,7 +247,7 @@ class MemberController extends Controller
                 ->firstOrFail();
         }
 
-        return view('member.edit', compact('relationship'));
+        return view('components-templates.member.edit', compact('relationship'));
     }
 
     /**

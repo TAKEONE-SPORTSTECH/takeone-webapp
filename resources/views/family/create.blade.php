@@ -90,9 +90,10 @@
                                 @enderror
                             </div>
                             <div>
-                                <x-nationality-dropdown
+                                <x-country-dropdown
                                     name="nationality"
                                     id="nationality"
+                                    label="Nationality"
                                     :value="old('nationality')"
                                     :required="true"
                                     :error="$errors->first('nationality')" />
@@ -194,7 +195,7 @@
                         </div>
 
                         <div class="flex justify-between">
-                            <a href="{{ route('family.dashboard') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">Cancel</a>
+                            <a href="{{ route('members.index') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">Cancel</a>
                             <button type="submit" class="inline-flex items-center px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors">Add Family Member</button>
                         </div>
                     </form>

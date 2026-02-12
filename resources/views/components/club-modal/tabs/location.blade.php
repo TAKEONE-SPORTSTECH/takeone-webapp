@@ -11,11 +11,11 @@
     <!-- Country, Timezone, Currency Row -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div>
-            <x-nationality-dropdown
+            <x-country-dropdown
                 name="country"
                 id="country"
                 label="Country"
-                :value="$club->country ?? old('country', 'Bahrain')"
+                :value="$club->country ?? old('country', 'BH')"
                 :required="true"
                 :error="null" />
         </div>

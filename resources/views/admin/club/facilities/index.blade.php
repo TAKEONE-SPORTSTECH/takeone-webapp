@@ -1,7 +1,7 @@
 @extends('layouts.admin-club')
 
 @section('club-admin-content')
-<div class="space-y-8" x-data="{ showAddFacilityModal: false, showEditFacilityModal: false, editingFacility: null }">
+<div class="space-y-8" id="facilitiesContainer" x-data="{ showAddFacilityModal: false, showEditFacilityModal: false, editingFacility: null }" @open-edit-facility.window="showEditFacilityModal = true">
     <!-- Header -->
     <div class="flex justify-between items-center pb-6 border-b border-gray-200">
         <div>
@@ -136,8 +136,7 @@
                     </p>
                 </div>
                 <button class="mt-4 inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-all shadow-md hover:shadow-lg"
-                        data-bs-toggle="modal"
-                        data-bs-target="#addFacilityModal">
+                        @click="showAddFacilityModal = true">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -148,10 +147,10 @@
         </div>
     </div>
     @endif
-</div>
 
-@include('admin.club.facilities.add')
-@include('admin.club.facilities.edit')
+    @include('admin.club.facilities.add')
+    @include('admin.club.facilities.edit')
+</div>
 
 @push('scripts')
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -160,28 +159,33 @@ let editFacilityMap = null;
 let editFacilityMarker = null;
 
 function deleteFacility(id) {
-    if (!confirm('Are you sure you want to delete this facility?')) {
-        return;
-    }
+    confirmAction({
+        title: 'Delete Facility',
+        message: 'This facility and its image will be permanently removed.',
+        confirmText: 'Delete',
+        type: 'danger',
+    }).then(confirmed => {
+        if (!confirmed) return;
 
-    fetch(`{{ url('admin/club/' . $club->id . '/facilities') }}/${id}`, {
-        method: 'DELETE',
-        headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'Accept': 'application/json',
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
-        } else {
-            alert(data.message || 'Failed to delete facility');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to delete facility');
+        fetch(`{{ url('admin/club/' . $club->id . '/facilities') }}/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message || 'Failed to delete facility');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to delete facility');
+        });
     });
 }
 
@@ -191,24 +195,27 @@ function editFacility(id) {
         method: 'GET',
         headers: {
             'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('HTTP ' + response.status);
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             populateEditForm(data.data);
-            // Use Alpine.js to show modal
-            const container = document.querySelector('[x-data*="showEditFacilityModal"]');
-            if (container && container.__x) {
-                container.__x.$data.showEditFacilityModal = true;
-            }
+            // Use Alpine.js event to show modal
+            window.dispatchEvent(new CustomEvent('open-edit-facility'));
         } else {
             alert(data.message || 'Failed to load facility data');
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to load facility data');
+        console.error('Edit facility error:', error);
+        alert('Failed to load facility data: ' + error.message);
     });
 }
 
@@ -243,8 +250,21 @@ function populateEditForm(facility) {
     document.getElementById('editImagePreviewSection').classList.add('hidden');
 }
 
-// Initialize edit modal map
-document.getElementById('editFacilityModal').addEventListener('shown.bs.modal', function() {
+// Initialize edit modal map when it becomes visible
+const editModal = document.getElementById('editFacilityModal');
+const editModalObserver = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+            const isVisible = editModal.style.display !== 'none' && !editModal.hasAttribute('hidden');
+            if (isVisible) {
+                initEditFacilityMap();
+            }
+        }
+    });
+});
+editModalObserver.observe(editModal, { attributes: true });
+
+function initEditFacilityMap() {
     const lat = parseFloat(document.getElementById('editFacilityLatitude').value) || {{ $club->latitude ?? 25.2048 }};
     const lng = parseFloat(document.getElementById('editFacilityLongitude').value) || {{ $club->longitude ?? 55.2708 }};
 
@@ -276,7 +296,7 @@ document.getElementById('editFacilityModal').addEventListener('shown.bs.modal', 
     }
 
     setTimeout(() => editFacilityMap.invalidateSize(), 100);
-});
+}
 
 // Update marker when lat/lng inputs change
 document.getElementById('editFacilityLatitude').addEventListener('change', updateEditMarkerFromInputs);

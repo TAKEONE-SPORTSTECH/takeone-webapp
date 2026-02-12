@@ -1,6 +1,5 @@
-/* Import Tailwind without preflight to avoid conflicts with Bootstrap */
-@import 'tailwindcss/theme';
-@import 'tailwindcss/utilities';
+/* Import Tailwind CSS */
+@import 'tailwindcss';
 
 /*
  * Minimal reset for Tailwind components that need clean base styles
@@ -76,7 +75,7 @@
     --color-destructive: hsl(0 50% 75%);
     --color-destructive-foreground: hsl(0 0% 100%);
 
-    --color-border: hsl(220 15% 88%);
+    --color-border: hsl(210 14% 80%);
     --color-input: hsl(220 15% 92%);
     --color-ring: hsl(250 60% 70%);
     --radius: 0.75rem;
@@ -241,6 +240,10 @@
         padding-right: 2.5rem;
     }
 
+    .form-select-sm {
+        @apply px-2 py-1 text-xs;
+    }
+
     .form-label {
         @apply block text-sm font-medium text-foreground mb-1.5;
     }
@@ -262,7 +265,25 @@
     }
 
     .form-switch .form-check-input {
-        @apply w-8 rounded-full;
+        width: 2.5em;
+        height: 1.25em;
+        margin-left: -2.5em;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='rgba(0,0,0,.25)'/%3e%3c/svg%3e");
+        background-position: left center;
+        @apply rounded-full cursor-pointer appearance-none border-0;
+        background-color: #dee2e6;
+        transition: background-position 0.15s ease-in-out, background-color 0.15s ease-in-out;
+    }
+
+    .form-switch .form-check-input:checked {
+        background-position: right center;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
+        background-color: #28a745;
+    }
+
+    .form-switch .form-check-input:focus {
+        outline: 0;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
     }
 
     .is-invalid {
@@ -424,11 +445,23 @@
     }
 
     .nav-tabs .nav-link {
-        @apply border-b-2 border-transparent -mb-px;
+        @apply border border-transparent rounded-t-md -mb-px bg-transparent text-black;
+    }
+
+    .nav-tabs .nav-link:hover:not(.active) {
+        @apply border-border border-b-transparent;
     }
 
     .nav-tabs .nav-link.active {
-        @apply border-primary text-primary;
+        @apply text-black bg-white border-border border-b-white;
+    }
+
+    .nav-fill .nav-item {
+        @apply flex-1 text-center;
+    }
+
+    .nav-fill .nav-link {
+        @apply w-full justify-center;
     }
 
     .nav-pills .nav-link {
@@ -440,11 +473,11 @@
     }
 
     .nav-link {
-        @apply px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer;
+        @apply inline-flex items-center px-4 py-2 text-sm font-medium text-black hover:text-black transition-colors cursor-pointer;
     }
 
     .nav-link.active {
-        @apply text-primary;
+        @apply text-black;
     }
 
     .nav-link.disabled {
@@ -462,6 +495,7 @@
     .tab-content > .tab-pane.active {
         @apply block;
     }
+
 
     /* ==================== NAVBAR ==================== */
     .navbar {
@@ -722,6 +756,55 @@
         @apply overflow-hidden transition-all duration-300;
     }
 
+    /* ==================== TYPOGRAPHY ==================== */
+    .h1 {
+        @apply text-4xl;
+    }
+
+    .h2 {
+        @apply text-3xl;
+    }
+
+    .h3 {
+        @apply text-2xl;
+    }
+
+    .h4 {
+        @apply text-xl;
+    }
+
+    .h5 {
+        @apply text-lg;
+    }
+
+    .h6 {
+        @apply text-base;
+    }
+
+    .small {
+        @apply text-sm;
+    }
+
+    .lead {
+        @apply text-xl font-light;
+    }
+
+    .display-1 {
+        @apply text-6xl font-light;
+    }
+
+    .display-2 {
+        @apply text-5xl font-light;
+    }
+
+    .display-3 {
+        @apply text-4xl font-light;
+    }
+
+    .display-4 {
+        @apply text-3xl font-light;
+    }
+
     /* ==================== UTILITIES ==================== */
     .visually-hidden {
         @apply sr-only;
@@ -768,16 +851,16 @@
     .bg-transparent { @apply bg-transparent; }
 
     /* Text colors */
-    .text-primary { @apply text-primary; }
+    .text-primary { color: #0d6efd !important; }
     .text-secondary { @apply text-secondary-foreground; }
-    .text-success { @apply text-success; }
-    .text-danger { @apply text-destructive; }
+    .text-success { color: #28a745 !important; }
+    .text-danger { color: #dc3545 !important; }
     .text-warning { @apply text-warning-foreground; }
     .text-info { @apply text-info; }
     .text-light { @apply text-muted; }
     .text-dark { @apply text-foreground; }
     .text-white { @apply text-white; }
-    .text-muted { @apply text-muted-foreground; }
+    .text-muted { color: #6b7280 !important; }
     .text-body { @apply text-foreground; }
 
     /* Border colors */
@@ -789,4 +872,11 @@
     .border-info { @apply border-info; }
     .border-light { @apply border-muted; }
     .border-dark { @apply border-foreground; }
+
+    /* Margin end (Bootstrap me-*) */
+    .me-1 { @apply mr-1; }
+    .me-2 { @apply mr-2; }
+    .me-3 { @apply mr-3; }
+    .me-4 { @apply mr-4; }
+    .me-5 { @apply mr-5; }
 }

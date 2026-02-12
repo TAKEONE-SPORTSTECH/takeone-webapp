@@ -1,11 +1,24 @@
 <!-- Edit Facility Modal -->
-<div class="modal fade" id="editFacilityModal" tabindex="-1" aria-labelledby="editFacilityModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg rounded-xl overflow-hidden">
+<div x-show="showEditFacilityModal"
+     x-cloak
+     id="editFacilityModal"
+     class="fixed inset-0 z-50 overflow-y-auto"
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-200"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0">
+    <!-- Backdrop -->
+    <div class="fixed inset-0 bg-black/50" @click="showEditFacilityModal = false"></div>
+
+    <!-- Modal Content -->
+    <div class="flex min-h-full items-center justify-center p-4">
+        <div class="modal-content border-0 shadow-lg w-full max-w-3xl relative rounded-xl overflow-hidden" @click.stop>
             <!-- Header -->
             <div class="modal-header border-b border-gray-200 px-6 py-4">
                 <h5 class="modal-title text-lg font-semibold" id="editFacilityModalLabel">Edit Facility</h5>
-                <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" data-bs-dismiss="modal" aria-label="Close">
+                <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" @click="showEditFacilityModal = false">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
@@ -154,7 +167,7 @@
             <div class="modal-footer border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
                 <button type="button"
                         class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                        data-bs-dismiss="modal">
+                        @click="showEditFacilityModal = false">
                     Cancel
                 </button>
                 <button type="submit"

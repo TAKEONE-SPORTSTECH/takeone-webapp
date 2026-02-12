@@ -75,13 +75,14 @@
         }
         .online-indicator {
             position: absolute;
-            bottom: -2px;
-            right: -2px;
+            bottom: 2px;
+            right: 2px;
             width: 10px;
             height: 10px;
             background-color: hsl(150 40% 70%);
             border-radius: 50%;
             border: 2px solid white;
+            z-index: 1;
         }
 
         /* Nav icon button styles */
@@ -235,7 +236,13 @@
                             <button @click="open = !open" class="flex items-center cursor-pointer" type="button">
                                 <div class="avatar-container">
                                     @if(Auth::user()->profile_picture)
-                                        <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}" alt="{{ Auth::user()->full_name }}" class="user-avatar">
+                                        <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}"
+                                             alt="{{ Auth::user()->full_name }}"
+                                             class="user-avatar"
+                                             onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';">
+                                        <span class="user-avatar-placeholder" style="display:none;">
+                                            {{ strtoupper(substr(Auth::user()->full_name, 0, 1)) }}
+                                        </span>
                                     @else
                                         <span class="user-avatar-placeholder">
                                             {{ strtoupper(substr(Auth::user()->full_name, 0, 1)) }}
@@ -323,7 +330,13 @@
                     <div class="flex items-center gap-3 px-2 py-3 mb-3 bg-white rounded-lg">
                         <div class="avatar-container">
                             @if(Auth::user()->profile_picture)
-                                <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}" alt="{{ Auth::user()->full_name }}" class="user-avatar">
+                                <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}"
+                                     alt="{{ Auth::user()->full_name }}"
+                                     class="user-avatar"
+                                     onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';">
+                                <span class="user-avatar-placeholder" style="display:none;">
+                                    {{ strtoupper(substr(Auth::user()->full_name, 0, 1)) }}
+                                </span>
                             @else
                                 <span class="user-avatar-placeholder">
                                     {{ strtoupper(substr(Auth::user()->full_name, 0, 1)) }}
@@ -384,6 +397,9 @@
     <main>
         @yield('content')
     </main>
+
+    <!-- Confirm Dialog -->
+    <x-confirm-dialog />
 
     <!-- Toast Container (Alpine.js) -->
     <div x-data="toastManager()" x-init="init()" class="fixed top-4 right-4 z-50 space-y-2">
@@ -483,11 +499,184 @@
         @endauth
     </script>
 
-    <!-- jQuery (required for Select2) -->
+    <!-- jQuery (required for plugins and legacy code) -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-    <!-- Select2 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <!-- Bootstrap Bridge: handles data-bs-* attributes without Bootstrap JS -->
+    <script>
+    (function() {
+        // --- Modal Support ---
+        function showModal(modal) {
+            if (!modal) return;
+            // Create backdrop
+            let backdrop = document.getElementById('bs-bridge-backdrop');
+            if (!backdrop) {
+                backdrop = document.createElement('div');
+                backdrop.id = 'bs-bridge-backdrop';
+                backdrop.className = 'modal-backdrop';
+                backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:49;';
+                backdrop.addEventListener('click', function() {
+                    const openModal = document.querySelector('.modal.show');
+                    if (openModal && !openModal.hasAttribute('data-bs-backdrop')) hideModal(openModal);
+                });
+            }
+            document.body.appendChild(backdrop);
+            document.body.style.overflow = 'hidden';
+            modal.style.display = 'block';
+            modal.classList.add('show');
+            modal.style.zIndex = '50';
+            modal.style.position = 'fixed';
+            modal.style.inset = '0';
+            modal.style.overflowY = 'auto';
+            // Fire shown event
+            modal.dispatchEvent(new Event('shown.bs.modal'));
+            // jQuery event compat
+            if (window.jQuery) jQuery(modal).trigger('shown.bs.modal');
+        }
+
+        function hideModal(modal) {
+            if (!modal) return;
+            modal.classList.remove('show');
+            modal.style.display = '';
+            modal.style.zIndex = '';
+            modal.style.position = '';
+            modal.style.inset = '';
+            modal.style.overflowY = '';
+            const backdrop = document.getElementById('bs-bridge-backdrop');
+            if (backdrop) backdrop.remove();
+            document.body.style.overflow = '';
+            // Fire hidden event
+            modal.dispatchEvent(new Event('hidden.bs.modal'));
+            if (window.jQuery) jQuery(modal).trigger('hidden.bs.modal');
+        }
+
+        // jQuery .modal() compat
+        if (window.jQuery) {
+            const origFn = jQuery.fn.modal;
+            jQuery.fn.modal = function(action) {
+                return this.each(function() {
+                    if (action === 'hide') hideModal(this);
+                    else if (action === 'show') showModal(this);
+                });
+            };
+        }
+
+        // --- Alert Dismiss Support ---
+        function dismissAlert(alert) {
+            if (!alert) return;
+            alert.style.transition = 'opacity 0.15s';
+            alert.style.opacity = '0';
+            setTimeout(() => alert.remove(), 150);
+        }
+
+        // --- Tab Support ---
+        function activateTab(tabBtn) {
+            const target = tabBtn.getAttribute('data-bs-target');
+            if (!target) return;
+            // Deactivate siblings
+            const parent = tabBtn.closest('.nav, [role="tablist"]');
+            if (parent) {
+                parent.querySelectorAll('[data-bs-toggle="tab"], [data-bs-toggle="pill"]').forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.setAttribute('aria-selected', 'false');
+                    const pane = document.querySelector(btn.getAttribute('data-bs-target'));
+                    if (pane) { pane.classList.remove('show', 'active'); pane.style.display = 'none'; }
+                });
+            }
+            // Activate clicked
+            tabBtn.classList.add('active');
+            tabBtn.setAttribute('aria-selected', 'true');
+            const pane = document.querySelector(target);
+            if (pane) { pane.classList.add('show', 'active'); pane.style.display = ''; }
+        }
+
+        // --- Dropdown Support ---
+        function toggleDropdown(btn) {
+            const menu = btn.nextElementSibling || btn.parentElement.querySelector('.dropdown-menu');
+            if (!menu) return;
+            const isOpen = menu.classList.contains('show');
+            // Close all open dropdowns first
+            document.querySelectorAll('.dropdown-menu.show').forEach(m => {
+                m.classList.remove('show');
+                m.style.display = '';
+            });
+            if (!isOpen) {
+                menu.classList.add('show');
+                menu.style.display = 'block';
+            }
+        }
+
+        // --- Tooltip Support (CSS-only title attr) ---
+        // data-bs-toggle="tooltip" just uses native title - no action needed
+
+        // --- Event Delegation ---
+        document.addEventListener('click', function(e) {
+            const target = e.target.closest('[data-bs-toggle]');
+            if (target) {
+                const toggle = target.getAttribute('data-bs-toggle');
+                if (toggle === 'modal') {
+                    e.preventDefault();
+                    const selector = target.getAttribute('data-bs-target');
+                    if (selector) showModal(document.querySelector(selector));
+                } else if (toggle === 'tab' || toggle === 'pill') {
+                    e.preventDefault();
+                    activateTab(target);
+                } else if (toggle === 'dropdown') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleDropdown(target);
+                }
+            }
+
+            // Dismiss handlers
+            const dismissTarget = e.target.closest('[data-bs-dismiss]');
+            if (dismissTarget) {
+                const dismiss = dismissTarget.getAttribute('data-bs-dismiss');
+                if (dismiss === 'modal') {
+                    e.preventDefault();
+                    hideModal(dismissTarget.closest('.modal'));
+                } else if (dismiss === 'alert') {
+                    e.preventDefault();
+                    dismissAlert(dismissTarget.closest('.alert'));
+                }
+            }
+
+            // Close dropdowns when clicking outside
+            if (!e.target.closest('.dropdown')) {
+                document.querySelectorAll('.dropdown-menu.show').forEach(m => {
+                    m.classList.remove('show');
+                    m.style.display = '';
+                });
+            }
+        });
+
+        // Close modals with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const openModal = document.querySelector('.modal.show');
+                if (openModal && !openModal.hasAttribute('data-bs-backdrop')) hideModal(openModal);
+            }
+        });
+
+        // Expose globally for programmatic use
+        window.bsModal = { show: showModal, hide: hideModal };
+
+        // --- Bootstrap constructor compat ---
+        window.bootstrap = window.bootstrap || {};
+        window.bootstrap.Modal = function(el) {
+            this._el = el;
+            this.show = function() { showModal(el); };
+            this.hide = function() { hideModal(el); };
+        };
+        window.bootstrap.Tab = function(el) {
+            this._el = el;
+            this.show = function() { activateTab(el); };
+        };
+        window.bootstrap.Tooltip = function(el) {
+            // CSS-only tooltip via title attr - no-op
+        };
+    })();
+    </script>
 
     <!-- Vite Compiled Assets -->
     @vite(['resources/js/app.js'])

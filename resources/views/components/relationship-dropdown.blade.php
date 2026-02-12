@@ -1,6 +1,6 @@
-@props(['name' => 'gender', 'id' => 'gender', 'value' => '', 'required' => false, 'error' => null, 'label' => 'Gender'])
+@props(['name' => 'relationship_type', 'id' => 'relationship_type', 'value' => '', 'required' => false, 'error' => null, 'label' => 'Relationship'])
 
-<div class="mb-4" x-data="genderDropdown_{{ $id }}()">
+<div class="mb-4" x-data="relationshipDropdown_{{ $id }}()">
     <label class="block text-sm font-medium text-gray-600 mb-1">
         {{ $label }}@if($required) <span class="text-red-500">*</span>@endif
     </label>
@@ -47,7 +47,7 @@
 </div>
 
 <script>
-    function genderDropdown_{{ $id }}() {
+    function relationshipDropdown_{{ $id }}() {
         return {
             open: false,
             dropUp: false,
@@ -56,8 +56,11 @@
             selectedIcon: '',
             selectedColor: '',
             items: [
-                { value: 'm', label: 'Male', icon: 'bi bi-gender-male', color: 'text-blue-500' },
-                { value: 'f', label: 'Female', icon: 'bi bi-gender-female', color: 'text-pink-500' }
+                { value: 'son',      label: 'Son',      icon: 'bi bi-person-fill',       color: 'text-blue-500' },
+                { value: 'daughter', label: 'Daughter', icon: 'bi bi-person-fill',       color: 'text-pink-500' },
+                { value: 'spouse',   label: 'Wife',     icon: 'bi bi-heart-fill',        color: 'text-red-500' },
+                { value: 'sponsor',  label: 'Sponsor',  icon: 'bi bi-person-badge-fill', color: 'text-amber-500' },
+                { value: 'other',    label: 'Other',    icon: 'bi bi-people-fill',       color: 'text-gray-500' }
             ],
 
             init() {
@@ -75,7 +78,7 @@
                 if (!this.open) {
                     const rect = this.$refs.trigger.getBoundingClientRect();
                     const spaceBelow = window.innerHeight - rect.bottom;
-                    this.dropUp = spaceBelow < 150;
+                    this.dropUp = spaceBelow < 200;
                 }
                 this.open = !this.open;
             },

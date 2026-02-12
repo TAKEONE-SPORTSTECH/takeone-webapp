@@ -40,7 +40,7 @@ class FamilyController extends Controller
                 return $relationship->dependent->full_name;
             });
 
-        return view('family.dashboard', compact('user', 'dependents'));
+        return view('family.index', compact('user', 'dependents'));
     }
 
     /**
@@ -348,7 +348,7 @@ class FamilyController extends Controller
         $guardian = Auth::user();
         $dependent = $this->familyService->createDependent($guardian, $validated);
 
-        return redirect()->route('family.dashboard')
+        return redirect()->route('members.index')
             ->with('success', 'Family member added successfully.');
     }
 
@@ -633,7 +633,7 @@ class FamilyController extends Controller
                 ->with('success', 'Member updated successfully.');
         }
 
-        return redirect()->route('family.dashboard')
+        return redirect()->route('members.index')
             ->with('success', 'Family member updated successfully.');
     }
 
@@ -990,7 +990,7 @@ class FamilyController extends Controller
                 ->with('success', $memberName . ' has been removed successfully.');
         }
 
-        return redirect()->route('family.dashboard')
+        return redirect()->route('members.index')
             ->with('success', 'Family member removed successfully.');
     }
 }

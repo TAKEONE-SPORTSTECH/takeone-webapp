@@ -107,11 +107,11 @@
                                 :error="$errors->first('timezone')" />
                         </div>
                         <div>
-                            <x-nationality-dropdown
+                            <x-country-dropdown
                                 name="country"
                                 id="country"
                                 label="Country"
-                                :value="old('country', 'Bahrain')"
+                                :value="old('country', 'BH')"
                                 :required="false"
                                 :error="$errors->first('country')" />
                         </div>

@@ -2513,7 +2513,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 <!-- Edit Profile Modal Component -->
-<x-edit-profile-modal
+<x-profile-modal
     :user="$relationship->dependent"
     :formAction="$relationship->relationship_type === 'admin_view' ? route('admin.platform.members.update', $relationship->dependent->id) : ($relationship->relationship_type === 'self' ? route('profile.update') : route('family.update', $relationship->dependent->id))"
     formMethod="PUT"

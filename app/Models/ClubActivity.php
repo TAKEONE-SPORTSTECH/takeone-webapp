@@ -68,7 +68,7 @@ class ClubActivity extends Model
     public function packages(): BelongsToMany
     {
         return $this->belongsToMany(ClubPackage::class, 'club_package_activities', 'activity_id', 'package_id')
-                    ->withPivot('instructor_id')
+                    ->withPivot('instructor_id', 'schedule')
                     ->withTimestamps();
     }
 }

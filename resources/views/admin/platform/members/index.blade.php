@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
 @section('admin-content')
-<div>
+<div x-data>
     <!-- Page Header -->
     <div class="mb-4">
         <h1 class="text-2xl font-bold mb-2">All Members</h1>
@@ -14,11 +14,11 @@
             <input type="text" id="memberSearch" class="form-control" placeholder="Search members by name, phone, nationality, or gender..." value="{{ $search ?? '' }}">
         </div>
         <div class="flex gap-2">
-            <button class="btn btn-outline-primary">
+            <button class="btn btn-outline-primary" @click="$dispatch('open-member-create-modal')">
                 <i class="bi bi-person-plus mr-2"></i>Add Child Member
             </button>
-            <button class="btn btn-primary">
-                <i class="bi bi-plus-circle mr-2"></i>Create Member
+            <button class="btn btn-primary" @click="$dispatch('open-member-create-modal')">
+                <i class="bi bi-plus-circle mr-2"></i>Add Member
             </button>
         </div>
     </div>
@@ -27,152 +27,7 @@
     @if($members->count() > 0)
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4" id="membersGrid">
             @foreach($members as $member)
-                <div class="member-card-wrapper"
-                     data-member-name="{{ $member->full_name }}"
-                     data-member-phone="{{ $member->formatted_mobile ?? '' }}"
-                     data-member-nationality="{{ $member->nationality ?? '' }}"
-                     data-member-gender="{{ $member->gender ?? '' }}">
-                    <a href="{{ route('member.show', $member->id) }}" class="no-underline">
-                        <div class="card h-full shadow-sm border overflow-hidden flex flex-col family-card">
-                            <!-- Header with gradient background -->
-                            <div class="p-4 pb-3" style="background: linear-gradient(135deg, {{ $member->gender == 'm' ? 'rgba(147, 51, 234, 0.1) 0%, rgba(147, 51, 234, 0.05) 50%' : 'rgba(214, 51, 132, 0.1) 0%, rgba(214, 51, 132, 0.05) 50%' }}, transparent 100%);">
-                                <div class="flex items-start gap-3">
-                                    <div class="relative">
-                                        <div class="rounded-full border-4 border-white shadow w-20 h-20 overflow-hidden" style="box-shadow: 0 0 0 2px {{ $member->gender == 'm' ? 'rgba(147, 51, 234, 0.3)' : 'rgba(214, 51, 132, 0.3)' }} !important;">
-                                            @if($member->profile_picture)
-                                                <img src="{{ asset('storage/' . $member->profile_picture) }}" alt="{{ $member->full_name }}" class="w-full h-full object-cover" style="image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges;">
-                                            @else
-                                                <div class="w-full h-full flex items-center justify-center text-white font-bold text-xl" style="background: linear-gradient(135deg, {{ $member->gender == 'm' ? '#8b5cf6 0%, #7c3aed 100%' : '#d63384 0%, #a61e4d 100%' }});">
-                                                    {{ strtoupper(substr($member->full_name, 0, 1)) }}
-                                                </div>
-                                            @endif
-                                        </div>
-                                    </div>
-                                    <div class="grow min-w-0">
-                                        <h5 class="font-bold mb-2 truncate">{{ $member->full_name }}</h5>
-                                        <div class="flex flex-wrap gap-2">
-                                            @php
-                                                $age = $member->age;
-                                                $ageGroup = 'Adult';
-                                                if ($age < 2) {
-                                                    $ageGroup = 'Infant';
-                                                } elseif ($age < 4) {
-                                                    $ageGroup = 'Toddler';
-                                                } elseif ($age < 6) {
-                                                    $ageGroup = 'Preschooler';
-                                                } elseif ($age < 13) {
-                                                    $ageGroup = 'Child';
-                                                } elseif ($age < 20) {
-                                                    $ageGroup = 'Teenager';
-                                                } elseif ($age < 40) {
-                                                    $ageGroup = 'Young Adult';
-                                                } elseif ($age < 60) {
-                                                    $ageGroup = 'Adult';
-                                                } else {
-                                                    $ageGroup = 'Senior';
-                                                }
-                                            @endphp
-                                            <span class="badge {{ $member->gender == 'm' ? 'bg-primary' : 'bg-danger' }}">{{ $ageGroup }}</span>
-                                            @if($member->member_clubs_count > 0)
-                                                <span class="badge bg-success">{{ $member->member_clubs_count }} {{ Str::plural('Club', $member->member_clubs_count) }}</span>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Contact Info -->
-                            <div class="px-4 py-3 bg-muted border-t border-b">
-                                @if($member->mobile && isset($member->mobile['number']))
-                                    <div class="flex items-center gap-2 text-sm mb-2">
-                                        <i class="bi bi-telephone-fill {{ $member->gender == 'm' ? 'text-primary' : 'text-destructive' }}"></i>
-                                        <span class="font-medium text-muted-foreground">{{ $member->mobile['code'] ?? '' }} {{ $member->mobile['number'] }}</span>
-                                    </div>
-                                @endif
-                                @if($member->email)
-                                    <div class="flex items-center gap-2 text-sm">
-                                        <i class="bi bi-envelope-fill {{ $member->gender == 'm' ? 'text-primary' : 'text-destructive' }}"></i>
-                                        <span class="font-medium text-muted-foreground truncate">{{ $member->email }}</span>
-                                    </div>
-                                @endif
-                            </div>
-
-                            <!-- Details -->
-                            <div class="px-4 py-3 grow">
-                                <div class="grid grid-cols-2 gap-3 mb-3">
-                                    <div>
-                                        <div class="text-xs text-muted-foreground uppercase font-medium mb-1 tracking-wide">Gender</div>
-                                        <div class="font-semibold text-muted-foreground capitalize">
-                                            <i class="bi {{ $member->gender == 'm' ? 'bi-man text-primary' : 'bi-woman text-destructive' }} mr-1"></i>
-                                            {{ $member->gender == 'm' ? 'Male' : 'Female' }}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div class="text-xs text-muted-foreground uppercase font-medium mb-1 tracking-wide">Age</div>
-                                        <div class="font-semibold text-muted-foreground">{{ $member->age }} years</div>
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-3 mb-3">
-                                    <div>
-                                        <div class="text-xs text-muted-foreground uppercase font-medium mb-1 tracking-wide">Nationality</div>
-                                        <div class="font-semibold text-muted-foreground text-lg nationality-display" data-iso3="{{ $member->nationality }}">{{ $member->nationality }}</div>
-                                    </div>
-                                    <div>
-                                        <div class="text-xs text-muted-foreground uppercase font-medium mb-1 tracking-wide">Horoscope</div>
-                                        <div class="font-semibold text-muted-foreground">
-                                            @php
-                                                $horoscopeSymbols = [
-                                                    'Aries' => '♈',
-                                                    'Taurus' => '♉',
-                                                    'Gemini' => '♊',
-                                                    'Cancer' => '♋',
-                                                    'Leo' => '♌',
-                                                    'Virgo' => '♍',
-                                                    'Libra' => '♎',
-                                                    'Scorpio' => '♏',
-                                                    'Sagittarius' => '♐',
-                                                    'Capricorn' => '♑',
-                                                    'Aquarius' => '♒',
-                                                    'Pisces' => '♓'
-                                                ];
-                                                $horoscope = $member->horoscope ?? 'N/A';
-                                                $symbol = $horoscopeSymbols[$horoscope] ?? '';
-                                            @endphp
-                                            {{ $symbol }} {{ $horoscope }}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="pt-2 border-t">
-                                    <div class="flex justify-between items-center text-sm mb-2">
-                                        <span class="text-muted-foreground font-medium">Next Birthday</span>
-                                        <span class="font-semibold text-muted-foreground">
-                                            @if($member->birthdate)
-                                                {{ $member->birthdate->copy()->year(now()->year)->isFuture()
-                                                    ? $member->birthdate->copy()->year(now()->year)->diffForHumans(['parts' => 2, 'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE])
-                                                    : $member->birthdate->copy()->year(now()->year + 1)->diffForHumans(['parts' => 2, 'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE]) }}
-                                            @else
-                                                N/A
-                                            @endif
-                                        </span>
-                                    </div>
-                                    <div class="flex justify-between items-center text-sm">
-                                        <span class="text-muted-foreground font-medium">Member Since</span>
-                                        <span class="font-semibold text-muted-foreground">{{ $member->created_at->format('d/m/Y') }}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Footer -->
-                            <div class="px-4 py-2 {{ $member->gender == 'm' ? 'bg-primary' : 'bg-destructive' }} border-t">
-                                <div class="flex items-center justify-center gap-2 text-sm">
-                                    <span class="font-medium text-white">
-                                        PLATFORM MEMBER
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
+                <x-member-card :member="$member" :href="route('member.show', $member->id)" />
             @endforeach
         </div>
 
@@ -196,6 +51,16 @@
         </div>
     @endif
 </div>
+
+{{-- Member Create Modal --}}
+<x-profile-modal
+    mode="create"
+    title="Add Platform Member"
+    subtitle="Fill in the details to add a new platform member"
+    :showPasswordFields="true"
+    :formAction="route('family.store')"
+    formMethod="POST"
+/>
 
 @push('styles')
 <style>

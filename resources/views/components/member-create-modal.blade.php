@@ -140,9 +140,10 @@
                                 @enderror
                             </div>
                             <div>
-                                <x-nationality-dropdown
+                                <x-country-dropdown
                                     name="nationality"
                                     id="nationality"
+                                    label="Nationality"
                                     :value="old('nationality')"
                                     :required="true"
                                     :error="$errors->first('nationality')" />
