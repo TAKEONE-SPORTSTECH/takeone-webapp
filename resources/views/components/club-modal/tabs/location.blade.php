@@ -37,56 +37,17 @@
         </div>
     </div>
 
-    <!-- Address -->
+    <!-- Location Map -->
     <div class="mb-4">
-        <label for="address" class="form-label">Street Address</label>
-        <textarea class="form-control"
-                  id="address"
-                  name="address"
-                  rows="2"
-                  placeholder="Enter the full street address of your club">{{ $club->address ?? old('address') }}</textarea>
-        <small class="text-muted-foreground">Full address including building number, street name, area, etc.</small>
-    </div>
-
-    <!-- Map -->
-    <div class="mb-4">
-        <label class="form-label">Location on Map</label>
-        <div id="modalClubMap" class="rounded-lg border border-border" style="height: 400px;"></div>
-        <small class="text-muted-foreground">Drag the marker to set the exact location of your club</small>
-    </div>
-
-    <!-- GPS Coordinates -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <div>
-            <label for="gps_lat" class="form-label">
-                <i class="bi bi-geo-alt mr-1"></i>Latitude
-            </label>
-            <input type="number"
-                   class="form-control"
-                   id="gps_lat"
-                   name="gps_lat"
-                   value="{{ $club->gps_lat ?? old('gps_lat') }}"
-                   step="0.0000001"
-                   min="-90"
-                   max="90"
-                   placeholder="e.g., 26.0667">
-            <small class="text-muted-foreground">Decimal degrees (-90 to 90)</small>
-        </div>
-        <div>
-            <label for="gps_long" class="form-label">
-                <i class="bi bi-geo-alt mr-1"></i>Longitude
-            </label>
-            <input type="number"
-                   class="form-control"
-                   id="gps_long"
-                   name="gps_long"
-                   value="{{ $club->gps_long ?? old('gps_long') }}"
-                   step="0.0000001"
-                   min="-180"
-                   max="180"
-                   placeholder="e.g., 50.5577">
-            <small class="text-muted-foreground">Decimal degrees (-180 to 180)</small>
-        </div>
+        <x-location-map
+            id="clubLoc"
+            :lat="$club->gps_lat ?? null"
+            :lng="$club->gps_long ?? null"
+            :address="$club->address ?? old('address', '')"
+            :defaultLat="26.0667"
+            :defaultLng="50.5577"
+            height="400px"
+        />
     </div>
 
     <!-- Google Maps Link -->
@@ -121,10 +82,12 @@
 
 @push('scripts')
 <script>
-    let clubMap = null;
-    let clubMarker = null;
+    const CLUB_MAP_ID = 'clubLoc';
     let countriesData = null;
-    let mapInitialized = false;
+
+    function getClubMapInstance() {
+        return window.LocationMap ? window.LocationMap['_locationMap_' + CLUB_MAP_ID] : null;
+    }
 
     document.addEventListener('DOMContentLoaded', function() {
         // Load countries data
@@ -133,7 +96,6 @@
             .then(countries => {
                 countriesData = countries;
 
-                // Device-based preselection on modal open (create mode only)
                 const clubForm = document.getElementById('clubForm');
                 if (clubForm && clubForm.dataset.mode === 'create') {
                     detectAndPreselectCountries(countries);
@@ -143,40 +105,30 @@
             })
             .catch(error => console.error('Error loading countries:', error));
 
-        // Initialize map when location tab is shown
-        const locationTab = document.getElementById('location-tab');
-        const clubModal = document.getElementById('clubModal');
-
-        function tryInitializeMap() {
-            if (!mapInitialized && locationTab && locationTab.classList.contains('active')) {
-                setTimeout(() => {
-                    initializeMap();
-                    mapInitialized = true;
-                }, 100);
-            } else if (clubMap) {
-                setTimeout(() => {
-                    clubMap.invalidateSize();
-                }, 100);
+        // Initialize map when location tab becomes visible
+        function initClubMap() {
+            const mapEl = document.getElementById('clubLocMap');
+            if (mapEl && mapEl.offsetParent !== null) {
+                LocationMap.init(CLUB_MAP_ID, 26.0667, 50.5577);
+                LocationMap.refresh(CLUB_MAP_ID);
             }
         }
 
-        if (locationTab) {
-            locationTab.addEventListener('shown.bs.tab', tryInitializeMap);
+        // Watch for Alpine x-show toggling the location tab panel
+        const mapContainer = document.getElementById('clubLocContainer');
+        if (mapContainer) {
+            const tabPanel = mapContainer.closest('[x-show]');
+            if (tabPanel) {
+                new MutationObserver(initClubMap)
+                    .observe(tabPanel, { attributes: true, attributeFilter: ['style'] });
+            }
         }
 
+        // Also try on modal shown event (Bootstrap Bridge fires this)
+        const clubModal = document.getElementById('clubModal');
         if (clubModal) {
             clubModal.addEventListener('shown.bs.modal', function() {
-                mapInitialized = false;
-                setTimeout(tryInitializeMap, 150);
-            });
-
-            clubModal.addEventListener('hidden.bs.modal', function() {
-                if (clubMap) {
-                    clubMap.remove();
-                    clubMap = null;
-                    clubMarker = null;
-                    mapInitialized = false;
-                }
+                setTimeout(initClubMap, 150);
             });
         }
     });
@@ -232,67 +184,12 @@
             const lat = parseFloat(country.latitude);
             const lng = parseFloat(country.longitude);
             if (!isNaN(lat) && !isNaN(lng)) {
-                const latInput = document.getElementById('gps_lat');
-                const lngInput = document.getElementById('gps_long');
-                if (latInput && !latInput.value) latInput.value = lat.toFixed(7);
-                if (lngInput && !lngInput.value) lngInput.value = lng.toFixed(7);
+                const latInput = document.getElementById('clubLocLat');
+                const lngInput = document.getElementById('clubLocLng');
+                if (latInput && !latInput.value) latInput.value = lat.toFixed(6);
+                if (lngInput && !lngInput.value) lngInput.value = lng.toFixed(6);
+                LocationMap.setPosition(CLUB_MAP_ID, lat, lng);
             }
-        }
-    }
-
-    function initializeMap() {
-        const mapElement = document.getElementById('modalClubMap');
-        if (!mapElement) return;
-
-        const lat = parseFloat(document.getElementById('gps_lat')?.value) || 26.0667;
-        const lng = parseFloat(document.getElementById('gps_long')?.value) || 50.5577;
-
-        clubMap = L.map('modalClubMap', {
-            attributionControl: false
-        }).setView([lat, lng], 13);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '',
-            maxZoom: 19
-        }).addTo(clubMap);
-
-        clubMarker = L.marker([lat, lng], {
-            draggable: true
-        }).addTo(clubMap);
-
-        clubMarker.on('dragend', function(e) {
-            const position = e.target.getLatLng();
-            updateCoordinates(position.lat, position.lng);
-        });
-
-        const latInput = document.getElementById('gps_lat');
-        const lngInput = document.getElementById('gps_long');
-
-        if (latInput && lngInput) {
-            latInput.addEventListener('change', updateMarkerPosition);
-            lngInput.addEventListener('change', updateMarkerPosition);
-        }
-
-        setTimeout(() => {
-            if (clubMap) clubMap.invalidateSize();
-        }, 100);
-    }
-
-    function updateCoordinates(lat, lng) {
-        const latInput = document.getElementById('gps_lat');
-        const lngInput = document.getElementById('gps_long');
-        if (latInput) latInput.value = lat.toFixed(7);
-        if (lngInput) lngInput.value = lng.toFixed(7);
-    }
-
-    function updateMarkerPosition() {
-        const lat = parseFloat(document.getElementById('gps_lat')?.value);
-        const lng = parseFloat(document.getElementById('gps_long')?.value);
-
-        if (!isNaN(lat) && !isNaN(lng) && clubMarker && clubMap) {
-            const newPos = L.latLng(lat, lng);
-            clubMarker.setLatLng(newPos);
-            clubMap.setView(newPos, clubMap.getZoom());
         }
     }
 
@@ -352,19 +249,15 @@
             const lng = parseFloat(country.longitude);
 
             if (!isNaN(lat) && !isNaN(lng)) {
-                const latInput = document.getElementById('gps_lat');
-                const lngInput = document.getElementById('gps_long');
+                const latInput = document.getElementById('clubLocLat');
+                const lngInput = document.getElementById('clubLocLng');
                 const shouldUpdate = !latInput?.value || !lngInput?.value;
 
                 if (shouldUpdate) {
-                    updateCoordinates(lat, lng);
-                }
-
-                if (clubMarker && clubMap) {
-                    if (shouldUpdate) {
-                        clubMarker.setLatLng([lat, lng]);
-                    }
-                    clubMap.setView([lat, lng], 10);
+                    LocationMap.setPosition(CLUB_MAP_ID, lat, lng);
+                } else {
+                    const inst = getClubMapInstance();
+                    if (inst) inst.map.setView([lat, lng], 10);
                 }
             }
         }
@@ -386,11 +279,9 @@
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
 
-                updateCoordinates(lat, lng);
-                if (clubMarker && clubMap) {
-                    clubMarker.setLatLng([lat, lng]);
-                    clubMap.setView([lat, lng], 15);
-                }
+                LocationMap.setPosition(CLUB_MAP_ID, lat, lng);
+                const inst = getClubMapInstance();
+                if (inst) inst.map.setView([lat, lng], 15);
 
                 btn.disabled = false;
                 btn.innerHTML = originalHtml;
@@ -422,8 +313,9 @@
             const lat = parseFloat(country.latitude);
             const lng = parseFloat(country.longitude);
 
-            if (!isNaN(lat) && !isNaN(lng) && clubMap) {
-                clubMap.setView([lat, lng], 10);
+            const inst = getClubMapInstance();
+            if (!isNaN(lat) && !isNaN(lng) && inst) {
+                inst.map.setView([lat, lng], 10);
 
                 if (typeof Toast !== 'undefined') {
                     Toast.info('Info', `Centered on ${country.name}`);
@@ -461,11 +353,9 @@
             }
 
             if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
-                updateCoordinates(lat, lng);
-                if (clubMarker && clubMap) {
-                    clubMarker.setLatLng([lat, lng]);
-                    clubMap.setView([lat, lng], 15);
-                }
+                LocationMap.setPosition(CLUB_MAP_ID, lat, lng);
+                const inst = getClubMapInstance();
+                if (inst) inst.map.setView([lat, lng], 15);
 
                 if (typeof Toast !== 'undefined') {
                     Toast.success('Success', 'Coordinates extracted from Google Maps link');

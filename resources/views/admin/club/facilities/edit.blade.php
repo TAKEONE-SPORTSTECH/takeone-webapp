@@ -53,57 +53,14 @@
                                 <i class="bi bi-geo-alt"></i>
                                 Location
                             </h6>
-
-                            <!-- Address -->
-                            <div class="space-y-2">
-                                <label for="editFacilityAddress" class="block text-sm font-medium text-gray-700">Address</label>
-                                <div class="flex gap-2">
-                                    <input type="text"
-                                           id="editFacilityAddress"
-                                           name="address"
-                                           placeholder="Enter the facility address (e.g., Bahrain, Manama)"
-                                           class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                                    <button type="button"
-                                            id="searchEditAddressBtn"
-                                            class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center gap-2">
-                                        <i class="bi bi-search"></i>
-                                        Search
-                                    </button>
-                                </div>
-                                <p class="text-xs text-gray-500">Enter an address and click Search to find it on the map</p>
-                            </div>
-
-                            <!-- Map -->
-                            <div class="space-y-2">
-                                <label class="block text-sm font-medium text-gray-700">Location on Map <span class="text-xs text-gray-500">(Click or drag marker to set)</span></label>
-                                <div id="editFacilityMap" class="h-64 rounded-lg overflow-hidden border border-gray-300 bg-gray-100"></div>
-                            </div>
-
-                            <!-- Lat/Lng Inputs -->
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="space-y-2">
-                                    <label for="editFacilityLatitude" class="block text-xs font-medium text-gray-500">
-                                        <i class="bi bi-geo mr-1"></i>Latitude
-                                    </label>
-                                    <input type="number"
-                                           id="editFacilityLatitude"
-                                           name="gps_lat"
-                                           step="any"
-                                           placeholder="25.2048"
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                                </div>
-                                <div class="space-y-2">
-                                    <label for="editFacilityLongitude" class="block text-xs font-medium text-gray-500">
-                                        <i class="bi bi-geo mr-1"></i>Longitude
-                                    </label>
-                                    <input type="number"
-                                           id="editFacilityLongitude"
-                                           name="gps_long"
-                                           step="any"
-                                           placeholder="55.2708"
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                                </div>
-                            </div>
+                            <x-location-map
+                                id="editFacility"
+                                latName="gps_lat"
+                                lngName="gps_long"
+                                addressName="address"
+                                :defaultLat="$club->latitude ?? 25.2048"
+                                :defaultLng="$club->longitude ?? 55.2708"
+                            />
                         </div>
 
                         <!-- Availability Options -->

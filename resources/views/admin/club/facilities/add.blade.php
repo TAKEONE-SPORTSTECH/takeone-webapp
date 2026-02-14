@@ -61,60 +61,15 @@
                                 <i class="bi bi-geo-alt"></i>
                                 Location
                             </h6>
-
-                            <!-- Address -->
-                            <div class="space-y-2">
-                                <label for="facilityAddress" class="block text-sm font-medium text-gray-700">Address <span class="text-red-500">*</span></label>
-                                <div class="flex gap-2">
-                                    <input type="text"
-                                           id="facilityAddress"
-                                           name="address"
-                                           required
-                                           placeholder="Enter the facility address (e.g., Bahrain, Manama)"
-                                           class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                                    <button type="button"
-                                            id="searchAddressBtn"
-                                            class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center gap-2">
-                                        <i class="bi bi-search"></i>
-                                        Search
-                                    </button>
-                                </div>
-                                <p class="text-xs text-gray-500">Enter an address and click Search to find it on the map</p>
-                            </div>
-
-                            <!-- Map -->
-                            <div class="space-y-2">
-                                <label class="block text-sm font-medium text-gray-700">Location on Map <span class="text-xs text-gray-500">(Click or drag marker to set)</span></label>
-                                <div id="facilityMap" class="h-64 rounded-lg overflow-hidden border border-gray-300 bg-gray-100"></div>
-                            </div>
-
-                            <!-- Lat/Lng Inputs -->
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="space-y-2">
-                                    <label for="facilityLatitude" class="block text-xs font-medium text-gray-500">
-                                        <i class="bi bi-geo mr-1"></i>Latitude
-                                    </label>
-                                    <input type="number"
-                                           id="facilityLatitude"
-                                           name="latitude"
-                                           step="any"
-                                           required
-                                           placeholder="25.2048"
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                                </div>
-                                <div class="space-y-2">
-                                    <label for="facilityLongitude" class="block text-xs font-medium text-gray-500">
-                                        <i class="bi bi-geo mr-1"></i>Longitude
-                                    </label>
-                                    <input type="number"
-                                           id="facilityLongitude"
-                                           name="longitude"
-                                           step="any"
-                                           required
-                                           placeholder="55.2708"
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                                </div>
-                            </div>
+                            <x-location-map
+                                id="addFacility"
+                                latName="latitude"
+                                lngName="longitude"
+                                addressName="address"
+                                :defaultLat="$club->latitude ?? 25.2048"
+                                :defaultLng="$club->longitude ?? 55.2708"
+                                :required="true"
+                            />
                             <input type="hidden" id="facilityMapZoom" name="map_zoom" value="13">
                         </div>
 
@@ -237,7 +192,6 @@
 </div>
 
 @push('styles')
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
     .day-checkbox {
         display: none;
@@ -283,11 +237,8 @@
 @endpush
 
 @push('scripts')
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    let facilityMap = null;
-    let facilityMarker = null;
     let operatingHourIndex = 0;
     let rentableTimeIndex = 0;
 
@@ -302,126 +253,18 @@ document.addEventListener('DOMContentLoaded', function() {
     ];
 
     // Initialize map when modal opens
-    const modal = document.getElementById('addFacilityModal');
-
-    // Watch for modal becoming visible using MutationObserver
-    const observer = new MutationObserver(function(mutations) {
+    const addModal = document.getElementById('addFacilityModal');
+    const addMapObserver = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
             if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-                const isVisible = modal.style.display !== 'none' && !modal.hasAttribute('hidden');
+                const isVisible = addModal.style.display !== 'none' && !addModal.hasAttribute('hidden');
                 if (isVisible) {
-                    initAddFacilityMap();
+                    LocationMap.init('addFacility', {{ $club->latitude ?? 25.2048 }}, {{ $club->longitude ?? 55.2708 }});
                 }
             }
         });
     });
-    observer.observe(modal, { attributes: true });
-
-    function initAddFacilityMap() {
-        if (!facilityMap) {
-            // Default to Dubai coordinates, or use club's location if available
-            const defaultLat = {{ $club->latitude ?? 25.2048 }};
-            const defaultLng = {{ $club->longitude ?? 55.2708 }};
-
-            facilityMap = L.map('facilityMap').setView([defaultLat, defaultLng], 13);
-
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(facilityMap);
-
-            facilityMarker = L.marker([defaultLat, defaultLng], { draggable: true }).addTo(facilityMap);
-
-            // Update inputs when marker is dragged
-            facilityMarker.on('dragend', function(e) {
-                const pos = e.target.getLatLng();
-                document.getElementById('facilityLatitude').value = pos.lat.toFixed(6);
-                document.getElementById('facilityLongitude').value = pos.lng.toFixed(6);
-            });
-
-            // Update marker when map is clicked
-            facilityMap.on('click', function(e) {
-                facilityMarker.setLatLng(e.latlng);
-                document.getElementById('facilityLatitude').value = e.latlng.lat.toFixed(6);
-                document.getElementById('facilityLongitude').value = e.latlng.lng.toFixed(6);
-            });
-
-            // Update zoom value
-            facilityMap.on('zoomend', function() {
-                document.getElementById('facilityMapZoom').value = facilityMap.getZoom();
-            });
-
-            // Set initial values
-            document.getElementById('facilityLatitude').value = defaultLat;
-            document.getElementById('facilityLongitude').value = defaultLng;
-        }
-        setTimeout(() => facilityMap.invalidateSize(), 100);
-    }
-
-    // Update marker when lat/lng inputs change
-    document.getElementById('facilityLatitude').addEventListener('change', updateMarkerFromInputs);
-    document.getElementById('facilityLongitude').addEventListener('change', updateMarkerFromInputs);
-
-    function updateMarkerFromInputs() {
-        const lat = parseFloat(document.getElementById('facilityLatitude').value);
-        const lng = parseFloat(document.getElementById('facilityLongitude').value);
-        if (!isNaN(lat) && !isNaN(lng) && facilityMarker) {
-            facilityMarker.setLatLng([lat, lng]);
-            facilityMap.setView([lat, lng]);
-        }
-    }
-
-    // Geocode address and update map
-    document.getElementById('searchAddressBtn').addEventListener('click', function() {
-        const address = document.getElementById('facilityAddress').value.trim();
-        if (!address) {
-            alert('Please enter an address to search');
-            return;
-        }
-
-        const btn = this;
-        const originalText = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Searching...';
-
-        // Use Nominatim (OpenStreetMap) for geocoding - free, no API key needed
-        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data && data.length > 0) {
-                    const result = data[0];
-                    const lat = parseFloat(result.lat);
-                    const lng = parseFloat(result.lon);
-
-                    // Update inputs
-                    document.getElementById('facilityLatitude').value = lat.toFixed(6);
-                    document.getElementById('facilityLongitude').value = lng.toFixed(6);
-
-                    // Update map and marker
-                    if (facilityMap && facilityMarker) {
-                        facilityMarker.setLatLng([lat, lng]);
-                        facilityMap.setView([lat, lng], 15);
-                    }
-                } else {
-                    alert('Address not found. Try a more specific address or use the map to set the location manually.');
-                }
-            })
-            .catch(error => {
-                console.error('Geocoding error:', error);
-                alert('Failed to search for address. Please try again or set the location manually on the map.');
-            })
-            .finally(() => {
-                btn.disabled = false;
-                btn.innerHTML = originalText;
-            });
-    });
-
-    // Also allow pressing Enter in the address field to search
-    document.getElementById('facilityAddress').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            document.getElementById('searchAddressBtn').click();
-        }
-    });
+    addMapObserver.observe(addModal, { attributes: true });
 
     // Operating Hours Management
     const operatingHoursContainer = document.getElementById('operatingHoursContainer');

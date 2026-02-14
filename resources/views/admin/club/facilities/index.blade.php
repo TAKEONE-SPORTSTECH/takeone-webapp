@@ -153,11 +153,7 @@
 </div>
 
 @push('scripts')
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-let editFacilityMap = null;
-let editFacilityMarker = null;
-
 function deleteFacility(id) {
     confirmAction({
         title: 'Delete Facility',
@@ -227,8 +223,8 @@ function populateEditForm(facility) {
     // Populate fields
     document.getElementById('editFacilityName').value = facility.name || '';
     document.getElementById('editFacilityAddress').value = facility.address || '';
-    document.getElementById('editFacilityLatitude').value = facility.gps_lat || '';
-    document.getElementById('editFacilityLongitude').value = facility.gps_long || '';
+    document.getElementById('editFacilityLat').value = facility.gps_lat || '';
+    document.getElementById('editFacilityLng').value = facility.gps_long || '';
     document.getElementById('editIsAvailable').checked = facility.is_available == 1;
 
     // Handle current image
@@ -250,122 +246,23 @@ function populateEditForm(facility) {
     document.getElementById('editImagePreviewSection').classList.add('hidden');
 }
 
-// Initialize edit modal map when it becomes visible
+// Initialize edit map when modal becomes visible
 const editModal = document.getElementById('editFacilityModal');
-const editModalObserver = new MutationObserver(function(mutations) {
+const editMapObserver = new MutationObserver(function(mutations) {
     mutations.forEach(function(mutation) {
         if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
             const isVisible = editModal.style.display !== 'none' && !editModal.hasAttribute('hidden');
             if (isVisible) {
-                initEditFacilityMap();
+                const lat = parseFloat(document.getElementById('editFacilityLat').value) || {{ $club->latitude ?? 25.2048 }};
+                const lng = parseFloat(document.getElementById('editFacilityLng').value) || {{ $club->longitude ?? 55.2708 }};
+                LocationMap.init('editFacility', {{ $club->latitude ?? 25.2048 }}, {{ $club->longitude ?? 55.2708 }});
+                LocationMap.setPosition('editFacility', lat, lng);
+                LocationMap.refresh('editFacility');
             }
         }
     });
 });
-editModalObserver.observe(editModal, { attributes: true });
-
-function initEditFacilityMap() {
-    const lat = parseFloat(document.getElementById('editFacilityLatitude').value) || {{ $club->latitude ?? 25.2048 }};
-    const lng = parseFloat(document.getElementById('editFacilityLongitude').value) || {{ $club->longitude ?? 55.2708 }};
-
-    if (!editFacilityMap) {
-        editFacilityMap = L.map('editFacilityMap').setView([lat, lng], 13);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(editFacilityMap);
-
-        editFacilityMarker = L.marker([lat, lng], { draggable: true }).addTo(editFacilityMap);
-
-        // Update inputs when marker is dragged
-        editFacilityMarker.on('dragend', function(e) {
-            const pos = e.target.getLatLng();
-            document.getElementById('editFacilityLatitude').value = pos.lat.toFixed(6);
-            document.getElementById('editFacilityLongitude').value = pos.lng.toFixed(6);
-        });
-
-        // Update marker when map is clicked
-        editFacilityMap.on('click', function(e) {
-            editFacilityMarker.setLatLng(e.latlng);
-            document.getElementById('editFacilityLatitude').value = e.latlng.lat.toFixed(6);
-            document.getElementById('editFacilityLongitude').value = e.latlng.lng.toFixed(6);
-        });
-    } else {
-        editFacilityMap.setView([lat, lng], 13);
-        editFacilityMarker.setLatLng([lat, lng]);
-    }
-
-    setTimeout(() => editFacilityMap.invalidateSize(), 100);
-}
-
-// Update marker when lat/lng inputs change
-document.getElementById('editFacilityLatitude').addEventListener('change', updateEditMarkerFromInputs);
-document.getElementById('editFacilityLongitude').addEventListener('change', updateEditMarkerFromInputs);
-
-function updateEditMarkerFromInputs() {
-    const lat = parseFloat(document.getElementById('editFacilityLatitude').value);
-    const lng = parseFloat(document.getElementById('editFacilityLongitude').value);
-    if (!isNaN(lat) && !isNaN(lng) && editFacilityMarker) {
-        editFacilityMarker.setLatLng([lat, lng]);
-        editFacilityMap.setView([lat, lng]);
-    }
-}
-
-// Geocode address and update map
-document.getElementById('searchEditAddressBtn').addEventListener('click', function() {
-    const address = document.getElementById('editFacilityAddress').value.trim();
-    if (!address) {
-        alert('Please enter an address to search');
-        return;
-    }
-
-    const btn = this;
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Searching...';
-
-    // Use Nominatim (OpenStreetMap) for geocoding - free, no API key needed
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data && data.length > 0) {
-                const result = data[0];
-                const lat = parseFloat(result.lat);
-                const lng = parseFloat(result.lon);
-
-                // Update inputs
-                document.getElementById('editFacilityLatitude').value = lat.toFixed(6);
-                document.getElementById('editFacilityLongitude').value = lng.toFixed(6);
-
-                // Update map and marker
-                if (editFacilityMap && editFacilityMarker) {
-                    editFacilityMarker.setLatLng([lat, lng]);
-                    editFacilityMap.setView([lat, lng], 15);
-                }
-
-                // Optionally update address with the full address from Nominatim
-                // document.getElementById('editFacilityAddress').value = result.display_name;
-            } else {
-                alert('Address not found. Try a more specific address or use the map to set the location manually.');
-            }
-        })
-        .catch(error => {
-            console.error('Geocoding error:', error);
-            alert('Failed to search for address. Please try again or set the location manually on the map.');
-        })
-        .finally(() => {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-        });
-});
-
-// Also allow pressing Enter in the address field to search
-document.getElementById('editFacilityAddress').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        document.getElementById('searchEditAddressBtn').click();
-    }
-});
+editMapObserver.observe(editModal, { attributes: true });
 
 // Image preview for edit form
 document.getElementById('editFacilityImage').addEventListener('change', function() {
@@ -422,7 +319,6 @@ document.getElementById('editFacilityForm').addEventListener('submit', function(
 @endpush
 
 @push('styles')
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 .line-clamp-1 {
     display: -webkit-box;
