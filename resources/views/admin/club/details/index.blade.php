@@ -233,46 +233,24 @@
                     </h5>
                 </div>
                 <div class="card-body space-y-4">
-                    <div>
-                        <label class="form-label">Address</label>
-                        <input type="text" name="address" class="form-control" value="{{ old('address', $club->address) }}" placeholder="Enter full address">
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="form-label">
-                                <i class="bi bi-geo mr-1"></i>GPS Latitude
-                            </label>
-                            <input type="number" name="gps_lat" class="form-control" step="any" value="{{ old('gps_lat', $club->gps_lat) }}" placeholder="e.g., 26.2285">
-                        </div>
-                        <div>
-                            <label class="form-label">
-                                <i class="bi bi-geo mr-1"></i>GPS Longitude
-                            </label>
-                            <input type="number" name="gps_long" class="form-control" step="any" value="{{ old('gps_long', $club->gps_long) }}" placeholder="e.g., 50.5860">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="form-label">Interactive Map</label>
-                        <p class="text-muted small mb-2">Click on the map to set location or drag the marker</p>
-                        <div id="locationMap" class="rounded border" style="height: 400px; background: #f0f0f0;">
-                            <div class="flex items-center justify-center h-100 text-muted">
-                                <div class="text-center">
-                                    <i class="bi bi-map" style="font-size: 3rem;"></i>
-                                    <p class="mt-2">Map will load here</p>
-                                    <small>Enter coordinates above or click "Use My Location"</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mt-2">
-                            <button type="button" class="btn btn-outline-primary btn-sm" id="useMyLocationBtn">
-                                <i class="bi bi-crosshair mr-1"></i>Use My Location
-                            </button>
-                            @if($club->gps_lat && $club->gps_long)
-                            <a href="https://www.google.com/maps?q={{ $club->gps_lat }},{{ $club->gps_long }}" target="_blank" class="btn btn-outline-secondary btn-sm">
-                                <i class="bi bi-box-arrow-up-right mr-1"></i>View on Google Maps
-                            </a>
-                            @endif
-                        </div>
+                    <x-location-map
+                        id="clubDetailsLoc"
+                        :lat="old('gps_lat', $club->gps_lat)"
+                        :lng="old('gps_long', $club->gps_long)"
+                        :address="old('address', $club->address ?? '')"
+                        :defaultLat="26.2285"
+                        :defaultLng="50.5860"
+                        height="400px"
+                    />
+                    <div class="flex gap-2 flex-wrap">
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="useMyLocationBtn">
+                            <i class="bi bi-crosshair mr-1"></i>Use My Location
+                        </button>
+                        @if($club->gps_lat && $club->gps_long)
+                        <a href="https://www.google.com/maps?q={{ $club->gps_lat }},{{ $club->gps_long }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-box-arrow-up-right mr-1"></i>View on Google Maps
+                        </a>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -511,6 +489,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     content.style.display = 'none';
                 }
             });
+
+            // Initialize map when location tab is shown
+            if (targetTab === 'location') {
+                setTimeout(initDetailsMap, 150);
+            }
         });
     });
 
@@ -525,20 +508,49 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Initialize map when location tab becomes visible
+    const DETAILS_MAP_ID = 'clubDetailsLoc';
+    let detailsMapInitialized = false;
+
+    function initDetailsMap() {
+        if (detailsMapInitialized) {
+            window.LocationMap.refresh(DETAILS_MAP_ID);
+            return;
+        }
+        if (window.LocationMap) {
+            window.LocationMap.init(DETAILS_MAP_ID, 26.2285, 50.5860);
+            detailsMapInitialized = true;
+        }
+    }
+
     // Use my location button
     const useLocationBtn = document.getElementById('useMyLocationBtn');
     if (useLocationBtn) {
         useLocationBtn.addEventListener('click', function() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    document.querySelector('input[name="gps_lat"]').value = position.coords.latitude.toFixed(7);
-                    document.querySelector('input[name="gps_long"]').value = position.coords.longitude.toFixed(7);
-                }, function(error) {
-                    alert('Unable to get your location. Please enter coordinates manually.');
-                });
-            } else {
+            if (!navigator.geolocation) {
                 alert('Geolocation is not supported by your browser.');
+                return;
             }
+            const btn = this;
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span>Getting location...';
+
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                if (window.LocationMap) {
+                    window.LocationMap.setPosition(DETAILS_MAP_ID, lat, lng);
+                    const inst = window.LocationMap['_locationMap_' + DETAILS_MAP_ID];
+                    if (inst) inst.map.setView([lat, lng], 15);
+                }
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }, function(error) {
+                alert('Unable to get your location. Please enter coordinates manually.');
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            });
         });
     }
 
