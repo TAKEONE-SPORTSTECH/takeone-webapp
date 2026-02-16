@@ -150,6 +150,11 @@
             </div>
         </div>
     </div>
+
+    {{-- Join Club Modal --}}
+    @include('platform.partials.join-club-modal')
+
+    <x-toast-notification />
 </div>
 
 @push('styles')
@@ -260,7 +265,300 @@ function exploreApp() {
         allClubs: [],
         countriesData: [],
 
+        // Join Club Modal
+        joinModal: {
+            open: false,
+            step: 'select-members', // 'select-members' | 'package-selection' | 'payment-review'
+            clubId: null,
+            clubSlug: '',
+            clubName: '',
+            currency: 'USD',
+            enrollmentFee: 0,
+            familyMembers: @json($familyMembers),
+            selectedMemberIds: [],
+            registrants: [],
+            packages: [],
+            loadingPackages: false,
+            payLater: false,
+            paymentScreenshot: null,
+            paymentPreview: null,
+            addChildOpen: false,
+            newChild: { name: '', dateOfBirth: '', gender: 'm', nationality: '', bloodType: '' },
+            submitting: false,
+            vatPercentage: 0,
+            vatRegNumber: null,
+
+            show(clubId, clubSlug, clubName) {
+                this.open = true;
+                this.step = 'select-members';
+                this.clubId = clubId;
+                this.clubSlug = clubSlug;
+                this.clubName = clubName;
+                this.selectedMemberIds = [];
+                this.registrants = [];
+                this.packages = [];
+                this.payLater = false;
+                this.paymentScreenshot = null;
+                this.paymentPreview = null;
+                this.submitting = false;
+                document.body.style.overflow = 'hidden';
+                this.fetchClubPackages(clubSlug);
+            },
+
+            close() {
+                this.open = false;
+                document.body.style.overflow = '';
+            },
+
+            async fetchClubPackages(clubSlug) {
+                this.loadingPackages = true;
+                try {
+                    const response = await fetch(`/clubs/${clubSlug}/packages-json`, {
+                        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content }
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.packages = data.packages || [];
+                        this.currency = data.currency || 'USD';
+                        this.enrollmentFee = Number(data.enrollment_fee || 0);
+                        this.vatPercentage = Number(data.vat_percentage || 0);
+                        this.vatRegNumber = data.vat_reg_number || null;
+                    }
+                } catch (error) {
+                    console.error('Error fetching packages:', error);
+                } finally {
+                    this.loadingPackages = false;
+                }
+            },
+
+            toggleMember(member) {
+                const idx = this.selectedMemberIds.indexOf(member.id);
+                if (idx === -1) {
+                    this.selectedMemberIds.push(member.id);
+                } else {
+                    this.selectedMemberIds.splice(idx, 1);
+                }
+            },
+
+            isMemberSelected(memberId) {
+                return this.selectedMemberIds.includes(memberId);
+            },
+
+            buildRegistrants() {
+                this.registrants = this.familyMembers
+                    .filter(m => this.selectedMemberIds.includes(m.id))
+                    .map(m => ({
+                        id: this._uid(),
+                        userId: m.id,
+                        type: m.type === 'guardian' ? 'self' : 'child',
+                        packageId: '',
+                        name: m.name,
+                        gender: m.gender || '',
+                        dateOfBirth: m.birthdate || '',
+                        avatarUrl: m.profile_picture ? '/storage/' + m.profile_picture : null,
+                        relationship: m.relationship
+                    }));
+            },
+
+            addChild() {
+                this.newChild = { name: '', dateOfBirth: '', gender: 'm', nationality: '', bloodType: '' };
+                this.addChildOpen = true;
+            },
+
+            confirmAddChild() {
+                if (!this.newChild.name || !this.newChild.dateOfBirth) return;
+                const newMember = {
+                    id: 'new_' + this._uid(),
+                    name: this.newChild.name,
+                    gender: this.newChild.gender,
+                    birthdate: this.newChild.dateOfBirth,
+                    age: this.calculateAge(this.newChild.dateOfBirth),
+                    profile_picture: null,
+                    type: 'dependent',
+                    relationship: 'New',
+                    nationality: this.newChild.nationality,
+                    bloodType: this.newChild.bloodType,
+                    isNew: true
+                };
+                this.familyMembers.push(newMember);
+                this.selectedMemberIds.push(newMember.id);
+                this.addChildOpen = false;
+            },
+
+            selectPackage(registrantId, packageId) {
+                this.registrants = this.registrants.map(r => {
+                    if (r.id === registrantId) {
+                        return { ...r, packageId: r.packageId == packageId ? '' : packageId };
+                    }
+                    return r;
+                });
+            },
+
+            getPackageForRegistrant(reg) {
+                return this.packages.find(p => p.id == reg.packageId) || null;
+            },
+
+            formatCurrency(amount) {
+                try {
+                    const hasDecimals = amount % 1 !== 0;
+                    return new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: this.currency,
+                        minimumFractionDigits: hasDecimals ? 2 : 0,
+                        maximumFractionDigits: hasDecimals ? 2 : 0
+                    }).format(amount);
+                } catch {
+                    return amount + ' ' + this.currency;
+                }
+            },
+
+            calculateTotal() {
+                const subtotal = parseFloat(this.calculateSubtotal());
+                const vat = parseFloat(this.calculateVat());
+                return (subtotal + vat).toFixed(2);
+            },
+
+            handleFileUpload(event) {
+                const file = event.target.files?.[0];
+                if (file) {
+                    this.paymentScreenshot = file;
+                    const reader = new FileReader();
+                    reader.onload = (e) => { this.paymentPreview = e.target.result; };
+                    reader.readAsDataURL(file);
+                }
+            },
+
+            goBack() {
+                if (this.step === 'select-members') {
+                    this.close();
+                } else if (this.step === 'package-selection') {
+                    this.step = 'select-members';
+                } else if (this.step === 'payment-review') {
+                    this.step = 'package-selection';
+                }
+            },
+
+            goNext() {
+                if (this.step === 'select-members') {
+                    if (this.selectedMemberIds.length === 0) {
+                        Toast.warning('No Members Selected', 'Please select at least one person to register.');
+                        return;
+                    }
+                    this.buildRegistrants();
+                    this.step = 'package-selection';
+                } else if (this.step === 'package-selection') {
+                    const missing = this.registrants.filter(r => !r.packageId);
+                    if (missing.length > 0) {
+                        Toast.warning('Packages Required', 'Please select a package for all registrants.');
+                        return;
+                    }
+                    this.step = 'payment-review';
+                } else if (this.step === 'payment-review') {
+                    this.handleSubmit();
+                }
+            },
+
+            async handleSubmit() {
+                if (!this.payLater && !this.paymentScreenshot) {
+                    Toast.warning('Payment Required', 'Please upload a payment screenshot or select "Pay Later".');
+                    return;
+                }
+                if (this.submitting) return;
+                this.submitting = true;
+
+                try {
+                    const formData = new FormData();
+                    formData.append('club_id', this.clubId);
+                    formData.append('pay_later', this.payLater ? '1' : '0');
+
+                    this.registrants.forEach((reg, i) => {
+                        formData.append(`registrants[${i}][type]`, reg.type);
+                        formData.append(`registrants[${i}][name]`, reg.name);
+                        formData.append(`registrants[${i}][user_id]`, reg.userId || '');
+                        formData.append(`registrants[${i}][package_id]`, reg.packageId);
+                        formData.append(`registrants[${i}][gender]`, reg.gender || '');
+                        if (reg.dateOfBirth) formData.append(`registrants[${i}][date_of_birth]`, reg.dateOfBirth);
+                    });
+
+                    if (this.paymentScreenshot) {
+                        formData.append('payment_screenshot', this.paymentScreenshot);
+                    }
+
+                    const response = await fetch('/clubs/join', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+                            'Accept': 'application/json'
+                        },
+                        body: formData
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        this.close();
+                        Toast.success('Registration Submitted', 'Your registration has been submitted successfully!');
+                    } else {
+                        Toast.error('Registration Failed', data.message || 'Please try again.');
+                    }
+                } catch (error) {
+                    console.error('Registration error:', error);
+                    Toast.error('Error', 'An error occurred during registration. Please try again.');
+                } finally {
+                    this.submitting = false;
+                }
+            },
+
+            calculateAge(dateOfBirth) {
+                if (!dateOfBirth) return 0;
+                const today = new Date();
+                const birth = new Date(dateOfBirth);
+                let age = today.getFullYear() - birth.getFullYear();
+                const m = today.getMonth() - birth.getMonth();
+                if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+                return age;
+            },
+
+            calculateSubtotal() {
+                let packageTotal = this.registrants.reduce((sum, reg) => {
+                    const pkg = this.packages.find(p => p.id == reg.packageId);
+                    return sum + Number(pkg?.price || 0);
+                }, 0);
+                let enrollmentTotal = this.enrollmentFee * this.firstTimerCount();
+                return (packageTotal + enrollmentTotal).toFixed(2);
+            },
+
+            calculateVat() {
+                if (!this.vatPercentage || this.vatPercentage <= 0) return '0.00';
+                const subtotal = parseFloat(this.calculateSubtotal());
+                return (subtotal * this.vatPercentage / 100).toFixed(2);
+            },
+
+            firstTimerCount() {
+                return this.registrants.length;
+            },
+
+            firstTimerNames() {
+                return this.registrants.map(r => r.name).join(', ');
+            },
+
+            genderLabel(g) {
+                if (g === 'm') return 'Male';
+                if (g === 'f') return 'Female';
+                return g ? g.charAt(0).toUpperCase() + g.slice(1) : '';
+            },
+
+            _uid() {
+                return Math.random().toString(36).substr(2, 9);
+            }
+        },
+
         init() {
+            // Expose join modal opener globally so dynamically rendered buttons can use it
+            const self = this;
+            window.openJoinModal = function(clubId, clubSlug, clubName) {
+                self.joinModal.show(clubId, clubSlug, clubName);
+            };
+
             // Load countries from JSON file
             fetch('/data/countries.json')
                 .then(response => response.json())
@@ -598,7 +896,7 @@ function exploreApp() {
                 }
 
                 card.innerHTML = `
-                    <div class="card border shadow-sm overflow-hidden club-card cursor-pointer" style="border-radius: 0;" onclick="window.location.href='/clubs/${club.id}'">
+                    <div class="card border shadow-sm overflow-hidden club-card cursor-pointer" style="border-radius: 0;" onclick="window.location.href='/clubs/${club.slug}'">
                         <!-- Cover Image -->
                         <div class="relative overflow-hidden h-48">
                             ${coverImageHtml}
@@ -669,7 +967,7 @@ function exploreApp() {
 
                             <!-- Action Buttons -->
                             <div class="flex gap-2">
-                                <button class="btn btn-primary flex-1 font-semibold text-sm">
+                                <button class="btn btn-primary flex-1 font-semibold text-sm" onclick="event.stopPropagation(); event.preventDefault(); window.openJoinModal(${club.id}, '${club.slug}', '${club.club_name.replace(/'/g, "\\\\'")}')">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1">
                                         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
                                         <circle cx="9" cy="7" r="4"></circle>
@@ -678,7 +976,7 @@ function exploreApp() {
                                     </svg>
                                     Join Club
                                 </button>
-                                <a href="/clubs/${club.id}" class="btn btn-outline-primary flex-1 font-semibold text-sm text-center">View Details</a>
+                                <a href="/clubs/${club.slug}" class="btn btn-outline-primary flex-1 font-semibold text-sm text-center">View Details</a>
                             </div>
                         </div>
                     </div>

@@ -25,7 +25,7 @@
 
             <!-- Body -->
             <div class="modal-body px-6 py-4">
-                <form id="addFacilityForm" action="{{ route('admin.club.facilities.store', $club->id) }}" method="POST" enctype="multipart/form-data">
+                <form id="addFacilityForm" action="{{ route('admin.club.facilities.store', $club->slug) }}" method="POST" enctype="multipart/form-data">
                     @csrf
 
                     <div class="space-y-6">

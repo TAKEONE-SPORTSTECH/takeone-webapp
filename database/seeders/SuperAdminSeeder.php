@@ -23,7 +23,7 @@ class SuperAdminSeeder extends Seeder
                 'password' => Hash::make('SuperAdmin@2024'),
                 'email_verified_at' => now(),
                 'mobile' => ['code' => '+971', 'number' => '501234567'],
-                'gender' => 'male',
+                'gender' => 'm',
                 'nationality' => 'UAE',
             ]
         );

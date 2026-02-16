@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\FamilyController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\InvoiceController;
-use App\Http\Controllers\ClubController;
+use App\Http\Controllers\PlatformController;
 use App\Http\Controllers\InstructorReviewController;
 use App\Http\Controllers\TrainerController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
@@ -78,10 +78,12 @@ Route::post('/email/verification-notification', function (Request $request) {
 
 // Explore routes (accessible to authenticated users)
 Route::middleware(['auth'])->group(function () {
-    Route::get('/explore', [ClubController::class, 'index'])->name('clubs.explore');
-    Route::get('/clubs/nearby', [ClubController::class, 'nearby'])->name('clubs.nearby');
-    Route::get('/clubs/all', [ClubController::class, 'all'])->name('clubs.all');
-    Route::get('/clubs/{club}', [ClubController::class, 'show'])->name('clubs.show');
+    Route::get('/explore', [PlatformController::class, 'index'])->name('clubs.explore');
+    Route::get('/clubs/nearby', [PlatformController::class, 'nearby'])->name('clubs.nearby');
+    Route::get('/clubs/all', [PlatformController::class, 'all'])->name('clubs.all');
+    Route::get('/clubs/{slug}', [PlatformController::class, 'show'])->name('clubs.show');
+    Route::get('/clubs/{slug}/packages-json', [PlatformController::class, 'clubPackages'])->name('clubs.packages.json');
+    Route::post('/clubs/join', [PlatformController::class, 'joinClub'])->name('clubs.join');
     Route::get('/trainer/{instructor}', [TrainerController::class, 'show'])->name('trainer.show');
 });
 
@@ -161,6 +163,8 @@ Route::middleware(['auth', 'verified'])->prefix('admin/club/{club}')->name('admi
     Route::get('/financials', [App\Http\Controllers\Admin\ClubAdminController::class, 'financials'])->name('financials');
     Route::post('/financials/income', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeIncome'])->name('financials.income');
     Route::post('/financials/expense', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeExpense'])->name('financials.expense');
+    Route::put('/financials/{transaction}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateTransaction'])->name('financials.update');
+    Route::delete('/financials/{transaction}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyTransaction'])->name('financials.destroy');
     Route::get('/messages', [App\Http\Controllers\Admin\ClubAdminController::class, 'messages'])->name('messages');
     Route::post('/messages/send', [App\Http\Controllers\Admin\ClubAdminController::class, 'sendMessage'])->name('messages.send');
     Route::get('/analytics', [App\Http\Controllers\Admin\ClubAdminController::class, 'analytics'])->name('analytics');

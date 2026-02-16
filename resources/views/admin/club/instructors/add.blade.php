@@ -92,54 +92,42 @@
                                 </div>
                             </div>
 
-                            <div class="space-y-2">
-                                <label class="block text-sm font-medium text-gray-700">Phone Number <span class="text-red-500">*</span></label>
-                                <div class="flex gap-2">
-                                    <select name="country_code" class="w-24 px-2 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                                        <option value="+973">+973</option>
-                                        <option value="+971">+971</option>
-                                        <option value="+966">+966</option>
-                                        <option value="+1">+1</option>
-                                        <option value="+44">+44</option>
-                                    </select>
-                                    <input type="tel" name="phone" placeholder="Phone number" class="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                                </div>
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Phone Number <span class="text-red-500">*</span></label>
+                                <x-country-code-dropdown
+                                    name="country_code"
+                                    id="instructor_country_code"
+                                    value="+973"
+                                    :required="true"
+                                >
+                                    <input type="tel" name="phone" placeholder="Phone number" required
+                                           class="w-full px-4 py-3 text-base bg-transparent focus:outline-none">
+                                </x-country-code-dropdown>
                             </div>
 
                             <div class="grid grid-cols-2 gap-4">
-                                <div class="space-y-2">
-                                    <label class="block text-sm font-medium text-gray-700">Gender <span class="text-red-500">*</span></label>
-                                    <select name="gender" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                                        <option value="male">Male</option>
-                                        <option value="female">Female</option>
-                                    </select>
-                                </div>
-                                <div class="space-y-2">
-                                    <label class="block text-sm font-medium text-gray-700">Date of Birth <span class="text-red-500">*</span></label>
-                                    <input type="date" name="birthdate" max="{{ date('Y-m-d') }}" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                                </div>
+                                <x-gender-dropdown
+                                    name="gender"
+                                    id="instructor_gender"
+                                    label="Gender"
+                                    :required="true"
+                                />
+                                <x-birthdate-dropdown
+                                    name="birthdate"
+                                    id="instructor_birthdate"
+                                    label="Date of Birth"
+                                    :required="true"
+                                    :minAge="16"
+                                    :maxAge="80"
+                                />
                             </div>
 
-                            <div class="space-y-2">
-                                <label class="block text-sm font-medium text-gray-700">Nationality <span class="text-red-500">*</span></label>
-                                <select name="nationality" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                                    <option value="">Select country...</option>
-                                    <option value="BH">Bahrain</option>
-                                    <option value="AE">United Arab Emirates</option>
-                                    <option value="SA">Saudi Arabia</option>
-                                    <option value="KW">Kuwait</option>
-                                    <option value="QA">Qatar</option>
-                                    <option value="OM">Oman</option>
-                                    <option value="IN">India</option>
-                                    <option value="PK">Pakistan</option>
-                                    <option value="PH">Philippines</option>
-                                    <option value="EG">Egypt</option>
-                                    <option value="JO">Jordan</option>
-                                    <option value="LB">Lebanon</option>
-                                    <option value="US">United States</option>
-                                    <option value="GB">United Kingdom</option>
-                                </select>
-                            </div>
+                            <x-country-dropdown
+                                name="nationality"
+                                id="instructor_nationality"
+                                label="Nationality"
+                                :required="true"
+                            />
                         </div>
                     </div>
 

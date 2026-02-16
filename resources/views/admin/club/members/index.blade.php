@@ -554,7 +554,7 @@ async function searchUser() {
 
 function createUserCard(user, isDependent = false) {
     const card = document.createElement('div');
-    const isMale = user.gender === 'm' || user.gender === 'male';
+    const isMale = user.gender === 'm';
 
     card.className = `search-result-card p-4 border-2 rounded-xl cursor-pointer transition-all ${user.is_member ? 'border-gray-200 bg-gray-50 opacity-60' : 'border-gray-200 hover:border-purple-400'} ${isDependent ? 'ml-8' : ''}`;
     card.dataset.userId = user.id;

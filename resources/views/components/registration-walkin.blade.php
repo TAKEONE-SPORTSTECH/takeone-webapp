@@ -157,12 +157,12 @@
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Gender <span class="text-red-500">*</span></label>
                                         <div class="grid grid-cols-2 gap-2">
-                                            <button type="button" @click="child.gender = 'male'"
+                                            <button type="button" @click="child.gender = 'm'"
                                                     class="px-3 py-2 border-2 rounded-lg text-sm font-medium transition-colors"
-                                                    :class="child.gender === 'male' ? 'border-purple-500 bg-purple-50' : 'border-gray-200'">Male</button>
-                                            <button type="button" @click="child.gender = 'female'"
+                                                    :class="child.gender === 'm' ? 'border-purple-500 bg-purple-50' : 'border-gray-200'">Male</button>
+                                            <button type="button" @click="child.gender = 'f'"
                                                     class="px-3 py-2 border-2 rounded-lg text-sm font-medium transition-colors"
-                                                    :class="child.gender === 'female' ? 'border-purple-500 bg-purple-50' : 'border-gray-200'">Female</button>
+                                                    :class="child.gender === 'f' ? 'border-purple-500 bg-purple-50' : 'border-gray-200'">Female</button>
                                         </div>
                                     </div>
                                     <div>
@@ -443,7 +443,7 @@ function walkInRegistration() {
                 id: 'child_' + Date.now(),
                 name: '',
                 dob: '',
-                gender: 'male',
+                gender: 'm',
                 nationality: this.data.guardian.nationality || ''
             });
         },
@@ -498,8 +498,8 @@ function walkInRegistration() {
             return this.availablePackages.filter(pkg => {
                 if (pkg.age_min && age < pkg.age_min) return false;
                 if (pkg.age_max && age > pkg.age_max) return false;
-                if (pkg.gender_restriction === 'male' && person.gender !== 'male') return false;
-                if (pkg.gender_restriction === 'female' && person.gender !== 'female') return false;
+                if (pkg.gender_restriction === 'male' && person.gender !== 'm') return false;
+                if (pkg.gender_restriction === 'female' && person.gender !== 'f') return false;
                 return true;
             });
         },

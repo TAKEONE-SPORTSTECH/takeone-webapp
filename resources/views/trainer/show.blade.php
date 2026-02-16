@@ -4,7 +4,7 @@
 @php
     $user = $instructor->user;
     $club = $instructor->tenant;
-    $isMale = in_array(strtolower($user->gender ?? ''), ['m', 'male']);
+    $isMale = ($user->gender ?? '') === 'm';
     $reviews = $instructor->reviews->sortByDesc('created_at');
 @endphp
 

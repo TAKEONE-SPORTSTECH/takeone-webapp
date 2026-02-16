@@ -45,7 +45,7 @@
         </div>
 
         @php
-            $clubId = $club->id ?? null;
+            $clubId = $club->slug ?? $club->id ?? null;
             $currentRoute = request()->route()->getName();
         @endphp
 

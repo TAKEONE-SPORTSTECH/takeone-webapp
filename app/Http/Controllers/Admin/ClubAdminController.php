@@ -23,9 +23,11 @@ class ClubAdminController extends Controller
     /**
      * Get club and verify access
      */
-    private function getClub($clubId)
+    private function getClub($clubIdOrSlug)
     {
-        $club = Tenant::findOrFail($clubId);
+        $club = is_numeric($clubIdOrSlug)
+            ? Tenant::findOrFail($clubIdOrSlug)
+            : Tenant::where('slug', $clubIdOrSlug)->firstOrFail();
 
         // TODO: Add proper authorization check
         // For now, allow super-admin or club owner
@@ -317,7 +319,7 @@ class ClubAdminController extends Controller
                 'password' => 'required|string|min:6',
                 'name' => 'required|string|max:255',
                 'phone' => 'required|string',
-                'gender' => 'required|in:male,female',
+                'gender' => 'required|in:m,f',
                 'birthdate' => 'required|date',
                 'nationality' => 'required|string',
                 'specialty' => 'nullable|string|max:255',
@@ -870,7 +872,7 @@ class ClubAdminController extends Controller
         $club = $this->getClub($clubId);
         $transactions = ClubTransaction::where('tenant_id', $clubId)
             ->latest('transaction_date')
-            ->paginate(20);
+            ->get();
 
         $summary = [
             'total_income' => ClubTransaction::where('tenant_id', $clubId)
@@ -879,14 +881,62 @@ class ClubAdminController extends Controller
             'total_expenses' => ClubTransaction::where('tenant_id', $clubId)
                 ->where('type', 'expense')
                 ->sum('amount'),
-            'net_profit' => 0,
-            'pending' => ClubTransaction::where('tenant_id', $clubId)
-                ->where('status', 'pending')
+            'refunds' => ClubTransaction::where('tenant_id', $clubId)
+                ->where('type', 'refund')
                 ->sum('amount'),
+            'net_profit' => 0,
+            'pending' => 0, // TODO: populate when payment_status column is added
         ];
-        $summary['net_profit'] = $summary['total_income'] - $summary['total_expenses'];
+        $summary['net_profit'] = $summary['total_income'] - $summary['total_expenses'] - $summary['refunds'];
 
-        return view('admin.club.financials.index', compact('club', 'transactions', 'summary'));
+        // Monthly data for the last 12 months (for chart)
+        $monthlyData = [];
+        $now = now();
+        for ($i = 11; $i >= 0; $i--) {
+            $date = $now->copy()->subMonths($i);
+            $monthKey = $date->format('Y-m');
+            $monthLabel = $date->format('M');
+
+            $monthIncome = ClubTransaction::where('tenant_id', $clubId)
+                ->where('type', 'income')
+                ->whereYear('transaction_date', $date->year)
+                ->whereMonth('transaction_date', $date->month)
+                ->sum('amount');
+
+            $monthExpenses = ClubTransaction::where('tenant_id', $clubId)
+                ->where('type', 'expense')
+                ->whereYear('transaction_date', $date->year)
+                ->whereMonth('transaction_date', $date->month)
+                ->sum('amount');
+
+            $monthRefunds = ClubTransaction::where('tenant_id', $clubId)
+                ->where('type', 'refund')
+                ->whereYear('transaction_date', $date->year)
+                ->whereMonth('transaction_date', $date->month)
+                ->sum('amount');
+
+            $monthlyData[] = [
+                'month' => $monthLabel,
+                'income' => (float) $monthIncome,
+                'expenses' => (float) $monthExpenses,
+                'refunds' => (float) $monthRefunds,
+                'profit' => (float) ($monthIncome - $monthExpenses - $monthRefunds),
+            ];
+        }
+
+        // Expense categories breakdown
+        $expenseCategories = ClubTransaction::where('tenant_id', $clubId)
+            ->where('type', 'expense')
+            ->get()
+            ->groupBy(fn($t) => $t->category ?? 'Other')
+            ->map(fn($items, $cat) => [
+                'category' => $cat,
+                'items' => $items,
+                'total' => $items->sum('amount'),
+            ])
+            ->values();
+
+        return view('admin.club.financials.index', compact('club', 'transactions', 'summary', 'monthlyData', 'expenseCategories'));
     }
 
     public function storeIncome(Request $request, $clubId)
@@ -897,6 +947,9 @@ class ClubAdminController extends Controller
             'description' => 'required|string|max:255',
             'amount' => 'required|numeric|min:0',
             'transaction_date' => 'required|date',
+            'category' => 'nullable|string|max:255',
+            'payment_method' => 'nullable|in:cash,card,bank_transfer,online,other',
+            'reference_number' => 'nullable|string|max:255',
         ]);
 
         ClubTransaction::create([
@@ -904,8 +957,10 @@ class ClubAdminController extends Controller
             'description' => $request->description,
             'amount' => $request->amount,
             'type' => 'income',
+            'category' => $request->category,
+            'payment_method' => $request->payment_method ?? 'cash',
+            'reference_number' => $request->reference_number,
             'transaction_date' => $request->transaction_date,
-            'status' => 'paid',
         ]);
 
         return back()->with('success', 'Income recorded successfully.');
@@ -919,6 +974,9 @@ class ClubAdminController extends Controller
             'description' => 'required|string|max:255',
             'amount' => 'required|numeric|min:0',
             'transaction_date' => 'required|date',
+            'category' => 'nullable|string|max:255',
+            'payment_method' => 'nullable|in:cash,card,bank_transfer,online,other',
+            'reference_number' => 'nullable|string|max:255',
         ]);
 
         ClubTransaction::create([
@@ -926,11 +984,45 @@ class ClubAdminController extends Controller
             'description' => $request->description,
             'amount' => $request->amount,
             'type' => 'expense',
+            'category' => $request->category,
+            'payment_method' => $request->payment_method ?? 'cash',
+            'reference_number' => $request->reference_number,
             'transaction_date' => $request->transaction_date,
-            'status' => 'paid',
         ]);
 
         return back()->with('success', 'Expense recorded successfully.');
+    }
+
+    public function updateTransaction(Request $request, $clubId, $transactionId)
+    {
+        $club = $this->getClub($clubId);
+        $transaction = ClubTransaction::where('tenant_id', $clubId)->findOrFail($transactionId);
+
+        $request->validate([
+            'description' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:0',
+            'transaction_date' => 'required|date',
+            'type' => 'required|in:income,expense,refund',
+            'category' => 'nullable|string|max:255',
+            'payment_method' => 'nullable|in:cash,card,bank_transfer,online,other',
+            'reference_number' => 'nullable|string|max:255',
+        ]);
+
+        $transaction->update($request->only([
+            'description', 'amount', 'transaction_date', 'type',
+            'category', 'payment_method', 'reference_number',
+        ]));
+
+        return back()->with('success', 'Transaction updated successfully.');
+    }
+
+    public function destroyTransaction($clubId, $transactionId)
+    {
+        $club = $this->getClub($clubId);
+        $transaction = ClubTransaction::where('tenant_id', $clubId)->findOrFail($transactionId);
+        $transaction->delete();
+
+        return back()->with('success', 'Transaction deleted successfully.');
     }
 
     /**
