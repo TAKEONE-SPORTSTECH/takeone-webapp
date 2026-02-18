@@ -53,7 +53,25 @@ class PlatformController extends Controller
             ]);
         }
 
-        return view('platform.explore', compact('familyMembers'));
+        $instructors = \App\Models\ClubInstructor::with(['user', 'tenant', 'reviews'])
+            ->get()
+            ->map(function ($instructor) {
+                $user = $instructor->user;
+                return [
+                    'id'               => $instructor->id,
+                    'name'             => $user->full_name ?? $user->name ?? 'Instructor',
+                    'role'             => $instructor->role ?? 'Instructor',
+                    'experience_years' => $instructor->experience_years ?? 0,
+                    'bio'              => $instructor->bio,
+                    'profile_picture'  => $user->profile_picture,
+                    'rating'           => round($instructor->average_rating, 1),
+                    'reviews_count'    => $instructor->reviews_count,
+                    'club_name'        => $instructor->tenant->club_name ?? null,
+                    'url'              => route('trainer.show', $instructor->id),
+                ];
+            });
+
+        return view('platform.explore', compact('familyMembers', 'instructors'));
     }
 
     /**

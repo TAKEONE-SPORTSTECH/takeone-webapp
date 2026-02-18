@@ -186,6 +186,7 @@ function exploreApp() {
         watchId: null,
         currentCategory: 'all',
         allClubs: [],
+        allTrainers: @json($instructors),
         countriesData: [],
 
         // Join Club Modal
@@ -716,73 +717,86 @@ function exploreApp() {
 
             let trainerAdded = false;
 
-            // Add dummy trainer card if category is 'all' or 'personal-trainers'
+            // Add real trainer cards if category is 'all' or 'personal-trainers'
             if (this.currentCategory === 'all' || this.currentCategory === 'personal-trainers') {
-                const trainerCard = document.createElement('div');
-                trainerCard.innerHTML = `
-                    <div class="card border shadow-sm overflow-hidden club-card cursor-pointer" style="border-radius: 0;">
-                        <!-- Cover Image -->
-                        <div class="relative overflow-hidden h-48">
-                            <img src="https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?q=80&w=2070&auto=format&fit=crop"
-                                 alt="Personal Trainer"
-                                 loading="lazy"
-                                 class="w-full h-full object-cover transition-transform duration-300">
+                this.allTrainers.forEach(trainer => {
+                    const coverHtml = trainer.profile_picture
+                        ? `<img src="/storage/${trainer.profile_picture}" alt="${trainer.name}" loading="lazy" class="w-full h-full object-cover transition-transform duration-300">`
+                        : `<div class="w-full h-full flex items-center justify-center" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                               <i class="bi bi-person-fill text-white text-5xl opacity-50"></i>
+                           </div>`;
 
-                            <!-- Personal Trainer Badge -->
-                            <div class="absolute top-2 left-2">
-                                <span class="badge text-white px-3 py-1 bg-destructive rounded-full text-xs font-semibold"><i class="fa-solid fa-user mr-1"></i>Personal Trainer</span>
+                    const clubLine = trainer.club_name
+                        ? `<div class="flex items-center text-muted-foreground text-sm">
+                               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1 shrink-0">
+                                   <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path>
+                                   <circle cx="12" cy="10" r="3"></circle>
+                               </svg>
+                               <span class="truncate">${trainer.club_name}</span>
+                           </div>`
+                        : '';
+
+                    const ratingDisplay = trainer.rating > 0 ? trainer.rating : 'N/A';
+                    const starIcon = trainer.rating > 0
+                        ? `<i class="fa-solid fa-star text-warning"></i>`
+                        : `<i class="fa-regular fa-star text-muted-foreground"></i>`;
+
+                    const trainerCard = document.createElement('div');
+                    trainerCard.innerHTML = `
+                        <div class="card border shadow-sm overflow-hidden club-card cursor-pointer" style="border-radius: 0;" onclick="window.location.href='${trainer.url}'">
+                            <!-- Cover Image -->
+                            <div class="relative overflow-hidden h-48">
+                                ${coverHtml}
+                                <!-- Personal Trainer Badge -->
+                                <div class="absolute top-2 left-2">
+                                    <span class="badge text-white px-3 py-1 bg-destructive rounded-full text-xs font-semibold"><i class="fa-solid fa-user mr-1"></i>Personal Trainer</span>
+                                </div>
+                            </div>
+
+                            <!-- Card Body -->
+                            <div class="p-4 bg-white">
+                                <div class="mb-3">
+                                    <h3 class="font-semibold mb-2 club-title text-lg text-foreground">${trainer.name}</h3>
+                                    <div class="flex items-center mb-1 text-sm text-primary">
+                                        <i class="fa fa-certificate mr-1"></i>
+                                        <span class="font-semibold">${trainer.role}</span>
+                                    </div>
+                                    ${clubLine}
+                                </div>
+
+                                <div class="grid grid-cols-3 gap-2 text-center mb-3 text-xs">
+                                    <div class="p-2 rounded bg-primary/5">
+                                        <i class="fa-solid fa-calendar mb-1 text-muted-foreground text-base"></i>
+                                        <p class="font-semibold mb-0 text-foreground">${trainer.experience_years}</p>
+                                        <p class="text-muted-foreground mb-0">Years Exp.</p>
+                                    </div>
+                                    <div class="p-2 rounded bg-primary/5">
+                                        <i class="fa-solid fa-comments mb-1 text-muted-foreground text-base"></i>
+                                        <p class="font-semibold mb-0 text-foreground">${trainer.reviews_count}</p>
+                                        <p class="text-muted-foreground mb-0">Reviews</p>
+                                    </div>
+                                    <div class="p-2 rounded bg-primary/5">
+                                        ${starIcon}
+                                        <p class="font-semibold mb-0 text-foreground">${ratingDisplay}</p>
+                                        <p class="text-muted-foreground mb-0">Rating</p>
+                                    </div>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="flex gap-2">
+                                    <a href="${trainer.url}" class="btn btn-primary flex-1 font-semibold text-sm text-center" onclick="event.stopPropagation()">
+                                        <i class="fa-solid fa-calendar-plus mr-1"></i>Book Session
+                                    </a>
+                                    <a href="${trainer.url}" class="btn btn-outline-primary flex-1 font-semibold text-sm text-center" onclick="event.stopPropagation()">
+                                        View Details
+                                    </a>
+                                </div>
                             </div>
                         </div>
-
-                        <!-- Card Body -->
-                        <div class="p-4 bg-white">
-                            <div class="mb-3">
-                                <h3 class="font-semibold mb-2 club-title text-lg text-foreground">Alex Thompson</h3>
-                                <div class="flex items-center mb-1 text-sm text-primary">
-                                    <i class="fa fa-certificate mr-1"></i>
-                                    <span class="font-semibold">Certified Strength & Conditioning Coach</span>
-                                </div>
-                                <div class="flex items-center text-muted-foreground text-sm">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1 shrink-0">
-                                        <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path>
-                                        <circle cx="12" cy="10" r="3"></circle>
-                                    </svg>
-                                    <span class="truncate">Ghassan Yusuf</span>
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-3 gap-2 text-center mb-3 text-xs">
-                                <div class="p-2 rounded bg-primary/5">
-                                    <i class="fa-solid fa-calendar mb-1 text-muted-foreground text-base"></i>
-                                    <p class="font-semibold mb-0 text-foreground">13</p>
-                                    <p class="text-muted-foreground mb-0">Years Exp.</p>
-                                </div>
-                                <div class="p-2 rounded bg-primary/5">
-                                    <i class="fa-solid fa-certificate mb-1 text-muted-foreground text-base"></i>
-                                    <p class="font-semibold mb-0 text-foreground">NASM</p>
-                                    <p class="text-muted-foreground mb-0">Packages</p>
-                                </div>
-                                <div class="p-2 rounded bg-primary/5">
-                                    <i class="fa-solid fa-star text-warning"></i>
-                                    <p class="font-semibold mb-0 text-foreground">5.0</p>
-                                    <p class="text-muted-foreground mb-0">Rating</p>
-                                </div>
-                            </div>
-
-                            <!-- Action Buttons -->
-                            <div class="flex gap-2">
-                                <button class="btn btn-primary flex-1 font-semibold text-sm">
-                                    <i class="fa-solid fa-calendar-plus mr-1"></i>Book Session
-                                </button>
-                                <button class="btn btn-outline-primary flex-1 font-semibold text-sm">
-                                    View Details
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                container.appendChild(trainerCard);
-                trainerAdded = true;
+                    `;
+                    container.appendChild(trainerCard);
+                    trainerAdded = true;
+                });
             }
 
             if (clubs.length === 0 && !trainerAdded) {
