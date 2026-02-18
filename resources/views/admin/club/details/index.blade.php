@@ -55,7 +55,7 @@
         </nav>
     </div>
 
-    <form id="clubDetailsForm" action="{{ route('admin.club.update', $club->id) }}" method="POST" enctype="multipart/form-data">
+    <form id="clubDetailsForm" action="{{ route('admin.club.update', $club->slug) }}" method="POST" enctype="multipart/form-data">
         @csrf
         @method('PUT')
 
@@ -425,7 +425,7 @@
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
-            <form action="{{ route('admin.club.destroy', $club->id) }}" method="POST">
+            <form action="{{ route('admin.club.destroy', $club->slug) }}" method="POST">
                 @csrf
                 @method('DELETE')
                 <div class="modal-body px-6 py-4">

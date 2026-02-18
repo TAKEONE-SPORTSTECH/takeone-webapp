@@ -74,7 +74,7 @@ function deleteImage(id) {
     }).then(confirmed => {
         if (!confirmed) return;
 
-        fetch(`{{ url('admin/club/' . $club->id . '/gallery') }}/${id}`, {
+        fetch(`{{ url('admin/club/' . $club->slug . '/gallery') }}/${id}`, {
             method: 'DELETE',
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',

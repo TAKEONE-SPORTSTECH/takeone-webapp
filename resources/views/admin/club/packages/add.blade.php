@@ -82,7 +82,7 @@
 
             <!-- Body -->
             <div class="modal-body px-6 py-6 max-h-[65vh] overflow-y-auto">
-                <form id="addPackageForm" action="{{ route('admin.club.packages.store', $club->id) }}" method="POST" enctype="multipart/form-data">
+                <form id="addPackageForm" action="{{ route('admin.club.packages.store', $club->slug) }}" method="POST" enctype="multipart/form-data">
                     @csrf
 
                     <!-- Tab 1: Basic Info -->

@@ -26,7 +26,7 @@
                      data-club-name="{{ $club->club_name }}"
                      data-club-address="{{ $club->address ?? '' }}"
                      data-club-owner="{{ $club->owner->full_name ?? '' }}">
-                    <a href="{{ route('admin.club.dashboard', $club) }}" class="no-underline">
+                    <a href="{{ route('admin.club.dashboard', $club->slug) }}" class="no-underline">
                         <div class="card border shadow-sm overflow-hidden club-card cursor-pointer transition-all duration-300">
                             <!-- Cover Image -->
                             <div class="relative overflow-hidden h-48">

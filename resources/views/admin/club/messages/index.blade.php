@@ -85,7 +85,7 @@
                     <button type="button" class="btn-close" @click="showNewMessageModal = false"></button>
                 </div>
                 <div class="modal-body px-6 pb-6">
-                    <form action="{{ route('admin.club.messages.send', $club->id) }}" method="POST">
+                    <form action="{{ route('admin.club.messages.send', $club->slug) }}" method="POST">
                         @csrf
                         <div class="mb-4">
                             <label class="form-label">To</label>

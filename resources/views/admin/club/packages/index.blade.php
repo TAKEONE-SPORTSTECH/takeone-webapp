@@ -61,7 +61,7 @@
                     <button class="btn btn-sm btn-secondary" title="Duplicate">
                         <i class="bi bi-copy"></i>
                     </button>
-                    <form action="{{ route('admin.club.packages.destroy', [$club->id, $package->id]) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this package?')">
+                    <form action="{{ route('admin.club.packages.destroy', [$club->slug, $package->id]) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this package?')">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="btn btn-sm btn-danger" title="Delete">

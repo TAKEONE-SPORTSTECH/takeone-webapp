@@ -23,7 +23,7 @@
                             <p class="text-sm text-muted-foreground mb-0">These expenses will be automatically added at the end of each month</p>
                         </div>
                         <div class="card-body">
-                            <form action="{{ route('admin.club.financials.expense', $club->id) }}" method="POST">
+                            <form action="{{ route('admin.club.financials.expense', $club->slug) }}" method="POST">
                                 @csrf
                                 <input type="hidden" name="category" value="">
                                 <div class="space-y-4">

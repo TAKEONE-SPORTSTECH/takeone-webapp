@@ -13,7 +13,7 @@
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
-            <form :action="'{{ url('admin/club/' . $club->id . '/financials') }}/' + (deleteTransactionId || '')" method="POST">
+            <form :action="'{{ url('admin/club/' . $club->slug . '/financials') }}/' + (deleteTransactionId || '')" method="POST">
                 @csrf
                 @method('DELETE')
                 <div class="modal-body px-6 py-4">

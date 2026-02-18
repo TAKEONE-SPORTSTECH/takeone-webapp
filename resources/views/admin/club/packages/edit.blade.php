@@ -624,7 +624,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.populateEditPackageForm = function(pkg) {
         // Set form action
         document.getElementById('editPackageForm').action =
-            `{{ url('admin/club/' . $club->id . '/packages') }}/${pkg.id}`;
+            `{{ url('admin/club/' . $club->slug . '/packages') }}/${pkg.id}`;
 
         // Basic info
         document.getElementById('editPackageName').value = pkg.name || '';

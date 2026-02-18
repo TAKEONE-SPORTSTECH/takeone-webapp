@@ -15,7 +15,7 @@
             </div>
             <div class="modal-body px-6 py-4">
                 <p class="text-sm text-muted-foreground mb-4">Add a manual income entry to your financial records</p>
-                <form action="{{ route('admin.club.financials.income', $club->id) }}" method="POST">
+                <form action="{{ route('admin.club.financials.income', $club->slug) }}" method="POST">
                     @csrf
                     <div class="mb-4">
                         <label class="form-label">Amount <span class="text-destructive">*</span></label>

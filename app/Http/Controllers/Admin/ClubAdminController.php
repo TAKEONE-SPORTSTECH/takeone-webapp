@@ -21,30 +21,24 @@ use Illuminate\Support\Facades\Storage;
 class ClubAdminController extends Controller
 {
     /**
-     * Get club and verify access
+     * Verify the authenticated user can access this club.
+     * The Tenant model is already resolved by route binding (accepts slug or ID).
      */
-    private function getClub($clubIdOrSlug)
+    private function authorizeClub(Tenant $club): void
     {
-        $club = is_numeric($clubIdOrSlug)
-            ? Tenant::findOrFail($clubIdOrSlug)
-            : Tenant::where('slug', $clubIdOrSlug)->firstOrFail();
-
-        // TODO: Add proper authorization check
-        // For now, allow super-admin or club owner
         $user = Auth::user();
         if (!$user->isSuperAdmin() && $club->owner_user_id !== $user->id) {
             abort(403, 'Unauthorized access to this club.');
         }
-
-        return $club;
     }
 
     /**
      * Dashboard overview
      */
-    public function dashboard($clubId)
+    public function dashboard(Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         $stats = [
             'members' => Membership::where('tenant_id', $clubId)->where('status', 'active')->count(),
@@ -66,9 +60,10 @@ class ClubAdminController extends Controller
     /**
      * Club details
      */
-    public function details($clubId)
+    public function details(Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         // Load relationships
         $club->load([
@@ -94,16 +89,18 @@ class ClubAdminController extends Controller
     /**
      * Gallery management
      */
-    public function gallery($clubId)
+    public function gallery(Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
         $images = ClubGalleryImage::where('tenant_id', $clubId)->latest()->get();
         return view('admin.club.gallery.index', compact('club', 'images'));
     }
 
-    public function uploadGallery(Request $request, $clubId)
+    public function uploadGallery(Request $request, Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         $request->validate([
             'images.*' => 'required|image|max:5120',
@@ -125,9 +122,10 @@ class ClubAdminController extends Controller
         return back()->with('success', 'Images uploaded successfully.');
     }
 
-    public function destroyGalleryImage($clubId, $imageId)
+    public function destroyGalleryImage(Tenant $club, $imageId)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
         $image = ClubGalleryImage::where('tenant_id', $clubId)->findOrFail($imageId);
 
         if ($image->image_path && Storage::disk('public')->exists($image->image_path)) {
@@ -142,16 +140,18 @@ class ClubAdminController extends Controller
     /**
      * Facilities management
      */
-    public function facilities($clubId)
+    public function facilities(Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
         $facilities = ClubFacility::where('tenant_id', $clubId)->get();
         return view('admin.club.facilities.index', compact('club', 'facilities'));
     }
 
-    public function storeFacility(Request $request, $clubId)
+    public function storeFacility(Request $request, Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         $request->validate([
             'name' => 'required|string|max:255',
@@ -199,9 +199,10 @@ class ClubAdminController extends Controller
     /**
      * Get a single facility for editing (JSON response)
      */
-    public function getFacility($clubId, $facilityId)
+    public function getFacility(Tenant $club, $facilityId)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
         $facility = ClubFacility::where('tenant_id', $clubId)->findOrFail($facilityId);
 
         return response()->json([
@@ -213,9 +214,10 @@ class ClubAdminController extends Controller
     /**
      * Update a facility
      */
-    public function updateFacility(Request $request, $clubId, $facilityId)
+    public function updateFacility(Request $request, Tenant $club, $facilityId)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         $request->validate([
             'name' => 'required|string|max:255',
@@ -275,9 +277,10 @@ class ClubAdminController extends Controller
     /**
      * Delete a facility
      */
-    public function destroyFacility($clubId, $facilityId)
+    public function destroyFacility(Tenant $club, $facilityId)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
         $facility = ClubFacility::where('tenant_id', $clubId)->findOrFail($facilityId);
 
         // Delete image if exists
@@ -300,16 +303,18 @@ class ClubAdminController extends Controller
     /**
      * Instructors management
      */
-    public function instructors($clubId)
+    public function instructors(Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
         $instructors = ClubInstructor::where('tenant_id', $clubId)->with('user')->get();
         return view('admin.club.instructors.index', compact('club', 'instructors'));
     }
 
-    public function storeInstructor(Request $request, $clubId)
+    public function storeInstructor(Request $request, Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
         $creationType = $request->input('creation_type', 'new');
 
         if ($creationType === 'new') {
@@ -388,17 +393,19 @@ class ClubAdminController extends Controller
     /**
      * Activities management
      */
-    public function activities($clubId)
+    public function activities(Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
         $activities = ClubActivity::where('tenant_id', $clubId)->with('facility')->get();
         $facilities = ClubFacility::where('tenant_id', $clubId)->get();
         return view('admin.club.activities.index', compact('club', 'activities', 'facilities'));
     }
 
-    public function storeActivity(Request $request, $clubId)
+    public function storeActivity(Request $request, Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         $request->validate([
             'name' => 'required|string|max:255',
@@ -437,8 +444,10 @@ class ClubAdminController extends Controller
         return back()->with('success', 'Activity added successfully.');
     }
 
-    public function updateActivity(Request $request, $clubId, $activityId)
+    public function updateActivity(Request $request, Tenant $club, $activityId)
     {
+        $this->authorizeClub($club);
+        $clubId = $club->id;
         $activity = ClubActivity::where('tenant_id', $clubId)->findOrFail($activityId);
 
         $request->validate([
@@ -468,8 +477,10 @@ class ClubAdminController extends Controller
         return back()->with('success', 'Activity updated successfully.');
     }
 
-    public function destroyActivity($clubId, $activityId)
+    public function destroyActivity(Tenant $club, $activityId)
     {
+        $this->authorizeClub($club);
+        $clubId = $club->id;
         $activity = ClubActivity::where('tenant_id', $clubId)->findOrFail($activityId);
 
         // Delete picture if exists
@@ -485,9 +496,10 @@ class ClubAdminController extends Controller
     /**
      * Packages management
      */
-    public function packages($clubId)
+    public function packages(Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
         $packages = ClubPackage::where('tenant_id', $clubId)
             ->with(['activities'])
             ->get();
@@ -504,9 +516,10 @@ class ClubAdminController extends Controller
         return view('admin.club.packages.index', compact('club', 'packages', 'facilities', 'activities', 'instructors', 'instructorsMap'));
     }
 
-    public function storePackage(Request $request, $clubId)
+    public function storePackage(Request $request, Tenant $club)
     {
-        $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         $request->validate([
             'name' => 'required|string|max:255',
@@ -582,9 +595,10 @@ class ClubAdminController extends Controller
     /**
      * Update a package
      */
-    public function updatePackage(Request $request, $clubId, $packageId)
+    public function updatePackage(Request $request, Tenant $club, $packageId)
     {
-        $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         $package = ClubPackage::where('tenant_id', $clubId)
             ->where('id', $packageId)
@@ -671,9 +685,10 @@ class ClubAdminController extends Controller
     /**
      * Delete a package
      */
-    public function destroyPackage($clubId, $packageId)
+    public function destroyPackage(Tenant $club, $packageId)
     {
-        $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         $package = ClubPackage::where('tenant_id', $clubId)
             ->where('id', $packageId)
@@ -687,9 +702,10 @@ class ClubAdminController extends Controller
     /**
      * Members management
      */
-    public function members($clubId)
+    public function members(Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
         $members = Membership::where('tenant_id', $clubId)
             ->with(['user', 'user.guardians.guardian'])
             ->paginate(20);
@@ -697,9 +713,10 @@ class ClubAdminController extends Controller
         return view('admin.club.members.index', compact('club', 'members', 'packages'));
     }
 
-    public function storeMember(Request $request, $clubId)
+    public function storeMember(Request $request, Tenant $club)
     {
-        $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         $request->validate([
             'user_ids' => 'required|array',
@@ -738,9 +755,10 @@ class ClubAdminController extends Controller
         return back()->with('info', 'Selected users are already members of this club.');
     }
 
-    public function searchUsers(Request $request, $clubId)
+    public function searchUsers(Request $request, Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
         $query = $request->input('query');
 
         if (empty($query) || strlen($query) < 2) {
@@ -809,9 +827,10 @@ class ClubAdminController extends Controller
     /**
      * Roles management
      */
-    public function roles($clubId)
+    public function roles(Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         // Get all members of this club with their user data
         $members = ClubMemberSubscription::where('tenant_id', $clubId)
@@ -834,9 +853,10 @@ class ClubAdminController extends Controller
         return view('admin.club.roles.index', compact('club', 'members', 'availableRoles'));
     }
 
-    public function storeRole(Request $request, $clubId)
+    public function storeRole(Request $request, Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         $request->validate([
             'user_id' => 'required|exists:users,id',
@@ -849,9 +869,10 @@ class ClubAdminController extends Controller
         return back()->with('success', 'Role assigned successfully.');
     }
 
-    public function destroyRole(Request $request, $clubId)
+    public function destroyRole(Request $request, Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         $request->validate([
             'user_id' => 'required|exists:users,id',
@@ -867,9 +888,10 @@ class ClubAdminController extends Controller
     /**
      * Financials management
      */
-    public function financials($clubId)
+    public function financials(Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
         $transactions = ClubTransaction::where('tenant_id', $clubId)
             ->latest('transaction_date')
             ->get();
@@ -939,9 +961,10 @@ class ClubAdminController extends Controller
         return view('admin.club.financials.index', compact('club', 'transactions', 'summary', 'monthlyData', 'expenseCategories'));
     }
 
-    public function storeIncome(Request $request, $clubId)
+    public function storeIncome(Request $request, Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         $request->validate([
             'description' => 'required|string|max:255',
@@ -966,9 +989,10 @@ class ClubAdminController extends Controller
         return back()->with('success', 'Income recorded successfully.');
     }
 
-    public function storeExpense(Request $request, $clubId)
+    public function storeExpense(Request $request, Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         $request->validate([
             'description' => 'required|string|max:255',
@@ -993,9 +1017,10 @@ class ClubAdminController extends Controller
         return back()->with('success', 'Expense recorded successfully.');
     }
 
-    public function updateTransaction(Request $request, $clubId, $transactionId)
+    public function updateTransaction(Request $request, Tenant $club, $transactionId)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
         $transaction = ClubTransaction::where('tenant_id', $clubId)->findOrFail($transactionId);
 
         $request->validate([
@@ -1016,9 +1041,10 @@ class ClubAdminController extends Controller
         return back()->with('success', 'Transaction updated successfully.');
     }
 
-    public function destroyTransaction($clubId, $transactionId)
+    public function destroyTransaction(Tenant $club, $transactionId)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
         $transaction = ClubTransaction::where('tenant_id', $clubId)->findOrFail($transactionId);
         $transaction->delete();
 
@@ -1028,17 +1054,19 @@ class ClubAdminController extends Controller
     /**
      * Messages management
      */
-    public function messages($clubId)
+    public function messages(Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
         $conversations = collect(); // TODO: Implement messaging
         $members = Membership::where('tenant_id', $clubId)->with('user')->get();
         return view('admin.club.messages.index', compact('club', 'conversations', 'members'));
     }
 
-    public function sendMessage(Request $request, $clubId)
+    public function sendMessage(Request $request, Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         // TODO: Implement message sending
 
@@ -1048,9 +1076,10 @@ class ClubAdminController extends Controller
     /**
      * Analytics
      */
-    public function analytics($clubId)
+    public function analytics(Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         $analytics = [
             'new_members' => 0,
@@ -1078,9 +1107,10 @@ class ClubAdminController extends Controller
     /**
      * Update club details
      */
-    public function update(Request $request, $clubId)
+    public function update(Request $request, Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         $request->validate([
             'club_name' => 'required|string|max:255',
@@ -1174,9 +1204,10 @@ class ClubAdminController extends Controller
     /**
      * Delete club
      */
-    public function destroy($clubId)
+    public function destroy(Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         // Delete all related storage files
         $folders = [
@@ -1201,9 +1232,10 @@ class ClubAdminController extends Controller
     /**
      * Store social link
      */
-    public function storeSocialLink(Request $request, $clubId)
+    public function storeSocialLink(Request $request, Tenant $club)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         $request->validate([
             'platform' => 'required|string|max:100',
@@ -1224,9 +1256,10 @@ class ClubAdminController extends Controller
     /**
      * Delete social link
      */
-    public function destroySocialLink($clubId, $linkId)
+    public function destroySocialLink(Tenant $club, $linkId)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         $link = $club->socialLinks()->findOrFail($linkId);
         $link->delete();
@@ -1280,9 +1313,10 @@ class ClubAdminController extends Controller
     /**
      * Upload facility image via AJAX (cropper).
      */
-    public function uploadFacilityImage(Request $request, $clubId, $facilityId)
+    public function uploadFacilityImage(Request $request, Tenant $club, $facilityId)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         $request->validate([
             'image' => 'required',
@@ -1328,9 +1362,10 @@ class ClubAdminController extends Controller
     /**
      * Upload instructor photo via AJAX (cropper).
      */
-    public function uploadInstructorPhoto(Request $request, $clubId, $instructorId)
+    public function uploadInstructorPhoto(Request $request, Tenant $club, $instructorId)
     {
-        $club = $this->getClub($clubId);
+        $this->authorizeClub($club);
+        $clubId = $club->id;
 
         $request->validate([
             'image' => 'required',

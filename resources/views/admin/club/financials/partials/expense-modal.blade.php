@@ -15,7 +15,7 @@
                 </button>
             </div>
             <div class="modal-body px-6 py-4">
-                <form action="{{ route('admin.club.financials.expense', $club->id) }}" method="POST" id="expenseForm">
+                <form action="{{ route('admin.club.financials.expense', $club->slug) }}" method="POST" id="expenseForm">
                     @csrf
                     <input type="hidden" name="_expense_type" x-bind:value="expenseType">
 
@@ -26,9 +26,9 @@
                             <select name="type_display" class="form-select" x-model="expenseType"
                                     @change="
                                         if (expenseType === 'income') {
-                                            $el.closest('form').action = '{{ route('admin.club.financials.income', $club->id) }}';
+                                            $el.closest('form').action = '{{ route('admin.club.financials.income', $club->slug) }}';
                                         } else {
-                                            $el.closest('form').action = '{{ route('admin.club.financials.expense', $club->id) }}';
+                                            $el.closest('form').action = '{{ route('admin.club.financials.expense', $club->slug) }}';
                                         }
                                     ">
                                 <option value="expense">Expense</option>

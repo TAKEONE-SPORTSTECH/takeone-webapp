@@ -48,7 +48,7 @@
 
                 <!-- File Upload Tab Content -->
                 <div x-show="currentTab === 'file'">
-                    <form id="fileUploadForm" action="{{ route('admin.club.gallery.upload', $club->id) }}" method="POST" enctype="multipart/form-data">
+                    <form id="fileUploadForm" action="{{ route('admin.club.gallery.upload', $club->slug) }}" method="POST" enctype="multipart/form-data">
                         @csrf
                         <input type="hidden" name="upload_type" value="file">
 
@@ -98,7 +98,7 @@
 
                 <!-- URL Tab Content -->
                 <div x-show="currentTab === 'url'" x-cloak>
-                    <form id="urlUploadForm" action="{{ route('admin.club.gallery.upload', $club->id) }}" method="POST">
+                    <form id="urlUploadForm" action="{{ route('admin.club.gallery.upload', $club->slug) }}" method="POST">
                         @csrf
                         <input type="hidden" name="upload_type" value="url">
 

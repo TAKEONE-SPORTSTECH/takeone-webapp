@@ -70,11 +70,11 @@
                                     notes: '{{ addslashes($activity->notes) }}',
                                     durationMinutes: {{ $activity->duration_minutes ?? 'null' }},
                                     pictureUrl: '{{ $activity->picture_url ? asset('storage/' . $activity->picture_url) : '' }}',
-                                    action: '{{ route('admin.club.activities.update', [$club->id, $activity->id]) }}'
+                                    action: '{{ route('admin.club.activities.update', [$club->slug, $activity->id]) }}'
                                 }; showEditModal = true">
                             <i class="bi bi-pencil"></i>
                         </button>
-                        <form action="{{ route('admin.club.activities.destroy', [$club->id, $activity->id]) }}" method="POST" class="inline"
+                        <form action="{{ route('admin.club.activities.destroy', [$club->slug, $activity->id]) }}" method="POST" class="inline"
                               onsubmit="event.preventDefault(); const f = this; confirmAction({ title: 'Delete Activity', message: 'This activity will be permanently removed.', confirmText: 'Delete', type: 'danger' }).then(ok => { if (ok) f.submit(); });">
                             @csrf
                             @method('DELETE')

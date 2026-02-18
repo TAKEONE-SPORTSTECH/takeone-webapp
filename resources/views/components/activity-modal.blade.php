@@ -53,7 +53,7 @@
                       @if($isEdit)
                       method="POST"
                       @else
-                      action="{{ route('admin.club.activities.store', $club->id) }}"
+                      action="{{ route('admin.club.activities.store', $club->slug) }}"
                       method="POST"
                       @endif
                       enctype="multipart/form-data">

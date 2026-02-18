@@ -163,7 +163,7 @@ function deleteFacility(id) {
     }).then(confirmed => {
         if (!confirmed) return;
 
-        fetch(`{{ url('admin/club/' . $club->id . '/facilities') }}/${id}`, {
+        fetch(`{{ url('admin/club/' . $club->slug . '/facilities') }}/${id}`, {
             method: 'DELETE',
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -187,7 +187,7 @@ function deleteFacility(id) {
 
 function editFacility(id) {
     // Fetch facility data
-    fetch(`{{ url('admin/club/' . $club->id . '/facilities') }}/${id}`, {
+    fetch(`{{ url('admin/club/' . $club->slug . '/facilities') }}/${id}`, {
         method: 'GET',
         headers: {
             'Accept': 'application/json',
@@ -217,7 +217,7 @@ function editFacility(id) {
 
 function populateEditForm(facility) {
     // Set form action
-    document.getElementById('editFacilityForm').action = `{{ url('admin/club/' . $club->id . '/facilities') }}/${facility.id}`;
+    document.getElementById('editFacilityForm').action = `{{ url('admin/club/' . $club->slug . '/facilities') }}/${facility.id}`;
     document.getElementById('editFacilityId').value = facility.id;
 
     // Populate fields

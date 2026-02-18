@@ -32,7 +32,7 @@
 
             <!-- Body -->
             <div class="modal-body px-6 py-6">
-                <form id="addInstructorForm" action="{{ route('admin.club.instructors.store', $club->id) }}" method="POST" enctype="multipart/form-data">
+                <form id="addInstructorForm" action="{{ route('admin.club.instructors.store', $club->slug) }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     <input type="hidden" name="creation_type" id="creationType" value="new">
                     <input type="hidden" name="selected_member_id" id="selectedMemberId" value="">
@@ -623,7 +623,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         searchTimeout = setTimeout(async () => {
             try {
-                const response = await fetch(`/admin/club/{{ $club->id }}/members/search?q=${encodeURIComponent(query)}`);
+                const response = await fetch(`/admin/club/{{ $club->slug }}/members/search?q=${encodeURIComponent(query)}`);
                 const data = await response.json();
 
                 if (data.length > 0) {

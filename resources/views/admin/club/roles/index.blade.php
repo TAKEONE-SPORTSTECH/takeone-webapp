@@ -68,7 +68,7 @@
                                 <!-- Roles & Actions -->
                                 <div class="flex items-center gap-2 flex-wrap justify-end">
                                     @php
-                                        $userRoles = $member->user->getRolesForTenant($club->id);
+                                        $userRoles = $member->user->getRolesForTenant($club->slug);
                                     @endphp
 
                                     @if(count($userRoles) === 0)
@@ -181,7 +181,7 @@
                     </h5>
                     <button type="button" class="btn-close" @click="showAssignModal = false"></button>
                 </div>
-                <form id="assignRoleForm" action="{{ route('admin.club.roles.store', $club->id) }}" method="POST">
+                <form id="assignRoleForm" action="{{ route('admin.club.roles.store', $club->slug) }}" method="POST">
                     @csrf
                     <input type="hidden" name="user_id" :value="assignData.userId">
 
@@ -256,7 +256,7 @@
                     </h5>
                     <button type="button" class="btn-close" @click="showRemoveModal = false"></button>
                 </div>
-                <form id="removeRoleForm" action="{{ route('admin.club.roles.destroy', $club->id) }}" method="POST">
+                <form id="removeRoleForm" action="{{ route('admin.club.roles.destroy', $club->slug) }}" method="POST">
                     @csrf
                     @method('DELETE')
                     <input type="hidden" name="user_id" :value="removeData.userId">

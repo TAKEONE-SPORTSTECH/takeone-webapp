@@ -17,7 +17,7 @@
                 </button>
             </div>
             <div class="modal-body px-6 py-4">
-                <form :action="'{{ url('admin/club/' . $club->id . '/financials') }}/' + (editTransaction ? editTransaction.id : '')" method="POST">
+                <form :action="'{{ url('admin/club/' . $club->slug . '/financials') }}/' + (editTransaction ? editTransaction.id : '')" method="POST">
                     @csrf
                     @method('PUT')
                     <div class="space-y-4">

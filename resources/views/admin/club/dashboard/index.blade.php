@@ -11,7 +11,7 @@
     <!-- Stats Cards -->
     <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
         <!-- Active Members -->
-        <div class="card h-full border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onclick="window.location='{{ route('admin.club.members', $club->id) }}'">
+        <div class="card h-full border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onclick="window.location='{{ route('admin.club.members', $club->slug) }}'">
             <div class="card-body">
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-muted-foreground text-sm">Active Members</span>
@@ -25,7 +25,7 @@
         </div>
 
         <!-- Activities -->
-        <div class="card h-full border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onclick="window.location='{{ route('admin.club.activities', $club->id) }}'">
+        <div class="card h-full border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onclick="window.location='{{ route('admin.club.activities', $club->slug) }}'">
             <div class="card-body">
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-muted-foreground text-sm">Activities</span>
@@ -39,7 +39,7 @@
         </div>
 
         <!-- Packages -->
-        <div class="card h-full border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onclick="window.location='{{ route('admin.club.packages', $club->id) }}'">
+        <div class="card h-full border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onclick="window.location='{{ route('admin.club.packages', $club->slug) }}'">
             <div class="card-body">
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-muted-foreground text-sm">Packages</span>
@@ -53,7 +53,7 @@
         </div>
 
         <!-- Trainers -->
-        <div class="card h-full border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onclick="window.location='{{ route('admin.club.instructors', $club->id) }}'">
+        <div class="card h-full border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onclick="window.location='{{ route('admin.club.instructors', $club->slug) }}'">
             <div class="card-body">
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-muted-foreground text-sm">Trainers</span>
@@ -67,7 +67,7 @@
         </div>
 
         <!-- Rating -->
-        <div class="card h-full border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onclick="window.location='{{ route('admin.club.details', $club->id) }}'">
+        <div class="card h-full border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onclick="window.location='{{ route('admin.club.details', $club->slug) }}'">
             <div class="card-body">
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-muted-foreground text-sm">Member Rating</span>
