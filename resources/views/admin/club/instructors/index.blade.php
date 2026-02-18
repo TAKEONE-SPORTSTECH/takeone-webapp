@@ -1,27 +1,6 @@
 @extends('layouts.admin-club')
 
-@push('styles')
-<style>
-    .instructor-card {
-        transition: all 0.3s ease-in-out;
-        cursor: pointer;
-    }
-    .instructor-card:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15) !important;
-    }
-    .instructor-card:hover .profile-circle {
-        transform: scale(1.05);
-        transition: transform 0.3s ease-in-out;
-    }
-    .star-rating {
-        color: #fbbf24;
-    }
-    .star-rating .empty {
-        color: #d1d5db;
-    }
-</style>
-@endpush
+{{-- Styles moved to app.css (Phase 6) --}}
 
 @section('club-admin-content')
 <div class="space-y-6" x-data="{ showAddInstructorModal: false }">
@@ -117,8 +96,8 @@
         @endforeach
     </div>
     @else
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
-        <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+    <div class="tf-empty">
+        <div class="tf-empty-icon">
             <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
         </div>
         <h5 class="text-lg font-semibold text-gray-900 mb-2">No instructors yet</h5>

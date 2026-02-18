@@ -191,50 +191,7 @@
     </div>
 </div>
 
-@push('styles')
-<style>
-    .day-checkbox {
-        display: none;
-    }
-    .day-label {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        border: 1px solid #e5e7eb;
-        cursor: pointer;
-        font-size: 12px;
-        font-weight: 500;
-        transition: all 0.2s;
-    }
-    .day-checkbox:checked + .day-label {
-        background-color: hsl(250 60% 70%);
-        border-color: hsl(250 60% 70%);
-        color: white;
-    }
-    .day-label:hover {
-        background-color: #f3f4f6;
-    }
-    .day-checkbox:checked + .day-label:hover {
-        background-color: hsl(250 60% 65%);
-    }
-    .time-slot-row {
-        animation: slideIn 0.2s ease-out;
-    }
-    @keyframes slideIn {
-        from {
-            opacity: 0;
-            transform: translateY(-10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-</style>
-@endpush
+{{-- Styles moved to app.css (Phase 6) --}}
 
 @push('scripts')
 <script>

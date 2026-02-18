@@ -152,34 +152,7 @@
 <!-- Include Club Modal -->
 <x-club-modal mode="create" />
 
-@push('styles')
-<style>
-    .club-card {
-        transition: all 0.3s ease-in-out;
-    }
-
-    .club-card:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
-    }
-
-    .club-card:hover .club-cover-img {
-        transform: scale(1.1);
-    }
-
-    .club-card:hover .club-title {
-        color: hsl(var(--primary)) !important;
-    }
-
-    .club-card-wrapper {
-        transition: opacity 0.3s ease;
-    }
-
-    .club-card-wrapper.hidden {
-        display: none;
-    }
-</style>
-@endpush
+{{-- Styles moved to app.css (Phase 6) --}}
 
 @push('scripts')
 <script>

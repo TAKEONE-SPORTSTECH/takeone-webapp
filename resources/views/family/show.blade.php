@@ -14,7 +14,7 @@
 @endphp
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+<div class="tf-container">
 
     <!-- Header -->
     <div class="flex justify-between items-center mb-4">
@@ -276,7 +276,7 @@
                                 <!-- Attendance Rate -->
                                 <div class="col-md-6">
                             <div class="flex items-center gap-3 p-3 bg-gray-50 rounded">
-                                <div class="rounded-circle flex items-center justify-center" style="width: 48px; height: 48px; background-color: #3b82f6;">
+                                <div class="rounded-circle flex items-center justify-center" style="width: 48px; height: 48px; background-color: #6f42c1;">
                                     <i class="bi bi-graph-up-arrow text-white"></i>
                                 </div>
                                 <div class="flex-1">
@@ -312,7 +312,7 @@
                                 <!-- Goal Completion -->
                                 <div class="col-md-6">
                             <div class="flex items-center gap-3 p-3 bg-gray-50 rounded">
-                                <div class="rounded-circle flex items-center justify-center" style="width: 48px; height: 48px; background-color: #10b981;">
+                                <div class="rounded-circle flex items-center justify-center" style="width: 48px; height: 48px; background-color: #6f42c1;">
                                     <i class="bi bi-check-circle-fill text-white"></i>
                                 </div>
                                 <div class="flex-1">
@@ -1439,74 +1439,7 @@
     </div>
 </div>
 
-<style>
-    .history-row:hover .edit-record-btn {
-        opacity: 1 !important;
-    }
-
-    /* Timeline Styles */
-    .timeline {
-        position: relative;
-        padding-left: 30px;
-    }
-
-    .timeline::before {
-        content: '';
-        position: absolute;
-        left: 15px;
-        top: 0;
-        bottom: 0;
-        width: 2px;
-        background: #e9ecef;
-    }
-
-    .timeline-item {
-        position: relative;
-        margin-bottom: 20px;
-    }
-
-    .timeline-marker {
-        position: absolute;
-        left: -22px;
-        top: 20px;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background: #6c757d;
-        border: 2px solid #fff;
-        z-index: 1;
-    }
-
-    .timeline-marker.bg-primary {
-        background: #0d6efd;
-    }
-
-    .timeline-content {
-        background: #fff;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        transition: all 0.3s ease;
-    }
-
-    .timeline-content:hover {
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-        transform: translateY(-2px);
-    }
-
-    .affiliation-card {
-        transition: all 0.3s ease;
-    }
-
-    .affiliation-card:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-        transform: translateY(-2px);
-    }
-
-    .affiliation-card.border-primary {
-        border-color: #0d6efd !important;
-        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25) !important;
-    }
-</style>
+{{-- Styles moved to app.css (Phase 6) --}}
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {

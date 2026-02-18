@@ -446,25 +446,7 @@
     </div>
 </div>
 
-<style>
-    .tab-btn {
-        padding: 0.75rem 1.5rem;
-        border: none;
-        background: transparent;
-        color: hsl(var(--muted-foreground));
-        font-weight: 500;
-        border-bottom: 2px solid transparent;
-        transition: all 0.2s;
-    }
-    .tab-btn:hover {
-        color: hsl(var(--primary));
-        border-bottom-color: hsl(var(--primary) / 0.3);
-    }
-    .tab-btn.active {
-        color: hsl(var(--primary));
-        border-bottom-color: hsl(var(--primary));
-    }
-</style>
+{{-- Styles moved to app.css (Phase 6) --}}
 
 @push('scripts')
 <script>

@@ -74,7 +74,7 @@
         $currency = $club->currency ?? 'BHD';
         $netIncome = ($summary['net_profit'] ?? 0);
     @endphp
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+    <div class="tf-stat-grid">
         <!-- Total Income -->
         <div class="card border-0 shadow-sm">
             <div class="card-body pb-2">
@@ -415,64 +415,7 @@
     @include('admin.club.financials.partials.delete-modal')
 </div>
 
-<style>
-    .tab-btn {
-        padding: 0.75rem 1.5rem;
-        border: none;
-        background: transparent;
-        color: hsl(var(--muted-foreground));
-        font-weight: 500;
-        border-bottom: 2px solid transparent;
-        transition: all 0.2s;
-        cursor: pointer;
-    }
-    .tab-btn:hover {
-        color: hsl(var(--primary));
-        border-bottom-color: hsl(var(--primary) / 0.3);
-    }
-    .tab-btn.active {
-        color: hsl(var(--primary));
-        border-bottom-color: hsl(var(--primary));
-    }
-
-    /* Payment method selector */
-    .payment-option {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.35rem;
-        padding: 0.75rem 0.5rem;
-        border: 2px solid #e2e8f0;
-        border-radius: 0.75rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        text-align: center;
-        font-size: 0.75rem;
-        font-weight: 500;
-        color: #94a3b8;
-        background: #f8fafc;
-        user-select: none;
-    }
-    .payment-option:hover {
-        border-color: hsl(var(--primary) / 0.5);
-        color: hsl(var(--primary));
-        background: hsl(var(--primary) / 0.05);
-        transform: translateY(-1px);
-    }
-    .payment-option.active {
-        border-color: hsl(var(--primary));
-        color: hsl(var(--primary));
-        background: hsl(var(--primary) / 0.08);
-        box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
-    }
-    .payment-option.active i {
-        transform: scale(1.1);
-    }
-    .payment-option i {
-        font-size: 1.35rem;
-        transition: transform 0.2s ease;
-    }
-</style>
+{{-- Styles moved to app.css (Phase 6) --}}
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

@@ -121,39 +121,7 @@
     @endif
 </div>
 
-@push('styles')
-<style>
-    .hover-card {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        border: 1px solid hsl(var(--border));
-    }
-
-    .hover-card:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 12px 28px rgba(102, 126, 234, 0.15);
-    }
-
-    .club-cover-img {
-        transition: transform 0.3s ease;
-    }
-
-    .hover-card:hover .club-cover-img {
-        transform: scale(1.1);
-    }
-
-    .club-name-hover {
-        transition: color 0.3s ease;
-    }
-
-    .hover-card:hover .club-name-hover {
-        color: hsl(var(--primary));
-    }
-
-    .space-y-6 > * + * {
-        margin-top: 1.5rem;
-    }
-</style>
-@endpush
+{{-- Styles moved to app.css (Phase 6) --}}
 
 @push('scripts')
 <script>

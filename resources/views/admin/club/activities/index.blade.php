@@ -23,7 +23,7 @@
 
     <div class="flex justify-between items-center mb-4">
         <div>
-            <h2 class="text-2xl font-bold mb-1">Activities</h2>
+            <h2 class="tf-section-title">Activities</h2>
             <p class="text-muted-foreground mb-0">Manage club activities and classes</p>
         </div>
         <button class="btn btn-primary" @click="showAddModal = true; duplicateData = null">
@@ -134,12 +134,5 @@
     <x-activity-modal :club="$club" mode="edit" />
 </div>
 
-<style>
-.line-clamp-2 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-</style>
+{{-- line-clamp-2 is a native Tailwind CSS 4 utility --}}
 @endsection

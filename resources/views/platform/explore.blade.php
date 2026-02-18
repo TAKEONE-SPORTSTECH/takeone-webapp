@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4" x-data="exploreApp()">
+<div class="tf-container" x-data="exploreApp()">
     <!-- Hero Section -->
     <div class="text-center mb-3">
         <h1 class="text-4xl md:text-5xl font-bold text-primary mb-2">Find Your Perfect Fit</h1>
@@ -166,84 +166,7 @@
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
     crossorigin=""/>
 
-<style>
-    .category-btn {
-        border-radius: 50px;
-        padding: 0.5rem 1.5rem;
-        font-size: 0.9rem;
-        transition: all 0.3s ease;
-    }
-
-    .category-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        color: white !important;
-    }
-
-    .category-btn.active {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px hsl(var(--primary) / 0.3);
-    }
-
-    .club-card {
-        transition: all 0.3s ease-in-out;
-        min-height: 450px;
-    }
-
-    .club-card:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
-    }
-
-    .club-card:hover .club-cover-img {
-        transform: scale(1.1);
-    }
-
-    .club-card:hover .club-title {
-        color: #667eea !important;
-    }
-
-    /* Pulsing animation for location marker */
-    @keyframes pulse {
-        0% {
-            transform: scale(1);
-            opacity: 1;
-        }
-        50% {
-            transform: scale(1.2);
-            opacity: 0.7;
-        }
-        100% {
-            transform: scale(1);
-            opacity: 1;
-        }
-    }
-
-    .pulse-marker {
-        animation: pulse 2s ease-in-out infinite;
-        color: #0d6efd;
-    }
-
-    #currentLocation {
-        font-size: 1.2rem;
-    }
-
-    /* Trainer Card Styles */
-    .trainer-card {
-        border: none;
-        border-radius: 0;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        transition: all 0.3s ease;
-        overflow: hidden;
-        background: white;
-        min-height: 400px;
-    }
-
-    .trainer-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-    }
-</style>
+{{-- Styles moved to app.css (Phase 6) --}}
 @endpush
 
 @push('scripts')

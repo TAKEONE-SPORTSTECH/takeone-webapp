@@ -1,7 +1,7 @@
 @props(['name' => 'country', 'id' => 'country', 'value' => '', 'required' => false, 'error' => null, 'label' => 'Country'])
 
 <div class="mb-4" x-data="countryDropdown_{{ $id }}()" x-init="init()">
-    <label class="block text-sm font-medium text-gray-600 mb-1">
+    <label class="tf-label">
         {{ $label }}@if($required) <span class="text-red-500">*</span>@endif
     </label>
     <div class="relative" x-ref="wrapper">
@@ -9,7 +9,7 @@
                 @click="toggle()"
                 @click.away="open = false"
                 x-ref="trigger"
-                class="w-full px-4 py-3 text-base border-2 rounded-xl bg-white/80 shadow-inner transition-all duration-300 focus:bg-white focus:ring-4 focus:ring-primary/10 focus:outline-none flex items-center justify-between cursor-pointer {{ $error ? 'border-red-500' : 'border-primary/20 focus:border-primary' }}">
+                class="tf-dropdown-trigger {{ $error ? 'border-red-500' : 'border-primary/20 focus:border-primary' }}">
             <span class="flex items-center gap-2">
                 <span x-show="selectedFlag" :class="'fi fi-' + selectedFlag"></span>
                 <span x-text="selectedLabel || 'Select {{ $label }}'" class="text-sm" :class="{ 'text-gray-400': !selectedValue }"></span>
@@ -26,7 +26,7 @@
              x-transition:leave-start="opacity-100"
              x-transition:leave-end="opacity-0"
              :class="dropUp ? 'bottom-full mb-1' : 'top-full mt-1'"
-             class="absolute left-0 right-0 z-50 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+             class="tf-dropdown-panel">
             <div class="p-2 border-b border-gray-100">
                 <input type="text"
                        x-model="search"
@@ -38,7 +38,7 @@
             <div class="max-h-60 overflow-y-auto">
                 <template x-for="item in filteredItems" :key="item.iso2">
                     <div @click="selectItem(item)"
-                         class="px-4 py-2 hover:bg-primary hover:text-white cursor-pointer flex items-center transition-colors text-sm">
+                         class="tf-dropdown-item-sm">
                         <span :class="'fi fi-' + item.flag" class="mr-2"></span>
                         <span x-text="item.name"></span>
                     </div>
@@ -53,7 +53,7 @@
     <input type="hidden" id="{{ $id }}" name="{{ $name }}" x-model="selectedValue" {{ $required ? 'required' : '' }}>
 
     @if($error)
-        <span class="text-red-500 text-sm mt-1 block" role="alert">
+        <span class="tf-error" role="alert">
             <strong>{{ $error }}</strong>
         </span>
     @endif

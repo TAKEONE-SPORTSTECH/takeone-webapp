@@ -245,60 +245,7 @@
     </div>
 </div>
 
-@push('styles')
-<style>
-    /* PART 2: Cropper Overlay Styles */
-    .cropper-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: rgba(0, 0, 0, 0.85);
-        z-index: 1065;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem;
-        overflow-y: auto;
-    }
-
-    .cropper-panel {
-        background: white;
-        border-radius: 1rem;
-        max-width: 800px;
-        width: 100%;
-        max-height: 90vh;
-        overflow-y: auto;
-        padding: 2rem;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
-    }
-
-    .takeone-canvas {
-        position: relative;
-        border: 1px solid #222;
-    }
-
-    .cropper-preview-container {
-        position: relative;
-        display: inline-block;
-    }
-
-    .cropper-preview-placeholder {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background-color: #f0f0f0;
-        border: 2px dashed #dee2e6;
-        color: #6c757d;
-    }
-
-    .cropper-preview-image {
-        object-fit: cover;
-        border: 2px solid #dee2e6;
-    }
-</style>
-@endpush
+{{-- Styles moved to app.css (Phase 6) --}}
 
 @push('scripts')
 <link rel="stylesheet" href="https://unpkg.com/cropme@1.4.1/dist/cropme.min.css">

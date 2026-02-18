@@ -62,48 +62,7 @@
     formMethod="POST"
 />
 
-@push('styles')
-<style>
-    /* Family Card Hover Effects */
-    .family-card {
-        transition: all 0.3s ease-in-out;
-        cursor: pointer;
-    }
-
-    .family-card:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15) !important;
-    }
-
-    .family-card:hover .rounded-circle {
-        transform: scale(1.1);
-        transition: transform 0.3s ease-in-out;
-    }
-
-    /* Remove underline from card links */
-    a.text-decoration-none:hover .family-card {
-        text-decoration: none;
-    }
-
-    .member-card-wrapper {
-        transition: opacity 0.3s ease;
-    }
-
-    .member-card-wrapper.hidden {
-        display: none;
-    }
-
-    /* Improve image quality */
-    .rounded-circle img {
-        image-rendering: -webkit-optimize-contrast;
-        image-rendering: crisp-edges;
-        backface-visibility: hidden;
-        -webkit-backface-visibility: hidden;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-    }
-</style>
-@endpush
+{{-- Styles moved to app.css (Phase 6) --}}
 
 @push('scripts')
 <script>

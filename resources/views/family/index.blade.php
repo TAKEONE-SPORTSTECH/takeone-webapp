@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+<div class="tf-container">
     <div class="flex justify-between items-center mb-4">
         <div>
             <h1 class="mb-1 text-2xl font-bold">Family Members</h1>
@@ -51,44 +51,7 @@
 
 </div>
 
-<style>
-    /* Family Card Hover Effects */
-    .family-card {
-        transition: all 0.3s ease-in-out;
-        cursor: pointer;
-    }
-
-    .family-card:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15) !important;
-    }
-
-    .family-card:hover .rounded-full {
-        transform: scale(1.1);
-        transition: transform 0.3s ease-in-out;
-    }
-
-    /* Add Card Hover Effects */
-    .add-card {
-        transition: all 0.3s ease-in-out;
-    }
-
-    .add-card:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15) !important;
-        border-color: #7c3aed !important;
-    }
-
-    .add-card:hover .bi-plus-circle {
-        color: #7c3aed;
-        transition: color 0.3s ease-in-out;
-    }
-
-    .add-card:hover h5 {
-        color: #7c3aed;
-        transition: color 0.3s ease-in-out;
-    }
-</style>
+{{-- Styles moved to app.css (Phase 6) --}}
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {

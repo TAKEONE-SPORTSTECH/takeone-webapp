@@ -32,7 +32,7 @@
     <!-- Days Selector -->
     <div>
         @if($showLabels)
-            <label class="block text-sm font-medium text-gray-600 mb-1">
+            <label class="tf-label">
                 {{ $daysLabel }} @if($required)<span class="text-red-500">*</span>@endif
             </label>
         @endif
@@ -84,7 +84,7 @@
     <!-- Start Time -->
     <div>
         @if($showLabels)
-            <label for="startTime-{{ $uniqueId }}" class="block text-sm font-medium text-gray-600 mb-1">
+            <label for="startTime-{{ $uniqueId }}" class="tf-label">
                 {{ $startTimeLabel }} @if($required)<span class="text-red-500">*</span>@endif
             </label>
         @endif
@@ -93,7 +93,7 @@
             id="startTime-{{ $uniqueId }}"
             name="{{ $startTimeName }}"
             value="{{ $startTime }}"
-            class="w-full h-12 px-4 text-base border-2 border-primary/20 rounded-xl bg-white transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none schedule-start-time"
+            class="tf-time schedule-start-time"
             {{ $required ? 'required' : '' }}
         >
     </div>
@@ -101,7 +101,7 @@
     <!-- End Time -->
     <div>
         @if($showLabels)
-            <label for="endTime-{{ $uniqueId }}" class="block text-sm font-medium text-gray-600 mb-1">
+            <label for="endTime-{{ $uniqueId }}" class="tf-label">
                 {{ $endTimeLabel }} @if($required)<span class="text-red-500">*</span>@endif
             </label>
         @endif
@@ -110,7 +110,7 @@
             id="endTime-{{ $uniqueId }}"
             name="{{ $endTimeName }}"
             value="{{ $endTime }}"
-            class="w-full h-12 px-4 text-base border-2 border-primary/20 rounded-xl bg-white transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none schedule-end-time"
+            class="tf-time schedule-end-time"
             {{ $required ? 'required' : '' }}
         >
     </div>

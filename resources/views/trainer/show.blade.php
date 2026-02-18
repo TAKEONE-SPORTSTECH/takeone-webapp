@@ -18,7 +18,7 @@
         </a>
 
         {{-- ========== Header Card ========== --}}
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="tf-card">
             <div class="flex flex-col md:flex-row gap-6">
                 {{-- Avatar --}}
                 <div class="relative flex-shrink-0">

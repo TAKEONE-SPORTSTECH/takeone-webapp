@@ -10,7 +10,7 @@
     <!-- Header -->
     <div class="flex items-start justify-between mb-4">
         <div>
-            <h2 class="text-2xl font-bold mb-1 flex items-center gap-2">
+            <h2 class="tf-section-title flex items-center gap-2">
                 <i class="bi bi-shield-check"></i>
                 Role Management
             </h2>
@@ -286,21 +286,7 @@
     </div>
 </div>
 
-<style>
-.roles-management .member-card {
-    transition: all 0.2s ease;
-}
-.roles-management .member-card:hover {
-    border-color: hsl(var(--primary)) !important;
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-}
-.roles-management .role-badge {
-    transition: opacity 0.2s;
-}
-.roles-management .role-badge:hover {
-    opacity: 0.8;
-}
-</style>
+{{-- Styles moved to app.css (Phase 6) --}}
 
 @push('scripts')
 <script>

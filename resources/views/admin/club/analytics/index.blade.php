@@ -4,7 +4,7 @@
 <div>
     <div class="flex justify-between items-center mb-4">
         <div>
-            <h2 class="text-2xl font-bold mb-1">Analytics</h2>
+            <h2 class="tf-section-title">Analytics</h2>
             <p class="text-muted mb-0">Track your club's performance</p>
         </div>
         <div class="flex gap-2">

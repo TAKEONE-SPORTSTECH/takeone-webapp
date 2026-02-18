@@ -4,7 +4,7 @@
 <div x-data="{ showNewMessageModal: false }">
     <div class="flex justify-between items-center mb-4">
         <div>
-            <h2 class="text-2xl font-bold mb-1">Messages</h2>
+            <h2 class="tf-section-title">Messages</h2>
             <p class="text-muted-foreground mb-0">Communicate with your members</p>
         </div>
         <button class="btn btn-primary" @click="showNewMessageModal = true">

@@ -1,6 +1,6 @@
 @props(['name' => 'country_code', 'id' => 'country_code', 'value' => '+1', 'required' => false, 'error' => null])
 
-<div class="flex border-2 border-primary/20 rounded-xl bg-white/80 shadow-inner transition-all duration-300 focus-within:border-primary focus-within:bg-white focus-within:ring-4 focus-within:ring-primary/10"
+<div class="tf-input-group"
      x-data="countryCodeDropdown_{{ $id }}()"
      x-init="init()">
     <!-- Country Code Button -->
@@ -38,7 +38,7 @@
             <div class="max-h-60 overflow-y-auto">
                 <template x-for="country in filteredCountries" :key="country.name">
                     <div @click="selectCountry(country)"
-                         class="px-4 py-2 hover:bg-primary hover:text-white cursor-pointer flex items-center transition-colors">
+                         class="tf-dropdown-item-sm">
                         <span :class="'fi fi-' + country.flag" class="mr-2"></span>
                         <span x-text="country.name + ' (' + country.code + ')'" class="text-sm"></span>
                     </div>
@@ -59,7 +59,7 @@
 </div>
 
 @if($error)
-    <span class="text-red-500 text-sm mt-1 block" role="alert">
+    <span class="tf-error" role="alert">
         <strong>{{ $error }}</strong>
     </span>
 @endif

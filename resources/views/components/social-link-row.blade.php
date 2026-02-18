@@ -3,12 +3,12 @@
 <div class="social-link-row mb-4 flex items-end gap-2" x-data="{ open: false }">
     <!-- Platform Dropdown -->
     <div class="flex-1">
-        <label class="block text-sm font-medium text-gray-600 mb-1">Platform</label>
+        <label class="tf-label">Platform</label>
         <div class="relative">
             <button type="button"
                     @click="open = !open"
                     @click.away="open = false"
-                    class="w-full px-4 py-3 text-base text-left border-2 border-primary/20 rounded-xl bg-white/80 shadow-inner transition-all duration-300 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 focus:outline-none cursor-pointer flex items-center justify-between">
+                    class="tf-dropdown-trigger border-primary/20 focus:border-primary text-left">
                 <span class="flex items-center">
                     @if(($link['platform'] ?? '') == 'facebook')
                         <i class="bi bi-facebook mr-2"></i>Facebook
@@ -70,7 +70,7 @@
                  x-transition:leave="transition ease-in duration-150"
                  x-transition:leave-start="opacity-100 translate-y-0"
                  x-transition:leave-end="opacity-0 -translate-y-1"
-                 class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                 class="tf-dropdown-menu w-full mt-1">
                 @php
                     $platforms = [
                         'facebook' => ['icon' => 'bi-facebook', 'name' => 'Facebook'],
@@ -98,7 +98,7 @@
                     ];
                 @endphp
                 @foreach($platforms as $value => $platform)
-                    <div class="px-4 py-2 hover:bg-primary hover:text-white cursor-pointer flex items-center transition-colors"
+                    <div class="tf-dropdown-item-sm"
                          @click="$el.closest('.social-link-row').querySelector('.platform-value').value = '{{ $value }}';
                                  $el.closest('.social-link-row').querySelector('button span').innerHTML = '<i class=\'bi {{ $platform['icon'] }} mr-2\'></i>{{ $platform['name'] }}';
                                  open = false">
@@ -111,9 +111,9 @@
 
     <!-- URL Input -->
     <div class="flex-1">
-        <label class="block text-sm font-medium text-gray-600 mb-1">URL</label>
+        <label class="tf-label">URL</label>
         <input type="url"
-               class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white/80 shadow-inner transition-all duration-300 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 focus:outline-none"
+               class="tf-input"
                name="social_links[{{ $index }}][url]"
                value="{{ $link['url'] ?? '' }}"
                placeholder="https://example.com/username"

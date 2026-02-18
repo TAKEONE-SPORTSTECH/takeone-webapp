@@ -93,7 +93,7 @@
                             </div>
 
                             <div class="mb-4">
-                                <label class="block text-sm font-medium text-gray-600 mb-1">Phone Number <span class="text-red-500">*</span></label>
+                                <label class="tf-label">Phone Number <span class="text-red-500">*</span></label>
                                 <x-country-code-dropdown
                                     name="country_code"
                                     id="instructor_country_code"

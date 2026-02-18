@@ -318,14 +318,5 @@ document.getElementById('editFacilityForm').addEventListener('submit', function(
 </script>
 @endpush
 
-@push('styles')
-<style>
-.line-clamp-1 {
-    display: -webkit-box;
-    -webkit-line-clamp: 1;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-</style>
-@endpush
+{{-- line-clamp-1 is a native Tailwind CSS 4 utility --}}
 @endsection

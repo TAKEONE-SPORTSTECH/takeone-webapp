@@ -44,38 +44,38 @@
 
                         <!-- Full Name -->
                         <div class="mb-4">
-                            <label for="full_name" class="block text-sm font-medium text-gray-600 mb-1">
+                            <label for="full_name" class="tf-label">
                                 Full Name <span class="text-red-500">*</span>
                             </label>
                             <input type="text"
-                                   class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none @error('full_name') border-red-500 @enderror"
+                                   class="tf-input @error('full_name') border-red-500 @enderror"
                                    id="full_name"
                                    name="full_name"
                                    value="{{ old('full_name') }}"
                                    required>
                             @error('full_name')
-                                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
+                                <span class="tf-error">{{ $message }}</span>
                             @enderror
                         </div>
 
                         <!-- Email -->
                         <div class="mb-4">
-                            <label for="email" class="block text-sm font-medium text-gray-600 mb-1">
+                            <label for="email" class="tf-label">
                                 Email Address <span class="text-gray-400">(Optional for children)</span>
                             </label>
                             <input type="email"
-                                   class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none @error('email') border-red-500 @enderror"
+                                   class="tf-input @error('email') border-red-500 @enderror"
                                    id="email"
                                    name="email"
                                    value="{{ old('email') }}">
                             @error('email')
-                                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
+                                <span class="tf-error">{{ $message }}</span>
                             @enderror
                         </div>
 
                         <!-- Mobile Number -->
                         <div class="mb-4">
-                            <label for="mobile" class="block text-sm font-medium text-gray-600 mb-1">Mobile Number</label>
+                            <label for="mobile" class="tf-label">Mobile Number</label>
                             <x-country-code-dropdown
                                 name="mobile_code"
                                 id="country_code"
@@ -90,7 +90,7 @@
                                        placeholder="Phone number">
                             </x-country-code-dropdown>
                             @error('mobile')
-                                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
+                                <span class="tf-error">{{ $message }}</span>
                             @enderror
                         </div>
 
@@ -120,8 +120,8 @@
                         <!-- Blood Type & Nationality -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label for="blood_type" class="block text-sm font-medium text-gray-600 mb-1">Blood Type</label>
-                                <select class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none appearance-none cursor-pointer @error('blood_type') border-red-500 @enderror"
+                                <label for="blood_type" class="tf-label">Blood Type</label>
+                                <select class="tf-select @error('blood_type') border-red-500 @enderror"
                                         id="blood_type"
                                         name="blood_type">
                                     <option value="">Select Blood Type</option>
@@ -136,7 +136,7 @@
                                     <option value="Unknown" {{ old('blood_type') == 'Unknown' ? 'selected' : '' }}>Unknown</option>
                                 </select>
                                 @error('blood_type')
-                                    <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
+                                    <span class="tf-error">{{ $message }}</span>
                                 @enderror
                             </div>
                             <div>
@@ -179,24 +179,24 @@
 
                         <!-- Motto -->
                         <div class="mb-4">
-                            <label for="motto" class="block text-sm font-medium text-gray-600 mb-1">Personal Motto</label>
-                            <textarea class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none resize-none @error('motto') border-red-500 @enderror"
+                            <label for="motto" class="tf-label">Personal Motto</label>
+                            <textarea class="tf-textarea @error('motto') border-red-500 @enderror"
                                       id="motto"
                                       name="motto"
                                       rows="3"
                                       placeholder="Enter personal motto or quote...">{{ old('motto') }}</textarea>
                             <p class="text-xs text-gray-400 mt-1">Share a personal motto or quote that inspires them.</p>
                             @error('motto')
-                                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
+                                <span class="tf-error">{{ $message }}</span>
                             @enderror
                         </div>
 
                         <!-- Relationship -->
                         <div class="mb-4">
-                            <label for="relationship_type" class="block text-sm font-medium text-gray-600 mb-1">
+                            <label for="relationship_type" class="tf-label">
                                 Relationship <span class="text-red-500">*</span>
                             </label>
-                            <select class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none appearance-none cursor-pointer @error('relationship_type') border-red-500 @enderror"
+                            <select class="tf-select @error('relationship_type') border-red-500 @enderror"
                                     id="relationship_type"
                                     name="relationship_type"
                                     required>
@@ -208,7 +208,7 @@
                                 <option value="other" {{ old('relationship_type') == 'other' ? 'selected' : '' }}>Other</option>
                             </select>
                             @error('relationship_type')
-                                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
+                                <span class="tf-error">{{ $message }}</span>
                             @enderror
                         </div>
 
@@ -275,8 +275,8 @@ function memberCreateModal() {
 
             row.innerHTML = `
                 <div class="flex-1">
-                    <label class="block text-sm font-medium text-gray-600 mb-1">Platform</label>
-                    <select class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none appearance-none cursor-pointer"
+                    <label class="tf-label">Platform</label>
+                    <select class="tf-select"
                             name="social_links[${this.socialLinkIndex}][platform]"
                             required>
                         <option value="">Select Platform</option>
@@ -292,9 +292,9 @@ function memberCreateModal() {
                     </select>
                 </div>
                 <div class="flex-1">
-                    <label class="block text-sm font-medium text-gray-600 mb-1">URL</label>
+                    <label class="tf-label">URL</label>
                     <input type="url"
-                           class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none"
+                           class="tf-input"
                            name="social_links[${this.socialLinkIndex}][url]"
                            placeholder="https://example.com/username"
                            required>

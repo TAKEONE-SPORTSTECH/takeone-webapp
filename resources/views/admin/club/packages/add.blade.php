@@ -483,20 +483,7 @@
     </div>
 </div>
 
-<style>
-.section-icon {
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 0.5rem;
-    background-color: hsl(var(--primary) / 0.1);
-}
-.section-icon i {
-    font-size: 1.125rem;
-}
-</style>
+{{-- Styles moved to app.css (Phase 6) --}}
 
 @push('scripts')
 <script>

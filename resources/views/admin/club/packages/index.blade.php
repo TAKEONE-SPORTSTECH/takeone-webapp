@@ -4,7 +4,7 @@
 <div x-data="{ showAddPackageModal: false, showEditPackageModal: false }">
     <div class="flex justify-between items-center mb-6">
         <div>
-            <h2 class="text-2xl font-bold mb-1">Packages Management</h2>
+            <h2 class="tf-section-title">Packages Management</h2>
             <p class="text-muted-foreground mb-0">Create and manage membership packages</p>
         </div>
         <button class="btn btn-primary" @click="showAddPackageModal = true">
@@ -237,7 +237,7 @@
     @else
     <div class="card border-0 shadow-sm">
         <div class="card-body text-center py-16">
-            <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+            <div class="tf-empty-icon">
                 <i class="bi bi-box text-gray-400 text-4xl"></i>
             </div>
             <h5 class="text-xl font-semibold mb-2">No packages yet</h5>

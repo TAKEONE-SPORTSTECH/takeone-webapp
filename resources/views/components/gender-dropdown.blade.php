@@ -1,7 +1,7 @@
 @props(['name' => 'gender', 'id' => 'gender', 'value' => '', 'required' => false, 'error' => null, 'label' => 'Gender'])
 
 <div class="mb-4" x-data="genderDropdown_{{ $id }}()">
-    <label class="block text-sm font-medium text-gray-600 mb-1">
+    <label class="tf-label">
         {{ $label }}@if($required) <span class="text-red-500">*</span>@endif
     </label>
     <div class="relative" x-ref="wrapper">
@@ -9,7 +9,7 @@
                 @click="toggle()"
                 @click.away="open = false"
                 x-ref="trigger"
-                class="w-full px-4 py-3 text-base border-2 rounded-xl bg-white/80 shadow-inner transition-all duration-300 focus:bg-white focus:ring-4 focus:ring-primary/10 focus:outline-none flex items-center justify-between cursor-pointer {{ $error ? 'border-red-500' : 'border-primary/20 focus:border-primary' }}">
+                class="tf-dropdown-trigger {{ $error ? 'border-red-500' : 'border-primary/20 focus:border-primary' }}">
             <span class="flex items-center gap-2">
                 <i x-show="selectedIcon" :class="selectedIcon + ' ' + selectedColor" class="text-lg"></i>
                 <span x-text="selectedLabel || 'Select {{ $label }}'" class="text-sm" :class="{ 'text-gray-400': !selectedValue }"></span>
@@ -25,10 +25,10 @@
              x-transition:leave-start="opacity-100"
              x-transition:leave-end="opacity-0"
              :class="dropUp ? 'bottom-full mb-1' : 'top-full mt-1'"
-             class="absolute left-0 right-0 z-50 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+             class="tf-dropdown-panel">
             <template x-for="item in items" :key="item.value">
                 <div @click="selectItem(item)"
-                     class="px-4 py-3 hover:bg-primary hover:text-white cursor-pointer flex items-center gap-3 transition-colors text-sm"
+                     class="tf-dropdown-item gap-3"
                      :class="selectedValue === item.value ? 'bg-primary/5 font-semibold' : ''">
                     <i :class="item.icon + ' ' + (selectedValue === item.value ? item.color : 'text-gray-400')" class="text-lg"></i>
                     <span x-text="item.label"></span>
@@ -40,7 +40,7 @@
     <input type="hidden" id="{{ $id }}" name="{{ $name }}" x-model="selectedValue" {{ $required ? 'required' : '' }}>
 
     @if($error)
-        <span class="text-red-500 text-sm mt-1 block" role="alert">
+        <span class="tf-error" role="alert">
             <strong>{{ $error }}</strong>
         </span>
     @endif

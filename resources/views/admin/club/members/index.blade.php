@@ -1,38 +1,7 @@
 @extends('layouts.admin-club')
 
 
-@push('styles')
-<style>
-    .member-card {
-        transition: all 0.3s ease-in-out;
-        cursor: pointer;
-    }
-    .member-card:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15) !important;
-    }
-    .member-card:hover .rounded-full {
-        transform: scale(1.05);
-        transition: transform 0.3s ease-in-out;
-    }
-    .status-btn.active {
-        @apply bg-purple-500 text-white border-purple-500;
-    }
-    .search-result-card.selected,
-    .package-card.selected {
-        @apply border-purple-500 bg-purple-50;
-    }
-    .check-circle.checked {
-        @apply bg-purple-500 border-purple-500 scale-110;
-    }
-    .member-item {
-        transition: opacity 0.3s ease;
-    }
-    .member-item[style*="display: none"] {
-        opacity: 0;
-    }
-</style>
-@endpush
+{{-- Styles moved to app.css (Phase 6) --}}
 
 @section('club-admin-content')
 <div class="space-y-6">
@@ -138,8 +107,8 @@
         </div>
         @endif
         @else
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
-            <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+        <div class="tf-empty">
+            <div class="tf-empty-icon">
                 <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
             </div>
             <h5 class="text-lg font-semibold text-gray-900 mb-2">No members found</h5>

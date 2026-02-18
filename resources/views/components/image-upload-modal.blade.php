@@ -38,12 +38,12 @@
                 <div class="p-6">
                     <!-- File Input -->
                     <div x-show="!showCropper" class="mb-4">
-                        <label for="imageFile" class="block text-sm font-medium text-gray-600 mb-2">Select Image</label>
+                        <label for="imageFile" class="tf-label mb-2">Select Image</label>
                         <input type="file"
                                id="imageFile"
                                accept="image/*"
                                @change="handleFileSelect($event)"
-                               class="w-full px-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white/80 transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary file:text-white file:cursor-pointer"
+                               class="tf-file"
                                required>
                     </div>
 

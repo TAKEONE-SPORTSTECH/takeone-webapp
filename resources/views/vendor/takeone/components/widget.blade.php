@@ -29,62 +29,7 @@
     <link rel="stylesheet" href="https://unpkg.com/cropme@1.4.1/dist/cropme.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://unpkg.com/cropme@1.4.1/dist/cropme.min.js"></script>
-    <style>
-        .modal-content-clean { border: none; border-radius: 15px; overflow: hidden; }
-        .cropme-wrapper { overflow: hidden !important; border-radius: 8px; }
-        .cropme-slider { display: none !important; }
-        .takeone-canvas {
-            background: #111;
-            border-radius: 8px;
-            position: relative;
-            border: 1px solid #222;
-        }
-        .custom-slider-label {
-            font-size: 0.75rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            color: #6c757d;
-            letter-spacing: 0.5px;
-        }
-        .form-range::-webkit-slider-thumb { background: #198754; }
-        .form-range::-moz-range-thumb { background: #198754; }
-        .cropper-preview-container {
-            position: relative;
-            display: inline-block;
-        }
-        .cropper-preview-placeholder {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: #f0f0f0;
-            border: 2px dashed #dee2e6;
-            color: #6c757d;
-        }
-        .cropper-preview-image {
-            object-fit: cover;
-            border: 2px solid #dee2e6;
-        }
-        .cropper-remove-btn {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: #dc3545;
-            color: white;
-            border: none;
-            font-size: 14px;
-            line-height: 1;
-            cursor: pointer;
-            display: none;
-        }
-        .cropper-preview-container.has-image .cropper-remove-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-    </style>
+    {{-- Styles moved to app.css (Phase 6) --}}
 @endonce
 
 @if($mode === 'form')
