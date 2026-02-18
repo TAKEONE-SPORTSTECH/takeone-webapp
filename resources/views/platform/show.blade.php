@@ -221,7 +221,7 @@
                 <hr class="my-8 opacity-10">
 
                 {{-- Achievements --}}
-                <div>
+                <div class="latest-achievements">
                     <div class="flex justify-between items-end mb-4">
                         <div>
                             <h4 class="text-xl font-extrabold mb-1">Latest Achievements</h4>
@@ -229,27 +229,36 @@
                         </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <div class="activity-item">
-                            <h6 class="text-sm font-bold mb-1">Club of the Year</h6>
-                            <p class="text-muted-foreground text-sm mb-2">Awarded for overall performance and growth.</p>
-                            <span class="badge-pill bg-secondary-light">
-                                <i class="bi bi-trophy mr-1"></i>Club Award
-                            </span>
-                        </div>
-                        <div class="activity-item">
-                            <h6 class="text-sm font-bold mb-1">Championship Medals</h6>
-                            <p class="text-muted-foreground text-sm mb-2">Team podium finishes across divisions.</p>
-                            <span class="badge-pill bg-secondary-light">
-                                <i class="bi bi-award mr-1"></i>Tournament Medals
-                            </span>
-                        </div>
-                        <div class="activity-item">
-                            <h6 class="text-sm font-bold mb-1">Student Promotions</h6>
-                            <p class="text-muted-foreground text-sm mb-2">Successful gradings this season.</p>
-                            <span class="badge-pill bg-secondary-light">
-                                <i class="bi bi-star mr-1"></i>Student Success
-                            </span>
-                        </div>
+                        <article class="achievement-card h-full">
+                            <div class="achievement-image">
+                                <div class="w-full h-full bg-gradient-to-br from-amber-500 to-orange-600"></div>
+                                <span class="achievement-tag"><i class="bi bi-trophy mr-1"></i>Club Award</span>
+                            </div>
+                            <div class="achievement-body">
+                                <h6 class="text-sm font-bold mb-1">Club of the Year</h6>
+                                <p class="text-sm mb-0" style="color:#6b7280;">Awarded for overall performance and growth.</p>
+                            </div>
+                        </article>
+                        <article class="achievement-card h-full">
+                            <div class="achievement-image">
+                                <div class="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600"></div>
+                                <span class="achievement-tag"><i class="bi bi-award mr-1"></i>Tournament Medals</span>
+                            </div>
+                            <div class="achievement-body">
+                                <h6 class="text-sm font-bold mb-1">Championship Medals</h6>
+                                <p class="text-sm mb-0" style="color:#6b7280;">Team podium finishes across divisions.</p>
+                            </div>
+                        </article>
+                        <article class="achievement-card h-full">
+                            <div class="achievement-image">
+                                <div class="w-full h-full bg-gradient-to-br from-violet-500 to-purple-700"></div>
+                                <span class="achievement-tag"><i class="bi bi-star mr-1"></i>Student Success</span>
+                            </div>
+                            <div class="achievement-body">
+                                <h6 class="text-sm font-bold mb-1">Student Promotions</h6>
+                                <p class="text-sm mb-0" style="color:#6b7280;">Successful gradings this season.</p>
+                            </div>
+                        </article>
                     </div>
                 </div>
             </div>
@@ -268,9 +277,11 @@
                                 <i class="bi bi-box text-white text-5xl"></i>
                             </div>
                             @endif
+                            <div class="package-title-overlay">
+                                <span class="package-title">{{ $package->name }}</span>
+                            </div>
                         </div>
                         <div class="p-4 flex-grow">
-                            <h3 class="text-lg font-bold mb-2">{{ $package->name }}</h3>
                             <div class="flex flex-wrap gap-1 mb-3">
                                 <span class="badge-pill bg-secondary-light">{{ $package->type ?? 'Package' }}</span>
                                 @if($package->gender)

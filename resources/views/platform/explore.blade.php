@@ -490,11 +490,11 @@ function exploreApp() {
                 })
                 .catch(error => console.error('Error loading countries:', error));
 
-            // Check if geolocation is supported
+            // Always load clubs immediately, then refine with location if available
+            this.fetchAllClubs();
+
             if (!navigator.geolocation) {
                 this.showAlertMessage('Geolocation is not supported by your browser', 'danger');
-                document.getElementById('loadingSpinner').style.display = 'none';
-                this.fetchAllClubs();
             } else {
                 this.startWatchingLocation();
             }
@@ -584,19 +584,16 @@ function exploreApp() {
                     let errorMessage = 'Unable to get your location. ';
                     switch(error.code) {
                         case error.PERMISSION_DENIED:
-                            errorMessage += 'Please allow location access.';
+                            errorMessage += 'Location access denied.';
                             break;
                         case error.POSITION_UNAVAILABLE:
                             errorMessage += 'Location unavailable.';
                             break;
                         case error.TIMEOUT:
-                            errorMessage += 'Request timed out.';
+                            errorMessage += 'Location request timed out.';
                             break;
                     }
-                    this.showAlertMessage(errorMessage, 'danger');
-                    if (this.currentCategory !== 'all') {
-                        this.fetchAllClubs();
-                    }
+                    this.showAlertMessage(errorMessage, 'warning');
                 },
                 {
                     enableHighAccuracy: true,
