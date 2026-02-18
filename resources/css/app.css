@@ -1048,9 +1048,51 @@
 .hero-bg-image {
     position: absolute;
     inset: 0;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.95)),
-        var(--hero-bg) center/cover;
     z-index: 0;
+    transition: opacity 0.5s ease;
+}
+
+.hero-bg-slide {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+}
+
+.hero-bg-slide::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.25), rgba(0,0,0,0.95));
+}
+
+.hero-bg-slide.active {
+    opacity: 1;
+}
+
+.hero-bg-video {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+}
+
+.hero-bg-video iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+.hero-banner.video-ready:hover .hero-bg-video {
+    opacity: 1;
+}
+
+.hero-banner.video-ready:hover .hero-bg-image {
+    opacity: 0;
 }
 
 .banner-top, .banner-bottom {

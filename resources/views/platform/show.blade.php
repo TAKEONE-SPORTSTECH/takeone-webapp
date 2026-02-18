@@ -5,10 +5,50 @@
 @endpush
 
 @section('content')
+@php
+    // --- YouTube video ---
+    $youtubeVideoId = null;
+    foreach ($club->socialLinks as $link) {
+        if (preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/', $link->url ?? '', $matches)) {
+            $youtubeVideoId = $matches[1];
+            break;
+        }
+    }
+    if (!$youtubeVideoId) $youtubeVideoId = 'TKEbws4QhEk'; // test fallback
+
+    // --- Hero slides ---
+    $heroSlides = collect();
+    if ($club->cover_image) {
+        $heroSlides->push(asset('storage/' . $club->cover_image));
+    }
+    foreach ($club->galleryImages as $img) {
+        $heroSlides->push(asset('storage/' . $img->image_path));
+    }
+    // Test fallback images (sports/martial arts themed)
+    if ($heroSlides->isEmpty()) {
+        $heroSlides = collect([
+            'https://images.unsplash.com/photo-1549060279-7e168fcee0c2?auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=1920&q=80',
+        ]);
+    }
+@endphp
 <div class="page-container">
     {{-- HERO BANNER --}}
-    <div class="hero-banner" style="--hero-bg: url('{{ $club->cover_image ? asset('storage/' . $club->cover_image) : ($club->galleryImages->first() ? asset('storage/' . $club->galleryImages->first()->image_path) : '') }}');">
-        <div class="hero-bg-image"></div>
+    <div class="hero-banner" id="heroBanner">
+        <div class="hero-bg-image" id="heroSlider">
+            @foreach($heroSlides as $i => $slide)
+            <div class="hero-bg-slide {{ $i === 0 ? 'active' : '' }}"
+                 style="background-image: url('{{ $slide }}');"></div>
+            @endforeach
+        </div>
+        @if($youtubeVideoId)
+        <div class="hero-bg-video">
+            <div id="heroVideoIframe"></div>
+        </div>
+        @endif
 
         {{-- Banner Top: Logo + Social Links --}}
         <div class="banner-top">
@@ -958,6 +998,63 @@
 @endsection
 
 @push('scripts')
+<script>
+(function() {
+    const slides = document.querySelectorAll('.hero-bg-slide');
+    if (slides.length > 1) {
+        let current = 0;
+        setInterval(function() {
+            slides[current].classList.remove('active');
+            current = (current + 1) % slides.length;
+            slides[current].classList.add('active');
+        }, 4000);
+    }
+})();
+</script>
+@if($youtubeVideoId)
+<script>
+(function() {
+    const VIDEO_ID = '{{ $youtubeVideoId }}';
+    const banner = document.getElementById('heroBanner');
+    let player;
+
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(tag);
+
+    window.onYouTubeIframeAPIReady = function() {
+        player = new YT.Player('heroVideoIframe', {
+            videoId: VIDEO_ID,
+            width: '100%',
+            height: '100%',
+            playerVars: {
+                autoplay: 0,
+                controls: 0,
+                loop: 1,
+                mute: 1,
+                playsinline: 1,
+                modestbranding: 1,
+                rel: 0,
+                showinfo: 0,
+                playlist: VIDEO_ID
+            },
+            events: {
+                onReady: function(e) {
+                    e.target.mute();
+                    banner.classList.add('video-ready');
+                    banner.addEventListener('mouseenter', function() {
+                        e.target.playVideo();
+                    });
+                    banner.addEventListener('mouseleave', function() {
+                        e.target.pauseVideo();
+                    });
+                }
+            }
+        });
+    };
+})();
+</script>
+@endif
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
