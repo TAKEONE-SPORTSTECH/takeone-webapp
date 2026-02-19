@@ -508,6 +508,33 @@
                     toast.show();
                 }
             });
+
+            @auth
+            // Request location permission for authenticated users
+            if ('geolocation' in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        // Success - store the location
+                        const userLocation = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude,
+                            timestamp: new Date().toISOString()
+                        };
+                        localStorage.setItem('userLocation', JSON.stringify(userLocation));
+                        console.log('Location obtained:', userLocation);
+                    },
+                    function(error) {
+                        console.log('Location permission denied or error:', error.message);
+                        localStorage.removeItem('userLocation');
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0 // Always get fresh location
+                    }
+                );
+            }
+            @endauth
         });
     </script>
 
