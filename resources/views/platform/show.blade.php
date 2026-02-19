@@ -1,5 +1,9 @@
 @extends('layouts.app')
 
+@if(request('kiosk'))
+@section('hide-navbar')
+@endif
+
 @push('styles')
 {{-- Styles moved to app.css (Phase 6) --}}
 @endpush
