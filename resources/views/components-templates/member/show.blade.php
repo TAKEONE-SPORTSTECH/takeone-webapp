@@ -1581,7 +1581,7 @@
                     const iso3Code = element.getAttribute('data-iso3');
                     if (!iso3Code) return;
 
-                    const country = countries.find(c => c.iso3 === iso3Code);
+                    const country = countries.find(c => c.iso3 === iso3Code || c.iso2 === iso3Code);
                     if (country) {
                         // Get flag emoji from ISO2 code
                         const flagEmoji = country.iso2
