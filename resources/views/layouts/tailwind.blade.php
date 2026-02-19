@@ -107,7 +107,7 @@
                             <button @click="open = !open" class="flex items-center gap-2 p-1 rounded-full hover:bg-gray-200 transition-colors">
                                 <div class="relative">
                                     @if(Auth::user()->profile_picture)
-                                        <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}" alt="{{ Auth::user()->full_name }}" class="w-10 h-10 rounded-full object-cover">
+                                        <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}?v={{ Auth::user()->updated_at->timestamp }}" alt="{{ Auth::user()->full_name }}" class="w-10 h-10 rounded-full object-cover">
                                     @else
                                         <span class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-semibold">
                                             {{ strtoupper(substr(Auth::user()->full_name, 0, 1)) }}

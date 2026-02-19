@@ -236,7 +236,7 @@
                             <button @click="open = !open" class="flex items-center cursor-pointer" type="button">
                                 <div class="avatar-container">
                                     @if(Auth::user()->profile_picture)
-                                        <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}"
+                                        <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}?v={{ Auth::user()->updated_at->timestamp }}"
                                              alt="{{ Auth::user()->full_name }}"
                                              class="user-avatar"
                                              onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';">
@@ -330,7 +330,7 @@
                     <div class="flex items-center gap-3 px-2 py-3 mb-3 bg-white rounded-lg">
                         <div class="avatar-container">
                             @if(Auth::user()->profile_picture)
-                                <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}"
+                                <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}?v={{ Auth::user()->updated_at->timestamp }}"
                                      alt="{{ Auth::user()->full_name }}"
                                      class="user-avatar"
                                      onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';">
