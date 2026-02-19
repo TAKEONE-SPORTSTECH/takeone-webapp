@@ -258,6 +258,11 @@ class PlatformController extends Controller
         ));
     }
 
+    public function showPublic($slug)
+    {
+        return $this->show($slug);
+    }
+
     /**
      * Get all clubs for the map view.
      * If latitude and longitude are provided, calculate distance and sort by nearest.

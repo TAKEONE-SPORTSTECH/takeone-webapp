@@ -76,6 +76,9 @@ Route::post('/email/verification-notification', function (Request $request) {
     return back()->with('resent', true);
 })->middleware(['auth', 'throttle:6,1'])->name('verification.send');
 
+// Public club page - no login required (used for QR code)
+Route::get('/c/{slug}', [PlatformController::class, 'showPublic'])->name('clubs.show.public');
+
 // Explore routes (accessible to authenticated users)
 Route::middleware(['auth'])->group(function () {
     Route::get('/explore', [PlatformController::class, 'index'])->name('clubs.explore');

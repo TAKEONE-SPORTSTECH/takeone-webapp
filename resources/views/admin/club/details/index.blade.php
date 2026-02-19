@@ -565,7 +565,7 @@ document.addEventListener('DOMContentLoaded', function() {
         qrBtn.addEventListener('click', function() {
             const slug = document.querySelector('input[name="slug"]').value;
             if (slug) {
-                const url = window.location.origin + '/clubs/' + slug + '?kiosk=1';
+                const url = window.location.origin + '/c/' + slug;
                 const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(url);
                 document.getElementById('qrCodeImage').src = qrUrl;
                 document.getElementById('qrCodeLink').href = url;

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@if(request('kiosk'))
+@if(request()->routeIs('clubs.show.public'))
 @section('hide-navbar')
 @endif
 
