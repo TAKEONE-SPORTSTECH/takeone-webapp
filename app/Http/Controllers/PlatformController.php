@@ -260,19 +260,7 @@ class PlatformController extends Controller
 
     public function showPublic($slug)
     {
-        $club = Tenant::with([
-            'instructors.user',
-            'packages',
-            'galleryImages',
-            'socialLinks',
-            'activities',
-            'memberships',
-        ])->where('slug', $slug)->firstOrFail();
-
-        $activeMembersCount = $club->memberships()->where('status', 'active')->count();
-        $averageRating = $club->reviews()->avg('rating') ?? 0;
-
-        return view('platform.public', compact('club', 'activeMembersCount', 'averageRating'));
+        return $this->show($slug);
     }
 
     /**
