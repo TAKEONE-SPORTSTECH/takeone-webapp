@@ -915,6 +915,10 @@
         @apply flex border-2 border-primary/20 rounded-xl bg-white/80 shadow-inner transition-all duration-300 focus-within:border-primary focus-within:bg-white focus-within:ring-4 focus-within:ring-primary/10;
     }
 
+    .tf-input-group input {
+        @apply w-full h-full border-0 bg-transparent outline-none shadow-none px-3 py-3 rounded-r-xl;
+    }
+
     /* ---- Custom Dropdowns (Alpine.js) ---- */
     .tf-dropdown-trigger {
         @apply w-full px-4 py-3 text-base border-2 rounded-xl bg-white/80 shadow-inner transition-all duration-300 focus:bg-white focus:ring-4 focus:ring-primary/10 focus:outline-none flex items-center justify-between cursor-pointer;
