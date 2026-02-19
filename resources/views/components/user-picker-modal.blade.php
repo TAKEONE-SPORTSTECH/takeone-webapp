@@ -1,110 +1,155 @@
 <!-- User Picker Modal -->
-<div class="modal fade" id="userPickerModal" tabindex="-1" aria-labelledby="userPickerModalLabel" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content" style="border-radius: 1rem; border: none;">
-            <!-- Modal Header -->
-            <div class="modal-header border-0">
-                <div>
-                    <h5 class="modal-title fw-bold" id="userPickerModalLabel">Select Club Owner</h5>
-                    <p class="text-muted small mb-0">Search and select a user to be the club owner</p>
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
+<div x-data="userPickerModal()" x-cloak>
+    <!-- Modal Backdrop -->
+    <div x-show="open"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-black/50 z-[60]">
+    </div>
 
-            <!-- Modal Body -->
-            <div class="modal-body">
-                <!-- Search Input -->
-                <div class="mb-4">
-                    <div class="input-group">
-                        <span class="input-group-text bg-white">
-                            <i class="bi bi-search"></i>
-                        </span>
-                        <input type="text"
-                               class="form-control"
-                               id="userSearchInput"
-                               placeholder="Search by name, email, or phone..."
-                               autocomplete="off">
+    <!-- Modal Content -->
+    <div x-show="open"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95"
+         class="fixed inset-0 z-[60] overflow-y-auto"
+         @click.self="close()">
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div class="w-full max-w-2xl bg-white rounded-2xl shadow-xl" @click.stop>
+                <!-- Modal Header -->
+                <div class="p-6 border-b border-gray-100">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-900">Select Club Owner</h3>
+                            <p class="text-sm text-gray-500 mt-1">Search and select a user to be the club owner</p>
+                        </div>
+                        <button @click="close()" class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="bi bi-x-lg text-gray-500"></i>
+                        </button>
                     </div>
                 </div>
 
-                <!-- Loading State -->
-                <div id="userPickerLoading" class="text-center py-5" style="display: none;">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
+                <!-- Modal Body -->
+                <div class="p-6">
+                    <!-- Search Input -->
+                    <div class="mb-4">
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                                <i class="bi bi-search"></i>
+                            </span>
+                            <input type="text"
+                                   x-model="searchTerm"
+                                   @input.debounce.300ms="filterUsers()"
+                                   x-ref="searchInput"
+                                   class="w-full pl-12 pr-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none"
+                                   placeholder="Search by name, email, or phone..."
+                                   autocomplete="off">
+                        </div>
                     </div>
-                    <p class="text-muted mt-2">Searching users...</p>
-                </div>
 
-                <!-- Users List -->
-                <div id="userPickerResults" style="max-height: 400px; overflow-y: auto;">
-                    <!-- Results will be populated here -->
-                </div>
+                    <!-- Loading State -->
+                    <div x-show="loading" class="text-center py-12">
+                        <div class="inline-block w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                        <p class="text-gray-500 mt-3">Searching users...</p>
+                    </div>
 
-                <!-- No Results -->
-                <div id="userPickerNoResults" class="text-center py-5" style="display: none;">
-                    <i class="bi bi-person-x fs-1 text-muted mb-3"></i>
-                    <p class="text-muted mb-0">No users found</p>
-                    <small class="text-muted">Try a different search term</small>
+                    <!-- Users List -->
+                    <div x-show="!loading && filteredUsers.length > 0" class="max-h-96 overflow-y-auto space-y-2">
+                        <template x-for="user in filteredUsers" :key="user.id">
+                            <div @click="selectUser(user)"
+                                 class="border border-gray-200 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:bg-gray-50 hover:translate-x-1 hover:border-primary/30">
+                                <div class="flex items-center gap-4">
+                                    <!-- Avatar -->
+                                    <template x-if="user.profile_picture">
+                                        <img :src="user.profile_picture"
+                                             :alt="user.full_name"
+                                             class="w-12 h-12 rounded-full object-cover">
+                                    </template>
+                                    <template x-if="!user.profile_picture">
+                                        <div class="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center text-xl font-semibold"
+                                             x-text="user.full_name.charAt(0).toUpperCase()">
+                                        </div>
+                                    </template>
+
+                                    <!-- User Info -->
+                                    <div class="flex-1 min-w-0">
+                                        <div class="font-semibold text-gray-900" x-text="user.full_name"></div>
+                                        <div class="text-sm text-gray-500 truncate">
+                                            <i class="bi bi-envelope mr-1"></i>
+                                            <span x-text="user.email"></span>
+                                            <template x-if="user.mobile">
+                                                <span class="ml-2">
+                                                    <i class="bi bi-phone mr-1"></i>
+                                                    <span x-text="user.mobile"></span>
+                                                </span>
+                                            </template>
+                                        </div>
+                                    </div>
+
+                                    <!-- Check Icon -->
+                                    <div>
+                                        <i class="bi bi-check-circle text-primary text-2xl"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- No Results -->
+                    <div x-show="!loading && filteredUsers.length === 0 && searchTerm" class="text-center py-12">
+                        <i class="bi bi-person-x text-6xl text-gray-300"></i>
+                        <p class="text-gray-500 mt-3">No users found</p>
+                        <p class="text-sm text-gray-400">Try a different search term</p>
+                    </div>
+
+                    <!-- Error State -->
+                    <div x-show="error" class="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4">
+                        <i class="bi bi-exclamation-triangle mr-2"></i>
+                        <span x-text="error"></span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-@once
-@push('scripts')
 <script>
-    (function() {
-        const userPickerModal = document.getElementById('userPickerModal');
-        if (!userPickerModal) return;
+function userPickerModal() {
+    return {
+        open: false,
+        loading: false,
+        error: null,
+        searchTerm: '',
+        allUsers: [],
+        filteredUsers: [],
 
-        const searchInput = document.getElementById('userSearchInput');
-        const resultsContainer = document.getElementById('userPickerResults');
-        const loadingDiv = document.getElementById('userPickerLoading');
-        const noResultsDiv = document.getElementById('userPickerNoResults');
+        init() {
+            // Global function to open modal
+            window.openUserPickerModal = () => {
+                this.open = true;
+                this.loadUsers();
+                this.$nextTick(() => {
+                    this.$refs.searchInput?.focus();
+                });
+            };
+        },
 
-        let searchTimeout;
-        let allUsers = [];
+        close() {
+            this.open = false;
+            this.searchTerm = '';
+            this.error = null;
+        },
 
-        // Prevent club modal from closing when user picker opens
-        userPickerModal.addEventListener('show.bs.modal', function() {
-            const clubModal = document.getElementById('clubModal');
-            if (clubModal) {
-                clubModal.style.display = 'block';
-            }
-        });
-
-        // Load all users when modal opens
-        userPickerModal.addEventListener('shown.bs.modal', function() {
-            searchInput.value = '';
-            searchInput.focus();
-            loadUsers();
-        });
-
-        // Ensure club modal stays visible when user picker closes
-        userPickerModal.addEventListener('hidden.bs.modal', function() {
-            const clubModal = document.getElementById('clubModal');
-            if (clubModal && clubModal.classList.contains('show')) {
-                // Keep club modal visible
-                document.body.classList.add('modal-open');
-                const backdrop = document.querySelector('.modal-backdrop');
-                if (backdrop) {
-                    backdrop.style.display = 'block';
-                }
-            }
-        });
-
-        // Search with debounce
-        searchInput.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                filterUsers(this.value);
-            }, 300);
-        });
-
-        // Load users from server
-        async function loadUsers() {
-            showLoading();
+        async loadUsers() {
+            this.loading = true;
+            this.error = null;
 
             try {
                 const response = await fetch('/admin/api/users', {
@@ -115,101 +160,36 @@
                 });
 
                 if (response.ok) {
-                    allUsers = await response.json();
-                    displayUsers(allUsers);
+                    this.allUsers = await response.json();
+                    this.filteredUsers = this.allUsers;
                 } else {
-                    showError('Failed to load users');
+                    this.error = 'Failed to load users';
                 }
-            } catch (error) {
-                console.error('Error loading users:', error);
-                showError('An error occurred while loading users');
+            } catch (err) {
+                console.error('Error loading users:', err);
+                this.error = 'An error occurred while loading users';
+            } finally {
+                this.loading = false;
             }
-        }
+        },
 
-        // Filter users based on search term
-        function filterUsers(searchTerm) {
-            if (!searchTerm.trim()) {
-                displayUsers(allUsers);
+        filterUsers() {
+            if (!this.searchTerm.trim()) {
+                this.filteredUsers = this.allUsers;
                 return;
             }
 
-            const term = searchTerm.toLowerCase();
-            const filtered = allUsers.filter(user => {
+            const term = this.searchTerm.toLowerCase();
+            this.filteredUsers = this.allUsers.filter(user => {
                 return (
                     user.full_name.toLowerCase().includes(term) ||
                     user.email.toLowerCase().includes(term) ||
                     (user.mobile && user.mobile.toLowerCase().includes(term))
                 );
             });
+        },
 
-            displayUsers(filtered);
-        }
-
-        // Display users in the list
-        function displayUsers(users) {
-            hideLoading();
-
-            if (users.length === 0) {
-                resultsContainer.style.display = 'none';
-                noResultsDiv.style.display = 'block';
-                return;
-            }
-
-            resultsContainer.style.display = 'block';
-            noResultsDiv.style.display = 'none';
-
-            resultsContainer.innerHTML = users.map(user => `
-                <div class="user-card border rounded p-3 mb-2"
-                     style="cursor: pointer; transition: all 0.2s;"
-                     data-user-id="${user.id}"
-                     data-user-name="${user.full_name}"
-                     data-user-email="${user.email}"
-                     data-user-mobile="${user.mobile || ''}"
-                     data-user-picture="${user.profile_picture || ''}"
-                     onmouseover="this.style.backgroundColor='hsl(var(--muted) / 0.5)'; this.style.transform='translateX(4px)';"
-                     onmouseout="this.style.backgroundColor=''; this.style.transform='';">
-                    <div class="d-flex align-items-center gap-3">
-                        ${user.profile_picture ? `
-                            <img src="${user.profile_picture}"
-                                 alt="${user.full_name}"
-                                 class="rounded-circle"
-                                 style="width: 50px; height: 50px; object-fit: cover;">
-                        ` : `
-                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
-                                 style="width: 50px; height: 50px; font-size: 1.25rem; font-weight: 600;">
-                                ${user.full_name.charAt(0).toUpperCase()}
-                            </div>
-                        `}
-                        <div class="flex-grow-1">
-                            <div class="fw-semibold">${user.full_name}</div>
-                            <div class="small text-muted">
-                                <i class="bi bi-envelope me-1"></i>${user.email}
-                                ${user.mobile ? `<span class="ms-2"><i class="bi bi-phone me-1"></i>${user.mobile}</span>` : ''}
-                            </div>
-                        </div>
-                        <div>
-                            <i class="bi bi-check-circle text-primary" style="font-size: 1.5rem;"></i>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-
-            // Attach click handlers
-            resultsContainer.querySelectorAll('.user-card').forEach(card => {
-                card.addEventListener('click', function() {
-                    selectUser({
-                        id: this.dataset.userId,
-                        name: this.dataset.userName,
-                        email: this.dataset.userEmail,
-                        mobile: this.dataset.userMobile,
-                        picture: this.dataset.userPicture
-                    });
-                });
-            });
-        }
-
-        // Select a user
-        function selectUser(user) {
+        selectUser(user) {
             // Update hidden input
             const ownerInput = document.getElementById('owner_user_id');
             if (ownerInput) {
@@ -221,56 +201,32 @@
             const ownerDisplay = document.getElementById('ownerDisplay');
             if (ownerDisplay) {
                 ownerDisplay.innerHTML = `
-                    <div class="d-flex align-items-center gap-3">
-                        ${user.picture ? `
-                            <img src="${user.picture}"
-                                 alt="${user.name}"
-                                 class="rounded-circle"
-                                 style="width: 50px; height: 50px; object-fit: cover;">
+                    <div class="flex items-center gap-4">
+                        ${user.profile_picture ? `
+                            <img src="${user.profile_picture}"
+                                 alt="${user.full_name}"
+                                 class="w-12 h-12 rounded-full object-cover">
                         ` : `
-                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
-                                 style="width: 50px; height: 50px; font-size: 1.25rem; font-weight: 600;">
-                                ${user.name.charAt(0).toUpperCase()}
+                            <div class="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center text-xl font-semibold">
+                                ${user.full_name.charAt(0).toUpperCase()}
                             </div>
                         `}
-                        <div class="flex-grow-1">
-                            <div class="fw-semibold">${user.name}</div>
-                            <div class="small text-muted">
-                                <i class="bi bi-envelope me-1"></i>${user.email}
-                                ${user.mobile ? `<span class="ms-2"><i class="bi bi-phone me-1"></i>${user.mobile}</span>` : ''}
+                        <div class="flex-1 min-w-0">
+                            <div class="font-semibold text-gray-900">${user.full_name}</div>
+                            <div class="text-sm text-gray-500">
+                                <i class="bi bi-envelope mr-1"></i>${user.email}
+                                ${user.mobile ? `<span class="ml-2"><i class="bi bi-phone mr-1"></i>${user.mobile}</span>` : ''}
                             </div>
                         </div>
                     </div>
                 `;
             }
 
-            // Close modal
-            bootstrap.Modal.getInstance(userPickerModal).hide();
-        }
+            // Dispatch custom event for external listeners
+            window.dispatchEvent(new CustomEvent('user-selected', { detail: user }));
 
-        // Show loading state
-        function showLoading() {
-            loadingDiv.style.display = 'block';
-            resultsContainer.style.display = 'none';
-            noResultsDiv.style.display = 'none';
+            this.close();
         }
-
-        // Hide loading state
-        function hideLoading() {
-            loadingDiv.style.display = 'none';
-        }
-
-        // Show error
-        function showError(message) {
-            hideLoading();
-            resultsContainer.innerHTML = `
-                <div class="alert alert-danger" role="alert">
-                    <i class="bi bi-exclamation-triangle me-2"></i>${message}
-                </div>
-            `;
-            resultsContainer.style.display = 'block';
-        }
-    })();
+    }
+}
 </script>
-@endpush
-@endonce

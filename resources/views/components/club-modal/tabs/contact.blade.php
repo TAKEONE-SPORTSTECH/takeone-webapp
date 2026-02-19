@@ -4,9 +4,9 @@
     $isEdit = $mode === 'edit' && $club;
 @endphp
 
-<div class="container-fluid px-0">
-    <h5 class="fw-bold mb-3">Contact Information</h5>
-    <p class="text-muted mb-4">Set up how members can reach your club</p>
+<div class="px-0">
+    <h5 class="font-bold mb-3">Contact Information</h5>
+    <p class="text-muted-foreground mb-4">Set up how members can reach your club</p>
 
     <!-- Club Email -->
     <div class="mb-4">
@@ -38,10 +38,10 @@
         </div>
 
         <!-- Owner Email Display (Read-only) -->
-        <div id="ownerEmailDisplay" class="border rounded p-3 mb-3" style="background-color: hsl(var(--muted) / 0.2); display: {{ (!$isEdit || !$club->email) ? 'block' : 'none' }};">
-            <div class="d-flex align-items-center gap-2">
-                <i class="bi bi-envelope text-muted"></i>
-                <span id="ownerEmailText" class="text-muted">
+        <div id="ownerEmailDisplay" class="border border-border rounded-lg p-3 mb-3 bg-muted/20" style="display: {{ (!$isEdit || !$club->email) ? 'block' : 'none' }};">
+            <div class="flex items-center gap-2">
+                <i class="bi bi-envelope text-muted-foreground"></i>
+                <span id="ownerEmailText" class="text-muted-foreground">
                     @if($isEdit && $club->owner)
                         {{ $club->owner->email }}
                     @else
@@ -59,7 +59,7 @@
                    name="email"
                    value="{{ $club->email ?? old('email') }}"
                    placeholder="club@example.com">
-            <small class="text-muted">A dedicated email address for club communications</small>
+            <small class="text-muted-foreground">A dedicated email address for club communications</small>
         </div>
     </div>
 
@@ -93,10 +93,10 @@
         </div>
 
         <!-- Owner Phone Display (Read-only) -->
-        <div id="ownerPhoneDisplay" class="border rounded p-3 mb-3" style="background-color: hsl(var(--muted) / 0.2); display: {{ (!$isEdit || !$club->phone) ? 'block' : 'none' }};">
-            <div class="d-flex align-items-center gap-2">
-                <i class="bi bi-phone text-muted"></i>
-                <span id="ownerPhoneText" class="text-muted">
+        <div id="ownerPhoneDisplay" class="border border-border rounded-lg p-3 mb-3 bg-muted/20" style="display: {{ (!$isEdit || !$club->phone) ? 'block' : 'none' }};">
+            <div class="flex items-center gap-2">
+                <i class="bi bi-phone text-muted-foreground"></i>
+                <span id="ownerPhoneText" class="text-muted-foreground">
                     @if($isEdit && $club->owner && $club->owner->mobile)
                         {{ $club->owner->mobile_formatted }}
                     @else
@@ -121,13 +121,13 @@
                        value="{{ $isEdit && $club->phone ? ($club->phone['number'] ?? '') : old('phone_number') }}"
                        placeholder="12345678">
             </x-country-code-dropdown>
-            <small class="text-muted">A dedicated phone number for club inquiries</small>
+            <small class="text-muted-foreground">A dedicated phone number for club inquiries</small>
         </div>
     </div>
 
     <!-- Additional Contact Info (Optional) -->
     <div class="alert alert-info" role="alert">
-        <i class="bi bi-info-circle me-2"></i>
+        <i class="bi bi-info-circle mr-2"></i>
         <strong>Tip:</strong> You can add more contact methods (WhatsApp, social media, website) in the <strong>Identity & Branding</strong> tab under Social Media Links.
     </div>
 </div>
@@ -187,13 +187,11 @@
         document.addEventListener('ownerSelected', function(e) {
             const owner = e.detail;
 
-            // Update email display
             const ownerEmailText = document.getElementById('ownerEmailText');
             if (ownerEmailText && owner.email) {
                 ownerEmailText.textContent = owner.email;
             }
 
-            // Update phone display
             const ownerPhoneText = document.getElementById('ownerPhoneText');
             if (ownerPhoneText && owner.mobile) {
                 ownerPhoneText.textContent = owner.mobile;
@@ -203,11 +201,9 @@
         // Listen for owner selection from user picker
         const ownerInput = document.getElementById('owner_user_id');
         if (ownerInput) {
-            // Create a MutationObserver to watch for value changes
             const observer = new MutationObserver(function(mutations) {
                 mutations.forEach(function(mutation) {
                     if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
-                        // Owner changed, update displays if using owner's contact info
                         updateOwnerContactInfo();
                     }
                 });
@@ -221,7 +217,6 @@
     function updateOwnerContactInfo() {
         // This function would ideally fetch the owner's details
         // For now, it's handled by the user picker modal
-        // which updates the display directly
     }
 </script>
 @endpush

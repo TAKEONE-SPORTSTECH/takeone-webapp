@@ -7,9 +7,9 @@
 <!-- Select2 CSS -->
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
+<div class="max-w-7xl mx-auto px-4 py-5">
+    <div class="grid grid-cols-12 gap-4 justify-center">
+        <div class="col-span-12 md:col-span-8 md:col-start-3">
             <div class="card shadow">
                 <div class="card-header bg-white">
                     <h3 class="mb-0">Example Form with Reusable Components</h3>
@@ -18,8 +18,8 @@
                     <form method="POST" action="#">
                         @csrf
 
-                        <div class="row">
-                            <div class="col-md-6">
+                        <div class="grid grid-cols-12 gap-4">
+                            <div class="col-span-12 md:col-span-6">
                                 <!-- Example 1: Mobile Number with Country Code -->
                                 <div class="mb-3">
                                     <label for="mobile_number" class="form-label">Mobile Number</label>
@@ -37,7 +37,7 @@
                                                placeholder="Phone number">
                                     </x-country-code-dropdown>
                                     @error('mobile_number')
-                                        <span class="invalid-feedback d-block" role="alert">
+                                        <span class="invalid-feedback block" role="alert">
                                             <strong>{{ $message }}</strong>
                                         </span>
                                     @enderror
@@ -61,13 +61,14 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-6">
+                            <div class="col-span-12 md:col-span-6">
                                 <!-- Example 3: Nationality Dropdown -->
                                 <div class="mb-3">
                                     <label for="nationality" class="form-label">Nationality</label>
-                                    <x-nationality-dropdown
+                                    <x-country-dropdown
                                         name="nationality"
                                         id="nationality"
+                                        label="Nationality"
                                         :value="old('nationality')"
                                         :required="true"
                                         :error="$errors->first('nationality')" />
@@ -76,9 +77,10 @@
                                 <!-- Example 4: Second Nationality (Optional) -->
                                 <div class="mb-3">
                                     <label for="second_nationality" class="form-label">Second Nationality (Optional)</label>
-                                    <x-nationality-dropdown
+                                    <x-country-dropdown
                                         name="second_nationality"
                                         id="second_nationality"
+                                        label="Second Nationality"
                                         :value="old('second_nationality')"
                                         :required="false"
                                         :error="$errors->first('second_nationality')" />
@@ -98,7 +100,7 @@
                             </ul>
                         </div>
 
-                        <div class="d-grid">
+                        <div class="grid">
                             <button type="submit" class="btn btn-primary btn-lg">
                                 Submit Form
                             </button>
@@ -114,7 +116,7 @@
                 </div>
                 <div class="card-body">
                     <h5>1. Country Code Dropdown</h5>
-                    <pre class="bg-light p-3 rounded"><code>&lt;x-country-code-dropdown
+                    <pre class="bg-muted p-3 rounded"><code>&lt;x-country-code-dropdown
     name="country_code"
     id="country_code"
     :value="old('country_code', '+971')"
@@ -123,16 +125,17 @@
     &lt;input type="tel" class="form-control" name="mobile_number" placeholder="Phone number"&gt;
 &lt;/x-country-code-dropdown&gt;</code></pre>
 
-                    <h5 class="mt-4">2. Nationality Dropdown</h5>
-                    <pre class="bg-light p-3 rounded"><code>&lt;x-nationality-dropdown
+                    <h5 class="mt-4">2. Country Dropdown (also for Nationality)</h5>
+                    <pre class="bg-muted p-3 rounded"><code>&lt;x-country-dropdown
     name="nationality"
     id="nationality"
+    label="Nationality"
     :value="old('nationality')"
     :required="true"
     :error="$errors->first('nationality')" /&gt;</code></pre>
 
                     <h5 class="mt-4">3. Required Dependencies</h5>
-                    <pre class="bg-light p-3 rounded"><code>&lt;!-- CSS --&gt;
+                    <pre class="bg-muted p-3 rounded"><code>&lt;!-- CSS --&gt;
 &lt;link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@6.6.6/css/flag-icons.min.css"&gt;
 &lt;link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" /&gt;
 

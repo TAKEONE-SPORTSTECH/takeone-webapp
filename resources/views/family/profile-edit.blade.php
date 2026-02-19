@@ -1,8 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container py-4">
-    <x-edit-profile-modal
+<div class="tf-container">
+    <x-profile-modal
         :user="$user"
         :formAction="route('profile.update')"
         formMethod="PUT"

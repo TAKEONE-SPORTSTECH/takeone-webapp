@@ -10,17 +10,17 @@
         </div>
         <div class="flex items-center gap-2">
             <a href="{{ route('admin.platform.clubs.create') }}" class="btn btn-primary">
-                <i class="bi bi-plus-lg me-2"></i>Add New Club
+                <i class="bi bi-plus-lg mr-2"></i>Add New Club
             </a>
         </div>
     </div>
 
     <!-- Search Bar -->
     <div class="relative">
-        <i class="bi bi-search position-absolute" style="left: 12px; top: 50%; transform: translateY(-50%); color: hsl(var(--muted-foreground));"></i>
+        <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
         <input
             type="text"
-            class="form-control ps-5"
+            class="form-control pl-10"
             placeholder="Search clubs by name, location, or description..."
             id="searchInput"
         />
@@ -32,41 +32,41 @@
             <p class="text-muted-foreground mb-0">No clubs found. Create your first club to get started.</p>
         </div>
     @else
-        <div class="row g-4" id="clubsGrid">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" id="clubsGrid">
             @foreach($clubs as $club)
-            <div class="col-md-6 col-xl-4 club-card"
+            <div class="club-card"
                  data-name="{{ strtolower($club->club_name) }}"
                  data-location="{{ strtolower($club->location ?? '') }}"
                  data-description="{{ strtolower($club->description ?? '') }}">
-                <div class="card h-100 hover-card" style="cursor: pointer;" onclick="window.location='{{ route('admin.platform.clubs.edit', $club->id) }}'">
+                <div class="card h-full hover-card cursor-pointer" onclick="window.location='{{ route('admin.platform.clubs.edit', $club->id) }}'">
                     <!-- Club Cover Image -->
-                    <div class="position-relative" style="height: 192px; overflow: hidden;">
+                    <div class="relative h-48 overflow-hidden">
                         @if($club->cover_image)
                             <img src="{{ asset('storage/' . $club->cover_image) }}"
                                  alt="{{ $club->club_name }}"
-                                 class="w-100 h-100 object-fit-cover club-cover-img"
+                                 class="w-full h-full object-cover club-cover-img"
                                  loading="lazy">
                         @else
-                            <div class="w-100 h-100 d-flex align-items-center justify-content-center"
+                            <div class="w-full h-full flex items-center justify-center"
                                  style="background: linear-gradient(135deg, hsl(250 60% 75%), hsl(250 60% 65%));">
-                                <i class="bi bi-building text-white" style="font-size: 3rem;"></i>
+                                <i class="bi bi-building text-white text-5xl"></i>
                             </div>
                         @endif
 
                         <!-- Club Logo Overlay -->
                         @if($club->logo)
-                        <div class="position-absolute" style="bottom: 8px; left: 8px;">
-                            <div class="rounded-circle bg-white shadow-lg border p-1" style="width: 80px; height: 80px;">
+                        <div class="absolute bottom-2 left-2">
+                            <div class="rounded-full bg-white shadow-lg border p-1 w-20 h-20">
                                 <img src="{{ asset('storage/' . $club->logo) }}"
                                      alt="{{ $club->club_name }} logo"
-                                     class="w-100 h-100 object-fit-contain rounded-circle"
+                                     class="w-full h-full object-contain rounded-full"
                                      loading="lazy">
                             </div>
                         </div>
                         @endif
 
                         <!-- Admin Badge -->
-                        <div class="position-absolute" style="top: 8px; left: 8px;">
+                        <div class="absolute top-2 left-2">
                             <span class="badge text-white" style="background: linear-gradient(135deg, hsl(250 60% 75%), hsl(250 60% 65%));">
                                 Admin
                             </span>
@@ -74,8 +74,8 @@
 
                         <!-- Rating Badge -->
                         @if($club->rating)
-                        <div class="position-absolute" style="top: 8px; right: 8px;">
-                            <span class="badge bg-white text-dark">
+                        <div class="absolute top-2 right-2">
+                            <span class="badge bg-white text-foreground">
                                 <i class="bi bi-star-fill text-warning"></i>
                                 {{ number_format($club->rating, 1) }}
                             </span>
@@ -86,37 +86,31 @@
                     <!-- Card Content -->
                     <div class="card-body p-4">
                         <div class="mb-3">
-                            <h3 class="h5 fw-semibold mb-2 club-name-hover">{{ $club->club_name }}</h3>
+                            <h3 class="text-lg font-semibold mb-2 club-name-hover">{{ $club->club_name }}</h3>
                             @if($club->location)
-                            <div class="d-flex align-items-center text-muted small">
-                                <i class="bi bi-geo-alt me-1"></i>
-                                <span class="text-truncate">{{ $club->location }}</span>
+                            <div class="flex items-center text-muted-foreground text-sm">
+                                <i class="bi bi-geo-alt mr-1"></i>
+                                <span class="truncate">{{ $club->location }}</span>
                             </div>
                             @endif
                         </div>
 
                         <!-- Stats Grid -->
-                        <div class="row g-2 text-center small">
-                            <div class="col-4">
-                                <div class="p-2 rounded" style="background-color: hsl(var(--accent));">
-                                    <i class="bi bi-people d-block mb-1" style="color: hsl(var(--primary));"></i>
-                                    <p class="fw-semibold mb-0">{{ $club->members_count ?? 0 }}</p>
-                                    <p class="text-muted mb-0" style="font-size: 0.75rem;">Members</p>
-                                </div>
+                        <div class="grid grid-cols-3 gap-2 text-center text-sm">
+                            <div class="p-2 rounded bg-accent">
+                                <i class="bi bi-people block mb-1 text-primary"></i>
+                                <p class="font-semibold mb-0">{{ $club->members_count ?? 0 }}</p>
+                                <p class="text-muted-foreground mb-0 text-xs">Members</p>
                             </div>
-                            <div class="col-4">
-                                <div class="p-2 rounded" style="background-color: hsl(var(--accent));">
-                                    <i class="bi bi-box d-block mb-1" style="color: hsl(var(--primary));"></i>
-                                    <p class="fw-semibold mb-0">{{ $club->packages_count ?? 0 }}</p>
-                                    <p class="text-muted mb-0" style="font-size: 0.75rem;">Packages</p>
-                                </div>
+                            <div class="p-2 rounded bg-accent">
+                                <i class="bi bi-box block mb-1 text-primary"></i>
+                                <p class="font-semibold mb-0">{{ $club->packages_count ?? 0 }}</p>
+                                <p class="text-muted-foreground mb-0 text-xs">Packages</p>
                             </div>
-                            <div class="col-4">
-                                <div class="p-2 rounded" style="background-color: hsl(var(--accent));">
-                                    <i class="bi bi-star d-block mb-1" style="color: hsl(var(--primary));"></i>
-                                    <p class="fw-semibold mb-0">{{ $club->trainers_count ?? 0 }}</p>
-                                    <p class="text-muted mb-0" style="font-size: 0.75rem;">Trainers</p>
-                                </div>
+                            <div class="p-2 rounded bg-accent">
+                                <i class="bi bi-star block mb-1 text-primary"></i>
+                                <p class="font-semibold mb-0">{{ $club->trainers_count ?? 0 }}</p>
+                                <p class="text-muted-foreground mb-0 text-xs">Trainers</p>
                             </div>
                         </div>
                     </div>
@@ -127,39 +121,7 @@
     @endif
 </div>
 
-@push('styles')
-<style>
-    .hover-card {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        border: 1px solid hsl(var(--border));
-    }
-
-    .hover-card:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 12px 28px rgba(102, 126, 234, 0.15);
-    }
-
-    .club-cover-img {
-        transition: transform 0.3s ease;
-    }
-
-    .hover-card:hover .club-cover-img {
-        transform: scale(1.1);
-    }
-
-    .club-name-hover {
-        transition: color 0.3s ease;
-    }
-
-    .hover-card:hover .club-name-hover {
-        color: hsl(var(--primary));
-    }
-
-    .space-y-6 > * + * {
-        margin-top: 1.5rem;
-    }
-</style>
-@endpush
+{{-- Styles moved to app.css (Phase 6) --}}
 
 @push('scripts')
 <script>

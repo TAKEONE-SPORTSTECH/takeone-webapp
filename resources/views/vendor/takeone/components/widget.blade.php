@@ -8,12 +8,19 @@
     $uploadUrl = $attributes->get('uploadUrl', '');
     $currentImage = $attributes->get('currentImage', '');
     $buttonText = $attributes->get('buttonText', 'Change Photo');
-    $buttonClass = $attributes->get('buttonClass', 'btn btn-success px-4 fw-bold shadow-sm');
+    $buttonClass = $attributes->get('buttonClass', 'btn btn-success px-4 font-bold shadow-sm');
     $mode = $attributes->get('mode', 'ajax'); // 'ajax' or 'form'
     $inputName = $attributes->get('inputName', 'image'); // For form mode - the hidden input name
     $previewWidth = $attributes->get('previewWidth', $width);
     $previewHeight = $attributes->get('previewHeight', $height);
     $showPreview = $attributes->get('showPreview', $mode === 'form'); // Show preview by default in form mode
+
+    // Cropper canvas/viewport customization
+    $canvasHeight = $attributes->get('canvasHeight', 500);       // Height of the crop canvas area
+    $modalMaxWidth = $attributes->get('modalMaxWidth', '75%');    // Modal max-width CSS value
+    $modalWidth = $attributes->get('modalWidth', 1000);           // Modal width in px
+    $viewportFill = $attributes->get('viewportFill', 0.75);      // How much of the canvas the viewport fills (0-1)
+    $maxScale = $attributes->get('maxScale', 3);                  // Max scale multiplier for auto-sizing
 @endphp
 
 <x-toast-notification />
@@ -22,62 +29,7 @@
     <link rel="stylesheet" href="https://unpkg.com/cropme@1.4.1/dist/cropme.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://unpkg.com/cropme@1.4.1/dist/cropme.min.js"></script>
-    <style>
-        .modal-content-clean { border: none; border-radius: 15px; overflow: hidden; }
-        .cropme-wrapper { overflow: hidden !important; border-radius: 8px; }
-        .cropme-slider { display: none !important; }
-        .takeone-canvas {
-            background: #111;
-            border-radius: 8px;
-            position: relative;
-            border: 1px solid #222;
-        }
-        .custom-slider-label {
-            font-size: 0.75rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            color: #6c757d;
-            letter-spacing: 0.5px;
-        }
-        .form-range::-webkit-slider-thumb { background: #198754; }
-        .form-range::-moz-range-thumb { background: #198754; }
-        .cropper-preview-container {
-            position: relative;
-            display: inline-block;
-        }
-        .cropper-preview-placeholder {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: #f0f0f0;
-            border: 2px dashed #dee2e6;
-            color: #6c757d;
-        }
-        .cropper-preview-image {
-            object-fit: cover;
-            border: 2px solid #dee2e6;
-        }
-        .cropper-remove-btn {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: #dc3545;
-            color: white;
-            border: none;
-            font-size: 14px;
-            line-height: 1;
-            cursor: pointer;
-            display: none;
-        }
-        .cropper-preview-container.has-image .cropper-remove-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-    </style>
+    {{-- Styles moved to app.css (Phase 6) --}}
 @endonce
 
 @if($mode === 'form')
@@ -103,42 +55,42 @@
     <input type="hidden" name="{{ $inputName }}" id="hiddenInput_{{ $id }}" value="">
     <input type="hidden" name="{{ $inputName }}_folder" value="{{ $folder }}">
     <input type="hidden" name="{{ $inputName }}_filename" value="{{ $filename }}">
-    <button type="button" class="{{ $buttonClass }}" data-bs-toggle="modal" data-bs-target="#cropperModal_{{ $id }}">
-        <i class="bi bi-camera me-2"></i>{{ $buttonText }}
+    <button type="button" class="{{ $buttonClass }}" onclick="window.bsModal.show(document.querySelector('#cropperModal_{{ $id }}'))">
+        <i class="bi bi-camera mr-2"></i>{{ $buttonText }}
     </button>
 </div>
 @else
 {{-- AJAX mode: Just the button --}}
-<button type="button" class="{{ $buttonClass }}" data-bs-toggle="modal" data-bs-target="#cropperModal_{{ $id }}">
-    <i class="bi bi-camera me-2"></i>{{ $buttonText }}
+<button type="button" class="{{ $buttonClass }}" onclick="window.bsModal.show(document.querySelector('#cropperModal_{{ $id }}'))">
+    <i class="bi bi-camera{{ $buttonText ? ' mr-2' : '' }}"></i>{{ $buttonText }}
 </button>
 @endif
 
 @push('modals')
 <div class="modal fade" id="cropperModal_{{ $id }}" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: 75%; width: 1000px;">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: {{ $modalMaxWidth }}; width: {{ $modalWidth }}px;">
         <div class="modal-content modal-content-clean shadow-lg">
-            <div class="modal-body p-4 text-start" style="max-height: 85vh; overflow-y: auto;">
-                <div class="mb-3 d-flex align-items-center">
+            <div class="modal-body p-4 text-left" style="max-height: 85vh; overflow-y: auto;">
+                <div class="mb-3 flex items-center">
                     <input type="file" id="input_{{ $id }}" class="form-control form-control-sm" accept="image/*">
-                    <button type="button" class="btn-close ms-2" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close ml-2" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
 
-                <div id="box_{{ $id }}" class="takeone-canvas" style="height: 500px;"></div>
+                <div id="box_{{ $id }}" class="takeone-canvas" style="height: {{ $canvasHeight }}px;"></div>
 
-                <div class="row mt-4">
-                    <div class="col-md-6 mb-3">
-                        <label class="custom-slider-label d-block mb-2">Zoom Level</label>
+                <div class="grid grid-cols-12 gap-4 mt-4">
+                    <div class="col-span-12 md:col-span-6 mb-3">
+                        <label class="custom-slider-label block mb-2">Zoom Level</label>
                         <input type="range" class="form-range" id="zoom_{{ $id }}" min="0" max="100" step="1" value="0">
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="custom-slider-label d-block mb-2">Rotation</label>
+                    <div class="col-span-12 md:col-span-6 mb-3">
+                        <label class="custom-slider-label block mb-2">Rotation</label>
                         <input type="range" class="form-range" id="rot_{{ $id }}" min="-180" max="180" step="1" value="0">
                     </div>
                 </div>
 
-                <div class="d-grid gap-2 mt-2">
-                    <button type="button" class="btn btn-success btn-lg fw-bold py-3" id="save_{{ $id }}">
+                <div class="grid gap-2 mt-2">
+                    <button type="button" class="btn btn-success btn-lg font-bold py-3" id="save_{{ $id }}">
                         @if($mode === 'form')
                             Crop & Apply
                         @else
@@ -170,11 +122,25 @@ $(function() {
     function initCropper_{{ $id }}(imageUrl) {
         if (cropper_{{ $id }}) cropper_{{ $id }}.destroy();
 
+        // Auto-scale viewport to fill the canvas while keeping aspect ratio
+        const origW_{{ $id }} = {{ $width }};
+        const origH_{{ $id }} = {{ $height }};
+        const canvasH_{{ $id }} = {{ $canvasHeight }};
+        const containerW_{{ $id }} = el_{{ $id }}.offsetWidth || 900;
+        const fill_{{ $id }} = {{ $viewportFill }};
+        const maxSc_{{ $id }} = {{ $maxScale }};
+
+        const scW_{{ $id }} = (containerW_{{ $id }} * fill_{{ $id }}) / origW_{{ $id }};
+        const scH_{{ $id }} = (canvasH_{{ $id }} * fill_{{ $id }}) / origH_{{ $id }};
+        const sc_{{ $id }} = Math.max(1, Math.min(scW_{{ $id }}, scH_{{ $id }}, maxSc_{{ $id }}));
+        const vpW_{{ $id }} = Math.round(origW_{{ $id }} * sc_{{ $id }});
+        const vpH_{{ $id }} = Math.round(origH_{{ $id }} * sc_{{ $id }});
+
         cropper_{{ $id }} = new Cropme(el_{{ $id }}, {
-            container: { width: '100%', height: 500 },
+            container: { width: '100%', height: canvasH_{{ $id }} },
             viewport: {
-                width: {{ $width }},
-                height: {{ $height }},
+                width: vpW_{{ $id }},
+                height: vpH_{{ $id }},
                 type: '{{ $shape }}',
                 border: { enable: true, width: 2, color: '#fff' }
             },
@@ -265,15 +231,39 @@ $(function() {
                     $('#cropperModal_{{ $id }}').modal('hide');
                     Toast.success('Photo Updated!', 'Your image has been saved successfully.');
 
-                    // Update the profile picture in the current page without reload
+                    // Update the image on the page without reload
                     if (res.url) {
-                        // Update all profile picture images on the page
-                        $('img[src*="profile_{{ str_replace("profile_picture", "", $id) }}"]').attr('src', res.url + '?t=' + new Date().getTime());
+                        const cacheBuster = '?t=' + new Date().getTime();
+                        const newUrl = res.url + cacheBuster;
+
+                        // Try to find the image in the parent card (for facility/instructor cards)
+                        const button = $('[data-bs-target="#cropperModal_{{ $id }}"]');
+                        const card = button.closest('.card');
+                        if (card.length) {
+                            const cardImg = card.find('.card-img-top');
+                            if (cardImg.length && cardImg.is('img')) {
+                                // Update existing image
+                                cardImg.attr('src', newUrl);
+                            } else {
+                                // Replace placeholder div with img
+                                const placeholder = card.find('.card-img-top, .bg-muted').first();
+                                if (placeholder.length && !placeholder.is('img')) {
+                                    placeholder.replaceWith(`<img src="${newUrl}" alt="Image" class="card-img-top" style="height: 180px; object-fit: cover;">`);
+                                }
+                            }
+                        }
+
+                        // Also update any image with matching data-cropper-id
+                        $('img[data-cropper-id="{{ $id }}"]').attr('src', newUrl);
+
+                        // Fallback: Update all profile picture images on the page
+                        $('img[src*="profile_{{ str_replace("profile_picture", "", $id) }}"]').attr('src', newUrl);
+
                         // Update any background images
                         $('[style*="profile_{{ str_replace("profile_picture", "", $id) }}"]').each(function() {
                             const style = $(this).attr('style');
                             if (style && style.includes('background-image')) {
-                                $(this).attr('style', style.replace(/url\([^)]+\)/, 'url(' + res.url + '?t=' + new Date().getTime() + ')'));
+                                $(this).attr('style', style.replace(/url\([^)]+\)/, 'url(' + newUrl + ')'));
                             }
                         });
                     }

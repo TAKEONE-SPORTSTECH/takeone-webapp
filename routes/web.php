@@ -6,8 +6,9 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\FamilyController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\InvoiceController;
-use App\Http\Controllers\ClubController;
+use App\Http\Controllers\PlatformController;
 use App\Http\Controllers\InstructorReviewController;
+use App\Http\Controllers\TrainerController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -77,9 +78,13 @@ Route::post('/email/verification-notification', function (Request $request) {
 
 // Explore routes (accessible to authenticated users)
 Route::middleware(['auth'])->group(function () {
-    Route::get('/explore', [ClubController::class, 'index'])->name('clubs.explore');
-    Route::get('/clubs/nearby', [ClubController::class, 'nearby'])->name('clubs.nearby');
-    Route::get('/clubs/all', [ClubController::class, 'all'])->name('clubs.all');
+    Route::get('/explore', [PlatformController::class, 'index'])->name('clubs.explore');
+    Route::get('/clubs/nearby', [PlatformController::class, 'nearby'])->name('clubs.nearby');
+    Route::get('/clubs/all', [PlatformController::class, 'all'])->name('clubs.all');
+    Route::get('/clubs/{slug}', [PlatformController::class, 'show'])->name('clubs.show');
+    Route::get('/clubs/{slug}/packages-json', [PlatformController::class, 'clubPackages'])->name('clubs.packages.json');
+    Route::post('/clubs/join', [PlatformController::class, 'joinClub'])->name('clubs.join');
+    Route::get('/trainer/{instructor}', [TrainerController::class, 'show'])->name('trainer.show');
 });
 
 // Platform Admin routes (Super Admin only)
@@ -125,25 +130,41 @@ Route::middleware(['auth', 'verified', 'role:super-admin'])->prefix('admin')->na
 Route::middleware(['auth', 'verified'])->prefix('admin/club/{club}')->name('admin.club.')->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\Admin\ClubAdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/details', [App\Http\Controllers\Admin\ClubAdminController::class, 'details'])->name('details');
+    Route::put('/', [App\Http\Controllers\Admin\ClubAdminController::class, 'update'])->name('update');
+    Route::delete('/', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroy'])->name('destroy');
+    Route::post('/social-links', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeSocialLink'])->name('social-links.store');
+    Route::delete('/social-links/{link}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroySocialLink'])->name('social-links.destroy');
     Route::get('/gallery', [App\Http\Controllers\Admin\ClubAdminController::class, 'gallery'])->name('gallery');
     Route::post('/gallery/upload', [App\Http\Controllers\Admin\ClubAdminController::class, 'uploadGallery'])->name('gallery.upload');
+    Route::delete('/gallery/{image}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyGalleryImage'])->name('gallery.destroy');
     Route::get('/facilities', [App\Http\Controllers\Admin\ClubAdminController::class, 'facilities'])->name('facilities');
     Route::post('/facilities', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeFacility'])->name('facilities.store');
+    Route::get('/facilities/{facility}', [App\Http\Controllers\Admin\ClubAdminController::class, 'getFacility'])->name('facilities.show');
+    Route::put('/facilities/{facility}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateFacility'])->name('facilities.update');
+    Route::delete('/facilities/{facility}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyFacility'])->name('facilities.destroy');
     Route::post('/facilities/{facility}/upload-image', [App\Http\Controllers\Admin\ClubAdminController::class, 'uploadFacilityImage'])->name('facilities.upload-image');
     Route::get('/instructors', [App\Http\Controllers\Admin\ClubAdminController::class, 'instructors'])->name('instructors');
     Route::post('/instructors', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeInstructor'])->name('instructors.store');
     Route::post('/instructors/{instructor}/upload-photo', [App\Http\Controllers\Admin\ClubAdminController::class, 'uploadInstructorPhoto'])->name('instructors.upload-photo');
     Route::get('/activities', [App\Http\Controllers\Admin\ClubAdminController::class, 'activities'])->name('activities');
     Route::post('/activities', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeActivity'])->name('activities.store');
+    Route::put('/activities/{activity}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateActivity'])->name('activities.update');
+    Route::delete('/activities/{activity}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyActivity'])->name('activities.destroy');
     Route::get('/packages', [App\Http\Controllers\Admin\ClubAdminController::class, 'packages'])->name('packages');
     Route::post('/packages', [App\Http\Controllers\Admin\ClubAdminController::class, 'storePackage'])->name('packages.store');
+    Route::put('/packages/{package}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updatePackage'])->name('packages.update');
+    Route::delete('/packages/{package}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyPackage'])->name('packages.destroy');
     Route::get('/members', [App\Http\Controllers\Admin\ClubAdminController::class, 'members'])->name('members');
     Route::post('/members', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeMember'])->name('members.store');
+    Route::get('/members/search', [App\Http\Controllers\Admin\ClubAdminController::class, 'searchUsers'])->name('members.search');
     Route::get('/roles', [App\Http\Controllers\Admin\ClubAdminController::class, 'roles'])->name('roles');
     Route::post('/roles', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeRole'])->name('roles.store');
+    Route::delete('/roles', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyRole'])->name('roles.destroy');
     Route::get('/financials', [App\Http\Controllers\Admin\ClubAdminController::class, 'financials'])->name('financials');
     Route::post('/financials/income', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeIncome'])->name('financials.income');
     Route::post('/financials/expense', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeExpense'])->name('financials.expense');
+    Route::put('/financials/{transaction}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateTransaction'])->name('financials.update');
+    Route::delete('/financials/{transaction}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyTransaction'])->name('financials.destroy');
     Route::get('/messages', [App\Http\Controllers\Admin\ClubAdminController::class, 'messages'])->name('messages');
     Route::post('/messages/send', [App\Http\Controllers\Admin\ClubAdminController::class, 'sendMessage'])->name('messages.send');
     Route::get('/analytics', [App\Http\Controllers\Admin\ClubAdminController::class, 'analytics'])->name('analytics');
@@ -156,14 +177,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return redirect()->route('member.show', Auth::id());
     });
 
-    // Redirect old /family route to /members
+    // Redirect old routes to /family/members
     Route::get('/family', function () {
+        return redirect()->route('members.index');
+    });
+    Route::get('/members', function () {
         return redirect()->route('members.index');
     });
 
     // Members listing (family dashboard)
-    Route::get('/members', [MemberController::class, 'index'])->name('members.index');
-    Route::get('/members/create', [MemberController::class, 'create'])->name('members.create');
+    Route::get('/family/members', [MemberController::class, 'index'])->name('members.index');
+    Route::get('/family/members/create', [MemberController::class, 'create'])->name('members.create');
     Route::post('/members', [MemberController::class, 'store'])->name('members.store');
 
     // Individual member routes
@@ -182,6 +206,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/family/create', function () {
         return redirect()->route('members.create');
     })->name('family.create');
+    Route::post('/family', [FamilyController::class, 'store'])->name('family.store');
     Route::get('/family/{id}', function ($id) {
         return redirect()->route('member.show', $id);
     })->name('family.show');
@@ -197,7 +222,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/family/{id}', [MemberController::class, 'destroy'])->name('family.destroy');
     Route::get('/family/dashboard', function () {
         return redirect()->route('members.index');
-    })->name('family.dashboard');
+    });
 
     // Bills routes
     Route::get('/bills', [InvoiceController::class, 'index'])->name('bills.index');

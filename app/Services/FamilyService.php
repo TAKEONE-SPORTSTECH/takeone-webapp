@@ -21,11 +21,8 @@ class FamilyService
     {
         // Normalize gender value to match database enum (m/f)
         $gender = $data['gender'];
-        if ($gender === 'male') {
-            $gender = 'm';
-        } elseif ($gender === 'female') {
-            $gender = 'f';
-        }
+        $genderMap = ['male' => 'm', 'female' => 'f'];
+        $gender = $genderMap[$gender] ?? $gender;
 
         // Create the dependent user
         $dependent = User::create([

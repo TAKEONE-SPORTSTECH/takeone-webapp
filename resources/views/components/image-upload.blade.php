@@ -11,7 +11,7 @@
     'placeholder' => 'No image',
     'placeholderIcon' => 'bi-image',
     'buttonText' => 'Change Photo',
-    'buttonClass' => 'btn btn-success',
+    'buttonClass' => 'px-4 py-2 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors cursor-pointer',
     'previewClass' => '',
     'showPreview' => true,
     'rounded' => false
@@ -20,27 +20,27 @@
 @php
     $cacheBuster = $currentImage ? '?v=' . time() : '';
     $imageUrl = $currentImage ? $currentImage . $cacheBuster : '';
-    $borderRadius = $rounded ? '50%' : '8px';
+    $borderRadius = $rounded ? 'rounded-full' : 'rounded-lg';
     $previewWidth = $width . 'px';
     $previewHeight = $height . 'px';
 @endphp
 
-<div class="image-upload-component text-center {{ $previewClass }}">
+<div class="image-upload-component inline-block text-center {{ $previewClass }}">
     @if($showPreview)
-        <div class="image-preview mb-3">
+        <div class="image-preview mb-4">
             @if($imageUrl)
                 <img src="{{ $imageUrl }}"
                      alt="Preview"
                      id="{{ $id }}_preview"
-                     class="image-upload-preview"
-                     style="width: {{ $previewWidth }}; height: {{ $previewHeight }}; object-fit: cover; border: 3px solid #dee2e6; border-radius: {{ $borderRadius }};">
+                     class="image-upload-preview object-cover border-3 border-gray-300 {{ $borderRadius }} transition-opacity duration-300 hover:opacity-90"
+                     style="width: {{ $previewWidth }}; height: {{ $previewHeight }};">
             @else
-                <div class="image-placeholder"
+                <div class="image-placeholder flex items-center justify-center bg-gray-100 border-3 border-gray-300 {{ $borderRadius }} mx-auto transition-all duration-300 hover:bg-gray-200"
                      id="{{ $id }}_placeholder"
-                     style="width: {{ $previewWidth }}; height: {{ $previewHeight }}; background-color: #f0f0f0; border: 3px solid #dee2e6; border-radius: {{ $borderRadius }}; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                     style="width: {{ $previewWidth }}; height: {{ $previewHeight }};">
                     <div class="text-center">
-                        <i class="bi {{ $placeholderIcon }}" style="font-size: 60px; color: #dee2e6;"></i>
-                        <p class="text-muted mt-2 mb-0">{{ $placeholder }}</p>
+                        <i class="bi {{ $placeholderIcon }} text-6xl text-gray-300"></i>
+                        <p class="text-gray-500 mt-2 mb-0 text-sm">{{ $placeholder }}</p>
                     </div>
                 </div>
             @endif
@@ -60,25 +60,3 @@
         :buttonClass="$buttonClass"
     />
 </div>
-
-@once
-@push('styles')
-<style>
-    .image-upload-component {
-        display: inline-block;
-    }
-    .image-upload-preview {
-        transition: opacity 0.3s ease;
-    }
-    .image-upload-preview:hover {
-        opacity: 0.9;
-    }
-    .image-placeholder {
-        transition: all 0.3s ease;
-    }
-    .image-placeholder:hover {
-        background-color: #e9ecef !important;
-    }
-</style>
-@endpush
-@endonce

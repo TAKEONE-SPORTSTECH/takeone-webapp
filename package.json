@@ -18,6 +18,7 @@
     },
     "dependencies": {
         "chart.js": "^4.5.1",
-        "jquery-cropbox": "github:acornejo/jquery-cropbox"
+        "jquery-cropbox": "github:acornejo/jquery-cropbox",
+        "select2": "^4.1.0-rc.0"
     }
 }

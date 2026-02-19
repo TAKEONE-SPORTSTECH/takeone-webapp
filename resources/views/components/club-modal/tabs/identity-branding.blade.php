@@ -4,14 +4,14 @@
     $isEdit = $mode === 'edit' && $club;
 @endphp
 
-<div class="container-fluid px-0">
-    <h5 class="fw-bold mb-3">Identity & Branding</h5>
-    <p class="text-muted mb-4">Define your club's public identity, URL, and visual branding</p>
+<div class="px-0">
+    <h5 class="font-bold mb-3">Identity & Branding</h5>
+    <p class="text-muted-foreground mb-4">Define your club's public identity, URL, and visual branding</p>
 
     <!-- Club Slug -->
     <div class="mb-4">
         <label for="slug" class="form-label">
-            Club Slug <span class="text-danger">*</span>
+            Club Slug <span class="text-destructive">*</span>
         </label>
         <div class="input-group">
             <span class="input-group-text bg-white">
@@ -27,46 +27,46 @@
                    data-error-message="Slug is required and must be URL-friendly"
                    placeholder="e.g., bh-taekwondo">
         </div>
-        <small class="text-muted">URL-friendly identifier (lowercase letters, numbers, and hyphens only)</small>
+        <small class="text-muted-foreground">URL-friendly identifier (lowercase letters, numbers, and hyphens only)</small>
         <div class="invalid-feedback">Please enter a valid slug.</div>
     </div>
 
     <!-- Club URL Preview -->
     <div class="mb-4">
         <label class="form-label">Club Public URL</label>
-        <div class="border rounded p-3" style="background-color: hsl(var(--muted) / 0.2);">
-            <div class="d-flex align-items-center gap-2">
+        <div class="border border-border rounded-lg p-3 bg-muted/20">
+            <div class="flex items-center gap-2">
                 <i class="bi bi-globe text-primary"></i>
                 <code id="clubUrlPreview" class="text-primary mb-0">{{ url('/club/') }}/{{ $club->slug ?? 'your-club-slug' }}</code>
-                <button type="button" class="btn btn-sm btn-outline-primary ms-auto" onclick="copyClubUrl()">
+                <button type="button" class="btn btn-sm btn-outline-primary ml-auto" onclick="copyClubUrl()">
                     <i class="bi bi-clipboard"></i>
                 </button>
             </div>
         </div>
-        <small class="text-muted">This is the public URL where members can view your club</small>
+        <small class="text-muted-foreground">This is the public URL where members can view your club</small>
     </div>
 
     <!-- QR Code -->
     <div class="mb-4">
         <label class="form-label">Club QR Code</label>
-        <div class="border rounded p-4 text-center" style="background-color: hsl(var(--muted) / 0.1);">
-            <div id="qrCodeContainer" class="d-inline-block mb-3"></div>
+        <div class="border border-border rounded-lg p-4 text-center bg-muted/10">
+            <div id="qrCodeContainer" class="inline-block mb-3"></div>
             <div>
                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="downloadQRCode()">
-                    <i class="bi bi-download me-2"></i>Download QR Code
+                    <i class="bi bi-download mr-2"></i>Download QR Code
                 </button>
                 <button type="button" class="btn btn-sm btn-outline-secondary" onclick="printQRCode()">
-                    <i class="bi bi-printer me-2"></i>Print
+                    <i class="bi bi-printer mr-2"></i>Print
                 </button>
             </div>
         </div>
-        <small class="text-muted">Share this QR code for easy access to your club's page</small>
+        <small class="text-muted-foreground">Share this QR code for easy access to your club's page</small>
     </div>
 
     <!-- Logo and Cover Images -->
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <label class="form-label d-block">Club Logo <span class="text-danger">*</span></label>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+            <label class="form-label block">Club Logo <span class="text-destructive">*</span></label>
             <div class="text-center">
                 <!-- Logo Preview -->
                 <div class="cropper-preview-container mb-2" id="logoPreviewContainer">
@@ -79,7 +79,7 @@
                     <div id="logoPreview"
                          class="cropper-preview-placeholder"
                          style="width: 150px; height: 150px; border-radius: 8px; border: 2px dashed #dee2e6; display: flex; align-items: center; justify-content: center; background-color: #f0f0f0; color: #6c757d;">
-                        <i class="bi bi-image" style="font-size: 2rem;"></i>
+                        <i class="bi bi-image text-2xl"></i>
                     </div>
                     @endif
                 </div>
@@ -87,14 +87,14 @@
                 <input type="hidden" name="logo_folder" value="clubs/logos">
                 <input type="hidden" name="logo_filename" value="logo_{{ time() }}">
                 <button type="button" class="btn btn-outline-primary btn-sm" onclick="openLogoCropper()">
-                    <i class="bi bi-camera me-2"></i>Upload Logo
+                    <i class="bi bi-camera mr-2"></i>Upload Logo
                 </button>
-                <small class="text-muted d-block mt-2">Square image recommended (400x400px)</small>
-                <small class="text-muted d-block">Used as main logo and favicon</small>
+                <small class="text-muted-foreground block mt-2">Square image recommended (400x400px)</small>
+                <small class="text-muted-foreground block">Used as main logo and favicon</small>
             </div>
         </div>
-        <div class="col-md-6">
-            <label class="form-label d-block">Cover Image</label>
+        <div>
+            <label class="form-label block">Cover Image</label>
             <div class="text-center">
                 <!-- Cover Preview -->
                 <div class="cropper-preview-container mb-2" id="coverPreviewContainer">
@@ -107,7 +107,7 @@
                     <div id="coverPreview"
                          class="cropper-preview-placeholder"
                          style="width: 250px; height: 83px; border-radius: 8px; border: 2px dashed #dee2e6; display: flex; align-items: center; justify-content: center; background-color: #f0f0f0; color: #6c757d;">
-                        <i class="bi bi-image" style="font-size: 2rem;"></i>
+                        <i class="bi bi-image text-2xl"></i>
                     </div>
                     @endif
                 </div>
@@ -115,10 +115,10 @@
                 <input type="hidden" name="cover_image_folder" value="clubs/covers">
                 <input type="hidden" name="cover_image_filename" value="cover_{{ time() }}">
                 <button type="button" class="btn btn-outline-primary btn-sm" onclick="openCoverCropper()">
-                    <i class="bi bi-camera me-2"></i>Upload Cover
+                    <i class="bi bi-camera mr-2"></i>Upload Cover
                 </button>
-                <small class="text-muted d-block mt-2">Wide banner image (1200x400px)</small>
-                <small class="text-muted d-block">Used for club profile header</small>
+                <small class="text-muted-foreground block mt-2">Wide banner image (1200x400px)</small>
+                <small class="text-muted-foreground block">Used for club profile header</small>
             </div>
         </div>
     </div>
@@ -127,8 +127,8 @@
     <!-- Logo Cropper Overlay -->
     <div id="logoCropperOverlay" class="cropper-overlay" style="display: none;">
         <div class="cropper-panel">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">Crop Logo</h5>
+            <div class="flex justify-between items-center mb-3">
+                <h5 class="mb-0 font-semibold">Crop Logo</h5>
                 <button type="button" class="btn-close" onclick="closeLogoCropper()"></button>
             </div>
 
@@ -136,20 +136,20 @@
 
             <div id="logoBox" class="takeone-canvas" style="height: 400px; background: #111; border-radius: 8px;"></div>
 
-            <div class="row mt-3">
-                <div class="col-6">
-                    <label class="form-label small">Zoom</label>
-                    <input type="range" class="form-range" id="logoZoom" min="0" max="100" step="1" value="0">
+            <div class="grid grid-cols-2 gap-4 mt-3">
+                <div>
+                    <label class="form-label text-sm">Zoom</label>
+                    <input type="range" class="w-full" id="logoZoom" min="0" max="100" step="1" value="0">
                 </div>
-                <div class="col-6">
-                    <label class="form-label small">Rotation</label>
-                    <input type="range" class="form-range" id="logoRotation" min="-180" max="180" step="1" value="0">
+                <div>
+                    <label class="form-label text-sm">Rotation</label>
+                    <input type="range" class="w-full" id="logoRotation" min="-180" max="180" step="1" value="0">
                 </div>
             </div>
 
-            <div class="d-flex gap-2 mt-3">
-                <button type="button" class="btn btn-secondary flex-fill" onclick="closeLogoCropper()">Cancel</button>
-                <button type="button" class="btn btn-primary flex-fill" onclick="saveLogoCrop()">Save & Apply</button>
+            <div class="flex gap-2 mt-3">
+                <button type="button" class="btn btn-secondary flex-1" onclick="closeLogoCropper()">Cancel</button>
+                <button type="button" class="btn btn-primary flex-1" onclick="saveLogoCrop()">Save & Apply</button>
             </div>
         </div>
     </div>
@@ -157,8 +157,8 @@
     <!-- Cover Cropper Overlay -->
     <div id="coverCropperOverlay" class="cropper-overlay" style="display: none;">
         <div class="cropper-panel">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">Crop Cover Image</h5>
+            <div class="flex justify-between items-center mb-3">
+                <h5 class="mb-0 font-semibold">Crop Cover Image</h5>
                 <button type="button" class="btn-close" onclick="closeCoverCropper()"></button>
             </div>
 
@@ -166,20 +166,20 @@
 
             <div id="coverBox" class="takeone-canvas" style="height: 400px; background: #111; border-radius: 8px;"></div>
 
-            <div class="row mt-3">
-                <div class="col-6">
-                    <label class="form-label small">Zoom</label>
-                    <input type="range" class="form-range" id="coverZoom" min="0" max="100" step="1" value="0">
+            <div class="grid grid-cols-2 gap-4 mt-3">
+                <div>
+                    <label class="form-label text-sm">Zoom</label>
+                    <input type="range" class="w-full" id="coverZoom" min="0" max="100" step="1" value="0">
                 </div>
-                <div class="col-6">
-                    <label class="form-label small">Rotation</label>
-                    <input type="range" class="form-range" id="coverRotation" min="-180" max="180" step="1" value="0">
+                <div>
+                    <label class="form-label text-sm">Rotation</label>
+                    <input type="range" class="w-full" id="coverRotation" min="-180" max="180" step="1" value="0">
                 </div>
             </div>
 
-            <div class="d-flex gap-2 mt-3">
-                <button type="button" class="btn btn-secondary flex-fill" onclick="closeCoverCropper()">Cancel</button>
-                <button type="button" class="btn btn-primary flex-fill" onclick="saveCoverCrop()">Save & Apply</button>
+            <div class="flex gap-2 mt-3">
+                <button type="button" class="btn btn-secondary flex-1" onclick="closeCoverCropper()">Cancel</button>
+                <button type="button" class="btn btn-primary flex-1" onclick="saveCoverCrop()">Save & Apply</button>
             </div>
         </div>
     </div>
@@ -187,18 +187,18 @@
     <!-- Social Media Links -->
     <div class="mb-4">
         <label class="form-label">Social Media Links</label>
-        <p class="text-muted small mb-3">Add links to your club's social media profiles</p>
+        <p class="text-muted-foreground text-sm mb-3">Add links to your club's social media profiles</p>
 
         <div id="socialLinksContainer">
             @if($isEdit && $club->socialLinks && $club->socialLinks->count() > 0)
                 @foreach($club->socialLinks as $index => $link)
                     <div class="social-link-row mb-3" data-index="{{ $index }}">
-                        <div class="row g-2">
-                            <div class="col-md-4">
+                        <div class="grid grid-cols-12 gap-2">
+                            <div class="col-span-12 md:col-span-4">
                                 <select class="form-select" name="social_links[{{ $index }}][platform]" required>
                                     <option value="">Select Platform</option>
                                     <option value="facebook" {{ $link->platform === 'facebook' ? 'selected' : '' }}>
-                                        <i class="bi bi-facebook"></i> Facebook
+                                        Facebook
                                     </option>
                                     <option value="instagram" {{ $link->platform === 'instagram' ? 'selected' : '' }}>
                                         Instagram
@@ -220,7 +220,7 @@
                                     </option>
                                 </select>
                             </div>
-                            <div class="col-md-7">
+                            <div class="col-span-12 md:col-span-7">
                                 <input type="url"
                                        class="form-control"
                                        name="social_links[{{ $index }}][url]"
@@ -228,8 +228,8 @@
                                        placeholder="https://..."
                                        required>
                             </div>
-                            <div class="col-md-1">
-                                <button type="button" class="btn btn-outline-danger w-100" onclick="removeSocialLink(this)">
+                            <div class="col-span-12 md:col-span-1">
+                                <button type="button" class="btn btn-outline-danger w-full" onclick="removeSocialLink(this)">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </div>
@@ -240,65 +240,12 @@
         </div>
 
         <button type="button" class="btn btn-outline-primary btn-sm" onclick="addSocialLink()">
-            <i class="bi bi-plus-circle me-2"></i>Add Social Link
+            <i class="bi bi-plus-circle mr-2"></i>Add Social Link
         </button>
     </div>
 </div>
 
-@push('styles')
-<style>
-    /* PART 2: Cropper Overlay Styles */
-    .cropper-overlay {
-        position: fixed; /* PART 1 FIX: Fixed positioning to cover entire modal */
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: rgba(0, 0, 0, 0.85);
-        z-index: 1065; /* PART 1 FIX: Higher than modal content (1060) */
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem;
-        overflow-y: auto;
-    }
-
-    .cropper-panel {
-        background: white;
-        border-radius: 1rem;
-        max-width: 800px;
-        width: 100%;
-        max-height: 90vh;
-        overflow-y: auto;
-        padding: 2rem;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
-    }
-
-    .takeone-canvas {
-        position: relative;
-        border: 1px solid #222;
-    }
-
-    .cropper-preview-container {
-        position: relative;
-        display: inline-block;
-    }
-
-    .cropper-preview-placeholder {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background-color: #f0f0f0;
-        border: 2px dashed #dee2e6;
-        color: #6c757d;
-    }
-
-    .cropper-preview-image {
-        object-fit: cover;
-        border: 2px solid #dee2e6;
-    }
-</style>
-@endpush
+{{-- Styles moved to app.css (Phase 6) --}}
 
 @push('scripts')
 <link rel="stylesheet" href="https://unpkg.com/cropme@1.4.1/dist/cropme.min.css">
@@ -366,7 +313,6 @@
 
         const url = urlPreview.textContent;
         navigator.clipboard.writeText(url).then(() => {
-            // Show success feedback
             if (typeof Toast !== 'undefined') {
                 Toast.success('Copied!', 'Club URL copied to clipboard');
             } else {
@@ -406,24 +352,10 @@
                 <head>
                     <title>Club QR Code</title>
                     <style>
-                        body {
-                            display: flex;
-                            justify-content: center;
-                            align-items: center;
-                            min-height: 100vh;
-                            margin: 0;
-                            font-family: Arial, sans-serif;
-                        }
-                        .container {
-                            text-align: center;
-                        }
-                        img {
-                            max-width: 400px;
-                            height: auto;
-                        }
-                        h2 {
-                            margin-top: 20px;
-                        }
+                        body { display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; font-family: Arial, sans-serif; }
+                        .container { text-align: center; }
+                        img { max-width: 400px; height: auto; }
+                        h2 { margin-top: 20px; }
                     </style>
                 </head>
                 <body>
@@ -452,8 +384,8 @@
         row.className = 'social-link-row mb-3';
         row.dataset.index = socialLinkIndex;
         row.innerHTML = `
-            <div class="row g-2">
-                <div class="col-md-4">
+            <div class="grid grid-cols-12 gap-2">
+                <div class="col-span-12 md:col-span-4">
                     <select class="form-select" name="social_links[${socialLinkIndex}][platform]" required>
                         <option value="">Select Platform</option>
                         <option value="facebook">Facebook</option>
@@ -465,15 +397,15 @@
                         <option value="website">Website</option>
                     </select>
                 </div>
-                <div class="col-md-7">
+                <div class="col-span-12 md:col-span-7">
                     <input type="url"
                            class="form-control"
                            name="social_links[${socialLinkIndex}][url]"
                            placeholder="https://..."
                            required>
                 </div>
-                <div class="col-md-1">
-                    <button type="button" class="btn btn-outline-danger w-100" onclick="removeSocialLink(this)">
+                <div class="col-span-12 md:col-span-1">
+                    <button type="button" class="btn btn-outline-danger w-full" onclick="removeSocialLink(this)">
                         <i class="bi bi-trash"></i>
                     </button>
                 </div>
@@ -496,7 +428,6 @@
     // PART 2: Cropper Overlay Functions
     // ============================================
 
-    // Helper function to apply transform
     function applyTransform(instance) {
         if (!instance.properties.image) return;
         const p = instance.properties;
@@ -504,7 +435,6 @@
         p.image.style.transform = t;
     }
 
-    // Initialize cropper with specific aspect ratio
     function initCropper(elementId, width, height, shape, aspectRatio) {
         const el = document.getElementById(elementId);
         if (!el) return null;
@@ -529,8 +459,6 @@
     function openLogoCropper() {
         const overlay = document.getElementById('logoCropperOverlay');
         overlay.style.display = 'flex';
-
-        // Prevent main modal body from scrolling
         const modalBody = document.querySelector('#clubModal .modal-body');
         if (modalBody) modalBody.style.overflow = 'hidden';
     }
@@ -538,50 +466,28 @@
     function closeLogoCropper() {
         const overlay = document.getElementById('logoCropperOverlay');
         overlay.style.display = 'none';
-
-        // Restore main modal body scrolling
         const modalBody = document.querySelector('#clubModal .modal-body');
         if (modalBody) modalBody.style.overflow = 'auto';
-
-        // Destroy cropper
         if (logoCropper) {
             logoCropper.destroy();
             logoCropper = null;
         }
-
-        // Reset file input
         document.getElementById('logoFileInput').value = '';
     }
 
     function saveLogoCrop() {
         if (!logoCropper) return;
-
-        // Logo: Crop to 400x400 square
-        logoCropper.crop({
-            type: 'base64',
-            width: 400,
-            height: 400
-        }).then(base64 => {
-            // Store in hidden input
+        logoCropper.crop({ type: 'base64', width: 400, height: 400 }).then(base64 => {
             document.getElementById('logoInput').value = base64;
-
-            // Update preview
             const preview = document.getElementById('logoPreview');
             if (preview && preview.tagName === 'IMG') {
                 preview.src = base64;
             } else {
                 const container = document.getElementById('logoPreviewContainer');
                 if (container) {
-                    container.innerHTML = `
-                        <img src="${base64}"
-                             id="logoPreview"
-                             class="cropper-preview-image"
-                             style="width: 150px; height: 150px; border-radius: 8px; border: 2px solid #dee2e6;">
-                    `;
+                    container.innerHTML = `<img src="${base64}" id="logoPreview" class="cropper-preview-image" style="width: 150px; height: 150px; border-radius: 8px; border: 2px solid #dee2e6;">`;
                 }
             }
-
-            // Close overlay
             closeLogoCropper();
         });
     }
@@ -595,7 +501,6 @@
                     const reader = new FileReader();
                     reader.onload = function(event) {
                         if (logoCropper) logoCropper.destroy();
-                        // Logo: Square aspect ratio (400x400)
                         logoCropper = initCropper('logoBox', 400, 400, 'square', 1);
                         if (logoCropper) {
                             logoCropper.bind({ url: event.target.result }).then(() => {
@@ -609,7 +514,6 @@
             });
         }
 
-        // Logo zoom handler
         const logoZoom = document.getElementById('logoZoom');
         if (logoZoom) {
             logoZoom.addEventListener('input', function() {
@@ -621,13 +525,10 @@
             });
         }
 
-        // Logo rotation handler
         const logoRotation = document.getElementById('logoRotation');
         if (logoRotation) {
             logoRotation.addEventListener('input', function() {
-                if (logoCropper) {
-                    logoCropper.rotate(parseInt(this.value, 10));
-                }
+                if (logoCropper) logoCropper.rotate(parseInt(this.value, 10));
             });
         }
     });
@@ -636,8 +537,6 @@
     function openCoverCropper() {
         const overlay = document.getElementById('coverCropperOverlay');
         overlay.style.display = 'flex';
-
-        // Prevent main modal body from scrolling
         const modalBody = document.querySelector('#clubModal .modal-body');
         if (modalBody) modalBody.style.overflow = 'hidden';
     }
@@ -645,50 +544,28 @@
     function closeCoverCropper() {
         const overlay = document.getElementById('coverCropperOverlay');
         overlay.style.display = 'none';
-
-        // Restore main modal body scrolling
         const modalBody = document.querySelector('#clubModal .modal-body');
         if (modalBody) modalBody.style.overflow = 'auto';
-
-        // Destroy cropper
         if (coverCropper) {
             coverCropper.destroy();
             coverCropper = null;
         }
-
-        // Reset file input
         document.getElementById('coverFileInput').value = '';
     }
 
     function saveCoverCrop() {
         if (!coverCropper) return;
-
-        // Cover: Crop to 1200x400 wide banner (3:1 aspect ratio)
-        coverCropper.crop({
-            type: 'base64',
-            width: 1200,
-            height: 400
-        }).then(base64 => {
-            // Store in hidden input for COVER (not logo!)
+        coverCropper.crop({ type: 'base64', width: 1200, height: 400 }).then(base64 => {
             document.getElementById('coverInput').value = base64;
-
-            // Update COVER preview (not logo!)
             const preview = document.getElementById('coverPreview');
             if (preview && preview.tagName === 'IMG') {
                 preview.src = base64;
             } else {
                 const container = document.getElementById('coverPreviewContainer');
                 if (container) {
-                    container.innerHTML = `
-                        <img src="${base64}"
-                             id="coverPreview"
-                             class="cropper-preview-image"
-                             style="width: 250px; height: 83px; border-radius: 8px; border: 2px solid #dee2e6;">
-                    `;
+                    container.innerHTML = `<img src="${base64}" id="coverPreview" class="cropper-preview-image" style="width: 250px; height: 83px; border-radius: 8px; border: 2px solid #dee2e6;">`;
                 }
             }
-
-            // Close overlay
             closeCoverCropper();
         });
     }
@@ -702,8 +579,6 @@
                     const reader = new FileReader();
                     reader.onload = function(event) {
                         if (coverCropper) coverCropper.destroy();
-                        // Cover: Wide banner aspect ratio (600x200 = 3:1) - fits in container
-                        // Will be scaled up to 1200x400 on save
                         coverCropper = initCropper('coverBox', 600, 200, 'square', 3);
                         if (coverCropper) {
                             coverCropper.bind({ url: event.target.result }).then(() => {
@@ -717,7 +592,6 @@
             });
         }
 
-        // Cover zoom handler
         const coverZoom = document.getElementById('coverZoom');
         if (coverZoom) {
             coverZoom.addEventListener('input', function() {
@@ -729,13 +603,10 @@
             });
         }
 
-        // Cover rotation handler
         const coverRotation = document.getElementById('coverRotation');
         if (coverRotation) {
             coverRotation.addEventListener('input', function() {
-                if (coverCropper) {
-                    coverCropper.rotate(parseInt(this.value, 10));
-                }
+                if (coverCropper) coverCropper.rotate(parseInt(this.value, 10));
             });
         }
     });

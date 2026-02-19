@@ -247,14 +247,12 @@ class ClubApiController extends Controller
     /**
      * Update an existing club.
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, Tenant $club)
     {
-        $club = Tenant::findOrFail($id);
-
         $validator = Validator::make($request->all(), [
             'owner_user_id' => 'required|exists:users,id',
             'club_name' => 'required|string|max:255',
-            'slug' => 'required|string|max:255|unique:tenants,slug,' . $id,
+            'slug' => 'required|string|max:255|unique:tenants,slug,' . $club->id,
             'slogan' => 'nullable|string|max:100',
             'description' => 'nullable|string|max:1000',
             'established_date' => 'nullable|date',
