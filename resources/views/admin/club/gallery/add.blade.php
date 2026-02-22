@@ -303,11 +303,18 @@ document.addEventListener('DOMContentLoaded', function() {
         updateSubmitButton();
     });
 
+    function getActiveTab() {
+        const modalContent = document.querySelector('[x-data*="currentTab"]');
+        try {
+            return Alpine.$data(modalContent)?.currentTab || 'file';
+        } catch(e) {
+            return 'file';
+        }
+    }
+
     // Update submit button state
     function updateSubmitButton() {
-        const modalContent = document.querySelector('[x-data*="currentTab"]');
-        const alpineData = modalContent?.__x?.$data;
-        currentTab = alpineData?.currentTab || 'file';
+        currentTab = getActiveTab();
 
         let isValid = false;
         if (currentTab === 'file') {
@@ -317,7 +324,7 @@ document.addEventListener('DOMContentLoaded', function() {
             isValid = urlInput?.value.trim() !== '';
             uploadBtnText.textContent = 'Add Picture';
         } else {
-            isValid = true; // video URL can be empty (to clear it)
+            isValid = true;
             uploadBtnText.textContent = 'Save Video';
         }
         submitBtn.disabled = !isValid;
@@ -325,9 +332,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Submit button click
     submitBtn?.addEventListener('click', function() {
-        const modalContent = document.querySelector('[x-data*="currentTab"]');
-        const alpineData = modalContent?.__x?.$data;
-        currentTab = alpineData?.currentTab || 'file';
+        currentTab = getActiveTab();
 
         let form;
         if (currentTab === 'file') form = document.getElementById('fileUploadForm');
