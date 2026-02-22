@@ -211,7 +211,6 @@
                                                 <i class="bi bi-calendar3 text-gray-500"></i>
                                                 {{ implode(', ', $group['days']) }}:
                                                 {{ \Carbon\Carbon::parse($group['start'])->format('g:i A') }} - {{ \Carbon\Carbon::parse($group['end'])->format('g:i A') }}
-                                                <span class="ml-1 text-gray-400">·</span>
                                                 <i class="bi bi-clock text-gray-500"></i>
                                                 {{ $groupDuration }} min
                                             </span>
