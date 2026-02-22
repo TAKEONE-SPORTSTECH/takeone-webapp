@@ -60,9 +60,9 @@
     --color-secondary: hsl(140 30% 75%);
     --color-secondary-foreground: hsl(140 45% 25%);
 
-    /* Success - Soft Mint */
-    --color-success: hsl(150 40% 70%);
-    --color-success-foreground: hsl(150 45% 20%);
+    /* Success - Green */
+    --color-success: hsl(150 55% 38%);
+    --color-success-foreground: hsl(0 0% 100%);
 
     /* Warning - Soft Peach */
     --color-warning: hsl(35 60% 80%);
