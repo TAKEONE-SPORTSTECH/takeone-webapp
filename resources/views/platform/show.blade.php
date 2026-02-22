@@ -1032,7 +1032,7 @@
             width: '100%',
             height: '100%',
             playerVars: {
-                autoplay: 0,
+                autoplay: 1,
                 controls: 0,
                 loop: 1,
                 mute: 1,
@@ -1040,18 +1040,20 @@
                 modestbranding: 1,
                 rel: 0,
                 showinfo: 0,
-                playlist: VIDEO_ID
+                playlist: VIDEO_ID,
+                origin: window.location.origin
             },
             events: {
                 onReady: function(e) {
                     e.target.mute();
+                    e.target.playVideo();
                     banner.classList.add('video-ready');
-                    banner.addEventListener('mouseenter', function() {
+                },
+                onStateChange: function(e) {
+                    // Restart if video ends (fallback in case loop param doesn't work)
+                    if (e.data === YT.PlayerState.ENDED) {
                         e.target.playVideo();
-                    });
-                    banner.addEventListener('mouseleave', function() {
-                        e.target.pauseVideo();
-                    });
+                    }
                 }
             }
         });
