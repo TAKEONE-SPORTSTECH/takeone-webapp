@@ -164,43 +164,20 @@
                                         @endif
                                     </div>
 
-                                    <!-- Duration and Schedule Badges -->
+                                    <!-- Schedule Badges (from pivot) -->
                                     <div class="flex flex-wrap items-center gap-2">
                                         @php
                                             $pivotSchedule = $activity->pivot->schedule ?? null;
                                             $scheduleData = is_string($pivotSchedule) ? json_decode($pivotSchedule, true) : (is_array($pivotSchedule) ? $pivotSchedule : null);
 
-                                            // Calculate duration from first schedule's start/end time
-                                            $durationMin = null;
-                                            if ($scheduleData && is_array($scheduleData) && count($scheduleData) > 0) {
-                                                $firstSchedule = $scheduleData[0];
-                                                $sStart = $firstSchedule['start_time'] ?? ($firstSchedule['startTime'] ?? null);
-                                                $sEnd   = $firstSchedule['end_time']   ?? ($firstSchedule['endTime']   ?? null);
-                                                if ($sStart && $sEnd) {
-                                                    $durationMin = \Carbon\Carbon::parse($sEnd)->diffInMinutes(\Carbon\Carbon::parse($sStart));
-                                                }
-                                            }
-                                        @endphp
+                                            $timeGroups = [];
+                                            $dayOrder = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+                                            $dayAbbr = [
+                                                'saturday' => 'Sat', 'sunday' => 'Sun', 'monday' => 'Mon',
+                                                'tuesday' => 'Tue', 'wednesday' => 'Wed', 'thursday' => 'Thu', 'friday' => 'Fri'
+                                            ];
 
-                                        <!-- Duration Badge -->
-                                        @if($durationMin)
-                                        <span class="inline-flex items-center gap-1.5 text-xs py-1 px-3 rounded-full border border-gray-200 bg-white">
-                                            <i class="bi bi-clock text-gray-500"></i>
-                                            {{ $durationMin }} min
-                                        </span>
-                                        @endif
-
-                                        <!-- Schedule Badges (from pivot) -->
-                                        @if($scheduleData && is_array($scheduleData))
-                                            @php
-                                                // Group schedules by time
-                                                $timeGroups = [];
-                                                $dayOrder = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-                                                $dayAbbr = [
-                                                    'saturday' => 'Sat', 'sunday' => 'Sun', 'monday' => 'Mon',
-                                                    'tuesday' => 'Tue', 'wednesday' => 'Wed', 'thursday' => 'Thu', 'friday' => 'Fri'
-                                                ];
-
+                                            if ($scheduleData && is_array($scheduleData)) {
                                                 foreach($scheduleData as $schedule) {
                                                     $startTime = $schedule['start_time'] ?? ($schedule['startTime'] ?? '');
                                                     $endTime = $schedule['end_time'] ?? ($schedule['endTime'] ?? '');
@@ -218,22 +195,27 @@
                                                     }
                                                 }
 
-                                                // Sort days within each group
                                                 foreach ($timeGroups as &$group) {
                                                     usort($group['days'], function($a, $b) use ($dayOrder) {
                                                         return array_search($a, $dayOrder) - array_search($b, $dayOrder);
                                                     });
                                                 }
-                                            @endphp
+                                            }
+                                        @endphp
 
-                                            @foreach($timeGroups as $group)
+                                        @foreach($timeGroups as $group)
+                                            @php
+                                                $groupDuration = \Carbon\Carbon::parse($group['end'])->diffInMinutes(\Carbon\Carbon::parse($group['start']));
+                                            @endphp
                                             <span class="inline-flex items-center gap-1.5 text-xs py-1 px-3 rounded-full border border-gray-200 bg-white">
                                                 <i class="bi bi-calendar3 text-gray-500"></i>
                                                 {{ implode(', ', $group['days']) }}:
                                                 {{ \Carbon\Carbon::parse($group['start'])->format('g:i A') }} - {{ \Carbon\Carbon::parse($group['end'])->format('g:i A') }}
+                                                <span class="ml-1 text-gray-400">·</span>
+                                                <i class="bi bi-clock text-gray-500"></i>
+                                                {{ $groupDuration }} min
                                             </span>
-                                            @endforeach
-                                        @endif
+                                        @endforeach
                                     </div>
                                 </div>
                             </div>
