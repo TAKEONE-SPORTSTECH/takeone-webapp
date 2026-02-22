@@ -62,7 +62,7 @@
 
     /* Success - Green */
     --color-success: hsl(150 55% 38%);
-    --color-success-foreground: hsl(0 0% 100%);
+    --color-success-foreground: hsl(150 55% 20%);
 
     /* Warning - Soft Peach */
     --color-warning: hsl(35 60% 80%);
@@ -363,23 +363,23 @@
     }
 
     .alert-success {
-        @apply bg-success/10 text-success-foreground border-success/20;
+        @apply bg-success/15 text-success-foreground border-success/30;
     }
 
     .alert-danger {
-        @apply bg-destructive/10 text-destructive border-destructive/20;
+        @apply bg-destructive/15 text-destructive border-destructive/30;
     }
 
     .alert-warning {
-        @apply bg-warning/10 text-warning-foreground border-warning/20;
+        @apply bg-warning/20 text-warning-foreground border-warning/40;
     }
 
     .alert-info {
-        @apply bg-info/10 text-info-foreground border-info/20;
+        @apply bg-info/15 text-info-foreground border-info/30;
     }
 
     .alert-primary {
-        @apply bg-primary/10 text-primary border-primary/20;
+        @apply bg-primary/10 text-primary border-primary/25;
     }
 
     .alert-secondary {
