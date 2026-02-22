@@ -46,18 +46,17 @@
                         <div>
                             <div class="dropdown">
                                 <button class="btn btn-primary rounded-pill dropdown-toggle" type="button" id="actionDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="bi bi-lightning mr-1"></i>Action
+                                    <i class="bi bi-lightning"></i> Action
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionDropdown">
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-trophy mr-2"></i>Add Achievement</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-calendar-check mr-2"></i>Add Attendance Record</a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-calendar-event mr-2"></i>Add Event Participation</a></li>
-                                    <li><a class="dropdown-item" href="#" data-bs-target="#healthUpdateModal"><i class="bi bi-heart-pulse mr-2"></i>Add Health Update</a></li>
-                                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#tournamentParticipationModal"><i class="bi bi-award mr-2"></i>Add Tournament Participation</a></li>
-                                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editProfileModal">
-                                        <i class="bi bi-pencil mr-2"></i>Edit Info
-                                    </a></li>
-                                    <li><a class="dropdown-item" href="#"><i class="bi bi-bullseye mr-2"></i>Set a Goal</a></li>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 py-1" aria-labelledby="actionDropdown" style="min-width: 220px; border-radius: 0.75rem; overflow: hidden;">
+                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="#"><i class="bi bi-trophy text-warning" style="width: 18px; text-align: center;"></i>Add Achievement</a></li>
+                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="#"><i class="bi bi-calendar-check text-success" style="width: 18px; text-align: center;"></i>Add Attendance Record</a></li>
+                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="#"><i class="bi bi-calendar-event text-info" style="width: 18px; text-align: center;"></i>Add Event Participation</a></li>
+                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="#" data-bs-target="#healthUpdateModal"><i class="bi bi-heart-pulse text-danger" style="width: 18px; text-align: center;"></i>Add Health Update</a></li>
+                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="#" data-bs-toggle="modal" data-bs-target="#tournamentParticipationModal"><i class="bi bi-award text-warning" style="width: 18px; text-align: center;"></i>Add Tournament Participation</a></li>
+                                    <li><hr class="dropdown-divider my-1"></li>
+                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="#" data-bs-toggle="modal" data-bs-target="#editProfileModal"><i class="bi bi-pencil text-secondary" style="width: 18px; text-align: center;"></i>Edit Info</a></li>
+                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="#"><i class="bi bi-bullseye text-primary" style="width: 18px; text-align: center;"></i>Set a Goal</a></li>
                                 </ul>
                             </div>
                         </div>

@@ -53,21 +53,17 @@
                                 <i class="bi bi-lightning mr-1"></i>Action
                             </button>
                             <ul x-show="open" x-cloak @click.outside="open = false"
-                                class="absolute right-0 mt-0.5 bg-gray-100 py-1 z-50 list-none"
-                                style="border: 1px solid rgba(0,0,0,.15); border-radius: 0.375rem; box-shadow: 0 0.5rem 1rem rgba(0,0,0,.175);">
-                                <li><a class="block py-1 pl-0 pr-3 text-gray-900 no-underline whitespace-nowrap hover:bg-[#e9ecef]" href="#"><i class="bi bi-trophy mr-2"></i>Add Achievement</a></li>
-                                <li><a class="block py-1 pl-0 pr-3 text-gray-900 no-underline whitespace-nowrap hover:bg-[#e9ecef]" href="#"><i class="bi bi-calendar-check mr-2"></i>Add Attendance Record</a></li>
-                                <li><a class="block py-1 pl-0 pr-3 text-gray-900 no-underline whitespace-nowrap hover:bg-[#e9ecef]" href="#"><i class="bi bi-calendar-event mr-2"></i>Add Event Participation</a></li>
-                                <li><a class="block py-1 pl-0 pr-3 text-gray-900 no-underline whitespace-nowrap hover:bg-[#e9ecef]" href="#" @click="$dispatch('open-health-update-modal'); open = false"><i class="bi bi-heart-pulse mr-2"></i>Add Health Update</a></li>
-                                <li><a class="block py-1 pl-0 pr-3 text-gray-900 no-underline whitespace-nowrap hover:bg-[#e9ecef]" href="#" @click="$dispatch('open-tournament-modal'); open = false"><i class="bi bi-award mr-2"></i>Add Tournament Participation</a></li>
-                                <li><a class="block py-1 pl-0 pr-3 text-gray-900 no-underline whitespace-nowrap hover:bg-[#e9ecef]" href="#" @click="$dispatch('open-profile-modal'); open = false">
-                                    <i class="bi bi-pencil mr-2"></i>Edit Info
-                                </a></li>
-                                <li><a class="block py-1 pl-0 pr-3 text-gray-900 no-underline whitespace-nowrap hover:bg-[#e9ecef]" href="#"><i class="bi bi-bullseye mr-2"></i>Set a Goal</a></li>
-                                <li><hr class="my-2 overflow-hidden border-0" style="border-top: 1px solid rgba(0,0,0,.15);"></li>
-                                <li><a class="block py-1 pl-0 pr-3 text-red-600 no-underline whitespace-nowrap hover:bg-[#e9ecef]" href="#" @click="$dispatch('open-delete-account-modal'); open = false">
-                                    <i class="bi bi-trash mr-2"></i>Delete Account
-                                </a></li>
+                                class="absolute right-0 mt-1 bg-white py-1 z-50 list-none"
+                                style="min-width: 220px; border: 1px solid rgba(0,0,0,.1); border-radius: 0.625rem; box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,.12);">
+                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#"><i class="bi bi-trophy text-amber-500" style="width:16px;text-align:center"></i>Add Achievement</a></li>
+                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#"><i class="bi bi-calendar-check text-green-600" style="width:16px;text-align:center"></i>Add Attendance Record</a></li>
+                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#"><i class="bi bi-calendar-event text-blue-500" style="width:16px;text-align:center"></i>Add Event Participation</a></li>
+                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="$dispatch('open-health-update-modal'); open = false"><i class="bi bi-heart-pulse text-red-500" style="width:16px;text-align:center"></i>Add Health Update</a></li>
+                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="$dispatch('open-tournament-modal'); open = false"><i class="bi bi-award text-amber-500" style="width:16px;text-align:center"></i>Add Tournament Participation</a></li>
+                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="$dispatch('open-profile-modal'); open = false"><i class="bi bi-pencil text-gray-500" style="width:16px;text-align:center"></i>Edit Info</a></li>
+                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#"><i class="bi bi-bullseye text-blue-600" style="width:16px;text-align:center"></i>Set a Goal</a></li>
+                                <li><hr class="my-1 border-0 border-t border-gray-100"></li>
+                                <li><a class="flex items-center gap-2 py-2 px-4 text-red-600 no-underline whitespace-nowrap hover:bg-red-50 text-sm" href="#" @click="$dispatch('open-delete-account-modal'); open = false"><i class="bi bi-trash" style="width:16px;text-align:center"></i>Delete Account</a></li>
                             </ul>
                         </div>
                     @else
