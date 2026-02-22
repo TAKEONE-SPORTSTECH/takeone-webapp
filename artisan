@@ -6,6 +6,10 @@ use Symfony\Component\Console\Input\ArgvInput;
 
 define('LARAVEL_START', microtime(true));
 
+// Ensure files created by CLI (often run as root) are group-writable
+// so the web server (www-data) can overwrite them later.
+umask(0002);
+
 // Register the Composer autoloader...
 require __DIR__.'/vendor/autoload.php';
 
