@@ -61,13 +61,6 @@
                     @endif
                 </div>
 
-                <!-- First badge -->
-                @if($index === 0)
-                <span class="text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded-full flex-shrink-0">
-                    <i class="bi bi-star-fill mr-1"></i>First in banner
-                </span>
-                @endif
-
                 <!-- Delete Button -->
                 <button class="inline-flex items-center justify-center w-9 h-9 bg-red-500 text-white rounded hover:bg-red-600 transition-colors flex-shrink-0"
                         onclick="deleteImage({{ $image->id }})">
@@ -126,19 +119,6 @@ function getOrder() {
 function updatePositionBadges() {
     list.querySelectorAll('.gallery-item').forEach((el, i) => {
         el.querySelector('.position-badge').textContent = i + 1;
-
-        // Update "First in banner" badge
-        const existing = el.querySelector('.first-badge');
-        if (i === 0) {
-            if (!existing) {
-                const badge = document.createElement('span');
-                badge.className = 'first-badge text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded-full flex-shrink-0';
-                badge.innerHTML = '<i class="bi bi-star-fill mr-1"></i>First in banner';
-                el.querySelector('button').before(badge);
-            }
-        } else if (existing) {
-            existing.remove();
-        }
     });
 }
 
