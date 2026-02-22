@@ -857,7 +857,7 @@
     .bg-transparent { @apply bg-transparent; }
 
     /* Text colors */
-    .text-primary { color: var(--color-primary) !important; }
+    .text-primary { color: var(--color-primary); }
     .text-secondary { @apply text-secondary-foreground; }
     .text-success { color: #28a745 !important; }
     .text-danger { color: #dc3545 !important; }
