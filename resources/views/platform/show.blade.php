@@ -6,15 +6,19 @@
 
 @section('content')
 @php
-    // --- YouTube video ---
+    // --- YouTube video --- (gallery tab setting takes priority over social links)
     $youtubeVideoId = null;
-    foreach ($club->socialLinks as $link) {
-        if (preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/', $link->url ?? '', $matches)) {
-            $youtubeVideoId = $matches[1];
-            break;
+    if ($club->youtube_url && preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/', $club->youtube_url, $matches)) {
+        $youtubeVideoId = $matches[1];
+    }
+    if (!$youtubeVideoId) {
+        foreach ($club->socialLinks as $link) {
+            if (preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/', $link->url ?? '', $matches)) {
+                $youtubeVideoId = $matches[1];
+                break;
+            }
         }
     }
-    if (!$youtubeVideoId) $youtubeVideoId = 'TKEbws4QhEk'; // test fallback
 
     // --- Hero slides ---
     $heroSlides = collect();

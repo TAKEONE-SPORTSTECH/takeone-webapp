@@ -11,9 +11,22 @@
         <button class="btn btn-primary"
                 @click="showUploadModal = true">
             <i class="bi bi-plus-lg mr-2"></i>
-            Add Picture
+            Add
         </button>
     </div>
+
+    @if($club->youtube_url)
+    <div class="flex items-center gap-3 px-6 py-3 bg-red-50 border-b border-red-100">
+        <i class="bi bi-youtube text-red-600 text-lg"></i>
+        <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-700 mb-0">Banner Video</p>
+            <p class="text-xs text-gray-500 truncate mb-0">{{ $club->youtube_url }}</p>
+        </div>
+        <button class="btn btn-sm btn-outline-secondary" @click="showUploadModal = true; $nextTick(() => { const btns = document.querySelectorAll('[x-data*=\'currentTab\'] button'); btns[2]?.click(); })">
+            <i class="bi bi-pencil mr-1"></i>Edit
+        </button>
+    </div>
+    @endif
 
     <!-- Card Body -->
     <div class="p-6">

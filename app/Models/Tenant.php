@@ -37,6 +37,7 @@ class Tenant extends Model
         'address',
         'favicon',
         'cover_image',
+        'youtube_url',
         'owner_name',
         'owner_email',
         'gps_lat',

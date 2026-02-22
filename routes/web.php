@@ -140,6 +140,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin/club/{club}')->name('admi
     Route::get('/gallery', [App\Http\Controllers\Admin\ClubAdminController::class, 'gallery'])->name('gallery');
     Route::post('/gallery/upload', [App\Http\Controllers\Admin\ClubAdminController::class, 'uploadGallery'])->name('gallery.upload');
     Route::post('/gallery/reorder', [App\Http\Controllers\Admin\ClubAdminController::class, 'reorderGallery'])->name('gallery.reorder');
+    Route::post('/gallery/youtube', [App\Http\Controllers\Admin\ClubAdminController::class, 'saveYoutubeUrl'])->name('gallery.youtube');
     Route::delete('/gallery/{image}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyGalleryImage'])->name('gallery.destroy');
     Route::get('/facilities', [App\Http\Controllers\Admin\ClubAdminController::class, 'facilities'])->name('facilities');
     Route::post('/facilities', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeFacility'])->name('facilities.store');

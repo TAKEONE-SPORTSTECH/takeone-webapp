@@ -142,6 +142,19 @@ class ClubAdminController extends Controller
         return response()->json(['success' => true]);
     }
 
+    public function saveYoutubeUrl(Request $request, Tenant $club)
+    {
+        $this->authorizeClub($club);
+
+        $request->validate([
+            'youtube_url' => 'nullable|url|max:500',
+        ]);
+
+        $club->update(['youtube_url' => $request->youtube_url ?: null]);
+
+        return back()->with('success', 'YouTube video URL saved successfully.');
+    }
+
     public function destroyGalleryImage(Tenant $club, $imageId)
     {
         $this->authorizeClub($club);
