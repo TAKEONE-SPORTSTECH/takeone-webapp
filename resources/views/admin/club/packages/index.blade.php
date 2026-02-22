@@ -130,82 +130,96 @@
 
                 <!-- Included Activities -->
                 @if($package->activities && count($package->activities) > 0)
+                @php
+                    // Group duplicate activity pivot rows by activity ID, merging all schedule data
+                    $dayOrder = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+                    $dayAbbr  = [
+                        'saturday' => 'Sat', 'sunday' => 'Sun', 'monday' => 'Mon',
+                        'tuesday'  => 'Tue', 'wednesday' => 'Wed', 'thursday' => 'Thu', 'friday' => 'Fri'
+                    ];
+                    $groupedActivities = [];
+                    foreach ($package->activities as $activity) {
+                        $aid = $activity->id;
+                        if (!isset($groupedActivities[$aid])) {
+                            $groupedActivities[$aid] = [
+                                'activity'       => $activity,
+                                'instructor_id'  => $activity->pivot->instructor_id ?? null,
+                                'allSchedules'   => [],
+                            ];
+                        }
+                        $pivotSchedule = $activity->pivot->schedule ?? null;
+                        $scheduleData  = is_string($pivotSchedule)
+                            ? json_decode($pivotSchedule, true)
+                            : (is_array($pivotSchedule) ? $pivotSchedule : null);
+                        if ($scheduleData && is_array($scheduleData)) {
+                            foreach ($scheduleData as $s) {
+                                $groupedActivities[$aid]['allSchedules'][] = $s;
+                            }
+                        }
+                        if (!$groupedActivities[$aid]['instructor_id'] && ($activity->pivot->instructor_id ?? null)) {
+                            $groupedActivities[$aid]['instructor_id'] = $activity->pivot->instructor_id;
+                        }
+                    }
+                @endphp
                 <div class="mt-3 pt-3 border-t border-gray-200">
                     <div class="flex items-center gap-2 mb-3">
                         <i class="bi bi-box"></i>
-                        <h4 class="text-sm font-semibold">Included Activities ({{ count($package->activities) }})</h4>
+                        <h4 class="text-sm font-semibold">Included Activities ({{ count($groupedActivities) }})</h4>
                     </div>
                     <div class="space-y-2">
-                        @foreach($package->activities as $activity)
+                        @foreach($groupedActivities as $grouped)
+                        @php
+                            $activity      = $grouped['activity'];
+                            $instructorId  = $grouped['instructor_id'];
+                            $instructor    = $instructorId ? ($instructorsMap[$instructorId] ?? null) : null;
+
+                            // Build time groups from all merged schedule entries
+                            $timeGroups = [];
+                            foreach ($grouped['allSchedules'] as $schedule) {
+                                $startTime = $schedule['start_time'] ?? ($schedule['startTime'] ?? '');
+                                $endTime   = $schedule['end_time']   ?? ($schedule['endTime']   ?? '');
+                                $day       = $schedule['day']        ?? ($schedule['day_of_week'] ?? '');
+                                if ($startTime && $endTime && $day) {
+                                    $timeKey = \Carbon\Carbon::parse($startTime)->format('H:i') . '-' . \Carbon\Carbon::parse($endTime)->format('H:i');
+                                    if (!isset($timeGroups[$timeKey])) {
+                                        $timeGroups[$timeKey] = ['days' => [], 'start' => $startTime, 'end' => $endTime];
+                                    }
+                                    $dayShort = $dayAbbr[strtolower($day)] ?? ucfirst(substr($day, 0, 3));
+                                    if (!in_array($dayShort, $timeGroups[$timeKey]['days'])) {
+                                        $timeGroups[$timeKey]['days'][] = $dayShort;
+                                    }
+                                }
+                            }
+                            foreach ($timeGroups as &$group) {
+                                usort($group['days'], fn($a, $b) => array_search($a, $dayOrder) - array_search($b, $dayOrder));
+                            }
+                            unset($group);
+                        @endphp
                         <div class="border border-gray-200 rounded-lg p-4 bg-gray-50/30">
                             <div class="flex gap-3">
                                 <div class="flex-1 min-w-0 space-y-3">
                                     <!-- Activity Title and Instructor -->
                                     <div class="flex items-start justify-between gap-2">
                                         <h5 class="font-semibold text-base">{{ $activity->title ?? $activity->name }}</h5>
-
-                                        <!-- Instructor Badge -->
-                                        @if($activity->pivot->instructor_id ?? false)
-                                            @php
-                                                $instructor = $instructorsMap[$activity->pivot->instructor_id] ?? null;
-                                            @endphp
-                                            @if($instructor)
-                                            <div class="flex items-center gap-1.5 bg-primary/10 rounded-full px-2 py-1">
-                                                @if($instructor['image'])
-                                                <img src="{{ asset('storage/' . $instructor['image']) }}" alt="{{ $instructor['name'] }}" class="w-5 h-5 rounded-full border border-primary/20 object-cover">
-                                                @else
-                                                <div class="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-medium text-primary border border-primary/20">
-                                                    {{ strtoupper(substr($instructor['name'], 0, 1)) }}
-                                                </div>
-                                                @endif
-                                                <span class="text-[10px] font-medium text-primary">{{ $instructor['name'] }}</span>
+                                        @if($instructor)
+                                        <div class="flex items-center gap-1.5 bg-primary/10 rounded-full px-2 py-1">
+                                            @if($instructor['image'])
+                                            <img src="{{ asset('storage/' . $instructor['image']) }}" alt="{{ $instructor['name'] }}" class="w-5 h-5 rounded-full border border-primary/20 object-cover">
+                                            @else
+                                            <div class="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-medium text-primary border border-primary/20">
+                                                {{ strtoupper(substr($instructor['name'], 0, 1)) }}
                                             </div>
                                             @endif
+                                            <span class="text-[10px] font-medium text-primary">{{ $instructor['name'] }}</span>
+                                        </div>
                                         @endif
                                     </div>
 
-                                    <!-- Schedule Badges (from pivot) -->
+                                    <!-- Schedule Badges -->
                                     <div class="flex flex-wrap items-center gap-2">
-                                        @php
-                                            $pivotSchedule = $activity->pivot->schedule ?? null;
-                                            $scheduleData = is_string($pivotSchedule) ? json_decode($pivotSchedule, true) : (is_array($pivotSchedule) ? $pivotSchedule : null);
-
-                                            $timeGroups = [];
-                                            $dayOrder = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-                                            $dayAbbr = [
-                                                'saturday' => 'Sat', 'sunday' => 'Sun', 'monday' => 'Mon',
-                                                'tuesday' => 'Tue', 'wednesday' => 'Wed', 'thursday' => 'Thu', 'friday' => 'Fri'
-                                            ];
-
-                                            if ($scheduleData && is_array($scheduleData)) {
-                                                foreach($scheduleData as $schedule) {
-                                                    $startTime = $schedule['start_time'] ?? ($schedule['startTime'] ?? '');
-                                                    $endTime = $schedule['end_time'] ?? ($schedule['endTime'] ?? '');
-                                                    $day = $schedule['day'] ?? ($schedule['day_of_week'] ?? '');
-
-                                                    if ($startTime && $endTime && $day) {
-                                                        $timeKey = $startTime . '-' . $endTime;
-                                                        if (!isset($timeGroups[$timeKey])) {
-                                                            $timeGroups[$timeKey] = ['days' => [], 'start' => $startTime, 'end' => $endTime];
-                                                        }
-                                                        $dayShort = $dayAbbr[strtolower($day)] ?? ucfirst(substr($day, 0, 3));
-                                                        if (!in_array($dayShort, $timeGroups[$timeKey]['days'])) {
-                                                            $timeGroups[$timeKey]['days'][] = $dayShort;
-                                                        }
-                                                    }
-                                                }
-
-                                                foreach ($timeGroups as &$group) {
-                                                    usort($group['days'], function($a, $b) use ($dayOrder) {
-                                                        return array_search($a, $dayOrder) - array_search($b, $dayOrder);
-                                                    });
-                                                }
-                                            }
-                                        @endphp
-
                                         @foreach($timeGroups as $group)
                                             @php
-                                                $groupDuration = \Carbon\Carbon::parse($group['end'])->diffInMinutes(\Carbon\Carbon::parse($group['start']));
+                                                $groupDuration = abs(\Carbon\Carbon::parse($group['end'])->diffInMinutes(\Carbon\Carbon::parse($group['start'])));
                                             @endphp
                                             <span class="inline-flex items-center gap-1.5 text-xs py-1 px-3 rounded-full border border-gray-200 bg-white">
                                                 <i class="bi bi-calendar3 text-gray-500"></i>
