@@ -68,7 +68,6 @@
                                     name: '{{ addslashes($activity->name) }}',
                                     description: '{{ addslashes($activity->description) }}',
                                     notes: '{{ addslashes($activity->notes) }}',
-                                    durationMinutes: {{ $activity->duration_minutes ?? 'null' }},
                                     pictureUrl: '{{ $activity->picture_url ? asset('storage/' . $activity->picture_url) : '' }}',
                                     action: '{{ route('admin.club.activities.update', [$club->slug, $activity->id]) }}'
                                 }; showEditModal = true">
@@ -102,11 +101,6 @@
 
                 {{-- Additional Info Badges --}}
                 <div class="flex flex-wrap gap-2 mt-3">
-                    @if($activity->duration_minutes)
-                    <span class="badge bg-muted/30 text-foreground border border-border">
-                        <i class="bi bi-clock mr-1"></i>{{ $activity->duration_minutes }} min
-                    </span>
-                    @endif
                     @if($activity->facility)
                     <span class="badge bg-muted/30 text-foreground border border-border">
                         <i class="bi bi-geo-alt mr-1"></i>{{ $activity->facility->name }}

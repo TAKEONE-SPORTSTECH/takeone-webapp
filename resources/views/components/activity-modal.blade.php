@@ -139,19 +139,6 @@
                                       class="form-control resize-none"></textarea>
                         </div>
 
-                        <!-- Duration -->
-                        <div class="space-y-2">
-                            <label for="{{ $prefix }}ActivityDuration" class="block text-sm font-medium text-foreground">
-                                Duration (minutes)
-                            </label>
-                            <input type="number"
-                                   id="{{ $prefix }}ActivityDuration"
-                                   name="duration_minutes"
-                                   min="1"
-                                   placeholder="e.g., 60"
-                                   class="form-control">
-                        </div>
-
                         <!-- Additional Notes -->
                         <div class="space-y-2">
                             <label for="{{ $prefix }}ActivityNotes" class="block text-sm font-medium text-foreground">
@@ -218,7 +205,6 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('editActivityName').value = data.name || '';
             document.getElementById('editActivityDescription').value = data.description || '';
             document.getElementById('editActivityNotes').value = data.notes || '';
-            document.getElementById('editActivityDuration').value = data.durationMinutes || '';
             updateCropperPreview(data.pictureUrl);
         }
     };
