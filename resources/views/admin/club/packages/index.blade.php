@@ -166,19 +166,31 @@
 
                                     <!-- Duration and Schedule Badges -->
                                     <div class="flex flex-wrap items-center gap-2">
+                                        @php
+                                            $pivotSchedule = $activity->pivot->schedule ?? null;
+                                            $scheduleData = is_string($pivotSchedule) ? json_decode($pivotSchedule, true) : (is_array($pivotSchedule) ? $pivotSchedule : null);
+
+                                            // Calculate duration from first schedule's start/end time
+                                            $durationMin = null;
+                                            if ($scheduleData && is_array($scheduleData) && count($scheduleData) > 0) {
+                                                $firstSchedule = $scheduleData[0];
+                                                $sStart = $firstSchedule['start_time'] ?? ($firstSchedule['startTime'] ?? null);
+                                                $sEnd   = $firstSchedule['end_time']   ?? ($firstSchedule['endTime']   ?? null);
+                                                if ($sStart && $sEnd) {
+                                                    $durationMin = \Carbon\Carbon::parse($sEnd)->diffInMinutes(\Carbon\Carbon::parse($sStart));
+                                                }
+                                            }
+                                        @endphp
+
                                         <!-- Duration Badge -->
-                                        @if($activity->duration_minutes)
+                                        @if($durationMin)
                                         <span class="inline-flex items-center gap-1.5 text-xs py-1 px-3 rounded-full border border-gray-200 bg-white">
                                             <i class="bi bi-clock text-gray-500"></i>
-                                            {{ $activity->duration_minutes }} min
+                                            {{ $durationMin }} min
                                         </span>
                                         @endif
 
                                         <!-- Schedule Badges (from pivot) -->
-                                        @php
-                                            $pivotSchedule = $activity->pivot->schedule ?? null;
-                                            $scheduleData = is_string($pivotSchedule) ? json_decode($pivotSchedule, true) : (is_array($pivotSchedule) ? $pivotSchedule : null);
-                                        @endphp
                                         @if($scheduleData && is_array($scheduleData))
                                             @php
                                                 // Group schedules by time
