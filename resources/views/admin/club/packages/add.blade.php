@@ -554,6 +554,12 @@ document.addEventListener('DOMContentLoaded', function() {
         return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
     }
 
+    function calcDurationMinutes(startTime, endTime) {
+        const [sh, sm] = startTime.split(':').map(Number);
+        const [eh, em] = endTime.split(':').map(Number);
+        return (eh * 60 + em) - (sh * 60 + sm);
+    }
+
     function updateSchedulesUI() {
         if (schedules.length === 0) {
             schedulesList.innerHTML = '';
@@ -574,6 +580,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="flex flex-wrap items-center gap-2 mb-2">
                                 ${schedule.days.map(d => `<span class="badge bg-secondary">${d.name}</span>`).join('')}
                                 <span class="font-medium">${formatTimeTo12Hour(schedule.startTime)} - ${formatTimeTo12Hour(schedule.endTime)}</span>
+                                <span class="badge bg-secondary">${calcDurationMinutes(schedule.startTime, schedule.endTime)} min</span>
                                 ${schedule.activityName ? `<span class="badge bg-primary/10 text-primary border border-primary/20"><i class="bi bi-activity mr-1"></i>${schedule.activityName}</span>` : ''}
                             </div>
                             ${schedule.notes ? `<p class="text-muted-foreground text-sm mb-0"><span class="font-medium">Note:</span> ${schedule.notes}</p>` : ''}
