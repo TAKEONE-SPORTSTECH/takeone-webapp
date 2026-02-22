@@ -187,12 +187,9 @@
                 <p class="text-sm text-gray-500 mt-1">Search for a user by email or phone number to add them and their children as members.</p>
             </div>
             <div class="p-6 overflow-y-auto max-h-[60vh]">
-                <div class="flex gap-3 mb-6">
-                    <input type="text" id="searchUserInput" placeholder="Enter email or phone number..." class="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                    <button onclick="searchUser()" id="searchUserBtn" class="inline-flex items-center px-4 py-2.5 bg-purple-500 text-white font-medium rounded-lg hover:bg-purple-600 transition-colors">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                        Search
-                    </button>
+                <div class="relative mb-6">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    <input type="text" id="searchUserInput" placeholder="Enter email or phone number..." class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                 </div>
                 <div id="searchResults" class="hidden">
                     <label class="block text-sm font-semibold text-gray-700 mb-3">Select members to add:</label>
@@ -482,9 +479,6 @@ async function searchUser() {
         return;
     }
 
-    const btn = document.getElementById('searchUserBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<svg class="w-5 h-5 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Searching...';
 
     try {
         const response = await fetch(`/admin/club/${clubId}/members/search?query=${encodeURIComponent(query)}`);
@@ -515,10 +509,7 @@ async function searchUser() {
     } catch (error) {
         console.error('Search error:', error);
         alert('Error searching users. Please try again.');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>Search';
-    }
+    } finally {}
 }
 
 function createUserCard(user, isDependent = false) {
