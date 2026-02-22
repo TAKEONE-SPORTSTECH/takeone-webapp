@@ -1051,7 +1051,7 @@
 }
 
 .hero-banner {
-    min-height: 580px;
+    aspect-ratio: 16 / 9;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -1945,7 +1945,7 @@
 }
 
 @media (max-width: 768px) {
-    .hero-banner { min-height: 400px; padding: 20px; }
+    .hero-banner { aspect-ratio: 16 / 9; min-height: 280px; padding: 20px; }
     .club-logo-wrapper { width: 80px; height: 80px; }
     .banner-bottom { margin-bottom: 40px; }
     .stats-row { gap: 20px; }
