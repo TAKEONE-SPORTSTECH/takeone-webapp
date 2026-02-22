@@ -39,9 +39,8 @@
         ]);
     }
 @endphp
-<div class="page-container">
-    {{-- HERO BANNER --}}
-    <div class="hero-banner" id="heroBanner">
+{{-- HERO BANNER --}}
+<div class="hero-banner" id="heroBanner">
         <div class="hero-bg-image" id="heroSlider">
             @foreach($heroSlides as $i => $slide)
             <div class="hero-bg-slide {{ $i === 0 ? 'active' : '' }}"
@@ -120,7 +119,9 @@
             </div>
         </div>
     </div>
+</div>
 
+<div class="page-container">
     {{-- CONTENT CARD WITH TABS --}}
     <div class="content-card">
         {{-- Tab Navigation --}}
