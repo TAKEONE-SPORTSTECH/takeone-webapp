@@ -140,7 +140,7 @@ class Tenant extends Model
      */
     public function galleryImages(): HasMany
     {
-        return $this->hasMany(ClubGalleryImage::class);
+        return $this->hasMany(ClubGalleryImage::class)->orderBy('display_order')->orderBy('id');
     }
 
     /**

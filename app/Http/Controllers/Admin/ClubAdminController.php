@@ -93,7 +93,7 @@ class ClubAdminController extends Controller
     {
         $this->authorizeClub($club);
         $clubId = $club->id;
-        $images = ClubGalleryImage::where('tenant_id', $clubId)->latest()->get();
+        $images = ClubGalleryImage::where('tenant_id', $clubId)->orderBy('display_order')->orderBy('id')->get();
         return view('admin.club.gallery.index', compact('club', 'images'));
     }
 
@@ -108,6 +108,7 @@ class ClubAdminController extends Controller
         ]);
 
         if ($request->hasFile('images')) {
+            $nextOrder = ClubGalleryImage::where('tenant_id', $clubId)->max('display_order') + 1;
             foreach ($request->file('images') as $image) {
                 $path = $image->store('clubs/' . $clubId . '/gallery', 'public');
                 ClubGalleryImage::create([
@@ -115,11 +116,30 @@ class ClubAdminController extends Controller
                     'image_path' => $path,
                     'caption' => $request->caption,
                     'uploaded_by' => auth()->id(),
+                    'display_order' => $nextOrder++,
                 ]);
             }
         }
 
         return back()->with('success', 'Images uploaded successfully.');
+    }
+
+    public function reorderGallery(Request $request, Tenant $club)
+    {
+        $this->authorizeClub($club);
+        $clubId = $club->id;
+
+        $request->validate([
+            'order' => 'required|array',
+            'order.*' => 'integer',
+        ]);
+
+        foreach ($request->order as $position => $imageId) {
+            ClubGalleryImage::where('tenant_id', $clubId)->where('id', $imageId)
+                ->update(['display_order' => $position]);
+        }
+
+        return response()->json(['success' => true]);
     }
 
     public function destroyGalleryImage(Tenant $club, $imageId)
