@@ -478,7 +478,7 @@ function openAddExistingUserModal() {
 async function searchUser() {
     const query = document.getElementById('searchUserInput').value.trim();
     if (query.length < 2) {
-        alert('Please enter at least 2 characters to search');
+        document.getElementById('searchResults').classList.add('hidden');
         return;
     }
 
@@ -646,9 +646,14 @@ async function addSelectedMembers() {
     }
 }
 
-// Allow search on Enter key
-document.getElementById('searchUserInput')?.addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') searchUser();
+// Search as user types (debounced) + Enter key
+let searchDebounce = null;
+document.getElementById('searchUserInput')?.addEventListener('input', function() {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(searchUser, 350);
+});
+document.getElementById('searchUserInput')?.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { clearTimeout(searchDebounce); searchUser(); }
 });
 
 // Status Filters
