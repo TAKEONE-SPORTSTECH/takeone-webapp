@@ -3,7 +3,7 @@
 ## Project: TakeOne Webapp
 **Last Updated:** February 23, 2026
 **Scope:** All user-facing pages — public, member, club admin, platform admin, auth
-**Current Status:** Phase 1–4 Complete ✅ | Club Admin Forms Pending
+**Current Status:** All Phases Complete ✅
 
 ---
 
@@ -21,6 +21,8 @@ The goal is to make all pages fully usable on mobile phones (320px–430px) whil
 |--------|-------------|
 | `7a84a12` | Phase 1–4: Layout foundations, public pages, admin pages, member pages |
 | `8fbb9f0` | Auth pages: card padding, register scroll, box spacing |
+| `89e4d5e` | Documentation: MOBILE_RESPONSIVENESS.md created |
+| *(pending)* | Phase 5: Club admin forms — details, packages, instructors, messages |
 
 ---
 
@@ -147,19 +149,44 @@ The platform admin layout had no mobile toggle at all — the sidebar just pushe
 
 ---
 
-## Pending — Club Admin Forms
+## Phase 5 — Club Admin Forms ✅
 
-These pages have not been audited yet for mobile responsiveness:
+**Files Modified:**
+- `resources/views/admin/club/details/index.blade.php`
+- `resources/views/admin/club/packages/add.blade.php`
+- `resources/views/admin/club/packages/edit.blade.php`
+- `resources/views/admin/club/instructors/add.blade.php`
+- `resources/views/admin/club/messages/index.blade.php`
 
-- [ ] `resources/views/admin/club/details/index.blade.php`
-- [ ] `resources/views/admin/club/facilities/add.blade.php`
-- [ ] `resources/views/admin/club/facilities/edit.blade.php`
-- [ ] `resources/views/admin/club/packages/add.blade.php`
-- [ ] `resources/views/admin/club/packages/edit.blade.php`
-- [ ] `resources/views/admin/club/instructors/add.blade.php`
-- [ ] `resources/views/admin/club/gallery/add.blade.php`
-- [ ] `resources/views/admin/club/messages/index.blade.php`
-- [ ] `resources/views/trainer/show.blade.php`
+**Changes:**
+
+### `details/index.blade.php`
+| Issue | Fix |
+|-------|-----|
+| Page header `flex justify-between` — "Save All Changes" button wraps on narrow screens | Changed to `flex flex-col sm:flex-row gap-3 items-start sm:items-center` |
+| Tab nav `flex gap-1` with 4 tabs × 48px padding each = ~428px > 343px available on mobile | Added `overflow-x-auto` on wrapper, `min-w-max` on nav |
+
+### `packages/add.blade.php` + `packages/edit.blade.php`
+| Issue | Fix |
+|-------|-----|
+| Trainer assignment select `w-64` (256px) in flex row — only 75px left for activity name on 375px | Changed to `w-full sm:w-64`, added `flex-wrap` and `min-w-0` to container |
+
+### `instructors/add.blade.php`
+| Issue | Fix |
+|-------|-----|
+| Step 2: `grid grid-cols-2` for email/password — only ~140px per field on mobile | Changed to `grid-cols-1 sm:grid-cols-2` |
+| Step 2: `grid grid-cols-2` for gender/birthdate dropdowns | Changed to `grid-cols-1 sm:grid-cols-2` |
+
+### `messages/index.blade.php`
+| Issue | Fix |
+|-------|-----|
+| Page header `flex justify-between` — "New Message" button might overflow | Added `flex-wrap gap-3` |
+
+**Pages Audited — No Changes Needed:**
+- `admin/club/facilities/add.blade.php` — `grid-cols-1 md:grid-cols-2` grids + `w-full` inputs ✅
+- `admin/club/facilities/edit.blade.php` — same structure ✅
+- `admin/club/gallery/add.blade.php` — `max-w-md` modal + `w-full` inputs, 3-tab grid fine ✅
+- `trainer/show.blade.php` — `flex-col md:flex-row` header, `grid-cols-2 md:grid-cols-4` stats, 4-tab grid ✅
 
 ---
 

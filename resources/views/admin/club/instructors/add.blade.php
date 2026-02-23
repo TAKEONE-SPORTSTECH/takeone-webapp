@@ -81,7 +81,7 @@
                         </div>
 
                         <div class="space-y-4">
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div class="space-y-2">
                                     <label class="block text-sm font-medium text-gray-700">Email <span class="text-red-500">*</span></label>
                                     <input type="email" name="email" placeholder="member@example.com" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
@@ -105,7 +105,7 @@
                                 </x-country-code-dropdown>
                             </div>
 
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <x-gender-dropdown
                                     name="gender"
                                     id="instructor_gender"

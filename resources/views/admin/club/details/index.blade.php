@@ -3,12 +3,12 @@
 @section('club-admin-content')
 <div class="space-y-6" x-data="{ showDeleteClubModal: false, showChangeOwnerModal: false, showCreateOwnerModal: false, showLinkOwnerModal: false }">
     <!-- Page Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div>
             <h1 class="text-2xl font-bold text-foreground">Club Details</h1>
             <p class="text-sm text-muted-foreground">Manage your club's information and settings</p>
         </div>
-        <button type="submit" form="clubDetailsForm" class="btn btn-primary">
+        <button type="submit" form="clubDetailsForm" class="btn btn-primary shrink-0">
             <i class="bi bi-check-lg mr-2"></i>Save All Changes
         </button>
     </div>
@@ -38,8 +38,8 @@
     @endif
 
     <!-- Tabs Navigation -->
-    <div class="border-b">
-        <nav class="flex gap-1" role="tablist">
+    <div class="border-b overflow-x-auto">
+        <nav class="flex gap-1 min-w-max" role="tablist">
             <button type="button" class="tab-btn active" data-tab="basic" role="tab">
                 <i class="bi bi-info-circle mr-2"></i>Basic
             </button>

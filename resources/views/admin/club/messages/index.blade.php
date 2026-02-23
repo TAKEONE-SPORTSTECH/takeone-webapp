@@ -2,7 +2,7 @@
 
 @section('club-admin-content')
 <div x-data="{ showNewMessageModal: false }">
-    <div class="flex justify-between items-center mb-4">
+    <div class="flex flex-wrap gap-3 items-center justify-between mb-4">
         <div>
             <h2 class="tf-section-title">Messages</h2>
             <p class="text-muted-foreground mb-0">Communicate with your members</p>

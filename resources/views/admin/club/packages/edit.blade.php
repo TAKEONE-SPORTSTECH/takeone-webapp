@@ -600,11 +600,11 @@ document.addEventListener('DOMContentLoaded', function() {
         editTrainerContainer.innerHTML = `
             <p class="text-muted-foreground text-sm mb-4">Activities from your schedules:</p>
             ${uniqueActivities.map(activity => `
-                <div class="flex items-center gap-3 p-4 border border-border rounded-lg mb-3 bg-muted/10">
-                    <div class="flex-1">
+                <div class="flex flex-wrap items-center gap-3 p-4 border border-border rounded-lg mb-3 bg-muted/10">
+                    <div class="flex-1 min-w-0">
                         <p class="font-semibold mb-0">${activity.name}</p>
                     </div>
-                    <div class="w-64">
+                    <div class="w-full sm:w-64">
                         <select class="form-select edit-trainer-assignment" data-activity-id="${activity.id}">
                             <option value="">Select instructor</option>
                             ${editInstructors.map(i => `<option value="${i.id}" ${editTrainerAssignments[activity.id] == i.id ? 'selected' : ''}>${i.name}</option>`).join('')}
