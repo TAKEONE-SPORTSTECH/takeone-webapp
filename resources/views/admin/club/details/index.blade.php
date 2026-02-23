@@ -49,6 +49,9 @@
             <button type="button" class="tab-btn" data-tab="branding" role="tab">
                 <i class="bi bi-palette mr-2"></i>Branding
             </button>
+            <button type="button" class="tab-btn" data-tab="social" role="tab">
+                <i class="bi bi-share mr-2"></i>Social Media
+            </button>
             <button type="button" class="tab-btn" data-tab="settings" role="tab">
                 <i class="bi bi-gear mr-2"></i>Settings
             </button>
@@ -331,6 +334,21 @@
                             buttonClass="btn btn-outline-secondary"
                         />
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Social Media Tab -->
+        <div class="tab-content" id="tab-social" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-share text-primary mr-2"></i>Social Media Links
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted text-sm mb-4">Add your club's social media profiles so members can find and follow you.</p>
+                    <x-social-links-editor :links="$club->socialLinks" containerId="clubSocialLinksContainer" />
                 </div>
             </div>
         </div>

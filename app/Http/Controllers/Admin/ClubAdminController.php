@@ -1167,6 +1167,9 @@ class ClubAdminController extends Controller
             'favicon' => 'nullable',
             'cover_image' => 'nullable',
             'settings' => 'nullable|array',
+            'social_links' => 'nullable|array',
+            'social_links.*.platform' => 'required_with:social_links.*.url|string',
+            'social_links.*.url' => 'required_with:social_links.*.platform|url',
         ]);
 
         $data = $request->only([
@@ -1230,6 +1233,22 @@ class ClubAdminController extends Controller
         }
 
         $club->update($data);
+
+        // Sync social links
+        if ($request->has('social_links')) {
+            $club->socialLinks()->delete();
+            foreach ($request->social_links as $link) {
+                if (!empty($link['platform']) && !empty($link['url'])) {
+                    $club->socialLinks()->create([
+                        'platform' => $link['platform'],
+                        'url' => $link['url'],
+                    ]);
+                }
+            }
+        } else {
+            // Tab was submitted but no links — clear them all
+            $club->socialLinks()->delete();
+        }
 
         return back()->with('success', 'Club details updated successfully.');
     }
