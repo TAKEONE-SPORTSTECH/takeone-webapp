@@ -3,7 +3,7 @@
 ## Project: TakeOne Webapp
 **Last Updated:** February 23, 2026
 **Scope:** All user-facing pages — public, member, club admin, platform admin, auth
-**Current Status:** All Phases Complete ✅
+**Current Status:** All Phases Complete ✅ + Bug Fix
 
 ---
 
@@ -24,6 +24,7 @@ The goal is to make all pages fully usable on mobile phones (320px–430px) whil
 | `89e4d5e` | Documentation: MOBILE_RESPONSIVENESS.md created |
 | `d40b602` | Phase 5: Club admin forms — details, packages, instructors, messages |
 | `c540735` | Phase 6: Remaining admin pages — platform index, facilities index |
+| `f314f2e` | Bug fix: Admin sidebar links blocked by overlay on mobile |
 
 ---
 
@@ -265,3 +266,31 @@ Test at these viewport widths in browser devtools:
 - [ ] Member profile tabs scroll horizontally
 - [ ] Charts render at correct heights
 - [ ] Tables scroll horizontally when content is wide
+- [ ] Admin sidebar links are clickable when sidebar is open on mobile
+
+---
+
+## Bug Fix — Admin Sidebar Links Unclickable on Mobile ✅
+
+**Commit:** `f314f2e`
+**Files Modified:**
+- `resources/views/layouts/admin.blade.php`
+- `resources/views/layouts/admin-club.blade.php`
+
+**Root Cause:**
+
+The overlay backdrop (`fixed inset-0 z-30`) was rendered on top of the sidebar (no z-index set). When the sidebar was opened on mobile, the overlay covered the entire screen including the sidebar — making every nav link visually visible but impossible to click (the overlay intercepted all pointer events).
+
+**Fix:**
+
+Added `relative z-40` to the sidebar's Alpine.js `:class` binding when `sidebarOpen` is true, putting the sidebar above the overlay:
+
+```html
+<!-- Before -->
+:class="{ 'hidden lg:block': !sidebarOpen, 'block': sidebarOpen }"
+
+<!-- After -->
+:class="{ 'hidden lg:block': !sidebarOpen, 'block relative z-40': sidebarOpen }"
+```
+
+This applies to both the platform admin layout (`admin.blade.php`) and the club admin layout (`admin-club.blade.php`).
