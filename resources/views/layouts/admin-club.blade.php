@@ -27,7 +27,7 @@
 <div class="max-w-[1400px] mx-auto px-4 py-5 flex flex-col lg:flex-row gap-5">
     <!-- Sidebar -->
     <aside class="w-full lg:w-72 lg:min-w-72 bg-muted/30 border border-border rounded-xl p-6 h-fit lg:sticky lg:top-24"
-           :class="{ 'hidden lg:block': !sidebarOpen, 'block': sidebarOpen }">
+           :class="{ 'hidden lg:block': !sidebarOpen, 'block relative z-40': sidebarOpen }">
 
         @if(isset($club) && $club->logo)
             <div class="w-full p-4 flex items-center justify-center mb-2">

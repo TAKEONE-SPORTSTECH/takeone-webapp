@@ -27,7 +27,7 @@
 <div class="max-w-7xl mx-auto px-4 py-5 flex flex-col lg:flex-row gap-5">
     <!-- Sidebar -->
     <aside class="w-full lg:w-64 lg:min-w-64 bg-muted/30 border border-border rounded-xl p-6 h-fit lg:sticky lg:top-24"
-           :class="{ 'hidden lg:block': !sidebarOpen, 'block': sidebarOpen }">
+           :class="{ 'hidden lg:block': !sidebarOpen, 'block relative z-40': sidebarOpen }">
         <h2 class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">Admin Panel</h2>
         <nav class="flex flex-col gap-2">
             <a href="{{ route('admin.platform.clubs') }}"
