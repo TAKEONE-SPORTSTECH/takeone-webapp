@@ -117,7 +117,7 @@
             font-weight: bold;
         }
         .notification-dropdown {
-            min-width: 320px;
+            width: min(320px, calc(100vw - 2rem));
             max-height: 400px;
             overflow-y: auto;
         }
@@ -178,7 +178,7 @@
                                  x-transition:leave="transition ease-in duration-75"
                                  x-transition:leave-start="opacity-100 scale-100"
                                  x-transition:leave-end="opacity-0 scale-95"
-                                 class="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-border py-2 z-50">
+                                 class="absolute right-0 mt-2 w-64 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-lg border border-border py-2 z-50">
                                 <h6 class="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase">Messages</h6>
                                 <div class="border-t border-border my-1"></div>
                                 <a class="block px-4 py-2 text-sm text-muted-foreground hover:bg-primary hover:text-white" href="#">No new messages</a>
@@ -417,7 +417,7 @@
                      'bg-info text-white': toast.type === 'info',
                      'bg-warning text-warning-foreground': toast.type === 'warning'
                  }"
-                 class="flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg min-w-[300px] border-0">
+                 class="flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg w-[min(300px,calc(100vw-2rem))] border-0">
                 <i :class="{
                     'bi bi-check-circle': toast.type === 'success',
                     'bi bi-exclamation-triangle': toast.type === 'error' || toast.type === 'warning',

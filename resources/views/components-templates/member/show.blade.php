@@ -31,13 +31,13 @@
 
     <!-- Profile Card -->
     <div class="bg-white rounded-xl shadow-sm mb-4">
-        <div class="flex">
+        <div class="flex flex-col sm:flex-row">
             <!-- Profile Picture -->
-            <div style="width: 180px; min-height: 250px; border-radius: 0.375rem 0 0 0.375rem;">
+            <div class="w-full sm:w-[180px] sm:min-h-[250px] overflow-hidden rounded-t-xl sm:rounded-t-none sm:rounded-l-xl flex-shrink-0" style="min-height: 150px;">
                 @if($relationship->dependent->profile_picture)
-                    <img src="{{ asset('storage/' . $relationship->dependent->profile_picture) }}?v={{ $relationship->dependent->updated_at->timestamp }}" alt="{{ $relationship->dependent->full_name }}" class="w-full h-full" style="object-fit: cover; border-radius: 0.375rem 0 0 0.375rem;">
+                    <img src="{{ asset('storage/' . $relationship->dependent->profile_picture) }}?v={{ $relationship->dependent->updated_at->timestamp }}" alt="{{ $relationship->dependent->full_name }}" class="w-full h-full" style="object-fit: cover;">
                 @else
-                    <div class="w-full h-full flex items-center justify-center text-white font-bold" style="font-size: 3rem; background: linear-gradient(135deg, {{ $relationship->dependent->gender == 'm' ? '#0d6efd 0%, #0a58ca 100%' : '#d63384 0%, #a61e4d 100%' }}); border-radius: 0.375rem 0 0 0.375rem;">
+                    <div class="w-full h-full flex items-center justify-center text-white font-bold" style="font-size: 3rem; background: linear-gradient(135deg, {{ $relationship->dependent->gender == 'm' ? '#0d6efd 0%, #0a58ca 100%' : '#d63384 0%, #a61e4d 100%' }});">
                         {{ strtoupper(substr($relationship->dependent->full_name, 0, 1)) }}
                     </div>
                 @endif
@@ -54,7 +54,7 @@
                             </button>
                             <ul x-show="open" x-cloak @click.outside="open = false"
                                 class="absolute right-0 mt-1 bg-white py-1 z-50 list-none"
-                                style="min-width: 220px; border: 1px solid rgba(0,0,0,.1); border-radius: 0.625rem; box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,.12);">
+                                style="width: min(220px, calc(100vw - 2rem)); border: 1px solid rgba(0,0,0,.1); border-radius: 0.625rem; box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,.12);">
                                 <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#"><i class="bi bi-trophy text-amber-500" style="width:16px;text-align:center"></i>Add Achievement</a></li>
                                 <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#"><i class="bi bi-calendar-check text-green-600" style="width:16px;text-align:center"></i>Add Attendance Record</a></li>
                                 <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#"><i class="bi bi-calendar-event text-blue-500" style="width:16px;text-align:center"></i>Add Event Participation</a></li>
@@ -235,7 +235,8 @@
 
     <!-- Navigation Tabs -->
     <div x-data="{ activeTab: 'overview' }">
-        <ul class="nav nav-tabs nav-fill mb-4" id="profileTabs" role="tablist">
+        <div class="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+        <ul class="nav nav-tabs nav-fill mb-4 flex-nowrap min-w-max md:min-w-0 md:flex-wrap" id="profileTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button @click="activeTab = 'overview'" :class="{ 'active': activeTab === 'overview' }" class="nav-link text-dark" id="overview-tab" type="button" role="tab">
                     <i class="bi bi-eye me-2"></i>Overview
@@ -272,6 +273,7 @@
                 </button>
             </li>
         </ul>
+        </div>{{-- end overflow-x-auto tab wrapper --}}
 
         <!-- Tab Content -->
         <div id="profileTabsContent">
@@ -668,7 +670,7 @@
                         <div class="p-4">
                             <h5 class="font-bold mb-4"><i class="bi bi-activity mr-2"></i>Body Composition Analysis</h5>
 
-                            <div class="chart-container" style="position: relative; height: 500px; width: 100%;">
+                            <div class="chart-container" style="position: relative; height: min(500px, 60vh); width: 100%;">
                                 <canvas id="radarChart" data-current='@json($comparisonRecords->first())' data-previous='@json($comparisonRecords->skip(1)->first())'></canvas>
                             </div>
                         </div>
@@ -1020,15 +1022,15 @@
             <div class="bg-white rounded-xl shadow-sm mb-4">
                 <div class="p-4">
                     <!-- Section Title & Subtitle -->
-                    <div class="flex justify-between items-center mb-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
                         <div>
                             <h5 class="font-bold mb-1"><i class="bi bi-trophy-fill text-warning mr-2"></i>Tournament & Event Participation</h5>
                             <p class="text-gray-500 text-sm mb-0">Proven champion with multiple championship wins and prestigious awards.</p>
                         </div>
                         <!-- Filter Section -->
-                        <div class="flex items-center">
-                            <label for="sportFilter" class="block text-sm font-medium text-gray-700 mb-1 mr-2 mb-0 font-semibold">Filter by Sport:</label>
-                            <select class="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" id="sportFilter" style="width: 150px;">
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <label for="sportFilter" class="text-sm font-semibold text-gray-700 whitespace-nowrap">Filter by Sport:</label>
+                            <select class="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary w-full sm:w-36" id="sportFilter">
                                 <option value="all">All Sports</option>
                                 @foreach($sports as $sport)
                                     <option value="{{ $sport }}">{{ $sport }}</option>

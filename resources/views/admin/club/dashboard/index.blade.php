@@ -91,7 +91,9 @@
             <p class="text-muted-foreground text-sm">Monthly income, expenses, and profit trends</p>
         </div>
         <div class="card-body">
-            <canvas id="financialChart" height="300"></canvas>
+            <div class="h-48 md:h-72">
+                <canvas id="financialChart"></canvas>
+            </div>
         </div>
     </div>
 

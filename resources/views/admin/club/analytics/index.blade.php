@@ -73,7 +73,9 @@
                     <h5 class="font-semibold mb-0">Membership Growth</h5>
                 </div>
                 <div class="card-body">
-                    <canvas id="membershipChart" height="250"></canvas>
+                    <div class="h-48 md:h-64">
+                        <canvas id="membershipChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -116,7 +118,9 @@
                     <h5 class="font-semibold mb-0">Activity Breakdown</h5>
                 </div>
                 <div class="card-body">
-                    <canvas id="activityChart" height="200"></canvas>
+                    <div class="h-40 md:h-52">
+                        <canvas id="activityChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -128,7 +132,9 @@
                     <h5 class="font-semibold mb-0">Peak Hours</h5>
                 </div>
                 <div class="card-body">
-                    <canvas id="peakHoursChart" height="200"></canvas>
+                    <div class="h-40 md:h-52">
+                        <canvas id="peakHoursChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>

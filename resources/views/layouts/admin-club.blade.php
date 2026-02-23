@@ -1,17 +1,30 @@
 @extends('layouts.app')
 
 @section('content')
+<div x-data="{ sidebarOpen: false }">
+
 <!-- Mobile Sidebar Toggle -->
-<div class="lg:hidden sticky top-16 z-40 bg-background border-b border-border p-4" x-data="{ sidebarOpen: false }">
+<div class="lg:hidden sticky top-16 z-40 bg-background border-b border-border p-4">
     <button @click="sidebarOpen = !sidebarOpen"
             class="flex items-center gap-2 px-4 py-2 border border-border rounded-lg bg-white font-semibold cursor-pointer">
-        <i class="bi bi-list"></i>
-        <span>{{ $club->club_name ?? 'Club Menu' }}</span>
+        <i class="bi bi-list" x-show="!sidebarOpen"></i>
+        <i class="bi bi-x-lg" x-show="sidebarOpen" x-cloak></i>
+        <span class="truncate max-w-[200px]">{{ $club->club_name ?? 'Club Menu' }}</span>
     </button>
 </div>
 
+<!-- Mobile Overlay Backdrop -->
+<div x-show="sidebarOpen" x-cloak @click="sidebarOpen = false"
+     class="lg:hidden fixed inset-0 bg-black/50 z-30"
+     x-transition:enter="transition ease-out duration-200"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-150"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"></div>
+
 <!-- Club Admin Wrapper -->
-<div class="max-w-[1400px] mx-auto px-4 py-5 flex flex-col lg:flex-row gap-5" x-data="{ sidebarOpen: false }">
+<div class="max-w-[1400px] mx-auto px-4 py-5 flex flex-col lg:flex-row gap-5">
     <!-- Sidebar -->
     <aside class="w-full lg:w-72 lg:min-w-72 bg-muted/30 border border-border rounded-xl p-6 h-fit lg:sticky lg:top-24"
            :class="{ 'hidden lg:block': !sidebarOpen, 'block': sidebarOpen }">
@@ -165,4 +178,6 @@
         @yield('club-admin-content')
     </main>
 </div>
+
+</div>{{-- end x-data sidebarOpen --}}
 @endsection

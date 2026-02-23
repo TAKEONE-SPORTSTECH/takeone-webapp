@@ -50,7 +50,7 @@
                 </div>
                 <div class="flex flex-col sm:flex-row gap-2">
                     <span class="text-sm font-medium text-gray-600 self-center">Status:</span>
-                    <div class="inline-flex rounded-lg border border-gray-200 p-1 bg-gray-50">
+                    <div class="inline-flex flex-wrap rounded-lg border border-gray-200 p-1 bg-gray-50 overflow-x-auto max-w-full">
                         <button type="button" class="status-btn active px-3 py-1.5 text-sm font-medium rounded-md transition-colors" data-status="active">
                             Active <span class="ml-1 text-xs opacity-75" id="activeCount">0</span>
                         </button>

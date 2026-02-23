@@ -135,7 +135,7 @@
                 </div>
                 <!-- Modal Body -->
                 <div class="p-0">
-                    <div id="map" style="height: 500px; width: 100%;"></div>
+                    <div id="map" style="height: min(500px, 60vh); width: 100%;"></div>
                 </div>
                 <!-- Modal Footer -->
                 <div class="flex items-center justify-between px-6 py-4 bg-muted border-t border-border">
