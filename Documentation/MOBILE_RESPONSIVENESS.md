@@ -22,7 +22,7 @@ The goal is to make all pages fully usable on mobile phones (320px–430px) whil
 | `7a84a12` | Phase 1–4: Layout foundations, public pages, admin pages, member pages |
 | `8fbb9f0` | Auth pages: card padding, register scroll, box spacing |
 | `89e4d5e` | Documentation: MOBILE_RESPONSIVENESS.md created |
-| *(pending)* | Phase 5: Club admin forms — details, packages, instructors, messages |
+| `d40b602` | Phase 5: Club admin forms — details, packages, instructors, messages |
 
 ---
 
