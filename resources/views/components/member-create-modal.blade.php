@@ -152,29 +152,15 @@
 
                         <!-- Social Media Links -->
                         <div class="mb-4">
-                            <div class="flex items-center justify-between mb-2">
-                                <label class="text-sm font-medium text-gray-600">Social Media Links</label>
-                                <button type="button"
-                                        @click="addSocialLink()"
-                                        class="px-3 py-1 text-sm text-primary border border-primary rounded-lg hover:bg-primary hover:text-white transition-colors">
-                                    <i class="bi bi-plus mr-1"></i> Add Link
-                                </button>
-                            </div>
-                            <div id="socialLinksContainer">
-                                @php
-                                    $existingLinks = old('social_links', []);
-                                    if (!is_array($existingLinks)) {
-                                        $existingLinks = [];
-                                    }
-                                    $formLinks = [];
-                                    foreach ($existingLinks as $platform => $url) {
-                                        $formLinks[] = ['platform' => $platform, 'url' => $url];
-                                    }
-                                @endphp
-                                @foreach($formLinks as $index => $link)
-                                    @include('components.social-link-row', ['index' => $index, 'link' => $link])
-                                @endforeach
-                            </div>
+                            @php
+                                $existingLinks = old('social_links', []);
+                                if (!is_array($existingLinks)) $existingLinks = [];
+                                $createFormLinks = [];
+                                foreach ($existingLinks as $platform => $url) {
+                                    $createFormLinks[] = ['platform' => $platform, 'url' => $url];
+                                }
+                            @endphp
+                            <x-social-links-editor :links="$createFormLinks" containerId="memberCreateSocialLinksContainer" />
                         </div>
 
                         <!-- Motto -->
@@ -249,7 +235,6 @@
 function memberCreateModal() {
     return {
         open: false,
-        socialLinkIndex: {{ count($formLinks ?? []) }},
 
         init() {
             // Global function to open modal
@@ -265,52 +250,6 @@ function memberCreateModal() {
             this.open = false;
         },
 
-        addSocialLink() {
-            const container = document.getElementById('socialLinksContainer');
-            if (!container) return;
-
-            const row = document.createElement('div');
-            row.className = 'social-link-row mb-4 flex items-end gap-2';
-            row.setAttribute('x-data', '{ open: false }');
-
-            row.innerHTML = `
-                <div class="flex-1">
-                    <label class="tf-label">Platform</label>
-                    <select class="tf-select"
-                            name="social_links[${this.socialLinkIndex}][platform]"
-                            required>
-                        <option value="">Select Platform</option>
-                        <option value="facebook">Facebook</option>
-                        <option value="twitter">Twitter/X</option>
-                        <option value="instagram">Instagram</option>
-                        <option value="linkedin">LinkedIn</option>
-                        <option value="youtube">YouTube</option>
-                        <option value="tiktok">TikTok</option>
-                        <option value="snapchat">Snapchat</option>
-                        <option value="whatsapp">WhatsApp</option>
-                        <option value="telegram">Telegram</option>
-                    </select>
-                </div>
-                <div class="flex-1">
-                    <label class="tf-label">URL</label>
-                    <input type="url"
-                           class="tf-input"
-                           name="social_links[${this.socialLinkIndex}][url]"
-                           placeholder="https://example.com/username"
-                           required>
-                </div>
-                <div>
-                    <button type="button"
-                            onclick="this.closest('.social-link-row').remove()"
-                            class="p-3 text-red-500 border-2 border-red-200 rounded-xl hover:bg-red-50 hover:border-red-300 transition-all duration-300">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </div>
-            `;
-
-            container.appendChild(row);
-            this.socialLinkIndex++;
-        }
     }
 }
 </script>
