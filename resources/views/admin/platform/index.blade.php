@@ -3,7 +3,7 @@
 @section('admin-content')
 <div class="space-y-6">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-wrap gap-3 items-center justify-between">
         <div>
             <h2 class="text-3xl font-bold">All Clubs</h2>
             <p class="text-muted-foreground mt-1">Manage all clubs on the platform</p>

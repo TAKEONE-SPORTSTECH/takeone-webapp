@@ -3,7 +3,7 @@
 @section('club-admin-content')
 <div class="space-y-8" id="facilitiesContainer" x-data="{ showAddFacilityModal: false, showEditFacilityModal: false, editingFacility: null }" @open-edit-facility.window="showEditFacilityModal = true">
     <!-- Header -->
-    <div class="flex justify-between items-center pb-6 border-b border-gray-200">
+    <div class="flex flex-wrap gap-3 justify-between items-center pb-6 border-b border-gray-200">
         <div>
             <h2 class="text-2xl font-bold text-gray-900">Facilities Management</h2>
             <p class="text-gray-500 mt-1">Manage your club's facilities, locations, and availability</p>
