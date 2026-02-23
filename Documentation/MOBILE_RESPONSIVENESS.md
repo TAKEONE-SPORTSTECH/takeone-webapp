@@ -23,6 +23,7 @@ The goal is to make all pages fully usable on mobile phones (320px–430px) whil
 | `8fbb9f0` | Auth pages: card padding, register scroll, box spacing |
 | `89e4d5e` | Documentation: MOBILE_RESPONSIVENESS.md created |
 | `d40b602` | Phase 5: Club admin forms — details, packages, instructors, messages |
+| `c540735` | Phase 6: Remaining admin pages — platform index, facilities index |
 
 ---
 
@@ -187,6 +188,33 @@ The platform admin layout had no mobile toggle at all — the sidebar just pushe
 - `admin/club/facilities/edit.blade.php` — same structure ✅
 - `admin/club/gallery/add.blade.php` — `max-w-md` modal + `w-full` inputs, 3-tab grid fine ✅
 - `trainer/show.blade.php` — `flex-col md:flex-row` header, `grid-cols-2 md:grid-cols-4` stats, 4-tab grid ✅
+
+---
+
+## Phase 6 — Remaining Admin Pages ✅
+
+**Files Modified:**
+- `resources/views/admin/platform/index.blade.php`
+- `resources/views/admin/club/facilities/index.blade.php`
+
+**Changes:**
+
+### `admin/platform/index.blade.php`
+| Issue | Fix |
+|-------|-----|
+| Page header `flex items-center justify-between` — "Add New Club" button overflows on mobile | Added `flex-wrap gap-3` |
+
+### `admin/club/facilities/index.blade.php`
+| Issue | Fix |
+|-------|-----|
+| Page header `flex justify-between items-center` — "Add Facility" button overflows on mobile | Added `flex-wrap gap-3` |
+
+**Pages Audited — No Changes Needed:**
+- `admin/platform/clubs/add.blade.php` — all grids `grid-cols-1 md:grid-cols-2/3`, action row fits ✅
+- `admin/platform/clubs/edit.blade.php` — same structure ✅
+- `admin/platform/backup/index.blade.php` — `grid-cols-1 md:grid-cols-3` operations + best practices ✅
+- `admin/club/gallery/index.blade.php` — list layout with `flex-shrink-0` thumbnails + `flex-1 min-w-0 truncate` ✅
+- `admin/club/financials/partials/*.blade.php` (6 modals) — `grid-cols-2` for Amount/Date inputs fits at ~140px per col ✅
 
 ---
 
