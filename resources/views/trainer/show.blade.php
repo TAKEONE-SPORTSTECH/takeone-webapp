@@ -8,6 +8,9 @@
 @elseif($instructor->tenant->logo)
 <link rel="icon" type="image/png" href="{{ asset('storage/' . $instructor->tenant->logo) }}">
 @endif
+@if(request()->routeIs('trainer.show.public'))
+<style>@media (max-width: 768px) { nav { display: none !important; } }</style>
+@endif
 @endpush
 
 @section('content')
