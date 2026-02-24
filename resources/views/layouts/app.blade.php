@@ -143,7 +143,7 @@
     @stack('styles')
 </head>
 <body class="bg-background text-foreground antialiased">
-    @if(!request()->routeIs('clubs.show.public'))
+    @if(!request()->routeIs('clubs.show.public') && !request()->routeIs('trainer.show.public'))
     <nav class="bg-muted shadow-sm sticky top-0 z-40" x-data="{ mobileMenuOpen: false }">
         <div class="container mx-auto px-4">
             <div class="flex items-center justify-between h-16">

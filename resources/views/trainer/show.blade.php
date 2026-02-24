@@ -1,5 +1,15 @@
 @extends('layouts.app')
 
+@section('title', ($instructor->user->full_name ?? 'Trainer') . ' — ' . ($instructor->tenant->club_name ?? ''))
+
+@push('styles')
+@if($instructor->user->profile_picture)
+<link rel="icon" type="image/png" href="{{ asset('storage/' . $instructor->user->profile_picture) }}">
+@elseif($instructor->tenant->logo)
+<link rel="icon" type="image/png" href="{{ asset('storage/' . $instructor->tenant->logo) }}">
+@endif
+@endpush
+
 @section('content')
 @php
     $user = $instructor->user;

@@ -79,6 +79,9 @@ Route::post('/email/verification-notification', function (Request $request) {
 // Public club page - no login required (used for QR code)
 Route::get('/c/{slug}', [PlatformController::class, 'showPublic'])->name('clubs.show.public');
 
+// Public trainer page - no login required (used for QR code)
+Route::get('/t/{instructor}', [TrainerController::class, 'showPublic'])->name('trainer.show.public');
+
 // Explore routes (accessible to authenticated users)
 Route::middleware(['auth'])->group(function () {
     Route::get('/explore', [PlatformController::class, 'index'])->name('clubs.explore');

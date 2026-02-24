@@ -55,4 +55,9 @@ class TrainerController extends Controller
 
         return view('trainer.show', compact('instructor', 'activities', 'schedule', 'stats'));
     }
+
+    public function showPublic($instructorId)
+    {
+        return $this->show($instructorId);
+    }
 }
