@@ -1,7 +1,12 @@
 @extends('layouts.app')
 
+@section('title', $club->club_name)
+
 @push('styles')
-<style>body { overflow-x: hidden; }</style>
+@if($club->logo)
+<link rel="icon" type="image/png" href="{{ asset('storage/' . $club->logo) }}">
+@endif
+<style>main { overflow-x: hidden; }</style>
 @endpush
 
 @section('content')
@@ -81,7 +86,7 @@
                     </a>
                 @endforeach
                 @if($club->phone)
-                <a href="tel:{{ is_array($club->phone) ? ($club->phone['number'] ?? '') : $club->phone }}" class="hub-link" title="Call">
+                <a href="tel:{{ is_array($club->phone) ? (($club->phone['code'] ?? '') . ($club->phone['number'] ?? '')) : $club->phone }}" class="hub-link" title="Call">
                     <i class="bi bi-telephone"></i>
                 </a>
                 @endif
@@ -146,7 +151,7 @@
                             <p class="text-muted-foreground text-sm">Partnering businesses and offers available when you register.</p>
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div class="perks-grid grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div class="perk-card">
                             <span class="perk-badge">-20% OFF</span>
                             <div class="w-full h-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
