@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @push('styles')
-{{-- Styles moved to app.css (Phase 6) --}}
+<style>body { overflow-x: hidden; }</style>
 @endpush
 
 @section('content')
