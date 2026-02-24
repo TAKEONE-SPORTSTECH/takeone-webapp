@@ -200,7 +200,7 @@
 
                         @forelse($club->instructors as $instructor)
                         @php $trainerUser = $instructor->user; @endphp
-                        <a href="{{ $trainerUser ? route('trainer.show', $instructor->id) : '#' }}" class="mini-trainer mb-3 block no-underline text-foreground">
+                        <a href="{{ $trainerUser ? route('trainer.show.public', $instructor->id) : '#' }}" class="mini-trainer mb-3 block no-underline text-foreground">
                             @if($trainerUser && $trainerUser->profile_picture)
                             <img src="{{ asset('storage/' . $trainerUser->profile_picture) }}" class="mini-pfp" alt="{{ $trainerUser->full_name ?? $trainerUser->name }}">
                             @else
