@@ -25,10 +25,12 @@
     <div class="max-w-6xl mx-auto p-4 space-y-6">
 
         {{-- Back Button --}}
+        @if(!request()->routeIs('trainer.show.public'))
         <a href="{{ url()->previous() }}" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors mb-2">
             <i class="bi bi-arrow-left"></i>
             <span>Back</span>
         </a>
+        @endif
 
         {{-- ========== Header Card ========== --}}
         <div class="tf-card">
