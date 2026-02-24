@@ -138,34 +138,25 @@
                         <div class="space-y-4">
                             <h6 class="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
                                 <i class="bi bi-images"></i>
-                                Facility Images
+                                Facility Image
                             </h6>
 
                             <div class="space-y-2">
-                                <label class="block text-sm font-medium text-gray-700">Upload Images <span class="text-xs text-gray-500">(16:9 recommended)</span></label>
-                                <div class="flex flex-col gap-3">
-                                    <input type="file"
-                                           id="facilityImages"
-                                           name="image"
-                                           accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
-                                           class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white hover:file:bg-primary/90 cursor-pointer border border-gray-300 rounded-lg">
-                                    <p class="text-xs text-gray-500">
-                                        Supported formats: JPEG, PNG, GIF, WebP. Max size: 10MB per image
-                                    </p>
-                                </div>
-                            </div>
-
-                            <!-- Image Preview -->
-                            <div id="facilityImagePreviewSection" class="space-y-2 hidden">
-                                <div class="flex items-center justify-between">
-                                    <label class="block text-sm font-medium text-gray-700">Preview</label>
-                                    <button type="button" id="clearFacilityImagesBtn" class="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-100 transition-colors">
-                                        Clear All
-                                    </button>
-                                </div>
-                                <div id="facilityImagePreviewContainer" class="grid grid-cols-3 gap-2">
-                                    <!-- Previews will be inserted here -->
-                                </div>
+                                <label class="block text-sm font-medium text-gray-700">Upload Image <span class="text-xs text-gray-500">(4:3 recommended)</span></label>
+                                <x-takeone-cropper
+                                    id="facilityAddImageCropper"
+                                    :width="400"
+                                    :height="300"
+                                    shape="square"
+                                    mode="form"
+                                    inputName="image"
+                                    :folder="'clubs/' . $club->id . '/facilities'"
+                                    :filename="'facility_' . time()"
+                                    :previewWidth="200"
+                                    :previewHeight="150"
+                                    buttonText="Upload Image"
+                                    buttonClass="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-2"
+                                />
                             </div>
                         </div>
                     </div>
@@ -287,40 +278,6 @@ document.addEventListener('DOMContentLoaded', function() {
         container.appendChild(row);
     }
 
-    // Image Preview
-    const facilityImagesInput = document.getElementById('facilityImages');
-    const facilityImagePreviewSection = document.getElementById('facilityImagePreviewSection');
-    const facilityImagePreviewContainer = document.getElementById('facilityImagePreviewContainer');
-    const clearFacilityImagesBtn = document.getElementById('clearFacilityImagesBtn');
-
-    facilityImagesInput.addEventListener('change', function() {
-        const files = this.files;
-        if (files.length > 0) {
-            facilityImagePreviewContainer.innerHTML = '';
-            facilityImagePreviewSection.classList.remove('hidden');
-
-            Array.from(files).forEach((file, index) => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const div = document.createElement('div');
-                    div.className = 'relative aspect-video';
-                    div.innerHTML = `
-                        <img src="${e.target.result}" alt="Preview ${index + 1}" class="w-full h-full object-cover rounded-lg border border-gray-200">
-                        <span class="absolute bottom-1 right-1 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">${(file.size / 1024 / 1024).toFixed(2)} MB</span>
-                    `;
-                    facilityImagePreviewContainer.appendChild(div);
-                };
-                reader.readAsDataURL(file);
-            });
-        }
-    });
-
-    clearFacilityImagesBtn.addEventListener('click', function() {
-        facilityImagesInput.value = '';
-        facilityImagePreviewContainer.innerHTML = '';
-        facilityImagePreviewSection.classList.add('hidden');
-    });
-
     // Reset form when modal is closed (watch for Alpine hiding it)
     window.resetAddFacilityForm = function() {
         document.getElementById('addFacilityForm').reset();
@@ -329,8 +286,9 @@ document.addEventListener('DOMContentLoaded', function() {
         noOperatingHoursMsg.classList.remove('hidden');
         noRentableTimesMsg.classList.remove('hidden');
         rentableTimesSection.classList.add('hidden');
-        facilityImagePreviewContainer.innerHTML = '';
-        facilityImagePreviewSection.classList.add('hidden');
+        if (typeof removeImage_facilityAddImageCropper === 'function') {
+            removeImage_facilityAddImageCropper();
+        }
         operatingHourIndex = 0;
         rentableTimeIndex = 0;
     };

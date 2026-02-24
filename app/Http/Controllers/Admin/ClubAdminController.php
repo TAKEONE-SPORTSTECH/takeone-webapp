@@ -103,12 +103,36 @@ class ClubAdminController extends Controller
         $clubId = $club->id;
 
         $request->validate([
-            'images.*' => 'required|image|max:5120',
             'caption' => 'nullable|string|max:255',
         ]);
 
-        if ($request->hasFile('images')) {
-            $nextOrder = ClubGalleryImage::where('tenant_id', $clubId)->max('display_order') + 1;
+        $nextOrder = ClubGalleryImage::where('tenant_id', $clubId)->max('display_order') + 1;
+
+        // Handle base64 image from cropper (form mode)
+        if ($request->filled('image_data') && str_starts_with($request->image_data, 'data:image')) {
+            $imageData = $request->image_data;
+            $imageParts = explode(';base64,', $imageData);
+            $imageTypeAux = explode('image/', $imageParts[0]);
+            $extension = $imageTypeAux[1];
+            $imageBinary = base64_decode($imageParts[1]);
+
+            $folder = 'clubs/' . $clubId . '/gallery';
+            $filename = 'gallery_' . time() . '_' . uniqid() . '.' . $extension;
+            $fullPath = $folder . '/' . $filename;
+
+            Storage::disk('public')->put($fullPath, $imageBinary);
+
+            ClubGalleryImage::create([
+                'tenant_id' => $clubId,
+                'image_path' => $fullPath,
+                'caption' => $request->caption,
+                'uploaded_by' => auth()->id(),
+                'display_order' => $nextOrder,
+            ]);
+        }
+        // Handle traditional file upload (fallback)
+        elseif ($request->hasFile('images')) {
+            $request->validate(['images.*' => 'required|image|max:5120']);
             foreach ($request->file('images') as $image) {
                 $path = $image->store('clubs/' . $clubId . '/gallery', 'public');
                 ClubGalleryImage::create([
@@ -121,7 +145,7 @@ class ClubAdminController extends Controller
             }
         }
 
-        return back()->with('success', 'Images uploaded successfully.');
+        return back()->with('success', 'Image uploaded successfully.');
     }
 
     public function reorderGallery(Request $request, Tenant $club)

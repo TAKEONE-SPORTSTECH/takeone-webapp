@@ -48,15 +48,15 @@
                                 <button class="btn btn-primary rounded-pill dropdown-toggle" type="button" id="actionDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="bi bi-lightning"></i> Action
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 py-1" aria-labelledby="actionDropdown" style="min-width: 220px; border-radius: 0.75rem; overflow: hidden;">
-                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="#"><i class="bi bi-trophy text-warning" style="width: 18px; text-align: center;"></i>Add Achievement</a></li>
-                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="#"><i class="bi bi-calendar-check text-success" style="width: 18px; text-align: center;"></i>Add Attendance Record</a></li>
-                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="#"><i class="bi bi-calendar-event text-info" style="width: 18px; text-align: center;"></i>Add Event Participation</a></li>
-                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="#" data-bs-target="#healthUpdateModal"><i class="bi bi-heart-pulse text-danger" style="width: 18px; text-align: center;"></i>Add Health Update</a></li>
-                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="#" data-bs-toggle="modal" data-bs-target="#tournamentParticipationModal"><i class="bi bi-award text-warning" style="width: 18px; text-align: center;"></i>Add Tournament Participation</a></li>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 py-1" aria-labelledby="actionDropdown" style="min-width: 280px; border-radius: 0.75rem; overflow: hidden;">
+                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 !whitespace-normal" href="#"><i class="bi bi-trophy text-warning flex-shrink-0" style="width: 18px; text-align: center;"></i>Add Achievement</a></li>
+                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 !whitespace-normal" href="#"><i class="bi bi-calendar-check text-success flex-shrink-0" style="width: 18px; text-align: center;"></i>Add Attendance Record</a></li>
+                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 !whitespace-normal" href="#"><i class="bi bi-calendar-event text-info flex-shrink-0" style="width: 18px; text-align: center;"></i>Add Event Participation</a></li>
+                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 !whitespace-normal" href="#" data-bs-target="#healthUpdateModal"><i class="bi bi-heart-pulse text-danger flex-shrink-0" style="width: 18px; text-align: center;"></i>Add Health Update</a></li>
+                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 !whitespace-normal" href="#" data-bs-toggle="modal" data-bs-target="#tournamentParticipationModal"><i class="bi bi-award text-warning flex-shrink-0" style="width: 18px; text-align: center;"></i>Add Tournament Participation</a></li>
                                     <li><hr class="dropdown-divider my-1"></li>
-                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="#" data-bs-toggle="modal" data-bs-target="#editProfileModal"><i class="bi bi-pencil text-secondary" style="width: 18px; text-align: center;"></i>Edit Info</a></li>
-                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" href="#"><i class="bi bi-bullseye text-primary" style="width: 18px; text-align: center;"></i>Set a Goal</a></li>
+                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 !whitespace-normal" href="#" data-bs-toggle="modal" data-bs-target="#editProfileModal"><i class="bi bi-pencil text-secondary flex-shrink-0" style="width: 18px; text-align: center;"></i>Edit Info</a></li>
+                                    <li><a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 !whitespace-normal" href="#"><i class="bi bi-bullseye text-primary flex-shrink-0" style="width: 18px; text-align: center;"></i>Set a Goal</a></li>
                                 </ul>
                             </div>
                         </div>

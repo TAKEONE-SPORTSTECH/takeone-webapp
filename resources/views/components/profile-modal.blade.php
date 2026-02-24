@@ -239,14 +239,16 @@
                                                 <x-takeone-cropper
                                                     id="profile_picture"
                                                     width="300"
-                                                    height="400"
-                                                    shape="rectangle"
+                                                    height="300"
+                                                    shape="square"
                                                     folder="images/profiles"
                                                     filename="profile_{{ $user->id }}"
                                                     uploadUrl="{{ $attributes->get('uploadUrl') }}"
                                                     currentImage="{{ $currentProfileImage }}"
                                                     buttonText="Change Photo"
                                                     buttonClass="btn btn-success btn-sm w-full"
+                                                    :canvasHeight="650"
+                                                    viewportFill="0.85"
                                                 />
                                             @else
                                                 <button type="button" class="btn btn-success btn-sm w-full" onclick="document.getElementById('profile_picture_input').click()">
@@ -551,10 +553,10 @@ function {{ $alpineComponent }}() {
                     }
                     @endif
 
-                    // Show success message
-                    this.showAlert('success', data.message || '{{ $isCreate ? "Member created successfully!" : "Profile updated successfully!" }}');
-
-                    // Close modal and reload
+                    // Show success message and reload
+                    if (typeof Toast !== 'undefined') {
+                        Toast.success('{{ $isCreate ? "Member Created" : "Profile Updated" }}', data.message || '{{ $isCreate ? "Member created successfully!" : "Profile updated successfully!" }}');
+                    }
                     setTimeout(() => {
                         this.open = false;
                         if (data.redirect) {
@@ -562,14 +564,18 @@ function {{ $alpineComponent }}() {
                         } else {
                             window.location.reload();
                         }
-                    }, 1500);
+                    }, 1200);
                 } else {
                     throw new Error(data.message || '{{ $isCreate ? "Creation failed" : "Update failed" }}');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                this.showAlert('danger', error.message || 'Something went wrong. Please try again.');
+                if (typeof Toast !== 'undefined') {
+                    Toast.error('{{ $isCreate ? "Creation Failed" : "Update Failed" }}', error.message || 'Something went wrong. Please try again.');
+                } else {
+                    this.showAlert('danger', error.message || 'Something went wrong. Please try again.');
+                }
                 this.isSubmitting = false;
             });
         },

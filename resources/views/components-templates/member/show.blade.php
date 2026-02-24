@@ -53,8 +53,8 @@
                                 <i class="bi bi-lightning mr-1"></i>Action
                             </button>
                             <ul x-show="open" x-cloak @click.outside="open = false"
-                                class="absolute right-0 mt-1 bg-white py-1 z-50 list-none"
-                                style="width: min(220px, calc(100vw - 2rem)); border: 1px solid rgba(0,0,0,.1); border-radius: 0.625rem; box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,.12);">
+                                class="absolute right-0 mt-1 bg-white py-1 z-50 list-none w-64 max-w-[calc(100vw-2rem)]"
+                                style="border: 1px solid rgba(0,0,0,.1); border-radius: 0.625rem; box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,.12);">
                                 <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#"><i class="bi bi-trophy text-amber-500" style="width:16px;text-align:center"></i>Add Achievement</a></li>
                                 <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#"><i class="bi bi-calendar-check text-green-600" style="width:16px;text-align:center"></i>Add Attendance Record</a></li>
                                 <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#"><i class="bi bi-calendar-event text-blue-500" style="width:16px;text-align:center"></i>Add Event Participation</a></li>

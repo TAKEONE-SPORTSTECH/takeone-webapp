@@ -190,8 +190,8 @@
                                 <div class="flex items-center gap-6">
                                     <x-takeone-cropper
                                         id="instructorPhotoCropper"
-                                        :width="300"
-                                        :height="300"
+                                        :width="200"
+                                        :height="200"
                                         shape="circle"
                                         mode="form"
                                         inputName="photo"

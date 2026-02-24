@@ -61,33 +61,25 @@
 
                         <div class="space-y-4">
                             <div class="space-y-2">
-                                <label for="imageFile" class="block text-sm font-medium text-foreground">Select Image</label>
-                                <div class="flex flex-col gap-3">
-                                    <input type="file"
-                                           id="imageFile"
-                                           name="images[]"
-                                           accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
-                                           multiple
-                                           class="form-control">
-                                    <p class="text-xs text-muted-foreground">
-                                        Supported formats: JPEG, PNG, GIF, WebP. Max size: 10MB
-                                    </p>
-                                </div>
-                            </div>
-
-                            <!-- Preview Section -->
-                            <div id="filePreviewSection" class="space-y-2 hidden">
-                                <div class="flex items-center justify-between">
-                                    <label class="block text-sm font-medium text-foreground">Preview</label>
-                                    <button type="button"
-                                            id="clearFileBtn"
-                                            class="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted/30 transition-colors">
-                                        Clear
-                                    </button>
-                                </div>
-                                <div id="filePreviewContainer" class="grid grid-cols-2 gap-2">
-                                    <!-- Previews will be inserted here -->
-                                </div>
+                                <label class="block text-sm font-medium text-foreground">Select & Crop Image</label>
+                                <x-takeone-cropper
+                                    id="galleryImageCropper"
+                                    :width="800"
+                                    :height="450"
+                                    shape="square"
+                                    mode="form"
+                                    inputName="image_data"
+                                    :folder="'clubs/' . $club->id . '/gallery'"
+                                    :filename="'gallery_' . time()"
+                                    :previewWidth="300"
+                                    :previewHeight="169"
+                                    buttonText="Select & Crop Image"
+                                    buttonClass="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                                    :canvasHeight="400"
+                                />
+                                <p class="text-xs text-muted-foreground">
+                                    Supported formats: JPEG, PNG, GIF, WebP. Recommended ratio: 16:9
+                                </p>
                             </div>
 
                             <!-- Caption -->
@@ -196,10 +188,6 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const fileInput = document.getElementById('imageFile');
-    const filePreviewSection = document.getElementById('filePreviewSection');
-    const filePreviewContainer = document.getElementById('filePreviewContainer');
-    const clearFileBtn = document.getElementById('clearFileBtn');
     const urlInput = document.getElementById('imageUrl');
     const urlPreviewSection = document.getElementById('urlPreviewSection');
     const urlPreviewImage = document.getElementById('urlPreviewImage');
@@ -212,44 +200,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const uploadIcon = document.getElementById('uploadIcon');
 
     let currentTab = 'file';
-
-    // Watch for tab changes via Alpine.js
-    document.addEventListener('alpine:initialized', () => {
-        // The tab is managed by Alpine.js now
-    });
-
-    // File input change
-    fileInput?.addEventListener('change', function() {
-        const files = this.files;
-        if (files.length > 0) {
-            filePreviewContainer.innerHTML = '';
-            filePreviewSection.classList.remove('hidden');
-
-            Array.from(files).forEach((file, index) => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const div = document.createElement('div');
-                    div.className = 'relative';
-                    div.innerHTML = `
-                        <img src="${e.target.result}" alt="Preview ${index + 1}" class="w-full h-24 object-cover rounded-md border border-border">
-                        <span class="absolute bottom-1 right-1 bg-black/50 text-white text-xs px-1 rounded">${(file.size / 1024 / 1024).toFixed(2)} MB</span>
-                    `;
-                    filePreviewContainer.appendChild(div);
-                };
-                reader.readAsDataURL(file);
-            });
-
-            updateSubmitButton();
-        }
-    });
-
-    // Clear file selection
-    clearFileBtn?.addEventListener('click', function() {
-        fileInput.value = '';
-        filePreviewContainer.innerHTML = '';
-        filePreviewSection.classList.add('hidden');
-        updateSubmitButton();
-    });
 
     // URL input change
     let urlTimeout;
@@ -318,7 +268,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         let isValid = false;
         if (currentTab === 'file') {
-            isValid = fileInput?.files && fileInput.files.length > 0;
+            isValid = (document.getElementById('hiddenInput_galleryImageCropper')?.value || '').length > 0;
             uploadBtnText.textContent = 'Upload';
         } else if (currentTab === 'url') {
             isValid = urlInput?.value.trim() !== '';

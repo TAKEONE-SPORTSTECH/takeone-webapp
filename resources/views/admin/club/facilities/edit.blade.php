@@ -98,22 +98,21 @@
                             </h6>
 
                             <div class="space-y-2">
-                                <div class="flex flex-col gap-3">
-                                    <input type="file"
-                                           id="editFacilityImage"
-                                           name="image"
-                                           accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
-                                           class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white hover:file:bg-primary/90 cursor-pointer border border-gray-300 rounded-lg">
-                                    <p class="text-xs text-gray-500">
-                                        Upload a new image to replace the current one. Supported: JPEG, PNG, GIF, WebP. Max: 10MB
-                                    </p>
-                                </div>
-                            </div>
-
-                            <!-- New Image Preview -->
-                            <div id="editImagePreviewSection" class="space-y-2 hidden">
-                                <label class="block text-sm font-medium text-gray-700">New Image Preview</label>
-                                <img id="editImagePreview" src="" alt="New image preview" class="w-full h-40 object-cover rounded-lg border border-gray-200">
+                                <label class="block text-sm font-medium text-gray-700">Replace Image <span class="text-xs text-gray-500">(4:3 recommended)</span></label>
+                                <x-takeone-cropper
+                                    id="facilityEditImageCropper"
+                                    :width="400"
+                                    :height="300"
+                                    shape="square"
+                                    mode="form"
+                                    inputName="image"
+                                    folder="facilities"
+                                    :filename="'facility_edit_' . time()"
+                                    :previewWidth="200"
+                                    :previewHeight="150"
+                                    buttonText="Upload New Image"
+                                    buttonClass="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-2"
+                                />
                             </div>
                         </div>
                     </div>

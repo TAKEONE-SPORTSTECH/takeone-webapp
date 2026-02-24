@@ -241,9 +241,10 @@ function populateEditForm(facility) {
         noImagePlaceholder.classList.remove('hidden');
     }
 
-    // Reset new image preview
-    document.getElementById('editFacilityImage').value = '';
-    document.getElementById('editImagePreviewSection').classList.add('hidden');
+    // Reset new image preview (cropper)
+    if (typeof removeImage_facilityEditImageCropper === 'function') {
+        removeImage_facilityEditImageCropper();
+    }
 }
 
 // Initialize edit map when modal becomes visible
@@ -263,21 +264,6 @@ const editMapObserver = new MutationObserver(function(mutations) {
     });
 });
 editMapObserver.observe(editModal, { attributes: true });
-
-// Image preview for edit form
-document.getElementById('editFacilityImage').addEventListener('change', function() {
-    const file = this.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('editImagePreview').src = e.target.result;
-            document.getElementById('editImagePreviewSection').classList.remove('hidden');
-        };
-        reader.readAsDataURL(file);
-    } else {
-        document.getElementById('editImagePreviewSection').classList.add('hidden');
-    }
-});
 
 // Handle edit form submission
 document.getElementById('editFacilityForm').addEventListener('submit', function(e) {
