@@ -314,86 +314,25 @@
 
             {{-- ==================== PACKAGES TAB ==================== --}}
             <div class="tab-pane fade" id="tab-packages">
+                @php
+                    $instructorsMap = $club->instructors->mapWithKeys(function ($instructor) {
+                        return [$instructor->id => [
+                            'id'    => $instructor->id,
+                            'name'  => $instructor->user?->full_name ?? $instructor->user?->name ?? 'Unknown',
+                            'image' => $instructor->user?->profile_picture ?? null,
+                        ]];
+                    })->toArray();
+                @endphp
                 @if($club->packages->count() > 0)
-                <div class="grid-packages">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     @foreach($club->packages as $package)
-                    <div class="package-card">
-                        <div class="package-img-wrapper">
-                            @if($package->cover_image)
-                            <img src="{{ asset('storage/' . $package->cover_image) }}" class="package-img" alt="{{ $package->name }}">
-                            @else
-                            <div class="w-full h-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
-                                <i class="bi bi-box text-white text-5xl"></i>
-                            </div>
-                            @endif
-                            <div class="package-title-overlay">
-                                <span class="package-title">{{ $package->name }}</span>
-                            </div>
-                        </div>
-                        <div class="p-4 flex-grow">
-                            <div class="flex flex-wrap gap-1 mb-3">
-                                <span class="badge-pill bg-secondary-light">{{ $package->type ?? 'Package' }}</span>
-                                @if($package->gender)
-                                <span class="badge-pill"><i class="bi bi-people mr-1"></i>{{ ucfirst($package->gender) }}</span>
-                                @endif
-                                @if($package->age_min || $package->age_max)
-                                <span class="badge-pill">{{ $package->age_min ?? '?' }}-{{ $package->age_max ?? '?' }}y</span>
-                                @endif
-                            </div>
-                            <div class="mb-3">
-                                @if($package->price)
-                                <span class="text-2xl font-bold text-primary">{{ $club->currency ?? 'USD' }} {{ number_format($package->price, 0) }}</span>
-                                @endif
-                                @if($package->duration_months)
-                                <span class="text-muted-foreground text-sm ml-2">
-                                    <i class="bi bi-calendar mr-1"></i>{{ $package->duration_months }}mo
-                                </span>
-                                @endif
-                            </div>
-
-                            @if($package->packageActivities && $package->packageActivities->count() > 0)
-                            <div class="pt-3 border-t border-gray-200">
-                                <h6 class="text-sm font-bold mb-3">
-                                    <i class="bi bi-box2 mr-2"></i>Included Activities ({{ $package->packageActivities->count() }})
-                                </h6>
-                                @foreach($package->packageActivities as $pa)
-                                <div class="activity-item">
-                                    <div class="flex justify-between items-start mb-2">
-                                        <h6 class="text-sm font-bold mb-0">{{ $pa->activity->name ?? 'Activity' }}</h6>
-                                        @if($pa->instructor)
-                                        <div class="instructor-tag">
-                                            @if($pa->instructor->photo)
-                                            <img src="{{ asset('storage/' . $pa->instructor->photo) }}" class="instructor-img" alt="{{ $pa->instructor->name }}">
-                                            @endif
-                                            <span style="font-size: 9px; font-weight: 700; color: var(--color-primary);">{{ Str::before($pa->instructor->name, ' ') }}</span>
-                                        </div>
-                                        @endif
-                                    </div>
-                                    <div class="flex gap-3 text-muted-foreground" style="font-size: 10px;">
-                                        @if($pa->activity && $pa->activity->duration_minutes)
-                                        <span><i class="bi bi-clock mr-1"></i>{{ $pa->activity->duration_minutes }} min</span>
-                                        @endif
-                                        @if($pa->schedule)
-                                        <span><i class="bi bi-calendar mr-1"></i>
-                                            @if(is_array($pa->schedule))
-                                                @foreach($pa->schedule as $sched)
-                                                    {{ $sched['days'] ?? '' }}: {{ $sched['time_from'] ?? '' }} - {{ $sched['time_to'] ?? '' }}@if(!$loop->last), @endif
-                                                @endforeach
-                                            @endif
-                                        </span>
-                                        @endif
-                                    </div>
-                                </div>
-                                @endforeach
-                            </div>
-                            @endif
-                        </div>
-                        <div class="p-4 pt-0">
+                    <x-package-card :package="$package" :club="$club" :instructors-map="$instructorsMap">
+                        <x-slot:footer>
                             <button class="w-full bg-primary text-white font-bold py-2 shadow-sm rounded-xl hover:bg-primary/90 transition-colors">
                                 Select Package
                             </button>
-                        </div>
-                    </div>
+                        </x-slot:footer>
+                    </x-package-card>
                     @endforeach
                 </div>
                 @else
