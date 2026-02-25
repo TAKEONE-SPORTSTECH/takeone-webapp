@@ -243,10 +243,10 @@
                                         />
                                     </div>
 
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                                         <div>
-                                            <label for="editScheduleActivity" class="form-label font-medium">Activity <span class="text-destructive">*</span></label>
-                                            <select id="editScheduleActivity" class="form-select">
+                                            <label for="editScheduleActivity" class="tf-label">Activity <span class="text-red-500">*</span></label>
+                                            <select id="editScheduleActivity" class="tf-time">
                                                 <option value="">Select activity</option>
                                                 @if(isset($activities))
                                                     @foreach($activities as $activity)
@@ -256,8 +256,19 @@
                                             </select>
                                         </div>
                                         <div>
-                                            <label for="editScheduleNotes" class="form-label font-medium">Notes (Optional)</label>
-                                            <input type="text" id="editScheduleNotes" placeholder="Add any additional notes..." class="form-control">
+                                            <label for="editScheduleFacility" class="tf-label">Facility</label>
+                                            <select id="editScheduleFacility" class="tf-time">
+                                                <option value="">Select facility</option>
+                                                @if(isset($facilities))
+                                                    @foreach($facilities as $facility)
+                                                        <option value="{{ $facility->id }}" data-name="{{ $facility->name }}">{{ $facility->name }}</option>
+                                                    @endforeach
+                                                @endif
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label for="editScheduleNotes" class="tf-label">Notes (Optional)</label>
+                                            <input type="text" id="editScheduleNotes" placeholder="Add any additional notes..." class="tf-time">
                                         </div>
                                     </div>
 
@@ -433,6 +444,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const activitySelect = document.getElementById('editScheduleActivity');
         const activityId = activitySelect.value;
         const activityName = activitySelect.options[activitySelect.selectedIndex]?.dataset.name || '';
+        const facilitySelect = document.getElementById('editScheduleFacility');
+        const facilityId = facilitySelect.value;
+        const facilityName = facilitySelect.options[facilitySelect.selectedIndex]?.dataset.name || '';
         const notes = document.getElementById('editScheduleNotes').value;
 
         if (selectedDays.length === 0 || !startTime || !endTime || !activityId) {
@@ -452,6 +466,8 @@ document.addEventListener('DOMContentLoaded', function() {
             endTime,
             activityId,
             activityName,
+            facilityId,
+            facilityName,
             notes
         };
 
@@ -505,6 +521,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <span class="font-medium">${formatTimeTo12Hour(schedule.startTime)} - ${formatTimeTo12Hour(schedule.endTime)}</span>
                                 <span class="badge bg-secondary">${calcDurationMinutes(schedule.startTime, schedule.endTime)} min</span>
                                 ${schedule.activityName ? `<span class="badge bg-primary/10 text-primary border border-primary/20"><i class="bi bi-activity mr-1"></i>${schedule.activityName}</span>` : ''}
+                                ${schedule.facilityName ? `<span class="badge bg-sky-50 text-sky-700 border border-sky-200"><i class="bi bi-geo-alt mr-1"></i>${schedule.facilityName}</span>` : ''}
                             </div>
                             ${schedule.notes ? `<p class="text-muted-foreground text-sm mb-0"><span class="font-medium">Note:</span> ${schedule.notes}</p>` : ''}
                         </div>
@@ -556,6 +573,7 @@ document.addEventListener('DOMContentLoaded', function() {
         ScheduleTimePicker.setEndTime(editSchedulePickerId, schedule.endTime);
 
         document.getElementById('editScheduleActivity').value = schedule.activityId;
+        document.getElementById('editScheduleFacility').value = schedule.facilityId || '';
         document.getElementById('editScheduleNotes').value = schedule.notes || '';
 
         editAddScheduleBtnText.textContent = 'Update Schedule';
@@ -566,6 +584,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function resetEditScheduleForm() {
         ScheduleTimePicker.reset(editSchedulePickerId);
         document.getElementById('editScheduleActivity').value = '';
+        document.getElementById('editScheduleFacility').value = '';
         document.getElementById('editScheduleNotes').value = '';
     }
 
@@ -700,7 +719,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         const day = s.day || s.day_of_week || '';
                         const key = `${start}-${end}`;
                         if (!timeGroups[key]) {
-                            timeGroups[key] = { days: [], startTime: start, endTime: end };
+                            timeGroups[key] = {
+                                days: [],
+                                startTime: start,
+                                endTime: end,
+                                facilityId: s.facility_id || '',
+                                facilityName: s.facility_name || ''
+                            };
                         }
                         timeGroups[key].days.push({
                             value: day.toLowerCase(),
@@ -716,6 +741,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             endTime: group.endTime,
                             activityId: String(activity.id),
                             activityName: activity.title || activity.name,
+                            facilityId: group.facilityId,
+                            facilityName: group.facilityName,
                             notes: ''
                         });
                     });

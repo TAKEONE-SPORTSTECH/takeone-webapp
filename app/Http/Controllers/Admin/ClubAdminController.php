@@ -569,9 +569,10 @@ class ClubAdminController extends Controller
         $instructors = ClubInstructor::where('tenant_id', $clubId)->with('user')->get();
         $instructorsMap = $instructors->mapWithKeys(function ($instructor) {
             return [$instructor->id => [
-                'id' => $instructor->id,
-                'name' => $instructor->user?->full_name ?? $instructor->user?->name ?? 'Unknown',
-                'image' => $instructor->user?->profile_picture ?? null,
+                'id'      => $instructor->id,
+                'user_id' => $instructor->user_id,
+                'name'    => $instructor->user?->full_name ?? $instructor->user?->name ?? 'Unknown',
+                'image'   => $instructor->user?->profile_picture ?? null,
             ]];
         });
         return view('admin.club.packages.index', compact('club', 'packages', 'facilities', 'activities', 'instructors', 'instructorsMap'));
@@ -627,6 +628,8 @@ class ClubAdminController extends Controller
                 $days = $schedule['days'] ?? [];
                 $startTime = $schedule['startTime'] ?? '';
                 $endTime = $schedule['endTime'] ?? '';
+                $facilityId = $schedule['facilityId'] ?? null;
+                $facilityName = $schedule['facilityName'] ?? null;
 
                 foreach ($days as $day) {
                     // Days can be strings or objects {value, name} from ScheduleTimePicker
@@ -635,6 +638,8 @@ class ClubAdminController extends Controller
                         'day' => $dayValue,
                         'start_time' => $startTime,
                         'end_time' => $endTime,
+                        'facility_id' => $facilityId,
+                        'facility_name' => $facilityName,
                     ];
                 }
             }
@@ -714,6 +719,8 @@ class ClubAdminController extends Controller
                 $days = $schedule['days'] ?? [];
                 $startTime = $schedule['startTime'] ?? '';
                 $endTime = $schedule['endTime'] ?? '';
+                $facilityId = $schedule['facilityId'] ?? null;
+                $facilityName = $schedule['facilityName'] ?? null;
 
                 foreach ($days as $day) {
                     // Days can be strings or objects {value, name} from ScheduleTimePicker
@@ -722,6 +729,8 @@ class ClubAdminController extends Controller
                         'day' => $dayValue,
                         'start_time' => $startTime,
                         'end_time' => $endTime,
+                        'facility_id' => $facilityId,
+                        'facility_name' => $facilityName,
                     ];
                 }
             }

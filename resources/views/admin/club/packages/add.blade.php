@@ -190,23 +190,12 @@
                             <div class="card-body p-4">
                                 <div class="flex items-center gap-2 mb-4">
                                     <div class="section-icon">
-                                        <i class="bi bi-geo-alt text-primary"></i>
+                                        <i class="bi bi-people-fill text-primary"></i>
                                     </div>
-                                    <h6 class="mb-0 font-semibold">Facility & Capacity</h6>
+                                    <h6 class="mb-0 font-semibold">Capacity</h6>
                                 </div>
 
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                    <div>
-                                        <label for="packageFacility" class="form-label font-medium">Facility</label>
-                                        <select id="packageFacility" name="facility_id" class="form-select">
-                                            <option value="">Select facility</option>
-                                            @if(isset($facilities))
-                                                @foreach($facilities as $facility)
-                                                    <option value="{{ $facility->id }}">{{ $facility->name }}</option>
-                                                @endforeach
-                                            @endif
-                                        </select>
-                                    </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <div>
                                         <label for="packageCapacity" class="form-label font-medium">Max Capacity</label>
                                         <input type="number" id="packageCapacity" name="max_capacity" min="1" placeholder="e.g., 20" class="form-control">
@@ -315,11 +304,11 @@
                                         />
                                     </div>
 
-                                    <!-- Activity & Notes - 2 column grid -->
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                                    <!-- Activity, Facility & Notes - 3 column grid -->
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                                         <div>
-                                            <label for="scheduleActivity" class="form-label font-medium">Activity <span class="text-destructive">*</span></label>
-                                            <select id="scheduleActivity" class="form-select">
+                                            <label for="scheduleActivity" class="tf-label">Activity <span class="text-red-500">*</span></label>
+                                            <select id="scheduleActivity" class="tf-time">
                                                 <option value="">Select activity</option>
                                                 @if(isset($activities))
                                                     @foreach($activities as $activity)
@@ -329,8 +318,19 @@
                                             </select>
                                         </div>
                                         <div>
-                                            <label for="scheduleNotes" class="form-label font-medium">Notes (Optional)</label>
-                                            <input type="text" id="scheduleNotes" placeholder="Add any additional notes..." class="form-control">
+                                            <label for="scheduleFacility" class="tf-label">Facility</label>
+                                            <select id="scheduleFacility" class="tf-time">
+                                                <option value="">Select facility</option>
+                                                @if(isset($facilities))
+                                                    @foreach($facilities as $facility)
+                                                        <option value="{{ $facility->id }}" data-name="{{ $facility->name }}">{{ $facility->name }}</option>
+                                                    @endforeach
+                                                @endif
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label for="scheduleNotes" class="tf-label">Notes (Optional)</label>
+                                            <input type="text" id="scheduleNotes" placeholder="Add any additional notes..." class="tf-time">
                                         </div>
                                     </div>
 
@@ -510,6 +510,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const activitySelect = document.getElementById('scheduleActivity');
         const activityId = activitySelect.value;
         const activityName = activitySelect.options[activitySelect.selectedIndex]?.dataset.name || '';
+        const facilitySelect = document.getElementById('scheduleFacility');
+        const facilityId = facilitySelect.value;
+        const facilityName = facilitySelect.options[facilitySelect.selectedIndex]?.dataset.name || '';
         const notes = document.getElementById('scheduleNotes').value;
 
         if (selectedDays.length === 0 || !startTime || !endTime || !activityId) {
@@ -529,6 +532,8 @@ document.addEventListener('DOMContentLoaded', function() {
             endTime,
             activityId,
             activityName,
+            facilityId,
+            facilityName,
             notes
         };
 
@@ -582,6 +587,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <span class="font-medium">${formatTimeTo12Hour(schedule.startTime)} - ${formatTimeTo12Hour(schedule.endTime)}</span>
                                 <span class="badge bg-secondary">${calcDurationMinutes(schedule.startTime, schedule.endTime)} min</span>
                                 ${schedule.activityName ? `<span class="badge bg-primary/10 text-primary border border-primary/20"><i class="bi bi-activity mr-1"></i>${schedule.activityName}</span>` : ''}
+                                ${schedule.facilityName ? `<span class="badge bg-sky-50 text-sky-700 border border-sky-200"><i class="bi bi-geo-alt mr-1"></i>${schedule.facilityName}</span>` : ''}
                             </div>
                             ${schedule.notes ? `<p class="text-muted-foreground text-sm mb-0"><span class="font-medium">Note:</span> ${schedule.notes}</p>` : ''}
                         </div>
@@ -638,6 +644,7 @@ document.addEventListener('DOMContentLoaded', function() {
         ScheduleTimePicker.setEndTime(schedulePickerId, schedule.endTime);
 
         document.getElementById('scheduleActivity').value = schedule.activityId;
+        document.getElementById('scheduleFacility').value = schedule.facilityId || '';
         document.getElementById('scheduleNotes').value = schedule.notes || '';
 
         addScheduleBtnText.textContent = 'Update Schedule';
@@ -648,6 +655,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function resetScheduleForm() {
         ScheduleTimePicker.reset(schedulePickerId);
         document.getElementById('scheduleActivity').value = '';
+        document.getElementById('scheduleFacility').value = '';
         document.getElementById('scheduleNotes').value = '';
     }
 

@@ -152,7 +152,12 @@
                             if ($startTime && $endTime && $day) {
                                 $timeKey = \Carbon\Carbon::parse($startTime)->format('H:i') . '-' . \Carbon\Carbon::parse($endTime)->format('H:i');
                                 if (!isset($timeGroups[$timeKey])) {
-                                    $timeGroups[$timeKey] = ['days' => [], 'start' => $startTime, 'end' => $endTime];
+                                    $timeGroups[$timeKey] = [
+                                        'days'          => [],
+                                        'start'         => $startTime,
+                                        'end'           => $endTime,
+                                        'facility_name' => $schedule['facility_name'] ?? null,
+                                    ];
                                 }
                                 $dayShort = $dayAbbr[strtolower($day)] ?? ucfirst(substr($day, 0, 3));
                                 if (!in_array($dayShort, $timeGroups[$timeKey]['days'])) {
@@ -171,7 +176,8 @@
                                 <div class="flex items-start justify-between gap-2">
                                     <h5 class="font-semibold text-base">{{ $activity->title ?? $activity->name }}</h5>
                                     @if($instructor)
-                                        <div class="flex items-center gap-1.5 bg-primary/10 rounded-full px-2 py-1">
+                                        <a href="{{ route('trainer.show', $instructor['user_id']) }}"
+                                           class="flex items-center gap-1.5 bg-primary/10 rounded-full px-2 py-1 hover:bg-primary/20 transition-colors">
                                             @if($instructor['image'])
                                                 <img src="{{ asset('storage/' . $instructor['image']) }}" alt="{{ $instructor['name'] }}" class="w-5 h-5 rounded-full border border-primary/20 object-cover">
                                             @else
@@ -180,7 +186,7 @@
                                                 </div>
                                             @endif
                                             <span class="text-[10px] font-medium text-primary">{{ $instructor['name'] }}</span>
-                                        </div>
+                                        </a>
                                     @endif
                                 </div>
                                 <div class="flex flex-col gap-1.5">
@@ -200,6 +206,12 @@
                                             <span class="text-gray-300">·</span>
                                             <span class="text-gray-500">{{ $groupDuration }} min</span>
                                         </div>
+                                        @if(!empty($tg['facility_name']))
+                                        <div class="flex items-center gap-1 text-[10px] text-sky-700">
+                                            <i class="bi bi-geo-alt text-sky-400"></i>
+                                            <span>{{ $tg['facility_name'] }}</span>
+                                        </div>
+                                        @endif
                                     </div>
                                     @endforeach
                                 </div>

@@ -317,9 +317,10 @@
                 @php
                     $instructorsMap = $club->instructors->mapWithKeys(function ($instructor) {
                         return [$instructor->id => [
-                            'id'    => $instructor->id,
-                            'name'  => $instructor->user?->full_name ?? $instructor->user?->name ?? 'Unknown',
-                            'image' => $instructor->user?->profile_picture ?? null,
+                            'id'      => $instructor->id,
+                            'user_id' => $instructor->user_id,
+                            'name'    => $instructor->user?->full_name ?? $instructor->user?->name ?? 'Unknown',
+                            'image'   => $instructor->user?->profile_picture ?? null,
                         ]];
                     })->toArray();
                 @endphp
