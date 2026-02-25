@@ -346,26 +346,92 @@
             </div>
 
             {{-- ==================== SCHEDULE TAB ==================== --}}
-            <div class="tab-pane fade" id="tab-scheduled">
-                <div class="flex justify-between items-center mb-4">
-                    <div>
-                        <h4 class="text-xl font-extrabold mb-1">Today's Classes</h4>
-                        <p class="text-muted-foreground text-sm">Live status, flexible sessions, and booking availability.</p>
-                    </div>
+            @php
+                $dayOrder = ['saturday','sunday','monday','tuesday','wednesday','thursday','friday'];
+                $dayAbbr  = ['saturday'=>'Sat','sunday'=>'Sun','monday'=>'Mon','tuesday'=>'Tue','wednesday'=>'Wed','thursday'=>'Thu','friday'=>'Fri'];
+                $todayKey = strtolower(now()->format('l')); // e.g. 'monday'
+
+                // Build flat list of schedule slots from all package activities
+                $scheduleSlots = [];
+                foreach ($club->packages as $pkg) {
+                    foreach ($pkg->activities as $activity) {
+                        $pivotSchedule = $activity->pivot->schedule ?? null;
+                        $scheduleData  = is_string($pivotSchedule)
+                            ? json_decode($pivotSchedule, true)
+                            : (is_array($pivotSchedule) ? $pivotSchedule : null);
+                        if (!$scheduleData) continue;
+
+                        // Group by time key so Mon+Wed same time = one slot
+                        $timeGroups = [];
+                        foreach ($scheduleData as $s) {
+                            $day   = strtolower($s['day'] ?? '');
+                            $start = $s['start_time'] ?? '';
+                            $end   = $s['end_time']   ?? '';
+                            if (!$day || !$start || !$end) continue;
+                            $key = $start . '-' . $end;
+                            if (!isset($timeGroups[$key])) {
+                                $timeGroups[$key] = [
+                                    'days'          => [],
+                                    'start'         => $start,
+                                    'end'           => $end,
+                                    'facility_name' => $s['facility_name'] ?? null,
+                                ];
+                            }
+                            if (!in_array($day, $timeGroups[$key]['days'])) {
+                                $timeGroups[$key]['days'][] = $day;
+                            }
+                        }
+
+                        foreach ($timeGroups as $slot) {
+                            $duration = abs(\Carbon\Carbon::parse($slot['end'])->diffInMinutes(\Carbon\Carbon::parse($slot['start'])));
+                            $scheduleSlots[] = [
+                                'activity_name'  => $activity->title ?? $activity->name,
+                                'picture_url'    => $pkg->cover_image ?? null,
+                                'package_name'   => $pkg->name,
+                                'days'           => $slot['days'],       // array of lowercase day names
+                                'start'          => $slot['start'],
+                                'end'            => $slot['end'],
+                                'duration'       => $duration,
+                                'facility_name'  => $slot['facility_name'],
+                            ];
+                        }
+                    }
+                }
+
+                // Sort slots by start time
+                usort($scheduleSlots, fn($a, $b) => strcmp($a['start'], $b['start']));
+            @endphp
+
+            <div class="tab-pane fade" id="tab-scheduled"
+                 x-data="{ activeDay: '{{ $todayKey }}' }">
+
+                {{-- Day filter chips --}}
+                <div class="flex flex-wrap justify-center gap-2 mb-5">
+                    <button type="button"
+                            @click="activeDay = '{{ $todayKey }}'"
+                            :class="activeDay === '{{ $todayKey }}' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'"
+                            class="px-5 py-2 rounded-full border text-sm font-semibold transition-colors">
+                        Today
+                    </button>
+                    @foreach($dayOrder as $dayKey)
+                    <button type="button"
+                            @click="activeDay = '{{ $dayKey }}'"
+                            :class="activeDay === '{{ $dayKey }}' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'"
+                            class="px-5 py-2 rounded-full border text-sm font-semibold transition-colors {{ $dayKey === $todayKey ? 'ring-2 ring-primary/30' : '' }}">
+                        {{ $dayAbbr[$dayKey] }}
+                    </button>
+                    @endforeach
                 </div>
 
-                @if($club->activities->count() > 0)
-                <div class="max-w-3xl mx-auto">
-                    @foreach($club->activities as $index => $activity)
-                    @php
-                        $statuses = ['ongoing', 'bookable', 'finished', 'full'];
-                        $status = $statuses[$index % 4];
-                        $statusLabels = ['ongoing' => 'Live now', 'bookable' => 'Open', 'finished' => 'Finished', 'full' => 'Full'];
-                    @endphp
-                    <div class="class-card" @if($status === 'finished') style="opacity:0.5;" @endif>
+                @if(count($scheduleSlots) > 0)
+                <div class="max-w-3xl mx-auto space-y-3">
+                    @foreach($scheduleSlots as $slot)
+                    <div class="class-card"
+                         x-show="@js(array_map('strval', $slot['days'])).includes(activeDay)"
+                         x-cloak>
                         <div class="class-thumb">
-                            @if($activity->picture_url)
-                            <img src="{{ asset('storage/' . $activity->picture_url) }}" alt="{{ $activity->name }}">
+                            @if($slot['picture_url'])
+                            <img src="{{ asset('storage/' . $slot['picture_url']) }}" alt="{{ $slot['activity_name'] }}" class="w-full h-full object-cover">
                             @else
                             <div class="w-full h-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center min-h-[80px]">
                                 <i class="bi bi-activity text-white text-xl"></i>
@@ -375,48 +441,35 @@
                         <div class="flex-grow flex flex-col">
                             <div class="flex justify-between items-start mb-1">
                                 <div>
-                                    <h6 class="text-sm font-bold mb-0">{{ $activity->name }}</h6>
-                                    <div class="class-meta text-muted-foreground">
-                                        @if($activity->duration_minutes)
-                                        <span><i class="bi bi-clock mr-1"></i>{{ $activity->duration_minutes }} min</span>
-                                        @endif
-                                        @if($activity->facility)
-                                        <span class="ml-2"><i class="bi bi-geo-alt mr-1"></i>{{ $activity->facility->name }}</span>
-                                        @endif
+                                    <h6 class="text-base font-bold mb-0">{{ $slot['activity_name'] }}</h6>
+                                    <div class="class-meta text-muted-foreground flex items-center gap-x-4 mt-0.5 text-sm">
+                                        <span><i class="bi bi-clock mr-1"></i>{{ \Carbon\Carbon::parse($slot['start'])->format('g:i A') }} – {{ \Carbon\Carbon::parse($slot['end'])->format('g:i A') }}</span>
+                                        <span class="flex items-center gap-1 ml-2"><i class="bi bi-stopwatch"></i>{{ $slot['duration'] }} min</span>
                                     </div>
-                                </div>
-                                <span class="status-chip status-{{ $status }}">
-                                    @if($status === 'ongoing')
-                                    <span class="inline-block w-1.5 h-1.5 rounded-full bg-green-600"></span>
-                                    @elseif($status === 'full')
-                                    <i class="bi bi-x-circle"></i>
-                                    @elseif($status === 'finished')
-                                    <i class="bi bi-clock"></i>
-                                    @else
-                                    <i class="bi bi-check-circle"></i>
+                                    @if($slot['facility_name'])
+                                    <div class="text-sm text-muted-foreground mt-0.5">
+                                        <i class="bi bi-geo-alt mr-1"></i>{{ $slot['facility_name'] }}
+                                    </div>
                                     @endif
-                                    {{ $statusLabels[$status] }}
-                                </span>
+                                </div>
                             </div>
-
-                            <div class="flex justify-between items-center mt-2">
-                                <div class="flex flex-wrap gap-1">
-                                    @if($activity->packages->count() > 0)
-                                    <span class="pill-tag">{{ $activity->packages->first()->name }}</span>
-                                    @endif
-                                    @if($activity->frequency_per_week)
-                                    <span class="pill-tag">{{ $activity->frequency_per_week }}x/week</span>
-                                    @endif
-                                </div>
-                                @if($status === 'ongoing' || $status === 'bookable')
-                                <button class="bg-green-500 text-white text-xs font-semibold px-3 py-1 rounded-md">Book Spot</button>
-                                @elseif($status === 'full')
-                                <button class="border border-gray-300 text-gray-500 text-xs font-semibold px-3 py-1 rounded-md" disabled>Join Waitlist</button>
-                                @endif
+                            <div class="flex flex-wrap gap-1 mt-2">
+                                <span class="pill-tag">{{ $slot['package_name'] }}</span>
+                                @foreach($slot['days'] as $d)
+                                <span class="pill-tag">{{ $dayAbbr[$d] ?? ucfirst(substr($d,0,3)) }}</span>
+                                @endforeach
                             </div>
                         </div>
                     </div>
                     @endforeach
+
+                    {{-- Empty state for filtered day --}}
+                    <div x-show="!@js(collect($scheduleSlots)->map(fn($s) => $s['days'])->flatten()->unique()->values()->toArray()).includes(activeDay)"
+                         class="text-center py-16">
+                        <i class="bi bi-calendar-x text-muted-foreground text-5xl"></i>
+                        <p class="text-lg font-medium mt-4">No classes on this day</p>
+                        <p class="text-sm text-muted-foreground mt-2">Try selecting a different day</p>
+                    </div>
                 </div>
                 @else
                 <div class="text-center py-16">
