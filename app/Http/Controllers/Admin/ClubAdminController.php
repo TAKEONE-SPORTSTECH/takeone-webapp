@@ -434,14 +434,18 @@ class ClubAdminController extends Controller
             $bio = $request->bio_existing;
         }
 
-        // Create the instructor record
+        // Save trainer profile data to the User (shared across all club positions)
+        User::where('id', $userId)->update([
+            'bio'              => $bio ?: null,
+            'skills'           => !empty($skills) ? $skills : null,
+            'experience_years' => $experienceYears ?: null,
+        ]);
+
+        // Create the instructor record (club-specific data only)
         ClubInstructor::create([
             'tenant_id' => $clubId,
-            'user_id' => $userId,
-            'role' => $role,
-            'experience_years' => $experienceYears,
-            'skills' => $skills,
-            'bio' => $bio,
+            'user_id'   => $userId,
+            'role'      => $role,
         ]);
 
         return back()->with('success', 'Instructor added successfully.');

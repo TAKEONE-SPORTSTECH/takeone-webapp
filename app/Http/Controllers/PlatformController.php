@@ -53,21 +53,24 @@ class PlatformController extends Controller
             ]);
         }
 
-        $instructors = \App\Models\ClubInstructor::with(['user', 'tenant', 'reviews'])
+        // Only users who have explicitly opted in as personal trainers appear on the explore page
+        $instructors = \App\Models\User::where('is_personal_trainer', true)
+            ->with(['clubInstructors.tenant', 'clubInstructors.reviews'])
             ->get()
-            ->map(function ($instructor) {
-                $user = $instructor->user;
+            ->map(function ($user) {
+                $primaryInstructor = $user->clubInstructors->first();
+                $allReviews        = $user->clubInstructors->flatMap->reviews;
                 return [
-                    'id'               => $instructor->id,
-                    'name'             => $user->full_name ?? $user->name ?? 'Instructor',
-                    'role'             => $instructor->role ?? 'Instructor',
-                    'experience_years' => $instructor->experience_years ?? 0,
-                    'bio'              => $instructor->bio,
+                    'id'               => $user->id,
+                    'name'             => $user->full_name ?? $user->name ?? 'Trainer',
+                    'role'             => $primaryInstructor?->role ?? 'Personal Trainer',
+                    'experience_years' => $user->experience_years ?? 0,
+                    'bio'              => $user->bio,
                     'profile_picture'  => $user->profile_picture,
-                    'rating'           => round($instructor->average_rating, 1),
-                    'reviews_count'    => $instructor->reviews_count,
-                    'club_name'        => $instructor->tenant->club_name ?? null,
-                    'url'              => route('trainer.show', $instructor->id),
+                    'rating'           => round($allReviews->avg('rating') ?? 0, 1),
+                    'reviews_count'    => $allReviews->count(),
+                    'club_name'        => $primaryInstructor?->tenant->club_name ?? null,
+                    'url'              => route('trainer.show', $user->id),
                 ];
             });
 

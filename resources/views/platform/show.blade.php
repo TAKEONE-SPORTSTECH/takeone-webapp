@@ -200,7 +200,7 @@
 
                         @forelse($club->instructors as $instructor)
                         @php $trainerUser = $instructor->user; @endphp
-                        <a href="{{ $trainerUser ? route('trainer.show.public', $instructor->id) : '#' }}" class="mini-trainer mb-3 block no-underline text-foreground">
+                        <a href="{{ $trainerUser ? route('trainer.show.public', $instructor->user_id) : '#' }}" class="mini-trainer mb-3 block no-underline text-foreground">
                             @if($trainerUser && $trainerUser->profile_picture)
                             <img src="{{ asset('storage/' . $trainerUser->profile_picture) }}" class="mini-pfp" alt="{{ $trainerUser->full_name ?? $trainerUser->name }}">
                             @else
@@ -225,8 +225,8 @@
                                 </div>
                                 @if($instructor->role && $instructor->role !== 'Instructor')
                                 <p class="text-muted-foreground text-sm mb-0">{{ $instructor->role }}</p>
-                                @elseif($instructor->bio)
-                                <p class="text-muted-foreground text-sm mb-0">{{ Str::limit($instructor->bio, 60) }}</p>
+                                @elseif($trainerUser->bio)
+                                <p class="text-muted-foreground text-sm mb-0">{{ Str::limit($trainerUser->bio, 60) }}</p>
                                 @endif
                             </div>
                         </a>

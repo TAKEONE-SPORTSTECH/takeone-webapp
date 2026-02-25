@@ -50,7 +50,7 @@
         @php $user = $instructor->user; @endphp
         <x-member-card
             :member="$user"
-            :href="route('trainer.show', $instructor->id)"
+            :href="route('trainer.show', $instructor->user_id)"
             footerLabel="INSTRUCTOR"
             footerStyle="translucent"
             cardClass="instructor-card"
@@ -58,8 +58,8 @@
         >
             <x-slot:badges>
                 <span class="badge bg-primary">{{ $instructor->role ?? 'Trainer' }}</span>
-                @if($instructor->experience_years)
-                    <span class="badge bg-info">{{ $instructor->experience_years }} yrs exp</span>
+                @if($user->experience_years)
+                    <span class="badge bg-info">{{ $user->experience_years }} yrs exp</span>
                 @endif
             </x-slot:badges>
             <x-slot:headerExtra>
@@ -73,22 +73,22 @@
                 </div>
             </x-slot:headerExtra>
             <x-slot:extraDetails>
-                @if($instructor->skills && count($instructor->skills) > 0)
+                @if($user->skills && count($user->skills) > 0)
                 <div class="pt-2 border-t">
                     <div class="text-xs text-muted-foreground uppercase font-medium mb-2 tracking-wide">Skills</div>
                     <div class="flex flex-wrap gap-1">
-                        @foreach(array_slice($instructor->skills, 0, 4) as $skill)
+                        @foreach(array_slice($user->skills, 0, 4) as $skill)
                             <span class="badge bg-secondary">{{ $skill }}</span>
                         @endforeach
-                        @if(count($instructor->skills) > 4)
-                            <span class="badge bg-secondary">+{{ count($instructor->skills) - 4 }}</span>
+                        @if(count($user->skills) > 4)
+                            <span class="badge bg-secondary">+{{ count($user->skills) - 4 }}</span>
                         @endif
                     </div>
                 </div>
                 @endif
-                @if($instructor->bio)
+                @if($user->bio)
                 <div class="pt-2 mt-2 border-t">
-                    <p class="text-sm text-muted-foreground line-clamp-2">{{ $instructor->bio }}</p>
+                    <p class="text-sm text-muted-foreground line-clamp-2">{{ $user->bio }}</p>
                 </div>
                 @endif
             </x-slot:extraDetails>

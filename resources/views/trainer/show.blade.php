@@ -1,12 +1,12 @@
 @extends('layouts.app')
 
-@section('title', ($instructor->user->full_name ?? 'Trainer') . ' — ' . ($instructor->tenant->club_name ?? ''))
+@section('title', ($user->full_name ?? 'Trainer') . ' — ' . ($user->clubInstructors->first()?->tenant->club_name ?? 'Trainer'))
 
 @push('styles')
-@if($instructor->user->profile_picture)
-<link rel="icon" type="image/png" href="{{ asset('storage/' . $instructor->user->profile_picture) }}">
-@elseif($instructor->tenant->logo)
-<link rel="icon" type="image/png" href="{{ asset('storage/' . $instructor->tenant->logo) }}">
+@if($user->profile_picture)
+<link rel="icon" type="image/png" href="{{ asset('storage/' . $user->profile_picture) }}">
+@elseif($user->clubInstructors->first()?->tenant->logo)
+<link rel="icon" type="image/png" href="{{ asset('storage/' . $user->clubInstructors->first()->tenant->logo) }}">
 @endif
 @if(request()->routeIs('trainer.show.public'))
 <style>@media (max-width: 768px) { nav { display: none !important; } }</style>
@@ -15,10 +15,11 @@
 
 @section('content')
 @php
-    $user = $instructor->user;
-    $club = $instructor->tenant;
+    // $user is the primary model (User). Club context comes from their instructor records.
+    $primaryInstructor = $user->clubInstructors->first();
+    $club = $primaryInstructor?->tenant;
     $isMale = ($user->gender ?? '') === 'm';
-    $reviews = $instructor->reviews->sortByDesc('created_at');
+    // $reviews and $stats are passed from the controller
 @endphp
 
 <div class="min-h-screen bg-gray-50" x-data="{ activeTab: 'about' }">
@@ -62,16 +63,20 @@
                                     <span class="text-gray-500">({{ $stats['certifications'] }} certifications)</span>
                                 </div>
                                 {{-- Specialty Badge --}}
+                                @if($primaryInstructor?->role)
                                 <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-purple-600 text-white">
-                                    {{ $instructor->role }}
+                                    {{ $primaryInstructor->role }}
                                 </span>
+                                @endif
                                 {{-- Experience Badge --}}
+                                @if($user->experience_years)
                                 <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
-                                    {{ $instructor->experience_years }} {{ $instructor->experience_years == 1 ? 'year' : 'years' }} experience
+                                    {{ $user->experience_years }} {{ $user->experience_years == 1 ? 'year' : 'years' }} experience
                                 </span>
+                                @endif
                             </div>
-                            @if($instructor->bio)
-                                <p class="text-gray-500 mb-4">{{ $instructor->bio }}</p>
+                            @if($user->bio)
+                                <p class="text-gray-500 mb-4">{{ $user->bio }}</p>
                             @endif
                             @if($club)
                                 <div class="flex items-center gap-2 text-sm text-gray-500">
@@ -167,7 +172,7 @@
                                 <span class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Biography</span>
                             </div>
                             <p class="text-gray-800 leading-relaxed text-base pl-10">
-                                {{ $instructor->bio ?? 'No biography available.' }}
+                                {{ $user->bio ?? 'No biography available.' }}
                             </p>
                         </div>
 
@@ -182,7 +187,7 @@
                                     </div>
                                     <div class="flex-1">
                                         <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Specialty</p>
-                                        <p class="text-lg font-bold text-gray-900">{{ $instructor->role }}</p>
+                                        <p class="text-lg font-bold text-gray-900">{{ $primaryInstructor?->role ?? 'Trainer' }}</p>
                                     </div>
                                 </div>
                             </div>
@@ -196,7 +201,7 @@
                                     </div>
                                     <div class="flex-1">
                                         <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Experience</p>
-                                        <p class="text-lg font-bold text-gray-900">{{ $instructor->experience_years }} {{ $instructor->experience_years == 1 ? 'year' : 'years' }}</p>
+                                        <p class="text-lg font-bold text-gray-900">{{ $user->experience_years ?? 0 }} {{ ($user->experience_years ?? 0) == 1 ? 'year' : 'years' }}</p>
                                     </div>
                                 </div>
                             </div>
@@ -273,9 +278,9 @@
                         </div>
                     </div>
                     <div class="p-6">
-                        @if(is_array($instructor->skills) && count($instructor->skills) > 0)
+                        @if(is_array($user->skills) && count($user->skills) > 0)
                             <div class="space-y-6">
-                                @foreach($instructor->skills as $skill)
+                                @foreach($user->skills as $skill)
                                     <div class="group border rounded-xl overflow-hidden bg-gradient-to-br from-white {{ $isMale ? 'to-blue-50/30' : 'to-teal-50/30' }} hover:shadow-lg transition-all">
                                         <div class="p-5 space-y-4">
                                             <div class="mb-3">

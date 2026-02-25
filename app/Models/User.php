@@ -9,6 +9,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use App\Models\ClubInstructor;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Carbon\Carbon;
 
@@ -39,6 +40,10 @@ class User extends Authenticatable implements MustVerifyEmail
         'profile_picture',
         'profile_picture_is_public',
         'motto',
+        'bio',
+        'skills',
+        'experience_years',
+        'is_personal_trainer',
     ];
 
     /**
@@ -66,6 +71,9 @@ class User extends Authenticatable implements MustVerifyEmail
             'social_links' => 'array',
             'media_gallery' => 'array',
             'mobile' => 'array',
+            'skills' => 'array',
+            'experience_years' => 'integer',
+            'is_personal_trainer' => 'boolean',
         ];
     }
 
@@ -168,6 +176,14 @@ class User extends Authenticatable implements MustVerifyEmail
                 return ($this->mobile['code'] ?? '') . ' ' . ($this->mobile['number'] ?? '');
             }
         );
+    }
+
+    /**
+     * Get the club instructor records for the user.
+     */
+    public function clubInstructors(): HasMany
+    {
+        return $this->hasMany(ClubInstructor::class);
     }
 
     /**

@@ -80,7 +80,7 @@ Route::post('/email/verification-notification', function (Request $request) {
 Route::get('/c/{slug}', [PlatformController::class, 'showPublic'])->name('clubs.show.public');
 
 // Public trainer page - no login required (used for QR code)
-Route::get('/t/{instructor}', [TrainerController::class, 'showPublic'])->name('trainer.show.public');
+Route::get('/t/{user}', [TrainerController::class, 'showPublic'])->name('trainer.show.public');
 
 // Explore routes (accessible to authenticated users)
 Route::middleware(['auth'])->group(function () {
@@ -90,7 +90,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/clubs/{slug}', [PlatformController::class, 'show'])->name('clubs.show');
     Route::get('/clubs/{slug}/packages-json', [PlatformController::class, 'clubPackages'])->name('clubs.packages.json');
     Route::post('/clubs/join', [PlatformController::class, 'joinClub'])->name('clubs.join');
-    Route::get('/trainer/{instructor}', [TrainerController::class, 'show'])->name('trainer.show');
+    Route::get('/trainer/{user}', [TrainerController::class, 'show'])->name('trainer.show');
 });
 
 // Platform Admin routes (Super Admin only)

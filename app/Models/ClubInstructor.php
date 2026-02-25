@@ -28,10 +28,7 @@ class ClubInstructor extends Model
         'tenant_id',
         'user_id',
         'role',
-        'experience_years',
         'rating',
-        'skills',
-        'bio',
     ];
 
     /**
@@ -40,9 +37,7 @@ class ClubInstructor extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'experience_years' => 'integer',
         'rating' => 'decimal:2',
-        'skills' => 'array',
     ];
 
     /**
