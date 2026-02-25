@@ -1,13 +1,26 @@
 @extends('layouts.admin-club')
 
 @section('club-admin-content')
-<div x-data="{ showAddPackageModal: false, showEditPackageModal: false }">
+<div x-data="{
+    showPackageModal: false,
+    packageModalMode: 'add',
+    openAddModal() {
+        this.packageModalMode = 'add';
+        this.showPackageModal = true;
+        this.$nextTick(() => window.resetPackageForm && window.resetPackageForm());
+    },
+    openEditModal(pkg) {
+        this.packageModalMode = 'edit';
+        this.showPackageModal = true;
+        this.$nextTick(() => window.populatePackageForm && window.populatePackageForm(pkg));
+    }
+}">
     <div class="flex justify-between items-center mb-6">
         <div>
             <h2 class="tf-section-title">Packages Management</h2>
             <p class="text-muted-foreground mb-0">Create and manage membership packages</p>
         </div>
-        <button class="btn btn-primary" @click="showAddPackageModal = true">
+        <button class="btn btn-primary" @click="openAddModal()">
             <i class="bi bi-plus-lg mr-2"></i>Add Package
         </button>
     </div>
@@ -18,7 +31,7 @@
         <x-package-card :package="$package" :club="$club" :instructors-map="$instructorsMap">
             <x-slot:actions>
                 <button class="btn btn-sm btn-outline-primary" title="Edit"
-                        @click="showEditPackageModal = true; $nextTick(() => window.populateEditPackageForm && window.populateEditPackageForm(packagesData.find(p => p.id === {{ $package->id }})))">
+                        @click="openEditModal(packagesData.find(p => p.id === {{ $package->id }}))">
                     <i class="bi bi-pencil"></i>
                 </button>
                 <button class="btn btn-sm btn-secondary" title="Duplicate">
@@ -43,15 +56,14 @@
             </div>
             <h5 class="text-xl font-semibold mb-2">No packages yet</h5>
             <p class="text-muted-foreground mb-4">Create membership packages for your club to get started</p>
-            <button class="btn btn-primary" @click="showAddPackageModal = true">
+            <button class="btn btn-primary" @click="openAddModal()">
                 <i class="bi bi-plus-lg mr-2"></i>Add Package
             </button>
         </div>
     </div>
     @endif
 
-    @include('admin.club.packages.add')
-    @include('admin.club.packages.edit')
+    @include('admin.club.packages.partials.modal')
 </div>
 
 @php
