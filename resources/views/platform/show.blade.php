@@ -352,6 +352,10 @@
                 $todayKey = strtolower(now()->format('l')); // e.g. 'monday'
 
                 // Build flat list of schedule slots from all package activities
+                $instructorNameMap = $club->instructors->keyBy('id')->map(fn($i) => [
+                    'name'    => $i->user?->name,
+                    'picture' => $i->user?->profile_picture,
+                ]);
                 $scheduleSlots = [];
                 foreach ($club->packages as $pkg) {
                     foreach ($pkg->activities as $activity) {
@@ -382,17 +386,23 @@
                             }
                         }
 
+                        $instructorId      = $activity->pivot->instructor_id ?? null;
+                        $instructorData    = $instructorId ? ($instructorNameMap[$instructorId] ?? null) : null;
+                        $instructorName    = $instructorData['name'] ?? null;
+                        $instructorPicture = $instructorData['picture'] ?? null;
                         foreach ($timeGroups as $slot) {
                             $duration = abs(\Carbon\Carbon::parse($slot['end'])->diffInMinutes(\Carbon\Carbon::parse($slot['start'])));
                             $scheduleSlots[] = [
-                                'activity_name'  => $activity->title ?? $activity->name,
-                                'picture_url'    => $pkg->cover_image ?? null,
-                                'package_name'   => $pkg->name,
-                                'days'           => $slot['days'],       // array of lowercase day names
-                                'start'          => $slot['start'],
-                                'end'            => $slot['end'],
-                                'duration'       => $duration,
-                                'facility_name'  => $slot['facility_name'],
+                                'activity_name'   => $activity->title ?? $activity->name,
+                                'picture_url'     => $pkg->cover_image ?? null,
+                                'package_name'    => $pkg->name,
+                                'instructor_name'    => $instructorName,
+                                'instructor_picture' => $instructorPicture,
+                                'days'            => $slot['days'],       // array of lowercase day names
+                                'start'           => $slot['start'],
+                                'end'             => $slot['end'],
+                                'duration'        => $duration,
+                                'facility_name'   => $slot['facility_name'],
                             ];
                         }
                     }
@@ -400,6 +410,8 @@
 
                 // Sort slots by start time
                 usort($scheduleSlots, fn($a, $b) => strcmp($a['start'], $b['start']));
+
+                // Class status is computed client-side in JavaScript to use browser local time
             @endphp
 
             <div class="tab-pane fade" id="tab-scheduled"
@@ -424,10 +436,24 @@
                 </div>
 
                 @if(count($scheduleSlots) > 0)
-                <div class="max-w-3xl mx-auto space-y-3">
+                <div class="max-w-3xl mx-auto flex flex-col gap-3">
                     @foreach($scheduleSlots as $slot)
                     <div class="class-card"
+                         x-data="{
+                             start: '{{ $slot['start'] }}',
+                             end: '{{ $slot['end'] }}',
+                             get classStatus() {
+                                 const now = new Date();
+                                 const pad = n => String(n).padStart(2, '0');
+                                 const nowStr = pad(now.getHours()) + ':' + pad(now.getMinutes());
+                                 if (nowStr < this.start) return 'upcoming';
+                                 if (nowStr <= this.end) return 'live';
+                                 return 'finished';
+                             }
+                         }"
                          x-show="@js(array_map('strval', $slot['days'])).includes(activeDay)"
+                         :class="activeDay === '{{ $todayKey }}' ? classStatus + '-card' : ''"
+                         :style="activeDay === '{{ $todayKey }}' ? 'order:' + (classStatus === 'live' ? 0 : classStatus === 'upcoming' ? 1 : 2) : ''"
                          x-cloak>
                         <div class="class-thumb">
                             @if($slot['picture_url'])
@@ -449,6 +475,34 @@
                                     @if($slot['facility_name'])
                                     <div class="text-sm text-muted-foreground mt-0.5">
                                         <i class="bi bi-geo-alt mr-1"></i>{{ $slot['facility_name'] }}
+                                    </div>
+                                    @endif
+                                </div>
+                                {{-- Status badge + instructor — right column --}}
+                                <div class="flex flex-col items-end gap-2 shrink-0">
+                                    <div x-show="activeDay === '{{ $todayKey }}'">
+                                        <span x-show="classStatus === 'live'" class="status-chip status-ongoing">
+                                            <span class="live-dot"></span> Ongoing
+                                        </span>
+                                        <span x-show="classStatus === 'upcoming'" class="status-chip status-bookable">
+                                            <i class="bi bi-clock-fill"></i> Upcoming
+                                        </span>
+                                        <span x-show="classStatus === 'finished'" class="status-chip status-finished">
+                                            <i class="bi bi-check-circle-fill"></i> Finished
+                                        </span>
+                                    </div>
+                                    @if($slot['instructor_name'])
+                                    <div class="flex items-center gap-1.5">
+                                        @if($slot['instructor_picture'])
+                                        <img src="{{ asset('storage/' . $slot['instructor_picture']) }}"
+                                             class="w-7 h-7 rounded-full object-cover border border-gray-200"
+                                             alt="{{ $slot['instructor_name'] }}">
+                                        @else
+                                        <div class="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center">
+                                            <i class="bi bi-person-fill text-primary" style="font-size:13px"></i>
+                                        </div>
+                                        @endif
+                                        <span class="text-xs font-medium text-gray-700">{{ $slot['instructor_name'] }}</span>
                                     </div>
                                     @endif
                                 </div>

@@ -46,7 +46,7 @@
                title="Back to Clubs">
                 <i class="bi bi-arrow-left"></i>
             </a>
-            <a href="{{ route('clubs.explore') }}"
+            <a href="{{ route('clubs.show', $club->slug) }}"
                class="w-9 h-9 rounded-lg flex items-center justify-center bg-card text-foreground hover:bg-accent hover:shadow-sm transition-all border border-border no-underline"
                title="Preview Club" target="_blank">
                 <i class="bi bi-eye"></i>

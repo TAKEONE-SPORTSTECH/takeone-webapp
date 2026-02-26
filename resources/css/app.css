@@ -1537,7 +1537,30 @@
 .status-ongoing { background: #ecfdf3; color: #166534; border-color: #bbf7d0; }
 .status-bookable { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
 .status-full { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
-.status-finished { background: #f9fafb; color: #6b7280; border-color: #e5e7eb; }
+.status-finished { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+
+/* Class card state variants (today only) */
+.class-card.live-card {
+    border-color: #86efac;
+    background: #f0fdf4;
+}
+.class-card.finished-card {
+    opacity: 0.6;
+    background: #f8fafc;
+}
+.live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #16a34a;
+    display: inline-block;
+    flex-shrink: 0;
+    animation: live-pulse 1.3s ease-in-out infinite;
+}
+@keyframes live-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50%       { transform: scale(1.5); opacity: 0.5; }
+}
 
 .pill-tag {
     font-size: 10px;
@@ -1549,29 +1572,10 @@
 
 .events-lane {
     position: relative;
-    padding-left: 34px;
-}
-
-.events-lane::before {
-    content: '';
-    position: absolute;
-    left: 14px;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    border-radius: 999px;
-    background: linear-gradient(to bottom, #fecaca, #fee2e2);
 }
 
 .event-node {
-    position: absolute;
-    left: 8px;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #fff;
-    border: 3px solid var(--color-primary);
-    box-shadow: 0 0 0 4px rgba(248,113,113,0.25);
+    display: none;
 }
 
 .event-card {
@@ -1834,17 +1838,6 @@
 
 .news-timeline {
     position: relative;
-    padding-left: 30px;
-}
-
-.news-timeline::before {
-    content: '';
-    position: absolute;
-    left: 12px;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background: linear-gradient(to bottom, #e2e8f0, #f1f5f9);
 }
 
 .timeline-date {

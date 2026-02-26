@@ -528,9 +528,12 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.delete-schedule').forEach(btn =>
             btn.addEventListener('click', () => {
                 const idx = parseInt(btn.dataset.index);
-                const sid = schedules[idx].id;
+                const actId = schedules[idx].activityId;
                 schedules.splice(idx, 1);
-                delete trainerAssignments[sid];
+                // Only remove trainer assignment if no other schedule still uses this activity
+                if (!schedules.some(s => s.activityId === actId)) {
+                    delete trainerAssignments[actId];
+                }
                 if (editingScheduleIndex === idx) {
                     editingScheduleIndex = null;
                     addScheduleBtnText.textContent = 'Add Schedule';
