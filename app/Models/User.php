@@ -19,6 +19,20 @@ class User extends Authenticatable implements MustVerifyEmail
     use HasFactory, Notifiable, SoftDeletes;
 
     /**
+     * Keep `name` in sync with `full_name` so they are always the same.
+     * `full_name` is the canonical display field updated by all profile forms.
+     * `name` is kept for Laravel internals (notifications, etc.).
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $user) {
+            if ($user->isDirty('full_name') && $user->full_name) {
+                $user->name = $user->full_name;
+            }
+        });
+    }
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
