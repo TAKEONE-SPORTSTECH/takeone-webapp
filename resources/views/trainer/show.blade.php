@@ -372,7 +372,7 @@
                     <div class="class-card"
                          x-show="@js(array_map('strval', $slot['days'])).includes(activeDay)"
                          :class="activeDay === '{{ $todayKey }}' ? getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') + '-card' : ''"
-                         :style="activeDay === '{{ $todayKey }}' ? 'order:' + ({'live':0,'upcoming':1,'finished':2}[getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}')] ?? 0) : ''"
+                         :style="{ order: activeDay === '{{ $todayKey }}' ? ({'live':0,'upcoming':1,'finished':2}[getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}')] ?? 0) : null }"
                          x-cloak>
                         <div class="class-thumb">
                             @if($slot['picture_url'])
