@@ -353,7 +353,7 @@
 
                 // Build flat list of schedule slots from all package activities
                 $instructorNameMap = $club->instructors->keyBy('id')->map(fn($i) => [
-                    'name'    => $i->user?->name,
+                    'name'    => $i->user?->full_name ?? $i->user?->name,
                     'picture' => $i->user?->profile_picture,
                 ]);
                 $scheduleSlots = [];
