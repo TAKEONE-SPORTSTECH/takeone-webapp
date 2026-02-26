@@ -317,7 +317,13 @@
             </div>
 
             {{-- ===== SCHEDULE TAB ===== --}}
-            <div x-show="activeTab === 'schedule'" x-cloak class="mt-6 space-y-6">
+            @php
+                $dayOrder = ['saturday','sunday','monday','tuesday','wednesday','thursday','friday'];
+                $dayAbbr  = ['saturday'=>'Sat','sunday'=>'Sun','monday'=>'Mon','tuesday'=>'Tue','wednesday'=>'Wed','thursday'=>'Thu','friday'=>'Fri'];
+                $todayKey = strtolower(now()->format('l'));
+            @endphp
+            <div x-show="activeTab === 'schedule'" x-cloak class="mt-6 space-y-6"
+                 x-data="{ activeDay: '{{ $todayKey }}' }">
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                     <div class="bg-gradient-to-br {{ $isMale ? 'from-blue-50/50 via-blue-100/30 to-blue-50/20' : 'from-purple-50 via-teal-50 to-amber-50' }} p-6 border-b">
                         <div class="flex items-start gap-4">
@@ -331,47 +337,120 @@
                         </div>
                     </div>
                     <div class="p-6">
-                        @if(count($schedule) > 0)
-                            <div class="space-y-3">
-                                @foreach($schedule as $day => $times)
-                                    <div class="group rounded-xl border bg-gradient-to-r from-white {{ $isMale ? 'to-blue-50/30' : 'to-purple-50/30' }} p-5 hover:shadow-md transition-all">
-                                        <div class="flex flex-col md:flex-row md:items-start gap-4">
-                                            <div class="min-w-[120px]">
-                                                <div class="inline-flex items-center gap-2 px-4 py-2 {{ $isMale ? 'bg-blue-100/50' : 'bg-purple-100/50' }} rounded-lg">
-                                                    <i class="bi bi-calendar {{ $isMale ? 'text-blue-600' : 'text-purple-600' }}"></i>
-                                                    <p class="font-bold {{ $isMale ? 'text-blue-600' : 'text-purple-600' }}">{{ $day }}</p>
-                                                </div>
-                                            </div>
-                                            <div class="flex-1">
-                                                <div class="space-y-2">
-                                                    @foreach($times as $time)
-                                                        <div class="flex items-center justify-between p-3 bg-white border rounded-lg hover:border-purple-400 transition-colors">
-                                                            <div class="flex items-center gap-2">
-                                                                <i class="bi bi-clock text-gray-400"></i>
-                                                                <span class="text-sm font-medium">{{ $time }}</span>
-                                                            </div>
-                                                            <button class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-xs font-medium shadow-sm">
-                                                                <i class="bi bi-calendar-plus text-xs"></i>
-                                                                Book
-                                                            </button>
-                                                        </div>
-                                                    @endforeach
-                                                </div>
-                                            </div>
-                                        </div>
+
+                @if(count($scheduleSlots) > 0)
+                {{-- Day filter chips --}}
+                <div class="flex flex-wrap justify-center gap-2 mb-5">
+                    <button type="button"
+                            @click="activeDay = '{{ $todayKey }}'"
+                            :class="activeDay === '{{ $todayKey }}' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'"
+                            class="px-5 py-2 rounded-full border text-sm font-semibold transition-colors">
+                        Today
+                    </button>
+                    @foreach($dayOrder as $dayKey)
+                    <button type="button"
+                            @click="activeDay = '{{ $dayKey }}'"
+                            :class="activeDay === '{{ $dayKey }}' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'"
+                            class="px-5 py-2 rounded-full border text-sm font-semibold transition-colors {{ $dayKey === $todayKey ? 'ring-2 ring-primary/30' : '' }}">
+                        {{ $dayAbbr[$dayKey] }}
+                    </button>
+                    @endforeach
+                </div>
+
+                <div class="max-w-3xl mx-auto flex flex-col gap-3">
+                    @foreach($scheduleSlots as $slot)
+                    <div class="class-card"
+                         x-data="{
+                             start: '{{ $slot['start'] }}',
+                             end: '{{ $slot['end'] }}',
+                             get classStatus() {
+                                 const now = new Date();
+                                 const pad = n => String(n).padStart(2, '0');
+                                 const nowStr = pad(now.getHours()) + ':' + pad(now.getMinutes());
+                                 if (nowStr < this.start) return 'upcoming';
+                                 if (nowStr <= this.end) return 'live';
+                                 return 'finished';
+                             }
+                         }"
+                         x-show="@js(array_map('strval', $slot['days'])).includes(activeDay)"
+                         :class="activeDay === '{{ $todayKey }}' ? classStatus + '-card' : ''"
+                         :style="activeDay === '{{ $todayKey }}' ? 'order:' + (classStatus === 'live' ? 0 : classStatus === 'upcoming' ? 1 : 2) : ''"
+                         x-cloak>
+                        <div class="class-thumb">
+                            @if($slot['picture_url'])
+                            <img src="{{ asset('storage/' . $slot['picture_url']) }}" alt="{{ $slot['activity_name'] }}" class="w-full h-full object-cover">
+                            @else
+                            <div class="w-full h-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center min-h-[80px]">
+                                <i class="bi bi-activity text-white text-xl"></i>
+                            </div>
+                            @endif
+                        </div>
+                        <div class="flex-grow flex flex-col">
+                            <div class="flex justify-between items-start mb-1">
+                                <div>
+                                    <h6 class="text-base font-bold mb-0">{{ $slot['activity_name'] }}</h6>
+                                    <div class="class-meta text-muted-foreground flex items-center gap-x-4 mt-0.5 text-sm">
+                                        <span><i class="bi bi-clock mr-1"></i>{{ \Carbon\Carbon::parse($slot['start'])->format('g:i A') }} – {{ \Carbon\Carbon::parse($slot['end'])->format('g:i A') }}</span>
+                                        <span class="flex items-center gap-1 ml-2"><i class="bi bi-stopwatch"></i>{{ $slot['duration'] }} min</span>
                                     </div>
+                                    @if($slot['facility_name'])
+                                    <div class="text-sm text-muted-foreground mt-0.5">
+                                        <i class="bi bi-geo-alt mr-1"></i>{{ $slot['facility_name'] }}
+                                    </div>
+                                    @endif
+                                </div>
+                                {{-- Status badge + club link --}}
+                                <div class="flex flex-col items-end gap-2 shrink-0">
+                                    <div x-show="activeDay === '{{ $todayKey }}'">
+                                        <span x-show="classStatus === 'live'" class="status-chip status-ongoing">
+                                            <span class="live-dot"></span> Ongoing
+                                        </span>
+                                        <span x-show="classStatus === 'upcoming'" class="status-chip status-bookable">
+                                            <i class="bi bi-clock-fill"></i> Upcoming
+                                        </span>
+                                        <span x-show="classStatus === 'finished'" class="status-chip status-finished">
+                                            <i class="bi bi-check-circle-fill"></i> Finished
+                                        </span>
+                                    </div>
+                                    @if($slot['club_name'])
+                                    <a href="{{ $slot['club_slug'] ? route('clubs.show', $slot['club_slug']) : '#' }}"
+                                       class="text-xs font-medium text-primary hover:underline flex items-center gap-1">
+                                        <i class="bi bi-building"></i> {{ $slot['club_name'] }}
+                                    </a>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-1 mt-2">
+                                @if($slot['package_name'])
+                                <span class="pill-tag">{{ $slot['package_name'] }}</span>
+                                @endif
+                                @foreach($slot['days'] as $d)
+                                <span class="pill-tag">{{ $dayAbbr[$d] ?? ucfirst(substr($d,0,3)) }}</span>
                                 @endforeach
                             </div>
-                        @else
-                            <div class="text-center py-12">
-                                <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                                    <i class="bi bi-clock text-2xl text-gray-400"></i>
-                                </div>
-                                <p class="text-gray-500">Schedule information coming soon</p>
-                            </div>
-                        @endif
+                        </div>
+                    </div>
+                    @endforeach
+
+                    {{-- Empty state for filtered day --}}
+                    <div x-show="!@js(collect($scheduleSlots)->map(fn($s) => $s['days'])->flatten()->unique()->values()->toArray()).includes(activeDay)"
+                         class="text-center py-16">
+                        <i class="bi bi-calendar-x text-muted-foreground text-5xl"></i>
+                        <p class="text-lg font-medium mt-4">No classes on this day</p>
+                        <p class="text-sm text-muted-foreground mt-2">Try selecting a different day</p>
                     </div>
                 </div>
+                @else
+                <div class="text-center py-12">
+                    <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                        <i class="bi bi-calendar-x text-2xl text-gray-400"></i>
+                    </div>
+                    <p class="text-gray-500">No classes scheduled</p>
+                </div>
+                @endif
+
+                    </div>{{-- /card body --}}
+                </div>{{-- /card --}}
             </div>
 
             {{-- ===== REVIEWS TAB ===== --}}
