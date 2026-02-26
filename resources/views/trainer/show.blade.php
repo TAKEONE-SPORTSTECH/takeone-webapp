@@ -323,7 +323,17 @@
                 $todayKey = strtolower(now()->format('l'));
             @endphp
             <div x-show="activeTab === 'schedule'" x-cloak class="mt-6 space-y-6"
-                 x-data="{ activeDay: '{{ $todayKey }}' }">
+                 x-data="{
+                     activeDay: '{{ $todayKey }}',
+                     getStatus(start, end) {
+                         const now = new Date();
+                         const pad = n => String(n).padStart(2, '0');
+                         const t = pad(now.getHours()) + ':' + pad(now.getMinutes());
+                         if (t < start) return 'upcoming';
+                         if (t <= end) return 'live';
+                         return 'finished';
+                     }
+                 }">
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                     <div class="bg-gradient-to-br {{ $isMale ? 'from-blue-50/50 via-blue-100/30 to-blue-50/20' : 'from-purple-50 via-teal-50 to-amber-50' }} p-6 border-b">
                         <div class="flex items-start gap-4">
@@ -360,21 +370,9 @@
                 <div class="max-w-3xl mx-auto flex flex-col gap-3">
                     @foreach($scheduleSlots as $slot)
                     <div class="class-card"
-                         x-data="{
-                             start: '{{ $slot['start'] }}',
-                             end: '{{ $slot['end'] }}',
-                             get classStatus() {
-                                 const now = new Date();
-                                 const pad = n => String(n).padStart(2, '0');
-                                 const nowStr = pad(now.getHours()) + ':' + pad(now.getMinutes());
-                                 if (nowStr < this.start) return 'upcoming';
-                                 if (nowStr <= this.end) return 'live';
-                                 return 'finished';
-                             }
-                         }"
                          x-show="@js(array_map('strval', $slot['days'])).includes(activeDay)"
-                         :class="activeDay === '{{ $todayKey }}' ? classStatus + '-card' : ''"
-                         :style="activeDay === '{{ $todayKey }}' ? 'order:' + (classStatus === 'live' ? 0 : classStatus === 'upcoming' ? 1 : 2) : ''"
+                         :class="activeDay === '{{ $todayKey }}' ? getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') + '-card' : ''"
+                         :style="activeDay === '{{ $todayKey }}' ? 'order:' + ({'live':0,'upcoming':1,'finished':2}[getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}')] ?? 0) : ''"
                          x-cloak>
                         <div class="class-thumb">
                             @if($slot['picture_url'])
@@ -402,13 +400,13 @@
                                 {{-- Status badge + club link --}}
                                 <div class="flex flex-col items-end gap-2 shrink-0">
                                     <div x-show="activeDay === '{{ $todayKey }}'">
-                                        <span x-show="classStatus === 'live'" class="status-chip status-ongoing">
+                                        <span x-show="getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') === 'live'" class="status-chip status-ongoing">
                                             <span class="live-dot"></span> Ongoing
                                         </span>
-                                        <span x-show="classStatus === 'upcoming'" class="status-chip status-bookable">
+                                        <span x-show="getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') === 'upcoming'" class="status-chip status-bookable">
                                             <i class="bi bi-clock-fill"></i> Upcoming
                                         </span>
-                                        <span x-show="classStatus === 'finished'" class="status-chip status-finished">
+                                        <span x-show="getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') === 'finished'" class="status-chip status-finished">
                                             <i class="bi bi-check-circle-fill"></i> Finished
                                         </span>
                                     </div>
