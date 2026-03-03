@@ -155,6 +155,10 @@ Route::middleware(['auth', 'verified'])->prefix('admin/club/{club}')->name('admi
     Route::post('/instructors', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeInstructor'])->name('instructors.store');
     Route::post('/instructors/{instructor}/upload-photo', [App\Http\Controllers\Admin\ClubAdminController::class, 'uploadInstructorPhoto'])->name('instructors.upload-photo');
     Route::get('/activities', [App\Http\Controllers\Admin\ClubAdminController::class, 'activities'])->name('activities');
+    Route::get('/events', [App\Http\Controllers\Admin\ClubAdminController::class, 'events'])->name('events');
+    Route::post('/events', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeEvent'])->name('events.store');
+    Route::put('/events/{event}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateEvent'])->name('events.update');
+    Route::delete('/events/{event}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyEvent'])->name('events.destroy');
     Route::post('/activities', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeActivity'])->name('activities.store');
     Route::put('/activities/{activity}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateActivity'])->name('activities.update');
     Route::delete('/activities/{activity}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyActivity'])->name('activities.destroy');

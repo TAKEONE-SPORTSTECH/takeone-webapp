@@ -183,7 +183,8 @@ class PlatformController extends Controller
             'galleryImages',
             'reviews.user',
             'socialLinks',
-            'memberships'
+            'memberships',
+            'events',
         ])->where('slug', $slug)->firstOrFail();
 
         // Calculate active members count

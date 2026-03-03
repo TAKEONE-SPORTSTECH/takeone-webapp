@@ -7,6 +7,7 @@ use App\Models\Tenant;
 use App\Models\ClubFacility;
 use App\Models\ClubInstructor;
 use App\Models\ClubActivity;
+use App\Models\ClubEvent;
 use App\Models\ClubPackage;
 use App\Models\Membership;
 use App\Models\ClubGalleryImage;
@@ -552,6 +553,110 @@ class ClubAdminController extends Controller
         $activity->delete();
 
         return back()->with('success', 'Activity deleted successfully.');
+    }
+
+    /**
+     * Events management
+     */
+    public function events(Tenant $club)
+    {
+        $this->authorizeClub($club);
+        $events = ClubEvent::where('tenant_id', $club->id)
+            ->orderBy('date')
+            ->orderBy('start_time')
+            ->get();
+        return view('admin.club.events.index', compact('club', 'events'));
+    }
+
+    public function storeEvent(Request $request, Tenant $club)
+    {
+        $this->authorizeClub($club);
+
+        $request->validate([
+            'title'        => 'required|string|max:255',
+            'date'         => 'required|date',
+            'start_time'   => 'required',
+            'end_time'     => 'nullable',
+            'location'     => 'nullable|string|max:255',
+            'level'        => 'nullable|string|max:255',
+            'description'  => 'nullable|string',
+            'max_capacity' => 'nullable|integer|min:1',
+            'spots_taken'  => 'nullable|integer|min:0',
+            'ribbon_label' => 'nullable|string|max:100',
+            'ribbon_type'  => 'nullable|string|max:50',
+            'tags'         => 'nullable|string',
+            'color'        => 'nullable|string|max:20',
+            'cta_text'     => 'nullable|string|max:100',
+            'status'       => 'nullable|string|in:active,cancelled,completed',
+        ]);
+
+        $data = $request->only([
+            'title', 'date', 'start_time', 'end_time', 'location', 'level',
+            'description', 'max_capacity', 'spots_taken', 'ribbon_label',
+            'ribbon_type', 'color', 'cta_text', 'status',
+        ]);
+        $data['tenant_id'] = $club->id;
+        $data['status']    = $data['status'] ?? 'active';
+
+        // Parse comma-separated tags into array
+        if ($request->filled('tags')) {
+            $data['tags'] = array_values(array_filter(array_map('trim', explode(',', $request->input('tags')))));
+        } else {
+            $data['tags'] = null;
+        }
+
+        ClubEvent::create($data);
+
+        return back()->with('success', 'Event created successfully.');
+    }
+
+    public function updateEvent(Request $request, Tenant $club, $eventId)
+    {
+        $this->authorizeClub($club);
+        $event = ClubEvent::where('tenant_id', $club->id)->findOrFail($eventId);
+
+        $request->validate([
+            'title'        => 'required|string|max:255',
+            'date'         => 'required|date',
+            'start_time'   => 'required',
+            'end_time'     => 'nullable',
+            'location'     => 'nullable|string|max:255',
+            'level'        => 'nullable|string|max:255',
+            'description'  => 'nullable|string',
+            'max_capacity' => 'nullable|integer|min:1',
+            'spots_taken'  => 'nullable|integer|min:0',
+            'ribbon_label' => 'nullable|string|max:100',
+            'ribbon_type'  => 'nullable|string|max:50',
+            'tags'         => 'nullable|string',
+            'color'        => 'nullable|string|max:20',
+            'cta_text'     => 'nullable|string|max:100',
+            'status'       => 'nullable|string|in:active,cancelled,completed',
+        ]);
+
+        $data = $request->only([
+            'title', 'date', 'start_time', 'end_time', 'location', 'level',
+            'description', 'max_capacity', 'spots_taken', 'ribbon_label',
+            'ribbon_type', 'color', 'cta_text', 'status',
+        ]);
+
+        if ($request->filled('tags')) {
+            $data['tags'] = array_values(array_filter(array_map('trim', explode(',', $request->input('tags')))));
+        } else {
+            $data['tags'] = null;
+        }
+
+        $event->update($data);
+
+        return response()->json(['success' => true, 'message' => 'Event updated successfully.']);
+    }
+
+    public function destroyEvent(Tenant $club, $eventId)
+    {
+        $this->authorizeClub($club);
+        $event = ClubEvent::where('tenant_id', $club->id)->findOrFail($eventId);
+        $event->delete();
+
+        return response()->json(['success' => true, 'message' => 'Event deleted successfully.']);
     }
 
     /**

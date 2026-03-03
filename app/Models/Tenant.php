@@ -185,6 +185,14 @@ class Tenant extends Model
     }
 
     /**
+     * Get the events for the club.
+     */
+    public function events(): HasMany
+    {
+        return $this->hasMany(ClubEvent::class)->orderBy('date')->orderBy('start_time');
+    }
+
+    /**
      * Get approved reviews for the club.
      */
     public function approvedReviews(): HasMany

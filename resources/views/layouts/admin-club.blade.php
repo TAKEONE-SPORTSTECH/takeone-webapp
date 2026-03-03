@@ -126,6 +126,15 @@
                 <span>Activities</span>
             </a>
 
+            <a href="{{ route('admin.club.events', $clubId) }}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
+                      {{ $currentRoute === 'admin.club.events'
+                         ? 'bg-primary text-white shadow-lg'
+                         : 'text-foreground hover:bg-muted' }}">
+                <i class="bi bi-calendar-event w-5"></i>
+                <span>Events</span>
+            </a>
+
             <a href="{{ route('admin.club.packages', $clubId) }}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
                       {{ $currentRoute === 'admin.club.packages'

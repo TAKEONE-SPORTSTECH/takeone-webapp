@@ -544,153 +544,75 @@
                     </button>
                 </div>
 
-                <div class="events-lane">
-                    {{-- Event 1 --}}
-                    <div class="event-node" style="top: 10px;"></div>
-                    <article class="event-card mb-4">
-                        <div class="event-ribbon limited">Limited Seats</div>
-                        <div class="event-header">
-                            <div class="event-date-pill">
-                                <div class="day">Thu</div>
-                                <div class="date">19</div>
-                                <div class="month">Feb</div>
-                            </div>
-                            <div class="event-body-main">
-                                <div class="event-title">Open Sparring Night - All Clubs Welcome</div>
-                                <div class="event-meta mb-1">
-                                    <span class="mr-3"><i class="bi bi-clock"></i> 7:30 PM - 9:30 PM</span>
-                                    <span class="mr-3"><i class="bi bi-geo-alt"></i> Main Arena</span>
-                                    <span><i class="bi bi-bar-chart"></i> Intermediate & Above</span>
-                                </div>
-                                <p class="text-xs text-gray-500 mb-0 mt-1">
-                                    High-energy sparring rounds with referees, music and live scoring. Bring your gear, we bring the atmosphere.
-                                </p>
-                            </div>
-                        </div>
-                        <div class="event-chip-row">
-                            <span class="event-chip"><i class="bi bi-people"></i> Public event</span>
-                            <span class="event-chip"><i class="bi bi-shield"></i> WT rules</span>
-                            <span class="event-chip"><i class="bi bi-camera"></i> Highlight reels</span>
-                        </div>
-                        <div class="event-footer">
-                            <div class="event-capacity">
-                                <i class="bi bi-people"></i>
-                                <span>24 / 30 spots taken</span>
-                                <div class="capacity-bar"><div class="capacity-fill" style="width:80%;"></div></div>
-                            </div>
-                            <button class="event-cta-open"><i class="bi bi-ticket"></i> Join Event</button>
-                        </div>
-                    </article>
-
-                    {{-- Event 2 --}}
-                    <div class="event-node" style="top: 250px;"></div>
-                    <article class="event-card mb-4">
-                        <div class="event-ribbon">Family Friendly</div>
-                        <div class="event-header">
-                            <div class="event-date-pill" style="background:#16a34a;">
-                                <div class="day">Sat</div>
-                                <div class="date">21</div>
-                                <div class="month">Feb</div>
-                            </div>
-                            <div class="event-body-main">
-                                <div class="event-title">Free Beginner Try-Out Day</div>
-                                <div class="event-meta mb-1">
-                                    <span class="mr-3"><i class="bi bi-clock"></i> 10:00 AM - 1:00 PM</span>
-                                    <span class="mr-3"><i class="bi bi-geo-alt"></i> Dojo & Lobby</span>
-                                    <span><i class="bi bi-person"></i> Ages 5+</span>
-                                </div>
-                                <p class="text-xs text-gray-500 mb-0 mt-1">
-                                    Open doors for anyone curious. Meet the coaches, try a safe intro class, and tour the facility.
-                                </p>
-                            </div>
-                        </div>
-                        <div class="event-chip-row">
-                            <span class="event-chip"><i class="bi bi-check-circle"></i> No experience needed</span>
-                            <span class="event-chip"><i class="bi bi-cup-hot"></i> Coffee & snacks</span>
-                            <span class="event-chip"><i class="bi bi-house"></i> Parents welcome</span>
-                        </div>
-                        <div class="event-footer">
-                            <div class="event-capacity">
-                                <i class="bi bi-infinity"></i>
-                                <span>Unlimited guests</span>
-                            </div>
-                            <button class="event-cta-open" style="background:#0f172a;"><i class="bi bi-person-plus"></i> I'm Interested</button>
-                        </div>
-                    </article>
-
-                    {{-- Event 3 --}}
-                    <div class="event-node" style="top: 490px;"></div>
-                    <article class="event-card mb-4">
-                        <div class="event-ribbon limited">Grading</div>
-                        <div class="event-header">
-                            <div class="event-date-pill" style="background:#f97316;">
-                                <div class="day">Fri</div>
-                                <div class="date">28</div>
-                                <div class="month">Feb</div>
-                            </div>
-                            <div class="event-body-main">
-                                <div class="event-title">Monthly Belt Grading - Kids & Juniors</div>
-                                <div class="event-meta mb-1">
-                                    <span class="mr-3"><i class="bi bi-clock"></i> 5:00 PM - 8:00 PM</span>
-                                    <span class="mr-3"><i class="bi bi-geo-alt"></i> Main Dojang</span>
-                                    <span><i class="bi bi-person-badge"></i> Invite & open spectators</span>
-                                </div>
-                                <p class="text-xs text-gray-500 mb-0 mt-1">
-                                    Formal grading with photo booth and awards stage. Families and friends are invited to cheer.
-                                </p>
-                            </div>
-                        </div>
-                        <div class="event-chip-row">
-                            <span class="event-chip"><i class="bi bi-award"></i> White to Red Stripe</span>
-                            <span class="event-chip"><i class="bi bi-camera-reels"></i> Professional photography</span>
-                            <span class="event-chip"><i class="bi bi-star"></i> Medal ceremony</span>
-                        </div>
-                        <div class="event-footer">
-                            <div class="event-capacity">
-                                <i class="bi bi-people"></i>
-                                <span>48 / 50 candidates</span>
-                                <div class="capacity-bar"><div class="capacity-fill" style="width:96%;"></div></div>
-                            </div>
-                            <button class="event-cta-open" style="background:#f97316;"><i class="bi bi-clipboard-check"></i> Reserve Slot</button>
-                        </div>
-                    </article>
-
-                    {{-- Event 4 --}}
-                    <div class="event-node" style="top: 730px;"></div>
-                    <article class="event-card mb-2">
-                        <div class="event-ribbon limited">Almost Full</div>
-                        <div class="event-header">
-                            <div class="event-date-pill" style="background:#0369a1;">
-                                <div class="day">Mon</div>
-                                <div class="date">02</div>
-                                <div class="month">Mar</div>
-                            </div>
-                            <div class="event-body-main">
-                                <div class="event-title">Summer Camp 2026 - Preview Session</div>
-                                <div class="event-meta mb-1">
-                                    <span class="mr-3"><i class="bi bi-clock"></i> 6:30 PM - 8:00 PM</span>
-                                    <span class="mr-3"><i class="bi bi-geo-alt"></i> Mixed Zones</span>
-                                    <span><i class="bi bi-bicycle"></i> Camp activities demo</span>
-                                </div>
-                                <p class="text-xs text-gray-500 mb-0 mt-1">
-                                    One-night preview of our signature summer camp: games, team-building, mini-workouts and Q&A.
-                                </p>
-                            </div>
-                        </div>
-                        <div class="event-chip-row">
-                            <span class="event-chip"><i class="bi bi-fire"></i> Limited preview</span>
-                            <span class="event-chip"><i class="bi bi-mortarboard"></i> Ideal for 8-14 yrs</span>
-                        </div>
-                        <div class="event-footer">
-                            <div class="event-capacity">
-                                <i class="bi bi-people"></i>
-                                <span>Full &middot; Waitlist only</span>
-                                <div class="capacity-bar"><div class="capacity-fill" style="width:100%;"></div></div>
-                            </div>
-                            <button class="event-cta-wait"><i class="bi bi-clock-history"></i> Join Waitlist</button>
-                        </div>
-                    </article>
+                @php $activeEvents = $club->events->where('status', 'active'); @endphp
+                @if($activeEvents->isEmpty())
+                <div class="text-center py-16 text-muted-foreground">
+                    <i class="bi bi-calendar-x" style="font-size:2.5rem;opacity:.3;"></i>
+                    <p class="mt-3">No upcoming events at the moment. Check back soon!</p>
                 </div>
+                @else
+                <div class="events-lane">
+                    @foreach($activeEvents as $i => $event)
+                    @php
+                        $pillColor   = $event->color ?: '#1d4ed8';
+                        $tagsArr     = is_array($event->tags) ? $event->tags : [];
+                        $capacityPct = $event->max_capacity ? min(100, round($event->spots_taken / $event->max_capacity * 100)) : null;
+                        $isFull      = $event->max_capacity && $event->spots_taken >= $event->max_capacity;
+                        $ctaText     = $event->cta_text ?: 'Join Event';
+                    @endphp
+                    <div class="event-node" style="top: {{ 10 + $i * 240 }}px;"></div>
+                    <article class="event-card {{ !$loop->last ? 'mb-4' : 'mb-2' }}">
+                        @if($event->ribbon_label)
+                        <div class="event-ribbon {{ $event->ribbon_type === 'limited' ? 'limited' : '' }}">{{ $event->ribbon_label }}</div>
+                        @endif
+                        <div class="event-header">
+                            <div class="event-date-pill" style="background:{{ $pillColor }};">
+                                <div class="day">{{ $event->date->format('D') }}</div>
+                                <div class="date">{{ $event->date->format('d') }}</div>
+                                <div class="month">{{ $event->date->format('M') }}</div>
+                            </div>
+                            <div class="event-body-main">
+                                <div class="event-title">{{ $event->title }}</div>
+                                <div class="event-meta mb-1">
+                                    <span class="mr-3"><i class="bi bi-clock"></i> {{ \Carbon\Carbon::parse($event->start_time)->format('g:i A') }}{{ $event->end_time ? ' - ' . \Carbon\Carbon::parse($event->end_time)->format('g:i A') : '' }}</span>
+                                    @if($event->location)<span class="mr-3"><i class="bi bi-geo-alt"></i> {{ $event->location }}</span>@endif
+                                    @if($event->level)<span><i class="bi bi-bar-chart"></i> {{ $event->level }}</span>@endif
+                                </div>
+                                @if($event->description)
+                                <p class="text-xs text-gray-500 mb-0 mt-1">{{ $event->description }}</p>
+                                @endif
+                            </div>
+                        </div>
+                        @if($tagsArr)
+                        <div class="event-chip-row">
+                            @foreach($tagsArr as $tag)
+                            <span class="event-chip"><i class="bi bi-tag"></i> {{ $tag }}</span>
+                            @endforeach
+                        </div>
+                        @endif
+                        <div class="event-footer">
+                            <div class="event-capacity">
+                                @if($event->max_capacity)
+                                    <i class="bi bi-people"></i>
+                                    <span>{{ $isFull ? 'Full · Waitlist only' : $event->spots_taken . ' / ' . $event->max_capacity . ' spots taken' }}</span>
+                                    @if($capacityPct !== null)
+                                    <div class="capacity-bar"><div class="capacity-fill" style="width:{{ $capacityPct }}%;"></div></div>
+                                    @endif
+                                @else
+                                    <i class="bi bi-infinity"></i>
+                                    <span>Unlimited guests</span>
+                                @endif
+                            </div>
+                            @if($isFull)
+                            <button class="event-cta-wait" style="background:{{ $pillColor }};"><i class="bi bi-clock-history"></i> Join Waitlist</button>
+                            @else
+                            <button class="event-cta-open" style="background:{{ $pillColor }};"><i class="bi bi-ticket"></i> {{ $ctaText }}</button>
+                            @endif
+                        </div>
+                    </article>
+                    @endforeach
+                </div>
+                @endif
             </div>
 
             {{-- ==================== STATISTICS TAB ==================== --}}
