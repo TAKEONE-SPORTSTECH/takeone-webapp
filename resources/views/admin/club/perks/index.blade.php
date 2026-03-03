@@ -159,7 +159,7 @@ const baseEditUrl = '{{ url('admin/club/' . $club->slug . '/perks') }}';
 
 const emptyForm = {
     title: '', description: '', badge: '',
-    image_path: '', image_preview: '', remove_image: false,
+    image_path: '', remove_image: false,
     icon: 'bi-gift', bg_from: '#f59e0b', bg_to: '#f97316',
     perk_type: 'code', perk_value: '',
     status: 'active', sort_order: 0,
@@ -184,25 +184,8 @@ function perksAdmin() {
             if (!p) return;
             this.isEdit     = true;
             this.formAction = baseEditUrl + '/' + id;
-            this.formData   = { ...emptyForm, ...p, image_preview: '', remove_image: false };
+            this.formData   = { ...emptyForm, ...p, remove_image: false };
             this.showModal  = true;
-        },
-
-        handleImageChange(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => { this.formData.image_preview = e.target.result; };
-            reader.readAsDataURL(file);
-            this.formData.remove_image = false;
-        },
-
-        removeImage() {
-            this.formData.image_preview = '';
-            this.formData.image_path    = '';
-            this.formData.remove_image  = true;
-            const input = document.querySelector('input[name="image"]');
-            if (input) input.value = '';
         },
 
         deletePerk(id) {

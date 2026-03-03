@@ -38,52 +38,68 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <label class="form-label text-xs">Background Image <span class="text-xs text-muted-foreground">(optional)</span></label>
-                <input type="file" name="image" class="form-control" accept="image/*"
-                       @change="handleImageChange($event)">
-            </div>
-            <div>
-                <label class="form-label text-xs">Icon Class <span class="text-xs text-muted-foreground">(Bootstrap Icons)</span></label>
-                <input type="text" name="icon" class="form-control"
-                       placeholder="bi-cup-hot" x-model="formData.icon">
-            </div>
-            <div>
-                <label class="form-label text-xs">Gradient From</label>
-                <div class="flex items-center gap-2">
-                    <input type="color" name="bg_from" class="form-control h-10 p-1 cursor-pointer w-16"
-                           x-model="formData.bg_from">
-                    <span class="text-sm text-muted-foreground" x-text="formData.bg_from"></span>
-                </div>
-            </div>
-            <div>
-                <label class="form-label text-xs">Gradient To</label>
-                <div class="flex items-center gap-2">
-                    <input type="color" name="bg_to" class="form-control h-10 p-1 cursor-pointer w-16"
-                           x-model="formData.bg_to">
-                    <span class="text-sm text-muted-foreground" x-text="formData.bg_to"></span>
-                </div>
-            </div>
-        </div>
 
-        {{-- Image preview --}}
-        <div x-show="formData.image_preview || formData.image_path" class="mt-3">
-            <div class="relative inline-block">
-                <img :src="formData.image_preview || (formData.image_path ? '/storage/' + formData.image_path : '')"
-                     class="rounded-xl object-cover" style="height:100px;max-width:100%;" alt="Preview">
-                <button type="button"
-                        class="absolute top-1 right-1 bg-white rounded-full w-6 h-6 flex items-center justify-center shadow text-red-500 text-xs"
-                        @click="removeImage()">
-                    <i class="bi bi-x-lg"></i>
-                </button>
-            </div>
-            <input type="hidden" name="remove_image" :value="formData.remove_image ? '1' : '0'">
-        </div>
+                {{-- Cropper component --}}
+                <x-takeone-cropper
+                    id="perkImageCropper"
+                    :width="400" :height="267"
+                    shape="rectangle" mode="form"
+                    inputName="image"
+                    :folder="'perks/' . (isset($club) ? $club->slug : 'club')"
+                    :filename="'perk_' . time()"
+                    :previewWidth="260" :previewHeight="174"
+                    buttonText="Upload Image"
+                    buttonClass="btn btn-outline-secondary w-full mt-2"
+                    :canvasHeight="520"
+                />
 
-        {{-- Gradient preview (shown when no image) --}}
-        <div x-show="!formData.image_preview && !formData.image_path" class="mt-3">
-            <div class="rounded-xl flex items-center justify-center gap-3 p-4"
-                 :style="`background: linear-gradient(135deg, ${formData.bg_from}, ${formData.bg_to}); height:80px;`">
-                <i :class="'bi ' + (formData.icon || 'bi-gift')" class="text-white text-3xl"></i>
-                <span class="text-white font-bold text-sm" x-text="formData.title || 'Preview'"></span>
+                {{-- Existing image when editing --}}
+                <div x-show="formData.image_path && !formData.remove_image" class="mt-3">
+                    <p class="text-xs text-muted-foreground mb-1">Current image:</p>
+                    <div class="relative inline-block">
+                        <img :src="'/storage/' + formData.image_path"
+                             class="rounded-xl object-cover" style="height:80px;max-width:100%;" alt="Current">
+                        <button type="button"
+                                class="absolute top-1 right-1 bg-white rounded-full w-6 h-6 flex items-center justify-center shadow text-red-500 text-xs"
+                                @click="formData.remove_image = true">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+                <input type="hidden" name="remove_image" :value="formData.remove_image ? '1' : '0'">
+            </div>
+
+            <div class="space-y-3">
+                <div>
+                    <label class="form-label text-xs">Icon Class <span class="text-xs text-muted-foreground">(Bootstrap Icons fallback)</span></label>
+                    <input type="text" name="icon" class="form-control"
+                           placeholder="bi-cup-hot" x-model="formData.icon">
+                </div>
+                <div>
+                    <label class="form-label text-xs">Gradient From</label>
+                    <div class="flex items-center gap-2">
+                        <input type="color" name="bg_from" class="form-control h-10 p-1 cursor-pointer w-16"
+                               x-model="formData.bg_from">
+                        <span class="text-sm text-muted-foreground" x-text="formData.bg_from"></span>
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label text-xs">Gradient To</label>
+                    <div class="flex items-center gap-2">
+                        <input type="color" name="bg_to" class="form-control h-10 p-1 cursor-pointer w-16"
+                               x-model="formData.bg_to">
+                        <span class="text-sm text-muted-foreground" x-text="formData.bg_to"></span>
+                    </div>
+                </div>
+
+                {{-- Gradient preview (shown when no image) --}}
+                <div x-show="!formData.image_path || formData.remove_image" class="mt-1">
+                    <div class="rounded-xl flex items-center justify-center gap-3 p-4"
+                         :style="`background: linear-gradient(135deg, ${formData.bg_from}, ${formData.bg_to}); height:70px;`">
+                        <i :class="'bi ' + (formData.icon || 'bi-gift')" class="text-white text-3xl"></i>
+                        <span class="text-white font-bold text-sm" x-text="formData.title || 'Preview'"></span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

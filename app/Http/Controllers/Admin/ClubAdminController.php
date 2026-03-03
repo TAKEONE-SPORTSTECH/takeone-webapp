@@ -772,7 +772,6 @@ class ClubAdminController extends Controller
             'title'       => 'required|string|max:255',
             'description' => 'nullable|string|max:255',
             'badge'       => 'required|string|max:50',
-            'image'       => 'nullable|image|max:5120',
             'icon'        => 'nullable|string|max:60',
             'bg_from'     => 'nullable|string|max:20',
             'bg_to'       => 'nullable|string|max:20',
@@ -783,8 +782,15 @@ class ClubAdminController extends Controller
         ]);
 
         $imagePath = null;
-        if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('perks/' . $club->slug, 'public');
+        if ($request->filled('image') && str_starts_with($request->image, 'data:image')) {
+            $imageData   = $request->image;
+            $imageParts  = explode(';base64,', $imageData);
+            $extension   = explode('image/', $imageParts[0])[1];
+            $imageBinary = base64_decode($imageParts[1]);
+            $folder      = $request->input('image_folder', 'perks/' . $club->slug);
+            $filename    = $request->input('image_filename', 'perk_' . time());
+            $imagePath   = $folder . '/' . $filename . '.' . $extension;
+            Storage::disk('public')->put($imagePath, $imageBinary);
         }
 
         ClubPerk::create([
@@ -814,7 +820,6 @@ class ClubAdminController extends Controller
             'title'       => 'required|string|max:255',
             'description' => 'nullable|string|max:255',
             'badge'       => 'required|string|max:50',
-            'image'       => 'nullable|image|max:5120',
             'icon'        => 'nullable|string|max:60',
             'bg_from'     => 'nullable|string|max:20',
             'bg_to'       => 'nullable|string|max:20',
@@ -829,13 +834,22 @@ class ClubAdminController extends Controller
             'perk_type', 'perk_value', 'status', 'sort_order',
         ]);
 
-        if ($request->hasFile('image')) {
+        // New image from cropper (base64)
+        if ($request->filled('image') && str_starts_with($request->image, 'data:image')) {
             if ($perk->image_path) {
                 Storage::disk('public')->delete($perk->image_path);
             }
-            $data['image_path'] = $request->file('image')->store('perks/' . $club->slug, 'public');
+            $imageData   = $request->image;
+            $imageParts  = explode(';base64,', $imageData);
+            $extension   = explode('image/', $imageParts[0])[1];
+            $imageBinary = base64_decode($imageParts[1]);
+            $folder      = $request->input('image_folder', 'perks/' . $club->slug);
+            $filename    = $request->input('image_filename', 'perk_' . time());
+            $data['image_path'] = $folder . '/' . $filename . '.' . $extension;
+            Storage::disk('public')->put($data['image_path'], $imageBinary);
         }
 
+        // Explicit removal of existing image
         if ($request->boolean('remove_image') && $perk->image_path) {
             Storage::disk('public')->delete($perk->image_path);
             $data['image_path'] = null;
