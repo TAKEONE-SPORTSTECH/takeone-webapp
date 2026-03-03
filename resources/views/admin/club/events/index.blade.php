@@ -236,27 +236,32 @@
 
 </div>
 
+@php
+$eventsJson = $events->map(function($e) {
+    return [
+        'id'           => $e->id,
+        'title'        => $e->title,
+        'date'         => $e->date->format('Y-m-d'),
+        'start_time'   => substr($e->start_time, 0, 5),
+        'end_time'     => $e->end_time ? substr($e->end_time, 0, 5) : '',
+        'location'     => $e->location,
+        'level'        => $e->level,
+        'description'  => $e->description,
+        'max_capacity' => $e->max_capacity,
+        'spots_taken'  => $e->spots_taken,
+        'ribbon_label' => $e->ribbon_label,
+        'ribbon_type'  => $e->ribbon_type,
+        'tags'         => $e->tags,
+        'tags_str'     => $e->tags ? implode(', ', $e->tags) : '',
+        'color'        => $e->color,
+        'cta_text'     => $e->cta_text,
+        'status'       => $e->status,
+    ];
+});
+@endphp
 @push('scripts')
 <script>
-const eventsData = @json($events->map(fn($e) => [
-    'id'           => $e->id,
-    'title'        => $e->title,
-    'date'         => $e->date->format('Y-m-d'),
-    'start_time'   => substr($e->start_time, 0, 5),
-    'end_time'     => $e->end_time ? substr($e->end_time, 0, 5) : '',
-    'location'     => $e->location,
-    'level'        => $e->level,
-    'description'  => $e->description,
-    'max_capacity' => $e->max_capacity,
-    'spots_taken'  => $e->spots_taken,
-    'ribbon_label' => $e->ribbon_label,
-    'ribbon_type'  => $e->ribbon_type,
-    'tags'         => $e->tags,
-    'tags_str'     => $e->tags ? implode(', ', $e->tags) : '',
-    'color'        => $e->color,
-    'cta_text'     => $e->cta_text,
-    'status'       => $e->status,
-]));
+const eventsData = @json($eventsJson);
 
 const baseUrl = '{{ route('admin.club.events.store', $club->slug) }}';
 
