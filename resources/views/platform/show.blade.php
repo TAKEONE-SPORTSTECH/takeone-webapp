@@ -144,6 +144,8 @@
             <div class="tab-pane fade show active" id="tab-overview">
 
                 {{-- Member Perks --}}
+                @php $activePerks = $club->perks->where('status', 'active'); @endphp
+                @if($activePerks->isNotEmpty())
                 <div class="mb-12">
                     <div class="flex justify-between items-end mb-4">
                         <div>
@@ -152,38 +154,35 @@
                         </div>
                     </div>
                     <div class="perks-grid grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <div class="perk-card">
-                            <span class="perk-badge">-20% OFF</span>
-                            <div class="w-full h-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-                                <i class="bi bi-cup-hot text-white text-5xl"></i>
-                            </div>
+                        @foreach($activePerks as $perk)
+                        <div class="perk-card"
+                             data-perk-id="{{ $perk->id }}"
+                             data-collect-url="{{ Auth::check() ? route('clubs.perks.collect', [$club->slug, $perk->id]) : '' }}"
+                             data-csrf="{{ csrf_token() }}"
+                             data-auth="{{ Auth::check() ? '1' : '0' }}"
+                             data-login-url="{{ route('login') }}"
+                             style="cursor:pointer;">
+                            <span class="perk-badge">{{ $perk->badge }}</span>
+                            @if($perk->image_path)
+                                <img src="{{ asset('storage/' . $perk->image_path) }}"
+                                     class="w-full h-full object-cover absolute inset-0" alt="{{ $perk->title }}">
+                            @else
+                                <div class="w-full h-full flex items-center justify-center"
+                                     style="background: linear-gradient(135deg, {{ $perk->bg_from }}, {{ $perk->bg_to }});">
+                                    <i class="bi {{ $perk->icon }} text-white text-5xl"></i>
+                                </div>
+                            @endif
                             <div class="perk-overlay">
-                                <h5 class="text-white font-bold mb-0">Partner Cafe</h5>
-                                <p class="text-white/50 text-sm mb-0">Post-workout nutrition & coffee</p>
+                                <h5 class="text-white font-bold mb-0">{{ $perk->title }}</h5>
+                                @if($perk->description)
+                                <p class="text-white/50 text-sm mb-0">{{ $perk->description }}</p>
+                                @endif
                             </div>
                         </div>
-                        <div class="perk-card">
-                            <span class="perk-badge">-15% OFF</span>
-                            <div class="w-full h-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center">
-                                <i class="bi bi-bandaid text-white text-5xl"></i>
-                            </div>
-                            <div class="perk-overlay">
-                                <h5 class="text-white font-bold mb-0">Physio Clinic</h5>
-                                <p class="text-white/50 text-sm mb-0">Recovery & Sports Massage</p>
-                            </div>
-                        </div>
-                        <div class="perk-card">
-                            <span class="perk-badge">+500 PTS</span>
-                            <div class="w-full h-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center">
-                                <i class="bi bi-check2-circle text-white text-5xl"></i>
-                            </div>
-                            <div class="perk-overlay">
-                                <h5 class="text-white font-bold mb-0">Daily Check-in</h5>
-                                <p class="text-white/50 text-sm mb-0">Earn points for every workout</p>
-                            </div>
-                        </div>
+                        @endforeach
                     </div>
                 </div>
+                @endif
 
                 <hr class="my-8 opacity-10">
 
@@ -1344,6 +1343,112 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function escapeHtml(str) {
         return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+});
+</script>
+
+{{-- Perk Collect Modal --}}
+<div id="perkModal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.6);"
+     class="flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm relative" style="padding:32px 28px 24px;">
+        <button id="perkModalClose"
+                style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:1.2rem;cursor:pointer;color:#94a3b8;">
+            <i class="bi bi-x-lg"></i>
+        </button>
+        <div id="perkModalContent" class="text-center"></div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+// ===== Perk Collect =====
+document.addEventListener('DOMContentLoaded', function () {
+    const modal      = document.getElementById('perkModal');
+    const modalClose = document.getElementById('perkModalClose');
+    const modalContent = document.getElementById('perkModalContent');
+
+    modalClose.addEventListener('click', () => { modal.style.display = 'none'; });
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) modal.style.display = 'none';
+    });
+
+    document.querySelectorAll('.perk-card[data-perk-id]').forEach(card => {
+        card.addEventListener('click', function () {
+            const isAuth    = this.dataset.auth === '1';
+            const loginUrl  = this.dataset.loginUrl;
+            const collectUrl= this.dataset.collectUrl;
+            const csrf      = this.dataset.csrf;
+
+            if (!isAuth) {
+                window.location.href = loginUrl;
+                return;
+            }
+
+            modalContent.innerHTML = '<div class="text-center py-6"><div class="spinner-border text-primary" role="status"></div><p class="mt-3 text-muted-foreground text-sm">Loading your perk...</p></div>';
+            modal.style.display = 'flex';
+
+            fetch(collectUrl, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success && data.members_only) {
+                    modalContent.innerHTML = `
+                        <div class="mb-4"><i class="bi bi-lock-fill text-4xl text-primary"></i></div>
+                        <h5 class="font-bold text-lg mb-2">Members Only</h5>
+                        <p class="text-muted-foreground text-sm">${data.message}</p>`;
+                    return;
+                }
+                if (!data.success) {
+                    modalContent.innerHTML = `<p class="text-red-500 text-sm">${data.message || 'Something went wrong.'}</p>`;
+                    return;
+                }
+
+                if (data.perk_type === 'code') {
+                    modalContent.innerHTML = `
+                        <div class="mb-4"><i class="bi bi-ticket-perforated-fill text-4xl text-primary"></i></div>
+                        <h5 class="font-bold text-lg mb-1">${escapeHtml(data.title)}</h5>
+                        <p class="text-muted-foreground text-sm mb-4">Show or copy this code at the partner.</p>
+                        <div class="flex items-center gap-2 bg-gray-50 border border-dashed border-gray-300 rounded-xl px-4 py-3 mb-3">
+                            <span id="perkCode" class="font-mono font-extrabold text-xl tracking-widest flex-1 text-center text-primary">${escapeHtml(data.perk_value)}</span>
+                            <button id="copyPerkCode" class="text-gray-400 hover:text-primary transition-colors" title="Copy">
+                                <i class="bi bi-copy"></i>
+                            </button>
+                        </div>
+                        <p id="copiedMsg" class="text-green-500 text-xs" style="display:none;">Copied to clipboard!</p>`;
+
+                    document.getElementById('copyPerkCode').addEventListener('click', () => {
+                        navigator.clipboard.writeText(data.perk_value).then(() => {
+                            document.getElementById('copiedMsg').style.display = 'block';
+                            setTimeout(() => { document.getElementById('copiedMsg').style.display = 'none'; }, 2000);
+                        });
+                    });
+
+                } else {
+                    // QR code
+                    modalContent.innerHTML = `
+                        <div class="mb-3"><i class="bi bi-qr-code-scan text-3xl text-primary"></i></div>
+                        <h5 class="font-bold text-lg mb-1">${escapeHtml(data.title)}</h5>
+                        <p class="text-muted-foreground text-sm mb-4">Show this QR code at the partner location.</p>
+                        <div id="perkQr" class="flex justify-center mb-2"></div>`;
+
+                    new QRCode(document.getElementById('perkQr'), {
+                        text:   data.perk_value,
+                        width:  180,
+                        height: 180,
+                        correctLevel: QRCode.CorrectLevel.M,
+                    });
+                }
+            })
+            .catch(() => {
+                modalContent.innerHTML = `<p class="text-red-500 text-sm">Something went wrong. Please try again.</p>`;
+            });
+        });
+    });
+
+    function escapeHtml(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 });
 </script>

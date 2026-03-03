@@ -92,6 +92,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/clubs/join', [PlatformController::class, 'joinClub'])->name('clubs.join');
     Route::post('/clubs/{slug}/events/{event}/join', [PlatformController::class, 'joinEvent'])->name('clubs.events.join');
     Route::delete('/clubs/{slug}/events/{event}/leave', [PlatformController::class, 'leaveEvent'])->name('clubs.events.leave');
+    Route::post('/clubs/{slug}/perks/{perk}/collect', [PlatformController::class, 'collectPerk'])->name('clubs.perks.collect');
     Route::post('/clubs/{slug}/timeline/{post}/like', [PlatformController::class, 'toggleLike'])->name('clubs.timeline.like');
     Route::post('/clubs/{slug}/timeline/{post}/comments', [PlatformController::class, 'addComment'])->name('clubs.timeline.comment');
     Route::delete('/clubs/{slug}/timeline/{post}/comments/{comment}', [PlatformController::class, 'deleteComment'])->name('clubs.timeline.comment.delete');
@@ -168,6 +169,10 @@ Route::middleware(['auth', 'verified'])->prefix('admin/club/{club}')->name('admi
     Route::post('/timeline', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeTimelinePost'])->name('timeline.store');
     Route::put('/timeline/{post}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateTimelinePost'])->name('timeline.update');
     Route::delete('/timeline/{post}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyTimelinePost'])->name('timeline.destroy');
+    Route::get('/perks', [App\Http\Controllers\Admin\ClubAdminController::class, 'perks'])->name('perks');
+    Route::post('/perks', [App\Http\Controllers\Admin\ClubAdminController::class, 'storePerk'])->name('perks.store');
+    Route::put('/perks/{perk}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updatePerk'])->name('perks.update');
+    Route::delete('/perks/{perk}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyPerk'])->name('perks.destroy');
     Route::post('/activities', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeActivity'])->name('activities.store');
     Route::put('/activities/{activity}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateActivity'])->name('activities.update');
     Route::delete('/activities/{activity}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyActivity'])->name('activities.destroy');

@@ -9,6 +9,7 @@ use App\Models\ClubInstructor;
 use App\Models\ClubActivity;
 use App\Models\ClubEvent;
 use App\Models\ClubTimelinePost;
+use App\Models\ClubPerk;
 use App\Models\ClubPackage;
 use App\Models\Membership;
 use App\Models\ClubGalleryImage;
@@ -747,6 +748,115 @@ class ClubAdminController extends Controller
         $post->delete();
 
         return response()->json(['success' => true, 'message' => 'Post deleted successfully.']);
+    }
+
+    /**
+     * Perks management
+     */
+    public function perks(Tenant $club)
+    {
+        $this->authorizeClub($club);
+        $perks = ClubPerk::where('tenant_id', $club->id)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        return view('admin.club.perks.index', compact('club', 'perks'));
+    }
+
+    public function storePerk(Request $request, Tenant $club)
+    {
+        $this->authorizeClub($club);
+
+        $request->validate([
+            'title'       => 'required|string|max:255',
+            'description' => 'nullable|string|max:255',
+            'badge'       => 'required|string|max:50',
+            'image'       => 'nullable|image|max:5120',
+            'icon'        => 'nullable|string|max:60',
+            'bg_from'     => 'nullable|string|max:20',
+            'bg_to'       => 'nullable|string|max:20',
+            'perk_type'   => 'required|in:code,qr',
+            'perk_value'  => 'nullable|string|max:1000',
+            'status'      => 'required|in:active,inactive',
+            'sort_order'  => 'nullable|integer|min:0',
+        ]);
+
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('perks/' . $club->slug, 'public');
+        }
+
+        ClubPerk::create([
+            'tenant_id'  => $club->id,
+            'title'      => $request->title,
+            'description'=> $request->description,
+            'badge'      => $request->badge,
+            'image_path' => $imagePath,
+            'icon'       => $request->icon ?: 'bi-gift',
+            'bg_from'    => $request->bg_from ?: '#f59e0b',
+            'bg_to'      => $request->bg_to   ?: '#f97316',
+            'perk_type'  => $request->perk_type,
+            'perk_value' => $request->perk_value,
+            'status'     => $request->status,
+            'sort_order' => $request->sort_order ?? 0,
+        ]);
+
+        return back()->with('success', 'Perk created successfully.');
+    }
+
+    public function updatePerk(Request $request, Tenant $club, ClubPerk $perk)
+    {
+        $this->authorizeClub($club);
+        abort_if($perk->tenant_id !== $club->id, 403);
+
+        $request->validate([
+            'title'       => 'required|string|max:255',
+            'description' => 'nullable|string|max:255',
+            'badge'       => 'required|string|max:50',
+            'image'       => 'nullable|image|max:5120',
+            'icon'        => 'nullable|string|max:60',
+            'bg_from'     => 'nullable|string|max:20',
+            'bg_to'       => 'nullable|string|max:20',
+            'perk_type'   => 'required|in:code,qr',
+            'perk_value'  => 'nullable|string|max:1000',
+            'status'      => 'required|in:active,inactive',
+            'sort_order'  => 'nullable|integer|min:0',
+        ]);
+
+        $data = $request->only([
+            'title', 'description', 'badge', 'icon', 'bg_from', 'bg_to',
+            'perk_type', 'perk_value', 'status', 'sort_order',
+        ]);
+
+        if ($request->hasFile('image')) {
+            if ($perk->image_path) {
+                Storage::disk('public')->delete($perk->image_path);
+            }
+            $data['image_path'] = $request->file('image')->store('perks/' . $club->slug, 'public');
+        }
+
+        if ($request->boolean('remove_image') && $perk->image_path) {
+            Storage::disk('public')->delete($perk->image_path);
+            $data['image_path'] = null;
+        }
+
+        $perk->update($data);
+
+        return back()->with('success', 'Perk updated successfully.');
+    }
+
+    public function destroyPerk(Tenant $club, ClubPerk $perk)
+    {
+        $this->authorizeClub($club);
+        abort_if($perk->tenant_id !== $club->id, 403);
+
+        if ($perk->image_path) {
+            Storage::disk('public')->delete($perk->image_path);
+        }
+        $perk->delete();
+
+        return response()->json(['success' => true, 'message' => 'Perk deleted successfully.']);
     }
 
     /**

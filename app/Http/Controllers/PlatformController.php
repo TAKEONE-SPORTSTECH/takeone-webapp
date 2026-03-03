@@ -10,6 +10,7 @@ use App\Models\ClubEventRegistration;
 use App\Models\ClubTimelinePost;
 use App\Models\ClubTimelinePostLike;
 use App\Models\ClubTimelinePostComment;
+use App\Models\ClubPerk;
 use App\Models\UserRelationship;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -193,6 +194,7 @@ class PlatformController extends Controller
             'events',
             'timelinePosts.likes',
             'timelinePosts.comments.user',
+            'perks',
         ])->where('slug', $slug)->firstOrFail();
 
         // Calculate active members count
@@ -508,6 +510,35 @@ class PlatformController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Registration submitted successfully!',
+        ]);
+    }
+
+    /**
+     * Collect a member exclusive perk (active members only).
+     */
+    public function collectPerk(Request $request, string $slug, ClubPerk $perk)
+    {
+        $user = Auth::user();
+
+        // Check the user has an active subscription to this club
+        $isActiveMember = ClubMemberSubscription::where('user_id', $user->id)
+            ->where('tenant_id', $perk->tenant_id)
+            ->where('status', 'active')
+            ->exists();
+
+        if (!$isActiveMember) {
+            return response()->json([
+                'success' => false,
+                'members_only' => true,
+                'message' => 'This perk is exclusive to active members.',
+            ], 403);
+        }
+
+        return response()->json([
+            'success'    => true,
+            'perk_type'  => $perk->perk_type,
+            'perk_value' => $perk->perk_value,
+            'title'      => $perk->title,
         ]);
     }
 

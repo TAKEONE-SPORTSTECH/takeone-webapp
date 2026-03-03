@@ -201,6 +201,14 @@ class Tenant extends Model
     }
 
     /**
+     * Get the exclusive perks for the club.
+     */
+    public function perks(): HasMany
+    {
+        return $this->hasMany(ClubPerk::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    /**
      * Get approved reviews for the club.
      */
     public function approvedReviews(): HasMany
