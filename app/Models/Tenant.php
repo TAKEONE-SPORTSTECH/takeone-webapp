@@ -193,6 +193,14 @@ class Tenant extends Model
     }
 
     /**
+     * Get the timeline posts for the club.
+     */
+    public function timelinePosts(): HasMany
+    {
+        return $this->hasMany(ClubTimelinePost::class)->orderBy('posted_at', 'desc');
+    }
+
+    /**
      * Get approved reviews for the club.
      */
     public function approvedReviews(): HasMany

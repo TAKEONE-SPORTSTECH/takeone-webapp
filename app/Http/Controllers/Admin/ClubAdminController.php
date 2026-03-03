@@ -8,6 +8,7 @@ use App\Models\ClubFacility;
 use App\Models\ClubInstructor;
 use App\Models\ClubActivity;
 use App\Models\ClubEvent;
+use App\Models\ClubTimelinePost;
 use App\Models\ClubPackage;
 use App\Models\Membership;
 use App\Models\ClubGalleryImage;
@@ -657,6 +658,95 @@ class ClubAdminController extends Controller
         $event->delete();
 
         return response()->json(['success' => true, 'message' => 'Event deleted successfully.']);
+    }
+
+    /**
+     * Timeline management
+     */
+    public function timeline(Tenant $club)
+    {
+        $this->authorizeClub($club);
+        $posts = ClubTimelinePost::where('tenant_id', $club->id)
+            ->withCount(['likes', 'comments'])
+            ->orderBy('posted_at', 'desc')
+            ->get();
+
+        return view('admin.club.timeline.index', compact('club', 'posts'));
+    }
+
+    public function storeTimelinePost(Request $request, Tenant $club)
+    {
+        $this->authorizeClub($club);
+
+        $request->validate([
+            'body'      => 'required|string',
+            'category'  => 'required|string|max:100',
+            'image'     => 'nullable|image|max:5120',
+            'posted_at' => 'required|date',
+            'status'    => 'required|in:published,draft',
+        ]);
+
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('timeline/' . $club->slug, 'public');
+        }
+
+        ClubTimelinePost::create([
+            'tenant_id' => $club->id,
+            'body'      => $request->body,
+            'category'  => $request->category,
+            'image_path'=> $imagePath,
+            'posted_at' => $request->posted_at,
+            'status'    => $request->status,
+        ]);
+
+        return back()->with('success', 'Post created successfully.');
+    }
+
+    public function updateTimelinePost(Request $request, Tenant $club, ClubTimelinePost $post)
+    {
+        $this->authorizeClub($club);
+        abort_if($post->tenant_id !== $club->id, 403);
+
+        $request->validate([
+            'body'      => 'required|string',
+            'category'  => 'required|string|max:100',
+            'image'     => 'nullable|image|max:5120',
+            'posted_at' => 'required|date',
+            'status'    => 'required|in:published,draft',
+        ]);
+
+        $data = $request->only(['body', 'category', 'posted_at', 'status']);
+
+        if ($request->hasFile('image')) {
+            // Delete old image
+            if ($post->image_path) {
+                Storage::disk('public')->delete($post->image_path);
+            }
+            $data['image_path'] = $request->file('image')->store('timeline/' . $club->slug, 'public');
+        }
+
+        if ($request->boolean('remove_image') && $post->image_path) {
+            Storage::disk('public')->delete($post->image_path);
+            $data['image_path'] = null;
+        }
+
+        $post->update($data);
+
+        return back()->with('success', 'Post updated successfully.');
+    }
+
+    public function destroyTimelinePost(Tenant $club, ClubTimelinePost $post)
+    {
+        $this->authorizeClub($club);
+        abort_if($post->tenant_id !== $club->id, 403);
+
+        if ($post->image_path) {
+            Storage::disk('public')->delete($post->image_path);
+        }
+        $post->delete();
+
+        return response()->json(['success' => true, 'message' => 'Post deleted successfully.']);
     }
 
     /**

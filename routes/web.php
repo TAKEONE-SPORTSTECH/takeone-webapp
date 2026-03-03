@@ -92,6 +92,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/clubs/join', [PlatformController::class, 'joinClub'])->name('clubs.join');
     Route::post('/clubs/{slug}/events/{event}/join', [PlatformController::class, 'joinEvent'])->name('clubs.events.join');
     Route::delete('/clubs/{slug}/events/{event}/leave', [PlatformController::class, 'leaveEvent'])->name('clubs.events.leave');
+    Route::post('/clubs/{slug}/timeline/{post}/like', [PlatformController::class, 'toggleLike'])->name('clubs.timeline.like');
+    Route::post('/clubs/{slug}/timeline/{post}/comments', [PlatformController::class, 'addComment'])->name('clubs.timeline.comment');
+    Route::delete('/clubs/{slug}/timeline/{post}/comments/{comment}', [PlatformController::class, 'deleteComment'])->name('clubs.timeline.comment.delete');
     Route::get('/trainer/{user}', [TrainerController::class, 'show'])->name('trainer.show');
 });
 
@@ -161,6 +164,10 @@ Route::middleware(['auth', 'verified'])->prefix('admin/club/{club}')->name('admi
     Route::post('/events', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeEvent'])->name('events.store');
     Route::put('/events/{event}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateEvent'])->name('events.update');
     Route::delete('/events/{event}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyEvent'])->name('events.destroy');
+    Route::get('/timeline', [App\Http\Controllers\Admin\ClubAdminController::class, 'timeline'])->name('timeline');
+    Route::post('/timeline', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeTimelinePost'])->name('timeline.store');
+    Route::put('/timeline/{post}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateTimelinePost'])->name('timeline.update');
+    Route::delete('/timeline/{post}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyTimelinePost'])->name('timeline.destroy');
     Route::post('/activities', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeActivity'])->name('activities.store');
     Route::put('/activities/{activity}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateActivity'])->name('activities.update');
     Route::delete('/activities/{activity}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyActivity'])->name('activities.destroy');

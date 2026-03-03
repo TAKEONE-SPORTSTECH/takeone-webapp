@@ -865,134 +865,136 @@
                     </div>
                 </div>
 
-                <div class="news-timeline">
-                    <div class="timeline-date"><span>{{ now()->format('d M Y') }}</span></div>
+                @php
+                    $publishedPosts = $club->timelinePosts->where('status', 'published');
+                    $groupedPosts   = $publishedPosts->groupBy(fn($p) => $p->posted_at?->format('d M Y') ?? 'Undated');
+                @endphp
 
-                    {{-- Post 1 --}}
-                    <article class="news-card">
-                        <span class="news-dot"></span>
-                        <div class="news-header flex items-center gap-3">
-                            @if($club->logo)
-                            <img class="news-avatar" src="{{ asset('storage/' . $club->logo) }}" alt="{{ $club->club_name }}">
-                            @else
-                            <div class="w-[42px] h-[42px] rounded-full bg-primary text-white flex items-center justify-center font-bold">
-                                {{ strtoupper(substr($club->club_name, 0, 1)) }}
-                            </div>
-                            @endif
-                            <div>
-                                <h6 class="mb-0 font-bold text-sm">{{ $club->club_name }}</h6>
-                                <small class="text-muted-foreground">Just now &middot; {{ $club->address ?? 'Announcement' }}</small>
-                            </div>
-                        </div>
-                        <div class="news-content">
-                            @if($club->galleryImages->count() > 0)
-                            <img class="news-img" src="{{ asset('storage/' . $club->galleryImages->first()->image_path) }}" alt="Club photo">
-                            @endif
-                            <p class="mb-2 text-sm">
-                                What a season! Our team brought home incredible results. Proud of every athlete who stepped up and represented {{ $club->club_name }}.
-                            </p>
-                            <div class="news-actions">
-                                <a href="#" class="news-action"><i class="bi bi-heart"></i> 142</a>
-                                <a href="#" class="news-action"><i class="bi bi-chat"></i> 18</a>
-                                <a href="#" class="news-action"><i class="bi bi-share"></i> Share</a>
-                            </div>
-                        </div>
-                    </article>
-
-                    {{-- Post 2 --}}
-                    <article class="news-card">
-                        <span class="news-dot"></span>
-                        <div class="news-header flex items-center gap-3">
-                            @if($club->logo)
-                            <img class="news-avatar" src="{{ asset('storage/' . $club->logo) }}" alt="{{ $club->club_name }}">
-                            @else
-                            <div class="w-[42px] h-[42px] rounded-full bg-primary text-white flex items-center justify-center font-bold">
-                                {{ strtoupper(substr($club->club_name, 0, 1)) }}
-                            </div>
-                            @endif
-                            <div>
-                                <h6 class="mb-0 font-bold text-sm">{{ $club->club_name }}</h6>
-                                <small class="text-muted-foreground">1 hour ago &middot; Announcement</small>
-                            </div>
-                        </div>
-                        <div class="news-content">
-                            @if($club->galleryImages->count() > 1)
-                            <img class="news-img" src="{{ asset('storage/' . $club->galleryImages->skip(1)->first()->image_path) }}" alt="Club photo">
-                            @endif
-                            <p class="mb-2 text-sm">
-                                New beginners class launching next week. Build confidence, discipline, and quality time. Perfect for newcomers of all ages!
-                            </p>
-                            <div class="news-actions">
-                                <a href="#" class="news-action"><i class="bi bi-heart"></i> 96</a>
-                                <a href="#" class="news-action"><i class="bi bi-chat"></i> 12</a>
-                                <a href="#" class="news-action"><i class="bi bi-share"></i> Share</a>
-                            </div>
-                        </div>
-                    </article>
-
-                    <div class="timeline-date"><span>{{ now()->subDay()->format('d M Y') }}</span></div>
-
-                    {{-- Post 3 --}}
-                    <article class="news-card">
-                        <span class="news-dot"></span>
-                        <div class="news-header flex items-center gap-3">
-                            @if($club->logo)
-                            <img class="news-avatar" src="{{ asset('storage/' . $club->logo) }}" alt="{{ $club->club_name }}">
-                            @else
-                            <div class="w-[42px] h-[42px] rounded-full bg-primary text-white flex items-center justify-center font-bold">
-                                {{ strtoupper(substr($club->club_name, 0, 1)) }}
-                            </div>
-                            @endif
-                            <div>
-                                <h6 class="mb-0 font-bold text-sm">{{ $club->club_name }}</h6>
-                                <small class="text-muted-foreground">Yesterday &middot; Highlight</small>
-                            </div>
-                        </div>
-                        <div class="news-content">
-                            @if($club->galleryImages->count() > 2)
-                            <img class="news-img" src="{{ asset('storage/' . $club->galleryImages->skip(2)->first()->image_path) }}" alt="Club photo">
-                            @endif
-                            <p class="mb-2 text-sm">
-                                Congratulations to our newest members who passed their assessments with distinction. Years of hard work paying off!
-                            </p>
-                            <div class="news-actions">
-                                <a href="#" class="news-action"><i class="bi bi-heart"></i> 210</a>
-                                <a href="#" class="news-action"><i class="bi bi-chat"></i> 34</a>
-                                <a href="#" class="news-action"><i class="bi bi-share"></i> Share</a>
-                            </div>
-                        </div>
-                    </article>
-
-                    <div class="timeline-date"><span>{{ now()->subDays(2)->format('d M Y') }}</span></div>
-
-                    {{-- Post 4 --}}
-                    <article class="news-card">
-                        <span class="news-dot"></span>
-                        <div class="news-header flex items-center gap-3">
-                            @if($club->logo)
-                            <img class="news-avatar" src="{{ asset('storage/' . $club->logo) }}" alt="{{ $club->club_name }}">
-                            @else
-                            <div class="w-[42px] h-[42px] rounded-full bg-primary text-white flex items-center justify-center font-bold">
-                                {{ strtoupper(substr($club->club_name, 0, 1)) }}
-                            </div>
-                            @endif
-                            <div>
-                                <h6 class="mb-0 font-bold text-sm">{{ $club->club_name }}</h6>
-                                <small class="text-muted-foreground">2 days ago &middot; Community</small>
-                            </div>
-                        </div>
-                        <div class="news-content">
-                            <p class="mb-2 text-sm">
-                                Reminder: Monthly grading is coming up. Please confirm your attendance with reception and ensure you've completed your attendance requirements.
-                            </p>
-                            <div class="news-actions">
-                                <a href="#" class="news-action"><i class="bi bi-heart"></i> 52</a>
-                                <a href="#" class="news-action"><i class="bi bi-chat"></i> 5</a>
-                                <a href="#" class="news-action"><i class="bi bi-share"></i> Share</a>
-                            </div>
-                        </div>
-                    </article>
+                @if($publishedPosts->isEmpty())
+                <div class="text-center py-16 text-muted-foreground">
+                    <i class="bi bi-newspaper" style="font-size:2.5rem;opacity:.3;"></i>
+                    <p class="mt-3">No posts yet. Check back soon!</p>
                 </div>
+                @else
+                <div class="news-timeline">
+                    @foreach($groupedPosts as $dateLabel => $datePosts)
+                    <div class="timeline-date"><span>{{ $dateLabel }}</span></div>
+
+                    @foreach($datePosts as $post)
+                    @php
+                        $isLiked     = in_array($post->id, $likedPostIds ?? []);
+                        $likeCount   = $post->likes->count();
+                        $commentCount= $post->comments->count();
+                        $likeUrl     = Auth::check() ? route('clubs.timeline.like',    [$club->slug, $post->id]) : null;
+                        $commentUrl  = Auth::check() ? route('clubs.timeline.comment', [$club->slug, $post->id]) : null;
+                    @endphp
+                    <article class="news-card" id="post-{{ $post->id }}">
+                        <span class="news-dot"></span>
+                        <div class="news-header flex items-center gap-3">
+                            @if($club->logo)
+                            <img class="news-avatar" src="{{ asset('storage/' . $club->logo) }}" alt="{{ $club->club_name }}">
+                            @else
+                            <div class="w-[42px] h-[42px] rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">
+                                {{ strtoupper(substr($club->club_name, 0, 1)) }}
+                            </div>
+                            @endif
+                            <div>
+                                <h6 class="mb-0 font-bold text-sm">{{ $club->club_name }}</h6>
+                                <small class="text-muted-foreground">{{ $post->posted_at?->diffForHumans() }} &middot; {{ $post->category }}</small>
+                            </div>
+                        </div>
+                        <div class="news-content">
+                            @if($post->image_path)
+                            <img class="news-img" src="{{ asset('storage/' . $post->image_path) }}" alt="Post image">
+                            @endif
+                            <p class="mb-2 text-sm">{{ $post->body }}</p>
+                            <div class="news-actions">
+                                {{-- Like --}}
+                                @auth
+                                <button class="news-action like-btn {{ $isLiked ? 'liked' : '' }}"
+                                        data-post-id="{{ $post->id }}"
+                                        data-url="{{ $likeUrl }}"
+                                        data-csrf="{{ csrf_token() }}">
+                                    <i class="bi {{ $isLiked ? 'bi-heart-fill' : 'bi-heart' }}"></i>
+                                    <span class="like-count">{{ $likeCount }}</span>
+                                </button>
+                                @else
+                                <a href="{{ route('login') }}" class="news-action">
+                                    <i class="bi bi-heart"></i> {{ $likeCount }}
+                                </a>
+                                @endauth
+
+                                {{-- Comment --}}
+                                @auth
+                                <button class="news-action comment-toggle-btn"
+                                        data-post-id="{{ $post->id }}">
+                                    <i class="bi bi-chat"></i>
+                                    <span class="comment-count-{{ $post->id }}">{{ $commentCount }}</span>
+                                </button>
+                                @else
+                                <a href="{{ route('login') }}" class="news-action">
+                                    <i class="bi bi-chat"></i> {{ $commentCount }}
+                                </a>
+                                @endauth
+
+                                {{-- Share --}}
+                                <button class="news-action share-btn"
+                                        data-url="{{ route('clubs.show', $club->slug) }}">
+                                    <i class="bi bi-share"></i> Share
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Comments section (collapsed by default) --}}
+                        @auth
+                        <div class="comments-section" id="comments-{{ $post->id }}" style="display:none;">
+                            <div class="comments-list" id="comments-list-{{ $post->id }}">
+                                @foreach($post->comments as $comment)
+                                <div class="comment-item" id="comment-{{ $comment->id }}">
+                                    <div class="comment-avatar">
+                                        @if($comment->user->profile_picture)
+                                        <img src="{{ asset('storage/' . $comment->user->profile_picture) }}" alt="">
+                                        @else
+                                        <div class="comment-avatar-placeholder">{{ strtoupper(substr($comment->user->full_name ?? $comment->user->name, 0, 1)) }}</div>
+                                        @endif
+                                    </div>
+                                    <div class="comment-body">
+                                        <span class="comment-author">{{ $comment->user->full_name ?? $comment->user->name }}</span>
+                                        <span class="comment-text">{{ $comment->body }}</span>
+                                        <div class="comment-meta">
+                                            {{ $comment->created_at->diffForHumans() }}
+                                            @if($comment->user_id === Auth::id())
+                                            &middot; <button class="comment-delete-btn text-red-400"
+                                                            data-comment-id="{{ $comment->id }}"
+                                                            data-url="{{ route('clubs.timeline.comment.delete', [$club->slug, $post->id, $comment->id]) }}"
+                                                            data-csrf="{{ csrf_token() }}">Delete</button>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
+                            <div class="comment-input-row">
+                                <div class="comment-avatar">
+                                    @if(Auth::user()->profile_picture)
+                                    <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}" alt="">
+                                    @else
+                                    <div class="comment-avatar-placeholder">{{ strtoupper(substr(Auth::user()->full_name ?? Auth::user()->name, 0, 1)) }}</div>
+                                    @endif
+                                </div>
+                                <form class="comment-form flex-1" data-post-id="{{ $post->id }}"
+                                      data-url="{{ $commentUrl }}" data-csrf="{{ csrf_token() }}">
+                                    <input type="text" class="comment-input" placeholder="Write a comment…" required>
+                                    <button type="submit" class="comment-submit"><i class="bi bi-send-fill"></i></button>
+                                </form>
+                            </div>
+                        </div>
+                        @endauth
+                    </article>
+                    @endforeach
+                    @endforeach
+                </div>
+                @endif
             </div>
 
         </div>
@@ -1194,6 +1196,154 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
+    }
+});
+</script>
+
+<script>
+// ===== Timeline: Like, Comment, Share =====
+document.addEventListener('DOMContentLoaded', function () {
+
+    // --- LIKE ---
+    document.querySelectorAll('.like-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const url   = this.dataset.url;
+            const csrf  = this.dataset.csrf;
+            const icon  = this.querySelector('i');
+            const count = this.querySelector('.like-count');
+            if (!url) return;
+
+            fetch(url, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+            })
+            .then(r => r.json())
+            .then(data => {
+                count.textContent = data.count;
+                if (data.liked) {
+                    btn.classList.add('liked');
+                    icon.className = 'bi bi-heart-fill';
+                } else {
+                    btn.classList.remove('liked');
+                    icon.className = 'bi bi-heart';
+                }
+            });
+        });
+    });
+
+    // --- COMMENT TOGGLE ---
+    document.querySelectorAll('.comment-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const postId  = this.dataset.postId;
+            const section = document.getElementById('comments-' + postId);
+            if (!section) return;
+            section.style.display = section.style.display === 'none' ? 'block' : 'none';
+            if (section.style.display === 'block') {
+                section.querySelector('.comment-input')?.focus();
+            }
+        });
+    });
+
+    // --- COMMENT SUBMIT ---
+    document.querySelectorAll('.comment-form').forEach(form => {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const url    = this.dataset.url;
+            const csrf   = this.dataset.csrf;
+            const postId = this.dataset.postId;
+            const input  = this.querySelector('.comment-input');
+            const body   = input.value.trim();
+            if (!body) return;
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrf,
+                    'Accept':       'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ body }),
+            })
+            .then(r => r.json())
+            .then(data => {
+                input.value = '';
+                // Render new comment
+                const list = document.getElementById('comments-list-' + postId);
+                const html = buildCommentHtml(data);
+                list.insertAdjacentHTML('beforeend', html);
+                // Update count
+                const countEl = document.querySelector('.comment-count-' + postId);
+                if (countEl) countEl.textContent = parseInt(countEl.textContent) + 1;
+                // Bind delete on new comment
+                bindDeleteBtn(list.lastElementChild.querySelector('.comment-delete-btn'));
+            });
+        });
+    });
+
+    function buildCommentHtml(c) {
+        const avatar = c.avatar
+            ? `<img src="${c.avatar}" alt="">`
+            : `<div class="comment-avatar-placeholder">${(c.user_name || '?')[0].toUpperCase()}</div>`;
+        const deleteBtn = c.is_owner
+            ? `&middot; <button class="comment-delete-btn text-red-400" data-comment-id="${c.id}" data-url="${c.delete_url}" data-csrf="{{ csrf_token() }}">Delete</button>`
+            : '';
+        return `
+        <div class="comment-item" id="comment-${c.id}">
+            <div class="comment-avatar">${avatar}</div>
+            <div class="comment-body">
+                <span class="comment-author">${c.user_name}</span>
+                <span class="comment-text">${escapeHtml(c.body)}</span>
+                <div class="comment-meta">${c.time_ago} ${deleteBtn}</div>
+            </div>
+        </div>`;
+    }
+
+    // --- COMMENT DELETE ---
+    document.querySelectorAll('.comment-delete-btn').forEach(btn => bindDeleteBtn(btn));
+
+    function bindDeleteBtn(btn) {
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+            const url       = this.dataset.url;
+            const csrf      = this.dataset.csrf;
+            const commentEl = document.getElementById('comment-' + this.dataset.commentId);
+            const postId    = commentEl?.closest('.news-card')?.id?.replace('post-', '');
+
+            fetch(url, {
+                method: 'DELETE',
+                headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    commentEl?.remove();
+                    if (postId) {
+                        const countEl = document.querySelector('.comment-count-' + postId);
+                        if (countEl) countEl.textContent = Math.max(0, parseInt(countEl.textContent) - 1);
+                    }
+                }
+            });
+        });
+    }
+
+    // --- SHARE ---
+    document.querySelectorAll('.share-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const url = this.dataset.url;
+            if (navigator.share) {
+                navigator.share({ url });
+            } else {
+                navigator.clipboard.writeText(url).then(() => {
+                    const orig = this.innerHTML;
+                    this.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+                    setTimeout(() => { this.innerHTML = orig; }, 2000);
+                });
+            }
+        });
+    });
+
+    function escapeHtml(str) {
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 });
 </script>

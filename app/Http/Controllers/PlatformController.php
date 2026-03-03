@@ -7,6 +7,9 @@ use App\Models\ClubPackage;
 use App\Models\ClubMemberSubscription;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
+use App\Models\ClubTimelinePost;
+use App\Models\ClubTimelinePostLike;
+use App\Models\ClubTimelinePostComment;
 use App\Models\UserRelationship;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -188,6 +191,8 @@ class PlatformController extends Controller
             'socialLinks',
             'memberships',
             'events',
+            'timelinePosts.likes',
+            'timelinePosts.comments.user',
         ])->where('slug', $slug)->firstOrFail();
 
         // Calculate active members count
@@ -304,11 +309,19 @@ class PlatformController extends Controller
 
         // IDs of events this user has joined in this club (empty set for guests)
         $joinedEventIds = [];
+        // IDs of timeline posts this user has liked in this club
+        $likedPostIds = [];
         if (Auth::check()) {
             $eventIds = $club->events->pluck('id');
             $joinedEventIds = ClubEventRegistration::where('user_id', Auth::id())
                 ->whereIn('event_id', $eventIds)
                 ->pluck('event_id')
+                ->toArray();
+
+            $postIds = $club->timelinePosts->pluck('id');
+            $likedPostIds = ClubTimelinePostLike::where('user_id', Auth::id())
+                ->whereIn('post_id', $postIds)
+                ->pluck('post_id')
                 ->toArray();
         }
 
@@ -316,7 +329,7 @@ class PlatformController extends Controller
             'club', 'activeMembersCount', 'reviews', 'averageRating',
             'nationalityStats', 'ageGroups', 'genderStats', 'horoscopeGroups',
             'bloodTypeStats', 'monthlyTrend', 'totalMembers', 'accessStat', 'distinctClassCount',
-            'goalStats', 'joinedEventIds'
+            'goalStats', 'joinedEventIds', 'likedPostIds'
         ));
     }
 
@@ -496,6 +509,67 @@ class PlatformController extends Controller
             'success' => true,
             'message' => 'Registration submitted successfully!',
         ]);
+    }
+
+    /**
+     * Toggle like on a timeline post.
+     */
+    public function toggleLike(Request $request, string $slug, ClubTimelinePost $post)
+    {
+        $userId = Auth::id();
+        $existing = ClubTimelinePostLike::where('post_id', $post->id)->where('user_id', $userId)->first();
+
+        if ($existing) {
+            $existing->delete();
+            $liked = false;
+        } else {
+            ClubTimelinePostLike::create(['post_id' => $post->id, 'user_id' => $userId]);
+            $liked = true;
+        }
+
+        return response()->json([
+            'liked' => $liked,
+            'count' => ClubTimelinePostLike::where('post_id', $post->id)->count(),
+        ]);
+    }
+
+    /**
+     * Add a comment to a timeline post.
+     */
+    public function addComment(Request $request, string $slug, ClubTimelinePost $post)
+    {
+        $request->validate(['body' => 'required|string|max:1000']);
+
+        $comment = ClubTimelinePostComment::create([
+            'post_id' => $post->id,
+            'user_id' => Auth::id(),
+            'body'    => $request->body,
+        ]);
+
+        $comment->load('user');
+
+        return response()->json([
+            'id'         => $comment->id,
+            'body'       => $comment->body,
+            'user_name'  => $comment->user->full_name ?? $comment->user->name,
+            'avatar'     => $comment->user->profile_picture
+                                ? asset('storage/' . $comment->user->profile_picture)
+                                : null,
+            'time_ago'   => $comment->created_at->diffForHumans(),
+            'is_owner'   => true,
+            'delete_url' => route('clubs.timeline.comment.delete', [$slug, $post->id, $comment->id]),
+        ]);
+    }
+
+    /**
+     * Delete own comment from a timeline post.
+     */
+    public function deleteComment(Request $request, string $slug, ClubTimelinePost $post, ClubTimelinePostComment $comment)
+    {
+        abort_if($comment->user_id !== Auth::id(), 403);
+        $comment->delete();
+
+        return response()->json(['success' => true]);
     }
 
     /**

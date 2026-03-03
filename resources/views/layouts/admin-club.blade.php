@@ -135,6 +135,15 @@
                 <span>Events</span>
             </a>
 
+            <a href="{{ route('admin.club.timeline', $clubId) }}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
+                      {{ $currentRoute === 'admin.club.timeline'
+                         ? 'bg-primary text-white shadow-lg'
+                         : 'text-foreground hover:bg-muted' }}">
+                <i class="bi bi-newspaper w-5"></i>
+                <span>Timeline</span>
+            </a>
+
             <a href="{{ route('admin.club.packages', $clubId) }}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
                       {{ $currentRoute === 'admin.club.packages'
