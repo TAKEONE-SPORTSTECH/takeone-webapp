@@ -195,6 +195,7 @@ class PlatformController extends Controller
             'timelinePosts.likes',
             'timelinePosts.comments.user',
             'perks',
+            'achievements',
         ])->where('slug', $slug)->firstOrFail();
 
         // Calculate active members count
@@ -327,11 +328,16 @@ class PlatformController extends Controller
                 ->toArray();
         }
 
+        $achievements = $club->achievements
+            ->where('status', 'active')
+            ->take(3)
+            ->values();
+
         return view('platform.show', compact(
             'club', 'activeMembersCount', 'reviews', 'averageRating',
             'nationalityStats', 'ageGroups', 'genderStats', 'horoscopeGroups',
             'bloodTypeStats', 'monthlyTrend', 'totalMembers', 'accessStat', 'distinctClassCount',
-            'goalStats', 'joinedEventIds', 'likedPostIds'
+            'goalStats', 'joinedEventIds', 'likedPostIds', 'achievements'
         ));
     }
 

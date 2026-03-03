@@ -3,17 +3,17 @@
         <div class="md:col-span-2">
             <label class="form-label">Title <span class="text-red-500">*</span></label>
             <input type="text" name="title" class="form-control" required
-                   placeholder="e.g. Partner Cafe" x-model="formData.title">
+                   placeholder="e.g. Club of the Year" x-model="formData.title">
         </div>
         <div class="md:col-span-2">
             <label class="form-label">Description</label>
             <input type="text" name="description" class="form-control"
-                   placeholder="e.g. Post-workout nutrition & coffee" x-model="formData.description">
+                   placeholder="e.g. Awarded for overall performance and growth." x-model="formData.description">
         </div>
         <div>
-            <label class="form-label">Badge Text <span class="text-red-500">*</span></label>
-            <input type="text" name="badge" class="form-control" required
-                   placeholder="e.g. -20% OFF, +500 PTS, FREE ITEM" x-model="formData.badge">
+            <label class="form-label">Tag Text <span class="text-red-500">*</span></label>
+            <input type="text" name="tag" class="form-control" required
+                   placeholder="e.g. Club Award, Tournament Medals" x-model="formData.tag">
         </div>
         <div>
             <label class="form-label">Status</label>
@@ -28,15 +28,50 @@
                    placeholder="0" x-model="formData.sort_order">
         </div>
         <div>
-            <label class="form-label">Icon Class <span class="text-xs text-muted-foreground">(Bootstrap Icons)</span></label>
-            <input type="text" name="icon" class="form-control"
-                   placeholder="bi-cup-hot" x-model="formData.icon">
+            <label class="form-label">Tag Icon</label>
+            <input type="hidden" name="tag_icon" :value="formData.tag_icon">
+            <div class="relative">
+                {{-- Trigger button --}}
+                <button type="button"
+                        @click="showIconPicker = !showIconPicker"
+                        class="form-control flex items-center gap-2 cursor-pointer text-left w-full">
+                    <i :class="'bi ' + formData.tag_icon" class="text-lg flex-shrink-0"></i>
+                    <span class="flex-1 truncate text-sm"
+                          x-text="icons.find(i => i.value === formData.tag_icon)?.label ?? formData.tag_icon"></span>
+                    <i class="bi bi-chevron-down text-xs text-muted-foreground flex-shrink-0"
+                       :class="showIconPicker ? 'rotate-180' : ''"
+                       style="transition:transform .15s;"></i>
+                </button>
+
+                {{-- Dropdown grid --}}
+                <div x-show="showIconPicker"
+                     x-cloak
+                     @click.outside="showIconPicker = false"
+                     class="absolute left-0 right-0 z-50 mt-1 bg-white border border-border rounded-xl shadow-lg p-3"
+                     style="max-height:260px;overflow-y:auto;">
+                    <div class="grid grid-cols-5 gap-1">
+                        <template x-for="icon in icons" :key="icon.value">
+                            <button type="button"
+                                    @click="formData.tag_icon = icon.value; showIconPicker = false"
+                                    :class="formData.tag_icon === icon.value
+                                        ? 'bg-primary text-white'
+                                        : 'text-foreground hover:bg-muted'"
+                                    class="flex flex-col items-center gap-1 p-2 rounded-lg transition-colors"
+                                    :title="icon.label">
+                                <i :class="'bi ' + icon.value" class="text-xl leading-none"></i>
+                                <span class="text-xs leading-tight truncate w-full text-center"
+                                      x-text="icon.label"></span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <hr class="border-border">
 
-    {{-- Background --}}
+    {{-- Card Background --}}
     <div>
         <label class="form-label font-semibold">Card Background</label>
         <p class="text-xs text-muted-foreground mb-3">Upload an image, or use a gradient as fallback.</p>
@@ -45,12 +80,12 @@
         <div class="mb-4">
             <label class="form-label text-xs">Background Image <span class="text-xs text-muted-foreground">(optional)</span></label>
             <x-takeone-cropper
-                id="perkImageCropper"
+                id="achievementImageCropper"
                 :width="400" :height="267"
                 shape="rectangle" mode="form"
                 inputName="image"
-                :folder="'perks/' . (isset($club) ? $club->slug : 'club')"
-                :filename="'perk_' . time()"
+                :folder="'achievements/' . (isset($club) ? $club->slug : 'club')"
+                :filename="'achievement_' . time()"
                 :previewWidth="260" :previewHeight="174"
                 buttonText="Upload Image"
                 buttonClass="btn btn-outline-secondary w-full mt-2"
@@ -68,7 +103,6 @@
                     <span class="text-sm text-muted-foreground" x-text="formData.bg_from"></span>
                 </div>
             </div>
-
             <div>
                 <label class="form-label text-xs">Gradient To</label>
                 <div class="flex items-center gap-2">
@@ -100,36 +134,10 @@
                 <p class="text-xs text-muted-foreground mb-1">Gradient preview:</p>
                 <div class="rounded-xl flex items-center justify-center gap-3 p-4"
                      :style="`background: linear-gradient(135deg, ${formData.bg_from}, ${formData.bg_to}); height:70px;`">
-                    <i :class="'bi ' + (formData.icon || 'bi-gift')" class="text-white text-3xl"></i>
+                    <i :class="'bi ' + (formData.tag_icon || 'bi-trophy')" class="text-white text-3xl"></i>
                     <span class="text-white font-bold text-sm" x-text="formData.title || 'Preview'"></span>
                 </div>
             </div>
         </div>
-    </div>
-
-    <hr class="border-border">
-
-    {{-- Perk type & value --}}
-    <div>
-        <label class="form-label font-semibold">Perk Reward</label>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-            <div>
-                <label class="form-label text-xs">Perk Type <span class="text-red-500">*</span></label>
-                <select name="perk_type" class="form-control" x-model="formData.perk_type">
-                    <option value="code">Promo Code</option>
-                    <option value="qr">QR Code</option>
-                </select>
-            </div>
-            <div>
-                <label class="form-label text-xs" x-text="formData.perk_type === 'qr' ? 'QR Content (URL or text)' : 'Promo Code'"></label>
-                <input type="text" name="perk_value" class="form-control"
-                       :placeholder="formData.perk_type === 'qr' ? 'e.g. https://partner.com/offer' : 'e.g. CAFE20'"
-                       x-model="formData.perk_value">
-            </div>
-        </div>
-        <p class="text-xs text-muted-foreground mt-2">
-            <span x-show="formData.perk_type === 'code'">Members will see this code to copy and use at the partner.</span>
-            <span x-show="formData.perk_type === 'qr'">Members will see a QR code they can show at the partner location.</span>
-        </p>
     </div>
 </div>

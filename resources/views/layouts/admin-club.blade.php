@@ -153,6 +153,15 @@
                 <span>Perks</span>
             </a>
 
+            <a href="{{ route('admin.club.achievements', $clubId) }}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
+                      {{ $currentRoute === 'admin.club.achievements'
+                         ? 'bg-primary text-white shadow-lg'
+                         : 'text-foreground hover:bg-muted' }}">
+                <i class="bi bi-trophy w-5"></i>
+                <span>Achievements</span>
+            </a>
+
             <a href="{{ route('admin.club.packages', $clubId) }}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
                       {{ $currentRoute === 'admin.club.packages'

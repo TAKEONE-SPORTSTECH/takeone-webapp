@@ -208,6 +208,11 @@ class Tenant extends Model
         return $this->hasMany(ClubPerk::class)->orderBy('sort_order')->orderBy('id');
     }
 
+    public function achievements(): HasMany
+    {
+        return $this->hasMany(ClubAchievement::class)->orderBy('sort_order')->orderBy('id');
+    }
+
     /**
      * Get approved reviews for the club.
      */

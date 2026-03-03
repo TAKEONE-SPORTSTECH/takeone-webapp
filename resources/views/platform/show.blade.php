@@ -269,6 +269,7 @@
                 <hr class="my-8 opacity-10">
 
                 {{-- Achievements --}}
+                @if($achievements->isNotEmpty())
                 <div class="latest-achievements">
                     <div class="flex justify-between items-end mb-4">
                         <div>
@@ -277,38 +278,31 @@
                         </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        @foreach($achievements as $achievement)
                         <article class="achievement-card h-full">
                             <div class="achievement-image">
-                                <div class="w-full h-full bg-gradient-to-br from-amber-500 to-orange-600"></div>
-                                <span class="achievement-tag"><i class="bi bi-trophy mr-1"></i>Club Award</span>
+                                @if($achievement->image_path)
+                                    <img src="{{ asset('storage/' . $achievement->image_path) }}"
+                                         class="w-full h-full object-cover" alt="{{ $achievement->title }}">
+                                @else
+                                    <div class="w-full h-full"
+                                         style="background: linear-gradient(135deg, {{ $achievement->bg_from }}, {{ $achievement->bg_to }});"></div>
+                                @endif
+                                <span class="achievement-tag">
+                                    <i class="bi {{ $achievement->tag_icon }} mr-1"></i>{{ $achievement->tag }}
+                                </span>
                             </div>
                             <div class="achievement-body">
-                                <h6 class="text-sm font-bold mb-1">Club of the Year</h6>
-                                <p class="text-sm mb-0" style="color:#6b7280;">Awarded for overall performance and growth.</p>
+                                <h6 class="text-sm font-bold mb-1">{{ $achievement->title }}</h6>
+                                @if($achievement->description)
+                                <p class="text-sm mb-0" style="color:#6b7280;">{{ $achievement->description }}</p>
+                                @endif
                             </div>
                         </article>
-                        <article class="achievement-card h-full">
-                            <div class="achievement-image">
-                                <div class="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600"></div>
-                                <span class="achievement-tag"><i class="bi bi-award mr-1"></i>Tournament Medals</span>
-                            </div>
-                            <div class="achievement-body">
-                                <h6 class="text-sm font-bold mb-1">Championship Medals</h6>
-                                <p class="text-sm mb-0" style="color:#6b7280;">Team podium finishes across divisions.</p>
-                            </div>
-                        </article>
-                        <article class="achievement-card h-full">
-                            <div class="achievement-image">
-                                <div class="w-full h-full bg-gradient-to-br from-violet-500 to-purple-700"></div>
-                                <span class="achievement-tag"><i class="bi bi-star mr-1"></i>Student Success</span>
-                            </div>
-                            <div class="achievement-body">
-                                <h6 class="text-sm font-bold mb-1">Student Promotions</h6>
-                                <p class="text-sm mb-0" style="color:#6b7280;">Successful gradings this season.</p>
-                            </div>
-                        </article>
+                        @endforeach
                     </div>
                 </div>
+                @endif
             </div>
 
             {{-- ==================== PACKAGES TAB ==================== --}}

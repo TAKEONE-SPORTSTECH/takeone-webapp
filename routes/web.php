@@ -173,6 +173,10 @@ Route::middleware(['auth', 'verified'])->prefix('admin/club/{club}')->name('admi
     Route::post('/perks', [App\Http\Controllers\Admin\ClubAdminController::class, 'storePerk'])->name('perks.store');
     Route::put('/perks/{perk}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updatePerk'])->name('perks.update');
     Route::delete('/perks/{perk}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyPerk'])->name('perks.destroy');
+    Route::get('/achievements', [App\Http\Controllers\Admin\ClubAdminController::class, 'achievements'])->name('achievements');
+    Route::post('/achievements', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeAchievement'])->name('achievements.store');
+    Route::put('/achievements/{achievement}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateAchievement'])->name('achievements.update');
+    Route::delete('/achievements/{achievement}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyAchievement'])->name('achievements.destroy');
     Route::post('/activities', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeActivity'])->name('activities.store');
     Route::put('/activities/{activity}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateActivity'])->name('activities.update');
     Route::delete('/activities/{activity}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyActivity'])->name('activities.destroy');

@@ -10,6 +10,7 @@ use App\Models\ClubActivity;
 use App\Models\ClubEvent;
 use App\Models\ClubTimelinePost;
 use App\Models\ClubPerk;
+use App\Models\ClubAchievement;
 use App\Models\ClubPackage;
 use App\Models\Membership;
 use App\Models\ClubGalleryImage;
@@ -871,6 +872,117 @@ class ClubAdminController extends Controller
         $perk->delete();
 
         return response()->json(['success' => true, 'message' => 'Perk deleted successfully.']);
+    }
+
+    // -------------------------------------------------------------------------
+    // Achievements
+    // -------------------------------------------------------------------------
+
+    public function achievements(Tenant $club)
+    {
+        $this->authorizeClub($club);
+        $achievements = ClubAchievement::where('tenant_id', $club->id)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        return view('admin.club.achievements.index', compact('club', 'achievements'));
+    }
+
+    public function storeAchievement(Request $request, Tenant $club)
+    {
+        $this->authorizeClub($club);
+
+        $request->validate([
+            'title'      => 'required|string|max:255',
+            'description'=> 'nullable|string|max:500',
+            'tag'        => 'required|string|max:60',
+            'tag_icon'   => 'nullable|string|max:60',
+            'bg_from'    => 'nullable|string|max:20',
+            'bg_to'      => 'nullable|string|max:20',
+            'status'     => 'required|in:active,inactive',
+            'sort_order' => 'nullable|integer|min:0',
+        ]);
+
+        $imagePath = null;
+        if ($request->filled('image') && str_starts_with($request->image, 'data:image')) {
+            $imageParts  = explode(';base64,', $request->image);
+            $extension   = explode('image/', $imageParts[0])[1];
+            $imageBinary = base64_decode($imageParts[1]);
+            $folder      = $request->input('image_folder', 'achievements/' . $club->slug);
+            $filename    = $request->input('image_filename', 'achievement_' . time());
+            $imagePath   = $folder . '/' . $filename . '.' . $extension;
+            Storage::disk('public')->put($imagePath, $imageBinary);
+        }
+
+        ClubAchievement::create([
+            'tenant_id'  => $club->id,
+            'title'      => $request->title,
+            'description'=> $request->description,
+            'tag'        => $request->tag,
+            'tag_icon'   => $request->tag_icon ?: 'bi-trophy',
+            'image_path' => $imagePath,
+            'bg_from'    => $request->bg_from ?: '#f59e0b',
+            'bg_to'      => $request->bg_to   ?: '#f97316',
+            'status'     => $request->status,
+            'sort_order' => $request->sort_order ?? 0,
+        ]);
+
+        return back()->with('success', 'Achievement created successfully.');
+    }
+
+    public function updateAchievement(Request $request, Tenant $club, ClubAchievement $achievement)
+    {
+        $this->authorizeClub($club);
+        abort_if($achievement->tenant_id !== $club->id, 403);
+
+        $request->validate([
+            'title'      => 'required|string|max:255',
+            'description'=> 'nullable|string|max:500',
+            'tag'        => 'required|string|max:60',
+            'tag_icon'   => 'nullable|string|max:60',
+            'bg_from'    => 'nullable|string|max:20',
+            'bg_to'      => 'nullable|string|max:20',
+            'status'     => 'required|in:active,inactive',
+            'sort_order' => 'nullable|integer|min:0',
+        ]);
+
+        $data = $request->only(['title', 'description', 'tag', 'tag_icon', 'bg_from', 'bg_to', 'status', 'sort_order']);
+
+        if ($request->filled('image') && str_starts_with($request->image, 'data:image')) {
+            if ($achievement->image_path) {
+                Storage::disk('public')->delete($achievement->image_path);
+            }
+            $imageParts  = explode(';base64,', $request->image);
+            $extension   = explode('image/', $imageParts[0])[1];
+            $imageBinary = base64_decode($imageParts[1]);
+            $folder      = $request->input('image_folder', 'achievements/' . $club->slug);
+            $filename    = $request->input('image_filename', 'achievement_' . time());
+            $data['image_path'] = $folder . '/' . $filename . '.' . $extension;
+            Storage::disk('public')->put($data['image_path'], $imageBinary);
+        }
+
+        if ($request->boolean('remove_image') && $achievement->image_path) {
+            Storage::disk('public')->delete($achievement->image_path);
+            $data['image_path'] = null;
+        }
+
+        $achievement->update($data);
+
+        return back()->with('success', 'Achievement updated successfully.');
+    }
+
+    public function destroyAchievement(Tenant $club, ClubAchievement $achievement)
+    {
+        $this->authorizeClub($club);
+        abort_if($achievement->tenant_id !== $club->id, 403);
+
+        if ($achievement->image_path) {
+            Storage::disk('public')->delete($achievement->image_path);
+        }
+        $achievement->delete();
+
+        return response()->json(['success' => true, 'message' => 'Achievement deleted successfully.']);
     }
 
     /**
