@@ -647,7 +647,7 @@ class ClubAdminController extends Controller
 
         $event->update($data);
 
-        return response()->json(['success' => true, 'message' => 'Event updated successfully.']);
+        return back()->with('success', 'Event updated successfully.');
     }
 
     public function destroyEvent(Tenant $club, $eventId)
