@@ -1,7 +1,31 @@
 @extends('layouts.admin-club')
 
 @section('club-admin-content')
-<div x-data="eventsAdmin()" x-init="init()">
+
+@php
+$eventsJson = $events->map(function($e) {
+    return [
+        'id'           => $e->id,
+        'title'        => $e->title,
+        'date'         => $e->date->format('Y-m-d'),
+        'start_time'   => substr($e->start_time, 0, 5),
+        'end_time'     => $e->end_time ? substr($e->end_time, 0, 5) : '',
+        'location'     => $e->location ?? '',
+        'level'        => $e->level ?? '',
+        'description'  => $e->description ?? '',
+        'max_capacity' => $e->max_capacity,
+        'spots_taken'  => $e->spots_taken ?? 0,
+        'ribbon_label' => $e->ribbon_label ?? '',
+        'ribbon_type'  => $e->ribbon_type ?? '',
+        'tags_str'     => $e->tags ? implode(', ', $e->tags) : '',
+        'color'        => $e->color ?? '#1d4ed8',
+        'cta_text'     => $e->cta_text ?? '',
+        'status'       => $e->status,
+    ];
+});
+@endphp
+
+<div x-data="eventsAdmin()">
 
     {{-- Header --}}
     <div class="flex items-center justify-between mb-6">
@@ -37,9 +61,9 @@
         <div class="flex flex-col gap-3">
             @foreach($events as $event)
             @php
-                $isPast = $event->date->isPast();
+                $isPast    = $event->date->isPast();
                 $pillColor = $event->color ?: '#1d4ed8';
-                $tagsArr = is_array($event->tags) ? $event->tags : [];
+                $tagsArr   = is_array($event->tags) ? $event->tags : [];
             @endphp
             <div class="card border-0 shadow-sm overflow-hidden {{ $isPast ? 'opacity-60' : '' }}">
                 <div class="card-body p-4">
@@ -101,8 +125,8 @@
         </div>
     @endif
 
-    {{-- ===== ADD MODAL ===== --}}
-    <div x-show="showAddModal" x-cloak
+    {{-- ===== SINGLE MODAL (Add & Edit) ===== --}}
+    <div x-show="showModal" x-cloak
          class="fixed inset-0 z-50 overflow-y-auto"
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0"
@@ -110,124 +134,27 @@
          x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0">
-        <div class="fixed inset-0 bg-black/50" @click="showAddModal = false"></div>
+        <div class="fixed inset-0 bg-black/50" @click="showModal = false"></div>
         <div class="flex min-h-full items-center justify-center p-4">
             <div class="modal-content border-0 shadow-lg w-full max-w-xl relative" @click.stop>
                 <div class="modal-header border-b border-border px-6 py-4">
-                    <h5 class="modal-title text-lg font-semibold">Add Event</h5>
-                    <button type="button" class="text-muted-foreground hover:text-foreground" @click="showAddModal = false">
+                    <h5 class="modal-title text-lg font-semibold" x-text="isEdit ? 'Edit Event' : 'Add Event'"></h5>
+                    <button type="button" class="text-muted-foreground hover:text-foreground" @click="showModal = false">
                         <i class="bi bi-x-lg"></i>
                     </button>
                 </div>
-                <form action="{{ route('admin.club.events.store', $club->slug) }}" method="POST">
+                <form :action="formAction" method="POST">
                     @csrf
+                    <input type="hidden" name="_method" :value="isEdit ? 'PUT' : 'POST'">
                     <div class="modal-body px-6 py-4 space-y-4">
                         @include('admin.club.events.partials.form-fields')
                     </div>
                     <div class="modal-footer border-t border-border px-6 py-4 flex justify-end gap-3">
-                        <button type="button" class="btn btn-outline-secondary" @click="showAddModal = false">Cancel</button>
-                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg mr-1"></i>Save Event</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    {{-- ===== EDIT MODAL ===== --}}
-    <div x-show="showEditModal" x-cloak
-         class="fixed inset-0 z-50 overflow-y-auto"
-         x-transition:enter="transition ease-out duration-300"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition ease-in duration-200"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0">
-        <div class="fixed inset-0 bg-black/50" @click="showEditModal = false"></div>
-        <div class="flex min-h-full items-center justify-center p-4">
-            <div class="modal-content border-0 shadow-lg w-full max-w-xl relative" @click.stop>
-                <div class="modal-header border-b border-border px-6 py-4">
-                    <h5 class="modal-title text-lg font-semibold">Edit Event</h5>
-                    <button type="button" class="text-muted-foreground hover:text-foreground" @click="showEditModal = false">
-                        <i class="bi bi-x-lg"></i>
-                    </button>
-                </div>
-                <form :action="editUrl" method="POST">
-                    @csrf
-                    @method('PUT')
-                    <div class="modal-body px-6 py-4 space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="md:col-span-2">
-                                <label class="form-label">Title <span class="text-red-500">*</span></label>
-                                <input type="text" name="title" class="form-control" required :value="editData.title">
-                            </div>
-                            <div>
-                                <label class="form-label">Date <span class="text-red-500">*</span></label>
-                                <input type="date" name="date" class="form-control" required :value="editData.date">
-                            </div>
-                            <div>
-                                <label class="form-label">Color (date pill)</label>
-                                <input type="color" name="color" class="form-control h-10 p-1 cursor-pointer" :value="editData.color || '#1d4ed8'">
-                            </div>
-                            <div>
-                                <label class="form-label">Start Time <span class="text-red-500">*</span></label>
-                                <input type="time" name="start_time" class="form-control" required :value="editData.start_time">
-                            </div>
-                            <div>
-                                <label class="form-label">End Time</label>
-                                <input type="time" name="end_time" class="form-control" :value="editData.end_time">
-                            </div>
-                            <div>
-                                <label class="form-label">Location</label>
-                                <input type="text" name="location" class="form-control" :value="editData.location">
-                            </div>
-                            <div>
-                                <label class="form-label">Level / Audience</label>
-                                <input type="text" name="level" class="form-control" placeholder="e.g. Ages 5+, All levels" :value="editData.level">
-                            </div>
-                            <div>
-                                <label class="form-label">Max Capacity</label>
-                                <input type="number" name="max_capacity" class="form-control" min="1" :value="editData.max_capacity">
-                            </div>
-                            <div>
-                                <label class="form-label">Spots Taken</label>
-                                <input type="number" name="spots_taken" class="form-control" min="0" :value="editData.spots_taken || 0">
-                            </div>
-                            <div>
-                                <label class="form-label">Ribbon Label</label>
-                                <input type="text" name="ribbon_label" class="form-control" placeholder="e.g. Limited Seats" :value="editData.ribbon_label">
-                            </div>
-                            <div>
-                                <label class="form-label">Ribbon Style</label>
-                                <select name="ribbon_type" class="form-control">
-                                    <option value="" :selected="!editData.ribbon_type">Default (green)</option>
-                                    <option value="limited" :selected="editData.ribbon_type === 'limited'">Limited (red)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="form-label">CTA Button Text</label>
-                                <input type="text" name="cta_text" class="form-control" placeholder="e.g. Join Event" :value="editData.cta_text">
-                            </div>
-                            <div>
-                                <label class="form-label">Status</label>
-                                <select name="status" class="form-control">
-                                    <option value="active" :selected="editData.status === 'active'">Active</option>
-                                    <option value="completed" :selected="editData.status === 'completed'">Completed</option>
-                                    <option value="cancelled" :selected="editData.status === 'cancelled'">Cancelled</option>
-                                </select>
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="form-label">Tags <span class="text-xs text-muted-foreground">(comma-separated)</span></label>
-                                <input type="text" name="tags" class="form-control" placeholder="Public event, WT rules, Highlight reels" :value="editData.tags_str">
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="form-label">Description</label>
-                                <textarea name="description" class="form-control" rows="3" x-text="editData.description"></textarea>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer border-t border-border px-6 py-4 flex justify-end gap-3">
-                        <button type="button" class="btn btn-outline-secondary" @click="showEditModal = false">Cancel</button>
-                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg mr-1"></i>Update Event</button>
+                        <button type="button" class="btn btn-outline-secondary" @click="showModal = false">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg mr-1"></i>
+                            <span x-text="isEdit ? 'Update Event' : 'Save Event'"></span>
+                        </button>
                     </div>
                 </form>
             </div>
@@ -236,56 +163,41 @@
 
 </div>
 
-@php
-$eventsJson = $events->map(function($e) {
-    return [
-        'id'           => $e->id,
-        'title'        => $e->title,
-        'date'         => $e->date->format('Y-m-d'),
-        'start_time'   => substr($e->start_time, 0, 5),
-        'end_time'     => $e->end_time ? substr($e->end_time, 0, 5) : '',
-        'location'     => $e->location,
-        'level'        => $e->level,
-        'description'  => $e->description,
-        'max_capacity' => $e->max_capacity,
-        'spots_taken'  => $e->spots_taken,
-        'ribbon_label' => $e->ribbon_label,
-        'ribbon_type'  => $e->ribbon_type,
-        'tags'         => $e->tags,
-        'tags_str'     => $e->tags ? implode(', ', $e->tags) : '',
-        'color'        => $e->color,
-        'cta_text'     => $e->cta_text,
-        'status'       => $e->status,
-    ];
-});
-@endphp
 @push('scripts')
 <script>
-const eventsData = @json($eventsJson);
+const eventsData  = @json($eventsJson);
+const storeUrl    = '{{ route('admin.club.events.store', $club->slug) }}';
+const baseEditUrl = '{{ url('admin/club/' . $club->slug . '/events') }}';
 
-const baseUrl = '{{ route('admin.club.events.store', $club->slug) }}';
+const emptyForm = {
+    title: '', date: '', start_time: '', end_time: '',
+    location: '', level: '', description: '',
+    max_capacity: '', spots_taken: 0,
+    ribbon_label: '', ribbon_type: '', tags_str: '',
+    color: '#1d4ed8', cta_text: '', status: 'active',
+};
 
 function eventsAdmin() {
     return {
-        showAddModal:  false,
-        showEditModal: false,
-        editData:      {},
-        editUrl:       '',
-
-        init() {},
+        showModal:  false,
+        isEdit:     false,
+        formAction: storeUrl,
+        formData:   { ...emptyForm },
 
         openAdd() {
-            this.showAddModal = true;
+            this.isEdit     = false;
+            this.formAction = storeUrl;
+            this.formData   = { ...emptyForm };
+            this.showModal  = true;
         },
 
         openEdit(id) {
             const ev = eventsData.find(e => e.id === id);
             if (!ev) return;
-            this.editData = { ...ev };
-            this.editUrl  = baseUrl.replace('/events', '/events/' + id).replace('POST', 'PUT');
-            // Build the PUT URL from the base store URL
-            this.editUrl = '{{ url('admin/club/' . $club->slug . '/events') }}/' + id;
-            this.showEditModal = true;
+            this.isEdit     = true;
+            this.formAction = baseEditUrl + '/' + id;
+            this.formData   = { ...ev };
+            this.showModal  = true;
         },
 
         deleteEvent(id) {
@@ -296,7 +208,7 @@ function eventsAdmin() {
                 type:        'danger',
             }).then(confirmed => {
                 if (!confirmed) return;
-                fetch('{{ url('admin/club/' . $club->slug . '/events') }}/' + id, {
+                fetch(baseEditUrl + '/' + id, {
                     method:  'DELETE',
                     headers: {
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
