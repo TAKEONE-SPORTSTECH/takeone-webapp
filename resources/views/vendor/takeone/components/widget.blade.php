@@ -122,25 +122,11 @@ $(function() {
     function initCropper_{{ $id }}(imageUrl) {
         if (cropper_{{ $id }}) cropper_{{ $id }}.destroy();
 
-        // Auto-scale viewport to fill the canvas while keeping aspect ratio
-        const origW_{{ $id }} = {{ $width }};
-        const origH_{{ $id }} = {{ $height }};
-        const canvasH_{{ $id }} = {{ $canvasHeight }};
-        const containerW_{{ $id }} = el_{{ $id }}.offsetWidth || 900;
-        const fill_{{ $id }} = {{ $viewportFill }};
-        const maxSc_{{ $id }} = {{ $maxScale }};
-
-        const scW_{{ $id }} = (containerW_{{ $id }} * fill_{{ $id }}) / origW_{{ $id }};
-        const scH_{{ $id }} = (canvasH_{{ $id }} * fill_{{ $id }}) / origH_{{ $id }};
-        const sc_{{ $id }} = Math.max(1, Math.min(scW_{{ $id }}, scH_{{ $id }}, maxSc_{{ $id }}));
-        const vpW_{{ $id }} = Math.round(origW_{{ $id }} * sc_{{ $id }});
-        const vpH_{{ $id }} = Math.round(origH_{{ $id }} * sc_{{ $id }});
-
         cropper_{{ $id }} = new Cropme(el_{{ $id }}, {
-            container: { width: '100%', height: canvasH_{{ $id }} },
+            container: { width: '100%', height: {{ $canvasHeight }} },
             viewport: {
-                width: vpW_{{ $id }},
-                height: vpH_{{ $id }},
+                width: {{ $width }},
+                height: {{ $height }},
                 type: '{{ $shape }}',
                 border: { enable: true, width: 2, color: '#fff' }
             },

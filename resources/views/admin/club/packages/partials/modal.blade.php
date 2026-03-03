@@ -105,7 +105,7 @@
                                             :filename="'package_' . time()"
                                             :previewWidth="300" :previewHeight="169"
                                             buttonText="Upload Image"
-                                            buttonClass="btn btn-outline-secondary flex-1"
+                                            buttonClass="btn btn-outline-secondary w-full mt-3"
                                         />
                                     </div>
                                     <div>

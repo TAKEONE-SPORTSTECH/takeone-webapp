@@ -239,16 +239,15 @@
                                                 <x-takeone-cropper
                                                     id="profile_picture"
                                                     width="300"
-                                                    height="300"
-                                                    shape="square"
+                                                    height="400"
+                                                    shape="rectangle"
                                                     folder="images/profiles"
                                                     filename="profile_{{ $user->id }}"
                                                     uploadUrl="{{ $attributes->get('uploadUrl') }}"
                                                     currentImage="{{ $currentProfileImage }}"
                                                     buttonText="Change Photo"
                                                     buttonClass="btn btn-success btn-sm w-full"
-                                                    :canvasHeight="650"
-                                                    viewportFill="0.85"
+                                                    :canvasHeight="500"
                                                 />
                                             @else
                                                 <button type="button" class="btn btn-success btn-sm w-full" onclick="document.getElementById('profile_picture_input').click()">

@@ -75,7 +75,7 @@
                                     :previewHeight="169"
                                     buttonText="Select & Crop Image"
                                     buttonClass="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
-                                    :canvasHeight="400"
+                                    :canvasHeight="520"
                                 />
                                 <p class="text-xs text-muted-foreground">
                                     Supported formats: JPEG, PNG, GIF, WebP. Recommended ratio: 16:9

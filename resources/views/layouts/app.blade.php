@@ -144,7 +144,8 @@
 </head>
 <body class="bg-background text-foreground antialiased">
     @if(!request()->routeIs('clubs.show.public'))
-    <nav class="bg-muted shadow-sm sticky top-0 z-40" x-data="{ mobileMenuOpen: false }">
+    <div x-data="{ mobileMenuOpen: false }" @keydown.escape.window="mobileMenuOpen = false">
+    <nav class="bg-muted shadow-sm sticky top-0 z-40">
         <div class="container mx-auto px-4">
             <div class="flex items-center justify-between h-16">
                 <!-- Logo -->
@@ -153,9 +154,8 @@
                 </a>
 
                 <!-- Mobile menu button -->
-                <button @click="mobileMenuOpen = !mobileMenuOpen" class="md:hidden p-2 rounded-md text-muted-foreground hover:text-foreground focus:outline-none" type="button">
-                    <i class="bi bi-list text-2xl" x-show="!mobileMenuOpen"></i>
-                    <i class="bi bi-x-lg text-2xl" x-show="mobileMenuOpen" x-cloak></i>
+                <button @click="mobileMenuOpen = true" class="md:hidden p-2 rounded-md text-muted-foreground hover:text-foreground focus:outline-none" type="button" aria-label="Open menu">
+                    <i class="bi bi-list text-2xl"></i>
                 </button>
 
                 <!-- Desktop Navigation -->
@@ -316,82 +316,115 @@
                     @endguest
                 </div>
             </div>
-
-            <!-- Mobile Navigation -->
-            <div x-show="mobileMenuOpen" x-cloak
-                 x-transition:enter="transition ease-out duration-200"
-                 x-transition:enter-start="opacity-0 -translate-y-2"
-                 x-transition:enter-end="opacity-100 translate-y-0"
-                 x-transition:leave="transition ease-in duration-150"
-                 x-transition:leave-start="opacity-100 translate-y-0"
-                 x-transition:leave-end="opacity-0 -translate-y-2"
-                 class="md:hidden border-t border-border py-4">
-                @auth
-                    <div class="flex items-center gap-3 px-2 py-3 mb-3 bg-white rounded-lg">
-                        <div class="avatar-container">
-                            @if(Auth::user()->profile_picture)
-                                <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}?v={{ Auth::user()->updated_at->timestamp }}"
-                                     alt="{{ Auth::user()->full_name }}"
-                                     class="user-avatar"
-                                     onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';">
-                                <span class="user-avatar-placeholder" style="display:none;">
-                                    {{ strtoupper(substr(Auth::user()->full_name, 0, 1)) }}
-                                </span>
-                            @else
-                                <span class="user-avatar-placeholder">
-                                    {{ strtoupper(substr(Auth::user()->full_name, 0, 1)) }}
-                                </span>
-                            @endif
-                        </div>
-                        <div>
-                            <p class="text-sm font-semibold">{{ Auth::user()->full_name }}</p>
-                            <p class="text-xs text-muted-foreground">{{ Auth::user()->email }}</p>
-                        </div>
-                    </div>
-                    <div class="space-y-1">
-                        <a class="flex items-center px-3 py-2 rounded-md text-sm hover:bg-white" href="{{ route('clubs.explore') }}">
-                            <i class="bi bi-compass mr-3"></i>Explore
-                        </a>
-                        <a class="flex items-center px-3 py-2 rounded-md text-sm hover:bg-white" href="{{ route('member.show', Auth::id()) }}">
-                            <i class="bi bi-person mr-3"></i>Profile
-                        </a>
-                        <a class="flex items-center px-3 py-2 rounded-md text-sm hover:bg-white" href="{{ route('members.index') }}">
-                            <i class="bi bi-people mr-3"></i>Family
-                        </a>
-                        <a class="flex items-center px-3 py-2 rounded-md text-sm hover:bg-white" href="{{ route('bills.index') }}">
-                            <i class="bi bi-receipt mr-3"></i>Payments
-                        </a>
-                        @if(Auth::user()->isSuperAdmin())
-                        <a class="flex items-center px-3 py-2 rounded-md text-sm hover:bg-white" href="{{ route('admin.platform.index') }}">
-                            <i class="bi bi-shield-check mr-3"></i>Admin Panel
-                        </a>
-                        @endif
-                        <div class="border-t border-border my-2"></div>
-                        <a class="flex items-center px-3 py-2 rounded-md text-sm text-destructive hover:bg-white" href="{{ route('logout') }}"
-                           onclick="event.preventDefault(); document.getElementById('logout-form-mobile').submit();">
-                            <i class="bi bi-box-arrow-right mr-3"></i>Sign Out
-                        </a>
-                        <form id="logout-form-mobile" action="{{ route('logout') }}" method="POST" class="hidden">
-                            @csrf
-                        </form>
-                    </div>
-                @endauth
-
-                @guest
-                    <div class="space-y-1">
-                        <a class="flex items-center px-3 py-2 rounded-md text-sm hover:bg-white" href="{{ route('login') }}">
-                            <i class="bi bi-box-arrow-in-right mr-3"></i>Login
-                        </a>
-                        @if (Route::has('register'))
-                            <a class="flex items-center px-3 py-2 rounded-md text-sm hover:bg-white" href="{{ route('register') }}">
-                                <i class="bi bi-person-plus mr-3"></i>Register
-                            </a>
-                        @endif
-                    </div>
-                @endguest
-            </div>
         </div>
     </nav>
+
+    <!-- Mobile Backdrop -->
+    <div x-show="mobileMenuOpen"
+         @click="mobileMenuOpen = false"
+         x-cloak
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-black/50 z-50 md:hidden">
+    </div>
+
+    <!-- Mobile Sidebar Drawer -->
+    <div x-show="mobileMenuOpen"
+         x-cloak
+         x-transition:enter="transition ease-out duration-300 transform"
+         x-transition:enter-start="translate-x-full"
+         x-transition:enter-end="translate-x-0"
+         x-transition:leave="transition ease-in duration-200 transform"
+         x-transition:leave-start="translate-x-0"
+         x-transition:leave-end="translate-x-full"
+         class="fixed inset-y-0 right-0 w-72 max-w-[85vw] bg-muted z-50 md:hidden shadow-2xl flex flex-col overflow-hidden">
+
+        <!-- Drawer Header -->
+        <div class="flex items-center justify-between px-4 h-16 border-b border-border shrink-0">
+            <img src="{{ asset('images/logo.png') }}" alt="TAKEONE" class="h-8">
+            <button @click="mobileMenuOpen = false" class="p-2 rounded-md text-muted-foreground hover:text-foreground" type="button" aria-label="Close menu">
+                <i class="bi bi-x-lg text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Drawer Content -->
+        <div class="flex-1 overflow-y-auto p-4 flex flex-col">
+            @auth
+                <!-- User Info -->
+                <div class="flex items-center gap-3 p-3 mb-4 bg-white rounded-lg">
+                    <div class="avatar-container">
+                        @if(Auth::user()->profile_picture)
+                            <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}?v={{ Auth::user()->updated_at->timestamp }}"
+                                 alt="{{ Auth::user()->full_name }}"
+                                 class="user-avatar"
+                                 onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';">
+                            <span class="user-avatar-placeholder" style="display:none;">
+                                {{ strtoupper(substr(Auth::user()->full_name, 0, 1)) }}
+                            </span>
+                        @else
+                            <span class="user-avatar-placeholder">
+                                {{ strtoupper(substr(Auth::user()->full_name, 0, 1)) }}
+                            </span>
+                        @endif
+                        <span class="online-indicator"></span>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold truncate">{{ Auth::user()->full_name }}</p>
+                        <p class="text-xs text-muted-foreground truncate">{{ Auth::user()->email }}</p>
+                    </div>
+                </div>
+
+                <!-- Nav Links -->
+                <nav class="space-y-1">
+                    <a class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium hover:bg-white transition-colors" href="{{ route('clubs.explore') }}">
+                        <i class="bi bi-compass text-lg w-5 text-center"></i>Explore
+                    </a>
+                    <a class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium hover:bg-white transition-colors" href="{{ route('member.show', Auth::id()) }}">
+                        <i class="bi bi-person text-lg w-5 text-center"></i>Profile
+                    </a>
+                    <a class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium hover:bg-white transition-colors" href="{{ route('members.index') }}">
+                        <i class="bi bi-people text-lg w-5 text-center"></i>Family
+                    </a>
+                    <a class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium hover:bg-white transition-colors" href="{{ route('bills.index') }}">
+                        <i class="bi bi-receipt text-lg w-5 text-center"></i>Payments
+                    </a>
+                    @if(Auth::user()->isSuperAdmin())
+                    <a class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium hover:bg-white transition-colors" href="{{ route('admin.platform.index') }}">
+                        <i class="bi bi-shield-check text-lg w-5 text-center"></i>Admin Panel
+                    </a>
+                    @endif
+                </nav>
+
+                <div class="mt-auto pt-4 border-t border-border">
+                    <a class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-destructive hover:bg-white transition-colors" href="{{ route('logout') }}"
+                       onclick="event.preventDefault(); document.getElementById('logout-form-mobile').submit();">
+                        <i class="bi bi-box-arrow-right text-lg w-5 text-center"></i>Sign Out
+                    </a>
+                    <form id="logout-form-mobile" action="{{ route('logout') }}" method="POST" class="hidden">
+                        @csrf
+                    </form>
+                </div>
+            @endauth
+
+            @guest
+                <nav class="space-y-1">
+                    <a class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium hover:bg-white transition-colors" href="{{ route('login') }}">
+                        <i class="bi bi-box-arrow-in-right text-lg w-5 text-center"></i>Login
+                    </a>
+                    @if (Route::has('register'))
+                        <a class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium hover:bg-white transition-colors" href="{{ route('register') }}">
+                            <i class="bi bi-person-plus text-lg w-5 text-center"></i>Register
+                        </a>
+                    @endif
+                </nav>
+            @endguest
+        </div>
+    </div>
+    </div>
     @endif
 
     <main>
@@ -514,7 +547,7 @@
                 backdrop = document.createElement('div');
                 backdrop.id = 'bs-bridge-backdrop';
                 backdrop.className = 'modal-backdrop';
-                backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:49;';
+                backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:60;';
                 backdrop.addEventListener('click', function() {
                     const openModal = document.querySelector('.modal.show');
                     if (openModal && !openModal.hasAttribute('data-bs-backdrop')) hideModal(openModal);
@@ -524,7 +557,7 @@
             document.body.style.overflow = 'hidden';
             modal.style.display = 'block';
             modal.classList.add('show');
-            modal.style.zIndex = '50';
+            modal.style.zIndex = '70';
             modal.style.position = 'fixed';
             modal.style.inset = '0';
             modal.style.overflowY = 'auto';

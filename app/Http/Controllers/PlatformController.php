@@ -251,13 +251,58 @@ class PlatformController extends Controller
                 ->count();
         }
 
+        // Member goal status breakdown
+        $memberGoals = \App\Models\Goal::whereIn('user_id', $memberIds)->get()->groupBy('user_id');
+        $goalStats   = ['Achieved' => 0, 'In Progress' => 0, 'Pending' => 0, 'No Goals Set' => 0];
+        foreach ($memberIds as $id) {
+            if (!isset($memberGoals[$id])) { $goalStats['No Goals Set']++; continue; }
+            $statuses = $memberGoals[$id]->pluck('status');
+            if ($statuses->contains('completed'))       $goalStats['Achieved']++;
+            elseif ($statuses->contains('in_progress')) $goalStats['In Progress']++;
+            else                                        $goalStats['Pending']++;
+        }
+
         // Total members count for percentage calculations
         $totalMembers = $members->count() ?: 1;
+
+        // Calculate access hours, days, and distinct class count from package-level schedules.
+        // Each packageActivity schedule is an array of day-slots:
+        // [{"day":"monday","start_time":"16:00","end_time":"17:00"}, ...]
+        $allStartTimes  = [];
+        $allEndTimes    = [];
+        $allDays        = [];
+        $distinctSlots  = [];
+
+        foreach ($club->packages as $package) {
+            foreach ($package->packageActivities as $pa) {
+                $slots = is_string($pa->schedule) ? json_decode($pa->schedule, true) : $pa->schedule;
+                if (!is_array($slots)) continue;
+                foreach ($slots as $slot) {
+                    if (!is_array($slot)) continue;
+                    if (!empty($slot['start_time'])) $allStartTimes[] = $slot['start_time'];
+                    if (!empty($slot['end_time']))   $allEndTimes[]   = $slot['end_time'];
+                    if (!empty($slot['day']))        $allDays[]       = $slot['day'];
+                    $distinctSlots[($slot['day'] ?? '') . '|' . ($slot['start_time'] ?? '') . '|' . ($slot['end_time'] ?? '')] = true;
+                }
+            }
+        }
+
+        $accessStat        = '24/7';
+        $distinctClassCount = count($distinctSlots);
+
+        if (!empty($allStartTimes) && !empty($allEndTimes)) {
+            [$startH, $startM] = explode(':', min($allStartTimes));
+            [$endH,   $endM]   = explode(':', max($allEndTimes));
+            $hours      = (int) ceil(((int)$endH * 60 + (int)$endM - ((int)$startH * 60 + (int)$startM)) / 60);
+            $uniqueDays = count(array_unique($allDays));
+            $accessStat = $hours . 'h/' . ($uniqueDays ?: 7);
+        }
 
         return view('platform.show', compact(
             'club', 'activeMembersCount', 'reviews', 'averageRating',
             'nationalityStats', 'ageGroups', 'genderStats', 'horoscopeGroups',
-            'bloodTypeStats', 'monthlyTrend', 'totalMembers'
+            'bloodTypeStats', 'monthlyTrend', 'totalMembers', 'accessStat', 'distinctClassCount',
+            'goalStats'
         ));
     }
 

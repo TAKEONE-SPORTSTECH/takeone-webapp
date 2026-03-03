@@ -111,11 +111,11 @@
                     <span>Rating</span>
                 </div>
                 <div class="stat-item">
-                    <h3>{{ $club->peak_hours ?? '24/7' }}</h3>
+                    <h3>{{ $accessStat }}</h3>
                     <span>Access</span>
                 </div>
                 <div class="stat-item">
-                    <h3>{{ $club->activities->count() }}+</h3>
+                    <h3>{{ $distinctClassCount }}+</h3>
                     <span>Classes</span>
                 </div>
                 <div class="stat-item">
@@ -813,20 +813,24 @@
                         </ul>
                     </div>
 
-                    {{-- Championships (placeholder) --}}
+                    {{-- Member Goals --}}
                     <div class="stat-card">
                         <h6 class="mb-0 flex items-center justify-between text-sm font-bold">
-                            Members with Championships
-                            <span class="badge-pill bg-secondary-light">Achievements</span>
+                            Members by Goal Status
+                            <span class="badge-pill bg-secondary-light">Progress</span>
                         </h6>
                         <div class="mt-3">
-                            <canvas id="donutChampions" height="160"></canvas>
+                            <canvas id="donutGoals" height="160"></canvas>
                         </div>
                         <ul class="stat-legend">
-                            <li><span><span class="legend-dot" style="background:#22c55e;"></span> Medalists</span><span>18%</span></li>
-                            <li><span><span class="legend-dot" style="background:#eab308;"></span> Podium finishes</span><span>24%</span></li>
-                            <li><span><span class="legend-dot" style="background:#94a3b8;"></span> Competitors</span><span>28%</span></li>
-                            <li><span><span class="legend-dot" style="background:#e5e7eb;"></span> Yet to compete</span><span>30%</span></li>
+                            @php $goalColors = ['#22c55e', '#3b82f6', '#eab308', '#e5e7eb']; $gsi = 0; @endphp
+                            @foreach($goalStats as $label => $count)
+                            <li>
+                                <span><span class="legend-dot" style="background:{{ $goalColors[$gsi % 4] }};"></span> {{ $label }}</span>
+                                <span>{{ $totalMembers > 0 ? round($count / $totalMembers * 100) : 0 }}%</span>
+                            </li>
+                            @php $gsi++; @endphp
+                            @endforeach
                         </ul>
                     </div>
                 </div>
@@ -1126,6 +1130,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const horoscopeData = @json(array_values($horoscopeGroups));
     const bloodLabels = @json($bloodTypeStats->keys()->toArray());
     const bloodData = @json($bloodTypeStats->values()->toArray());
+    const goalLabels = @json(array_keys($goalStats));
+    const goalData = @json(array_values($goalStats));
     const monthlyLabels = @json(array_keys($monthlyTrend));
     const monthlyData = @json(array_values($monthlyTrend));
 
@@ -1202,14 +1208,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Championships (placeholder)
-    const champCtx = document.getElementById('donutChampions');
-    if (champCtx) {
-        new Chart(champCtx, {
+    // Goals
+    const goalsCtx = document.getElementById('donutGoals');
+    if (goalsCtx) {
+        new Chart(goalsCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Medalists', 'Podium finishes', 'Competitors', 'Yet to compete'],
-                datasets: [{ data: [18, 24, 28, 30], backgroundColor: ['#22c55e','#eab308','#94a3b8','#e5e7eb'], borderWidth: 0 }]
+                labels: goalLabels,
+                datasets: [{ data: goalData, backgroundColor: ['#22c55e','#3b82f6','#eab308','#e5e7eb'], borderWidth: 0 }]
             },
             options: donutOptions
         });
