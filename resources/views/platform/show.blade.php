@@ -340,9 +340,11 @@
 
             {{-- ==================== SCHEDULE TAB ==================== --}}
             @php
-                $dayOrder = ['saturday','sunday','monday','tuesday','wednesday','thursday','friday'];
-                $dayAbbr  = ['saturday'=>'Sat','sunday'=>'Sun','monday'=>'Mon','tuesday'=>'Tue','wednesday'=>'Wed','thursday'=>'Thu','friday'=>'Fri'];
-                $todayKey = strtolower(now()->format('l')); // e.g. 'monday'
+                $dayOrder    = ['saturday','sunday','monday','tuesday','wednesday','thursday','friday'];
+                $dayAbbr     = ['saturday'=>'Sat','sunday'=>'Sun','monday'=>'Mon','tuesday'=>'Tue','wednesday'=>'Wed','thursday'=>'Thu','friday'=>'Fri'];
+                $todayKey    = strtolower(now()->format('l')); // e.g. 'monday'
+                $todayIndex  = array_search($todayKey, $dayOrder);
+                $visibleDays = array_slice($dayOrder, $todayIndex !== false ? $todayIndex : 0);
 
                 // Build flat list of schedule slots from all package activities
                 $instructorNameMap = $club->instructors->keyBy('id')->map(fn($i) => [
@@ -420,15 +422,9 @@
                      }
                  }">
 
-                {{-- Day filter chips --}}
+                {{-- Day filter chips (today onwards in the week) --}}
                 <div class="flex flex-wrap justify-center gap-2 mb-5">
-                    <button type="button"
-                            @click="activeDay = '{{ $todayKey }}'"
-                            :class="activeDay === '{{ $todayKey }}' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'"
-                            class="px-5 py-2 rounded-full border text-sm font-semibold transition-colors">
-                        Today
-                    </button>
-                    @foreach($dayOrder as $dayKey)
+                    @foreach($visibleDays as $dayKey)
                     <button type="button"
                             @click="activeDay = '{{ $dayKey }}'"
                             :class="activeDay === '{{ $dayKey }}' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'"
