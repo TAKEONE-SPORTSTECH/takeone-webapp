@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Tenant;
 use App\Models\ClubPackage;
 use App\Models\ClubMemberSubscription;
+use App\Models\ClubEvent;
+use App\Models\ClubEventRegistration;
 use App\Models\UserRelationship;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class PlatformController extends Controller
 {
@@ -299,11 +302,21 @@ class PlatformController extends Controller
             $accessStat = $hours . 'h/' . ($uniqueDays ?: 7);
         }
 
+        // IDs of events this user has joined in this club (empty set for guests)
+        $joinedEventIds = [];
+        if (Auth::check()) {
+            $eventIds = $club->events->pluck('id');
+            $joinedEventIds = ClubEventRegistration::where('user_id', Auth::id())
+                ->whereIn('event_id', $eventIds)
+                ->pluck('event_id')
+                ->toArray();
+        }
+
         return view('platform.show', compact(
             'club', 'activeMembersCount', 'reviews', 'averageRating',
             'nationalityStats', 'ageGroups', 'genderStats', 'horoscopeGroups',
             'bloodTypeStats', 'monthlyTrend', 'totalMembers', 'accessStat', 'distinctClassCount',
-            'goalStats'
+            'goalStats', 'joinedEventIds'
         ));
     }
 
@@ -483,5 +496,60 @@ class PlatformController extends Controller
             'success' => true,
             'message' => 'Registration submitted successfully!',
         ]);
+    }
+
+    /**
+     * Join a club event (or waitlist if full).
+     */
+    public function joinEvent(Request $request, string $slug, ClubEvent $event)
+    {
+        $user = Auth::user();
+
+        // Already registered — do nothing
+        if (ClubEventRegistration::where('event_id', $event->id)->where('user_id', $user->id)->exists()) {
+            return back()->with('info', 'You have already joined this event.');
+        }
+
+        $isFull = $event->max_capacity && $event->spots_taken >= $event->max_capacity;
+        $status = $isFull ? 'waitlisted' : 'joined';
+
+        ClubEventRegistration::create([
+            'event_id'      => $event->id,
+            'user_id'       => $user->id,
+            'status'        => $status,
+            'registered_at' => now(),
+        ]);
+
+        if ($status === 'joined') {
+            DB::table('club_events')->where('id', $event->id)->increment('spots_taken');
+        }
+
+        $msg = $status === 'joined' ? 'You have joined the event!' : 'You have been added to the waitlist.';
+        return back()->with('success', $msg);
+    }
+
+    /**
+     * Leave a club event (or remove from waitlist).
+     */
+    public function leaveEvent(Request $request, string $slug, ClubEvent $event)
+    {
+        $user = Auth::user();
+
+        $registration = ClubEventRegistration::where('event_id', $event->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$registration) {
+            return back()->with('info', 'You are not registered for this event.');
+        }
+
+        $wasJoined = $registration->status === 'joined';
+        $registration->delete();
+
+        if ($wasJoined && $event->spots_taken > 0) {
+            DB::table('club_events')->where('id', $event->id)->decrement('spots_taken');
+        }
+
+        return back()->with('success', 'You have left the event.');
     }
 }

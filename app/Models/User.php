@@ -458,4 +458,9 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         // Do nothing - we handle verification via welcome email
     }
+
+    public function eventRegistrations(): HasMany
+    {
+        return $this->hasMany(ClubEventRegistration::class);
+    }
 }

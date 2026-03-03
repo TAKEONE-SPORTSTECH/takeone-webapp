@@ -1195,7 +1195,59 @@
             <div class="bg-white rounded-xl shadow-sm">
                 <div class="p-4">
                     <h5 class="font-bold mb-3"><i class="bi bi-calendar-event mr-2"></i>Event Participation</h5>
-                    <p class="text-gray-500">Event history coming soon...</p>
+
+                    @if($joinedEventRegistrations->isEmpty())
+                        <div class="text-center py-10">
+                            <i class="bi bi-calendar-x text-gray-300" style="font-size:2.5rem;"></i>
+                            <p class="text-gray-400 mt-3">No events joined yet.</p>
+                        </div>
+                    @else
+                        <div class="flex flex-col gap-3">
+                            @foreach($joinedEventRegistrations as $reg)
+                            @php
+                                $ev        = $reg->event;
+                                $pillColor = $ev->color ?: '#1d4ed8';
+                                $isPast    = $ev->date->isPast();
+                            @endphp
+                            <div class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 {{ $isPast ? 'opacity-60' : '' }}">
+                                {{-- Date pill --}}
+                                <div class="flex-shrink-0 rounded-xl text-white text-center px-3 py-2 min-w-[52px]"
+                                     style="background:{{ $pillColor }};">
+                                    <div class="text-xs font-semibold uppercase leading-none">{{ $ev->date->format('D') }}</div>
+                                    <div class="text-xl font-extrabold leading-none">{{ $ev->date->format('d') }}</div>
+                                    <div class="text-xs font-semibold uppercase leading-none">{{ $ev->date->format('M') }}</div>
+                                </div>
+                                {{-- Info --}}
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-semibold text-gray-800 truncate">{{ $ev->title }}</div>
+                                    <div class="text-xs text-gray-500 mt-0.5">
+                                        <span class="mr-3"><i class="bi bi-clock mr-1"></i>{{ \Carbon\Carbon::parse($ev->start_time)->format('g:i A') }}</span>
+                                        @if($ev->location)<span><i class="bi bi-geo-alt mr-1"></i>{{ $ev->location }}</span>@endif
+                                    </div>
+                                    @if($ev->tenant)
+                                    <div class="text-xs text-gray-400 mt-0.5"><i class="bi bi-building mr-1"></i>{{ $ev->tenant->club_name }}</div>
+                                    @endif
+                                </div>
+                                {{-- Status badge --}}
+                                <div class="flex-shrink-0">
+                                    @if($reg->status === 'waitlisted')
+                                        <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">
+                                            <i class="bi bi-clock-history"></i> Waitlisted
+                                        </span>
+                                    @elseif($isPast)
+                                        <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-gray-100 text-gray-500">
+                                            <i class="bi bi-check-circle"></i> Attended
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-green-100 text-green-700">
+                                            <i class="bi bi-check-circle-fill"></i> Joined
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>

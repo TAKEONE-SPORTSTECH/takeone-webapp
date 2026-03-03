@@ -559,6 +559,7 @@
                         $capacityPct = $event->max_capacity ? min(100, round($event->spots_taken / $event->max_capacity * 100)) : null;
                         $isFull      = $event->max_capacity && $event->spots_taken >= $event->max_capacity;
                         $ctaText     = $event->cta_text ?: 'Join Event';
+                        $isJoined    = in_array($event->id, $joinedEventIds ?? []);
                     @endphp
                     <div class="event-node" style="top: {{ 10 + $i * 240 }}px;"></div>
                     <article class="event-card {{ !$loop->last ? 'mb-4' : 'mb-2' }}">
@@ -603,11 +604,33 @@
                                     <span>Unlimited guests</span>
                                 @endif
                             </div>
-                            @if($isFull)
-                            <button class="event-cta-wait" style="background:{{ $pillColor }};"><i class="bi bi-clock-history"></i> Join Waitlist</button>
+                            @auth
+                                @if($isJoined)
+                                <div class="flex items-center gap-2">
+                                    <span class="event-cta-joined" style="background:{{ $pillColor }};"><i class="bi bi-check-circle-fill"></i> Joined</span>
+                                    <form method="POST" action="{{ route('clubs.events.leave', [$club->slug, $event->id]) }}">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="event-cta-leave">Leave</button>
+                                    </form>
+                                </div>
+                                @elseif($isFull)
+                                <form method="POST" action="{{ route('clubs.events.join', [$club->slug, $event->id]) }}">
+                                    @csrf
+                                    <button type="submit" class="event-cta-wait" style="background:{{ $pillColor }};"><i class="bi bi-clock-history"></i> Join Waitlist</button>
+                                </form>
+                                @else
+                                <form method="POST" action="{{ route('clubs.events.join', [$club->slug, $event->id]) }}">
+                                    @csrf
+                                    <button type="submit" class="event-cta-open" style="background:{{ $pillColor }};"><i class="bi bi-ticket"></i> {{ $ctaText }}</button>
+                                </form>
+                                @endif
                             @else
-                            <button class="event-cta-open" style="background:{{ $pillColor }};"><i class="bi bi-ticket"></i> {{ $ctaText }}</button>
-                            @endif
+                                @if($isFull)
+                                <button class="event-cta-wait" style="background:{{ $pillColor }};"><i class="bi bi-clock-history"></i> Join Waitlist</button>
+                                @else
+                                <button class="event-cta-open" style="background:{{ $pillColor }};"><i class="bi bi-ticket"></i> {{ $ctaText }}</button>
+                                @endif
+                            @endauth
                         </div>
                     </article>
                     @endforeach

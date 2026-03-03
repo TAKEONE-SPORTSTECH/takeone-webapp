@@ -10,6 +10,7 @@ use App\Models\TournamentEvent;
 use App\Models\Goal;
 use App\Models\Attendance;
 use App\Models\ClubAffiliation;
+use App\Models\ClubEventRegistration;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -185,6 +186,12 @@ class MemberController extends Controller
             return $affiliation->skillAcquisitions->pluck('instructor');
         })->filter()->unique('id')->count();
 
+        // Joined club events
+        $joinedEventRegistrations = ClubEventRegistration::where('user_id', $relationship->dependent->id)
+            ->with(['event.tenant'])
+            ->orderBy('registered_at', 'desc')
+            ->get();
+
         return view('components-templates.member.show', [
             'relationship' => $relationship,
             'latestHealthRecord' => $latestHealthRecord,
@@ -209,6 +216,7 @@ class MemberController extends Controller
             'allSkills' => $allSkills,
             'totalInstructors' => $totalInstructors,
             'user' => $relationship->dependent,
+            'joinedEventRegistrations' => $joinedEventRegistrations,
         ]);
     }
 

@@ -90,6 +90,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/clubs/{slug}', [PlatformController::class, 'show'])->name('clubs.show');
     Route::get('/clubs/{slug}/packages-json', [PlatformController::class, 'clubPackages'])->name('clubs.packages.json');
     Route::post('/clubs/join', [PlatformController::class, 'joinClub'])->name('clubs.join');
+    Route::post('/clubs/{slug}/events/{event}/join', [PlatformController::class, 'joinEvent'])->name('clubs.events.join');
+    Route::delete('/clubs/{slug}/events/{event}/leave', [PlatformController::class, 'leaveEvent'])->name('clubs.events.leave');
     Route::get('/trainer/{user}', [TrainerController::class, 'show'])->name('trainer.show');
 });
 

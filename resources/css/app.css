@@ -1696,6 +1696,30 @@
     gap: 6px;
 }
 
+.event-cta-joined {
+    font-size: 12px;
+    border-radius: 999px;
+    padding: 6px 14px;
+    border: none;
+    color: white;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    opacity: .9;
+}
+
+.event-cta-leave {
+    font-size: 12px;
+    border-radius: 999px;
+    padding: 6px 14px;
+    border: 1px solid #fecaca;
+    background: white;
+    color: #ef4444;
+    font-weight: 700;
+    cursor: pointer;
+}
+
 .event-ribbon {
     position: absolute;
     top: 14px;
