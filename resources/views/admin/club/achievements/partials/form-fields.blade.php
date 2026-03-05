@@ -7,8 +7,8 @@
         </div>
         <div class="md:col-span-2">
             <label class="form-label">Description</label>
-            <input type="text" name="description" class="form-control"
-                   placeholder="e.g. Awarded for overall performance and growth." x-model="formData.description">
+            <textarea name="description" class="form-control" rows="3"
+                      placeholder="e.g. Awarded for overall performance and growth in 2025..." x-model="formData.description"></textarea>
         </div>
         <div>
             <label class="form-label">Tag Text <span class="text-red-500">*</span></label>
@@ -71,32 +71,43 @@
 
     <hr class="border-border">
 
-    {{-- Card Background --}}
+    {{-- Images --}}
     <div>
-        <label class="form-label font-semibold">Card Background</label>
-        <p class="text-xs text-muted-foreground mb-3">Upload an image, or use a gradient as fallback.</p>
+        <label class="form-label font-semibold">Images</label>
+        <p class="text-xs text-muted-foreground mb-2">The first image is the card background. All images appear in the detail popup. Click "Add Image" multiple times to add more.</p>
 
-        {{-- Image upload (full width) --}}
-        <div class="mb-4">
-            <label class="form-label text-xs">Background Image <span class="text-xs text-muted-foreground">(optional)</span></label>
-            <x-takeone-cropper
-                id="achievementImageCropper"
-                :width="400" :height="267"
-                shape="rectangle" mode="form"
-                inputName="image"
-                :folder="'achievements/' . (isset($club) ? $club->slug : 'club')"
-                :filename="'achievement_' . time()"
-                :previewWidth="260" :previewHeight="174"
-                buttonText="Upload Image"
-                buttonClass="btn btn-outline-secondary w-full mt-2"
-                :canvasHeight="520"
-            />
-            <input type="hidden" name="remove_image" :value="formData.remove_image ? '1' : '0'">
+        {{-- Existing images (includes legacy image_path + images[]) --}}
+        <div x-show="formData.images_paths && formData.images_paths.length > 0" class="flex flex-wrap gap-2 mb-2">
+            <template x-for="(path, idx) in formData.images_paths" :key="path">
+                <div class="relative group">
+                    <img :src="'/storage/' + path" class="w-20 h-20 object-cover rounded-lg border border-border">
+                    <button type="button"
+                            @click="formData.images_paths.splice(idx, 1)"
+                            class="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+            </template>
         </div>
+        <input type="hidden" name="keep_extra_images" :value="JSON.stringify(formData.images_paths ?? [])">
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div id="achievementNewPreviews" class="flex flex-wrap gap-2 mb-2"></div>
+        <div id="achievementBase64Inputs"></div>
+
+        <button type="button" onclick="openAchievementCropper()"
+                class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-2 mt-1">
+            <i class="bi bi-camera"></i> Add Image
+        </button>
+    </div>
+
+    <hr class="border-border">
+
+    {{-- Background Gradient (fallback when no images) --}}
+    <div>
+        <label class="form-label font-semibold">Background Gradient <span class="text-xs font-normal text-muted-foreground">(used when no images uploaded)</span></label>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
             <div>
-                <label class="form-label text-xs">Gradient From</label>
+                <label class="form-label text-xs">From</label>
                 <div class="flex items-center gap-2">
                     <input type="color" name="bg_from" class="form-control h-10 p-1 cursor-pointer w-16"
                            x-model="formData.bg_from">
@@ -104,7 +115,7 @@
                 </div>
             </div>
             <div>
-                <label class="form-label text-xs">Gradient To</label>
+                <label class="form-label text-xs">To</label>
                 <div class="flex items-center gap-2">
                     <input type="color" name="bg_to" class="form-control h-10 p-1 cursor-pointer w-16"
                            x-model="formData.bg_to">
@@ -112,62 +123,13 @@
                 </div>
             </div>
         </div>
-
-        {{-- Previews below the grid --}}
-        <div class="mt-3 flex flex-wrap gap-4">
-            {{-- Existing image when editing --}}
-            <div x-show="formData.image_path && !formData.remove_image">
-                <p class="text-xs text-muted-foreground mb-1">Current image:</p>
-                <div class="relative inline-block">
-                    <img :src="'/storage/' + formData.image_path"
-                         class="rounded-xl object-cover" style="height:80px;max-width:100%;" alt="Current">
-                    <button type="button"
-                            class="absolute top-1 right-1 bg-white rounded-full w-6 h-6 flex items-center justify-center shadow text-red-500 text-xs"
-                            @click="formData.remove_image = true">
-                        <i class="bi bi-x-lg"></i>
-                    </button>
-                </div>
-            </div>
-
-            {{-- Gradient preview (shown when no image) --}}
-            <div x-show="!formData.image_path || formData.remove_image" class="flex-1" style="min-width:200px;">
-                <p class="text-xs text-muted-foreground mb-1">Gradient preview:</p>
-                <div class="rounded-xl flex items-center justify-center gap-3 p-4"
-                     :style="`background: linear-gradient(135deg, ${formData.bg_from}, ${formData.bg_to}); height:70px;`">
-                    <i :class="'bi ' + (formData.tag_icon || 'bi-trophy')" class="text-white text-3xl"></i>
-                    <span class="text-white font-bold text-sm" x-text="formData.title || 'Preview'"></span>
-                </div>
+        <div x-show="!formData.images_paths || !formData.images_paths.length" class="mt-3">
+            <p class="text-xs text-muted-foreground mb-1">Gradient preview:</p>
+            <div class="rounded-xl flex items-center justify-center gap-3 p-4"
+                 :style="`background: linear-gradient(135deg, ${formData.bg_from}, ${formData.bg_to}); height:70px;`">
+                <i :class="'bi ' + (formData.tag_icon || 'bi-trophy')" class="text-white text-3xl"></i>
+                <span class="text-white font-bold text-sm" x-text="formData.title || 'Preview'"></span>
             </div>
         </div>
     </div>
-</div>
-
-<hr class="border-border">
-
-{{-- Additional Images (appear in the detail popup) --}}
-<div>
-    <label class="form-label font-semibold">Additional Images <span class="text-xs font-normal text-muted-foreground">(shown in the popup when card is clicked)</span></label>
-
-    {{-- Existing extra images when editing --}}
-    <div x-show="formData.images_paths && formData.images_paths.length > 0" class="flex flex-wrap gap-2 mb-2">
-        <template x-for="(path, idx) in formData.images_paths" :key="idx">
-            <div class="relative group">
-                <img :src="'/storage/' + path" class="w-20 h-20 object-cover rounded-lg border border-border">
-                <button type="button"
-                        @click="formData.images_paths.splice(idx, 1)"
-                        class="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <i class="bi bi-x"></i>
-                </button>
-            </div>
-        </template>
-    </div>
-    <input type="hidden" name="keep_extra_images" :value="JSON.stringify(formData.images_paths ?? [])">
-
-    <div id="achievementNewPreviews" class="flex flex-wrap gap-2 mb-2"></div>
-    <div id="achievementBase64Inputs"></div>
-
-    <button type="button" onclick="openAchievementCropper()"
-            class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-2 mt-1">
-        <i class="bi bi-camera"></i> Add Image
-    </button>
 </div>

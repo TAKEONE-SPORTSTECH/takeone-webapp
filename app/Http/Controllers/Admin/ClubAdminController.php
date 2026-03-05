@@ -920,18 +920,7 @@ class ClubAdminController extends Controller
             'sort_order' => 'nullable|integer|min:0',
         ]);
 
-        $imagePath = null;
-        if ($request->filled('image') && str_starts_with($request->image, 'data:image')) {
-            $imageParts  = explode(';base64,', $request->image);
-            $extension   = explode('image/', $imageParts[0])[1];
-            $imageBinary = base64_decode($imageParts[1]);
-            $folder      = $request->input('image_folder', 'achievements/' . $club->slug);
-            $filename    = $request->input('image_filename', 'achievement_' . time());
-            $imagePath   = $folder . '/' . $filename . '.' . $extension;
-            Storage::disk('public')->put($imagePath, $imageBinary);
-        }
-
-        $extraImages = $this->saveAchievementBase64Images($request->input('achievement_images_base64', []), $club->id);
+        $images = $this->saveAchievementBase64Images($request->input('achievement_images_base64', []), $club->id);
 
         ClubAchievement::create([
             'tenant_id'  => $club->id,
@@ -939,8 +928,8 @@ class ClubAdminController extends Controller
             'description'=> $request->description,
             'tag'        => $request->tag,
             'tag_icon'   => $request->tag_icon ?: 'bi-trophy',
-            'image_path' => $imagePath,
-            'images'     => $extraImages ?: null,
+            'image_path' => null,
+            'images'     => $images ?: null,
             'bg_from'    => $request->bg_from ?: '#f59e0b',
             'bg_to'      => $request->bg_to   ?: '#f97316',
             'status'     => $request->status,
@@ -968,27 +957,15 @@ class ClubAdminController extends Controller
 
         $data = $request->only(['title', 'description', 'tag', 'tag_icon', 'bg_from', 'bg_to', 'status', 'sort_order']);
 
-        if ($request->filled('image') && str_starts_with($request->image, 'data:image')) {
-            if ($achievement->image_path) {
-                Storage::disk('public')->delete($achievement->image_path);
-            }
-            $imageParts  = explode(';base64,', $request->image);
-            $extension   = explode('image/', $imageParts[0])[1];
-            $imageBinary = base64_decode($imageParts[1]);
-            $folder      = $request->input('image_folder', 'achievements/' . $club->slug);
-            $filename    = $request->input('image_filename', 'achievement_' . time());
-            $data['image_path'] = $folder . '/' . $filename . '.' . $extension;
-            Storage::disk('public')->put($data['image_path'], $imageBinary);
-        }
+        $kept     = json_decode($request->input('keep_extra_images', '[]'), true) ?: [];
+        $newExtra = $this->saveAchievementBase64Images($request->input('achievement_images_base64', []), $club->id);
+        $data['images'] = array_merge($kept, $newExtra) ?: null;
 
-        if ($request->boolean('remove_image') && $achievement->image_path) {
+        // If image_path is no longer in the keep list, delete and clear it
+        if ($achievement->image_path && !in_array($achievement->image_path, $kept)) {
             Storage::disk('public')->delete($achievement->image_path);
             $data['image_path'] = null;
         }
-
-        $kept    = json_decode($request->input('keep_extra_images', '[]'), true) ?: [];
-        $newExtra = $this->saveAchievementBase64Images($request->input('achievement_images_base64', []), $club->id);
-        $data['images'] = array_merge($kept, $newExtra) ?: null;
 
         $achievement->update($data);
 
@@ -1000,6 +977,9 @@ class ClubAdminController extends Controller
         $this->authorizeClub($club);
         abort_if($achievement->tenant_id !== $club->id, 403);
 
+        foreach ($achievement->images ?? [] as $imgPath) {
+            Storage::disk('public')->delete($imgPath);
+        }
         if ($achievement->image_path) {
             Storage::disk('public')->delete($achievement->image_path);
         }

@@ -4,20 +4,24 @@
 
 @php
 $achievementsJson = $achievements->map(function($a) {
+    $combined = array_values(array_filter(array_merge(
+        $a->image_path ? [$a->image_path] : [],
+        $a->images ?? []
+    )));
+    $combinedUrls = collect($combined)->map(fn($p) => asset('storage/' . $p))->values()->toArray();
     return [
         'id'          => $a->id,
         'title'       => $a->title,
         'description' => $a->description ?? '',
         'tag'         => $a->tag,
         'tag_icon'    => $a->tag_icon,
-        'image_path'  => $a->image_path ?? '',
-        'image_url'   => $a->image_path ? asset('storage/' . $a->image_path) : null,
+        'image_url'   => $combinedUrls[0] ?? null,
         'bg_from'     => $a->bg_from,
         'bg_to'       => $a->bg_to,
         'status'      => $a->status,
         'sort_order'  => $a->sort_order,
-        'images'      => collect($a->images ?? [])->map(fn($p) => asset('storage/' . $p))->values()->toArray(),
-        'images_paths'=> $a->images ?? [],
+        'images'      => $combinedUrls,
+        'images_paths'=> $combined,
     ];
 });
 @endphp
