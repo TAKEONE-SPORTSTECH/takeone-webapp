@@ -79,6 +79,9 @@ $achievementsJson = $achievements->map(function($a) {
                             <span class="ach-dot{{ $j === 0 ? ' active' : '' }}"></span>
                             @endforeach
                         </div>
+                        <span class="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded-full backdrop-blur-sm">
+                            <i class="bi bi-images mr-1"></i>{{ count($achCardImages) }}
+                        </span>
                         @endif
                     @else
                         <div class="w-full h-full flex items-center justify-center"
