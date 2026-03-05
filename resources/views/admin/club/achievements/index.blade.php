@@ -4,10 +4,10 @@
 
 @php
 $achievementsJson = $achievements->map(function($a) {
-    $combined = array_values(array_filter(array_merge(
+    $combined = array_values(array_unique(array_filter(array_merge(
         $a->image_path ? [$a->image_path] : [],
         $a->images ?? []
-    )));
+    ))));
     $combinedUrls = collect($combined)->map(fn($p) => asset('storage/' . $p))->values()->toArray();
     return [
         'id'          => $a->id,
@@ -311,6 +311,35 @@ function resetAchievementImages() {
     renderAchievementNewThumbnails();
 }
 
+let achExistingImages = [];
+
+function renderAchievementExistingThumbnails(paths) {
+    achExistingImages = Array.isArray(paths) ? [...paths] : [];
+    const previews = document.getElementById('achievementExistingPreviews');
+    const input    = document.getElementById('keepExtraImagesInput');
+    const preview  = document.getElementById('achGradientPreview');
+    if (!previews) return;
+
+    previews.innerHTML = '';
+    if (input) input.value = JSON.stringify(achExistingImages);
+    if (preview) preview.style.display = achExistingImages.length ? 'none' : '';
+
+    achExistingImages.forEach((path, idx) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'relative group';
+        wrap.innerHTML = `
+            <img src="/storage/${path}" class="w-20 h-20 object-cover rounded-lg border border-border" onerror="this.parentElement.style.display='none'">
+            <button type="button" class="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <i class="bi bi-x"></i>
+            </button>`;
+        wrap.querySelector('button').addEventListener('click', () => {
+            achExistingImages.splice(idx, 1);
+            renderAchievementExistingThumbnails(achExistingImages);
+        });
+        previews.appendChild(wrap);
+    });
+}
+
 $(function() {
     const zoomMin = 0.01, zoomMax = 3;
 
@@ -504,6 +533,7 @@ function achievementsAdmin() {
             this.showIconPicker = false;
             this.showModal      = true;
             resetAchievementImages();
+            renderAchievementExistingThumbnails([]);
         },
 
         openEdit(id) {
@@ -515,6 +545,7 @@ function achievementsAdmin() {
             this.showIconPicker = false;
             this.showModal      = true;
             resetAchievementImages();
+            renderAchievementExistingThumbnails(a.images_paths || []);
         },
 
         deleteAchievement(id) {

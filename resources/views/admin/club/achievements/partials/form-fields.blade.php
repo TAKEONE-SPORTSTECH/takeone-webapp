@@ -76,20 +76,9 @@
         <label class="form-label font-semibold">Images</label>
         <p class="text-xs text-muted-foreground mb-2">The first image is the card background. All images appear in the detail popup. Click "Add Image" multiple times to add more.</p>
 
-        {{-- Existing images (includes legacy image_path + images[]) --}}
-        <div x-show="formData.images_paths && formData.images_paths.length > 0" class="flex flex-wrap gap-2 mb-2">
-            <template x-for="(path, idx) in formData.images_paths" :key="path">
-                <div class="relative group">
-                    <img :src="'/storage/' + path" class="w-20 h-20 object-cover rounded-lg border border-border">
-                    <button type="button"
-                            @click="formData.images_paths.splice(idx, 1)"
-                            class="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <i class="bi bi-x"></i>
-                    </button>
-                </div>
-            </template>
-        </div>
-        <input type="hidden" name="keep_extra_images" :value="JSON.stringify(formData.images_paths ?? [])">
+        {{-- Existing images rendered by JS (renderAchievementExistingThumbnails) --}}
+        <div id="achievementExistingPreviews" class="flex flex-wrap gap-2 mb-2"></div>
+        <input type="hidden" name="keep_extra_images" id="keepExtraImagesInput" value="[]">
 
         <div id="achievementNewPreviews" class="flex flex-wrap gap-2 mb-2"></div>
         <div id="achievementBase64Inputs"></div>
@@ -123,7 +112,7 @@
                 </div>
             </div>
         </div>
-        <div x-show="!formData.images_paths || !formData.images_paths.length" class="mt-3">
+        <div id="achGradientPreview" class="mt-3">
             <p class="text-xs text-muted-foreground mb-1">Gradient preview:</p>
             <div class="rounded-xl flex items-center justify-center gap-3 p-4"
                  :style="`background: linear-gradient(135deg, ${formData.bg_from}, ${formData.bg_to}); height:70px;`">
