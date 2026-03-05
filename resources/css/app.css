@@ -1346,6 +1346,33 @@
     background: #fff;
 }
 
+.ach-dots {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 5px;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.ach-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    transition: background 0.3s;
+}
+
+.ach-dot.active {
+    background: #fff;
+}
+
+.latest-achievements .achievement-image .ach-preview {
+    transition: transform 0.4s ease, opacity 0.3s ease;
+}
+
 .fac-placeholder {
     border-radius: 20px;
     height: 160px;

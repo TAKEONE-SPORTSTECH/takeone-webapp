@@ -308,13 +308,24 @@
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                         @foreach($achievements as $i => $achievement)
-                        @php $achData = $achievementsJson[$i]; @endphp
+                        @php
+                            $achData   = $achievementsJson[$i];
+                            $achImages = collect($achievement->images ?? [])->map(fn($p) => asset('storage/'.$p))->values()->toArray();
+                            if (empty($achImages) && $achievement->image_path) $achImages = [asset('storage/'.$achievement->image_path)];
+                        @endphp
                         <article class="achievement-card h-full cursor-pointer"
                                  @click="achDetail = {{ json_encode($achData) }}; showAchDetail = true">
-                            <div class="achievement-image">
-                                @if($achievement->image_path)
-                                    <img src="{{ asset('storage/' . $achievement->image_path) }}"
-                                         class="w-full h-full object-cover" alt="{{ $achievement->title }}">
+                            <div class="achievement-image"
+                                 @if(count($achImages) > 1) data-images="{{ json_encode($achImages) }}" @endif>
+                                @if(count($achImages))
+                                    <img src="{{ $achImages[0] }}" class="ach-preview w-full h-full object-cover" alt="{{ $achievement->title }}">
+                                    @if(count($achImages) > 1)
+                                    <div class="ach-dots">
+                                        @foreach($achImages as $j => $_)
+                                        <span class="ach-dot{{ $j === 0 ? ' active' : '' }}"></span>
+                                        @endforeach
+                                    </div>
+                                    @endif
                                 @else
                                     <div class="w-full h-full"
                                          style="background: linear-gradient(135deg, {{ $achievement->bg_from }}, {{ $achievement->bg_to }});"></div>
@@ -1314,6 +1325,29 @@ document.querySelectorAll('.fac-slideshow').forEach(function(el) {
     if (images.length <= 1) return;
     const img  = el.querySelector('.fac-preview');
     const dots = el.querySelectorAll('.fac-dot');
+    let idx = 0, timer = null;
+
+    function goTo(i) {
+        idx = (i + images.length) % images.length;
+        img.src = images[idx];
+        dots.forEach((d, j) => d.classList.toggle('active', j === idx));
+    }
+
+    el.addEventListener('mouseenter', function() {
+        timer = setInterval(function() { goTo(idx + 1); }, 800);
+    });
+    el.addEventListener('mouseleave', function() {
+        clearInterval(timer);
+        goTo(0);
+    });
+});
+
+// Achievement hover slideshow
+document.querySelectorAll('.achievement-image[data-images]').forEach(function(el) {
+    const images = JSON.parse(el.dataset.images || '[]');
+    if (images.length <= 1) return;
+    const img  = el.querySelector('.ach-preview');
+    const dots = el.querySelectorAll('.ach-dot');
     let idx = 0, timer = null;
 
     function goTo(i) {
