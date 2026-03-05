@@ -165,6 +165,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin/club/{club}')->name('admi
     Route::post('/events', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeEvent'])->name('events.store');
     Route::put('/events/{event}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateEvent'])->name('events.update');
     Route::delete('/events/{event}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyEvent'])->name('events.destroy');
+    Route::patch('/events/{event}/archive', [App\Http\Controllers\Admin\ClubAdminController::class, 'archiveEvent'])->name('events.archive');
     Route::get('/timeline', [App\Http\Controllers\Admin\ClubAdminController::class, 'timeline'])->name('timeline');
     Route::post('/timeline', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeTimelinePost'])->name('timeline.store');
     Route::put('/timeline/{post}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateTimelinePost'])->name('timeline.update');

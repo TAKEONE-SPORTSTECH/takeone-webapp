@@ -1578,6 +1578,11 @@
     display: none;
 }
 
+.event-card.live-card {
+    border-color: #86efac;
+    background: radial-gradient(circle at top left, #f0fdf4, #ffffff);
+}
+
 .event-card {
     position: relative;
     margin-bottom: 24px;
@@ -1594,6 +1599,37 @@
     box-shadow: 0 18px 35px rgba(15,23,42,0.12);
     transform: translateY(-3px);
 }
+
+.carousel-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    padding: 0;
+    margin: 0;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 20;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7);
+    line-height: 1;
+    font-size: 0;
+}
+
+.carousel-arrow svg {
+    display: block;
+    flex-shrink: 0;
+}
+
+.carousel-arrow.carousel-arrow--prev { left: 12px; }
+.carousel-arrow.carousel-arrow--next { right: 12px; }
+
 
 .event-header {
     display: flex;

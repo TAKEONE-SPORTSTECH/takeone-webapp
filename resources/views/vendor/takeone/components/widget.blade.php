@@ -252,6 +252,12 @@ $(function() {
                                 $(this).attr('style', style.replace(/url\([^)]+\)/, 'url(' + newUrl + ')'));
                             }
                         });
+
+                        // Notify page-level callbacks (e.g. profile-modal placeholder → img update)
+                        if (typeof window.imageUploadSuccess === 'function') {
+                            window.imageUploadSuccess(res);
+                        }
+                        document.dispatchEvent(new CustomEvent('imageUploaded', { detail: res }));
                     }
                 }).fail((err) => {
                     Toast.error('Upload Failed', err.responseJSON?.message || 'An error occurred while uploading.');

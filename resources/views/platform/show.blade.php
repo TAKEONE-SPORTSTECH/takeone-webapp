@@ -522,18 +522,29 @@
             </div>
 
             {{-- ==================== EVENTS TAB ==================== --}}
-            <div class="tab-pane fade" id="tab-events">
+            <div class="tab-pane fade" id="tab-events"
+                 x-data="{ showDetail: false, detailEvent: null }"
+                 @open-event-detail.window="showDetail = true; detailEvent = $event.detail">
+                @php
+                    $activeEvents   = $club->events->filter(fn($e) => !$e->is_archived && !$e->hasEnded());
+                    $archivedEvents = $club->events->filter(fn($e) =>  $e->is_archived ||  $e->hasEnded());
+                @endphp
                 <div class="flex justify-between items-center mb-4">
                     <div>
                         <h4 class="text-xl font-extrabold mb-1">Upcoming Events</h4>
                         <p class="text-muted-foreground text-sm">Open to everyone. Reserve your spot before it sells out.</p>
                     </div>
-                    <button class="border border-gray-800 text-sm font-semibold rounded-full px-3 py-1">
-                        <i class="bi bi-calendar-plus mr-1"></i> Event Calendar
-                    </button>
+                    <div class="flex items-center gap-2">
+                        @if($archivedEvents->isNotEmpty())
+                        <button class="border border-gray-300 text-muted-foreground text-sm font-semibold rounded-full px-3 py-1" data-bs-toggle="modal" data-bs-target="#archivedEventsModal">
+                            <i class="bi bi-archive mr-1"></i> Archived
+                        </button>
+                        @endif
+                        <button class="border border-gray-800 text-sm font-semibold rounded-full px-3 py-1">
+                            <i class="bi bi-calendar-plus mr-1"></i> Event Calendar
+                        </button>
+                    </div>
                 </div>
-
-                @php $activeEvents = $club->events->where('status', 'active'); @endphp
                 @if($activeEvents->isEmpty())
                 <div class="text-center py-16 text-muted-foreground">
                     <i class="bi bi-calendar-x" style="font-size:2.5rem;opacity:.3;"></i>
@@ -550,11 +561,25 @@
                         $ctaText     = $event->cta_text ?: 'Join Event';
                         $isJoined    = in_array($event->id, $joinedEventIds ?? []);
                     @endphp
+                    @php
+                        $eventDetail = [
+                            'title'       => $event->title,
+                            'color'       => $event->color ?: '#1d4ed8',
+                            'date'        => $event->date->format('Y-m-d'),
+                            'date_label'  => $event->date->format('d M Y') . ($event->end_date ? ' – ' . $event->end_date->format('d M Y') : ''),
+                            'time_label'  => \Carbon\Carbon::parse($event->start_time)->format('g:i A') . ($event->end_time ? ' – ' . \Carbon\Carbon::parse($event->end_time)->format('g:i A') : ''),
+                            'location'    => $event->location ?? '',
+                            'level'       => $event->level ?? '',
+                            'description' => $event->description ?? '',
+                            'tags'        => $tagsArr,
+                            'max_capacity'=> $event->max_capacity,
+                            'images'      => collect($event->images ?? [])->map(fn($p) => str_starts_with($p, 'http') ? $p : asset('storage/' . $p))->values()->toArray(),
+                        ];
+                    @endphp
                     <div class="event-node" style="top: {{ 10 + $i * 240 }}px;"></div>
-                    <article class="event-card {{ !$loop->last ? 'mb-4' : 'mb-2' }}">
-                        @if($event->ribbon_label)
-                        <div class="event-ribbon {{ $event->ribbon_type === 'limited' ? 'limited' : '' }}">{{ $event->ribbon_label }}</div>
-                        @endif
+                    <article class="event-card {{ !$loop->last ? 'mb-4' : 'mb-2' }} {{ $event->isOngoing() ? 'live-card' : '' }}"
+                             style="cursor:pointer"
+                             onclick="openEventDetail({{ json_encode($eventDetail) }}, event)">
                         <div class="event-header">
                             <div class="event-date-pill" style="background:{{ $pillColor }};">
                                 <div class="day">{{ $event->date->format('D') }}</div>
@@ -562,9 +587,15 @@
                                 <div class="month">{{ $event->date->format('M') }}</div>
                             </div>
                             <div class="event-body-main">
-                                <div class="event-title">{{ $event->title }}</div>
+                                <div class="event-title flex items-center gap-2">
+                                    {{ $event->title }}
+                                    @if($event->isOngoing())
+                                        <span class="status-chip status-ongoing"><span class="live-dot"></span> Ongoing</span>
+                                    @endif
+                                </div>
                                 <div class="event-meta mb-1">
-                                    <span class="mr-3"><i class="bi bi-clock"></i> {{ \Carbon\Carbon::parse($event->start_time)->format('g:i A') }}{{ $event->end_time ? ' - ' . \Carbon\Carbon::parse($event->end_time)->format('g:i A') : '' }}</span>
+                                    <span class="mr-3"><i class="bi bi-calendar"></i> {{ $event->date->format('d M Y') }}{{ $event->end_date ? ' – ' . $event->end_date->format('d M Y') : '' }}</span>
+                                    <span class="mr-3"><i class="bi bi-clock"></i> {{ \Carbon\Carbon::parse($event->start_time)->format('g:i A') }}{{ $event->end_time ? ' – ' . \Carbon\Carbon::parse($event->end_time)->format('g:i A') : '' }}</span>
                                     @if($event->location)<span class="mr-3"><i class="bi bi-geo-alt"></i> {{ $event->location }}</span>@endif
                                     @if($event->level)<span><i class="bi bi-bar-chart"></i> {{ $event->level }}</span>@endif
                                 </div>
@@ -625,6 +656,149 @@
                     @endforeach
                 </div>
                 @endif
+
+                {{-- Archived Events Modal --}}
+                @if($archivedEvents->isNotEmpty())
+                <div class="modal fade" id="archivedEventsModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header border-b border-border px-4 py-3">
+                                <h5 class="modal-title font-semibold flex items-center gap-2">
+                                    <i class="bi bi-archive"></i> Archived Events
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body p-4 space-y-3">
+                                @foreach($archivedEvents as $event)
+                                @php $pillColor = $event->color ?: '#1d4ed8'; @endphp
+                                <div class="flex items-center gap-3 p-3 rounded-lg border border-border">
+                                    <div class="flex-shrink-0 rounded-lg text-white text-center px-2 py-1.5 min-w-[46px]"
+                                         style="background:{{ $pillColor }};">
+                                        <div class="text-[10px] font-semibold uppercase">{{ $event->date->format('D') }}</div>
+                                        <div class="text-lg font-extrabold leading-none">{{ $event->date->format('d') }}</div>
+                                        <div class="text-[10px] font-semibold uppercase">{{ $event->date->format('M') }}</div>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-semibold text-sm mb-0.5">{{ $event->title }}</p>
+                                        <p class="text-xs text-muted-foreground mb-0">
+                                            <i class="bi bi-clock mr-1"></i>{{ \Carbon\Carbon::parse($event->start_time)->format('g:i A') }}
+                                            @if($event->location) &middot; <i class="bi bi-geo-alt mr-1"></i>{{ $event->location }}@endif
+                                        </p>
+                                        @if($event->description)
+                                        <p class="text-xs text-muted-foreground mt-1 mb-0">{{ $event->description }}</p>
+                                        @endif
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+                {{-- Event Detail Modal (Alpine) --}}
+                <div x-show="showDetail" x-cloak
+                     class="fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4 overflow-y-auto"
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0"
+                     x-transition:enter-end="opacity-100"
+                     x-transition:leave="transition ease-in duration-150"
+                     x-transition:leave-start="opacity-100"
+                     x-transition:leave-end="opacity-0"
+                     @click.self="showDetail = false">
+                    <div class="my-auto w-full max-w-2xl">
+                        <div class="modal-content border-0 shadow-lg relative" @click.stop @mousedown.stop x-show="detailEvent">
+                            <template x-if="detailEvent">
+                                <div>
+                                    {{-- Hero images --}}
+                                    <div x-show="detailEvent.images && detailEvent.images.length > 0"
+                                         x-data="{ imgIdx: 0 }"
+                                         x-effect="imgIdx = 0"
+                                         class="relative rounded-t-xl bg-black overflow-hidden" style="height:260px;">
+                                        <div class="flex h-full overflow-x-auto snap-x snap-mandatory"
+                                             style="scroll-behavior:smooth; -webkit-overflow-scrolling:touch; scrollbar-width:none; cursor:grab;"
+                                             @scroll.debounce.50ms="imgIdx = Math.round($el.scrollLeft / $el.offsetWidth)"
+                                             @click.stop
+                                             @mousedown.stop.prevent="initStripDrag($event, $el)"
+                                             x-ref="strip">
+                                            <template x-for="img in detailEvent.images" :key="img">
+                                                <img :src="img" class="snap-start flex-shrink-0 w-full h-full object-cover select-none" draggable="false">
+                                            </template>
+                                        </div>
+                                        <button x-show="detailEvent.images.length > 1"
+                                                @mousedown.stop @click.stop="$refs.strip.scrollTo({ left: (imgIdx - 1 + detailEvent.images.length) % detailEvent.images.length * $refs.strip.offsetWidth, behavior: 'smooth' })"
+                                                class="carousel-arrow carousel-arrow--prev">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/></svg>
+                                        </button>
+                                        <button x-show="detailEvent.images.length > 1"
+                                                @mousedown.stop @click.stop="$refs.strip.scrollTo({ left: (imgIdx + 1) % detailEvent.images.length * $refs.strip.offsetWidth, behavior: 'smooth' })"
+                                                class="carousel-arrow carousel-arrow--next">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>
+                                        </button>
+                                        <div x-show="detailEvent.images.length > 1"
+                                             class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 pointer-events-auto">
+                                            <template x-for="(img, i) in detailEvent.images" :key="i">
+                                                <button @click.stop="$refs.strip.scrollTo({ left: i * $refs.strip.offsetWidth, behavior: 'smooth' })"
+                                                        :class="imgIdx === i ? 'bg-white w-4' : 'bg-white/50 w-2'"
+                                                        class="h-2 rounded-full transition-all duration-200"></button>
+                                            </template>
+                                        </div>
+                                        <button @mousedown.stop @click.stop="showDetail = false"
+                                                class="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-black/50 hover:bg-black/75 text-white flex items-center justify-center transition-colors z-10">
+                                            <i class="bi bi-x-lg text-xs"></i>
+                                        </button>
+                                    </div>
+
+                                    {{-- Header --}}
+                                    <div class="px-6 pt-5 pb-0 flex items-start gap-3">
+                                        <div class="flex items-center gap-3 flex-1">
+                                            <div class="rounded-xl text-white text-center px-2.5 py-1.5 flex-shrink-0"
+                                                 :style="'background:' + detailEvent.color">
+                                                <div class="text-[10px] font-bold uppercase" x-text="new Date(detailEvent.date + 'T00:00:00').toLocaleDateString('en',{weekday:'short'})"></div>
+                                                <div class="text-xl font-extrabold leading-none" x-text="new Date(detailEvent.date + 'T00:00:00').getDate()"></div>
+                                                <div class="text-[10px] font-bold uppercase" x-text="new Date(detailEvent.date + 'T00:00:00').toLocaleDateString('en',{month:'short'})"></div>
+                                            </div>
+                                            <div>
+                                                <h4 class="text-lg font-bold text-foreground mb-0" x-text="detailEvent.title"></h4>
+                                                <p class="text-xs text-muted-foreground mb-0" x-text="detailEvent.date_label"></p>
+                                            </div>
+                                        </div>
+                                        <button type="button" @mousedown.stop @click.stop="showDetail = false"
+                                                class="text-muted-foreground hover:text-foreground flex-shrink-0 mt-1">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                    </div>
+
+                                    {{-- Meta --}}
+                                    <div class="px-6 py-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground border-b border-border">
+                                        <span><i class="bi bi-clock mr-1"></i><span x-text="detailEvent.time_label"></span></span>
+                                        <span x-show="detailEvent.location"><i class="bi bi-geo-alt mr-1"></i><span x-text="detailEvent.location"></span></span>
+                                        <span x-show="detailEvent.level"><i class="bi bi-bar-chart mr-1"></i><span x-text="detailEvent.level"></span></span>
+                                        <span x-show="detailEvent.max_capacity"><i class="bi bi-people mr-1"></i><span x-text="detailEvent.max_capacity + ' spots'"></span></span>
+                                    </div>
+
+                                    {{-- Description --}}
+                                    <div class="px-6 py-4" x-show="detailEvent.description">
+                                        <p class="text-sm text-foreground leading-relaxed mb-0" x-text="detailEvent.description"></p>
+                                    </div>
+
+                                    {{-- Tags --}}
+                                    <div class="px-6 pb-4 flex flex-wrap gap-2" x-show="detailEvent.tags && detailEvent.tags.length > 0">
+                                        <template x-for="tag in detailEvent.tags" :key="tag">
+                                            <span class="badge bg-muted/40 text-foreground text-xs border border-border" x-text="tag"></span>
+                                        </template>
+                                    </div>
+
+                                    {{-- Footer --}}
+                                    <div class="px-6 py-4 border-t border-border flex justify-end">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" @click="showDetail = false">Close</button>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             {{-- ==================== STATISTICS TAB ==================== --}}
@@ -993,6 +1167,27 @@
 
 @push('scripts')
 <script>
+function openEventDetail(ev, e) {
+    if (e && e.target.closest('.event-footer')) return;
+    window.dispatchEvent(new CustomEvent('open-event-detail', { detail: ev }));
+}
+
+function initStripDrag(e, el) {
+    const startX     = e.pageX;
+    const baseScroll = el.scrollLeft;
+    document.body.style.cursor     = 'grabbing';
+    document.body.style.userSelect = 'none';
+    const onMove = ev => { el.scrollLeft = baseScroll - (ev.pageX - startX); };
+    const onUp   = () => {
+        document.body.style.cursor     = '';
+        document.body.style.userSelect = '';
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup',   onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
+}
+
 (function() {
     const slides = document.querySelectorAll('.hero-bg-slide');
     if (slides.length > 1) {

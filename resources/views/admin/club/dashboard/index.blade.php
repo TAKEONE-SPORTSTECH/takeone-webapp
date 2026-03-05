@@ -66,6 +66,20 @@
             </div>
         </div>
 
+        <!-- Events -->
+        <div class="card h-full border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onclick="window.location='{{ route('admin.club.events', $club->slug) }}'">
+            <div class="card-body">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-muted-foreground text-sm">Events</span>
+                    <div class="rounded p-2 bg-purple-500/10">
+                        <i class="bi bi-calendar-event text-purple-500"></i>
+                    </div>
+                </div>
+                <h3 class="font-bold text-purple-500 mb-1">{{ $stats['events'] ?? 0 }}</h3>
+                <p class="text-muted-foreground text-sm mb-0">Active events</p>
+            </div>
+        </div>
+
         <!-- Rating -->
         <div class="card h-full border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onclick="window.location='{{ route('admin.club.details', $club->slug) }}'">
             <div class="card-body">

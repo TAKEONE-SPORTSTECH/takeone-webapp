@@ -49,6 +49,7 @@ class ClubAdminController extends Controller
             'activities' => ClubActivity::where('tenant_id', $clubId)->count(),
             'packages' => ClubPackage::where('tenant_id', $clubId)->count(),
             'instructors' => ClubInstructor::where('tenant_id', $clubId)->count(),
+            'events' => ClubEvent::where('tenant_id', $clubId)->where('is_archived', false)->count(),
             'rating' => $club->reviews()->avg('rating') ?? 0,
         ];
 
@@ -568,7 +569,8 @@ class ClubAdminController extends Controller
             ->orderBy('date')
             ->orderBy('start_time')
             ->get();
-        return view('admin.club.events.index', compact('club', 'events'));
+        $facilities = ClubFacility::where('tenant_id', $club->id)->orderBy('name')->get();
+        return view('admin.club.events.index', compact('club', 'events', 'facilities'));
     }
 
     public function storeEvent(Request $request, Tenant $club)
@@ -578,35 +580,38 @@ class ClubAdminController extends Controller
         $request->validate([
             'title'        => 'required|string|max:255',
             'date'         => 'required|date',
+            'end_date'     => 'nullable|date|after_or_equal:date',
             'start_time'   => 'required',
             'end_time'     => 'nullable',
             'location'     => 'nullable|string|max:255',
             'level'        => 'nullable|string|max:255',
             'description'  => 'nullable|string',
             'max_capacity' => 'nullable|integer|min:1',
-            'spots_taken'  => 'nullable|integer|min:0',
-            'ribbon_label' => 'nullable|string|max:100',
-            'ribbon_type'  => 'nullable|string|max:50',
             'tags'         => 'nullable|string',
             'color'        => 'nullable|string|max:20',
-            'cta_text'     => 'nullable|string|max:100',
-            'status'       => 'nullable|string|in:active,cancelled,completed',
+            'event_images.*' => 'nullable|image|max:4096',
         ]);
 
         $data = $request->only([
-            'title', 'date', 'start_time', 'end_time', 'location', 'level',
-            'description', 'max_capacity', 'spots_taken', 'ribbon_label',
-            'ribbon_type', 'color', 'cta_text', 'status',
+            'title', 'date', 'end_date', 'start_time', 'end_time', 'location', 'level',
+            'description', 'max_capacity', 'color',
         ]);
         $data['tenant_id'] = $club->id;
-        $data['status']    = $data['status'] ?? 'active';
+        $data['status']    = 'active';
 
-        // Parse comma-separated tags into array
         if ($request->filled('tags')) {
             $data['tags'] = array_values(array_filter(array_map('trim', explode(',', $request->input('tags')))));
         } else {
             $data['tags'] = null;
         }
+
+        $images = [];
+        if ($request->hasFile('event_images')) {
+            foreach ($request->file('event_images') as $file) {
+                $images[] = $file->store("events/{$club->id}", 'public');
+            }
+        }
+        $data['images'] = $images ?: null;
 
         ClubEvent::create($data);
 
@@ -621,25 +626,21 @@ class ClubAdminController extends Controller
         $request->validate([
             'title'        => 'required|string|max:255',
             'date'         => 'required|date',
+            'end_date'     => 'nullable|date|after_or_equal:date',
             'start_time'   => 'required',
             'end_time'     => 'nullable',
             'location'     => 'nullable|string|max:255',
             'level'        => 'nullable|string|max:255',
             'description'  => 'nullable|string',
             'max_capacity' => 'nullable|integer|min:1',
-            'spots_taken'  => 'nullable|integer|min:0',
-            'ribbon_label' => 'nullable|string|max:100',
-            'ribbon_type'  => 'nullable|string|max:50',
             'tags'         => 'nullable|string',
             'color'        => 'nullable|string|max:20',
-            'cta_text'     => 'nullable|string|max:100',
-            'status'       => 'nullable|string|in:active,cancelled,completed',
+            'event_images.*' => 'nullable|image|max:4096',
         ]);
 
         $data = $request->only([
-            'title', 'date', 'start_time', 'end_time', 'location', 'level',
-            'description', 'max_capacity', 'spots_taken', 'ribbon_label',
-            'ribbon_type', 'color', 'cta_text', 'status',
+            'title', 'date', 'end_date', 'start_time', 'end_time', 'location', 'level',
+            'description', 'max_capacity', 'color',
         ]);
 
         if ($request->filled('tags')) {
@@ -647,6 +648,15 @@ class ClubAdminController extends Controller
         } else {
             $data['tags'] = null;
         }
+
+        // Keep existing images, append newly uploaded ones
+        $keepImages = json_decode($request->input('keep_images', '[]'), true) ?: [];
+        if ($request->hasFile('event_images')) {
+            foreach ($request->file('event_images') as $file) {
+                $keepImages[] = $file->store("events/{$club->id}", 'public');
+            }
+        }
+        $data['images'] = $keepImages ?: null;
 
         $event->update($data);
 
@@ -660,6 +670,16 @@ class ClubAdminController extends Controller
         $event->delete();
 
         return response()->json(['success' => true, 'message' => 'Event deleted successfully.']);
+    }
+
+    public function archiveEvent(Tenant $club, $eventId)
+    {
+        $this->authorizeClub($club);
+        $event = ClubEvent::where('tenant_id', $club->id)->findOrFail($eventId);
+        $event->update(['is_archived' => !$event->is_archived]);
+
+        $msg = $event->is_archived ? 'Event archived.' : 'Event unarchived.';
+        return back()->with('success', $msg);
     }
 
     /**
