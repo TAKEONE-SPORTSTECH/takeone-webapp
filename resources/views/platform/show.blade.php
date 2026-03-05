@@ -315,8 +315,10 @@
                         @foreach($achievements as $i => $achievement)
                         @php
                             $achData   = $achievementsJson[$i];
-                            $achImages = collect($achievement->images ?? [])->map(fn($p) => asset('storage/'.$p))->values()->toArray();
-                            if (empty($achImages) && $achievement->image_path) $achImages = [asset('storage/'.$achievement->image_path)];
+                            $achImages = array_values(array_filter(array_merge(
+                                $achievement->image_path ? [asset('storage/'.$achievement->image_path)] : [],
+                                collect($achievement->images ?? [])->map(fn($p) => asset('storage/'.$p))->toArray()
+                            )));
                         @endphp
                         <article class="achievement-card h-full cursor-pointer"
                                  @click="achDetail = {{ json_encode($achData) }}; showAchDetail = true">
