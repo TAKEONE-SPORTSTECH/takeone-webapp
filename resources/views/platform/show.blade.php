@@ -244,9 +244,22 @@
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             @forelse($club->facilities as $facility)
+                            @php
+                                $facImages = collect($facility->images ?? [])->map(fn($p) => asset('storage/'.$p))->values()->toArray();
+                                if (empty($facImages) && $facility->photo) $facImages = [asset('storage/'.$facility->photo)];
+                            @endphp
                             <div>
-                                @if($facility->photo)
-                                <img src="{{ asset('storage/' . $facility->photo) }}" class="fac-preview" alt="{{ $facility->name }}">
+                                @if(count($facImages))
+                                <div class="fac-slideshow" data-images="{{ json_encode($facImages) }}">
+                                    <img src="{{ $facImages[0] }}" class="fac-preview" alt="{{ $facility->name }}">
+                                    @if(count($facImages) > 1)
+                                    <div class="fac-dots">
+                                        @foreach($facImages as $i => $_)
+                                        <span class="fac-dot{{ $i === 0 ? ' active' : '' }}"></span>
+                                        @endforeach
+                                    </div>
+                                    @endif
+                                </div>
                                 @else
                                 <div class="fac-placeholder">
                                     <i class="bi bi-building text-white text-3xl"></i>
@@ -1187,6 +1200,29 @@ function initStripDrag(e, el) {
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup',   onUp);
 }
+
+// Facility hover slideshow
+document.querySelectorAll('.fac-slideshow').forEach(function(el) {
+    const images = JSON.parse(el.dataset.images || '[]');
+    if (images.length <= 1) return;
+    const img  = el.querySelector('.fac-preview');
+    const dots = el.querySelectorAll('.fac-dot');
+    let idx = 0, timer = null;
+
+    function goTo(i) {
+        idx = (i + images.length) % images.length;
+        img.src = images[idx];
+        dots.forEach((d, j) => d.classList.toggle('active', j === idx));
+    }
+
+    el.addEventListener('mouseenter', function() {
+        timer = setInterval(function() { goTo(idx + 1); }, 800);
+    });
+    el.addEventListener('mouseleave', function() {
+        clearInterval(timer);
+        goTo(0);
+    });
+});
 
 (function() {
     const slides = document.querySelectorAll('.hero-bg-slide');

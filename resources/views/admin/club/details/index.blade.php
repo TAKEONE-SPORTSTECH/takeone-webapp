@@ -255,6 +255,21 @@
                         </a>
                         @endif
                     </div>
+
+                    <div>
+                        <label class="form-label">Google Maps URL</label>
+                        <div class="flex gap-2">
+                            <input type="url" name="maps_url" class="form-control"
+                                   placeholder="https://maps.google.com/..."
+                                   value="{{ old('maps_url', $club->maps_url) }}">
+                            @if($club->maps_url)
+                            <a href="{{ $club->maps_url }}" target="_blank" class="btn btn-outline-secondary flex-shrink-0">
+                                <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
+                            @endif
+                        </div>
+                        <p class="text-xs text-muted-foreground mt-1">Paste a Google Maps share link to show members exactly where to find you.</p>
+                    </div>
                 </div>
             </div>
         </div>

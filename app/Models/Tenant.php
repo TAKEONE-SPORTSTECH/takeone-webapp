@@ -42,6 +42,7 @@ class Tenant extends Model
         'owner_email',
         'gps_lat',
         'gps_long',
+        'maps_url',
         'settings',
         'established_date',
         'status',

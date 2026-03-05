@@ -69,12 +69,12 @@
         <label class="form-label">Event Images</label>
 
         {{-- Existing images --}}
-        <div x-show="formData.images && formData.images.length > 0" class="flex flex-wrap gap-2 mb-3">
+        <div x-show="formData.images && formData.images.length > 0" class="flex flex-wrap gap-2 mb-2">
             <template x-for="(img, idx) in formData.images" :key="idx">
                 <div class="relative group">
                     <img :src="img" class="w-20 h-20 object-cover rounded-lg border border-border">
                     <button type="button"
-                            @click="formData.images.splice(idx, 1)"
+                            @click="formData.images.splice(idx, 1); formData.images_paths.splice(idx, 1)"
                             class="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                         <i class="bi bi-x"></i>
                     </button>
@@ -83,7 +83,13 @@
         </div>
         <input type="hidden" name="keep_images" :value="JSON.stringify(formData.images_paths ?? [])">
 
-        <input type="file" name="event_images[]" multiple accept="image/*" class="form-control">
-        <p class="text-xs text-muted-foreground mt-1">You can select multiple images. Max 4MB each.</p>
+        {{-- New cropped images --}}
+        <div id="eventNewPreviews" class="flex flex-wrap gap-2 mb-2"></div>
+        <div id="eventBase64Inputs"></div>
+
+        <button type="button" onclick="openEventCropper()"
+                class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-2">
+            <i class="bi bi-camera"></i> Add Image
+        </button>
     </div>
 </div>

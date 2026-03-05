@@ -27,9 +27,11 @@ class ClubFacility extends Model
         'tenant_id',
         'name',
         'photo',
+        'images',
         'address',
         'gps_lat',
         'gps_long',
+        'maps_url',
         'is_available',
     ];
 
@@ -41,6 +43,7 @@ class ClubFacility extends Model
     protected $casts = [
         'gps_lat' => 'decimal:7',
         'gps_long' => 'decimal:7',
+        'images' => 'array',
         'is_available' => 'boolean',
     ];
 

@@ -22,13 +22,19 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         @foreach($facilities as $facility)
         <div class="group relative bg-white rounded-lg shadow hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100">
+            @php $coverImage = ($facility->images && count($facility->images)) ? $facility->images[0] : $facility->photo; @endphp
             <!-- Image Section -->
             <div class="relative w-full h-40 bg-gradient-to-br from-gray-100 to-gray-50 overflow-hidden">
-                @if($facility->photo)
-                <img src="{{ asset('storage/' . $facility->photo) }}"
+                @if($coverImage)
+                <img src="{{ asset('storage/' . $coverImage) }}"
                      alt="{{ $facility->name }}"
                      class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
                 <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+                @if($facility->images && count($facility->images) > 1)
+                <span class="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded-full backdrop-blur-sm">
+                    <i class="bi bi-images mr-1"></i>{{ count($facility->images) }}
+                </span>
+                @endif
                 @else
                 <div class="w-full h-full flex items-center justify-center">
                     <div class="text-center">
@@ -150,7 +156,41 @@
 
     @include('admin.club.facilities.add')
     @include('admin.club.facilities.edit')
+
+    {{-- Shared Facility Image Cropper Modal --}}
+    <div class="modal fade" id="facilityCropperModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width:75%; width:900px;">
+            <div class="modal-content shadow-lg">
+                <div class="modal-body p-4">
+                    <div class="mb-3 flex items-center gap-2">
+                        <input type="file" id="facilityCropperFileInput" class="form-control form-control-sm" accept="image/*">
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div id="facilityCropperCanvas" class="takeone-canvas" style="height:380px;"></div>
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Zoom</label>
+                            <input type="range" id="facilityCropperZoom" class="form-range" min="0" max="100" step="1" value="0">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Rotation</label>
+                            <input type="range" id="facilityCropperRot" class="form-range" min="-180" max="180" step="1" value="0">
+                        </div>
+                    </div>
+                    <button type="button" id="facilityCropperSave"
+                            class="btn btn-success btn-lg font-bold w-full py-3 mt-3">
+                        Crop & Add
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+@push('styles')
+<link rel="stylesheet" href="https://unpkg.com/cropme@1.4.1/dist/cropme.min.css">
+<script src="https://unpkg.com/cropme@1.4.1/dist/cropme.min.js"></script>
+@endpush
 
 @push('scripts')
 <script>
@@ -225,26 +265,40 @@ function populateEditForm(facility) {
     document.getElementById('editFacilityAddress').value = facility.address || '';
     document.getElementById('editFacilityLat').value = facility.gps_lat || '';
     document.getElementById('editFacilityLng').value = facility.gps_long || '';
+    document.getElementById('editFacilityMapsUrl').value = facility.maps_url || '';
     document.getElementById('editIsAvailable').checked = facility.is_available == 1;
 
-    // Handle current image
-    const currentImageContainer = document.getElementById('editCurrentImageContainer');
-    const noImagePlaceholder = document.getElementById('editNoImagePlaceholder');
-    const currentImage = document.getElementById('editCurrentImage');
-
-    if (facility.photo) {
-        currentImage.src = `{{ asset('storage') }}/${facility.photo}`;
-        currentImageContainer.classList.remove('hidden');
-        noImagePlaceholder.classList.add('hidden');
-    } else {
-        currentImageContainer.classList.add('hidden');
-        noImagePlaceholder.classList.remove('hidden');
-    }
-
-    // Reset new image preview (cropper)
-    if (typeof removeImage_facilityEditImageCropper === 'function') {
-        removeImage_facilityEditImageCropper();
-    }
+    // Render existing images (images array takes priority, fall back to legacy photo field)
+    const previews = document.getElementById('editFacilityImagePreviews');
+    const keepInput = document.getElementById('editFacilityKeepImages');
+    previews.innerHTML = '';
+    let kept = (facility.images && facility.images.length)
+        ? [...facility.images]
+        : (facility.photo ? [facility.photo] : []);
+    const renderPreviews = () => {
+        keepInput.value = JSON.stringify(kept);
+        previews.innerHTML = '';
+        kept.forEach((path, idx) => {
+            const wrap = document.createElement('div');
+            wrap.className = 'relative group';
+            wrap.innerHTML = `
+                <img src="{{ asset('storage') }}/${path}" class="w-20 h-20 object-cover rounded-lg border border-gray-200">
+                <button type="button" class="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <i class="bi bi-x"></i>
+                </button>`;
+            wrap.querySelector('button').addEventListener('click', () => {
+                kept.splice(idx, 1);
+                renderPreviews();
+            });
+            previews.appendChild(wrap);
+        });
+    };
+    renderPreviews();
+    // Reset new images for edit context
+    facilityNewImages.edit = [];
+    const editNewPreviews = document.getElementById('editFacilityNewPreviews');
+    if (editNewPreviews) editNewPreviews.innerHTML = '';
+    document.getElementById('editFacilityBase64Inputs').innerHTML = '';
 }
 
 // Initialize edit map when modal becomes visible
@@ -264,6 +318,140 @@ const editMapObserver = new MutationObserver(function(mutations) {
     });
 });
 editMapObserver.observe(editModal, { attributes: true });
+
+// ── Facility multi-image cropper ──────────────────────────────────────────
+let facilityCropperInstance = null;
+let facilityCropperContext  = 'add';
+let facilityCropperModal    = null;
+const facilityNewImages     = { add: [], edit: [] };
+
+function openFacilityCropper(context) {
+    facilityCropperContext = context;
+    document.getElementById('facilityCropperFileInput').value = '';
+    document.getElementById('facilityCropperZoom').value = 0;
+    document.getElementById('facilityCropperRot').value  = 0;
+    if (!facilityCropperModal) {
+        facilityCropperModal = new bootstrap.Modal(document.getElementById('facilityCropperModal'));
+    }
+    facilityCropperModal.show();
+}
+
+$(function() {
+    const zoomMin = 0.01, zoomMax = 3;
+
+    function initFacilityCropper(url) {
+        if (facilityCropperInstance) {
+            try { facilityCropperInstance.destroy(); } catch(e) {}
+            facilityCropperInstance = null;
+        }
+        document.getElementById('facilityCropperCanvas').innerHTML = '';
+        facilityCropperInstance = new Cropme(document.getElementById('facilityCropperCanvas'), {
+            container: { width: '100%', height: 380 },
+            viewport: { width: 400, height: 300, type: 'square', border: { enable: true, width: 2, color: '#fff' } },
+            transformOrigin: 'viewport',
+            zoom: { min: zoomMin, max: zoomMax, enable: true, mouseWheel: true, slider: false },
+            rotation: { enable: true, slider: false }
+        });
+        facilityCropperInstance.bind({ url }).then(() => {
+            $('#facilityCropperZoom').val(0);
+            $('#facilityCropperRot').val(0);
+        });
+    }
+
+    // Init cropme only after modal is fully visible
+    $('#facilityCropperModal').on('shown.bs.modal', function() {
+        // Reset to clean state on each open
+        if (facilityCropperInstance) {
+            try { facilityCropperInstance.destroy(); } catch(e) {}
+            facilityCropperInstance = null;
+        }
+        document.getElementById('facilityCropperCanvas').innerHTML = '';
+    });
+
+    $('#facilityCropperFileInput').on('change', function() {
+        if (!this.files[0]) return;
+        const reader = new FileReader();
+        reader.onload = e => initFacilityCropper(e.target.result);
+        reader.readAsDataURL(this.files[0]);
+    });
+
+    $('#facilityCropperZoom').on('input', function() {
+        if (!facilityCropperInstance?.properties?.image) return;
+        const scale = zoomMin + (zoomMax - zoomMin) * (this.value / 100);
+        facilityCropperInstance.properties.scale = Math.min(Math.max(scale, zoomMin), zoomMax);
+        const p = facilityCropperInstance.properties;
+        p.image.style.transform = `translate3d(${p.x}px,${p.y}px,0) scale(${p.scale}) rotate(${p.deg}deg)`;
+    });
+
+    $('#facilityCropperRot').on('input', function() {
+        if (facilityCropperInstance) facilityCropperInstance.rotate(parseInt(this.value));
+    });
+
+    $('#facilityCropperSave').on('click', function() {
+        if (!facilityCropperInstance || !facilityCropperInstance.properties?.image) {
+            alert('Please select an image first.');
+            return;
+        }
+        const btn = $(this);
+        btn.prop('disabled', true).text('Processing...');
+        facilityCropperInstance.crop({ type: 'base64' }).then(base64 => {
+            facilityNewImages[facilityCropperContext].push(base64);
+            renderFacilityNewThumbnails(facilityCropperContext);
+            facilityCropperModal.hide();
+            btn.prop('disabled', false).text('Crop & Add');
+        }).catch(err => {
+            console.error('Crop failed:', err);
+            btn.prop('disabled', false).text('Crop & Add');
+        });
+    });
+});
+
+function renderFacilityNewThumbnails(context) {
+    const previewsId = context === 'add' ? 'addFacilityImagePreviews' : 'editFacilityNewPreviews';
+    const inputsId   = context === 'add' ? 'addFacilityBase64Inputs'  : 'editFacilityBase64Inputs';
+
+    // For edit: render new images in a separate container below existing ones
+    let previews = document.getElementById(previewsId);
+    if (!previews) {
+        previews = document.createElement('div');
+        previews.id = previewsId;
+        previews.className = 'flex flex-wrap gap-2 mt-2';
+        document.getElementById('editFacilityBase64Inputs').before(previews);
+    }
+
+    previews.innerHTML = '';
+    const inputsContainer = document.getElementById(inputsId);
+    inputsContainer.innerHTML = '';
+
+    facilityNewImages[context].forEach((b64, idx) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'relative group';
+        wrap.innerHTML = `
+            <img src="${b64}" class="w-20 h-20 object-cover rounded-lg border border-gray-200">
+            <button type="button" class="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <i class="bi bi-x"></i>
+            </button>`;
+        wrap.querySelector('button').addEventListener('click', () => {
+            facilityNewImages[context].splice(idx, 1);
+            renderFacilityNewThumbnails(context);
+        });
+        previews.appendChild(wrap);
+
+        const input = document.createElement('input');
+        input.type  = 'hidden';
+        input.name  = 'facility_images_base64[]';
+        input.value = b64;
+        inputsContainer.appendChild(input);
+    });
+}
+
+// Reset new images when add modal closes
+document.getElementById('addFacilityModal').addEventListener('click', function(e) {
+    if (e.target === this || e.target.closest('.fixed.inset-0.bg-black\\/50') === e.target) {
+        facilityNewImages.add = [];
+        renderFacilityNewThumbnails('add');
+    }
+});
 
 // Handle edit form submission
 document.getElementById('editFacilityForm').addEventListener('submit', function(e) {

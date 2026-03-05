@@ -220,8 +220,8 @@ class ClubAdminController extends Controller
             'address' => 'nullable|string',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
+            'maps_url' => 'nullable|url|max:500',
             'is_available' => 'nullable|boolean',
-            'image' => 'nullable',
         ]);
 
         $data = [
@@ -230,28 +230,12 @@ class ClubAdminController extends Controller
             'address' => $request->address,
             'gps_lat' => $request->latitude,
             'gps_long' => $request->longitude,
+            'maps_url' => $request->maps_url,
             'is_available' => $request->has('is_available'),
         ];
 
-        // Handle base64 image from cropper (form mode)
-        if ($request->filled('image') && str_starts_with($request->image, 'data:image')) {
-            $imageData = $request->image;
-            $imageParts = explode(";base64,", $imageData);
-            $imageTypeAux = explode("image/", $imageParts[0]);
-            $extension = $imageTypeAux[1];
-            $imageBinary = base64_decode($imageParts[1]);
-
-            $folder = $request->input('image_folder', 'clubs/' . $clubId . '/facilities');
-            $filename = $request->input('image_filename', 'facility_' . time());
-            $fullPath = $folder . '/' . $filename . '.' . $extension;
-
-            Storage::disk('public')->put($fullPath, $imageBinary);
-            $data['photo'] = $fullPath;
-        }
-        // Handle traditional file upload
-        elseif ($request->hasFile('image')) {
-            $data['photo'] = $request->file('image')->store('clubs/' . $clubId . '/facilities', 'public');
-        }
+        $paths = $this->saveFacilityBase64Images($request->input('facility_images_base64', []), $clubId);
+        if ($paths) $data['images'] = $paths;
 
         ClubFacility::create($data);
 
@@ -286,42 +270,20 @@ class ClubAdminController extends Controller
             'address' => 'nullable|string',
             'gps_lat' => 'nullable|numeric',
             'gps_long' => 'nullable|numeric',
+            'maps_url' => 'nullable|url|max:500',
             'is_available' => 'nullable|boolean',
+            'facility_images' => 'nullable|array',
+            'facility_images.*' => 'image|max:4096',
         ]);
 
         $facility = ClubFacility::where('tenant_id', $clubId)->findOrFail($facilityId);
 
-        $data = $request->only(['name', 'address', 'gps_lat', 'gps_long']);
+        $data = $request->only(['name', 'address', 'gps_lat', 'gps_long', 'maps_url']);
         $data['is_available'] = $request->has('is_available');
 
-        // Handle base64 image from cropper
-        if ($request->filled('image') && str_starts_with($request->image, 'data:image')) {
-            $imageData = $request->image;
-            $imageParts = explode(";base64,", $imageData);
-            $imageTypeAux = explode("image/", $imageParts[0]);
-            $extension = $imageTypeAux[1];
-            $imageBinary = base64_decode($imageParts[1]);
-
-            $folder = 'clubs/' . $clubId . '/facilities';
-            $filename = 'facility_' . $facilityId . '_' . time() . '.' . $extension;
-            $fullPath = $folder . '/' . $filename;
-
-            // Delete old image if exists
-            if ($facility->photo && Storage::disk('public')->exists($facility->photo)) {
-                Storage::disk('public')->delete($facility->photo);
-            }
-
-            Storage::disk('public')->put($fullPath, $imageBinary);
-            $data['photo'] = $fullPath;
-        }
-        // Handle traditional file upload
-        elseif ($request->hasFile('image')) {
-            // Delete old image if exists
-            if ($facility->photo && Storage::disk('public')->exists($facility->photo)) {
-                Storage::disk('public')->delete($facility->photo);
-            }
-            $data['photo'] = $request->file('image')->store('clubs/' . $clubId . '/facilities', 'public');
-        }
+        $kept     = json_decode($request->input('keep_images', '[]'), true) ?: [];
+        $newPaths = $this->saveFacilityBase64Images($request->input('facility_images_base64', []), $clubId);
+        $data['images'] = array_merge($kept, $newPaths);
 
         $facility->update($data);
 
@@ -334,6 +296,36 @@ class ClubAdminController extends Controller
         }
 
         return back()->with('success', 'Facility updated successfully.');
+    }
+
+    private function saveFacilityBase64Images(array $base64List, int $clubId): array
+    {
+        $paths = [];
+        foreach ($base64List as $base64) {
+            if (!str_starts_with($base64, 'data:image')) continue;
+            [$meta, $imageData] = explode(',', $base64, 2);
+            preg_match('/image\/(\w+)/', $meta, $m);
+            $ext  = $m[1] ?? 'jpg';
+            $path = 'clubs/' . $clubId . '/facilities/' . uniqid('facility_') . '.' . $ext;
+            Storage::disk('public')->put($path, base64_decode($imageData));
+            $paths[] = $path;
+        }
+        return $paths;
+    }
+
+    private function saveEventBase64Images(array $base64List, int $clubId): array
+    {
+        $paths = [];
+        foreach ($base64List as $base64) {
+            if (!str_starts_with($base64, 'data:image')) continue;
+            [$meta, $imageData] = explode(',', $base64, 2);
+            preg_match('/image\/(\w+)/', $meta, $m);
+            $ext  = $m[1] ?? 'jpg';
+            $path = 'clubs/' . $clubId . '/events/' . uniqid('event_') . '.' . $ext;
+            Storage::disk('public')->put($path, base64_decode($imageData));
+            $paths[] = $path;
+        }
+        return $paths;
     }
 
     /**
@@ -589,7 +581,6 @@ class ClubAdminController extends Controller
             'max_capacity' => 'nullable|integer|min:1',
             'tags'         => 'nullable|string',
             'color'        => 'nullable|string|max:20',
-            'event_images.*' => 'nullable|image|max:4096',
         ]);
 
         $data = $request->only([
@@ -605,12 +596,7 @@ class ClubAdminController extends Controller
             $data['tags'] = null;
         }
 
-        $images = [];
-        if ($request->hasFile('event_images')) {
-            foreach ($request->file('event_images') as $file) {
-                $images[] = $file->store("events/{$club->id}", 'public');
-            }
-        }
+        $images = $this->saveEventBase64Images($request->input('event_images_base64', []), $club->id);
         $data['images'] = $images ?: null;
 
         ClubEvent::create($data);
@@ -635,7 +621,6 @@ class ClubAdminController extends Controller
             'max_capacity' => 'nullable|integer|min:1',
             'tags'         => 'nullable|string',
             'color'        => 'nullable|string|max:20',
-            'event_images.*' => 'nullable|image|max:4096',
         ]);
 
         $data = $request->only([
@@ -649,14 +634,10 @@ class ClubAdminController extends Controller
             $data['tags'] = null;
         }
 
-        // Keep existing images, append newly uploaded ones
+        // Keep existing images, append newly cropped ones
         $keepImages = json_decode($request->input('keep_images', '[]'), true) ?: [];
-        if ($request->hasFile('event_images')) {
-            foreach ($request->file('event_images') as $file) {
-                $keepImages[] = $file->store("events/{$club->id}", 'public');
-            }
-        }
-        $data['images'] = $keepImages ?: null;
+        $newImages  = $this->saveEventBase64Images($request->input('event_images_base64', []), $club->id);
+        $data['images'] = array_merge($keepImages, $newImages) ?: null;
 
         $event->update($data);
 
@@ -1651,6 +1632,7 @@ class ClubAdminController extends Controller
             'address' => 'nullable|string|max:500',
             'gps_lat' => 'nullable|numeric',
             'gps_long' => 'nullable|numeric',
+            'maps_url' => 'nullable|url|max:500',
             'logo' => 'nullable',
             'favicon' => 'nullable',
             'cover_image' => 'nullable',
@@ -1664,7 +1646,7 @@ class ClubAdminController extends Controller
             'club_name', 'slogan', 'description', 'enrollment_fee',
             'commercial_reg_number', 'vat_reg_number', 'vat_percentage',
             'email', 'country', 'currency', 'timezone', 'slug', 'address',
-            'gps_lat', 'gps_long', 'owner_name', 'owner_email'
+            'gps_lat', 'gps_long', 'maps_url', 'owner_name', 'owner_email'
         ]);
 
         // Handle phone as JSON

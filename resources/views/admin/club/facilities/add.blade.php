@@ -71,6 +71,12 @@
                                 :required="true"
                             />
                             <input type="hidden" id="facilityMapZoom" name="map_zoom" value="13">
+                            <div class="space-y-1">
+                                <label class="block text-sm font-medium text-gray-700">Google Maps URL</label>
+                                <input type="url" name="maps_url" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                       placeholder="https://maps.google.com/...">
+                                <p class="text-xs text-gray-500">Paste a Google Maps share link for members to navigate directly to this facility.</p>
+                            </div>
                         </div>
 
                         <!-- Operating Hours Section -->
@@ -135,29 +141,17 @@
                         </div>
 
                         <!-- Image Upload Section -->
-                        <div class="space-y-4">
+                        <div class="space-y-3">
                             <h6 class="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
                                 <i class="bi bi-images"></i>
-                                Facility Image
+                                Facility Images
                             </h6>
-
-                            <div class="space-y-2">
-                                <label class="block text-sm font-medium text-gray-700">Upload Image <span class="text-xs text-gray-500">(4:3 recommended)</span></label>
-                                <x-takeone-cropper
-                                    id="facilityAddImageCropper"
-                                    :width="400"
-                                    :height="300"
-                                    shape="square"
-                                    mode="form"
-                                    inputName="image"
-                                    :folder="'clubs/' . $club->id . '/facilities'"
-                                    :filename="'facility_' . time()"
-                                    :previewWidth="200"
-                                    :previewHeight="150"
-                                    buttonText="Upload Image"
-                                    buttonClass="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-2"
-                                />
-                            </div>
+                            <div id="addFacilityImagePreviews" class="flex flex-wrap gap-2"></div>
+                            <div id="addFacilityBase64Inputs"></div>
+                            <button type="button" onclick="openFacilityCropper('add')"
+                                    class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-2">
+                                <i class="bi bi-camera"></i> Add Image
+                            </button>
                         </div>
                     </div>
                 </form>

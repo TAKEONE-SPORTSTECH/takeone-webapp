@@ -351,6 +351,162 @@ $eventsJson = $events->map(function($e) {
 
 </div>
 
+{{-- Event Image Cropper Modal --}}
+<div class="modal fade" id="eventCropperModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width:75%; width:900px;">
+        <div class="modal-content shadow-lg">
+            <div class="modal-body p-4">
+                <div class="mb-3 flex items-center gap-2">
+                    <input type="file" id="eventCropperFileInput" class="form-control form-control-sm" accept="image/*">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div id="eventCropperCanvas" class="takeone-canvas" style="height:380px;"></div>
+                <div class="grid grid-cols-2 gap-4 mt-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Zoom</label>
+                        <input type="range" id="eventCropperZoom" class="form-range" min="0" max="100" step="1" value="0">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Rotation</label>
+                        <input type="range" id="eventCropperRot" class="form-range" min="-180" max="180" step="1" value="0">
+                    </div>
+                </div>
+                <button type="button" id="eventCropperSave"
+                        class="btn btn-success btn-lg font-bold w-full py-3 mt-3">
+                    Crop & Add
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@push('styles')
+<link rel="stylesheet" href="https://unpkg.com/cropme@1.4.1/dist/cropme.min.css">
+<script src="https://unpkg.com/cropme@1.4.1/dist/cropme.min.js"></script>
+@endpush
+
+@push('scripts')
+<script>
+// ── Event multi-image cropper ──────────────────────────────────────────
+let eventCropperInstance = null;
+let eventCropperModal    = null;
+let eventNewImages       = [];
+
+function openEventCropper() {
+    document.getElementById('eventCropperFileInput').value = '';
+    document.getElementById('eventCropperZoom').value = 0;
+    document.getElementById('eventCropperRot').value  = 0;
+    if (!eventCropperModal) {
+        eventCropperModal = new bootstrap.Modal(document.getElementById('eventCropperModal'));
+    }
+    eventCropperModal.show();
+}
+
+function resetEventImages() {
+    eventNewImages = [];
+    renderEventNewThumbnails();
+}
+
+$(function() {
+    const zoomMin = 0.01, zoomMax = 3;
+
+    function initEventCropper(url) {
+        if (eventCropperInstance) {
+            try { eventCropperInstance.destroy(); } catch(e) {}
+            eventCropperInstance = null;
+        }
+        document.getElementById('eventCropperCanvas').innerHTML = '';
+        eventCropperInstance = new Cropme(document.getElementById('eventCropperCanvas'), {
+            container: { width: '100%', height: 380 },
+            viewport: { width: 400, height: 300, type: 'square', border: { enable: true, width: 2, color: '#fff' } },
+            transformOrigin: 'viewport',
+            zoom: { min: zoomMin, max: zoomMax, enable: true, mouseWheel: true, slider: false },
+            rotation: { enable: true, slider: false }
+        });
+        eventCropperInstance.bind({ url }).then(() => {
+            $('#eventCropperZoom').val(0);
+            $('#eventCropperRot').val(0);
+        });
+    }
+
+    $('#eventCropperModal').on('shown.bs.modal', function() {
+        if (eventCropperInstance) {
+            try { eventCropperInstance.destroy(); } catch(e) {}
+            eventCropperInstance = null;
+        }
+        document.getElementById('eventCropperCanvas').innerHTML = '';
+    });
+
+    $('#eventCropperFileInput').on('change', function() {
+        if (!this.files[0]) return;
+        const reader = new FileReader();
+        reader.onload = e => initEventCropper(e.target.result);
+        reader.readAsDataURL(this.files[0]);
+    });
+
+    $('#eventCropperZoom').on('input', function() {
+        if (!eventCropperInstance?.properties?.image) return;
+        const scale = zoomMin + (zoomMax - zoomMin) * (this.value / 100);
+        eventCropperInstance.properties.scale = Math.min(Math.max(scale, zoomMin), zoomMax);
+        const p = eventCropperInstance.properties;
+        p.image.style.transform = `translate3d(${p.x}px,${p.y}px,0) scale(${p.scale}) rotate(${p.deg}deg)`;
+    });
+
+    $('#eventCropperRot').on('input', function() {
+        if (eventCropperInstance) eventCropperInstance.rotate(parseInt(this.value));
+    });
+
+    $('#eventCropperSave').on('click', function() {
+        if (!eventCropperInstance || !eventCropperInstance.properties?.image) {
+            alert('Please select an image first.');
+            return;
+        }
+        const btn = $(this);
+        btn.prop('disabled', true).text('Processing...');
+        eventCropperInstance.crop({ type: 'base64' }).then(base64 => {
+            eventNewImages.push(base64);
+            renderEventNewThumbnails();
+            eventCropperModal.hide();
+            btn.prop('disabled', false).text('Crop & Add');
+        }).catch(err => {
+            console.error('Crop failed:', err);
+            btn.prop('disabled', false).text('Crop & Add');
+        });
+    });
+});
+
+function renderEventNewThumbnails() {
+    const previews = document.getElementById('eventNewPreviews');
+    const inputs   = document.getElementById('eventBase64Inputs');
+    if (!previews || !inputs) return;
+
+    previews.innerHTML = '';
+    inputs.innerHTML   = '';
+
+    eventNewImages.forEach((b64, idx) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'relative group';
+        wrap.innerHTML = `
+            <img src="${b64}" class="w-20 h-20 object-cover rounded-lg border border-gray-200">
+            <button type="button" class="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <i class="bi bi-x"></i>
+            </button>`;
+        wrap.querySelector('button').addEventListener('click', () => {
+            eventNewImages.splice(idx, 1);
+            renderEventNewThumbnails();
+        });
+        previews.appendChild(wrap);
+
+        const input = document.createElement('input');
+        input.type  = 'hidden';
+        input.name  = 'event_images_base64[]';
+        input.value = b64;
+        inputs.appendChild(input);
+    });
+}
+</script>
+@endpush
+
 @push('scripts')
 <script>
 function initStripDrag(e, el) {
@@ -405,6 +561,7 @@ function eventsAdmin() {
             this.formData    = { ...emptyForm };
             this.locationTab = 'facility';
             this.showModal   = true;
+            resetEventImages();
         },
 
         openEdit(id) {
@@ -415,6 +572,7 @@ function eventsAdmin() {
             this.formData    = { ...emptyForm, ...ev };
             this.locationTab = ev.location?.startsWith('http') ? 'url' : 'facility';
             this.showModal   = true;
+            resetEventImages();
         },
 
         deleteEvent(id) {

@@ -61,6 +61,12 @@
                                 :defaultLat="$club->latitude ?? 25.2048"
                                 :defaultLng="$club->longitude ?? 55.2708"
                             />
+                            <div class="space-y-1">
+                                <label class="block text-sm font-medium text-gray-700">Google Maps URL</label>
+                                <input type="url" id="editFacilityMapsUrl" name="maps_url" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                       placeholder="https://maps.google.com/...">
+                                <p class="text-xs text-gray-500">Paste a Google Maps share link for members to navigate directly to this facility.</p>
+                            </div>
                         </div>
 
                         <!-- Availability Options -->
@@ -76,44 +82,19 @@
                             </label>
                         </div>
 
-                        <!-- Current Image Preview -->
-                        <div class="space-y-4">
+                        <!-- Images -->
+                        <div class="space-y-3">
                             <h6 class="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
-                                <i class="bi bi-image"></i>
-                                Current Image
+                                <i class="bi bi-images"></i>
+                                Facility Images
                             </h6>
-                            <div id="editCurrentImageContainer" class="hidden">
-                                <img id="editCurrentImage" src="" alt="Current facility image" class="w-full h-40 object-cover rounded-lg border border-gray-200">
-                            </div>
-                            <div id="editNoImagePlaceholder" class="text-center py-4 border-2 border-dashed border-gray-200 rounded-lg">
-                                <p class="text-sm text-gray-500">No image uploaded</p>
-                            </div>
-                        </div>
-
-                        <!-- Image Upload Section -->
-                        <div class="space-y-4">
-                            <h6 class="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
-                                <i class="bi bi-upload"></i>
-                                Upload New Image
-                            </h6>
-
-                            <div class="space-y-2">
-                                <label class="block text-sm font-medium text-gray-700">Replace Image <span class="text-xs text-gray-500">(4:3 recommended)</span></label>
-                                <x-takeone-cropper
-                                    id="facilityEditImageCropper"
-                                    :width="400"
-                                    :height="300"
-                                    shape="square"
-                                    mode="form"
-                                    inputName="image"
-                                    folder="facilities"
-                                    :filename="'facility_edit_' . time()"
-                                    :previewWidth="200"
-                                    :previewHeight="150"
-                                    buttonText="Upload New Image"
-                                    buttonClass="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-2"
-                                />
-                            </div>
+                            <div id="editFacilityImagePreviews" class="flex flex-wrap gap-2"></div>
+                            <input type="hidden" name="keep_images" id="editFacilityKeepImages" value="[]">
+                            <div id="editFacilityBase64Inputs"></div>
+                            <button type="button" onclick="openFacilityCropper('edit')"
+                                    class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-2">
+                                <i class="bi bi-camera"></i> Add Image
+                            </button>
                         </div>
                     </div>
                 </form>

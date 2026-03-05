@@ -1310,11 +1310,40 @@
     font-weight: 700;
 }
 
+.fac-slideshow {
+    position: relative;
+    border-radius: 20px;
+    height: 160px;
+    overflow: hidden;
+}
+
 .fac-preview {
     border-radius: 20px;
     height: 160px;
     object-fit: cover;
     width: 100%;
+    transition: opacity 0.4s ease;
+}
+
+.fac-dots {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 5px;
+}
+
+.fac-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.5);
+    transition: background 0.3s;
+}
+
+.fac-dot.active {
+    background: #fff;
 }
 
 .fac-placeholder {
