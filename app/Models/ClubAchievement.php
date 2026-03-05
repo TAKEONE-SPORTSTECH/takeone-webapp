@@ -9,7 +9,11 @@ class ClubAchievement extends Model
 {
     protected $fillable = [
         'tenant_id', 'title', 'description', 'tag', 'tag_icon',
-        'image_path', 'bg_from', 'bg_to', 'status', 'sort_order',
+        'image_path', 'images', 'bg_from', 'bg_to', 'status', 'sort_order',
+    ];
+
+    protected $casts = [
+        'images' => 'array',
     ];
 
     public function tenant(): BelongsTo

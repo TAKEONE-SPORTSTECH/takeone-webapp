@@ -283,7 +283,23 @@
 
                 {{-- Achievements --}}
                 @if($achievements->isNotEmpty())
-                <div class="latest-achievements">
+                @php
+                $achievementsJson = $achievements->map(function($a) {
+                    return [
+                        'id'          => $a->id,
+                        'title'       => $a->title,
+                        'description' => $a->description ?? '',
+                        'tag'         => $a->tag,
+                        'tag_icon'    => $a->tag_icon,
+                        'image_url'   => $a->image_path ? asset('storage/' . $a->image_path) : null,
+                        'bg_from'     => $a->bg_from,
+                        'bg_to'       => $a->bg_to,
+                        'images'      => collect($a->images ?? [])->map(fn($p) => asset('storage/' . $p))->values()->toArray(),
+                    ];
+                })->values()->toArray();
+                @endphp
+                <div class="latest-achievements"
+                     x-data="{ showAchDetail: false, achDetail: null }">
                     <div class="flex justify-between items-end mb-4">
                         <div>
                             <h4 class="text-xl font-extrabold mb-1">Latest Achievements</h4>
@@ -291,8 +307,10 @@
                         </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        @foreach($achievements as $achievement)
-                        <article class="achievement-card h-full">
+                        @foreach($achievements as $i => $achievement)
+                        @php $achData = $achievementsJson[$i]; @endphp
+                        <article class="achievement-card h-full cursor-pointer"
+                                 @click="achDetail = {{ json_encode($achData) }}; showAchDetail = true">
                             <div class="achievement-image">
                                 @if($achievement->image_path)
                                     <img src="{{ asset('storage/' . $achievement->image_path) }}"
@@ -313,6 +331,95 @@
                             </div>
                         </article>
                         @endforeach
+                    </div>
+
+                    {{-- Achievement Detail Modal --}}
+                    <div x-show="showAchDetail" x-cloak
+                         class="fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4 overflow-y-auto"
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0"
+                         x-transition:enter-end="opacity-100"
+                         x-transition:leave="transition ease-in duration-150"
+                         x-transition:leave-start="opacity-100"
+                         x-transition:leave-end="opacity-0"
+                         @click.self="showAchDetail = false">
+                        <div class="my-auto w-full max-w-lg">
+                            <div class="modal-content border-0 shadow-lg relative" @click.stop x-show="achDetail">
+                                <template x-if="achDetail">
+                                    <div>
+                                        {{-- Hero --}}
+                                        <div class="relative rounded-t-xl overflow-hidden bg-black" style="height:220px;">
+
+                                            {{-- Carousel --}}
+                                            <div x-show="achDetail.images && achDetail.images.length > 0"
+                                                 x-data="{ imgIdx: 0 }"
+                                                 x-effect="imgIdx = 0"
+                                                 class="absolute inset-0">
+                                                <div class="flex h-full overflow-x-auto snap-x snap-mandatory"
+                                                     style="scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scrollbar-width:none;cursor:grab;"
+                                                     x-ref="achPubStrip"
+                                                     @scroll.debounce.50ms="imgIdx = Math.round($el.scrollLeft / $el.offsetWidth)">
+                                                    <template x-for="img in achDetail.images" :key="img">
+                                                        <img :src="img" class="snap-start flex-shrink-0 w-full h-full object-cover select-none" draggable="false">
+                                                    </template>
+                                                </div>
+                                                <button x-show="achDetail.images.length > 1"
+                                                        @click.stop="$refs.achPubStrip.scrollTo({ left: ((imgIdx - 1 + achDetail.images.length) % achDetail.images.length) * $refs.achPubStrip.offsetWidth, behavior: 'smooth' })"
+                                                        class="carousel-arrow carousel-arrow--prev">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/></svg>
+                                                </button>
+                                                <button x-show="achDetail.images.length > 1"
+                                                        @click.stop="$refs.achPubStrip.scrollTo({ left: ((imgIdx + 1) % achDetail.images.length) * $refs.achPubStrip.offsetWidth, behavior: 'smooth' })"
+                                                        class="carousel-arrow carousel-arrow--next">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>
+                                                </button>
+                                                <div x-show="achDetail.images.length > 1"
+                                                     class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 pointer-events-auto">
+                                                    <template x-for="(img, i) in achDetail.images" :key="i">
+                                                        <button @click.stop="$refs.achPubStrip.scrollTo({ left: i * $refs.achPubStrip.offsetWidth, behavior: 'smooth' })"
+                                                                :class="imgIdx === i ? 'bg-white w-4' : 'bg-white/50 w-2'"
+                                                                class="h-2 rounded-full transition-all duration-200"></button>
+                                                    </template>
+                                                </div>
+                                            </div>
+
+                                            {{-- Single image fallback --}}
+                                            <div x-show="(!achDetail.images || !achDetail.images.length) && achDetail.image_url"
+                                                 class="absolute inset-0">
+                                                <img :src="achDetail.image_url" class="w-full h-full object-cover">
+                                            </div>
+
+                                            {{-- Gradient fallback --}}
+                                            <div x-show="(!achDetail.images || !achDetail.images.length) && !achDetail.image_url"
+                                                 class="absolute inset-0 flex items-center justify-center"
+                                                 :style="'background: linear-gradient(135deg, ' + achDetail.bg_from + ', ' + achDetail.bg_to + ');'">
+                                                <i :class="'bi ' + achDetail.tag_icon" class="text-white" style="font-size:3rem;opacity:0.7;"></i>
+                                            </div>
+
+                                            {{-- Close --}}
+                                            <button @click.stop="showAchDetail = false"
+                                                    class="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-black/50 hover:bg-black/75 text-white flex items-center justify-center transition-colors z-10">
+                                                <i class="bi bi-x-lg text-xs"></i>
+                                            </button>
+
+                                            {{-- Tag --}}
+                                            <span class="absolute bottom-2 left-3 text-xs font-semibold px-2.5 py-1 rounded-full bg-black/50 text-white pointer-events-none">
+                                                <i :class="'bi ' + achDetail.tag_icon + ' mr-1'"></i>
+                                                <span x-text="achDetail.tag"></span>
+                                            </span>
+                                        </div>
+
+                                        {{-- Body --}}
+                                        <div class="px-6 pt-5 pb-6">
+                                            <h4 class="text-lg font-bold text-foreground mb-2" x-text="achDetail.title"></h4>
+                                            <p x-show="achDetail.description"
+                                               class="text-sm text-muted-foreground leading-relaxed mb-0"
+                                               x-text="achDetail.description"></p>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 @endif

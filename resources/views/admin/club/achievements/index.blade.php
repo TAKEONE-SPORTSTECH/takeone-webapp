@@ -11,10 +11,13 @@ $achievementsJson = $achievements->map(function($a) {
         'tag'         => $a->tag,
         'tag_icon'    => $a->tag_icon,
         'image_path'  => $a->image_path ?? '',
+        'image_url'   => $a->image_path ? asset('storage/' . $a->image_path) : null,
         'bg_from'     => $a->bg_from,
         'bg_to'       => $a->bg_to,
         'status'      => $a->status,
         'sort_order'  => $a->sort_order,
+        'images'      => collect($a->images ?? [])->map(fn($p) => asset('storage/' . $p))->values()->toArray(),
+        'images_paths'=> $a->images ?? [],
     ];
 });
 @endphp
@@ -55,7 +58,8 @@ $achievementsJson = $achievements->map(function($a) {
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             @foreach($achievements as $achievement)
             @php $isInactive = $achievement->status === 'inactive'; @endphp
-            <div class="card border-0 shadow-sm overflow-hidden {{ $isInactive ? 'opacity-60' : '' }}">
+            <div class="card border-0 shadow-sm overflow-hidden {{ $isInactive ? 'opacity-60' : '' }} cursor-pointer"
+                 @click="openDetail({{ $achievement->id }})">
                 {{-- Card visual --}}
                 <div class="relative" style="height:120px;">
                     @if($achievement->image_path)
@@ -79,7 +83,7 @@ $achievementsJson = $achievements->map(function($a) {
                             <div class="text-xs text-muted-foreground mt-0.5 truncate">{{ $achievement->description }}</div>
                             @endif
                         </div>
-                        <div class="flex gap-1.5 flex-shrink-0">
+                        <div class="flex gap-1.5 flex-shrink-0" @click.stop>
                             <button @click="openEdit({{ $achievement->id }})"
                                     class="btn btn-sm btn-outline-secondary" title="Edit">
                                 <i class="bi bi-pencil"></i>
@@ -98,6 +102,131 @@ $achievementsJson = $achievements->map(function($a) {
             @endforeach
         </div>
     @endif
+
+    {{-- ===== DETAIL MODAL ===== --}}
+    <div x-show="showDetail" x-cloak
+         class="fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4 overflow-y-auto"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         @click.self="showDetail = false">
+        <div class="my-auto w-full max-w-lg">
+            <div class="modal-content border-0 shadow-lg relative" @click.stop x-show="detailAchievement">
+                <template x-if="detailAchievement">
+                    <div>
+                        {{-- Hero --}}
+                        <div class="relative rounded-t-xl overflow-hidden bg-black" style="height:220px;">
+
+                            {{-- Carousel when images[] present --}}
+                            <div x-show="detailAchievement.images && detailAchievement.images.length > 0"
+                                 x-data="{ imgIdx: 0 }"
+                                 x-effect="imgIdx = 0"
+                                 class="absolute inset-0">
+                                <div class="flex h-full overflow-x-auto snap-x snap-mandatory"
+                                     style="scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scrollbar-width:none;cursor:grab;"
+                                     x-ref="achStrip"
+                                     @scroll.debounce.50ms="imgIdx = Math.round($el.scrollLeft / $el.offsetWidth)">
+                                    <template x-for="img in detailAchievement.images" :key="img">
+                                        <img :src="img" class="snap-start flex-shrink-0 w-full h-full object-cover select-none" draggable="false">
+                                    </template>
+                                </div>
+                                <button x-show="detailAchievement.images.length > 1"
+                                        @click.stop="$refs.achStrip.scrollTo({ left: ((imgIdx - 1 + detailAchievement.images.length) % detailAchievement.images.length) * $refs.achStrip.offsetWidth, behavior: 'smooth' })"
+                                        class="carousel-arrow carousel-arrow--prev">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/></svg>
+                                </button>
+                                <button x-show="detailAchievement.images.length > 1"
+                                        @click.stop="$refs.achStrip.scrollTo({ left: ((imgIdx + 1) % detailAchievement.images.length) * $refs.achStrip.offsetWidth, behavior: 'smooth' })"
+                                        class="carousel-arrow carousel-arrow--next">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>
+                                </button>
+                                <div x-show="detailAchievement.images.length > 1"
+                                     class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 pointer-events-auto">
+                                    <template x-for="(img, i) in detailAchievement.images" :key="i">
+                                        <button @click.stop="$refs.achStrip.scrollTo({ left: i * $refs.achStrip.offsetWidth, behavior: 'smooth' })"
+                                                :class="imgIdx === i ? 'bg-white w-4' : 'bg-white/50 w-2'"
+                                                class="h-2 rounded-full transition-all duration-200"></button>
+                                    </template>
+                                </div>
+                            </div>
+
+                            {{-- Single image fallback --}}
+                            <div x-show="(!detailAchievement.images || !detailAchievement.images.length) && detailAchievement.image_url"
+                                 class="absolute inset-0">
+                                <img :src="detailAchievement.image_url" class="w-full h-full object-cover">
+                            </div>
+
+                            {{-- Gradient fallback --}}
+                            <div x-show="(!detailAchievement.images || !detailAchievement.images.length) && !detailAchievement.image_url"
+                                 class="absolute inset-0 flex items-center justify-center"
+                                 :style="'background: linear-gradient(135deg, ' + detailAchievement.bg_from + ', ' + detailAchievement.bg_to + ');'">
+                                <i :class="'bi ' + detailAchievement.tag_icon" class="text-white" style="font-size:3rem;opacity:0.7;"></i>
+                            </div>
+
+                            {{-- Close --}}
+                            <button @click.stop="showDetail = false"
+                                    class="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-black/50 hover:bg-black/75 text-white flex items-center justify-center transition-colors z-10">
+                                <i class="bi bi-x-lg text-xs"></i>
+                            </button>
+
+                            {{-- Tag --}}
+                            <span class="absolute bottom-2 left-3 text-xs font-semibold px-2.5 py-1 rounded-full bg-black/50 text-white pointer-events-none">
+                                <i :class="'bi ' + detailAchievement.tag_icon + ' mr-1'"></i>
+                                <span x-text="detailAchievement.tag"></span>
+                            </span>
+                        </div>
+
+                        {{-- Body --}}
+                        <div class="px-6 pt-5 pb-6">
+                            <h4 class="text-lg font-bold text-foreground mb-2" x-text="detailAchievement.title"></h4>
+                            <p x-show="detailAchievement.description"
+                               class="text-sm text-muted-foreground leading-relaxed mb-4"
+                               x-text="detailAchievement.description"></p>
+                            <div class="flex justify-end gap-2">
+                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        @click="showDetail = false; openEdit(detailAchievement.id)">
+                                    <i class="bi bi-pencil mr-1"></i>Edit
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" @click="showDetail = false">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    {{-- Achievement Image Cropper Modal --}}
+    <div class="modal fade" id="achievementCropperModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width:75%; width:900px;">
+            <div class="modal-content shadow-lg">
+                <div class="modal-body p-4">
+                    <div class="mb-3 flex items-center gap-2">
+                        <input type="file" id="achievementCropperFileInput" class="form-control form-control-sm" accept="image/*">
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div id="achievementCropperCanvas" class="takeone-canvas" style="height:380px;"></div>
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Zoom</label>
+                            <input type="range" id="achievementCropperZoom" class="form-range" min="0" max="100" step="1" value="0">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Rotation</label>
+                            <input type="range" id="achievementCropperRot" class="form-range" min="-180" max="180" step="1" value="0">
+                        </div>
+                    </div>
+                    <button type="button" id="achievementCropperSave"
+                            class="btn btn-success btn-lg font-bold w-full py-3 mt-3">
+                        Crop & Add
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     {{-- ===== SINGLE MODAL (Add & Edit) ===== --}}
     <div x-show="showModal" x-cloak
@@ -137,6 +266,133 @@ $achievementsJson = $achievements->map(function($a) {
 
 </div>
 
+@push('styles')
+<link rel="stylesheet" href="https://unpkg.com/cropme@1.4.1/dist/cropme.min.css">
+<script src="https://unpkg.com/cropme@1.4.1/dist/cropme.min.js"></script>
+@endpush
+
+@push('scripts')
+<script>
+// ── Achievement extra-image cropper ──────────────────────────────────────
+let achCropperInstance = null;
+let achCropperModal    = null;
+let achNewImages       = [];
+
+function openAchievementCropper() {
+    document.getElementById('achievementCropperFileInput').value = '';
+    document.getElementById('achievementCropperZoom').value = 0;
+    document.getElementById('achievementCropperRot').value  = 0;
+    if (!achCropperModal) {
+        achCropperModal = new bootstrap.Modal(document.getElementById('achievementCropperModal'));
+    }
+    achCropperModal.show();
+}
+
+function resetAchievementImages() {
+    achNewImages = [];
+    renderAchievementNewThumbnails();
+}
+
+$(function() {
+    const zoomMin = 0.01, zoomMax = 3;
+
+    function initAchCropper(url) {
+        if (achCropperInstance) {
+            try { achCropperInstance.destroy(); } catch(e) {}
+            achCropperInstance = null;
+        }
+        document.getElementById('achievementCropperCanvas').innerHTML = '';
+        achCropperInstance = new Cropme(document.getElementById('achievementCropperCanvas'), {
+            container: { width: '100%', height: 380 },
+            viewport: { width: 400, height: 300, type: 'square', border: { enable: true, width: 2, color: '#fff' } },
+            transformOrigin: 'viewport',
+            zoom: { min: zoomMin, max: zoomMax, enable: true, mouseWheel: true, slider: false },
+            rotation: { enable: true, slider: false }
+        });
+        achCropperInstance.bind({ url }).then(() => {
+            $('#achievementCropperZoom').val(0);
+            $('#achievementCropperRot').val(0);
+        });
+    }
+
+    $('#achievementCropperModal').on('shown.bs.modal', function() {
+        if (achCropperInstance) {
+            try { achCropperInstance.destroy(); } catch(e) {}
+            achCropperInstance = null;
+        }
+        document.getElementById('achievementCropperCanvas').innerHTML = '';
+    });
+
+    $('#achievementCropperFileInput').on('change', function() {
+        if (!this.files[0]) return;
+        const reader = new FileReader();
+        reader.onload = e => initAchCropper(e.target.result);
+        reader.readAsDataURL(this.files[0]);
+    });
+
+    $('#achievementCropperZoom').on('input', function() {
+        if (!achCropperInstance?.properties?.image) return;
+        const scale = zoomMin + (zoomMax - zoomMin) * (this.value / 100);
+        achCropperInstance.properties.scale = Math.min(Math.max(scale, zoomMin), zoomMax);
+        const p = achCropperInstance.properties;
+        p.image.style.transform = `translate3d(${p.x}px,${p.y}px,0) scale(${p.scale}) rotate(${p.deg}deg)`;
+    });
+
+    $('#achievementCropperRot').on('input', function() {
+        if (achCropperInstance) achCropperInstance.rotate(parseInt(this.value));
+    });
+
+    $('#achievementCropperSave').on('click', function() {
+        if (!achCropperInstance || !achCropperInstance.properties?.image) {
+            alert('Please select an image first.');
+            return;
+        }
+        const btn = $(this);
+        btn.prop('disabled', true).text('Processing...');
+        achCropperInstance.crop({ type: 'base64' }).then(base64 => {
+            achNewImages.push(base64);
+            renderAchievementNewThumbnails();
+            achCropperModal.hide();
+            btn.prop('disabled', false).text('Crop & Add');
+        }).catch(err => {
+            console.error('Crop failed:', err);
+            btn.prop('disabled', false).text('Crop & Add');
+        });
+    });
+});
+
+function renderAchievementNewThumbnails() {
+    const previews = document.getElementById('achievementNewPreviews');
+    const inputs   = document.getElementById('achievementBase64Inputs');
+    if (!previews || !inputs) return;
+
+    previews.innerHTML = '';
+    inputs.innerHTML   = '';
+
+    achNewImages.forEach((b64, idx) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'relative group';
+        wrap.innerHTML = `
+            <img src="${b64}" class="w-20 h-20 object-cover rounded-lg border border-gray-200">
+            <button type="button" class="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <i class="bi bi-x"></i>
+            </button>`;
+        wrap.querySelector('button').addEventListener('click', () => {
+            achNewImages.splice(idx, 1);
+            renderAchievementNewThumbnails();
+        });
+        previews.appendChild(wrap);
+
+        const input = document.createElement('input');
+        input.type  = 'hidden';
+        input.name  = 'achievement_images_base64[]';
+        input.value = b64;
+        inputs.appendChild(input);
+    });
+}
+</script>
+@endpush
+
 @push('scripts')
 <script>
 const achievementsData = @json($achievementsJson);
@@ -148,6 +404,7 @@ const emptyForm = {
     image_path: '', remove_image: false,
     bg_from: '#f59e0b', bg_to: '#f97316',
     status: 'active', sort_order: 0,
+    images: [], images_paths: [],
 };
 
 const achievementIcons = [
@@ -185,12 +442,19 @@ const achievementIcons = [
 
 function achievementsAdmin() {
     return {
-        showModal:      false,
-        isEdit:         false,
-        formAction:     storeUrl,
-        formData:       { ...emptyForm },
-        showIconPicker: false,
-        icons:          achievementIcons,
+        showModal:         false,
+        showDetail:        false,
+        detailAchievement: null,
+        isEdit:            false,
+        formAction:        storeUrl,
+        formData:          { ...emptyForm },
+        showIconPicker:    false,
+        icons:             achievementIcons,
+
+        openDetail(id) {
+            this.detailAchievement = achievementsData.find(a => a.id === id) || null;
+            this.showDetail = true;
+        },
 
         openAdd() {
             this.isEdit         = false;
@@ -198,6 +462,7 @@ function achievementsAdmin() {
             this.formData       = { ...emptyForm };
             this.showIconPicker = false;
             this.showModal      = true;
+            resetAchievementImages();
         },
 
         openEdit(id) {
@@ -208,6 +473,7 @@ function achievementsAdmin() {
             this.formData       = { ...emptyForm, ...a, remove_image: false };
             this.showIconPicker = false;
             this.showModal      = true;
+            resetAchievementImages();
         },
 
         deleteAchievement(id) {

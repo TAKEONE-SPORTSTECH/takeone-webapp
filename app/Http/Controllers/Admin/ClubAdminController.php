@@ -328,6 +328,21 @@ class ClubAdminController extends Controller
         return $paths;
     }
 
+    private function saveAchievementBase64Images(array $base64List, int $clubId): array
+    {
+        $paths = [];
+        foreach ($base64List as $base64) {
+            if (!str_starts_with($base64, 'data:image')) continue;
+            [$meta, $imageData] = explode(',', $base64, 2);
+            preg_match('/image\/(\w+)/', $meta, $m);
+            $ext  = $m[1] ?? 'jpg';
+            $path = 'clubs/' . $clubId . '/achievements/' . uniqid('ach_') . '.' . $ext;
+            Storage::disk('public')->put($path, base64_decode($imageData));
+            $paths[] = $path;
+        }
+        return $paths;
+    }
+
     /**
      * Delete a facility
      */
@@ -916,6 +931,8 @@ class ClubAdminController extends Controller
             Storage::disk('public')->put($imagePath, $imageBinary);
         }
 
+        $extraImages = $this->saveAchievementBase64Images($request->input('achievement_images_base64', []), $club->id);
+
         ClubAchievement::create([
             'tenant_id'  => $club->id,
             'title'      => $request->title,
@@ -923,6 +940,7 @@ class ClubAdminController extends Controller
             'tag'        => $request->tag,
             'tag_icon'   => $request->tag_icon ?: 'bi-trophy',
             'image_path' => $imagePath,
+            'images'     => $extraImages ?: null,
             'bg_from'    => $request->bg_from ?: '#f59e0b',
             'bg_to'      => $request->bg_to   ?: '#f97316',
             'status'     => $request->status,
@@ -967,6 +985,10 @@ class ClubAdminController extends Controller
             Storage::disk('public')->delete($achievement->image_path);
             $data['image_path'] = null;
         }
+
+        $kept    = json_decode($request->input('keep_extra_images', '[]'), true) ?: [];
+        $newExtra = $this->saveAchievementBase64Images($request->input('achievement_images_base64', []), $club->id);
+        $data['images'] = array_merge($kept, $newExtra) ?: null;
 
         $achievement->update($data);
 

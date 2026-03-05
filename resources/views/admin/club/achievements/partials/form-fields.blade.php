@@ -141,3 +141,33 @@
         </div>
     </div>
 </div>
+
+<hr class="border-border">
+
+{{-- Additional Images (appear in the detail popup) --}}
+<div>
+    <label class="form-label font-semibold">Additional Images <span class="text-xs font-normal text-muted-foreground">(shown in the popup when card is clicked)</span></label>
+
+    {{-- Existing extra images when editing --}}
+    <div x-show="formData.images_paths && formData.images_paths.length > 0" class="flex flex-wrap gap-2 mb-2">
+        <template x-for="(path, idx) in formData.images_paths" :key="idx">
+            <div class="relative group">
+                <img :src="'/storage/' + path" class="w-20 h-20 object-cover rounded-lg border border-border">
+                <button type="button"
+                        @click="formData.images_paths.splice(idx, 1)"
+                        class="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        </template>
+    </div>
+    <input type="hidden" name="keep_extra_images" :value="JSON.stringify(formData.images_paths ?? [])">
+
+    <div id="achievementNewPreviews" class="flex flex-wrap gap-2 mb-2"></div>
+    <div id="achievementBase64Inputs"></div>
+
+    <button type="button" onclick="openAchievementCropper()"
+            class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-2 mt-1">
+        <i class="bi bi-camera"></i> Add Image
+    </button>
+</div>
