@@ -57,14 +57,25 @@ $achievementsJson = $achievements->map(function($a) {
     @else
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             @foreach($achievements as $achievement)
-            @php $isInactive = $achievement->status === 'inactive'; @endphp
+            @php
+                $isInactive = $achievement->status === 'inactive';
+                $achCardImages = collect($achievement->images ?? [])->map(fn($p) => asset('storage/'.$p))->values()->toArray();
+                if (empty($achCardImages) && $achievement->image_path) $achCardImages = [asset('storage/'.$achievement->image_path)];
+            @endphp
             <div class="card border-0 shadow-sm overflow-hidden {{ $isInactive ? 'opacity-60' : '' }} cursor-pointer"
                  @click="openDetail({{ $achievement->id }})">
                 {{-- Card visual --}}
-                <div class="relative" style="height:120px;">
-                    @if($achievement->image_path)
-                        <img src="{{ asset('storage/' . $achievement->image_path) }}"
-                             class="w-full h-full object-cover" alt="{{ $achievement->title }}">
+                <div class="relative" style="height:120px;"
+                     @if(count($achCardImages) > 1) data-images="{{ json_encode($achCardImages) }}" @endif>
+                    @if(count($achCardImages))
+                        <img src="{{ $achCardImages[0] }}" class="ach-preview w-full h-full object-cover" alt="{{ $achievement->title }}">
+                        @if(count($achCardImages) > 1)
+                        <div class="ach-dots">
+                            @foreach($achCardImages as $j => $_)
+                            <span class="ach-dot{{ $j === 0 ? ' active' : '' }}"></span>
+                            @endforeach
+                        </div>
+                        @endif
                     @else
                         <div class="w-full h-full flex items-center justify-center"
                              style="background: linear-gradient(135deg, {{ $achievement->bg_from }}, {{ $achievement->bg_to }});"></div>
@@ -395,6 +406,29 @@ function renderAchievementNewThumbnails() {
 
 @push('scripts')
 <script>
+// Achievement card hover slideshow
+document.querySelectorAll('[data-images]').forEach(function(el) {
+    const images = JSON.parse(el.dataset.images || '[]');
+    if (images.length <= 1) return;
+    const img  = el.querySelector('.ach-preview');
+    const dots = el.querySelectorAll('.ach-dot');
+    let idx = 0, timer = null;
+
+    function goTo(i) {
+        idx = (i + images.length) % images.length;
+        img.src = images[idx];
+        dots.forEach((d, j) => d.classList.toggle('active', j === idx));
+    }
+
+    el.addEventListener('mouseenter', function() {
+        timer = setInterval(function() { goTo(idx + 1); }, 800);
+    });
+    el.addEventListener('mouseleave', function() {
+        clearInterval(timer);
+        goTo(0);
+    });
+});
+
 const achievementsData = @json($achievementsJson);
 const storeUrl         = '{{ route('admin.club.achievements.store', $club->slug) }}';
 const baseEditUrl      = '{{ url('admin/club/' . $club->slug . '/achievements') }}';
