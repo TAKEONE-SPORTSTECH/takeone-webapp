@@ -520,14 +520,38 @@
                         </div>
                     </div>
                     <div class="p-6 space-y-4">
+                        @php
+                            $trainerPhone = $user->mobile_formatted ?? null;
+                            $trainerEmail = $user->email ?? null;
+                            $trainerSocials = $user->social_links ?? [];
+                            $socialIcons = [
+                                'facebook'  => ['icon' => 'bi-facebook',  'hover' => 'hover:from-blue-600 hover:to-blue-500',      'label' => 'Facebook'],
+                                'instagram' => ['icon' => 'bi-instagram', 'hover' => 'hover:from-pink-500 hover:to-orange-500',    'label' => 'Instagram'],
+                                'twitter'   => ['icon' => 'bi-twitter-x', 'hover' => 'hover:from-gray-800 hover:to-gray-700',      'label' => 'Twitter/X'],
+                                'linkedin'  => ['icon' => 'bi-linkedin',  'hover' => 'hover:from-blue-700 hover:to-blue-600',      'label' => 'LinkedIn'],
+                                'youtube'   => ['icon' => 'bi-youtube',   'hover' => 'hover:from-red-600 hover:to-red-500',        'label' => 'YouTube'],
+                                'tiktok'    => ['icon' => 'bi-tiktok',    'hover' => 'hover:from-gray-900 hover:to-gray-800',      'label' => 'TikTok'],
+                                'snapchat'  => ['icon' => 'bi-snapchat',  'hover' => 'hover:from-yellow-400 hover:to-yellow-300',  'label' => 'Snapchat'],
+                                'whatsapp'  => ['icon' => 'bi-whatsapp',  'hover' => 'hover:from-green-500 hover:to-green-400',    'label' => 'WhatsApp'],
+                                'telegram'  => ['icon' => 'bi-telegram',  'hover' => 'hover:from-sky-500 hover:to-sky-400',        'label' => 'Telegram'],
+                                'discord'   => ['icon' => 'bi-discord',   'hover' => 'hover:from-indigo-600 hover:to-indigo-500',  'label' => 'Discord'],
+                                'github'    => ['icon' => 'bi-github',    'hover' => 'hover:from-gray-800 hover:to-gray-700',      'label' => 'GitHub'],
+                                'spotify'   => ['icon' => 'bi-spotify',   'hover' => 'hover:from-green-600 hover:to-green-500',    'label' => 'Spotify'],
+                            ];
+                        @endphp
+
                         {{-- Phone --}}
-                        <div class="group flex items-center gap-4 p-5 border rounded-xl bg-gradient-to-r from-white {{ $isMale ? 'to-blue-50/30 hover:border-blue-400' : 'to-blue-50/30 hover:border-blue-400' }} hover:shadow-md transition-all">
+                        <div class="group flex items-center gap-4 p-5 border rounded-xl bg-gradient-to-r from-white to-blue-50/30 hover:border-blue-400 hover:shadow-md transition-all">
                             <div class="p-3 rounded-xl bg-blue-50 group-hover:bg-blue-100 transition-colors">
                                 <i class="bi bi-telephone text-xl text-blue-500"></i>
                             </div>
                             <div class="flex-1">
                                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Phone</p>
-                                <p class="font-bold text-base">Contact through club</p>
+                                @if($trainerPhone)
+                                    <a href="tel:{{ $trainerPhone }}" class="font-bold text-base hover:text-blue-600 transition-colors">{{ $trainerPhone }}</a>
+                                @else
+                                    <p class="font-bold text-base text-gray-400">Not provided</p>
+                                @endif
                             </div>
                         </div>
 
@@ -538,25 +562,31 @@
                             </div>
                             <div class="flex-1">
                                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Email</p>
-                                <p class="font-bold text-base">Available upon request</p>
+                                @if($trainerEmail)
+                                    <a href="mailto:{{ $trainerEmail }}" class="font-bold text-base hover:text-purple-600 transition-colors">{{ $trainerEmail }}</a>
+                                @else
+                                    <p class="font-bold text-base text-gray-400">Not provided</p>
+                                @endif
                             </div>
                         </div>
 
                         {{-- Social Media --}}
+                        @if(!empty(array_filter($trainerSocials)))
                         <div class="pt-4">
                             <p class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Connect on Social Media</p>
-                            <div class="flex gap-3">
-                                <button class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gradient-to-r hover:from-pink-500 hover:to-orange-500 hover:text-white hover:border-transparent transition-all">
-                                    <i class="bi bi-instagram text-lg"></i>
-                                </button>
-                                <button class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gradient-to-r hover:from-blue-600 hover:to-blue-500 hover:text-white hover:border-transparent transition-all">
-                                    <i class="bi bi-facebook text-lg"></i>
-                                </button>
-                                <button class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gradient-to-r hover:from-sky-500 hover:to-blue-400 hover:text-white hover:border-transparent transition-all">
-                                    <i class="bi bi-twitter-x text-lg"></i>
-                                </button>
+                            <div class="flex flex-wrap gap-3">
+                                @foreach($trainerSocials as $platform => $url)
+                                    @if(!empty($url) && isset($socialIcons[$platform]))
+                                    <a href="{{ $url }}" target="_blank" rel="noopener noreferrer"
+                                       title="{{ $socialIcons[$platform]['label'] }}"
+                                       class="flex-1 min-w-[3rem] inline-flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-lg bg-white hover:bg-gradient-to-r {{ $socialIcons[$platform]['hover'] }} hover:text-white hover:border-transparent transition-all">
+                                        <i class="bi {{ $socialIcons[$platform]['icon'] }} text-lg"></i>
+                                    </a>
+                                    @endif
+                                @endforeach
                             </div>
                         </div>
+                        @endif
                     </div>
                 </div>
             </div>
