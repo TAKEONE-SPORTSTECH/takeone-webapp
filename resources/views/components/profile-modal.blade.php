@@ -485,16 +485,16 @@ function {{ $alpineComponent }}() {
             document.addEventListener('imageUploaded', (e) => {
                 if (e.detail && e.detail.url) {
                     this.updateProfilePicturePreview(e.detail.url);
+                    this.syncProfilePicsOnPage(e.detail.url);
                 }
             });
 
             // Global callback for cropper
             window.imageUploadSuccess = (result) => {
-                if (result && result.url) {
-                    this.updateProfilePicturePreview(result.url);
-                } else if (result && result.path) {
-                    const fullUrl = window.location.origin + '/storage/' + result.path;
-                    this.updateProfilePicturePreview(fullUrl);
+                const url = result?.url || (result?.path ? window.location.origin + '/storage/' + result.path : null);
+                if (url) {
+                    this.updateProfilePicturePreview(url);
+                    this.syncProfilePicsOnPage(url);
                 }
             };
 
@@ -542,17 +542,11 @@ function {{ $alpineComponent }}() {
             .then(data => {
                 if (data.success) {
                     @if(!$isCreate)
-                    // Update profile picture on the page if it was changed
                     if (data.profile_picture_url) {
-                        document.querySelectorAll('img[alt*="Profile"], img[src*="profile"]').forEach(img => {
-                            if (img.src.includes('profile_') || img.alt.toLowerCase().includes('profile')) {
-                                img.src = data.profile_picture_url + '?v=' + new Date().getTime();
-                            }
-                        });
+                        this.syncProfilePicsOnPage(data.profile_picture_url);
                     }
                     @endif
 
-                    // Show success message and reload
                     if (typeof Toast !== 'undefined') {
                         Toast.success('{{ $isCreate ? "Member Created" : "Profile Updated" }}', data.message || '{{ $isCreate ? "Member created successfully!" : "Profile updated successfully!" }}');
                     }
@@ -560,8 +554,6 @@ function {{ $alpineComponent }}() {
                         this.open = false;
                         if (data.redirect) {
                             window.location.href = data.redirect;
-                        } else {
-                            window.location.reload();
                         }
                     }, 1200);
                 } else {
@@ -619,6 +611,38 @@ function {{ $alpineComponent }}() {
             }
 
             document.getElementById('removeProfilePictureInput').value = '0';
+        },
+
+        syncProfilePicsOnPage(imageUrl) {
+            const newSrc = imageUrl.split('?')[0] + '?t=' + Date.now();
+
+            // Nav bar avatars (desktop + mobile)
+            document.querySelectorAll('img.user-avatar').forEach(img => {
+                img.src = newSrc;
+                img.style.display = '';
+                const next = img.nextElementSibling;
+                if (next && next.classList.contains('user-avatar-placeholder')) {
+                    next.style.display = 'none';
+                }
+            });
+
+            // Big profile pic on the member profile page
+            const memberPic = document.getElementById('member-profile-pic');
+            const memberPlaceholder = document.getElementById('member-profile-placeholder');
+            if (memberPic) {
+                memberPic.src = newSrc;
+                memberPic.style.display = '';
+                if (memberPlaceholder) memberPlaceholder.style.display = 'none';
+            } else if (memberPlaceholder) {
+                // First upload — no img exists yet, create one
+                const img = document.createElement('img');
+                img.id = 'member-profile-pic';
+                img.className = 'w-full h-full';
+                img.style.objectFit = 'cover';
+                img.src = newSrc;
+                memberPlaceholder.parentNode.insertBefore(img, memberPlaceholder);
+                memberPlaceholder.style.display = 'none';
+            }
         },
 
         attachRemovePhotoListener() {
