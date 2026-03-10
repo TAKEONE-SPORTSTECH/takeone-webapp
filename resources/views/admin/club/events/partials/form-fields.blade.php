@@ -57,6 +57,11 @@
         <label class="form-label">Max Capacity</label>
         <input type="number" name="max_capacity" class="form-control" min="1" placeholder="Leave empty for unlimited" x-model="formData.max_capacity">
     </div>
+    <div>
+        <label class="form-label">Cancel Within <span class="text-xs text-muted-foreground">(days after joining)</span></label>
+        <input type="number" name="cancel_within_days" class="form-control" min="1" max="365" placeholder="Leave empty to allow anytime" x-model="formData.cancel_within_days">
+        <p class="text-xs text-muted-foreground mt-1">After this many days, members can no longer leave the event.</p>
+    </div>
     <div class="md:col-span-2">
         <label class="form-label">Tags <span class="text-xs text-muted-foreground">(comma-separated)</span></label>
         <input type="text" name="tags" class="form-control" placeholder="Public event, WT rules, Highlight reels" x-model="formData.tags_str">

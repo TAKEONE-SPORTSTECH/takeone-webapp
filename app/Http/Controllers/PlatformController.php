@@ -311,16 +311,18 @@ class PlatformController extends Controller
             $accessStat = $hours . 'h/' . ($uniqueDays ?: 7);
         }
 
-        // IDs of events this user has joined in this club (empty set for guests)
+        // Events this user has joined in this club (empty set for guests)
         $joinedEventIds = [];
+        $joinedEventRegistrations = []; // event_id => registered_at (Carbon)
         // IDs of timeline posts this user has liked in this club
         $likedPostIds = [];
         if (Auth::check()) {
             $eventIds = $club->events->pluck('id');
-            $joinedEventIds = ClubEventRegistration::where('user_id', Auth::id())
+            $regs = ClubEventRegistration::where('user_id', Auth::id())
                 ->whereIn('event_id', $eventIds)
-                ->pluck('event_id')
-                ->toArray();
+                ->get(['event_id', 'registered_at']);
+            $joinedEventIds = $regs->pluck('event_id')->toArray();
+            $joinedEventRegistrations = $regs->keyBy('event_id')->toArray();
 
             $postIds = $club->timelinePosts->pluck('id');
             $likedPostIds = ClubTimelinePostLike::where('user_id', Auth::id())
@@ -338,7 +340,7 @@ class PlatformController extends Controller
             'club', 'activeMembersCount', 'reviews', 'averageRating',
             'nationalityStats', 'ageGroups', 'genderStats', 'horoscopeGroups',
             'bloodTypeStats', 'monthlyTrend', 'totalMembers', 'accessStat', 'distinctClassCount',
-            'goalStats', 'joinedEventIds', 'likedPostIds', 'achievements'
+            'goalStats', 'joinedEventIds', 'joinedEventRegistrations', 'likedPostIds', 'achievements'
         ));
     }
 
@@ -666,6 +668,14 @@ class PlatformController extends Controller
 
         if (!$registration) {
             return back()->with('info', 'You are not registered for this event.');
+        }
+
+        // Enforce cancellation deadline
+        if ($event->cancel_within_days && $registration->registered_at) {
+            $deadline = $registration->registered_at->addDays($event->cancel_within_days);
+            if (now()->isAfter($deadline)) {
+                return back()->with('error', 'The cancellation window for this event has closed. You can no longer leave after ' . $event->cancel_within_days . ' day(s) of joining.');
+            }
         }
 
         $wasJoined = $registration->status === 'joined';

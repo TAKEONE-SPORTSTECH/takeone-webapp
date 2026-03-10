@@ -24,6 +24,7 @@ class ClubEvent extends Model
         'location',
         'level',
         'max_capacity',
+        'cancel_within_days',
         'spots_taken',
         'ribbon_label',
         'ribbon_type',
@@ -40,8 +41,9 @@ class ClubEvent extends Model
         'end_date'     => 'date',
         'tags'         => 'array',
         'images'       => 'array',
-        'max_capacity' => 'integer',
-        'spots_taken'  => 'integer',
+        'max_capacity'       => 'integer',
+        'cancel_within_days' => 'integer',
+        'spots_taken'        => 'integer',
         'is_archived'  => 'boolean',
     ];
 

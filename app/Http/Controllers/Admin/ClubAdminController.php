@@ -609,14 +609,15 @@ class ClubAdminController extends Controller
             'location'     => 'nullable|string|max:255',
             'level'        => 'nullable|string|max:255',
             'description'  => 'nullable|string',
-            'max_capacity' => 'nullable|integer|min:1',
-            'tags'         => 'nullable|string',
-            'color'        => 'nullable|string|max:20',
+            'max_capacity'       => 'nullable|integer|min:1',
+            'cancel_within_days' => 'nullable|integer|min:1|max:365',
+            'tags'               => 'nullable|string',
+            'color'              => 'nullable|string|max:20',
         ]);
 
         $data = $request->only([
             'title', 'date', 'end_date', 'start_time', 'end_time', 'location', 'level',
-            'description', 'max_capacity', 'color',
+            'description', 'max_capacity', 'cancel_within_days', 'color',
         ]);
         $data['tenant_id'] = $club->id;
         $data['status']    = 'active';
@@ -649,14 +650,15 @@ class ClubAdminController extends Controller
             'location'     => 'nullable|string|max:255',
             'level'        => 'nullable|string|max:255',
             'description'  => 'nullable|string',
-            'max_capacity' => 'nullable|integer|min:1',
-            'tags'         => 'nullable|string',
-            'color'        => 'nullable|string|max:20',
+            'max_capacity'       => 'nullable|integer|min:1',
+            'cancel_within_days' => 'nullable|integer|min:1|max:365',
+            'tags'               => 'nullable|string',
+            'color'              => 'nullable|string|max:20',
         ]);
 
         $data = $request->only([
             'title', 'date', 'end_date', 'start_time', 'end_time', 'location', 'level',
-            'description', 'max_capacity', 'color',
+            'description', 'max_capacity', 'cancel_within_days', 'color',
         ]);
 
         if ($request->filled('tags')) {

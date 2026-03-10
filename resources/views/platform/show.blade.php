@@ -782,6 +782,12 @@
                         $isFull      = $event->max_capacity && $event->spots_taken >= $event->max_capacity;
                         $ctaText     = $event->cta_text ?: 'Join Event';
                         $isJoined    = in_array($event->id, $joinedEventIds ?? []);
+                        $canLeave    = false;
+                        if ($isJoined && isset($joinedEventRegistrations[$event->id])) {
+                            $reg = $joinedEventRegistrations[$event->id];
+                            $registeredAt = \Carbon\Carbon::parse($reg['registered_at']);
+                            $canLeave = !$event->cancel_within_days || $registeredAt->copy()->addDays($event->cancel_within_days)->isFuture();
+                        }
                     @endphp
                     @php
                         $eventDetail = [
@@ -850,10 +856,16 @@
                                 @if($isJoined)
                                 <div class="flex items-center gap-2">
                                     <span class="event-cta-joined" style="background:{{ $pillColor }};"><i class="bi bi-check-circle-fill"></i> Joined</span>
+                                    @if($canLeave)
                                     <form method="POST" action="{{ route('clubs.events.leave', [$club->slug, $event->id]) }}">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="event-cta-leave">Leave</button>
                                     </form>
+                                    @else
+                                    <span class="event-cta-leave opacity-50 cursor-not-allowed" title="Cancellation window closed ({{ $event->cancel_within_days }} day{{ $event->cancel_within_days > 1 ? 's' : '' }} after joining)">
+                                        <i class="bi bi-lock-fill"></i> Leave
+                                    </span>
+                                    @endif
                                 </div>
                                 @elseif($isFull)
                                 <form method="POST" action="{{ route('clubs.events.join', [$club->slug, $event->id]) }}">
