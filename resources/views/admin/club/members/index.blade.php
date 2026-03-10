@@ -45,7 +45,7 @@
                 <div class="flex-1">
                     <div class="relative">
                         <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                        <input type="search" id="searchMembers" placeholder="Search members by name or rank..." autocomplete="off" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <input type="text" id="searchMembers" placeholder="Search members by name or rank..." autocomplete="new-password" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                     </div>
                 </div>
                 <div class="flex flex-col sm:flex-row gap-2">
@@ -190,7 +190,7 @@
             <div class="p-6 overflow-y-auto max-h-[60vh]">
                 <div class="relative mb-6">
                     <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    <input type="search" id="searchUserInput" placeholder="Enter email or phone number..." autocomplete="off" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                    <input type="text" id="searchUserInput" placeholder="Enter email or phone number..." autocomplete="new-password" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                 </div>
                 <div id="searchResults" class="hidden">
                     <label class="block text-sm font-semibold text-gray-700 mb-3">Select members to add:</label>
@@ -378,7 +378,7 @@
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Parent Email or Phone <span class="text-red-500">*</span></label>
                     <div class="flex gap-2">
-                        <input type="search" id="parentSearchInput" class="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="parent@example.com" autocomplete="off">
+                        <input type="text" id="parentSearchInput" class="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="parent@example.com" autocomplete="new-password">
                         <button onclick="searchParent()" class="px-4 py-2.5 border border-purple-500 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                         </button>
