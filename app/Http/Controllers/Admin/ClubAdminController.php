@@ -1279,7 +1279,11 @@ class ClubAdminController extends Controller
             ->with(['user', 'user.guardians.guardian'])
             ->paginate(20);
         $packages = ClubPackage::where('tenant_id', $clubId)->get();
-        return view('admin.club.members.index', compact('club', 'members', 'packages'));
+        $subscriptions = ClubMemberSubscription::where('tenant_id', $clubId)
+            ->with('package')
+            ->get()
+            ->groupBy('user_id');
+        return view('admin.club.members.index', compact('club', 'members', 'packages', 'subscriptions'));
     }
 
     public function storeMember(Request $request, Tenant $club)
@@ -2026,24 +2030,47 @@ class ClubAdminController extends Controller
 
         $request->validate([
             'full_name'   => 'required|string|max:255',
-            'email'       => 'nullable|email|unique:users,email',
+            'email'       => 'nullable|email',
             'gender'      => 'required|in:m,f',
             'birthdate'   => 'required|date',
             'nationality' => 'required|string|max:100',
             'password'    => 'required|string|min:8',
         ]);
 
-        $newOwner = User::create([
-            'full_name'   => $request->full_name,
-            'name'        => $request->full_name,
-            'email'       => $request->email,
-            'password'    => bcrypt($request->password),
-            'gender'      => $request->gender,
-            'birthdate'   => $request->birthdate,
-            'nationality' => $request->nationality,
-            'blood_type'  => $request->blood_type,
-            'mobile'      => $request->mobile ? ['code' => $request->mobile_code ?? '+973', 'number' => $request->mobile] : null,
-        ]);
+        // Restore soft-deleted user if email matches, otherwise create new
+        $newOwner = null;
+        if ($request->filled('email')) {
+            $newOwner = User::withTrashed()->where('email', $request->email)->first();
+        }
+
+        if ($newOwner && $newOwner->trashed()) {
+            $newOwner->restore();
+            $newOwner->update([
+                'full_name'   => $request->full_name,
+                'name'        => $request->full_name,
+                'password'    => bcrypt($request->password),
+                'gender'      => $request->gender,
+                'birthdate'   => $request->birthdate,
+                'nationality' => $request->nationality,
+                'blood_type'  => $request->blood_type,
+                'mobile'      => $request->mobile ? ['code' => $request->mobile_code ?? '+973', 'number' => $request->mobile] : null,
+            ]);
+        } elseif ($newOwner) {
+            // Active user with same email — block creation
+            return response()->json(['success' => false, 'message' => 'An active account with this email already exists. Use "Link Existing Member" instead.'], 422);
+        } else {
+            $newOwner = User::create([
+                'full_name'   => $request->full_name,
+                'name'        => $request->full_name,
+                'email'       => $request->email,
+                'password'    => bcrypt($request->password),
+                'gender'      => $request->gender,
+                'birthdate'   => $request->birthdate,
+                'nationality' => $request->nationality,
+                'blood_type'  => $request->blood_type,
+                'mobile'      => $request->mobile ? ['code' => $request->mobile_code ?? '+973', 'number' => $request->mobile] : null,
+            ]);
+        }
 
         $oldOwner = $club->owner;
 
@@ -2069,6 +2096,7 @@ class ClubAdminController extends Controller
         // Add new owner as free club member
         ClubMemberSubscription::create([
             'tenant_id'      => $club->id,
+            'type'           => 'owner',
             'user_id'        => $newOwner->id,
             'package_id'     => null,
             'start_date'     => now()->toDateString(),
@@ -2079,6 +2107,12 @@ class ClubAdminController extends Controller
             'amount_due'     => 0,
             'notes'          => 'Owner membership',
         ]);
+
+        // Ensure owner appears in the members list
+        Membership::firstOrCreate(
+            ['tenant_id' => $club->id, 'user_id' => $newOwner->id],
+            ['status' => 'active']
+        );
 
         return response()->json([
             'success'  => true,
@@ -2146,13 +2180,15 @@ class ClubAdminController extends Controller
         }
 
         // 4. Add new owner as a free club member (no package)
-        $alreadyMember = ClubMemberSubscription::where('tenant_id', $club->id)
+        $alreadyOwner = ClubMemberSubscription::where('tenant_id', $club->id)
             ->where('user_id', $newOwner->id)
+            ->where('type', 'owner')
             ->exists();
 
-        if (!$alreadyMember) {
+        if (!$alreadyOwner) {
             ClubMemberSubscription::create([
                 'tenant_id'      => $club->id,
+                'type'           => 'owner',
                 'user_id'        => $newOwner->id,
                 'package_id'     => null,
                 'start_date'     => now()->toDateString(),
@@ -2164,6 +2200,12 @@ class ClubAdminController extends Controller
                 'notes'          => 'Owner membership',
             ]);
         }
+
+        // Ensure owner appears in the members list
+        Membership::firstOrCreate(
+            ['tenant_id' => $club->id, 'user_id' => $newOwner->id],
+            ['status' => 'active']
+        );
 
         return response()->json([
             'success' => true,

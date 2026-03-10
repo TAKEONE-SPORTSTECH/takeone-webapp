@@ -76,6 +76,9 @@
                 $user = $member->user;
                 $guardian = $user->guardians->first()?->guardian;
                 $footerLabel = $member->status === 'inactive' ? 'INACTIVE' : ($member->status === 'active' ? 'ACTIVE MEMBER' : 'CLUB MEMBER');
+                $userSubs = ($subscriptions ?? collect())->get((string) $user->id) ?? ($subscriptions ?? collect())->get($user->id, collect());
+                $isOwner = $userSubs->where('type', 'owner')->isNotEmpty();
+                $memberPackages = $userSubs->where('type', 'regular')->pluck('package')->filter();
             @endphp
             <x-member-card
                 :member="$user"
@@ -92,7 +95,12 @@
                 data-has-enrollment="{{ $member->status === 'active' ? '1' : '0' }}"
             >
                 <x-slot:badges>
-                    <span class="badge bg-primary">Member</span>
+                    @if($isOwner)
+                        <span class="badge bg-warning text-dark">&#128081; Owner</span>
+                    @endif
+                    @foreach($memberPackages as $pkg)
+                        <span class="badge bg-primary">{{ $pkg->name }}</span>
+                    @endforeach
                     @if($member->achievements > 0)
                         <span class="badge bg-warning text-dark">{{ $member->achievements }} &#127942;</span>
                     @endif

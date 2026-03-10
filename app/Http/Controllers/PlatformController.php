@@ -504,6 +504,7 @@ class PlatformController extends Controller
 
             $subscription = ClubMemberSubscription::create([
                 'tenant_id' => $club->id,
+                'type' => 'regular',
                 'user_id' => $memberId,
                 'package_id' => $registrant['package_id'],
                 'start_date' => $startDate,

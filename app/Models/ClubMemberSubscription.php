@@ -26,6 +26,7 @@ class ClubMemberSubscription extends Model
      */
     protected $fillable = [
         'tenant_id',
+        'type',
         'user_id',
         'club_affiliation_id',
         'package_id',

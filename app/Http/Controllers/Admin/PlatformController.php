@@ -698,6 +698,13 @@ class PlatformController extends Controller
         }
 
         $member = User::findOrFail($id);
+
+        $ownedClubs = \App\Models\Tenant::where('owner_user_id', $member->id)->pluck('club_name');
+        if ($ownedClubs->isNotEmpty()) {
+            return redirect()->back()
+                ->with('error', 'Cannot delete this account. They are the owner of the following club(s): ' . $ownedClubs->join(', ') . '. Transfer ownership first.');
+        }
+
         $memberName = $member->full_name;
         $member->delete();
 
