@@ -318,9 +318,11 @@
 
             {{-- ===== SCHEDULE TAB ===== --}}
             @php
-                $dayOrder = ['saturday','sunday','monday','tuesday','wednesday','thursday','friday'];
-                $dayAbbr  = ['saturday'=>'Sat','sunday'=>'Sun','monday'=>'Mon','tuesday'=>'Tue','wednesday'=>'Wed','thursday'=>'Thu','friday'=>'Fri'];
-                $todayKey = strtolower(now()->format('l'));
+                $dayOrder    = ['saturday','sunday','monday','tuesday','wednesday','thursday','friday'];
+                $dayAbbr     = ['saturday'=>'Sat','sunday'=>'Sun','monday'=>'Mon','tuesday'=>'Tue','wednesday'=>'Wed','thursday'=>'Thu','friday'=>'Fri'];
+                $todayKey    = strtolower(now()->format('l'));
+                $todayIndex  = array_search($todayKey, $dayOrder);
+                $visibleDays = array_slice($dayOrder, $todayIndex !== false ? $todayIndex : 0);
             @endphp
             <div x-show="activeTab === 'schedule'" x-cloak class="mt-6 space-y-6"
                  x-data="{
@@ -349,15 +351,9 @@
                     <div class="p-6">
 
                 @if(count($scheduleSlots) > 0)
-                {{-- Day filter chips --}}
+                {{-- Day filter chips (today onwards in the week) --}}
                 <div class="flex flex-wrap justify-center gap-2 mb-5">
-                    <button type="button"
-                            @click="activeDay = '{{ $todayKey }}'"
-                            :class="activeDay === '{{ $todayKey }}' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'"
-                            class="px-5 py-2 rounded-full border text-sm font-semibold transition-colors">
-                        Today
-                    </button>
-                    @foreach($dayOrder as $dayKey)
+                    @foreach($visibleDays as $dayKey)
                     <button type="button"
                             @click="activeDay = '{{ $dayKey }}'"
                             :class="activeDay === '{{ $dayKey }}' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'"
