@@ -1336,7 +1336,7 @@
 
                                 {{-- Share --}}
                                 <button class="news-action share-btn"
-                                        data-url="{{ route('clubs.show', $club->slug) }}">
+                                        data-url="{{ route('clubs.show', $club->slug) }}#post-{{ $post->id }}">
                                     <i class="bi bi-share"></i> Share
                                 </button>
                             </div>
@@ -1808,6 +1808,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function escapeHtml(str) {
         return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // Scroll to post if URL has #post-{id}
+    const hash = window.location.hash;
+    if (hash && hash.startsWith('#post-')) {
+        const postEl = document.querySelector(hash);
+        if (postEl) {
+            const timelineTabBtn = document.querySelector('[data-bs-target="#tab-timeline"]');
+            if (timelineTabBtn) {
+                // Listen BEFORE triggering the tab so we don't miss the event
+                timelineTabBtn.addEventListener('shown.bs.tab', function () {
+                    setTimeout(() => {
+                        postEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        postEl.style.transition = 'box-shadow 0.4s';
+                        postEl.style.boxShadow = '0 0 0 3px rgba(147,51,234,0.45)';
+                        setTimeout(() => { postEl.style.boxShadow = ''; }, 2000);
+                    }, 100);
+                }, { once: true });
+                timelineTabBtn.click();
+            }
+        }
     }
 });
 </script>
