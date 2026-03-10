@@ -290,16 +290,30 @@
                         $a->images ?? []
                     )));
                     $combinedUrls = collect($combined)->map(fn($p) => asset('storage/' . $p))->values()->toArray();
+                    $medals = [];
+                    if ($a->medals_gold)   $medals[] = $a->medals_gold . ' Gold';
+                    if ($a->medals_silver) $medals[] = $a->medals_silver . ' Silver';
+                    if ($a->medals_bronze) $medals[] = $a->medals_bronze . ' Bronze';
                     return [
-                        'id'          => $a->id,
-                        'title'       => $a->title,
-                        'description' => $a->description ?? '',
-                        'tag'         => $a->tag,
-                        'tag_icon'    => $a->tag_icon,
-                        'image_url'   => $combinedUrls[0] ?? null,
-                        'bg_from'     => $a->bg_from,
-                        'bg_to'       => $a->bg_to,
-                        'images'      => $combinedUrls,
+                        'id'           => $a->id,
+                        'title'        => $a->title,
+                        'short_title'  => $a->short_title ?: $a->title,
+                        'type_icon'    => $a->type_icon ?: '🏆',
+                        'description'  => $a->description ?? '',
+                        'location'     => $a->location ?? '',
+                        'date_label'   => $a->date_label ?? ($a->achievement_date ? $a->achievement_date->format('M Y') : ''),
+                        'category'     => $a->category ?? '',
+                        'medal_summary'=> implode(' • ', $medals),
+                        'bouts_count'  => $a->bouts_count ?? 0,
+                        'wins_count'   => $a->wins_count ?? 0,
+                        'chips'        => $a->chips ?? [],
+                        'athletes'     => $a->athletes ?? [],
+                        'tag'          => $a->tag,
+                        'tag_icon'     => $a->tag_icon,
+                        'image_url'    => $combinedUrls[0] ?? null,
+                        'bg_from'      => $a->bg_from,
+                        'bg_to'        => $a->bg_to,
+                        'images'       => $combinedUrls,
                     ];
                 })->values()->toArray();
                 @endphp
@@ -320,12 +334,22 @@
                                 collect($achievement->images ?? [])->map(fn($p) => asset('storage/'.$p))->toArray()
                             )));
                         @endphp
+                        @php
+                            $athletes  = is_array($achievement->athletes) ? array_slice($achievement->athletes, 0, 4) : [];
+                            $medals    = [];
+                            if ($achievement->medals_gold)   $medals[] = $achievement->medals_gold . ' Gold';
+                            if ($achievement->medals_silver) $medals[] = $achievement->medals_silver . ' Silver';
+                            if ($achievement->medals_bronze) $medals[] = $achievement->medals_bronze . ' Bronze';
+                            $medalStr  = implode(' • ', $medals) ?: $achievement->tag;
+                        @endphp
                         <article class="achievement-card h-full cursor-pointer"
                                  @click="achDetail = {{ json_encode($achData) }}; showAchDetail = true">
-                            <div class="achievement-image"
+
+                            {{-- #2 achievement-media (180px) --}}
+                            <div class="achievement-media" style="position:relative;height:180px;overflow:hidden;"
                                  @if(count($achImages) > 1) data-images="{{ json_encode($achImages) }}" @endif>
                                 @if(count($achImages))
-                                    <img src="{{ $achImages[0] }}" class="ach-preview w-full h-full object-cover" alt="{{ $achievement->title }}">
+                                    <img src="{{ $achImages[0] }}" class="ach-preview" alt="{{ $achievement->title }}">
                                     @if(count($achImages) > 1)
                                     <div class="ach-dots">
                                         @foreach($achImages as $j => $_)
@@ -334,110 +358,170 @@
                                     </div>
                                     @endif
                                 @else
-                                    <div class="w-full h-full"
-                                         style="background: linear-gradient(135deg, {{ $achievement->bg_from }}, {{ $achievement->bg_to }});"></div>
+                                    <div style="width:100%;height:100%;background:linear-gradient(135deg,{{ $achievement->bg_from }},{{ $achievement->bg_to }});display:flex;align-items:center;justify-content:center;">
+                                        <span style="font-size:3rem;opacity:.4;">{{ $achievement->type_icon ?: '🏆' }}</span>
+                                    </div>
                                 @endif
-                                <span class="achievement-tag">
-                                    <i class="bi {{ $achievement->tag_icon }} mr-1"></i>{{ $achievement->tag }}
-                                </span>
+                                {{-- #3 medal pill top-right --}}
+                                <div style="position:absolute;top:10px;right:10px;width:fit-content;padding:4px 10px;border-radius:999px;font-size:.7rem;text-transform:uppercase;letter-spacing:.14em;background:transparent;border:none;color:#fff;display:inline-flex;align-items:center;gap:4px;z-index:1;white-space:nowrap;text-shadow:0 1px 4px rgba(0,0,0,.8),0 0 12px rgba(0,0,0,.5);filter:drop-shadow(0 1px 3px rgba(0,0,0,.6));font-weight:600;">
+                                    <span style="width:7px;height:7px;border-radius:999px;background:#fff;display:inline-block;flex-shrink:0;box-shadow:0 0 4px rgba(0,0,0,.5);"></span>{{ $medalStr }}
+                                </div>
                             </div>
-                            <div class="achievement-body">
-                                <h6 class="text-sm font-bold mb-1">{{ $achievement->title }}</h6>
-                                @if($achievement->description)
-                                <p class="text-sm mb-0" style="color:#6b7280;">{{ $achievement->description }}</p>
+
+                            {{-- #4 full body --}}
+                            <div class="achievement-body" style="padding:12px 14px 14px;color:#111827;background:#fff;">
+                                <div style="font-size:1rem;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:6px;">
+                                    <span style="width:18px;height:18px;border-radius:6px;background:var(--color-primary);display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;">{{ $achievement->type_icon ?: '🏆' }}</span>
+                                    {{ $achievement->short_title ?: $achievement->title }}
+                                </div>
+                                @if($achievement->location || $achievement->date_label)
+                                <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:.78rem;color:var(--color-muted-foreground, #9ca3af);margin-bottom:8px;">
+                                    @if($achievement->location)<span style="display:inline-flex;align-items:center;gap:4px;">📍 {{ $achievement->location }}</span>@endif
+                                    @if($achievement->date_label)<span style="display:inline-flex;align-items:center;gap:4px;">📅 {{ $achievement->date_label }}</span>@endif
+                                </div>
                                 @endif
+                                <div style="display:flex;align-items:center;margin-top:6px;gap:6px;">
+                                    <div style="display:flex;">
+                                        @if(count($athletes))
+                                            @foreach($athletes as $ath)
+                                            <div style="width:24px;height:24px;border-radius:999px;border:2px solid #1e293b;background:var(--color-primary);color:#fff;font-size:.75rem;font-weight:700;display:flex;align-items:center;justify-content:center;{{ $loop->first ? '' : 'margin-left:-8px;' }}">{{ strtoupper(substr($ath['name'] ?? '?', 0, 1)) }}</div>
+                                            @endforeach
+                                        @else
+                                            @foreach(array_slice(array_filter(str_split(strtoupper(preg_replace('/[^A-Za-z]/', '', $achievement->short_title ?: $achievement->title)))), 0, 3) as $idx => $l)
+                                            <div style="width:24px;height:24px;border-radius:999px;border:2px solid #1e293b;background:var(--color-primary);color:#fff;font-size:.75rem;font-weight:700;display:flex;align-items:center;justify-content:center;{{ $idx > 0 ? 'margin-left:-8px;' : '' }}">{{ $l }}</div>
+                                            @endforeach
+                                        @endif
+                                    </div>
+                                    <div style="font-size:.75rem;color:var(--color-muted-foreground, #9ca3af);">{{ implode(' | ', array_filter([count($athletes) ? count($athletes).' athlete'.(count($athletes)>1?'s':'') : '', $achievement->bouts_count ? $achievement->bouts_count.' bouts' : ''])) }}</div>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;align-items:center;font-size:.76rem;margin-top:4px;">
+                                    <div style="display:inline-flex;align-items:center;gap:6px;color:var(--color-muted-foreground, #9ca3af);"><span>Tap to view story</span></div>
+                                    <div style="display:inline-flex;align-items:center;gap:6px;color:var(--color-primary);font-weight:600;">
+                                        <span>Full recap</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="none">
+                                            <path d="M7 4L13 10L7 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                    </div>
+                                </div>
                             </div>
                         </article>
                         @endforeach
                     </div>
 
-                    {{-- Achievement Detail Modal --}}
-                    <div x-show="showAchDetail" x-cloak
-                         class="fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4 overflow-y-auto"
-                         x-transition:enter="transition ease-out duration-200"
+                    {{-- #5 Fullscreen two-panel detail modal --}}
+                    <div class="achievement-detail-backdrop" x-show="showAchDetail" x-cloak
+                         x-transition:enter="transition ease-out duration-220"
                          x-transition:enter-start="opacity-0"
                          x-transition:enter-end="opacity-100"
                          x-transition:leave="transition ease-in duration-150"
                          x-transition:leave-start="opacity-100"
                          x-transition:leave-end="opacity-0"
-                         @click.self="showAchDetail = false">
-                        <div class="my-auto w-full max-w-lg">
-                            <div class="modal-content border-0 shadow-lg relative" @click.stop x-show="achDetail">
-                                <template x-if="achDetail">
+                         @click.self="showAchDetail = false"
+                         @keydown.escape.window="showAchDetail = false">
+                        <template x-if="achDetail">
+                        <div class="achievement-detail-shell" @click.stop>
+
+                            <button type="button" class="ach-close-pill" @click.stop="showAchDetail = false">
+                                ⨉ Close <span class="ach-key">Esc</span>
+                            </button>
+
+                            {{-- Left: media + chips --}}
+                            <div class="achievement-detail-media" x-data="{ imgIdx: 0 }" x-effect="imgIdx = 0">
+                                <template x-if="achDetail.images && achDetail.images.length > 0">
+                                <div style="position:absolute;inset:0;">
+                                    <div class="flex h-full overflow-x-auto snap-x snap-mandatory"
+                                         style="scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scrollbar-width:none;cursor:grab;"
+                                         x-ref="achPubStrip"
+                                         @scroll.debounce.50ms="imgIdx = Math.round($el.scrollLeft / $el.offsetWidth)">
+                                        <template x-for="img in achDetail.images" :key="img">
+                                            <img :src="img" class="snap-start flex-shrink-0 w-full h-full object-cover select-none" style="filter:contrast(1.1) saturate(1.05);" draggable="false">
+                                        </template>
+                                    </div>
+                                    <button x-show="achDetail.images.length > 1" @click.stop="$refs.achPubStrip.scrollTo({ left: ((imgIdx-1+achDetail.images.length)%achDetail.images.length)*$refs.achPubStrip.offsetWidth, behavior:'smooth' })" class="carousel-arrow carousel-arrow--prev">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/></svg>
+                                    </button>
+                                    <button x-show="achDetail.images.length > 1" @click.stop="$refs.achPubStrip.scrollTo({ left: ((imgIdx+1)%achDetail.images.length)*$refs.achPubStrip.offsetWidth, behavior:'smooth' })" class="carousel-arrow carousel-arrow--next">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>
+                                    </button>
+                                    <div x-show="achDetail.images.length > 1" style="position:absolute;bottom:72px;left:50%;transform:translateX(-50%);display:flex;gap:6px;">
+                                        <template x-for="(img,i) in achDetail.images" :key="i">
+                                            <button @click.stop="$refs.achPubStrip.scrollTo({ left:i*$refs.achPubStrip.offsetWidth, behavior:'smooth' })"
+                                                    :style="imgIdx===i?'background:#fff;width:16px;':'background:rgba(255,255,255,.4);width:8px;'"
+                                                    style="height:8px;border-radius:999px;border:none;cursor:pointer;transition:all .2s;padding:0;"></button>
+                                        </template>
+                                    </div>
+                                </div>
+                                </template>
+                                <template x-if="(!achDetail.images||!achDetail.images.length)&&achDetail.image_url">
+                                <div style="position:absolute;inset:0;"><img :src="achDetail.image_url" style="width:100%;height:100%;object-fit:cover;filter:contrast(1.1) saturate(1.05);transform:scale(1.03);"></div>
+                                </template>
+                                <template x-if="(!achDetail.images||!achDetail.images.length)&&!achDetail.image_url">
+                                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;" :style="'background:linear-gradient(135deg,'+achDetail.bg_from+','+achDetail.bg_to+')'">
+                                    <span x-text="achDetail.type_icon||'🏆'" style="font-size:4rem;opacity:.4;"></span>
+                                </div>
+                                </template>
+                                <div class="achievement-detail-media-gradient"></div>
+                                <div class="achievement-detail-media-inner">
                                     <div>
-                                        {{-- Hero --}}
-                                        <div class="relative rounded-t-xl overflow-hidden bg-black" style="height:220px;">
-
-                                            {{-- Carousel --}}
-                                            <div x-show="achDetail.images && achDetail.images.length > 0"
-                                                 x-data="{ imgIdx: 0 }"
-                                                 x-effect="imgIdx = 0"
-                                                 class="absolute inset-0">
-                                                <div class="flex h-full overflow-x-auto snap-x snap-mandatory"
-                                                     style="scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scrollbar-width:none;cursor:grab;"
-                                                     x-ref="achPubStrip"
-                                                     @scroll.debounce.50ms="imgIdx = Math.round($el.scrollLeft / $el.offsetWidth)">
-                                                    <template x-for="img in achDetail.images" :key="img">
-                                                        <img :src="img" class="snap-start flex-shrink-0 w-full h-full object-cover select-none" draggable="false">
-                                                    </template>
-                                                </div>
-                                                <button x-show="achDetail.images.length > 1"
-                                                        @click.stop="$refs.achPubStrip.scrollTo({ left: ((imgIdx - 1 + achDetail.images.length) % achDetail.images.length) * $refs.achPubStrip.offsetWidth, behavior: 'smooth' })"
-                                                        class="carousel-arrow carousel-arrow--prev">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/></svg>
-                                                </button>
-                                                <button x-show="achDetail.images.length > 1"
-                                                        @click.stop="$refs.achPubStrip.scrollTo({ left: ((imgIdx + 1) % achDetail.images.length) * $refs.achPubStrip.offsetWidth, behavior: 'smooth' })"
-                                                        class="carousel-arrow carousel-arrow--next">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>
-                                                </button>
-                                                <div x-show="achDetail.images.length > 1"
-                                                     class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 pointer-events-auto">
-                                                    <template x-for="(img, i) in achDetail.images" :key="i">
-                                                        <button @click.stop="$refs.achPubStrip.scrollTo({ left: i * $refs.achPubStrip.offsetWidth, behavior: 'smooth' })"
-                                                                :class="imgIdx === i ? 'bg-white w-4' : 'bg-white/50 w-2'"
-                                                                class="h-2 rounded-full transition-all duration-200"></button>
-                                                    </template>
-                                                </div>
-                                            </div>
-
-                                            {{-- Single image fallback --}}
-                                            <div x-show="(!achDetail.images || !achDetail.images.length) && achDetail.image_url"
-                                                 class="absolute inset-0">
-                                                <img :src="achDetail.image_url" class="w-full h-full object-cover">
-                                            </div>
-
-                                            {{-- Gradient fallback --}}
-                                            <div x-show="(!achDetail.images || !achDetail.images.length) && !achDetail.image_url"
-                                                 class="absolute inset-0 flex items-center justify-center"
-                                                 :style="'background: linear-gradient(135deg, ' + achDetail.bg_from + ', ' + achDetail.bg_to + ');'">
-                                                <i :class="'bi ' + achDetail.tag_icon" class="text-white" style="font-size:3rem;opacity:0.7;"></i>
-                                            </div>
-
-                                            {{-- Close --}}
-                                            <button @click.stop="showAchDetail = false"
-                                                    class="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-black/50 hover:bg-black/75 text-white flex items-center justify-center transition-colors z-10">
-                                                <i class="bi bi-x-lg text-xs"></i>
-                                            </button>
-
-                                            {{-- Tag --}}
-                                            <span class="absolute bottom-2 left-3 text-xs font-semibold px-2.5 py-1 rounded-full bg-black/50 text-white pointer-events-none">
-                                                <i :class="'bi ' + achDetail.tag_icon + ' mr-1'"></i>
-                                                <span x-text="achDetail.tag"></span>
-                                            </span>
+                                        <div class="ach-chip gold" x-show="achDetail.medal_summary">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 20 20" fill="none"><path d="M10 2L12.09 7.26L17.8 7.27L13.18 10.74L15.27 16L10 12.52L4.73 16L6.82 10.74L2.2 7.27L7.91 7.26L10 2Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+                                            <span x-text="achDetail.medal_summary"></span>
                                         </div>
-
-                                        {{-- Body --}}
-                                        <div class="px-6 pt-5 pb-6">
-                                            <h4 class="text-lg font-bold text-foreground mb-2" x-text="achDetail.title"></h4>
-                                            <p x-show="achDetail.description"
-                                               class="text-sm text-muted-foreground leading-relaxed mb-0"
-                                               x-text="achDetail.description"></p>
+                                        <div class="achievement-detail-chip-row">
+                                            <template x-for="chip in (achDetail.chips||[])" :key="chip">
+                                                <span class="ach-chip" x-text="chip"></span>
+                                            </template>
                                         </div>
                                     </div>
-                                </template>
+                                    <div class="ach-chip" x-show="achDetail.bouts_count">
+                                        <span>📊</span>
+                                        <span x-text="achDetail.bouts_count+' Bouts'+(achDetail.wins_count?' • '+achDetail.wins_count+' Wins':'')"></span>
+                                    </div>
+                                </div>
                             </div>
+
+                            {{-- Right: content --}}
+                            <div class="achievement-detail-body">
+                                <div>
+                                    <div class="ach-detail-kanji">{{ $club->club_name }}</div>
+                                    <h2 class="ach-detail-title" x-text="achDetail.title"></h2>
+                                </div>
+                                <div class="ach-detail-meta">
+                                    <span x-show="achDetail.location">📍 <span x-text="achDetail.location"></span></span>
+                                    <span x-show="achDetail.date_label">📅 <span x-text="achDetail.date_label"></span></span>
+                                    <span x-show="achDetail.category">🥋 <span x-text="achDetail.category"></span></span>
+                                </div>
+                                <div class="ach-detail-divider"></div>
+                                <section>
+                                    <div class="ach-detail-section-label">Achievement story</div>
+                                    <p class="ach-detail-description" x-show="achDetail.description" x-text="achDetail.description"></p>
+                                    <p class="ach-detail-description" x-show="!achDetail.description" style="opacity:.5;font-style:italic;">No description provided.</p>
+                                </section>
+                                <section x-show="achDetail.athletes && achDetail.athletes.length">
+                                    <div class="ach-detail-section-label">Athletes</div>
+                                    <div class="ach-detail-athlete-grid">
+                                        <template x-for="ath in achDetail.athletes" :key="ath.name">
+                                            <div class="ach-detail-athlete-card">
+                                                <div class="ach-detail-athlete-name" x-text="ath.name"></div>
+                                                <div class="ach-detail-athlete-role" x-text="ath.role"></div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </section>
+                                <div class="ach-detail-divider"></div>
+                                <div class="ach-detail-actions">
+                                    <div class="ach-detail-actions-left">
+                                        <button type="button" class="ach-ghost-btn">📷 View gallery</button>
+                                        <button type="button" class="ach-ghost-btn">📄 Download summary</button>
+                                    </div>
+                                    <div class="ach-detail-actions-right">
+                                        <button type="button" class="ach-primary-btn">🔗 Share highlight</button>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
+                        </template>
                     </div>
                 </div>
                 @endif

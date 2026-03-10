@@ -463,6 +463,22 @@ class ClubAdminController extends Controller
         return back()->with('success', 'Instructor added successfully.');
     }
 
+    public function destroyInstructor(Tenant $club, ClubInstructor $instructor)
+    {
+        $this->authorizeClub($club);
+
+        if ($instructor->tenant_id !== $club->id) {
+            abort(403);
+        }
+
+        // Only the ClubInstructor (hiring) record is deleted.
+        // Any ClubMemberSubscription (package enrollment) the user holds in this club
+        // is unaffected — they remain a registered member with their subscription intact.
+        $instructor->delete();
+
+        return response()->json(['success' => true, 'message' => 'Instructor removed from club successfully.']);
+    }
+
     /**
      * Activities management
      */
@@ -910,30 +926,56 @@ class ClubAdminController extends Controller
         $this->authorizeClub($club);
 
         $request->validate([
-            'title'      => 'required|string|max:255',
-            'description'=> 'nullable|string|max:500',
-            'tag'        => 'required|string|max:60',
-            'tag_icon'   => 'nullable|string|max:60',
-            'bg_from'    => 'nullable|string|max:20',
-            'bg_to'      => 'nullable|string|max:20',
-            'status'     => 'required|in:active,inactive',
-            'sort_order' => 'nullable|integer|min:0',
+            'title'            => 'required|string|max:255',
+            'short_title'      => 'nullable|string|max:255',
+            'type_icon'        => 'nullable|string|max:10',
+            'description'      => 'nullable|string|max:2000',
+            'location'         => 'nullable|string|max:255',
+            'achievement_date' => 'nullable|date',
+            'date_label'       => 'nullable|string|max:60',
+            'medals_gold'      => 'nullable|integer|min:0',
+            'medals_silver'    => 'nullable|integer|min:0',
+            'medals_bronze'    => 'nullable|integer|min:0',
+            'bouts_count'      => 'nullable|integer|min:0',
+            'wins_count'       => 'nullable|integer|min:0',
+            'category'         => 'nullable|string|max:255',
+            'chips'            => 'nullable|string',
+            'athletes'         => 'nullable|string',
+            'tag'              => 'required|string|max:60',
+            'tag_icon'         => 'nullable|string|max:60',
+            'bg_from'          => 'nullable|string|max:20',
+            'bg_to'            => 'nullable|string|max:20',
+            'status'           => 'required|in:active,inactive',
+            'sort_order'       => 'nullable|integer|min:0',
         ]);
 
         $images = $this->saveAchievementBase64Images($request->input('achievement_images_base64', []), $club->id);
 
         ClubAchievement::create([
-            'tenant_id'  => $club->id,
-            'title'      => $request->title,
-            'description'=> $request->description,
-            'tag'        => $request->tag,
-            'tag_icon'   => $request->tag_icon ?: 'bi-trophy',
-            'image_path' => null,
-            'images'     => $images ?: null,
-            'bg_from'    => $request->bg_from ?: '#f59e0b',
-            'bg_to'      => $request->bg_to   ?: '#f97316',
-            'status'     => $request->status,
-            'sort_order' => $request->sort_order ?? 0,
+            'tenant_id'        => $club->id,
+            'title'            => $request->title,
+            'short_title'      => $request->short_title,
+            'type_icon'        => $request->type_icon,
+            'description'      => $request->description,
+            'location'         => $request->location,
+            'achievement_date' => $request->achievement_date,
+            'date_label'       => $request->date_label,
+            'medals_gold'      => $request->medals_gold ?? 0,
+            'medals_silver'    => $request->medals_silver ?? 0,
+            'medals_bronze'    => $request->medals_bronze ?? 0,
+            'bouts_count'      => $request->bouts_count ?? 0,
+            'wins_count'       => $request->wins_count ?? 0,
+            'category'         => $request->category,
+            'chips'            => $request->chips ? json_decode($request->chips, true) : null,
+            'athletes'         => $request->athletes ? json_decode($request->athletes, true) : null,
+            'tag'              => $request->tag,
+            'tag_icon'         => $request->tag_icon ?: 'bi-trophy',
+            'image_path'       => null,
+            'images'           => $images ?: null,
+            'bg_from'          => $request->bg_from ?: '#f59e0b',
+            'bg_to'            => $request->bg_to   ?: '#f97316',
+            'status'           => $request->status,
+            'sort_order'       => $request->sort_order ?? 0,
         ]);
 
         return back()->with('success', 'Achievement created successfully.');
@@ -945,17 +987,38 @@ class ClubAdminController extends Controller
         abort_if($achievement->tenant_id !== $club->id, 403);
 
         $request->validate([
-            'title'      => 'required|string|max:255',
-            'description'=> 'nullable|string|max:500',
-            'tag'        => 'required|string|max:60',
-            'tag_icon'   => 'nullable|string|max:60',
-            'bg_from'    => 'nullable|string|max:20',
-            'bg_to'      => 'nullable|string|max:20',
-            'status'     => 'required|in:active,inactive',
-            'sort_order' => 'nullable|integer|min:0',
+            'title'            => 'required|string|max:255',
+            'short_title'      => 'nullable|string|max:255',
+            'type_icon'        => 'nullable|string|max:10',
+            'description'      => 'nullable|string|max:2000',
+            'location'         => 'nullable|string|max:255',
+            'achievement_date' => 'nullable|date',
+            'date_label'       => 'nullable|string|max:60',
+            'medals_gold'      => 'nullable|integer|min:0',
+            'medals_silver'    => 'nullable|integer|min:0',
+            'medals_bronze'    => 'nullable|integer|min:0',
+            'bouts_count'      => 'nullable|integer|min:0',
+            'wins_count'       => 'nullable|integer|min:0',
+            'category'         => 'nullable|string|max:255',
+            'chips'            => 'nullable|string',
+            'athletes'         => 'nullable|string',
+            'tag'              => 'required|string|max:60',
+            'tag_icon'         => 'nullable|string|max:60',
+            'bg_from'          => 'nullable|string|max:20',
+            'bg_to'            => 'nullable|string|max:20',
+            'status'           => 'required|in:active,inactive',
+            'sort_order'       => 'nullable|integer|min:0',
         ]);
 
-        $data = $request->only(['title', 'description', 'tag', 'tag_icon', 'bg_from', 'bg_to', 'status', 'sort_order']);
+        $data = $request->only([
+            'title', 'short_title', 'type_icon', 'description',
+            'location', 'achievement_date', 'date_label',
+            'medals_gold', 'medals_silver', 'medals_bronze',
+            'bouts_count', 'wins_count', 'category',
+            'tag', 'tag_icon', 'bg_from', 'bg_to', 'status', 'sort_order',
+        ]);
+        $data['chips']    = $request->chips    ? json_decode($request->chips, true)    : null;
+        $data['athletes'] = $request->athletes ? json_decode($request->athletes, true) : null;
 
         $kept     = json_decode($request->input('keep_extra_images', '[]'), true) ?: [];
         $newExtra = $this->saveAchievementBase64Images($request->input('achievement_images_base64', []), $club->id);
@@ -1411,7 +1474,9 @@ class ClubAdminController extends Controller
                 ->where('type', 'refund')
                 ->sum('amount'),
             'net_profit' => 0,
-            'pending' => 0, // TODO: populate when payment_status column is added
+            'pending' => \App\Models\ClubMemberSubscription::where('tenant_id', $clubId)
+                ->where('payment_status', 'unpaid')
+                ->sum('amount_due'),
         ];
         $summary['net_profit'] = $summary['total_income'] - $summary['total_expenses'] - $summary['refunds'];
 
@@ -1817,19 +1882,33 @@ class ClubAdminController extends Controller
      */
     private function getMonthlyFinancials($clubId)
     {
-        $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        $data = [];
+        $now = now();
+        $start = $now->copy()->subMonths(11)->startOfMonth();
 
-        for ($i = 0; $i < 12; $i++) {
+        $rows = ClubTransaction::where('tenant_id', $clubId)
+            ->where('transaction_date', '>=', $start)
+            ->selectRaw("strftime('%Y-%m', transaction_date) as month_key, type, SUM(amount) as total")
+            ->groupBy('month_key', 'type')
+            ->get()
+            ->groupBy('month_key');
+
+        $data = [];
+        for ($i = 11; $i >= 0; $i--) {
+            $date = $now->copy()->subMonths($i);
+            $key = $date->format('Y-m');
+            $monthRows = $rows->get($key, collect());
+
+            $income   = (float) $monthRows->firstWhere('type', 'income')?->total ?? 0;
+            $expenses = (float) $monthRows->firstWhere('type', 'expense')?->total ?? 0;
+            $refunds  = (float) $monthRows->firstWhere('type', 'refund')?->total ?? 0;
+
             $data[] = [
-                'month' => $months[$i],
-                'income' => 0,
-                'expenses' => 0,
-                'profit' => 0,
+                'month'    => $date->format('M'),
+                'income'   => $income,
+                'expenses' => $expenses,
+                'profit'   => $income - $expenses - $refunds,
             ];
         }
-
-        // TODO: Populate with actual transaction data
 
         return $data;
     }

@@ -12,6 +12,7 @@ use App\Models\ClubTimelinePostLike;
 use App\Models\ClubTimelinePostComment;
 use App\Models\ClubPerk;
 use App\Models\UserRelationship;
+use App\Models\ClubTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -499,17 +500,30 @@ class PlatformController extends Controller
             // Use the specific member's user_id if provided, otherwise fall back to the guardian
             $memberId = !empty($registrant['user_id']) ? $registrant['user_id'] : $user->id;
 
-            ClubMemberSubscription::create([
+            $subscription = ClubMemberSubscription::create([
                 'tenant_id' => $club->id,
                 'user_id' => $memberId,
                 'package_id' => $registrant['package_id'],
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'status' => 'pending',
-                'payment_status' => $payLater ? 'unpaid' : 'unpaid',
+                'payment_status' => 'unpaid',
                 'amount_paid' => 0,
                 'amount_due' => $package->price,
                 'notes' => "Member: {$registrant['name']} ({$registrant['type']}). Registered by: {$user->name}. " . ($paymentNotes ?: ($payLater ? 'Pay later requested.' : '')),
+            ]);
+
+            ClubTransaction::create([
+                'tenant_id' => $club->id,
+                'user_id' => $memberId,
+                'subscription_id' => $subscription->id,
+                'type' => 'income',
+                'category' => 'subscription',
+                'amount' => $package->price,
+                'payment_method' => null,
+                'description' => 'Package: ' . $package->name . ' – ' . $registrant['name'],
+                'transaction_date' => now(),
+                'reference_number' => null,
             ]);
         }
 

@@ -68,7 +68,7 @@
                         </div>
 
                             <!-- Card Body -->
-                            <div class="p-4 bg-white">
+                            <div class="p-4 pb-0 bg-white">
                                 <div class="mb-3">
                                     <!-- Club Name -->
                                     <h3 class="font-semibold mb-2 club-title text-lg text-foreground transition-colors duration-300">{{ $club->club_name }}</h3>

@@ -3,7 +3,7 @@
 {{-- Styles moved to app.css (Phase 6) --}}
 
 @section('club-admin-content')
-<div class="space-y-6" x-data="{ showAddInstructorModal: false }">
+<div class="space-y-6" x-data="{ showAddInstructorModal: false, removeInstructorId: null, removeInstructorName: '' }">
     @if(session('success'))
     <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg relative" role="alert">
         {{ session('success') }}
@@ -48,6 +48,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         @foreach($instructors as $instructor)
         @php $user = $instructor->user; @endphp
+        <div class="relative" x-data="{ openMenu: false }">
         <x-member-card
             :member="$user"
             :href="route('trainer.show', $instructor->user_id)"
@@ -93,6 +94,41 @@
                 @endif
             </x-slot:extraDetails>
         </x-member-card>
+
+        {{-- Action dropdown overlay --}}
+        <div class="absolute top-3 right-3 z-10" @click.stop>
+            <button type="button"
+                    @click="openMenu = !openMenu"
+                    class="w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm shadow-md border border-white/60 flex items-center justify-center text-gray-600 hover:bg-white hover:text-gray-900 hover:shadow-lg transition-all duration-200"
+                    title="Actions">
+                <i class="bi bi-three-dots-vertical text-sm"></i>
+            </button>
+            <div x-show="openMenu"
+                 x-cloak
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 scale-95 -translate-y-1"
+                 x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-100"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 @click.outside="openMenu = false"
+                 class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-20">
+                <div class="px-3 py-2 border-b border-gray-50">
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</p>
+                </div>
+                <div class="py-1">
+                    <button type="button"
+                            class="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors duration-150"
+                            @click="openMenu = false; removeInstructorId = {{ $instructor->id }}; removeInstructorName = '{{ addslashes($user->full_name ?? $user->name) }}'">
+                        <span class="w-7 h-7 rounded-lg bg-red-100 flex items-center justify-center shrink-0">
+                            <i class="bi bi-person-dash text-red-600 text-xs"></i>
+                        </span>
+                        <span class="font-medium">Remove from Club</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        </div>
         @endforeach
     </div>
     @else
@@ -109,6 +145,42 @@
     </div>
     @endif
 
+    {{-- Remove Instructor Confirm Modal --}}
+    <div x-show="removeInstructorId !== null"
+         x-cloak
+         class="fixed inset-0 z-50 overflow-y-auto"
+         x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+        <div class="fixed inset-0 bg-black/50" @click="removeInstructorId = null"></div>
+        <div class="relative flex min-h-full items-center justify-center p-4 z-10">
+            <div class="modal-content border-0 shadow-lg w-full max-w-sm relative rounded-lg overflow-hidden" @click.stop>
+                <div class="modal-header border-b border-red-200 px-6 py-4">
+                    <h5 class="modal-title text-destructive font-semibold">
+                        <i class="bi bi-person-dash mr-2"></i>Remove Instructor
+                    </h5>
+                    <button type="button" class="text-muted-foreground hover:text-foreground" @click="removeInstructorId = null">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div class="modal-body px-6 py-4">
+                    <p class="mb-1">Are you sure you want to remove</p>
+                    <p class="font-semibold" x-text="removeInstructorName"></p>
+                    <p class="text-sm text-muted-foreground mt-1">from this club?</p>
+                    <div class="alert alert-warning mt-3 text-sm space-y-1">
+                        <div><i class="bi bi-info-circle mr-1"></i>This only removes their <strong>instructor role</strong> from this club.</div>
+                        <div>Their platform account and any <strong>package subscriptions</strong> they hold in this club will remain unchanged.</div>
+                    </div>
+                </div>
+                <div class="modal-footer border-t px-6 py-4 flex justify-end gap-3">
+                    <button type="button" class="btn btn-secondary" @click="removeInstructorId = null">Cancel</button>
+                    <button type="button" class="btn btn-danger" @click="removeInstructor(removeInstructorId)">
+                        <i class="bi bi-person-dash mr-1"></i>Remove
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     @include('admin.club.instructors.add')
 </div>
 
@@ -117,6 +189,27 @@
 document.addEventListener('DOMContentLoaded', function() {
     loadNationalityFlags();
 });
+
+function removeInstructor(id) {
+    if (!id) return;
+
+    fetch(`{{ url('admin/club/' . $club->slug . '/instructors') }}/${id}`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.message || 'Failed to remove instructor.');
+        }
+    })
+    .catch(() => alert('An error occurred. Please try again.'));
+}
 
 function loadNationalityFlags() {
     fetch('/data/countries.json')

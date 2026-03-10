@@ -470,7 +470,12 @@ const storeUrl         = '{{ route('admin.club.achievements.store', $club->slug)
 const baseEditUrl      = '{{ url('admin/club/' . $club->slug . '/achievements') }}';
 
 const emptyForm = {
-    title: '', description: '', tag: '', tag_icon: 'bi-trophy',
+    title: '', short_title: '', type_icon: '🏆',
+    description: '', location: '', achievement_date: '', date_label: '',
+    medals_gold: 0, medals_silver: 0, medals_bronze: 0,
+    bouts_count: 0, wins_count: 0, category: '',
+    chips: '[]', athletes: '[]',
+    tag: '', tag_icon: 'bi-trophy',
     image_path: '', remove_image: false,
     bg_from: '#f59e0b', bg_to: '#f97316',
     status: 'active', sort_order: 0,

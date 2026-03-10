@@ -77,7 +77,7 @@ Route::post('/email/verification-notification', function (Request $request) {
 })->middleware(['auth', 'throttle:6,1'])->name('verification.send');
 
 // Public club page - no login required (used for QR code)
-Route::get('/c/{slug}', [PlatformController::class, 'showPublic'])->name('clubs.show.public');
+Route::get('/mobile/{slug}', [PlatformController::class, 'showPublic'])->name('clubs.show.public');
 
 // Public trainer page - no login required (used for QR code)
 Route::get('/t/{user}', [TrainerController::class, 'showPublic'])->name('trainer.show.public');
@@ -160,6 +160,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin/club/{club}')->name('admi
     Route::get('/instructors', [App\Http\Controllers\Admin\ClubAdminController::class, 'instructors'])->name('instructors');
     Route::post('/instructors', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeInstructor'])->name('instructors.store');
     Route::post('/instructors/{instructor}/upload-photo', [App\Http\Controllers\Admin\ClubAdminController::class, 'uploadInstructorPhoto'])->name('instructors.upload-photo');
+    Route::delete('/instructors/{instructor}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyInstructor'])->name('instructors.destroy');
     Route::get('/activities', [App\Http\Controllers\Admin\ClubAdminController::class, 'activities'])->name('activities');
     Route::get('/events', [App\Http\Controllers\Admin\ClubAdminController::class, 'events'])->name('events');
     Route::post('/events', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeEvent'])->name('events.store');
