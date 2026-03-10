@@ -79,6 +79,7 @@
             @endphp
             <x-member-card
                 :member="$user"
+                :href="route('member.show', $user->id)"
                 :guardian="$guardian"
                 :footerLabel="$footerLabel"
                 footerStyle="translucent"
