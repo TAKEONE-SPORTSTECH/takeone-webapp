@@ -2016,4 +2016,163 @@ class ClubAdminController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
+
+    /**
+     * Create a new platform user and immediately transfer ownership to them.
+     */
+    public function createOwner(Request $request, Tenant $club)
+    {
+        $this->authorizeClub($club);
+
+        $request->validate([
+            'full_name'   => 'required|string|max:255',
+            'email'       => 'nullable|email|unique:users,email',
+            'gender'      => 'required|in:m,f',
+            'birthdate'   => 'required|date',
+            'nationality' => 'required|string|max:100',
+            'password'    => 'required|string|min:8',
+        ]);
+
+        $newOwner = User::create([
+            'full_name'   => $request->full_name,
+            'name'        => $request->full_name,
+            'email'       => $request->email,
+            'password'    => bcrypt($request->password),
+            'gender'      => $request->gender,
+            'birthdate'   => $request->birthdate,
+            'nationality' => $request->nationality,
+            'blood_type'  => $request->blood_type,
+            'mobile'      => $request->mobile ? ['code' => $request->mobile_code ?? '+973', 'number' => $request->mobile] : null,
+        ]);
+
+        $oldOwner = $club->owner;
+
+        // Point club to new owner
+        $club->update(['owner_user_id' => $newOwner->id]);
+
+        // Give old owner club-admin role
+        if ($oldOwner && $oldOwner->id !== $newOwner->id) {
+            $alreadyAdmin = \DB::table('user_roles')
+                ->join('roles', 'roles.id', '=', 'user_roles.role_id')
+                ->where('user_roles.user_id', $oldOwner->id)
+                ->where('user_roles.tenant_id', $club->id)
+                ->where('roles.slug', 'club-admin')
+                ->exists();
+            if (!$alreadyAdmin) {
+                $oldOwner->assignRole('club-admin', $club->id);
+            }
+        }
+
+        // Give new owner club-admin role
+        $newOwner->assignRole('club-admin', $club->id);
+
+        // Add new owner as free club member
+        ClubMemberSubscription::create([
+            'tenant_id'      => $club->id,
+            'user_id'        => $newOwner->id,
+            'package_id'     => null,
+            'start_date'     => now()->toDateString(),
+            'end_date'       => null,
+            'status'         => 'active',
+            'payment_status' => 'paid',
+            'amount_paid'    => 0,
+            'amount_due'     => 0,
+            'notes'          => 'Owner membership',
+        ]);
+
+        return response()->json([
+            'success'  => true,
+            'message'  => 'New owner account created and ownership transferred successfully.',
+            'redirect' => route('admin.club.details', $club->slug),
+        ]);
+    }
+
+    /**
+     * Transfer club ownership to an existing member or a newly created user.
+     */
+    public function transferOwnership(Request $request, Tenant $club)
+    {
+        $this->authorizeClub($club);
+
+        $mode = $request->input('mode'); // 'existing' or 'new'
+
+        if ($mode === 'existing') {
+            $request->validate(['user_id' => 'required|integer|exists:users,id']);
+            $newOwner = User::findOrFail($request->user_id);
+        } else {
+            $request->validate([
+                'full_name' => 'required|string|max:255',
+                'email'     => 'required|email|unique:users,email',
+                'password'  => 'required|string|min:8',
+            ]);
+            $newOwner = User::create([
+                'full_name' => $request->full_name,
+                'name'      => $request->full_name,
+                'email'     => $request->email,
+                'password'  => bcrypt($request->password),
+                'gender'    => 'm',
+            ]);
+        }
+
+        $oldOwner = $club->owner;
+
+        // 1. Point club to new owner
+        $club->update(['owner_user_id' => $newOwner->id]);
+
+        // 2. Give old owner club-admin role (if they exist and aren't already club-admin)
+        if ($oldOwner && $oldOwner->id !== $newOwner->id) {
+            $alreadyAdmin = \DB::table('user_roles')
+                ->join('roles', 'roles.id', '=', 'user_roles.role_id')
+                ->where('user_roles.user_id', $oldOwner->id)
+                ->where('user_roles.tenant_id', $club->id)
+                ->where('roles.slug', 'club-admin')
+                ->exists();
+
+            if (!$alreadyAdmin) {
+                $oldOwner->assignRole('club-admin', $club->id);
+            }
+        }
+
+        // 3. Give new owner club-admin role
+        $alreadyAdmin = \DB::table('user_roles')
+            ->join('roles', 'roles.id', '=', 'user_roles.role_id')
+            ->where('user_roles.user_id', $newOwner->id)
+            ->where('user_roles.tenant_id', $club->id)
+            ->where('roles.slug', 'club-admin')
+            ->exists();
+
+        if (!$alreadyAdmin) {
+            $newOwner->assignRole('club-admin', $club->id);
+        }
+
+        // 4. Add new owner as a free club member (no package)
+        $alreadyMember = ClubMemberSubscription::where('tenant_id', $club->id)
+            ->where('user_id', $newOwner->id)
+            ->exists();
+
+        if (!$alreadyMember) {
+            ClubMemberSubscription::create([
+                'tenant_id'      => $club->id,
+                'user_id'        => $newOwner->id,
+                'package_id'     => null,
+                'start_date'     => now()->toDateString(),
+                'end_date'       => null,
+                'status'         => 'active',
+                'payment_status' => 'paid',
+                'amount_paid'    => 0,
+                'amount_due'     => 0,
+                'notes'          => 'Owner membership',
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Ownership transferred successfully.',
+            'owner'   => [
+                'name'   => $newOwner->full_name ?? $newOwner->name,
+                'email'  => $newOwner->email,
+                'mobile' => $newOwner->formatted_mobile ?? '',
+            ],
+        ]);
+    }
 }

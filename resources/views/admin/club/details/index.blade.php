@@ -1,7 +1,7 @@
 @extends('layouts.admin-club')
 
 @section('club-admin-content')
-<div class="space-y-6" x-data="{ showDeleteClubModal: false, showChangeOwnerModal: false, showCreateOwnerModal: false, showLinkOwnerModal: false }">
+<div class="space-y-6" x-data="{ showDeleteClubModal: false, showOwnerModal: false, ownerTab: 'existing' }">
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div>
@@ -199,7 +199,7 @@
                                         </p>
                                         @endif
                                     </div>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" @click="showChangeOwnerModal = true">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" @click="showOwnerModal = true">
                                         <i class="bi bi-pencil"></i>
                                     </button>
                                 </div>
@@ -210,11 +210,11 @@
                             <i class="bi bi-person-plus text-muted" style="font-size: 2rem;"></i>
                             <p class="text-muted mt-2 mb-3">No owner assigned yet</p>
                             <div class="flex gap-2 justify-center">
-                                <button type="button" class="btn btn-outline-primary btn-sm" @click="showCreateOwnerModal = true">
-                                    <i class="bi bi-person-plus mr-1"></i>Create Owner
+                                <button type="button" class="btn btn-outline-primary btn-sm" @click="showOwnerModal = true; ownerTab = 'existing'">
+                                    <i class="bi bi-link mr-1"></i>Link Existing
                                 </button>
-                                <button type="button" class="btn btn-outline-primary btn-sm" @click="showLinkOwnerModal = true">
-                                    <i class="bi bi-link mr-1"></i>Link Owner
+                                <button type="button" class="btn btn-outline-primary btn-sm" @click="showOwnerModal = true; ownerTab = 'new'">
+                                    <i class="bi bi-person-plus mr-1"></i>Create New
                                 </button>
                             </div>
                         </div>
@@ -434,6 +434,94 @@
             </div>
         </div>
     </form>
+
+<!-- Transfer Ownership Modal -->
+<div x-show="showOwnerModal"
+     x-cloak
+     class="fixed inset-0 z-50 overflow-y-auto"
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-200"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0">
+    <div class="fixed inset-0 bg-black/50" @click="showOwnerModal = false"></div>
+    <div class="flex min-h-full items-center justify-center p-4">
+        <div class="modal-content border-0 shadow-lg w-full max-w-lg relative rounded-lg overflow-hidden" @click.stop>
+            <div class="modal-header border-b px-6 py-4 flex items-center justify-between">
+                <h5 class="modal-title font-semibold"><i class="bi bi-person-gear mr-2"></i>Transfer Ownership</h5>
+                <button type="button" class="text-muted-foreground hover:text-foreground" @click="showOwnerModal = false">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="modal-body px-6 py-4">
+
+                {{-- Tabs --}}
+                <div class="flex border-b mb-4">
+                    <button type="button"
+                            class="px-4 py-2 text-sm font-medium border-b-2 transition-colors"
+                            :class="ownerTab === 'existing' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'"
+                            @click="ownerTab = 'existing'">
+                        <i class="bi bi-search mr-1"></i>Link Existing Member
+                    </button>
+                    <button type="button"
+                            class="px-4 py-2 text-sm font-medium border-b-2 transition-colors"
+                            :class="ownerTab === 'new' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'"
+                            @click="ownerTab = 'new'">
+                        <i class="bi bi-person-plus mr-1"></i>Create New Member
+                    </button>
+                </div>
+
+                {{-- Tab: Link Existing --}}
+                <div x-show="ownerTab === 'existing'">
+                    <p class="text-sm text-muted-foreground mb-3">Search for an existing platform member to become the new owner.</p>
+                    <div class="relative mb-3">
+                        <input type="text" id="ownerSearchInput" placeholder="Search by name, email or phone..."
+                               autocomplete="new-password"
+                               class="form-control" style="padding-left: 2.25rem;">
+                        <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none"></i>
+                    </div>
+                    <div id="ownerSearchResults" class="space-y-2 max-h-60 overflow-y-auto"></div>
+                    <div id="ownerSelectedUser" class="hidden mt-3 p-3 border border-primary/40 bg-primary/5 rounded-lg">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full overflow-hidden shrink-0" id="ownerSelectedAvatar">
+                                <div class="w-full h-full bg-primary/20 flex items-center justify-center font-bold text-primary" id="ownerSelectedInitial"></div>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-sm" id="ownerSelectedName"></div>
+                                <div class="text-xs text-muted-foreground" id="ownerSelectedEmail"></div>
+                            </div>
+                            <button type="button" class="ml-auto text-muted-foreground hover:text-destructive" onclick="clearOwnerSelection()">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <input type="hidden" id="ownerSelectedUserId">
+                </div>
+
+                {{-- Tab: Create New --}}
+                <div x-show="ownerTab === 'new'">
+                    <p class="text-sm text-muted-foreground mb-3">Create a full platform account and assign them as the new owner.</p>
+                    <div class="text-center py-4">
+                        <i class="bi bi-person-plus text-primary" style="font-size:2.5rem;"></i>
+                        <p class="text-sm text-muted-foreground mt-2 mb-4">Fill in the full member profile to create the new owner account.</p>
+                        <button type="button" class="btn btn-primary"
+                                @click="showOwnerModal = false; $dispatch('open-create-owner-modal')">
+                            <i class="bi bi-person-plus mr-2"></i>Open Registration Form
+                        </button>
+                    </div>
+                </div>
+
+                <div id="ownerTransferError" class="hidden mt-3 alert alert-danger text-sm"></div>
+            </div>
+            <div class="modal-footer border-t px-6 py-4 flex justify-end gap-3">
+                <button type="button" class="btn btn-secondary" @click="showOwnerModal = false">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmTransferBtn" onclick="confirmOwnerTransfer()">
+                    <i class="bi bi-check-lg mr-1"></i>Confirm Transfer
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Delete Club Modal -->
@@ -478,6 +566,7 @@
         </div>
     </div>
 </div>
+</div>
 
 {{-- QR Code Modal --}}
 <div class="modal fade" id="qrModal" tabindex="-1" aria-labelledby="qrModalLabel" aria-hidden="true">
@@ -501,6 +590,17 @@
         </div>
     </div>
 </div>
+
+{{-- Create Owner Modal --}}
+<x-profile-modal
+    mode="create"
+    title="Create New Owner"
+    subtitle="Fill in the details to create the new owner account"
+    :showPasswordFields="true"
+    :formAction="route('admin.club.create-owner', $club->slug)"
+    formMethod="POST"
+    eventName="open-create-owner-modal"
+/>
 
 {{-- Styles moved to app.css (Phase 6) --}}
 
@@ -612,6 +712,147 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// ===== Owner Transfer =====
+let ownerSearchDebounce = null;
+let selectedOwnerId = null;
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('ownerSearchInput')?.addEventListener('input', function () {
+        clearTimeout(ownerSearchDebounce);
+        const q = this.value.trim();
+        if (q.length < 2) {
+            document.getElementById('ownerSearchResults').innerHTML = '';
+            return;
+        }
+        ownerSearchDebounce = setTimeout(() => searchOwnerUsers(q), 300);
+    });
+});
+
+function searchOwnerUsers(q) {
+    fetch(`{{ route('admin.club.members.search', $club->slug) }}?query=${encodeURIComponent(q)}`)
+        .then(r => r.json())
+        .then(data => {
+            const container = document.getElementById('ownerSearchResults');
+            container.innerHTML = '';
+            const users = data.users || [];
+            if (!users.length) {
+                container.innerHTML = '<p class="text-sm text-muted-foreground text-center py-3">No members found.</p>';
+                return;
+            }
+            users.forEach(user => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center gap-3 p-2.5 border rounded-lg cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors';
+                const initial = (user.name || '?').charAt(0).toUpperCase();
+                const avatar = user.profile_picture
+                    ? `<img src="${user.profile_picture}" class="w-9 h-9 rounded-full object-cover shrink-0" onerror="this.outerHTML='<div class=\'w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-sm shrink-0\'>${initial}</div>'">`
+                    : `<div class="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-sm shrink-0">${initial}</div>`;
+                div.innerHTML = `
+                    ${avatar}
+                    <div class="min-w-0">
+                        <div class="font-medium text-sm truncate">${user.name}</div>
+                        <div class="text-xs text-muted-foreground truncate">${user.email || ''}</div>
+                    </div>`;
+                div.addEventListener('click', () => selectOwnerUser(user));
+                container.appendChild(div);
+            });
+        });
+}
+
+function selectOwnerUser(user) {
+    selectedOwnerId = user.id;
+    document.getElementById('ownerSelectedUserId').value = user.id;
+    document.getElementById('ownerSelectedName').textContent = user.name;
+    document.getElementById('ownerSelectedEmail').textContent = user.email || '';
+    const avatarEl = document.getElementById('ownerSelectedAvatar');
+    const initial = (user.name || '?').charAt(0).toUpperCase();
+    if (user.profile_picture) {
+        avatarEl.innerHTML = `<img src="${user.profile_picture}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full bg-primary/20 flex items-center justify-center font-bold text-primary\'>${initial}</div>'">`;
+    } else {
+        document.getElementById('ownerSelectedInitial').textContent = initial;
+    }
+    document.getElementById('ownerSelectedUser').classList.remove('hidden');
+    document.getElementById('ownerSearchResults').innerHTML = '';
+    document.getElementById('ownerSearchInput').value = '';
+}
+
+function clearOwnerSelection() {
+    selectedOwnerId = null;
+    document.getElementById('ownerSelectedUserId').value = '';
+    document.getElementById('ownerSelectedUser').classList.add('hidden');
+}
+
+function confirmOwnerTransfer() {
+    const tab = document.querySelector('[x-data]').__x?.$data?.ownerTab
+               || (document.querySelector('.border-primary.text-primary')?.textContent?.includes('Link') ? 'existing' : 'new');
+
+    const errorEl = document.getElementById('ownerTransferError');
+    errorEl.classList.add('hidden');
+
+    const btn = document.getElementById('confirmTransferBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span>Transferring...';
+
+    let body = { _token: '{{ csrf_token() }}' };
+
+    if (tab === 'existing') {
+        const userId = document.getElementById('ownerSelectedUserId').value;
+        if (!userId) {
+            errorEl.textContent = 'Please select a member first.';
+            errorEl.classList.remove('hidden');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg mr-1"></i>Confirm Transfer';
+            return;
+        }
+        body.mode = 'existing';
+        body.user_id = userId;
+    } else {
+        const name     = document.getElementById('newOwnerName').value.trim();
+        const email    = document.getElementById('newOwnerEmail').value.trim();
+        const password = document.getElementById('newOwnerPassword').value;
+        if (!name || !email || !password) {
+            errorEl.textContent = 'Please fill in all fields.';
+            errorEl.classList.remove('hidden');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg mr-1"></i>Confirm Transfer';
+            return;
+        }
+        body.mode      = 'new';
+        body.full_name = name;
+        body.email     = email;
+        body.password  = password;
+    }
+
+    fetch('{{ route('admin.club.transfer-ownership', $club->slug) }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body: JSON.stringify(body),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Update the owner card in the DOM
+            const ownerNameEl = document.querySelector('.card.bg-light h6');
+            if (ownerNameEl) ownerNameEl.textContent = data.owner.name;
+
+            if (typeof Toast !== 'undefined') {
+                Toast.success('Ownership Transferred', data.message);
+            }
+            setTimeout(() => window.location.reload(), 1200);
+        } else {
+            errorEl.textContent = data.message || 'Something went wrong.';
+            errorEl.classList.remove('hidden');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg mr-1"></i>Confirm Transfer';
+        }
+    })
+    .catch(() => {
+        errorEl.textContent = 'Network error. Please try again.';
+        errorEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg mr-1"></i>Confirm Transfer';
+    });
+}
 
 // Copy club URL
 function copyClubUrl() {
