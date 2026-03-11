@@ -434,7 +434,7 @@
                     <button type="button" class="btn btn-secondary" @click="closeModal()">Cancel</button>
                 </div>
                 <div>
-                    <button type="submit" class="btn btn-success" id="{{ $formId }}_submitBtn" form="{{ $formId }}" :disabled="isSubmitting">
+                    <button type="button" class="btn btn-success" id="{{ $formId }}_submitBtn" @click="submitForm()" :disabled="isSubmitting">
                         <span x-show="!isSubmitting"><i class="bi {{ $submitIcon }} mr-1"></i>{{ $submitText }}</span>
                         <span x-show="isSubmitting"><span class="inline-block animate-spin mr-2">&#8635;</span>{{ $isCreate ? 'Creating...' : 'Updating...' }}</span>
                     </button>

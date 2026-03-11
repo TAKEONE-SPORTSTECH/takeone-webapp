@@ -2447,10 +2447,10 @@ document.addEventListener('DOMContentLoaded', function() {
 <!-- Edit Profile Modal Component -->
 <x-profile-modal
     :user="$relationship->dependent"
-    :formAction="$relationship->relationship_type === 'admin_view' ? route('admin.platform.members.update', $relationship->dependent->id) : ($relationship->relationship_type === 'self' ? route('profile.update') : route('family.update', $relationship->dependent->id))"
+    :formAction="$relationship->relationship_type === 'admin_view' ? route('admin.platform.members.update', $relationship->dependent->id) : route('member.update', $relationship->dependent->id)"
     formMethod="PUT"
     :cancelUrl="null"
-    :uploadUrl="$relationship->relationship_type === 'admin_view' ? route('admin.platform.members.upload-picture', $relationship->dependent->id) : ($relationship->relationship_type === 'self' ? route('profile.upload-picture') : route('family.upload-picture', $relationship->dependent->id))"
+    :uploadUrl="$relationship->relationship_type === 'admin_view' ? route('admin.platform.members.upload-picture', $relationship->dependent->id) : route('member.upload-picture', $relationship->dependent->id)"
     :showRelationshipFields="$relationship->relationship_type !== 'admin_view' && $relationship->relationship_type !== 'self'"
     :relationship="$relationship"
 />
