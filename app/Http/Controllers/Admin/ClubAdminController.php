@@ -463,6 +463,47 @@ class ClubAdminController extends Controller
         return back()->with('success', 'Instructor added successfully.');
     }
 
+    public function updateInstructor(Request $request, Tenant $club, ClubInstructor $instructor)
+    {
+        $this->authorizeClub($club);
+
+        if ($instructor->tenant_id !== $club->id) {
+            abort(403);
+        }
+
+        $request->validate([
+            'name'       => 'nullable|string|max:255',
+            'role'       => 'nullable|string|max:255',
+            'experience' => 'nullable|integer|min:0',
+            'skills'     => 'nullable|string',
+            'bio'        => 'nullable|string',
+        ]);
+
+        $instructor->update(['role' => $request->role]);
+
+        $skills = $request->skills ? json_decode($request->skills, true) : null;
+        $userUpdate = [
+            'experience_years' => $request->experience ?: null,
+            'skills'           => !empty($skills) ? $skills : null,
+            'bio'              => $request->bio ?: null,
+        ];
+        if ($request->filled('name')) {
+            $userUpdate['name']      = $request->name;
+            $userUpdate['full_name'] = $request->name;
+        }
+        $instructor->user->update($userUpdate);
+
+        if ($request->filled('photo') && str_starts_with($request->input('photo'), 'data:image')) {
+            $photoPath = $this->storeBase64Image($request->input('photo'), 'users/' . $instructor->user_id, 'profile_' . time());
+            $instructor->user->update(['profile_picture' => $photoPath]);
+        } elseif ($request->hasFile('photo')) {
+            $photoPath = $request->file('photo')->store('users/' . $instructor->user_id, 'public');
+            $instructor->user->update(['profile_picture' => $photoPath]);
+        }
+
+        return back()->with('success', 'Instructor updated successfully.');
+    }
+
     public function destroyInstructor(Tenant $club, ClubInstructor $instructor)
     {
         $this->authorizeClub($club);

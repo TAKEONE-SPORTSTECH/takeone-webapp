@@ -61,7 +61,7 @@
      data-member-gender="{{ $member->gender ?? '' }}">
 
     @if($href)
-    <a href="{{ $href }}" class="no-underline">
+    <a href="{{ $href }}" class="no-underline h-full flex flex-col">
     @endif
 
         <div class="card h-full shadow-sm border overflow-hidden flex flex-col {{ $cardClass }}">

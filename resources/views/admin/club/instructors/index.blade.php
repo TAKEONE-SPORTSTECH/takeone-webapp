@@ -3,7 +3,7 @@
 {{-- Styles moved to app.css (Phase 6) --}}
 
 @section('club-admin-content')
-<div class="space-y-6" x-data="{ showAddInstructorModal: false, removeInstructorId: null, removeInstructorName: '' }">
+<div class="space-y-6" x-data="{ showAddInstructorModal: false, removeInstructorId: null, removeInstructorName: '', showEditInstructorModal: false }">
     @if(session('success'))
     <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg relative" role="alert">
         {{ session('success') }}
@@ -48,14 +48,14 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         @foreach($instructors as $instructor)
         @php $user = $instructor->user; @endphp
-        <div class="relative" x-data="{ openMenu: false }">
+        <div class="relative h-full" x-data="{ openMenu: false }">
         <x-member-card
+            class="h-full instructor-item"
             :member="$user"
             :href="route('trainer.show', $instructor->user_id)"
             footerLabel="INSTRUCTOR"
             footerStyle="translucent"
             cardClass="instructor-card"
-            class="instructor-item"
         >
             <x-slot:badges>
                 <span class="badge bg-primary">{{ $instructor->role ?? 'Trainer' }}</span>
@@ -117,6 +117,14 @@
                     <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</p>
                 </div>
                 <div class="py-1">
+                    <button type="button"
+                            class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors duration-150"
+                            @click="openMenu = false; showEditInstructorModal = true; $nextTick(() => openEditModal({{ $instructor->id }}))">
+                        <span class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                            <i class="bi bi-pencil text-blue-600 text-xs"></i>
+                        </span>
+                        <span class="font-medium">Edit Instructor</span>
+                    </button>
                     <button type="button"
                             class="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors duration-150"
                             @click="openMenu = false; removeInstructorId = {{ $instructor->id }}; removeInstructorName = '{{ addslashes($user->full_name ?? $user->name) }}'">
@@ -182,10 +190,24 @@
     </div>
 
     @include('admin.club.instructors.add')
+    @include('admin.club.instructors.edit')
 </div>
 
 @push('scripts')
 <script>
+window.instructorData = {
+    @foreach($instructors ?? [] as $instructor)
+    {{ $instructor->id }}: {
+        name: @json($instructor->user->full_name ?? $instructor->user->name ?? ''),
+        role: @json($instructor->role ?? ''),
+        experience: @json($instructor->user->experience_years),
+        skills: @json($instructor->user->skills ?? []),
+        bio: @json($instructor->user->bio ?? ''),
+        photo: @json($instructor->user->profile_picture ? '/storage/' . $instructor->user->profile_picture : '')
+    },
+    @endforeach
+};
+
 document.addEventListener('DOMContentLoaded', function() {
     loadNationalityFlags();
 });
