@@ -92,7 +92,9 @@
         chips: [],
         chipInput: '',
         init() {
-            try { this.chips = JSON.parse(formData.chips || '[]'); } catch(e) { this.chips = []; }
+            const parse = val => { try { return JSON.parse(val || '[]'); } catch(e) { return []; } };
+            this.chips = parse(formData.chips);
+            this.$watch('formData.chips', val => { this.chips = parse(val); });
         },
         addChip() {
             const v = this.chipInput.trim().replace(/,$/, '');
@@ -125,10 +127,9 @@
     <div x-data="{
         athletes: [{ name: '', role: '' }, { name: '', role: '' }],
         init() {
-            try {
-                const parsed = JSON.parse(formData.athletes || '[]');
-                if (parsed.length) this.athletes = parsed;
-            } catch(e) {}
+            const parse = val => { try { const p = JSON.parse(val || '[]'); return p.length ? p : [{ name: '', role: '' }, { name: '', role: '' }]; } catch(e) { return [{ name: '', role: '' }, { name: '', role: '' }]; } };
+            this.athletes = parse(formData.athletes);
+            this.$watch('formData.athletes', val => { this.athletes = parse(val); });
         },
         add() { if (this.athletes.length < 4) { this.athletes.push({ name: '', role: '' }); this.sync(); } },
         remove(i) { this.athletes.splice(i, 1); this.sync(); },
