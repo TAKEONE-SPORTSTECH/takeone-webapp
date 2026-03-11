@@ -217,14 +217,23 @@
     <div>
         <label class="form-label font-semibold">Images</label>
         <p class="text-xs text-muted-foreground mb-2">First image is the card background. All images appear in the detail popup.</p>
-        <div id="achievementExistingPreviews" class="flex flex-wrap gap-2 mb-2"></div>
+
+        {{-- Existing images --}}
+        <div id="achievementExistingPreviews" class="flex flex-wrap gap-2 mb-3"></div>
         <input type="hidden" name="keep_extra_images" id="keepExtraImagesInput" value="[]">
-        <div id="achievementNewPreviews" class="flex flex-wrap gap-2 mb-2"></div>
+
+        {{-- New images preview --}}
+        <div id="achievementNewPreviews" class="flex flex-wrap gap-2 mb-3"></div>
         <div id="achievementBase64Inputs"></div>
-        <button type="button" onclick="openAchievementCropper()"
-                class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-2 mt-1">
-            <i class="bi bi-camera"></i> Add Image
-        </button>
+
+        {{-- Direct multi-file upload --}}
+        <label class="cursor-pointer w-fit">
+            <div class="flex items-center gap-2 px-4 py-2 border border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                <i class="bi bi-images"></i> Add Images
+            </div>
+            <input type="file" id="achievementImagesInput" multiple accept="image/*" class="hidden"
+                   onchange="handleAchievementImages(this)">
+        </label>
     </div>
 
     <input type="hidden" name="bg_from" value="#f59e0b">
