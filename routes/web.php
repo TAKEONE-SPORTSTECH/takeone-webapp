@@ -163,6 +163,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin/club/{club}')->name('admi
     Route::post('/instructors', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeInstructor'])->name('instructors.store');
     Route::post('/instructors/{instructor}/upload-photo', [App\Http\Controllers\Admin\ClubAdminController::class, 'uploadInstructorPhoto'])->name('instructors.upload-photo');
     Route::put('/instructors/{instructor}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateInstructor'])->name('instructors.update');
+    Route::post('/subscriptions/{subscription}/approve-payment', [App\Http\Controllers\Admin\ClubAdminController::class, 'approvePayment'])->name('subscriptions.approve-payment');
     Route::delete('/instructors/{instructor}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyInstructor'])->name('instructors.destroy');
     Route::get('/activities', [App\Http\Controllers\Admin\ClubAdminController::class, 'activities'])->name('activities');
     Route::get('/events', [App\Http\Controllers\Admin\ClubAdminController::class, 'events'])->name('events');

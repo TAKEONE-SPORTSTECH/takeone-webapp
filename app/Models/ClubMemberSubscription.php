@@ -37,6 +37,7 @@ class ClubMemberSubscription extends Model
         'amount_paid',
         'amount_due',
         'notes',
+        'proof_of_payment',
     ];
 
     /**

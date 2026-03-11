@@ -1502,11 +1502,40 @@ class ClubAdminController extends Controller
     /**
      * Financials management
      */
+    public function approvePayment(Request $request, Tenant $club, ClubMemberSubscription $subscription)
+    {
+        $this->authorizeClub($club);
+
+        if ($subscription->tenant_id !== $club->id) {
+            abort(403);
+        }
+
+        $proofPath = $subscription->proof_of_payment;
+
+        if ($request->filled('admin_proof_base64')) {
+            $proofPath = $this->storeBase64Image(
+                $request->input('admin_proof_base64'),
+                'payment-proofs',
+                'admin_proof_' . $subscription->id . '_' . time()
+            );
+        }
+
+        $subscription->update([
+            'payment_status'   => 'paid',
+            'amount_paid'      => $subscription->amount_due,
+            'amount_due'       => 0,
+            'proof_of_payment' => $proofPath,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Payment approved successfully.']);
+    }
+
     public function financials(Tenant $club)
     {
         $this->authorizeClub($club);
         $clubId = $club->id;
         $transactions = ClubTransaction::where('tenant_id', $clubId)
+            ->with(['subscription.user'])
             ->latest('transaction_date')
             ->get();
 
@@ -1522,7 +1551,7 @@ class ClubAdminController extends Controller
                 ->sum('amount'),
             'net_profit' => 0,
             'pending' => \App\Models\ClubMemberSubscription::where('tenant_id', $clubId)
-                ->where('payment_status', 'unpaid')
+                ->whereIn('payment_status', ['unpaid', 'pending_approval'])
                 ->sum('amount_due'),
         ];
         $summary['net_profit'] = $summary['total_income'] - $summary['total_expenses'] - $summary['refunds'];

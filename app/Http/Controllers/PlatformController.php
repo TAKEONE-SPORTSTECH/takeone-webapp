@@ -481,18 +481,28 @@ class PlatformController extends Controller
             'registrants.*.gender' => 'nullable|string',
             'registrants.*.date_of_birth' => 'nullable|date',
             'pay_later' => 'nullable',
-            'payment_screenshot' => 'nullable|image|max:5120',
+            'payment_proof_base64' => 'nullable|string',
         ]);
 
         $user = Auth::user();
         $club = Tenant::findOrFail($request->club_id);
         $payLater = $request->boolean('pay_later');
 
-        $paymentNotes = '';
-        if ($request->hasFile('payment_screenshot')) {
-            $path = $request->file('payment_screenshot')->store('payment-screenshots', 'public');
-            $paymentNotes = 'Payment screenshot: ' . $path;
+        // Store proof of payment image if provided
+        $proofPath = null;
+        if (!$payLater && $request->filled('payment_proof_base64')) {
+            $base64 = $request->input('payment_proof_base64');
+            if (str_starts_with($base64, 'data:image')) {
+                $parts    = explode(';base64,', $base64);
+                $ext      = explode('image/', $parts[0])[1] ?? 'png';
+                $binary   = base64_decode($parts[1]);
+                $filename = 'payment-proofs/proof_' . time() . '_' . uniqid() . '.' . $ext;
+                \Illuminate\Support\Facades\Storage::disk('public')->put($filename, $binary);
+                $proofPath = $filename;
+            }
         }
+
+        $paymentStatus = $payLater ? 'unpaid' : ($proofPath ? 'pending_approval' : 'unpaid');
 
         foreach ($request->registrants as $registrant) {
             $package = ClubPackage::findOrFail($registrant['package_id']);
@@ -503,17 +513,18 @@ class PlatformController extends Controller
             $memberId = !empty($registrant['user_id']) ? $registrant['user_id'] : $user->id;
 
             $subscription = ClubMemberSubscription::create([
-                'tenant_id' => $club->id,
-                'type' => 'regular',
-                'user_id' => $memberId,
-                'package_id' => $registrant['package_id'],
-                'start_date' => $startDate,
-                'end_date' => $endDate,
-                'status' => 'pending',
-                'payment_status' => 'unpaid',
-                'amount_paid' => 0,
-                'amount_due' => $package->price,
-                'notes' => "Member: {$registrant['name']} ({$registrant['type']}). Registered by: {$user->name}. " . ($paymentNotes ?: ($payLater ? 'Pay later requested.' : '')),
+                'tenant_id'        => $club->id,
+                'type'             => 'regular',
+                'user_id'          => $memberId,
+                'package_id'       => $registrant['package_id'],
+                'start_date'       => $startDate,
+                'end_date'         => $endDate,
+                'status'           => 'pending',
+                'payment_status'   => $paymentStatus,
+                'amount_paid'      => 0,
+                'amount_due'       => $package->price,
+                'proof_of_payment' => $proofPath,
+                'notes'            => "Member: {$registrant['name']} ({$registrant['type']}). Registered by: {$user->name}." . ($payLater ? ' Pay later requested.' : ''),
             ]);
 
             ClubTransaction::create([

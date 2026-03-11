@@ -410,7 +410,7 @@
                         <div class="p-5 space-y-4">
                             <label class="flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors" :class="joinModal.payLater ? 'bg-primary/5' : 'bg-gray-50 hover:bg-gray-100'">
                                 <input type="checkbox" class="mt-0.5 rounded border-gray-300 text-primary focus:ring-primary"
-                                       x-model="joinModal.payLater" @change="if(joinModal.payLater) { joinModal.paymentScreenshot = null; joinModal.paymentPreview = null; }">
+                                       x-model="joinModal.payLater" @change="if(joinModal.payLater) { joinModal.paymentScreenshot = false; if(typeof removeImage_joinPaymentProofCropper === 'function') removeImage_joinPaymentProofCropper(); }">
                                 <div>
                                     <span class="font-medium text-sm">I'll pay later</span>
                                     <p class="text-xs text-muted-foreground mt-0.5">The club owner will review your registration and send a payment proposal</p>
@@ -421,22 +421,26 @@
                                 <div class="space-y-3">
                                     <div class="flex items-start gap-2 p-3 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                                        <span>Upload a screenshot of your payment. Registration completes after verification.</span>
+                                        <span>Upload a screenshot of your payment. Registration completes after admin verification.</span>
                                     </div>
-                                    <label class="block">
-                                        <span class="text-xs font-medium">Upload Screenshot *</span>
-                                        <input type="file" accept="image/*" class="mt-1 block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer"
-                                               @change="joinModal.handleFileUpload($event)">
-                                    </label>
-                                    <template x-if="joinModal.paymentPreview">
-                                        <div class="space-y-2">
-                                            <div class="flex items-center gap-1.5 text-xs text-green-600 font-medium">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                                                Uploaded successfully
-                                            </div>
-                                            <img :src="joinModal.paymentPreview" alt="Payment proof" class="w-full max-w-sm h-auto rounded-lg border">
-                                        </div>
-                                    </template>
+                                    <x-takeone-cropper
+                                        id="joinPaymentProofCropper"
+                                        :width="900"
+                                        :height="600"
+                                        shape="rectangle"
+                                        mode="form"
+                                        inputName="payment_proof_base64"
+                                        folder="payment-proofs"
+                                        :filename="'proof_' . time()"
+                                        :previewWidth="360"
+                                        :previewHeight="220"
+                                        buttonText="Upload Payment Screenshot"
+                                        buttonClass="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 bg-white"
+                                    />
+                                    <div x-show="joinModal.paymentScreenshot" class="flex items-center gap-1.5 text-xs text-green-600 font-medium">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                        Screenshot uploaded — pending admin approval
+                                    </div>
                                 </div>
                             </template>
                         </div>
@@ -464,3 +468,17 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Detect when the payment proof cropper saves an image (Bootstrap modal closes)
+    $(document).on('hidden.bs.modal', '#cropperModal_joinPaymentProofCropper', function () {
+        const val = document.getElementById('hiddenInput_joinPaymentProofCropper')?.value;
+        if (val && window._joinModal) {
+            window._joinModal.paymentScreenshot = true;
+        }
+    });
+});
+</script>
+@endpush

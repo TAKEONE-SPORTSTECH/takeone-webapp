@@ -204,8 +204,7 @@ function exploreApp() {
             packages: [],
             loadingPackages: false,
             payLater: false,
-            paymentScreenshot: null,
-            paymentPreview: null,
+            paymentScreenshot: false,
             addChildOpen: false,
             newChild: { name: '', dateOfBirth: '', gender: 'm', nationality: '', bloodType: '' },
             submitting: false,
@@ -222,9 +221,9 @@ function exploreApp() {
                 this.registrants = [];
                 this.packages = [];
                 this.payLater = false;
-                this.paymentScreenshot = null;
-                this.paymentPreview = null;
+                this.paymentScreenshot = false;
                 this.submitting = false;
+                window._joinModal = this;
                 document.body.style.overflow = 'hidden';
                 this.fetchClubPackages(clubSlug);
             },
@@ -342,16 +341,6 @@ function exploreApp() {
                 return (subtotal + vat).toFixed(2);
             },
 
-            handleFileUpload(event) {
-                const file = event.target.files?.[0];
-                if (file) {
-                    this.paymentScreenshot = file;
-                    const reader = new FileReader();
-                    reader.onload = (e) => { this.paymentPreview = e.target.result; };
-                    reader.readAsDataURL(file);
-                }
-            },
-
             goBack() {
                 if (this.step === 'select-members') {
                     this.close();
@@ -404,8 +393,11 @@ function exploreApp() {
                         if (reg.dateOfBirth) formData.append(`registrants[${i}][date_of_birth]`, reg.dateOfBirth);
                     });
 
-                    if (this.paymentScreenshot) {
-                        formData.append('payment_screenshot', this.paymentScreenshot);
+                    if (!this.payLater) {
+                        const proofBase64 = document.getElementById('hiddenInput_joinPaymentProofCropper')?.value;
+                        if (proofBase64) {
+                            formData.append('payment_proof_base64', proofBase64);
+                        }
                     }
 
                     const response = await fetch('/clubs/join', {

@@ -9,9 +9,12 @@
     showExportModal: false,
     showEditModal: false,
     showDeleteModal: false,
+    showTransactionDetailModal: false,
     editTransaction: null,
     deleteTransactionId: null,
     deleteTransactionRef: '',
+    activeTransaction: null,
+    approvingPayment: false,
     expenseType: 'expense',
     openEdit(t) {
         this.editTransaction = t;
@@ -21,6 +24,34 @@
         this.deleteTransactionId = id;
         this.deleteTransactionRef = ref;
         this.showDeleteModal = true;
+    },
+    openTransactionDetail(id) {
+        this.activeTransaction = window.transactionData?.[id] || null;
+        this.showTransactionDetailModal = true;
+    },
+    async approvePayment(subscriptionId) {
+        if (this.approvingPayment) return;
+        this.approvingPayment = true;
+        try {
+            const formData = new FormData();
+            formData.append('_token', document.querySelector('meta[name=\'csrf-token\']')?.content);
+            const adminProof = document.getElementById('hiddenInput_adminProofCropper')?.value;
+            if (adminProof) formData.append('admin_proof_base64', adminProof);
+            const res = await fetch(`{{ url('admin/club/' . $club->slug . '/subscriptions') }}/${subscriptionId}/approve-payment`, {
+                method: 'POST', body: formData, headers: { 'Accept': 'application/json' }
+            });
+            const data = await res.json();
+            if (data.success) {
+                this.showTransactionDetailModal = false;
+                location.reload();
+            } else {
+                alert(data.message || 'Failed to approve payment.');
+            }
+        } catch(e) {
+            alert('An error occurred.');
+        } finally {
+            this.approvingPayment = false;
+        }
     }
 }">
     <!-- Header -->
@@ -208,12 +239,18 @@
                             <th>Category</th>
                             <th class="text-right">Amount</th>
                             <th>Payment</th>
+                            <th>Status</th>
                             <th class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($transactions as $transaction)
-                        <tr>
+                        @php
+                            $subPayStatus = $transaction->subscription?->payment_status ?? null;
+                            $isClickable  = $transaction->type === 'income' && $transaction->subscription_id && $subPayStatus !== null;
+                        @endphp
+                        <tr class="{{ $isClickable ? 'cursor-pointer hover:bg-primary/5' : '' }}"
+                            {{ $isClickable ? '@click=openTransactionDetail(' . $transaction->id . ')' : '' }}>
                             <td class="whitespace-nowrap">{{ $transaction->transaction_date ? $transaction->transaction_date->format('M d, Y') : 'N/A' }}</td>
                             <td class="font-mono text-sm">{{ $transaction->reference_number ?? '-' }}</td>
                             <td>
@@ -243,6 +280,17 @@
                                     <span class="badge bg-gray-100 text-gray-700 text-xs"><i class="bi bi-three-dots mr-1"></i>Other</span>
                                 @else
                                     <span class="text-muted-foreground">-</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if($subPayStatus === 'pending_approval')
+                                    <span class="badge bg-blue-100 text-blue-700 flex items-center gap-1 w-fit"><i class="bi bi-hourglass-split text-xs"></i>Pending</span>
+                                @elseif($subPayStatus === 'paid')
+                                    <span class="badge bg-green-100 text-green-700 flex items-center gap-1 w-fit"><i class="bi bi-check-circle text-xs"></i>Paid</span>
+                                @elseif($subPayStatus === 'unpaid')
+                                    <span class="badge bg-amber-100 text-amber-700 flex items-center gap-1 w-fit"><i class="bi bi-clock text-xs"></i>Unpaid</span>
+                                @else
+                                    <span class="text-muted-foreground text-xs">—</span>
                                 @endif
                             </td>
                             <td>
@@ -413,6 +461,7 @@
     @include('admin.club.financials.partials.export-modal')
     @include('admin.club.financials.partials.edit-modal')
     @include('admin.club.financials.partials.delete-modal')
+    @include('admin.club.financials.partials.transaction-detail-modal')
 </div>
 
 {{-- Styles moved to app.css (Phase 6) --}}
@@ -420,6 +469,24 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+window.transactionData = {
+    @foreach($transactions as $transaction)
+    {{ $transaction->id }}: {
+        id: {{ $transaction->id }},
+        type: @json($transaction->type),
+        description: @json($transaction->description ?? ''),
+        amount: {{ $transaction->amount }},
+        transaction_date: @json($transaction->transaction_date ? $transaction->transaction_date->format('M d, Y') : ''),
+        category: @json($transaction->category ?? ''),
+        payment_method: @json($transaction->payment_method ?? ''),
+        subscription_id: {{ $transaction->subscription_id ?? 'null' }},
+        payment_status: @json($transaction->subscription?->payment_status ?? ''),
+        proof_of_payment: @json($transaction->subscription?->proof_of_payment ? '/storage/' . $transaction->subscription->proof_of_payment : ''),
+        member_name: @json($transaction->subscription?->user?->full_name ?? $transaction->subscription?->user?->name ?? ''),
+    },
+    @endforeach
+};
+
 document.addEventListener('DOMContentLoaded', function() {
     // Financial Overview Line Chart
     const chartEl = document.getElementById('financialChart');
