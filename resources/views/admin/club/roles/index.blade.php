@@ -68,7 +68,7 @@
                                 <!-- Roles & Actions -->
                                 <div class="flex items-center gap-2 flex-wrap justify-end">
                                     @php
-                                        $userRoles = $member->user->getRolesForTenant($club->slug);
+                                        $userRoles = $member->user->getRolesForTenant($club->id);
                                     @endphp
 
                                     @if(count($userRoles) === 0)
