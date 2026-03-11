@@ -31,9 +31,10 @@ class ClubAdminController extends Controller
     private function authorizeClub(Tenant $club): void
     {
         $user = Auth::user();
-        if (!$user->isSuperAdmin() && $club->owner_user_id !== $user->id) {
-            abort(403, 'Unauthorized access to this club.');
-        }
+        if ($user->isSuperAdmin()) return;
+        if ($club->owner_user_id === $user->id) return;
+        if ($user->isClubAdmin($club->id)) return;
+        abort(403, 'Unauthorized access to this club.');
     }
 
     /**

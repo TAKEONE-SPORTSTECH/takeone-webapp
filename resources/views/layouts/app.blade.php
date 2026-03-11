@@ -280,9 +280,23 @@
                                     <a class="profile-dropdown-item" href="{{ route('bills.index') }}">
                                         <i class="bi bi-receipt mr-2"></i>Payments & Subscriptions
                                     </a>
-                                    <a class="profile-dropdown-item" href="#">
+                                    @php
+                                        $managedClub = Auth::user()->ownedClubs()->first();
+                                        if (!$managedClub) {
+                                            $adminTenantId = DB::table('user_roles')
+                                                ->join('roles', 'user_roles.role_id', '=', 'roles.id')
+                                                ->where('user_roles.user_id', Auth::id())
+                                                ->where('roles.slug', 'club-admin')
+                                                ->whereNotNull('user_roles.tenant_id')
+                                                ->value('user_roles.tenant_id');
+                                            $managedClub = $adminTenantId ? \App\Models\Tenant::find($adminTenantId) : null;
+                                        }
+                                    @endphp
+                                    @if($managedClub)
+                                    <a class="profile-dropdown-item" href="{{ route('admin.club.dashboard', $managedClub->slug) }}">
                                         <i class="bi bi-gear mr-2"></i>Manage Business
                                     </a>
+                                    @endif
                                 </div>
                                 @if(Auth::user()->isSuperAdmin())
                                 <div class="border-t border-border py-1">
