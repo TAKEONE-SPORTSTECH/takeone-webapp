@@ -464,6 +464,7 @@ function {{ $alpineComponent }}() {
         isSubmitting: false,
         isCreateMode: {{ $isCreate ? 'true' : 'false' }},
         showPasswordFields: {{ $showPasswordFields ? 'true' : 'false' }},
+        showRelationshipFields: {{ $showRelationshipFields ? 'true' : 'false' }},
         profilePicturePublic: {{ $profilePicturePublic ? 'true' : 'false' }},
         init() {
             @if($isCreate)
@@ -639,6 +640,14 @@ function {{ $alpineComponent }}() {
                 this.showInputError(fid + '_nationality', 'Please select a nationality.'); valid = false;
             } else { this.clearInputError(fid + '_nationality'); }
 
+            // Relationship type (custom dropdown — only when showRelationshipFields)
+            if (this.showRelationshipFields) {
+                const relEl = document.getElementById(fid + '_relationship_type');
+                if (!relEl || !relEl.value) {
+                    this.showInputError(fid + '_relationship_type', 'Please select a relationship type.'); valid = false;
+                } else { this.clearInputError(fid + '_relationship_type'); }
+            }
+
             if (!valid) {
                 this.activeTab = 'personal';
                 if (typeof Toast !== 'undefined') {
@@ -651,15 +660,16 @@ function {{ $alpineComponent }}() {
         showFieldErrors(errors) {
             const fid = '{{ $formId }}';
             const map = {
-                full_name:    fid + '_full_name',
-                email:        fid + '_email',
-                password:     fid + '_password',
-                gender:       fid + '_gender',
-                birthdate:    fid + '_birthdate',
-                nationality:  fid + '_nationality',
-                blood_type:   fid + '_blood_type',
-                mobile:       fid + '_mobile_number',
-                motto:        fid + '_motto',
+                full_name:         fid + '_full_name',
+                email:             fid + '_email',
+                password:          fid + '_password',
+                gender:            fid + '_gender',
+                birthdate:         fid + '_birthdate',
+                nationality:       fid + '_nationality',
+                relationship_type: fid + '_relationship_type',
+                blood_type:        fid + '_blood_type',
+                mobile:            fid + '_mobile_number',
+                motto:             fid + '_motto',
             };
             Object.keys(errors).forEach(field => {
                 if (map[field]) this.showInputError(map[field], errors[field][0]);

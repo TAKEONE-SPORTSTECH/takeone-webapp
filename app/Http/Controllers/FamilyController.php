@@ -335,18 +335,39 @@ class FamilyController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'full_name' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'gender' => 'required|in:m,f',
-            'birthdate' => 'required|date',
-            'blood_type' => 'nullable|string|max:10',
-            'nationality' => 'required|string|max:100',
+            'full_name'         => 'required|string|max:255',
+            'email'             => 'nullable|email|max:255|unique:users,email',
+            'gender'            => 'required|in:m,f',
+            'birthdate'         => 'required|date|before:today',
+            'blood_type'        => 'nullable|string|max:10',
+            'nationality'       => 'required|string|max:100',
             'relationship_type' => 'required|string|max:50',
-            'is_billing_contact' => 'boolean',
+            'is_billing_contact'=> 'boolean',
+            'mobile_code'       => 'nullable|string|max:10',
+            'mobile'            => 'nullable|string|max:20',
+            'marital_status'    => 'nullable|string|max:50',
+            'motto'             => 'nullable|string|max:500',
+        ], [
+            'full_name.required'         => 'Full name is required.',
+            'email.email'                => 'Please enter a valid email address.',
+            'email.unique'               => 'This email address is already registered.',
+            'gender.required'            => 'Please select a gender.',
+            'birthdate.required'         => 'Date of birth is required.',
+            'birthdate.before'           => 'Date of birth must be in the past.',
+            'nationality.required'       => 'Please select a nationality.',
+            'relationship_type.required' => 'Please select a relationship type.',
         ]);
 
         $guardian = Auth::user();
         $dependent = $this->familyService->createDependent($guardian, $validated);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success'  => true,
+                'message'  => 'Family member added successfully!',
+                'redirect' => route('members.index'),
+            ]);
+        }
 
         return redirect()->route('members.index')
             ->with('success', 'Family member added successfully.');
