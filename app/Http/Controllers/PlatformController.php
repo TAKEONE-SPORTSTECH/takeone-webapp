@@ -514,6 +514,47 @@ class PlatformController extends Controller
 
         $paymentStatus = $payLater ? 'unpaid' : ($proofPath ? 'pending_approval' : 'unpaid');
 
+        // Validate eligibility for all registrants before creating any subscriptions
+        foreach ($request->registrants as $registrant) {
+            $package = ClubPackage::where('id', $registrant['package_id'])
+                ->where('tenant_id', $club->id)
+                ->firstOrFail();
+
+            $age    = null;
+            $gender = $registrant['gender'] ?? null;
+
+            if (!empty($registrant['date_of_birth'])) {
+                $birth = \Carbon\Carbon::parse($registrant['date_of_birth']);
+                $age   = $birth->age;
+            }
+
+            if ($package->age_min !== null && $age !== null && $age < $package->age_min) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "'{$registrant['name']}' does not meet the minimum age ({$package->age_min}) for package '{$package->name}'.",
+                ], 422);
+            }
+
+            if ($package->age_max !== null && $age !== null && $age > $package->age_max) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "'{$registrant['name']}' exceeds the maximum age ({$package->age_max}) for package '{$package->name}'.",
+                ], 422);
+            }
+
+            if ($package->gender && $package->gender !== 'mixed' && $gender) {
+                $genderMatch = ($package->gender === 'male' && $gender === 'm')
+                            || ($package->gender === 'female' && $gender === 'f');
+                if (!$genderMatch) {
+                    $restriction = ucfirst($package->gender);
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Package '{$package->name}' is restricted to {$restriction} members. '{$registrant['name']}' is not eligible.",
+                    ], 422);
+                }
+            }
+        }
+
         foreach ($request->registrants as $registrant) {
             $package = ClubPackage::findOrFail($registrant['package_id']);
             $startDate = now();
