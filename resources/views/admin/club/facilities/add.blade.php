@@ -41,7 +41,9 @@
                                        name="name"
                                        required
                                        placeholder="e.g., Main Swimming Pool"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                       oninput="clearAddFacilityError('name')">
+                                <span id="addFacilityError_name" class="text-red-500 text-xs hidden block"></span>
                             </div>
 
                             <!-- Description -->
@@ -73,8 +75,10 @@
                             <input type="hidden" id="facilityMapZoom" name="map_zoom" value="13">
                             <div class="space-y-1">
                                 <label class="block text-sm font-medium text-gray-700">Google Maps URL</label>
-                                <input type="url" name="maps_url" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                                       placeholder="https://maps.google.com/...">
+                                <input type="url" id="facilityMapsUrl" name="maps_url" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                       placeholder="https://maps.google.com/..."
+                                       oninput="clearAddFacilityError('maps_url')">
+                                <span id="addFacilityError_maps_url" class="text-red-500 text-xs hidden block"></span>
                                 <p class="text-xs text-gray-500">Paste a Google Maps share link for members to navigate directly to this facility.</p>
                             </div>
                         </div>
@@ -285,7 +289,120 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         operatingHourIndex = 0;
         rentableTimeIndex = 0;
+        clearAllAddFacilityErrors();
     };
+
+    // ── AJAX submit with validation ────────────────────────────────────────
+    document.getElementById('addFacilityForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        clearAllAddFacilityErrors();
+
+        // Client-side validation
+        let valid = true;
+        const nameVal = document.getElementById('facilityName').value.trim();
+        if (!nameVal) {
+            showAddFacilityError('name', 'Facility name is required.');
+            document.getElementById('facilityName').classList.add('border-red-400');
+            valid = false;
+        }
+
+        const mapsUrlVal = document.getElementById('facilityMapsUrl')?.value.trim();
+        if (mapsUrlVal && !/^https?:\/\/.+/.test(mapsUrlVal)) {
+            showAddFacilityError('maps_url', 'Please enter a valid URL (must start with http:// or https://).');
+            document.getElementById('facilityMapsUrl').classList.add('border-red-400');
+            valid = false;
+        }
+
+        if (!valid) {
+            if (typeof Toast !== 'undefined') {
+                Toast.error('Validation Error', 'Please fix the highlighted fields before submitting.');
+            }
+            return;
+        }
+
+        const submitBtn = document.getElementById('submitFacilityBtn');
+        const originalHtml = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> <span>Creating...</span>';
+
+        fetch(this.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json',
+            },
+            body: new FormData(this)
+        })
+        .then(async response => {
+            const data = await response.json();
+            if (response.ok && data.success) {
+                if (typeof Toast !== 'undefined') {
+                    Toast.success('Facility Added', data.message || 'Facility added successfully.');
+                }
+                setTimeout(() => location.reload(), 1000);
+            } else if (response.status === 422 && data.errors) {
+                const fieldMap = {
+                    name:        { id: 'name',     inputId: 'facilityName' },
+                    description: { id: 'description', inputId: 'facilityDescription' },
+                    maps_url:    { id: 'maps_url', inputId: 'facilityMapsUrl' },
+                    address:     { id: 'address',  inputId: null },
+                    latitude:    { id: 'latitude', inputId: null },
+                    longitude:   { id: 'longitude',inputId: null },
+                };
+                let first = true;
+                Object.keys(data.errors).forEach(field => {
+                    const mapping = fieldMap[field];
+                    if (mapping) {
+                        showAddFacilityError(mapping.id, data.errors[field][0]);
+                        if (mapping.inputId) {
+                            document.getElementById(mapping.inputId)?.classList.add('border-red-400');
+                        }
+                        if (first) {
+                            document.getElementById(`addFacilityError_${mapping.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            first = false;
+                        }
+                    }
+                });
+                const count = Object.keys(data.errors).length;
+                if (typeof Toast !== 'undefined') {
+                    Toast.error('Validation Failed', `${count} error${count > 1 ? 's' : ''} — please review the highlighted fields.`);
+                }
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalHtml;
+            } else {
+                if (typeof Toast !== 'undefined') {
+                    Toast.error('Error', data.message || 'Failed to add facility. Please try again.');
+                }
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalHtml;
+            }
+        })
+        .catch(() => {
+            if (typeof Toast !== 'undefined') {
+                Toast.error('Error', 'An unexpected error occurred. Please try again.');
+            }
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalHtml;
+        });
+    });
 });
+
+function showAddFacilityError(field, message) {
+    const el = document.getElementById('addFacilityError_' + field);
+    if (el) { el.textContent = message; el.classList.remove('hidden'); }
+}
+
+function clearAddFacilityError(field) {
+    const el = document.getElementById('addFacilityError_' + field);
+    if (el) { el.textContent = ''; el.classList.add('hidden'); }
+    const inputMap = { name: 'facilityName', maps_url: 'facilityMapsUrl', description: 'facilityDescription' };
+    const inputId = inputMap[field];
+    if (inputId) document.getElementById(inputId)?.classList.remove('border-red-400');
+}
+
+function clearAllAddFacilityErrors() {
+    ['name', 'description', 'address', 'latitude', 'longitude', 'maps_url'].forEach(clearAddFacilityError);
+}
 </script>
 @endpush
