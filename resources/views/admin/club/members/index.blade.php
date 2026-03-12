@@ -74,7 +74,8 @@
             @foreach($members as $member)
             @php
                 $user = $member->user;
-                $guardian = $user->guardians->first()?->guardian;
+                if (!$user) continue;
+                $guardian = $user->guardians->first()?->guardian ?? null;
                 $footerLabel = $member->status === 'inactive' ? 'INACTIVE' : ($member->status === 'active' ? 'ACTIVE MEMBER' : 'CLUB MEMBER');
                 $userSubs = ($subscriptions ?? collect())->get((string) $user->id) ?? ($subscriptions ?? collect())->get($user->id, collect());
                 $isOwner = $userSubs->where('type', 'owner')->isNotEmpty();
