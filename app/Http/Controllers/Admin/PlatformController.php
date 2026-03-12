@@ -117,7 +117,7 @@ class PlatformController extends Controller
         return response()->json([
             'success'  => true,
             'message'  => 'Member created successfully!',
-            'redirect' => route('platform.members'),
+            'redirect' => route('admin.platform.members'),
         ]);
     }
 
