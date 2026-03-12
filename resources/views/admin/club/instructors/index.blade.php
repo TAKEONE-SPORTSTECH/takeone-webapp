@@ -241,7 +241,7 @@ function loadNationalityFlags() {
                 const iso3Code = element.getAttribute('data-iso3');
                 if (!iso3Code) return;
 
-                const country = countries.find(c => c.iso3 === iso3Code);
+                const country = countries.find(c => c.iso2 === iso3Code || c.iso3 === iso3Code);
                 if (country) {
                     const flagEmoji = country.iso2
                         .toUpperCase()
