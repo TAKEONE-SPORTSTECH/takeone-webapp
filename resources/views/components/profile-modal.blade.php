@@ -463,6 +463,7 @@ function {{ $alpineComponent }}() {
         tabs: {!! json_encode($showPhotoTab ? ['photo', 'personal', 'social', 'additional'] : ['personal', 'social', 'additional']) !!},
         isSubmitting: false,
         isCreateMode: {{ $isCreate ? 'true' : 'false' }},
+        showPasswordFields: {{ $showPasswordFields ? 'true' : 'false' }},
         profilePicturePublic: {{ $profilePicturePublic ? 'true' : 'false' }},
         init() {
             @if($isCreate)
@@ -525,7 +526,154 @@ function {{ $alpineComponent }}() {
             }
         },
 
+        // Show an inline error on any field (text inputs OR custom tf-dropdowns)
+        showInputError(inputId, message) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            if (input.type === 'hidden') {
+                // Custom tf-dropdown: red border on trigger + tf-error span
+                const wrapper = input.closest('[x-data]');
+                if (!wrapper) return;
+                const trigger = wrapper.querySelector('.tf-dropdown-trigger');
+                if (trigger) { trigger.classList.add('border-red-500'); trigger.classList.remove('border-primary/20'); }
+                let errSpan = wrapper.querySelector('.tf-error');
+                if (!errSpan) {
+                    errSpan = document.createElement('span');
+                    errSpan.className = 'tf-error';
+                    errSpan.setAttribute('role', 'alert');
+                    input.insertAdjacentElement('afterend', errSpan);
+                }
+                errSpan.innerHTML = `<strong>${message}</strong>`;
+                errSpan.style.display = '';
+            } else {
+                // Regular / password input
+                input.classList.add('is-invalid');
+                const relativeWrap = input.closest('.relative');
+                const insertAfter = relativeWrap || input;
+                let errDiv = insertAfter.nextElementSibling;
+                if (!errDiv || !errDiv.classList.contains('invalid-feedback')) {
+                    errDiv = document.createElement('div');
+                    errDiv.className = 'invalid-feedback block';
+                    insertAfter.insertAdjacentElement('afterend', errDiv);
+                }
+                errDiv.textContent = message;
+                errDiv.style.display = 'block';
+            }
+        },
+
+        clearInputError(inputId) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            if (input.type === 'hidden') {
+                const wrapper = input.closest('[x-data]');
+                if (!wrapper) return;
+                const trigger = wrapper.querySelector('.tf-dropdown-trigger');
+                if (trigger) { trigger.classList.remove('border-red-500'); trigger.classList.add('border-primary/20'); }
+                const errSpan = wrapper.querySelector('.tf-error');
+                if (errSpan) errSpan.style.display = 'none';
+            } else {
+                input.classList.remove('is-invalid');
+                const relativeWrap = input.closest('.relative');
+                const checkAfter = relativeWrap || input;
+                const errDiv = checkAfter.nextElementSibling;
+                if (errDiv && errDiv.classList.contains('invalid-feedback')) errDiv.style.display = 'none';
+            }
+        },
+
+        validateForm() {
+            if (!this.isCreateMode) return true;
+
+            let valid = true;
+            const fid = '{{ $formId }}';
+
+            // Full name
+            const nameEl = document.getElementById(fid + '_full_name');
+            if (!nameEl || !nameEl.value.trim()) {
+                this.showInputError(fid + '_full_name', 'Full name is required.'); valid = false;
+            } else { this.clearInputError(fid + '_full_name'); }
+
+            // Email
+            const emailEl = document.getElementById(fid + '_email');
+            if (this.showPasswordFields) {
+                if (!emailEl || !emailEl.value.trim()) {
+                    this.showInputError(fid + '_email', 'Email address is required.'); valid = false;
+                } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailEl.value.trim())) {
+                    this.showInputError(fid + '_email', 'Please enter a valid email address.'); valid = false;
+                } else { this.clearInputError(fid + '_email'); }
+            }
+
+            // Password + confirmation
+            if (this.showPasswordFields) {
+                const pw1 = document.getElementById(fid + '_password');
+                const pw2 = document.getElementById(fid + '_password_confirmation');
+                if (!pw1 || !pw1.value) {
+                    this.showInputError(fid + '_password', 'Password is required.'); valid = false;
+                } else if (pw1.value.length < 8) {
+                    this.showInputError(fid + '_password', 'Password must be at least 8 characters.'); valid = false;
+                } else { this.clearInputError(fid + '_password'); }
+
+                if (pw1 && pw1.value.length >= 8) {
+                    if (!pw2 || !pw2.value) {
+                        this.showInputError(fid + '_password_confirmation', 'Please confirm your password.'); valid = false;
+                    } else if (pw2.value !== pw1.value) {
+                        this.showInputError(fid + '_password_confirmation', 'Passwords do not match.'); valid = false;
+                    } else { this.clearInputError(fid + '_password_confirmation'); }
+                }
+            }
+
+            // Gender (custom dropdown — hidden input)
+            const genderEl = document.getElementById(fid + '_gender');
+            if (!genderEl || !genderEl.value) {
+                this.showInputError(fid + '_gender', 'Please select a gender.'); valid = false;
+            } else { this.clearInputError(fid + '_gender'); }
+
+            // Birthdate (custom dropdown — hidden input)
+            const bdEl = document.getElementById(fid + '_birthdate');
+            if (!bdEl || !bdEl.value) {
+                this.showInputError(fid + '_birthdate', 'Please select a date of birth.'); valid = false;
+            } else { this.clearInputError(fid + '_birthdate'); }
+
+            // Nationality (custom dropdown — hidden input)
+            const natEl = document.getElementById(fid + '_nationality');
+            if (!natEl || !natEl.value) {
+                this.showInputError(fid + '_nationality', 'Please select a nationality.'); valid = false;
+            } else { this.clearInputError(fid + '_nationality'); }
+
+            if (!valid) {
+                this.activeTab = 'personal';
+                if (typeof Toast !== 'undefined') {
+                    Toast.error('Required Fields Missing', 'Please fill in all highlighted fields before submitting.');
+                }
+            }
+            return valid;
+        },
+
+        showFieldErrors(errors) {
+            const fid = '{{ $formId }}';
+            const map = {
+                full_name:    fid + '_full_name',
+                email:        fid + '_email',
+                password:     fid + '_password',
+                gender:       fid + '_gender',
+                birthdate:    fid + '_birthdate',
+                nationality:  fid + '_nationality',
+                blood_type:   fid + '_blood_type',
+                mobile:       fid + '_mobile_number',
+                motto:        fid + '_motto',
+            };
+            Object.keys(errors).forEach(field => {
+                if (map[field]) this.showInputError(map[field], errors[field][0]);
+            });
+            this.activeTab = 'personal';
+            const count = Object.keys(errors).length;
+            if (typeof Toast !== 'undefined') {
+                Toast.error('Validation Failed', `${count} error${count > 1 ? 's' : ''} — please review the highlighted fields.`);
+            }
+        },
+
         submitForm() {
+            if (!this.validateForm()) return;
+
             this.isSubmitting = true;
             const form = document.getElementById('{{ $formId }}');
             const formData = new FormData(form);
@@ -538,9 +686,9 @@ function {{ $alpineComponent }}() {
                     'Accept': 'application/json'
                 }
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
+            .then(async response => {
+                const data = await response.json();
+                if (response.ok && data.success) {
                     @if(!$isCreate)
                     if (data.profile_picture_url) {
                         this.syncProfilePicsOnPage(data.profile_picture_url);
@@ -556,6 +704,9 @@ function {{ $alpineComponent }}() {
                             window.location.href = data.redirect;
                         }
                     }, 1200);
+                } else if (response.status === 422 && data.errors) {
+                    this.showFieldErrors(data.errors);
+                    this.isSubmitting = false;
                 } else {
                     throw new Error(data.message || '{{ $isCreate ? "Creation failed" : "Update failed" }}');
                 }

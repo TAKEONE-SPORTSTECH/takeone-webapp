@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class PlatformController extends Controller
 {
@@ -73,6 +74,51 @@ class PlatformController extends Controller
             ->paginate(20);
 
         return view('admin.platform.members.index', compact('members', 'search'));
+    }
+
+    /**
+     * Create a new platform member.
+     */
+    public function storeMember(Request $request)
+    {
+        $request->validate([
+            'full_name'    => 'required|string|max:255',
+            'email'        => 'required|email|max:255|unique:users,email',
+            'password'     => 'required|string|min:8|confirmed',
+            'gender'       => 'required|in:m,f',
+            'birthdate'    => 'required|date|before:today',
+            'nationality'  => 'required|string|max:100',
+            'blood_type'   => 'nullable|string|max:10',
+            'mobile_code'  => 'nullable|string|max:10',
+            'mobile'       => 'nullable|string|max:20',
+            'marital_status' => 'nullable|string|max:50',
+            'motto'        => 'nullable|string|max:500',
+        ]);
+
+        $mobile = null;
+        if ($request->filled('mobile_code') && $request->filled('mobile')) {
+            $mobile = ['code' => $request->mobile_code, 'number' => $request->mobile];
+        }
+
+        $user = User::create([
+            'full_name'      => $request->full_name,
+            'name'           => $request->full_name,
+            'email'          => $request->email,
+            'password'       => Hash::make($request->password),
+            'gender'         => $request->gender,
+            'birthdate'      => $request->birthdate,
+            'nationality'    => $request->nationality,
+            'blood_type'     => $request->blood_type,
+            'mobile'         => $mobile,
+            'marital_status' => $request->marital_status,
+            'motto'          => $request->motto,
+        ]);
+
+        return response()->json([
+            'success'  => true,
+            'message'  => 'Member created successfully!',
+            'redirect' => route('platform.members'),
+        ]);
     }
 
     /**

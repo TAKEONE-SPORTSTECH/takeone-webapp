@@ -58,7 +58,7 @@
     title="Add Platform Member"
     subtitle="Fill in the details to add a new platform member"
     :showPasswordFields="true"
-    :formAction="route('family.store')"
+    :formAction="route('platform.members.store')"
     formMethod="POST"
 />
 
