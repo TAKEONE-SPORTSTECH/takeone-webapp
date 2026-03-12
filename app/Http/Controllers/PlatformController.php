@@ -104,6 +104,7 @@ class PlatformController extends Controller
         $clubs = Tenant::whereNotNull('gps_lat')
             ->whereNotNull('gps_long')
             ->with('owner')
+            ->withCount(['members', 'packages', 'instructors'])
             ->get();
 
         // Calculate distance for each club using Haversine formula
@@ -128,6 +129,9 @@ class PlatformController extends Controller
                 'owner_email' => $club->owner ? $club->owner->email : null,
                 'owner_mobile' => $club->owner ? $club->owner->mobile : null,
                 'address' => $club->address,
+                'members_count' => $club->members_count,
+                'packages_count' => $club->packages_count,
+                'instructors_count' => $club->instructors_count,
             ];
         });
 
@@ -358,7 +362,7 @@ class PlatformController extends Controller
         $userLat = $request->input('latitude');
         $userLng = $request->input('longitude');
 
-        $clubs = Tenant::with('owner')->get();
+        $clubs = Tenant::with('owner')->withCount(['members', 'packages', 'instructors'])->get();
 
         // If user location is provided, calculate distance for each club
         if ($userLat !== null && $userLng !== null) {
@@ -386,6 +390,9 @@ class PlatformController extends Controller
                     'distance' => $distance !== null ? round($distance, 2) : null,
                     'owner_name' => $club->owner ? $club->owner->full_name : 'N/A',
                     'address' => $club->address,
+                    'members_count' => $club->members_count,
+                    'packages_count' => $club->packages_count,
+                    'instructors_count' => $club->instructors_count,
                 ];
             });
 
@@ -430,6 +437,9 @@ class PlatformController extends Controller
                 'distance' => null,
                 'owner_name' => $club->owner ? $club->owner->full_name : 'N/A',
                 'address' => $club->address,
+                'members_count' => $club->members_count,
+                'packages_count' => $club->packages_count,
+                'instructors_count' => $club->instructors_count,
             ];
         });
 

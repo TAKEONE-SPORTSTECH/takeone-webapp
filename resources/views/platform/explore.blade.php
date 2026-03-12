@@ -868,7 +868,7 @@ function exploreApp() {
                                         <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
                                         <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                                     </svg>
-                                    <p class="font-semibold mb-0 text-foreground">13</p>
+                                    <p class="font-semibold mb-0 text-foreground">${club.members_count ?? 0}</p>
                                     <p class="text-muted-foreground mb-0">Members</p>
                                 </div>
                                 <div class="p-2 rounded bg-primary/5">
@@ -879,14 +879,14 @@ function exploreApp() {
                                         <path d="M3.9 3.9 2.5 2.5"></path>
                                         <path d="M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"></path>
                                     </svg>
-                                    <p class="font-semibold mb-0 text-foreground">0</p>
+                                    <p class="font-semibold mb-0 text-foreground">${club.packages_count ?? 0}</p>
                                     <p class="text-muted-foreground mb-0">Packages</p>
                                 </div>
                                 <div class="p-2 rounded bg-primary/5">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-1 text-primary">
                                         <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path>
                                     </svg>
-                                    <p class="font-semibold mb-0 text-foreground">0</p>
+                                    <p class="font-semibold mb-0 text-foreground">${club.instructors_count ?? 0}</p>
                                     <p class="text-muted-foreground mb-0">Trainers</p>
                                 </div>
                             </div>
