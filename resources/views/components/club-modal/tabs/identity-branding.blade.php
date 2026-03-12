@@ -281,6 +281,39 @@
                 this.dataset.manuallyEdited = 'true';
             });
 
+            // Real-time slug uniqueness check on blur
+            slugInput.addEventListener('blur', async function() {
+                const val = this.value.trim();
+                const slugError = this.closest('.mb-4')?.querySelector('.invalid-feedback');
+                if (!val) return;
+
+                if (!/^[a-z0-9-]+$/.test(val)) {
+                    this.classList.add('is-invalid');
+                    if (slugError) { slugError.textContent = 'Slug must only contain lowercase letters, numbers, and hyphens.'; slugError.style.display = 'block'; }
+                    return;
+                }
+
+                try {
+                    const form = this.closest('form');
+                    const clubId = form?.dataset.clubId || '';
+                    const params = new URLSearchParams({ slug: val });
+                    if (clubId) params.append('club_id', clubId);
+                    const res = await fetch('/admin/api/clubs/check-slug', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content, 'Accept': 'application/json' },
+                        body: params
+                    });
+                    const data = await res.json();
+                    if (!data.available) {
+                        this.classList.add('is-invalid');
+                        if (slugError) { slugError.textContent = data.message || 'This slug is already taken.'; slugError.style.display = 'block'; }
+                    } else {
+                        this.classList.remove('is-invalid');
+                        if (slugError) slugError.style.display = 'none';
+                    }
+                } catch (e) { /* silent */ }
+            });
+
             // Initial QR code generation
             const initialUrl = urlPreview.textContent;
             generateQRCode(initialUrl);

@@ -505,40 +505,94 @@
                 const form = this.$refs.form;
                 if (!form) return true;
 
-                // Get all required inputs in the current tab (visible ones)
-                const tabPanes = form.querySelectorAll('[x-show]');
-                let currentPane = null;
-
-                // Find visible pane by checking currentTab
-                const allInputs = form.querySelectorAll('input[required], select[required], textarea[required]');
                 let isValid = true;
                 let errorCount = 0;
 
-                allInputs.forEach(input => {
-                    if (input.type === 'file') return;
+                // --- Tab 0: owner hidden field ---
+                if (this.currentTab === 0) {
+                    const ownerInput = document.getElementById('owner_user_id');
+                    const ownerError = document.getElementById('ownerError');
+                    if (ownerInput && !ownerInput.value) {
+                        ownerInput.classList.add('is-invalid');
+                        if (ownerError) ownerError.style.setProperty('display', 'block', 'important');
+                        isValid = false;
+                        errorCount++;
+                    } else if (ownerInput) {
+                        ownerInput.classList.remove('is-invalid');
+                        if (ownerError) ownerError.style.setProperty('display', 'none', 'important');
+                    }
+                }
 
-                    // Check if input is in currently visible tab
+                // --- Tab 1: slug format ---
+                if (this.currentTab === 1) {
+                    const slugInput = document.getElementById('slug');
+                    if (slugInput) {
+                        const slugError = slugInput.closest('.mb-4')?.querySelector('.invalid-feedback');
+                        if (!slugInput.value.trim()) {
+                            slugInput.classList.add('is-invalid');
+                            if (slugError) { slugError.textContent = 'Slug is required.'; slugError.style.display = 'block'; }
+                            isValid = false;
+                            errorCount++;
+                        } else if (!/^[a-z0-9-]+$/.test(slugInput.value)) {
+                            slugInput.classList.add('is-invalid');
+                            if (slugError) { slugError.textContent = 'Slug must only contain lowercase letters, numbers, and hyphens.'; slugError.style.display = 'block'; }
+                            isValid = false;
+                            errorCount++;
+                        } else {
+                            slugInput.classList.remove('is-invalid');
+                            if (slugError) slugError.style.display = 'none';
+                        }
+                    }
+                }
+
+                // --- Standard required fields (skip hidden, file) ---
+                const allInputs = form.querySelectorAll('input[required], select[required], textarea[required]');
+                allInputs.forEach(input => {
+                    if (input.type === 'file' || input.type === 'hidden') return;
+
                     let parent = input.closest('[x-show]');
                     if (!parent) return;
 
                     const showAttr = parent.getAttribute('x-show');
                     if (!showAttr || !showAttr.includes(`currentTab === ${this.currentTab}`)) return;
 
-                    if (!input.value || (input.type === 'email' && !this.isValidEmail(input.value))) {
+                    // Skip slug — handled above
+                    if (input.id === 'slug') return;
+
+                    const isEmpty = !input.value.trim();
+                    const isInvalidEmail = input.type === 'email' && input.value && !this.isValidEmail(input.value);
+
+                    if (isEmpty || isInvalidEmail) {
                         input.classList.add('is-invalid');
                         isValid = false;
                         errorCount++;
 
+                        // Find or create error div (handle input-group wrapper)
                         let errorDiv = input.nextElementSibling;
+                        if (!errorDiv || !errorDiv.classList.contains('invalid-feedback')) {
+                            const wrapper = input.closest('.input-group');
+                            errorDiv = wrapper ? wrapper.nextElementSibling : null;
+                        }
                         if (!errorDiv || !errorDiv.classList.contains('invalid-feedback')) {
                             errorDiv = document.createElement('div');
                             errorDiv.className = 'invalid-feedback';
-                            input.parentNode.insertBefore(errorDiv, input.nextSibling);
+                            const wrapper = input.closest('.input-group') || input;
+                            wrapper.parentNode.insertBefore(errorDiv, wrapper.nextSibling);
                         }
-                        errorDiv.textContent = input.dataset.errorMessage || 'This field is required.';
+                        errorDiv.textContent = isInvalidEmail
+                            ? 'Please enter a valid email address.'
+                            : (input.dataset.errorMessage || 'This field is required.');
                         errorDiv.style.display = 'block';
                     } else {
                         input.classList.remove('is-invalid');
+                        let errorDiv = input.nextElementSibling;
+                        if (!errorDiv || !errorDiv.classList.contains('invalid-feedback')) {
+                            const wrapper = input.closest('.input-group');
+                            errorDiv = wrapper ? wrapper.nextElementSibling : null;
+                        }
+                        if (errorDiv && errorDiv.classList.contains('invalid-feedback')) {
+                            errorDiv.style.display = 'none';
+                        }
                     }
                 });
 
@@ -548,6 +602,63 @@
                 }
 
                 return isValid;
+            },
+
+            showFieldErrors(errors) {
+                const fieldToTab = {
+                    'club_name': 0, 'owner_user_id': 0, 'slogan': 0, 'description': 0,
+                    'established_date': 0, 'commercial_reg_number': 0, 'vat_reg_number': 0, 'vat_percentage': 0,
+                    'slug': 1,
+                    'country': 2, 'address': 2, 'gps_lat': 2, 'gps_long': 2,
+                    'email': 3,
+                    'enrollment_fee': 4, 'club_status': 4,
+                };
+
+                let firstErrorTab = null;
+
+                Object.keys(errors).forEach(field => {
+                    const tab = fieldToTab[field];
+                    if (tab !== undefined && (firstErrorTab === null || tab < firstErrorTab)) {
+                        firstErrorTab = tab;
+                    }
+
+                    const input = document.getElementById(field);
+                    if (!input) return;
+
+                    input.classList.add('is-invalid');
+
+                    if (field === 'owner_user_id') {
+                        const ownerError = document.getElementById('ownerError');
+                        if (ownerError) { ownerError.textContent = errors[field][0]; ownerError.style.setProperty('display', 'block', 'important'); }
+                        return;
+                    }
+
+                    let errorDiv = input.nextElementSibling;
+                    if (!errorDiv || !errorDiv.classList.contains('invalid-feedback')) {
+                        const wrapper = input.closest('.input-group');
+                        errorDiv = wrapper ? wrapper.nextElementSibling : null;
+                    }
+                    if (!errorDiv || !errorDiv.classList.contains('invalid-feedback')) {
+                        errorDiv = input.closest('.mb-4')?.querySelector('.invalid-feedback');
+                    }
+                    if (!errorDiv || !errorDiv.classList.contains('invalid-feedback')) {
+                        errorDiv = document.createElement('div');
+                        errorDiv.className = 'invalid-feedback';
+                        const wrapper = input.closest('.input-group') || input;
+                        wrapper.parentNode.insertBefore(errorDiv, wrapper.nextSibling);
+                    }
+                    if (errorDiv) {
+                        errorDiv.textContent = errors[field][0];
+                        errorDiv.style.display = 'block';
+                    }
+                });
+
+                if (firstErrorTab !== null) {
+                    this.currentTab = firstErrorTab;
+                }
+
+                const total = Object.keys(errors).length;
+                this.showToast(`${total} validation error${total > 1 ? 's' : ''} — please review the highlighted fields`, 'error');
             },
 
             isValidEmail(email) {
@@ -589,7 +700,7 @@
 
                     const data = await response.json();
 
-                    if (response.ok) {
+                    if (response.ok && data.success) {
                         this.showToast(data.message || 'Club saved successfully!', 'success');
                         this.clearDraft();
 
@@ -598,7 +709,11 @@
                             window.location.reload();
                         }, 1500);
                     } else {
-                        this.showToast(data.message || 'An error occurred', 'error');
+                        if (response.status === 422 && data.errors) {
+                            this.showFieldErrors(data.errors);
+                        } else {
+                            this.showToast(data.message || 'An error occurred', 'error');
+                        }
                         this.isSubmitting = false;
                     }
                 } catch (error) {
