@@ -124,7 +124,9 @@
                                    name="name"
                                    required
                                    placeholder="e.g., Morning Yoga Class"
-                                   class="form-control">
+                                   class="form-control"
+                                   oninput="clearActivityFieldError('{{ $prefix }}', 'name')">
+                            <span id="{{ $prefix }}ActivityError_name" class="text-destructive text-xs hidden block"></span>
                         </div>
 
                         <!-- Description -->
@@ -136,7 +138,9 @@
                                       name="description"
                                       rows="3"
                                       placeholder="Detailed description of the activity..."
-                                      class="form-control resize-none"></textarea>
+                                      class="form-control resize-none"
+                                      oninput="clearActivityFieldError('{{ $prefix }}', 'description')"></textarea>
+                            <span id="{{ $prefix }}ActivityError_description" class="text-destructive text-xs hidden block"></span>
                         </div>
 
                         <!-- Additional Notes -->
@@ -148,7 +152,9 @@
                                       name="notes"
                                       rows="2"
                                       placeholder="Any additional information..."
-                                      class="form-control resize-none"></textarea>
+                                      class="form-control resize-none"
+                                      oninput="clearActivityFieldError('{{ $prefix }}', 'notes')"></textarea>
+                            <span id="{{ $prefix }}ActivityError_notes" class="text-destructive text-xs hidden block"></span>
                         </div>
                     </div>
                 </form>
@@ -161,8 +167,9 @@
                         @click="{{ $showVar }} = false">
                     Cancel
                 </button>
-                <button type="submit"
-                        form="{{ $formId }}"
+                <button type="button"
+                        id="{{ $prefix }}ActivitySubmitBtn"
+                        onclick="submitActivityForm('{{ $prefix }}', '{{ $formId }}')"
                         class="btn btn-primary flex items-center gap-2">
                     <i class="bi {{ $submitIcon }}"></i>
                     <span>{{ $submitText }}</span>
@@ -206,6 +213,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('editActivityDescription').value = data.description || '';
             document.getElementById('editActivityNotes').value = data.notes || '';
             updateCropperPreview(data.pictureUrl);
+            clearAllActivityErrors('edit');
         }
     };
 });
@@ -230,6 +238,7 @@ function initDuplicate() {
         document.getElementById('addActivityName').value = data.name + ' (Copy)';
         document.getElementById('addActivityDescription').value = data.description || '';
         document.getElementById('addActivityNotes').value = data.notes || '';
+        clearAllActivityErrors('add');
 
         if (data.pictureUrl) {
             document.getElementById('existingPictureImg').src = data.pictureUrl;
@@ -241,3 +250,117 @@ function initDuplicate() {
 </script>
 @endpush
 @endif
+
+@once
+@push('scripts')
+<script>
+// ── Shared Activity form validation & AJAX submit ─────────────────────────
+
+function showActivityFieldError(prefix, field, message) {
+    const el = document.getElementById(prefix + 'ActivityError_' + field);
+    if (el) { el.textContent = message; el.classList.remove('hidden'); }
+    const input = document.getElementById(prefix + 'Activity' + field.charAt(0).toUpperCase() + field.slice(1));
+    input?.classList.add('is-invalid');
+}
+
+function clearActivityFieldError(prefix, field) {
+    const el = document.getElementById(prefix + 'ActivityError_' + field);
+    if (el) { el.textContent = ''; el.classList.add('hidden'); }
+    const input = document.getElementById(prefix + 'Activity' + field.charAt(0).toUpperCase() + field.slice(1));
+    input?.classList.remove('is-invalid');
+}
+
+function clearAllActivityErrors(prefix) {
+    ['name', 'description', 'notes', 'duration_minutes'].forEach(f => clearActivityFieldError(prefix, f));
+}
+
+function submitActivityForm(prefix, formId) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+
+    clearAllActivityErrors(prefix);
+
+    // Client-side validation
+    let valid = true;
+    const nameEl = document.getElementById(prefix + 'ActivityName');
+    if (!nameEl || !nameEl.value.trim()) {
+        showActivityFieldError(prefix, 'name', 'Activity title is required.');
+        valid = false;
+    } else if (nameEl.value.trim().length > 255) {
+        showActivityFieldError(prefix, 'name', 'Activity title must not exceed 255 characters.');
+        valid = false;
+    }
+
+    const descEl = document.getElementById(prefix + 'ActivityDescription');
+    if (descEl && descEl.value.length > 2000) {
+        showActivityFieldError(prefix, 'description', 'Description must not exceed 2000 characters.');
+        valid = false;
+    }
+
+    const notesEl = document.getElementById(prefix + 'ActivityNotes');
+    if (notesEl && notesEl.value.length > 1000) {
+        showActivityFieldError(prefix, 'notes', 'Additional notes must not exceed 1000 characters.');
+        valid = false;
+    }
+
+    if (!valid) {
+        if (typeof Toast !== 'undefined') {
+            Toast.error('Validation Error', 'Please fix the highlighted fields before submitting.');
+        }
+        return;
+    }
+
+    const btn = document.getElementById(prefix + 'ActivitySubmitBtn');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-2"></span>Saving...';
+
+    fetch(form.action, {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json' },
+        body: new FormData(form)
+    })
+    .then(async response => {
+        const data = await response.json();
+        if (response.ok && data.success) {
+            if (typeof Toast !== 'undefined') {
+                Toast.success('Success', data.message || 'Activity saved successfully.');
+            }
+            setTimeout(() => location.reload(), 900);
+        } else if (response.status === 422 && data.errors) {
+            const fieldMap = { name: 'name', description: 'description', notes: 'notes', duration_minutes: 'duration_minutes' };
+            let first = true;
+            Object.keys(data.errors).forEach(field => {
+                if (fieldMap[field]) {
+                    showActivityFieldError(prefix, fieldMap[field], data.errors[field][0]);
+                    if (first) {
+                        document.getElementById(prefix + 'ActivityError_' + fieldMap[field])?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        first = false;
+                    }
+                }
+            });
+            const count = Object.keys(data.errors).length;
+            if (typeof Toast !== 'undefined') {
+                Toast.error('Validation Failed', `${count} error${count > 1 ? 's' : ''} — please review the highlighted fields.`);
+            }
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        } else {
+            if (typeof Toast !== 'undefined') {
+                Toast.error('Error', data.message || 'Failed to save activity. Please try again.');
+            }
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    })
+    .catch(() => {
+        if (typeof Toast !== 'undefined') {
+            Toast.error('Error', 'An unexpected error occurred. Please try again.');
+        }
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    });
+}
+</script>
+@endpush
+@endonce
