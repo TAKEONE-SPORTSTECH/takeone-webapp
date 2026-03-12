@@ -215,17 +215,17 @@
 
                                     {{-- Packages list --}}
                                     <div class="p-4">
-                                        <template x-if="joinModal.packages.length === 0">
+                                        <template x-if="joinModal.getEligiblePackages(reg).length === 0">
                                             <div class="flex items-start gap-2 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                                                <span>No eligible packages found. Please contact the club.</span>
+                                                <span>No eligible packages found for this member's age or gender.</span>
                                             </div>
                                         </template>
 
-                                        <template x-if="joinModal.packages.length > 0">
+                                        <template x-if="joinModal.getEligiblePackages(reg).length > 0">
                                             <div class="space-y-3">
                                                 <div class="space-y-3">
-                                                    <template x-for="pkg in joinModal.packages" :key="pkg.id">
+                                                    <template x-for="pkg in joinModal.getEligiblePackages(reg)" :key="pkg.id">
                                                         <div class="border-2 rounded-xl p-5 cursor-pointer transition-all duration-200 hover:shadow-md space-y-3"
                                                              :class="reg.packageId == pkg.id ? 'ring-2 ring-primary border-primary shadow-sm shadow-primary/10 bg-primary/[0.02]' : 'border-border hover:border-gray-300'"
                                                              @click="joinModal.selectPackage(reg.id, pkg.id)">
@@ -298,7 +298,7 @@
                                                                         </span>
                                                                     </template>
                                                                     <span class="inline-block bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-[10px] font-medium"
-                                                                          x-text="(pkg.gender_restriction && pkg.gender_restriction !== 'mixed') ? pkg.gender_restriction.charAt(0).toUpperCase() + pkg.gender_restriction.slice(1) + ' only' : 'Mixed'"></span>
+                                                                          x-text="(pkg.gender && pkg.gender !== 'mixed') ? pkg.gender.charAt(0).toUpperCase() + pkg.gender.slice(1) + ' only' : 'Mixed'"></span>
                                                                 </div>
                                                             </div>
                                                         </div>

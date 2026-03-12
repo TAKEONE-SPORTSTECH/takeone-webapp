@@ -424,6 +424,25 @@ function exploreApp() {
                 }
             },
 
+            getEligiblePackages(reg) {
+                const age = this.calculateAge(reg.dateOfBirth);
+                return this.packages.filter(pkg => {
+                    // Age filter
+                    if (pkg.age_min !== null && pkg.age_min !== undefined && age !== null) {
+                        if (age < pkg.age_min) return false;
+                    }
+                    if (pkg.age_max !== null && pkg.age_max !== undefined && age !== null) {
+                        if (age > pkg.age_max) return false;
+                    }
+                    // Gender filter
+                    if (pkg.gender && pkg.gender !== 'mixed' && reg.gender) {
+                        if (pkg.gender === 'male' && reg.gender !== 'm') return false;
+                        if (pkg.gender === 'female' && reg.gender !== 'f') return false;
+                    }
+                    return true;
+                });
+            },
+
             calculateAge(dateOfBirth) {
                 if (!dateOfBirth) return 0;
                 const today = new Date();

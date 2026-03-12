@@ -468,7 +468,7 @@ class PlatformController extends Controller
                     'activity_type' => $pkg->activity_type ?? null,
                     'age_min' => $pkg->age_min,
                     'age_max' => $pkg->age_max,
-                    'gender_restriction' => $pkg->gender_restriction,
+                    'gender' => $pkg->gender,
                 ];
             }),
             'currency' => $club->currency ?? 'USD',
