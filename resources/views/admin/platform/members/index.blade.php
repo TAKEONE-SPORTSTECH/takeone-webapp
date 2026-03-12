@@ -27,7 +27,7 @@
     @if($members->count() > 0)
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4" id="membersGrid">
             @foreach($members as $member)
-                <x-member-card :member="$member" :href="route('member.show', $member->id)" />
+                <x-member-card :member="$member" :href="route('member.show', $member->id)" :guardian="$member->guardians->first()?->guardian ?? null" />
             @endforeach
         </div>
 

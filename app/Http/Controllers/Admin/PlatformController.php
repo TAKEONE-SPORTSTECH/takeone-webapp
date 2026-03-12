@@ -62,7 +62,7 @@ class PlatformController extends Controller
     {
         $search = $request->input('search');
 
-        $members = User::with(['memberClubs', 'dependents'])
+        $members = User::with(['memberClubs', 'dependents', 'guardians.guardian'])
             ->withCount('memberClubs')
             ->when($search, function ($query, $search) {
                 $query->where('full_name', 'like', "%{$search}%")
