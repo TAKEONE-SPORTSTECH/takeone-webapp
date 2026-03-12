@@ -42,6 +42,27 @@
     $isMale = ($member->gender ?? 'm') === 'm';
     $sinceDate = $memberSince ?? $member->created_at;
 
+    // Nationality: resolve ISO2/ISO3 code → flag emoji + full name
+    static $countriesMap = null;
+    if ($countriesMap === null) {
+        $jsonData = @file_get_contents(public_path('data/countries.json'));
+        $countriesMap = [];
+        if ($jsonData) {
+            foreach (json_decode($jsonData, true) ?? [] as $c) {
+                $countriesMap[strtoupper($c['iso2'])] = $c;
+                $countriesMap[strtoupper($c['iso3'])] = $c;
+            }
+        }
+    }
+    $natCode    = strtoupper($member->nationality ?? '');
+    $countryInfo = $countriesMap[$natCode] ?? null;
+    if ($countryInfo) {
+        $flagEmoji       = implode('', array_map(fn($ch) => mb_chr(ord($ch) + 127397), str_split(strtoupper($countryInfo['iso2']))));
+        $nationalityDisplay = $flagEmoji . ' ' . $countryInfo['name'];
+    } else {
+        $nationalityDisplay = $member->nationality ?? 'N/A';
+    }
+
     // Guardian contact fallback
     $displayMobile = $member->mobile;
     $displayEmail = $member->email;
@@ -153,7 +174,7 @@
                 <div class="grid grid-cols-2 gap-3 mb-3">
                     <div>
                         <div class="text-xs text-muted-foreground uppercase font-medium mb-1 tracking-wide">Nationality</div>
-                        <div class="font-semibold text-muted-foreground text-lg nationality-display" data-iso3="{{ $member->nationality }}">{{ $member->nationality ?? 'N/A' }}</div>
+                        <div class="font-semibold text-muted-foreground text-lg">{{ $nationalityDisplay }}</div>
                     </div>
                     <div>
                         <div class="text-xs text-muted-foreground uppercase font-medium mb-1 tracking-wide">Horoscope</div>
