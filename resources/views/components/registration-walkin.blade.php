@@ -62,44 +62,62 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div class="sm:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Full Name <span class="text-red-500">*</span></label>
-                                <input type="text" x-model="data.guardian.name" class="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="John Doe">
+                                <input type="text" x-model="data.guardian.name" @input="errors.name = ''"
+                                       :class="errors.name ? 'border-red-400 ring-2 ring-red-100' : 'border-gray-200'"
+                                       class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="John Doe">
+                                <span x-show="errors.name" x-text="errors.name" class="text-red-500 text-xs mt-1 block"></span>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Email <span class="text-red-500">*</span></label>
-                                <input type="email" x-model="data.guardian.email" class="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="member@example.com">
+                                <input type="email" x-model="data.guardian.email" @input="errors.email = ''"
+                                       :class="errors.email ? 'border-red-400 ring-2 ring-red-100' : 'border-gray-200'"
+                                       class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="member@example.com">
+                                <span x-show="errors.email" x-text="errors.email" class="text-red-500 text-xs mt-1 block"></span>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Phone Number <span class="text-red-500">*</span></label>
                                 <x-country-code-dropdown name="walkIn_countryCode" id="walkIn_countryCode" value="+973" :required="true">
-                                    <input type="text" id="walkIn_phone" x-model="data.guardian.phone" class="w-full px-4 py-3 text-base bg-transparent focus:outline-none" placeholder="Phone number">
+                                    <input type="text" id="walkIn_phone" x-model="data.guardian.phone" @input="errors.phone = ''"
+                                           :class="errors.phone ? 'ring-2 ring-red-100' : ''"
+                                           class="w-full px-4 py-3 text-base bg-transparent focus:outline-none" placeholder="Phone number">
                                 </x-country-code-dropdown>
+                                <span x-show="errors.phone" x-text="errors.phone" class="text-red-500 text-xs mt-1 block"></span>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Password <span class="text-red-500">*</span></label>
                                 <div class="relative">
-                                    <input :type="showPassword ? 'text' : 'password'" x-model="data.guardian.password" class="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-10" placeholder="Minimum 6 characters">
+                                    <input :type="showPassword ? 'text' : 'password'" x-model="data.guardian.password" @input="errors.password = ''"
+                                           :class="errors.password ? 'border-red-400 ring-2 ring-red-100' : 'border-gray-200'"
+                                           class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-10" placeholder="Minimum 8 characters">
                                     <button type="button" @click="showPassword = !showPassword" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                                         <i class="bi" :class="showPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
                                     </button>
                                 </div>
+                                <span x-show="errors.password" x-text="errors.password" class="text-red-500 text-xs mt-1 block"></span>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Confirm Password <span class="text-red-500">*</span></label>
                                 <div class="relative">
-                                    <input :type="showConfirmPassword ? 'text' : 'password'" x-model="passwordConfirmation" class="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-10" placeholder="Re-enter password">
+                                    <input :type="showConfirmPassword ? 'text' : 'password'" x-model="passwordConfirmation" @input="errors.confirmPassword = ''"
+                                           :class="errors.confirmPassword ? 'border-red-400 ring-2 ring-red-100' : 'border-gray-200'"
+                                           class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-10" placeholder="Re-enter password">
                                     <button type="button" @click="showConfirmPassword = !showConfirmPassword" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                                         <i class="bi" :class="showConfirmPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
                                     </button>
                                 </div>
+                                <span x-show="errors.confirmPassword" x-text="errors.confirmPassword" class="text-red-500 text-xs mt-1 block"></span>
                             </div>
                             <div class="sm:col-span-2">
                                 <x-birthdate-dropdown name="walkIn_dob" id="walkIn_dob" label="Date of Birth" :required="true" :minAge="3" :maxAge="100" />
+                                <span x-show="errors.dob" x-text="errors.dob" class="text-red-500 text-xs mt-1 block"></span>
                             </div>
                             <div>
                                 <x-gender-dropdown name="walkIn_gender" id="walkIn_gender" label="Gender" :required="true" />
+                                <span x-show="errors.gender" x-text="errors.gender" class="text-red-500 text-xs mt-1 block"></span>
                             </div>
                             <div>
                                 <x-country-dropdown name="walkIn_nationality" id="walkIn_nationality" label="Nationality" :required="true" />
+                                <span x-show="errors.nationality" x-text="errors.nationality" class="text-red-500 text-xs mt-1 block"></span>
                             </div>
                             <div class="sm:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Address (Optional)</label>
@@ -366,6 +384,10 @@ function walkInRegistration() {
             discountValue: 0
         },
 
+        errors: {
+            name: '', email: '', phone: '', password: '', confirmPassword: '', dob: '', gender: '', nationality: ''
+        },
+
         totals: {
             memberCount: 0,
             enrollmentTotal: 0,
@@ -401,6 +423,7 @@ function walkInRegistration() {
             this.showPassword = false;
             this.showConfirmPassword = false;
             this.passwordConfirmation = '';
+            this.errors = { name: '', email: '', phone: '', password: '', confirmPassword: '', dob: '', gender: '', nationality: '' };
             this.data = {
                 guardian: { name: '', email: '', password: '', phone: '', countryCode: '+973', dob: '', gender: '', nationality: '', address: '' },
                 isGuardian: null,
@@ -563,35 +586,83 @@ function walkInRegistration() {
             const g = this.data.guardian;
             // Read values from Blade component hidden inputs
             g.countryCode = document.getElementById('walkIn_countryCode')?.value || '+973';
-            g.dob = document.getElementById('walkIn_dob')?.value || '';
-            g.gender = document.getElementById('walkIn_gender')?.value || '';
+            g.dob         = document.getElementById('walkIn_dob')?.value || '';
+            g.gender      = document.getElementById('walkIn_gender')?.value || '';
             g.nationality = document.getElementById('walkIn_nationality')?.value || '';
 
-            if (!g.name) { this.toast('Please enter full name', 'warning'); return false; }
-            if (!g.email) { this.toast('Please enter email', 'warning'); return false; }
-            if (!g.password || g.password.length < 6) { this.toast('Password must be at least 6 characters', 'warning'); return false; }
-            if (g.password !== this.passwordConfirmation) { this.toast('Passwords do not match', 'warning'); return false; }
-            if (!g.phone) { this.toast('Please enter phone number', 'warning'); return false; }
-            if (!g.dob) { this.toast('Please enter date of birth', 'warning'); return false; }
-            if (!g.gender) { this.toast('Please select gender', 'warning'); return false; }
-            if (!g.nationality) { this.toast('Please select nationality', 'warning'); return false; }
-            return true;
+            // Reset errors
+            this.errors = { name: '', email: '', phone: '', password: '', confirmPassword: '', dob: '', gender: '', nationality: '' };
+
+            let valid = true;
+
+            if (!g.name.trim()) {
+                this.errors.name = 'Full name is required.'; valid = false;
+            }
+
+            if (!g.email.trim()) {
+                this.errors.email = 'Email address is required.'; valid = false;
+            } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(g.email.trim())) {
+                this.errors.email = 'Please enter a valid email address.'; valid = false;
+            }
+
+            if (!g.phone.trim()) {
+                this.errors.phone = 'Phone number is required.'; valid = false;
+            }
+
+            if (!g.password) {
+                this.errors.password = 'Password is required.'; valid = false;
+            } else if (g.password.length < 8) {
+                this.errors.password = 'Password must be at least 8 characters.'; valid = false;
+            }
+
+            if (!this.passwordConfirmation) {
+                this.errors.confirmPassword = 'Please confirm your password.'; valid = false;
+            } else if (g.password !== this.passwordConfirmation) {
+                this.errors.confirmPassword = 'Passwords do not match.'; valid = false;
+            }
+
+            if (!g.dob) {
+                this.errors.dob = 'Date of birth is required.'; valid = false;
+            }
+
+            if (!g.gender) {
+                this.errors.gender = 'Please select a gender.'; valid = false;
+            }
+
+            if (!g.nationality) {
+                this.errors.nationality = 'Please select a nationality.'; valid = false;
+            }
+
+            if (!valid) {
+                this.toast('Please fill in all required fields before continuing.', 'warning');
+            }
+
+            return valid;
         },
 
         validateStep2() {
-            if (this.data.isGuardian) {
-                for (const child of this.data.children) {
-                    if (!child.name) { this.toast('Please enter name for all children', 'warning'); return false; }
-                    if (!child.dob) { this.toast('Please enter date of birth for all children', 'warning'); return false; }
-                    if (!child.nationality) { this.toast('Please select nationality for all children', 'warning'); return false; }
-                }
+            if (this.data.isGuardian === null) {
+                this.toast('Please select whether you are registering children.', 'warning');
+                return false;
+            }
+            if (this.data.isGuardian && this.data.children.length === 0) {
+                this.toast('Please add at least one child, or select "No, just myself".', 'warning');
+                return false;
+            }
+            for (let i = 0; i < this.data.children.length; i++) {
+                const child = this.data.children[i];
+                const n = i + 1;
+                if (!child.name.trim()) { this.toast(`Child ${n}: Name is required.`, 'warning'); return false; }
+                if (!child.dob)         { this.toast(`Child ${n}: Date of birth is required.`, 'warning'); return false; }
+                if (!child.gender)      { this.toast(`Child ${n}: Please select a gender.`, 'warning'); return false; }
+                if (!child.nationality) { this.toast(`Child ${n}: Please select a nationality.`, 'warning'); return false; }
             }
             return true;
         },
 
         validateStep3() {
             if (this.data.people.filter(p => p.isJoining).length === 0) {
-                this.toast('Please select at least one person to register', 'warning');
+                this.toast('Please select at least one person to register.', 'warning');
                 return false;
             }
             return true;
@@ -619,31 +690,51 @@ function walkInRegistration() {
             try {
                 const joiningPeople = this.data.people.filter(p => p.isJoining);
                 const formData = {
-                    guardian: this.data.guardian,
-                    people: joiningPeople,
-                    discount_type: this.data.discountType,
+                    guardian:       this.data.guardian,
+                    people:         joiningPeople,
+                    discount_type:  this.data.discountType,
                     discount_value: this.data.discountValue
                 };
 
-                const res = await fetch(`/admin/club/${this.clubId}/walk-in-registration`, {
+                const res = await fetch(`/admin/club/${this.clubId}/members/walk-in`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                     },
                     body: JSON.stringify(formData)
                 });
 
-                if (res.ok) {
-                    this.toast('Registration completed successfully!', 'success');
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    this.toast('Walk-in registration completed successfully!', 'success');
                     this.open = false;
-                    location.reload();
+                    setTimeout(() => location.reload(), 1200);
+                } else if (res.status === 422 && data.errors) {
+                    // Map backend field errors to inline display
+                    const map = {
+                        'guardian.name':        'name',
+                        'guardian.email':       'email',
+                        'guardian.phone':       'phone',
+                        'guardian.password':    'password',
+                        'guardian.dob':         'dob',
+                        'guardian.gender':      'gender',
+                        'guardian.nationality': 'nationality',
+                    };
+                    let shown = false;
+                    Object.keys(data.errors).forEach(field => {
+                        const key = map[field];
+                        if (key) { this.errors[key] = data.errors[field][0]; shown = true; }
+                    });
+                    this.step = 1; // navigate back to step 1 for field errors
+                    this.toast(shown ? 'Please review the highlighted fields.' : (data.message || 'Validation failed.'), 'warning');
                 } else {
-                    const data = await res.json();
-                    throw new Error(data.message || 'Registration failed');
+                    this.toast(data.message || 'Registration failed. Please try again.', 'error');
                 }
             } catch (error) {
-                this.toast(error.message || 'Error completing registration', 'error');
+                this.toast('An unexpected error occurred. Please try again.', 'error');
             } finally {
                 this.isSubmitting = false;
             }

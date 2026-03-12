@@ -193,6 +193,7 @@ Route::middleware(['auth'])->prefix('admin/club/{club}')->name('admin.club.')->g
     Route::delete('/packages/{package}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyPackage'])->name('packages.destroy');
     Route::get('/members', [App\Http\Controllers\Admin\ClubAdminController::class, 'members'])->name('members');
     Route::post('/members', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeMember'])->name('members.store');
+    Route::post('/members/walk-in', [App\Http\Controllers\Admin\ClubAdminController::class, 'walkInRegistration'])->name('members.walk-in');
     Route::get('/members/search', [App\Http\Controllers\Admin\ClubAdminController::class, 'searchUsers'])->name('members.search');
     Route::get('/roles', [App\Http\Controllers\Admin\ClubAdminController::class, 'roles'])->name('roles');
     Route::post('/roles', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeRole'])->name('roles.store');

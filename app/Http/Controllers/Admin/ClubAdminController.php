@@ -18,9 +18,13 @@ use App\Models\ClubTransaction;
 use App\Models\ClubMemberSubscription;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\UserRelationship;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ClubAdminController extends Controller
 {
@@ -1368,6 +1372,158 @@ class ClubAdminController extends Controller
         }
 
         return back()->with('info', 'Selected users are already members of this club.');
+    }
+
+    public function walkInRegistration(Request $request, Tenant $club)
+    {
+        $this->authorizeClub($club);
+
+        $request->validate([
+            'guardian'                    => 'required|array',
+            'guardian.name'               => 'required|string|max:255',
+            'guardian.email'              => 'required|email|max:255|unique:users,email',
+            'guardian.password'           => 'required|string|min:8',
+            'guardian.phone'              => 'required|string|max:30',
+            'guardian.dob'                => 'required|date|before:today',
+            'guardian.gender'             => 'required|in:m,f',
+            'guardian.nationality'        => 'required|string|max:100',
+            'guardian.countryCode'        => 'nullable|string|max:10',
+            'guardian.address'            => 'nullable|string|max:500',
+            'people'                      => 'required|array|min:1',
+            'people.*.name'               => 'required|string|max:255',
+            'people.*.dob'                => 'required|date',
+            'people.*.gender'             => 'required|in:m,f',
+            'people.*.type'               => 'required|in:guardian,child',
+            'people.*.selectedPackageIds' => 'nullable|array',
+            'people.*.selectedPackageIds.*' => 'integer|exists:club_packages,id',
+            'discount_type'               => 'nullable|in:percentage,fixed',
+            'discount_value'              => 'nullable|numeric|min:0',
+        ], [
+            'guardian.name.required'    => 'Guardian full name is required.',
+            'guardian.email.required'   => 'Guardian email address is required.',
+            'guardian.email.email'      => 'Please provide a valid email address.',
+            'guardian.email.unique'     => 'This email address is already registered.',
+            'guardian.password.min'     => 'Password must be at least 8 characters.',
+            'guardian.phone.required'   => 'Phone number is required.',
+            'guardian.dob.required'     => 'Date of birth is required.',
+            'guardian.dob.before'       => 'Date of birth must be in the past.',
+            'guardian.gender.required'  => 'Please select a gender.',
+            'guardian.nationality.required' => 'Please select a nationality.',
+            'people.required'           => 'At least one person must be selected to register.',
+            'people.min'                => 'At least one person must be selected to register.',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $g = $request->guardian;
+
+            // Create guardian user
+            $guardianUser = User::create([
+                'full_name'   => $g['name'],
+                'name'        => $g['name'],
+                'email'       => $g['email'],
+                'password'    => Hash::make($g['password']),
+                'gender'      => $g['gender'],
+                'birthdate'   => $g['dob'],
+                'nationality' => $g['nationality'],
+                'mobile'      => ['code' => $g['countryCode'] ?? '+973', 'number' => $g['phone']],
+            ]);
+
+            // Create child users in order so we can match by index
+            $childUsers = [];
+            foreach ($request->people as $person) {
+                if ($person['type'] === 'child') {
+                    $childUser = User::create([
+                        'full_name'   => $person['name'],
+                        'name'        => $person['name'],
+                        'gender'      => $person['gender'],
+                        'birthdate'   => $person['dob'],
+                        'nationality' => $person['nationality'] ?? null,
+                        'password'    => Hash::make(Str::random(16)),
+                    ]);
+                    UserRelationship::create([
+                        'guardian_user_id'  => $guardianUser->id,
+                        'dependent_user_id' => $childUser->id,
+                        'relationship_type' => 'child',
+                    ]);
+                    $childUsers[] = $childUser;
+                }
+            }
+
+            // Valid package IDs for this club
+            $validPkgIds = ClubPackage::where('tenant_id', $club->id)->pluck('id')->flip();
+            $childIdx = 0;
+
+            foreach ($request->people as $person) {
+                $user = $person['type'] === 'guardian'
+                    ? $guardianUser
+                    : ($childUsers[$childIdx++] ?? null);
+                if (!$user) continue;
+
+                // Create/update membership
+                Membership::firstOrCreate(
+                    ['tenant_id' => $club->id, 'user_id' => $user->id],
+                    ['status' => 'active']
+                );
+
+                // Enrollment fee transaction
+                if ($club->enrollment_fee > 0) {
+                    ClubTransaction::create([
+                        'tenant_id'        => $club->id,
+                        'user_id'          => $user->id,
+                        'type'             => 'income',
+                        'category'         => 'enrollment',
+                        'amount'           => $club->enrollment_fee,
+                        'description'      => "Walk-in enrollment: {$user->full_name}",
+                        'transaction_date' => now(),
+                    ]);
+                }
+
+                // Subscriptions for selected packages
+                foreach (($person['selectedPackageIds'] ?? []) as $pkgId) {
+                    if (!isset($validPkgIds[$pkgId])) continue;
+                    $package = ClubPackage::find($pkgId);
+                    if (!$package) continue;
+
+                    $sub = ClubMemberSubscription::create([
+                        'tenant_id'      => $club->id,
+                        'user_id'        => $user->id,
+                        'package_id'     => $pkgId,
+                        'type'           => 'regular',
+                        'status'         => 'active',
+                        'payment_status' => 'paid',
+                        'amount_paid'    => $package->price,
+                        'amount_due'     => 0,
+                        'start_date'     => now(),
+                        'end_date'       => now()->addMonths($package->duration_months),
+                    ]);
+
+                    ClubTransaction::create([
+                        'tenant_id'        => $club->id,
+                        'user_id'          => $user->id,
+                        'subscription_id'  => $sub->id,
+                        'type'             => 'income',
+                        'category'         => 'subscription',
+                        'amount'           => $package->price,
+                        'description'      => "Walk-in: {$user->full_name} — {$package->name}",
+                        'transaction_date' => now(),
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Walk-in registration completed successfully!',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Registration failed. Please try again.',
+            ], 500);
+        }
     }
 
     public function searchUsers(Request $request, Tenant $club)
