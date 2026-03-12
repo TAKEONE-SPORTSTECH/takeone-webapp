@@ -13,14 +13,9 @@
         <div class="grow mr-3">
             <input type="text" id="memberSearch" class="form-control" placeholder="Search members by name, phone, nationality, or gender..." value="{{ $search ?? '' }}">
         </div>
-        <div class="flex gap-2">
-            <button class="btn btn-outline-primary" @click="$dispatch('open-member-create-modal')">
-                <i class="bi bi-person-plus mr-2"></i>Add Child Member
-            </button>
-            <button class="btn btn-primary" @click="$dispatch('open-member-create-modal')">
-                <i class="bi bi-plus-circle mr-2"></i>Add Member
-            </button>
-        </div>
+        <button class="btn btn-primary" @click="$dispatch('open-member-create-modal')">
+            <i class="bi bi-plus-circle mr-2"></i>Add Member
+        </button>
     </div>
 
     <!-- Members Grid -->
