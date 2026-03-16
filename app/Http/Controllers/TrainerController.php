@@ -40,7 +40,11 @@ class TrainerController extends Controller
 
         $scheduleSlots = [];
         foreach ($packageActivities as $pa) {
-            $scheduleData = is_string($pa->schedule) ? json_decode($pa->schedule, true) : $pa->schedule;
+            try {
+                $scheduleData = is_string($pa->schedule) ? json_decode($pa->schedule, true, 512, JSON_THROW_ON_ERROR) : $pa->schedule;
+            } catch (\JsonException) {
+                continue;
+            }
             if (!is_array($scheduleData) || empty($scheduleData)) continue;
 
             $timeGroups = [];

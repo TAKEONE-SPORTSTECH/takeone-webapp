@@ -1,5 +1,6 @@
 <?php
 
+use Monolog\Formatter\JsonFormatter;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
@@ -58,11 +59,35 @@ return [
             'ignore_exceptions' => false,
         ],
 
+        // Sentry channel — forwards error/critical log calls to Sentry.
+        // Add 'sentry' to LOG_STACK in production to enable.
+        'sentry' => [
+            'driver' => 'sentry',
+            'level'  => env('SENTRY_LOG_LEVEL', 'error'),
+            'bubble' => true,
+        ],
+
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
+        ],
+
+        // JSON structured logging — use in production for log aggregators
+        // (Datadog, Logtail, CloudWatch). Switch with: LOG_CHANNEL=json
+        'json' => [
+            'driver'    => 'monolog',
+            'level'     => env('LOG_LEVEL', 'debug'),
+            'handler'   => StreamHandler::class,
+            'handler_with' => [
+                'stream' => storage_path('logs/laravel.log'),
+            ],
+            'formatter'      => JsonFormatter::class,
+            'formatter_with' => [
+                'appendNewline' => true,
+            ],
+            'processors' => [PsrLogMessageProcessor::class],
         ],
 
         'daily' => [

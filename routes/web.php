@@ -15,40 +15,24 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
 Route::get('/', function () {
-    // If user is authenticated, show explore page
     if (Auth::check()) {
         return redirect()->route('clubs.explore');
     }
-    // Otherwise redirect to login
     return redirect()->route('login');
 });
 
 // Authentication routes
-Route::get('/login', [AuthenticatedSessionController::class, 'create'])
-                ->name('login');
-
-Route::post('/login', [AuthenticatedSessionController::class, 'store']);
-
-Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
-                ->name('logout');
-
-Route::get('/register', [RegisteredUserController::class, 'create'])
-                ->name('register');
-
-Route::post('/register', [RegisteredUserController::class, 'store']);
+Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
+Route::post('/login', [AuthenticatedSessionController::class, 'store'])->middleware('throttle:login');
+Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
+Route::post('/register', [RegisteredUserController::class, 'store'])->middleware('throttle:register');
 
 // Password reset routes
-Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])
-                ->name('password.request');
-
-Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
-                ->name('password.email');
-
-Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])
-                ->name('password.reset');
-
-Route::post('/reset-password', [NewPasswordController::class, 'store'])
-                ->name('password.update');
+Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
+Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])->name('password.email')->middleware('throttle:password-reset');
+Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
+Route::post('/reset-password', [NewPasswordController::class, 'store'])->name('password.update')->middleware('throttle:password-reset');
 
 // Email verification routes
 Route::get('/email/verify', function () {
@@ -89,12 +73,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/clubs/all', [PlatformController::class, 'all'])->name('clubs.all');
     Route::get('/clubs/{slug}', [PlatformController::class, 'show'])->name('clubs.show');
     Route::get('/clubs/{slug}/packages-json', [PlatformController::class, 'clubPackages'])->name('clubs.packages.json');
-    Route::post('/clubs/join', [PlatformController::class, 'joinClub'])->name('clubs.join');
-    Route::post('/clubs/{slug}/events/{event}/join', [PlatformController::class, 'joinEvent'])->name('clubs.events.join');
+    Route::post('/clubs/join', [PlatformController::class, 'joinClub'])->name('clubs.join')->middleware('throttle:join-club');
+    Route::post('/clubs/{slug}/events/{event}/join', [PlatformController::class, 'joinEvent'])->name('clubs.events.join')->middleware('throttle:join-club');
     Route::delete('/clubs/{slug}/events/{event}/leave', [PlatformController::class, 'leaveEvent'])->name('clubs.events.leave');
-    Route::post('/clubs/{slug}/perks/{perk}/collect', [PlatformController::class, 'collectPerk'])->name('clubs.perks.collect');
-    Route::post('/clubs/{slug}/timeline/{post}/like', [PlatformController::class, 'toggleLike'])->name('clubs.timeline.like');
-    Route::post('/clubs/{slug}/timeline/{post}/comments', [PlatformController::class, 'addComment'])->name('clubs.timeline.comment');
+    Route::post('/clubs/{slug}/perks/{perk}/collect', [PlatformController::class, 'collectPerk'])->name('clubs.perks.collect')->middleware('throttle:social');
+    Route::post('/clubs/{slug}/timeline/{post}/like', [PlatformController::class, 'toggleLike'])->name('clubs.timeline.like')->middleware('throttle:social');
+    Route::post('/clubs/{slug}/timeline/{post}/comments', [PlatformController::class, 'addComment'])->name('clubs.timeline.comment')->middleware('throttle:social');
     Route::delete('/clubs/{slug}/timeline/{post}/comments/{comment}', [PlatformController::class, 'deleteComment'])->name('clubs.timeline.comment.delete');
     Route::get('/trainer/{user}', [TrainerController::class, 'show'])->name('trainer.show');
 });
@@ -112,8 +96,8 @@ Route::middleware(['auth', 'verified', 'role:super-admin'])->prefix('admin')->na
     Route::get('/clubs/{club}/edit', [App\Http\Controllers\Admin\PlatformController::class, 'editClub'])->name('platform.clubs.edit');
     Route::put('/clubs/{club}', [App\Http\Controllers\Admin\ClubApiController::class, 'update'])->name('platform.clubs.update');
     Route::delete('/clubs/{club}', [App\Http\Controllers\Admin\PlatformController::class, 'destroyClub'])->name('platform.clubs.destroy');
-    Route::post('/clubs/{club}/upload-logo', [App\Http\Controllers\Admin\PlatformController::class, 'uploadClubLogo'])->name('platform.clubs.upload-logo');
-    Route::post('/clubs/{club}/upload-cover', [App\Http\Controllers\Admin\PlatformController::class, 'uploadClubCover'])->name('platform.clubs.upload-cover');
+    Route::post('/clubs/{club}/upload-logo', [App\Http\Controllers\Admin\PlatformController::class, 'uploadClubLogo'])->name('platform.clubs.upload-logo')->middleware('throttle:uploads');
+    Route::post('/clubs/{club}/upload-cover', [App\Http\Controllers\Admin\PlatformController::class, 'uploadClubCover'])->name('platform.clubs.upload-cover')->middleware('throttle:uploads');
 
     // Club API endpoints for modal
     Route::get('/api/users', [App\Http\Controllers\Admin\ClubApiController::class, 'getUsers']);
@@ -127,7 +111,7 @@ Route::middleware(['auth', 'verified', 'role:super-admin'])->prefix('admin')->na
     Route::get('/members/{id}/edit', [App\Http\Controllers\Admin\PlatformController::class, 'editMember'])->name('platform.members.edit');
     Route::put('/members/{id}', [App\Http\Controllers\Admin\PlatformController::class, 'updateMember'])->name('platform.members.update');
     Route::delete('/members/{id}', [App\Http\Controllers\Admin\PlatformController::class, 'destroyMember'])->name('platform.members.destroy');
-    Route::post('/members/{id}/upload-picture', [App\Http\Controllers\Admin\PlatformController::class, 'uploadMemberPicture'])->name('platform.members.upload-picture');
+    Route::post('/members/{id}/upload-picture', [App\Http\Controllers\Admin\PlatformController::class, 'uploadMemberPicture'])->name('platform.members.upload-picture')->middleware('throttle:uploads');
     Route::post('/members/{id}/health', [App\Http\Controllers\Admin\PlatformController::class, 'storeMemberHealth'])->name('platform.members.store-health');
     Route::put('/members/{id}/health/{recordId}', [App\Http\Controllers\Admin\PlatformController::class, 'updateMemberHealth'])->name('platform.members.update-health');
     Route::post('/members/{id}/tournament', [App\Http\Controllers\Admin\PlatformController::class, 'storeMemberTournament'])->name('platform.members.store-tournament');
@@ -140,72 +124,102 @@ Route::middleware(['auth', 'verified', 'role:super-admin'])->prefix('admin')->na
 });
 
 // Club Admin routes (Club owners and admins)
-Route::middleware(['auth'])->prefix('admin/club/{club}')->name('admin.club.')->group(function () { // TODO: re-add 'verified' middleware after testing
+Route::middleware(['auth', 'verified', 'tenant'])->prefix('admin/club/{club}')->name('admin.club.')->group(function () {
+    // Dashboard & club details
     Route::get('/dashboard', [App\Http\Controllers\Admin\ClubAdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/details', [App\Http\Controllers\Admin\ClubAdminController::class, 'details'])->name('details');
     Route::put('/', [App\Http\Controllers\Admin\ClubAdminController::class, 'update'])->name('update');
     Route::delete('/', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroy'])->name('destroy');
     Route::post('/social-links', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeSocialLink'])->name('social-links.store');
     Route::delete('/social-links/{link}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroySocialLink'])->name('social-links.destroy');
-    Route::get('/gallery', [App\Http\Controllers\Admin\ClubAdminController::class, 'gallery'])->name('gallery');
-    Route::post('/gallery/upload', [App\Http\Controllers\Admin\ClubAdminController::class, 'uploadGallery'])->name('gallery.upload');
-    Route::post('/gallery/reorder', [App\Http\Controllers\Admin\ClubAdminController::class, 'reorderGallery'])->name('gallery.reorder');
-    Route::post('/gallery/youtube', [App\Http\Controllers\Admin\ClubAdminController::class, 'saveYoutubeUrl'])->name('gallery.youtube');
-    Route::delete('/gallery/{image}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyGalleryImage'])->name('gallery.destroy');
-    Route::get('/facilities', [App\Http\Controllers\Admin\ClubAdminController::class, 'facilities'])->name('facilities');
-    Route::post('/facilities', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeFacility'])->name('facilities.store');
-    Route::get('/facilities/{facility}', [App\Http\Controllers\Admin\ClubAdminController::class, 'getFacility'])->name('facilities.show');
-    Route::put('/facilities/{facility}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateFacility'])->name('facilities.update');
-    Route::delete('/facilities/{facility}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyFacility'])->name('facilities.destroy');
-    Route::post('/facilities/{facility}/upload-image', [App\Http\Controllers\Admin\ClubAdminController::class, 'uploadFacilityImage'])->name('facilities.upload-image');
     Route::post('/transfer-ownership', [App\Http\Controllers\Admin\ClubAdminController::class, 'transferOwnership'])->name('transfer-ownership');
     Route::post('/create-owner', [App\Http\Controllers\Admin\ClubAdminController::class, 'createOwner'])->name('create-owner');
-    Route::get('/instructors', [App\Http\Controllers\Admin\ClubAdminController::class, 'instructors'])->name('instructors');
-    Route::post('/instructors', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeInstructor'])->name('instructors.store');
-    Route::post('/instructors/{instructor}/upload-photo', [App\Http\Controllers\Admin\ClubAdminController::class, 'uploadInstructorPhoto'])->name('instructors.upload-photo');
-    Route::put('/instructors/{instructor}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateInstructor'])->name('instructors.update');
-    Route::post('/subscriptions/{subscription}/approve-payment', [App\Http\Controllers\Admin\ClubAdminController::class, 'approvePayment'])->name('subscriptions.approve-payment');
-    Route::delete('/instructors/{instructor}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyInstructor'])->name('instructors.destroy');
-    Route::get('/activities', [App\Http\Controllers\Admin\ClubAdminController::class, 'activities'])->name('activities');
-    Route::get('/events', [App\Http\Controllers\Admin\ClubAdminController::class, 'events'])->name('events');
-    Route::post('/events', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeEvent'])->name('events.store');
-    Route::put('/events/{event}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateEvent'])->name('events.update');
-    Route::delete('/events/{event}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyEvent'])->name('events.destroy');
-    Route::patch('/events/{event}/archive', [App\Http\Controllers\Admin\ClubAdminController::class, 'archiveEvent'])->name('events.archive');
-    Route::get('/timeline', [App\Http\Controllers\Admin\ClubAdminController::class, 'timeline'])->name('timeline');
-    Route::post('/timeline', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeTimelinePost'])->name('timeline.store');
-    Route::put('/timeline/{post}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateTimelinePost'])->name('timeline.update');
-    Route::delete('/timeline/{post}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyTimelinePost'])->name('timeline.destroy');
-    Route::get('/perks', [App\Http\Controllers\Admin\ClubAdminController::class, 'perks'])->name('perks');
-    Route::post('/perks', [App\Http\Controllers\Admin\ClubAdminController::class, 'storePerk'])->name('perks.store');
-    Route::put('/perks/{perk}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updatePerk'])->name('perks.update');
-    Route::delete('/perks/{perk}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyPerk'])->name('perks.destroy');
-    Route::get('/achievements', [App\Http\Controllers\Admin\ClubAdminController::class, 'achievements'])->name('achievements');
-    Route::post('/achievements', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeAchievement'])->name('achievements.store');
-    Route::put('/achievements/{achievement}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateAchievement'])->name('achievements.update');
-    Route::delete('/achievements/{achievement}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyAchievement'])->name('achievements.destroy');
-    Route::post('/activities', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeActivity'])->name('activities.store');
-    Route::put('/activities/{activity}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateActivity'])->name('activities.update');
-    Route::delete('/activities/{activity}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyActivity'])->name('activities.destroy');
-    Route::get('/packages', [App\Http\Controllers\Admin\ClubAdminController::class, 'packages'])->name('packages');
-    Route::post('/packages', [App\Http\Controllers\Admin\ClubAdminController::class, 'storePackage'])->name('packages.store');
-    Route::put('/packages/{package}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updatePackage'])->name('packages.update');
-    Route::delete('/packages/{package}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyPackage'])->name('packages.destroy');
-    Route::get('/members', [App\Http\Controllers\Admin\ClubAdminController::class, 'members'])->name('members');
-    Route::post('/members', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeMember'])->name('members.store');
-    Route::post('/members/walk-in', [App\Http\Controllers\Admin\ClubAdminController::class, 'walkInRegistration'])->name('members.walk-in');
-    Route::get('/members/search', [App\Http\Controllers\Admin\ClubAdminController::class, 'searchUsers'])->name('members.search');
-    Route::get('/roles', [App\Http\Controllers\Admin\ClubAdminController::class, 'roles'])->name('roles');
-    Route::post('/roles', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeRole'])->name('roles.store');
-    Route::delete('/roles', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyRole'])->name('roles.destroy');
-    Route::get('/financials', [App\Http\Controllers\Admin\ClubAdminController::class, 'financials'])->name('financials');
-    Route::post('/financials/income', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeIncome'])->name('financials.income');
-    Route::post('/financials/expense', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeExpense'])->name('financials.expense');
-    Route::put('/financials/{transaction}', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateTransaction'])->name('financials.update');
-    Route::delete('/financials/{transaction}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroyTransaction'])->name('financials.destroy');
-    Route::get('/messages', [App\Http\Controllers\Admin\ClubAdminController::class, 'messages'])->name('messages');
-    Route::post('/messages/send', [App\Http\Controllers\Admin\ClubAdminController::class, 'sendMessage'])->name('messages.send');
-    Route::get('/analytics', [App\Http\Controllers\Admin\ClubAdminController::class, 'analytics'])->name('analytics');
+
+    // Gallery
+    Route::get('/gallery', [App\Http\Controllers\Admin\ClubGalleryController::class, 'gallery'])->name('gallery');
+    Route::post('/gallery/upload', [App\Http\Controllers\Admin\ClubGalleryController::class, 'uploadGallery'])->name('gallery.upload')->middleware('throttle:uploads');
+    Route::post('/gallery/reorder', [App\Http\Controllers\Admin\ClubGalleryController::class, 'reorderGallery'])->name('gallery.reorder');
+    Route::post('/gallery/youtube', [App\Http\Controllers\Admin\ClubGalleryController::class, 'saveYoutubeUrl'])->name('gallery.youtube');
+    Route::delete('/gallery/{image}', [App\Http\Controllers\Admin\ClubGalleryController::class, 'destroyGalleryImage'])->name('gallery.destroy');
+
+    // Facilities
+    Route::get('/facilities', [App\Http\Controllers\Admin\ClubFacilityController::class, 'facilities'])->name('facilities');
+    Route::post('/facilities', [App\Http\Controllers\Admin\ClubFacilityController::class, 'storeFacility'])->name('facilities.store');
+    Route::get('/facilities/{facility}', [App\Http\Controllers\Admin\ClubFacilityController::class, 'getFacility'])->name('facilities.show');
+    Route::put('/facilities/{facility}', [App\Http\Controllers\Admin\ClubFacilityController::class, 'updateFacility'])->name('facilities.update');
+    Route::delete('/facilities/{facility}', [App\Http\Controllers\Admin\ClubFacilityController::class, 'destroyFacility'])->name('facilities.destroy');
+    Route::post('/facilities/{facility}/upload-image', [App\Http\Controllers\Admin\ClubFacilityController::class, 'uploadFacilityImage'])->name('facilities.upload-image')->middleware('throttle:uploads');
+
+    // Instructors
+    Route::get('/instructors', [App\Http\Controllers\Admin\ClubInstructorController::class, 'instructors'])->name('instructors');
+    Route::post('/instructors', [App\Http\Controllers\Admin\ClubInstructorController::class, 'storeInstructor'])->name('instructors.store');
+    Route::post('/instructors/{instructor}/upload-photo', [App\Http\Controllers\Admin\ClubInstructorController::class, 'uploadInstructorPhoto'])->name('instructors.upload-photo')->middleware('throttle:uploads');
+    Route::put('/instructors/{instructor}', [App\Http\Controllers\Admin\ClubInstructorController::class, 'updateInstructor'])->name('instructors.update');
+    Route::delete('/instructors/{instructor}', [App\Http\Controllers\Admin\ClubInstructorController::class, 'destroyInstructor'])->name('instructors.destroy');
+
+    // Activities
+    Route::get('/activities', [App\Http\Controllers\Admin\ClubActivityController::class, 'activities'])->name('activities');
+    Route::post('/activities', [App\Http\Controllers\Admin\ClubActivityController::class, 'storeActivity'])->name('activities.store');
+    Route::put('/activities/{activity}', [App\Http\Controllers\Admin\ClubActivityController::class, 'updateActivity'])->name('activities.update');
+    Route::delete('/activities/{activity}', [App\Http\Controllers\Admin\ClubActivityController::class, 'destroyActivity'])->name('activities.destroy');
+
+    // Events
+    Route::get('/events', [App\Http\Controllers\Admin\ClubEventController::class, 'events'])->name('events');
+    Route::post('/events', [App\Http\Controllers\Admin\ClubEventController::class, 'storeEvent'])->name('events.store');
+    Route::put('/events/{event}', [App\Http\Controllers\Admin\ClubEventController::class, 'updateEvent'])->name('events.update');
+    Route::delete('/events/{event}', [App\Http\Controllers\Admin\ClubEventController::class, 'destroyEvent'])->name('events.destroy');
+    Route::patch('/events/{event}/archive', [App\Http\Controllers\Admin\ClubEventController::class, 'archiveEvent'])->name('events.archive');
+
+    // Timeline
+    Route::get('/timeline', [App\Http\Controllers\Admin\ClubTimelineController::class, 'timeline'])->name('timeline');
+    Route::post('/timeline', [App\Http\Controllers\Admin\ClubTimelineController::class, 'storeTimelinePost'])->name('timeline.store');
+    Route::put('/timeline/{post}', [App\Http\Controllers\Admin\ClubTimelineController::class, 'updateTimelinePost'])->name('timeline.update');
+    Route::delete('/timeline/{post}', [App\Http\Controllers\Admin\ClubTimelineController::class, 'destroyTimelinePost'])->name('timeline.destroy');
+
+    // Perks
+    Route::get('/perks', [App\Http\Controllers\Admin\ClubPerkController::class, 'perks'])->name('perks');
+    Route::post('/perks', [App\Http\Controllers\Admin\ClubPerkController::class, 'storePerk'])->name('perks.store');
+    Route::put('/perks/{perk}', [App\Http\Controllers\Admin\ClubPerkController::class, 'updatePerk'])->name('perks.update');
+    Route::delete('/perks/{perk}', [App\Http\Controllers\Admin\ClubPerkController::class, 'destroyPerk'])->name('perks.destroy');
+
+    // Achievements
+    Route::get('/achievements', [App\Http\Controllers\Admin\ClubAchievementController::class, 'achievements'])->name('achievements');
+    Route::post('/achievements', [App\Http\Controllers\Admin\ClubAchievementController::class, 'storeAchievement'])->name('achievements.store');
+    Route::put('/achievements/{achievement}', [App\Http\Controllers\Admin\ClubAchievementController::class, 'updateAchievement'])->name('achievements.update');
+    Route::delete('/achievements/{achievement}', [App\Http\Controllers\Admin\ClubAchievementController::class, 'destroyAchievement'])->name('achievements.destroy');
+
+    // Packages
+    Route::get('/packages', [App\Http\Controllers\Admin\ClubPackageController::class, 'packages'])->name('packages');
+    Route::post('/packages', [App\Http\Controllers\Admin\ClubPackageController::class, 'storePackage'])->name('packages.store');
+    Route::put('/packages/{package}', [App\Http\Controllers\Admin\ClubPackageController::class, 'updatePackage'])->name('packages.update');
+    Route::delete('/packages/{package}', [App\Http\Controllers\Admin\ClubPackageController::class, 'destroyPackage'])->name('packages.destroy');
+
+    // Members
+    Route::get('/members', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'members'])->name('members');
+    Route::post('/members', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'storeMember'])->name('members.store');
+    Route::post('/members/walk-in', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'walkInRegistration'])->name('members.walk-in')->middleware('throttle:walk-in');
+    Route::get('/members/search', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'searchUsers'])->name('members.search');
+    Route::post('/subscriptions/{subscription}/approve-payment', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'approvePayment'])->name('subscriptions.approve-payment');
+    Route::get('/subscriptions/{subscription}/payment-proof', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'servePaymentProof'])->name('subscriptions.payment-proof');
+
+    // Roles
+    Route::get('/roles', [App\Http\Controllers\Admin\ClubRoleController::class, 'roles'])->name('roles');
+    Route::post('/roles', [App\Http\Controllers\Admin\ClubRoleController::class, 'storeRole'])->name('roles.store');
+    Route::delete('/roles', [App\Http\Controllers\Admin\ClubRoleController::class, 'destroyRole'])->name('roles.destroy');
+
+    // Financials
+    Route::get('/financials', [App\Http\Controllers\Admin\ClubFinancialController::class, 'financials'])->name('financials');
+    Route::post('/financials/income', [App\Http\Controllers\Admin\ClubFinancialController::class, 'storeIncome'])->name('financials.income');
+    Route::post('/financials/expense', [App\Http\Controllers\Admin\ClubFinancialController::class, 'storeExpense'])->name('financials.expense');
+    Route::put('/financials/{transaction}', [App\Http\Controllers\Admin\ClubFinancialController::class, 'updateTransaction'])->name('financials.update');
+    Route::delete('/financials/{transaction}', [App\Http\Controllers\Admin\ClubFinancialController::class, 'destroyTransaction'])->name('financials.destroy');
+
+    // Messages
+    Route::get('/messages', [App\Http\Controllers\Admin\ClubMessageController::class, 'messages'])->name('messages');
+    Route::post('/messages/send', [App\Http\Controllers\Admin\ClubMessageController::class, 'sendMessage'])->name('messages.send');
+
+    // Analytics
+    Route::get('/analytics', [App\Http\Controllers\Admin\ClubAnalyticsController::class, 'analytics'])->name('analytics');
 });
 
 // Unified Member routes
@@ -234,7 +248,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/member/{id}', [MemberController::class, 'update'])->name('member.update');
     Route::delete('/member/{id}/confirm-delete', [MemberController::class, 'confirmDelete'])->name('member.confirm-delete');
     Route::delete('/member/{id}', [MemberController::class, 'destroy'])->name('member.destroy');
-    Route::post('/member/{id}/upload-picture', [MemberController::class, 'uploadPicture'])->name('member.upload-picture');
+    Route::post('/member/{id}/upload-picture', [MemberController::class, 'uploadPicture'])->name('member.upload-picture')->middleware('throttle:uploads');
     Route::post('/member/{id}/health', [MemberController::class, 'storeHealth'])->name('member.store-health');
     Route::put('/member/{id}/health/{recordId}', [MemberController::class, 'updateHealth'])->name('member.update-health');
     Route::post('/member/{id}/tournament', [MemberController::class, 'storeTournament'])->name('member.store-tournament');
@@ -256,7 +270,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/family/{id}/health/{recordId}', [MemberController::class, 'updateHealth'])->name('family.update-health');
     Route::put('/family/goal/{goalId}', [MemberController::class, 'updateGoal'])->name('family.update-goal');
     Route::post('/family/{id}/tournament', [MemberController::class, 'storeTournament'])->name('family.store-tournament');
-    Route::post('/family/{id}/upload-picture', [MemberController::class, 'uploadPicture'])->name('family.upload-picture');
+    Route::post('/family/{id}/upload-picture', [MemberController::class, 'uploadPicture'])->name('family.upload-picture')->middleware('throttle:uploads');
     Route::delete('/family/{id}', [MemberController::class, 'destroy'])->name('family.destroy');
     Route::get('/family/dashboard', function () {
         return redirect()->route('members.index');
@@ -271,6 +285,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Instructor Review routes
     Route::get('/instructor/{instructorId}/reviews', [InstructorReviewController::class, 'index'])->name('instructor.reviews.index');
-    Route::post('/instructor/{instructorId}/reviews', [InstructorReviewController::class, 'store'])->name('instructor.reviews.store');
+    Route::post('/instructor/{instructorId}/reviews', [InstructorReviewController::class, 'store'])->name('instructor.reviews.store')->middleware('throttle:social');
     Route::put('/instructor/reviews/{reviewId}', [InstructorReviewController::class, 'update'])->name('instructor.reviews.update');
 });

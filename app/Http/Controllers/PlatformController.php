@@ -2,6 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AddCommentRequest;
+use App\Http\Requests\JoinClubRequest;
+use App\Http\Requests\NearbyClubsRequest;
+use App\Services\SubscriptionService;
+use App\Support\ClubCache;
+use App\Traits\StoresBase64Images;
+use Illuminate\Support\Facades\Cache;
 use App\Models\Tenant;
 use App\Models\ClubPackage;
 use App\Models\ClubMemberSubscription;
@@ -19,6 +26,7 @@ use Illuminate\Support\Facades\DB;
 
 class PlatformController extends Controller
 {
+    use StoresBase64Images;
     /**
      * Display the explore clubs page.
      */
@@ -88,13 +96,8 @@ class PlatformController extends Controller
     /**
      * Get nearby clubs based on user's location.
      */
-    public function nearby(Request $request)
+    public function nearby(NearbyClubsRequest $request)
     {
-        $request->validate([
-            'latitude' => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
-            'radius' => 'nullable|numeric|min:1|max:100', // radius in kilometers
-        ]);
 
         $userLat = $request->latitude;
         $userLng = $request->longitude;
@@ -210,77 +213,91 @@ class PlatformController extends Controller
         $reviews = $club->reviews()->with('user')->latest()->get();
         $averageRating = $reviews->avg('rating') ?? 0;
 
-        // Compute member statistics for the Statistics tab
-        $memberIds = $club->members()->pluck('users.id');
-        $members = \App\Models\User::whereIn('id', $memberIds)->get();
+        // Compute member statistics for the Statistics tab — cached for 1 hour.
+        $memberStats = Cache::remember(ClubCache::showStats($club->id), ClubCache::TTL_STATS, function () use ($club) {
+            $memberIds = $club->members()->pluck('users.id');
+            $members   = \App\Models\User::whereIn('id', $memberIds)->get();
 
-        // Nationality breakdown
-        $nationalityStats = $members->groupBy('nationality')
-            ->map(fn($group) => $group->count())
-            ->sortDesc()
-            ->take(4);
+            // Nationality breakdown
+            $nationalityStats = $members->groupBy('nationality')
+                ->map(fn($group) => $group->count())
+                ->sortDesc()
+                ->take(4);
 
-        // Age group breakdown
-        $ageGroups = ['Kids (5-10)' => 0, 'Juniors (11-15)' => 0, 'Youth (16-21)' => 0, 'Adults (22+)' => 0];
-        foreach ($members as $member) {
-            if (!$member->birthdate) continue;
-            $age = $member->birthdate->age;
-            if ($age >= 5 && $age <= 10) $ageGroups['Kids (5-10)']++;
-            elseif ($age >= 11 && $age <= 15) $ageGroups['Juniors (11-15)']++;
-            elseif ($age >= 16 && $age <= 21) $ageGroups['Youth (16-21)']++;
-            elseif ($age >= 22) $ageGroups['Adults (22+)']++;
-        }
+            // Age group breakdown
+            $ageGroups = ['Kids (5-10)' => 0, 'Juniors (11-15)' => 0, 'Youth (16-21)' => 0, 'Adults (22+)' => 0];
+            foreach ($members as $member) {
+                if (!$member->birthdate) continue;
+                $age = $member->birthdate->age;
+                if ($age >= 5 && $age <= 10)      $ageGroups['Kids (5-10)']++;
+                elseif ($age >= 11 && $age <= 15) $ageGroups['Juniors (11-15)']++;
+                elseif ($age >= 16 && $age <= 21) $ageGroups['Youth (16-21)']++;
+                elseif ($age >= 22)               $ageGroups['Adults (22+)']++;
+            }
 
-        // Gender breakdown
-        $genderStats = $members->groupBy('gender')
-            ->map(fn($group) => $group->count());
+            // Gender breakdown
+            $genderStats = $members->groupBy('gender')->map(fn($group) => $group->count());
 
-        // Horoscope breakdown
-        $horoscopeGroups = ['Fire' => 0, 'Earth' => 0, 'Air' => 0, 'Water' => 0];
-        $fireSigns = ['Aries', 'Leo', 'Sagittarius'];
-        $earthSigns = ['Taurus', 'Virgo', 'Capricorn'];
-        $airSigns = ['Gemini', 'Libra', 'Aquarius'];
-        $waterSigns = ['Cancer', 'Scorpio', 'Pisces'];
-        foreach ($members as $member) {
-            $sign = $member->horoscope;
-            if (!$sign) continue;
-            if (in_array($sign, $fireSigns)) $horoscopeGroups['Fire']++;
-            elseif (in_array($sign, $earthSigns)) $horoscopeGroups['Earth']++;
-            elseif (in_array($sign, $airSigns)) $horoscopeGroups['Air']++;
-            elseif (in_array($sign, $waterSigns)) $horoscopeGroups['Water']++;
-        }
+            // Horoscope breakdown
+            $horoscopeGroups = ['Fire' => 0, 'Earth' => 0, 'Air' => 0, 'Water' => 0];
+            $fireSigns  = ['Aries', 'Leo', 'Sagittarius'];
+            $earthSigns = ['Taurus', 'Virgo', 'Capricorn'];
+            $airSigns   = ['Gemini', 'Libra', 'Aquarius'];
+            $waterSigns = ['Cancer', 'Scorpio', 'Pisces'];
+            foreach ($members as $member) {
+                $sign = $member->horoscope;
+                if (!$sign) continue;
+                if (in_array($sign, $fireSigns))       $horoscopeGroups['Fire']++;
+                elseif (in_array($sign, $earthSigns))  $horoscopeGroups['Earth']++;
+                elseif (in_array($sign, $airSigns))    $horoscopeGroups['Air']++;
+                elseif (in_array($sign, $waterSigns))  $horoscopeGroups['Water']++;
+            }
 
-        // Blood type breakdown
-        $bloodTypeStats = $members->groupBy('blood_type')
-            ->map(fn($group) => $group->count())
-            ->filter(fn($_, $key) => !empty($key));
+            // Blood type breakdown
+            $bloodTypeStats = $members->groupBy('blood_type')
+                ->map(fn($group) => $group->count())
+                ->filter(fn($_, $key) => !empty($key));
 
-        // Monthly active members trend (last 12 months)
-        $monthlyTrend = [];
-        for ($i = 11; $i >= 0; $i--) {
-            $date = now()->subMonths($i);
-            $monthlyTrend[$date->format('M')] = $club->memberships()
-                ->where('created_at', '<=', $date->endOfMonth())
-                ->where(function ($q) use ($date) {
-                    $q->where('status', 'active')
-                      ->orWhere('updated_at', '>=', $date->startOfMonth());
-                })
-                ->count();
-        }
+            // Member goal status breakdown
+            $memberGoals = \App\Models\Goal::whereIn('user_id', $memberIds)->get()->groupBy('user_id');
+            $goalStats   = ['Achieved' => 0, 'In Progress' => 0, 'Pending' => 0, 'No Goals Set' => 0];
+            foreach ($memberIds as $id) {
+                if (!isset($memberGoals[$id])) { $goalStats['No Goals Set']++; continue; }
+                $statuses = $memberGoals[$id]->pluck('status');
+                if ($statuses->contains('completed'))       $goalStats['Achieved']++;
+                elseif ($statuses->contains('in_progress')) $goalStats['In Progress']++;
+                else                                        $goalStats['Pending']++;
+            }
 
-        // Member goal status breakdown
-        $memberGoals = \App\Models\Goal::whereIn('user_id', $memberIds)->get()->groupBy('user_id');
-        $goalStats   = ['Achieved' => 0, 'In Progress' => 0, 'Pending' => 0, 'No Goals Set' => 0];
-        foreach ($memberIds as $id) {
-            if (!isset($memberGoals[$id])) { $goalStats['No Goals Set']++; continue; }
-            $statuses = $memberGoals[$id]->pluck('status');
-            if ($statuses->contains('completed'))       $goalStats['Achieved']++;
-            elseif ($statuses->contains('in_progress')) $goalStats['In Progress']++;
-            else                                        $goalStats['Pending']++;
-        }
+            return compact('nationalityStats', 'ageGroups', 'genderStats', 'horoscopeGroups', 'bloodTypeStats', 'goalStats')
+                + ['totalMembers' => $members->count() ?: 1];
+        });
 
-        // Total members count for percentage calculations
-        $totalMembers = $members->count() ?: 1;
+        [
+            'nationalityStats' => $nationalityStats,
+            'ageGroups'        => $ageGroups,
+            'genderStats'      => $genderStats,
+            'horoscopeGroups'  => $horoscopeGroups,
+            'bloodTypeStats'   => $bloodTypeStats,
+            'goalStats'        => $goalStats,
+            'totalMembers'     => $totalMembers,
+        ] = $memberStats;
+
+        // Monthly active members trend — 12 separate queries, cached for 1 hour.
+        $monthlyTrend = Cache::remember(ClubCache::showMonthlyTrend($club->id), ClubCache::TTL_STATS, function () use ($club) {
+            $trend = [];
+            for ($i = 11; $i >= 0; $i--) {
+                $date         = now()->subMonths($i);
+                $trend[$date->format('M')] = $club->memberships()
+                    ->where('created_at', '<=', $date->endOfMonth())
+                    ->where(function ($q) use ($date) {
+                        $q->where('status', 'active')
+                          ->orWhere('updated_at', '>=', $date->startOfMonth());
+                    })
+                    ->count();
+            }
+            return $trend;
+        });
 
         // Calculate access hours, days, and distinct class count from package-level schedules.
         // Each packageActivity schedule is an array of day-slots:
@@ -292,7 +309,11 @@ class PlatformController extends Controller
 
         foreach ($club->packages as $package) {
             foreach ($package->packageActivities as $pa) {
-                $slots = is_string($pa->schedule) ? json_decode($pa->schedule, true) : $pa->schedule;
+                try {
+                    $slots = is_string($pa->schedule) ? json_decode($pa->schedule, true, 512, JSON_THROW_ON_ERROR) : $pa->schedule;
+                } catch (\JsonException) {
+                    continue;
+                }
                 if (!is_array($slots)) continue;
                 foreach ($slots as $slot) {
                     if (!is_array($slot)) continue;
@@ -479,123 +500,60 @@ class PlatformController extends Controller
     /**
      * Handle club join/registration from the explore page.
      */
-    public function joinClub(Request $request)
+    public function joinClub(JoinClubRequest $request, SubscriptionService $subscriptions)
     {
-        $request->validate([
-            'club_id' => 'required|exists:tenants,id',
-            'registrants' => 'required|array|min:1',
-            'registrants.*.type' => 'required|in:self,child',
-            'registrants.*.name' => 'required|string|max:255',
-            'registrants.*.user_id' => 'nullable',
-            'registrants.*.package_id' => 'required|exists:club_packages,id',
-            'registrants.*.gender' => 'nullable|string',
-            'registrants.*.date_of_birth' => 'nullable|date',
-            'pay_later' => 'nullable',
-            'payment_proof_base64' => 'nullable|string',
-        ]);
-
-        $user = Auth::user();
-        $club = Tenant::findOrFail($request->club_id);
+        $user     = Auth::user();
+        $club     = Tenant::findOrFail($request->club_id);
         $payLater = $request->boolean('pay_later');
 
-        // Store proof of payment image if provided
+        // Store proof of payment image if provided (private disk — not publicly accessible)
         $proofPath = null;
         if (!$payLater && $request->filled('payment_proof_base64')) {
-            $base64 = $request->input('payment_proof_base64');
-            if (str_starts_with($base64, 'data:image')) {
-                $parts    = explode(';base64,', $base64);
-                $ext      = explode('image/', $parts[0])[1] ?? 'png';
-                $binary   = base64_decode($parts[1]);
-                $filename = 'payment-proofs/proof_' . time() . '_' . uniqid() . '.' . $ext;
-                \Illuminate\Support\Facades\Storage::disk('public')->put($filename, $binary);
-                $proofPath = $filename;
-            }
+            $proofPath = $this->storeBase64Image(
+                $request->input('payment_proof_base64'),
+                'payment-proofs',
+                'proof_' . time() . '_' . uniqid(),
+                'local'
+            );
         }
 
         $paymentStatus = $payLater ? 'unpaid' : ($proofPath ? 'pending_approval' : 'unpaid');
 
         // Validate eligibility for all registrants before creating any subscriptions
         foreach ($request->registrants as $registrant) {
-            $package = ClubPackage::where('id', $registrant['package_id'])
-                ->where('tenant_id', $club->id)
-                ->firstOrFail();
+            $package  = ClubPackage::where('id', $registrant['package_id'])->where('tenant_id', $club->id)->firstOrFail();
+            $memberId = !empty($registrant['user_id']) ? $registrant['user_id'] : $user->id;
+            $age      = !empty($registrant['date_of_birth']) ? \Carbon\Carbon::parse($registrant['date_of_birth'])->age : null;
+            $gender   = $registrant['gender'] ?? null;
 
-            $age    = null;
-            $gender = $registrant['gender'] ?? null;
-
-            if (!empty($registrant['date_of_birth'])) {
-                $birth = \Carbon\Carbon::parse($registrant['date_of_birth']);
-                $age   = $birth->age;
+            $error = $subscriptions->checkEligibility($package, $registrant['name'], $age, $gender);
+            if ($error) {
+                return response()->json(['success' => false, 'message' => $error], 422);
             }
 
-            if ($package->age_min !== null && $age !== null && $age < $package->age_min) {
+            if ($subscriptions->isDuplicate($club->id, $memberId, $package->id)) {
                 return response()->json([
                     'success' => false,
-                    'message' => "'{$registrant['name']}' does not meet the minimum age ({$package->age_min}) for package '{$package->name}'.",
+                    'message' => "'{$registrant['name']}' already has an active or pending subscription for '{$package->name}'.",
                 ], 422);
-            }
-
-            if ($package->age_max !== null && $age !== null && $age > $package->age_max) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "'{$registrant['name']}' exceeds the maximum age ({$package->age_max}) for package '{$package->name}'.",
-                ], 422);
-            }
-
-            if ($package->gender && $package->gender !== 'mixed' && $gender) {
-                $genderMatch = ($package->gender === 'male' && $gender === 'm')
-                            || ($package->gender === 'female' && $gender === 'f');
-                if (!$genderMatch) {
-                    $restriction = ucfirst($package->gender);
-                    return response()->json([
-                        'success' => false,
-                        'message' => "Package '{$package->name}' is restricted to {$restriction} members. '{$registrant['name']}' is not eligible.",
-                    ], 422);
-                }
             }
         }
 
         foreach ($request->registrants as $registrant) {
-            $package = ClubPackage::findOrFail($registrant['package_id']);
-            $startDate = now();
-            $endDate = now()->addMonths($package->duration_months);
-
-            // Use the specific member's user_id if provided, otherwise fall back to the guardian
+            $package  = ClubPackage::findOrFail($registrant['package_id']);
             $memberId = !empty($registrant['user_id']) ? $registrant['user_id'] : $user->id;
+            $notes    = "Member: {$registrant['name']} ({$registrant['type']}). Registered by: {$user->name}." . ($payLater ? ' Pay later requested.' : '');
 
-            $subscription = ClubMemberSubscription::create([
-                'tenant_id'        => $club->id,
-                'type'             => 'regular',
-                'user_id'          => $memberId,
-                'package_id'       => $registrant['package_id'],
-                'start_date'       => $startDate,
-                'end_date'         => $endDate,
-                'status'           => 'pending',
-                'payment_status'   => $paymentStatus,
-                'amount_paid'      => 0,
-                'amount_due'       => $package->price,
-                'proof_of_payment' => $proofPath,
-                'notes'            => "Member: {$registrant['name']} ({$registrant['type']}). Registered by: {$user->name}." . ($payLater ? ' Pay later requested.' : ''),
-            ]);
-
-            ClubTransaction::create([
-                'tenant_id' => $club->id,
-                'user_id' => $memberId,
-                'subscription_id' => $subscription->id,
-                'type' => 'income',
-                'category' => 'subscription',
-                'amount' => $package->price,
-                'payment_method' => null,
-                'description' => 'Package: ' . $package->name . ' – ' . $registrant['name'],
-                'transaction_date' => now(),
-                'reference_number' => null,
-            ]);
+            $subscriptions->createPending($club, $memberId, $package, $paymentStatus, $proofPath, $notes);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Registration submitted successfully!',
-        ]);
+        activity('membership')
+            ->causedBy($user)
+            ->performedOn($club)
+            ->withProperties(['registrants' => count($request->registrants), 'pay_later' => $payLater])
+            ->log('Club join registration submitted');
+
+        return response()->json(['success' => true, 'message' => 'Registration submitted successfully!']);
     }
 
     /**
@@ -652,9 +610,8 @@ class PlatformController extends Controller
     /**
      * Add a comment to a timeline post.
      */
-    public function addComment(Request $request, string $slug, ClubTimelinePost $post)
+    public function addComment(AddCommentRequest $request, string $slug, ClubTimelinePost $post)
     {
-        $request->validate(['body' => 'required|string|max:1000']);
 
         $comment = ClubTimelinePostComment::create([
             'post_id' => $post->id,

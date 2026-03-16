@@ -368,9 +368,18 @@
                 this.setFieldValue('country', club.country);
                 this.setFieldValue('timezone', club.timezone);
                 this.setFieldValue('currency', club.currency);
-                this.setFieldValue('address', club.address);
-                this.setFieldValue('gps_lat', club.gps_lat);
-                this.setFieldValue('gps_long', club.gps_long);
+                this.setFieldValue('clubLocAddress', club.address);
+                this.setFieldValue('clubLocLat', club.gps_lat);
+                this.setFieldValue('clubLocLng', club.gps_long);
+
+                // Sync map marker to saved coordinates
+                if (club.gps_lat && club.gps_long) {
+                    const lat = parseFloat(club.gps_lat);
+                    const lng = parseFloat(club.gps_long);
+                    if (!isNaN(lat) && !isNaN(lng) && window.LocationMap) {
+                        window.LocationMap.setPosition('clubLoc', lat, lng);
+                    }
+                }
 
                 // Contact fields
                 if (club.email) {

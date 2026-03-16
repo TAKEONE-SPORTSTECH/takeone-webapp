@@ -481,7 +481,7 @@ window.transactionData = {
         payment_method: @json($transaction->payment_method ?? ''),
         subscription_id: {{ $transaction->subscription_id ?? 'null' }},
         payment_status: @json($transaction->subscription?->payment_status ?? ''),
-        proof_of_payment: @json($transaction->subscription?->proof_of_payment ? '/storage/' . $transaction->subscription->proof_of_payment : ''),
+        proof_of_payment: @json($transaction->subscription?->proof_of_payment ? route('admin.club.subscriptions.payment-proof', ['club' => $club, 'subscription' => $transaction->subscription_id]) : ''),
         member_name: @json($transaction->subscription?->user?->full_name ?? $transaction->subscription?->user?->name ?? ''),
     },
     @endforeach

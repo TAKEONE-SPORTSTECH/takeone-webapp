@@ -75,7 +75,7 @@ class RegisteredUserController extends Controller
 
             // Send welcome email with verification link
             try {
-                Mail::to($user->email)->send(new WelcomeEmail($user, $user, null));
+                Mail::to($user->email)->queue(new WelcomeEmail($user, $user, null));
             } catch (\Exception $e) {
                 // Log the error but don't stop the registration process
                 \Log::error('Failed to send welcome email: ' . $e->getMessage());

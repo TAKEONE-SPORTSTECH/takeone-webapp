@@ -2,15 +2,27 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Carbon\Carbon;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class ClubMemberSubscription extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToTenant, LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('membership')
+            ->logOnly(['status', 'payment_status', 'amount_paid', 'amount_due', 'start_date', 'end_date', 'package_id'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     /**
      * The table associated with the model.
@@ -38,7 +50,31 @@ class ClubMemberSubscription extends Model
         'amount_due',
         'notes',
         'proof_of_payment',
+        'active_key',
     ];
+
+    /**
+     * Active statuses that occupy the deduplication slot.
+     */
+    private const ACTIVE_STATUSES = ['active', 'pending'];
+
+    /**
+     * Keep active_key in sync automatically.
+     * active_key is non-null only for active/pending subscriptions, which
+     * lets the unique index on that column block duplicates while allowing
+     * multiple expired/cancelled rows for the same (tenant, user, package).
+     */
+    protected static function booted(): void
+    {
+        $setKey = function (self $sub): void {
+            $sub->active_key = in_array($sub->status, self::ACTIVE_STATUSES, true)
+                ? "{$sub->tenant_id}:{$sub->user_id}:" . ($sub->package_id ?? 'null')
+                : null;
+        };
+
+        static::creating($setKey);
+        static::updating($setKey);
+    }
 
     /**
      * The attributes that should be cast.
