@@ -11,13 +11,37 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
+        // Horizon metrics snapshot — feeds the throughput/runtime graphs in the dashboard
+        $schedule->command('horizon:snapshot')->everyFiveMinutes();
+    })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
             'permission' => \App\Http\Middleware\CheckPermission::class,
+            'tenant' => \App\Http\Middleware\SetCurrentTenant::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->reportable(function (Throwable $e): void {
+            if (! app()->bound('sentry')) {
+                return;
+            }
+
+            \Sentry\configureScope(function (\Sentry\State\Scope $scope): void {
+                // Attach the current club (tenant) to every error so you can
+                // filter by club in the Sentry dashboard.
+                if (app()->bound('current.tenant')) {
+                    $tenant = app('current.tenant');
+                    $scope->setTag('club.id',   (string) $tenant->id);
+                    $scope->setTag('club.slug', $tenant->slug);
+                    $scope->setContext('club', [
+                        'id'   => $tenant->id,
+                        'name' => $tenant->club_name,
+                        'slug' => $tenant->slug,
+                    ]);
+                }
+            });
+        });
     })->create();

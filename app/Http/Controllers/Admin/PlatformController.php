@@ -3,6 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\RestoreBackupRequest;
+use App\Http\Requests\Admin\StorePlatformMemberRequest;
+use App\Http\Requests\HealthRecordRequest;
+use App\Http\Requests\TournamentRequest;
+use App\Http\Requests\UploadImageRequest;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\HealthRecord;
@@ -79,21 +84,8 @@ class PlatformController extends Controller
     /**
      * Create a new platform member.
      */
-    public function storeMember(Request $request)
+    public function storeMember(StorePlatformMemberRequest $request)
     {
-        $request->validate([
-            'full_name'    => 'required|string|max:255',
-            'email'        => 'required|email|max:255|unique:users,email',
-            'password'     => 'required|string|min:8|confirmed',
-            'gender'       => 'required|in:m,f',
-            'birthdate'    => 'required|date|before:today',
-            'nationality'  => 'required|string|max:100',
-            'blood_type'   => 'nullable|string|max:10',
-            'mobile_code'  => 'nullable|string|max:10',
-            'mobile'       => 'nullable|string|max:20',
-            'marital_status' => 'nullable|string|max:50',
-            'motto'        => 'nullable|string|max:500',
-        ]);
 
         $mobile = null;
         if ($request->filled('mobile_code') && $request->filled('mobile')) {
@@ -101,17 +93,18 @@ class PlatformController extends Controller
         }
 
         $user = User::create([
-            'full_name'      => $request->full_name,
-            'name'           => $request->full_name,
-            'email'          => $request->email,
-            'password'       => Hash::make($request->password),
-            'gender'         => $request->gender,
-            'birthdate'      => $request->birthdate,
-            'nationality'    => $request->nationality,
-            'blood_type'     => $request->blood_type,
-            'mobile'         => $mobile,
-            'marital_status' => $request->marital_status,
-            'motto'          => $request->motto,
+            'full_name'         => $request->full_name,
+            'name'              => $request->full_name,
+            'email'             => $request->email,
+            'password'          => Hash::make($request->password),
+            'gender'            => $request->gender,
+            'birthdate'         => $request->birthdate,
+            'nationality'       => $request->nationality,
+            'blood_type'        => $request->blood_type,
+            'mobile'            => $mobile,
+            'marital_status'    => $request->marital_status,
+            'motto'             => $request->motto,
+            'email_verified_at' => now(),
         ]);
 
         return response()->json([
@@ -380,17 +373,19 @@ class PlatformController extends Controller
     /**
      * Restore database from JSON backup.
      */
-    public function restoreBackup(Request $request)
+    public function restoreBackup(RestoreBackupRequest $request)
     {
-        $request->validate([
-            'backup_file' => 'required|file|mimes:json',
-        ]);
 
-        $file = $request->file('backup_file');
+        $file    = $request->file('backup_file');
         $content = file_get_contents($file->getRealPath());
-        $backup = json_decode($content, true);
 
-        if (!$backup) {
+        try {
+            $backup = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return back()->with('error', 'Invalid backup file format.');
+        }
+
+        if (empty($backup) || !is_array($backup)) {
             return back()->with('error', 'Invalid backup file format.');
         }
 
@@ -446,13 +441,8 @@ class PlatformController extends Controller
     /**
      * Upload club logo via AJAX (cropper).
      */
-    public function uploadClubLogo(Request $request, Tenant $club)
+    public function uploadClubLogo(UploadImageRequest $request, Tenant $club)
     {
-        $request->validate([
-            'image' => 'required',
-            'folder' => 'required|string',
-            'filename' => 'required|string',
-        ]);
 
         try {
             // Handle base64 image from cropper
@@ -490,13 +480,8 @@ class PlatformController extends Controller
     /**
      * Upload club cover image via AJAX (cropper).
      */
-    public function uploadClubCover(Request $request, Tenant $club)
+    public function uploadClubCover(UploadImageRequest $request, Tenant $club)
     {
-        $request->validate([
-            'image' => 'required',
-            'folder' => 'required|string',
-            'filename' => 'required|string',
-        ]);
 
         try {
             // Handle base64 image from cropper
@@ -761,13 +746,8 @@ class PlatformController extends Controller
     /**
      * Upload member profile picture.
      */
-    public function uploadMemberPicture(Request $request, $id)
+    public function uploadMemberPicture(UploadImageRequest $request, $id)
     {
-        $request->validate([
-            'image' => 'required',
-            'folder' => 'required|string',
-            'filename' => 'required|string',
-        ]);
 
         try {
             $member = User::findOrFail($id);
@@ -807,22 +787,9 @@ class PlatformController extends Controller
     /**
      * Store a health record for a member.
      */
-    public function storeMemberHealth(Request $request, $id)
+    public function storeMemberHealth(HealthRecordRequest $request, $id)
     {
-        $validated = $request->validate([
-            'recorded_at' => 'required|date',
-            'height' => 'nullable|numeric|min:50|max:250',
-            'weight' => 'nullable|numeric|min:0|max:999.9',
-            'body_fat_percentage' => 'nullable|numeric|min:0|max:100',
-            'bmi' => 'nullable|numeric|min:0|max:100',
-            'body_water_percentage' => 'nullable|numeric|min:0|max:100',
-            'muscle_mass' => 'nullable|numeric|min:0|max:999.9',
-            'bone_mass' => 'nullable|numeric|min:0|max:999.9',
-            'visceral_fat' => 'nullable|integer|min:0|max:50',
-            'bmr' => 'nullable|integer|min:0|max:10000',
-            'protein_percentage' => 'nullable|numeric|min:0|max:100',
-            'body_age' => 'nullable|integer|min:0|max:150',
-        ]);
+        $validated = $request->validated();
 
         $member = User::findOrFail($id);
 
@@ -842,22 +809,9 @@ class PlatformController extends Controller
     /**
      * Update a health record for a member.
      */
-    public function updateMemberHealth(Request $request, $id, $recordId)
+    public function updateMemberHealth(HealthRecordRequest $request, $id, $recordId)
     {
-        $validated = $request->validate([
-            'recorded_at' => 'required|date',
-            'height' => 'nullable|numeric|min:50|max:250',
-            'weight' => 'nullable|numeric|min:0|max:999.9',
-            'body_fat_percentage' => 'nullable|numeric|min:0|max:100',
-            'bmi' => 'nullable|numeric|min:0|max:100',
-            'body_water_percentage' => 'nullable|numeric|min:0|max:100',
-            'muscle_mass' => 'nullable|numeric|min:0|max:999.9',
-            'bone_mass' => 'nullable|numeric|min:0|max:999.9',
-            'visceral_fat' => 'nullable|integer|min:0|max:50',
-            'bmr' => 'nullable|integer|min:0|max:10000',
-            'protein_percentage' => 'nullable|numeric|min:0|max:100',
-            'body_age' => 'nullable|integer|min:0|max:150',
-        ]);
+        $validated = $request->validated();
 
         $member = User::findOrFail($id);
         $healthRecord = $member->healthRecords()->findOrFail($recordId);
@@ -881,25 +835,9 @@ class PlatformController extends Controller
     /**
      * Store a tournament record for a member.
      */
-    public function storeMemberTournament(Request $request, $id)
+    public function storeMemberTournament(TournamentRequest $request, $id)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'type' => 'required|in:championship,tournament,competition,exhibition',
-            'sport' => 'required|string|max:100',
-            'date' => 'required|date',
-            'time' => 'nullable|date_format:H:i',
-            'location' => 'nullable|string|max:255',
-            'participants_count' => 'nullable|integer|min:1',
-            'club_affiliation_id' => 'nullable|exists:club_affiliations,id',
-            'performance_results' => 'nullable|array',
-            'performance_results.*.medal_type' => 'nullable|in:special,1st,2nd,3rd',
-            'performance_results.*.points' => 'nullable|numeric|min:0',
-            'performance_results.*.description' => 'nullable|string|max:500',
-            'notes_media' => 'nullable|array',
-            'notes_media.*.note_text' => 'nullable|string|max:1000',
-            'notes_media.*.media_link' => 'nullable|url',
-        ]);
+        $validated = $request->validated();
 
         // Create the tournament event
         $tournament = TournamentEvent::create([

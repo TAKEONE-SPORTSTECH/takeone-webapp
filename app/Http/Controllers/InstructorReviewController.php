@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\InstructorReviewRequest;
 use App\Models\InstructorReview;
 use App\Models\ClubInstructor;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class InstructorReviewController extends Controller
@@ -12,12 +12,9 @@ class InstructorReviewController extends Controller
     /**
      * Store a new review.
      */
-    public function store(Request $request, $instructorId)
+    public function store(InstructorReviewRequest $request, $instructorId)
     {
-        $validated = $request->validate([
-            'rating' => 'required|integer|min:1|max:5',
-            'comment' => 'nullable|string|max:1000',
-        ]);
+        $validated = $request->validated();
 
         $instructor = ClubInstructor::findOrFail($instructorId);
         $user = Auth::user();
@@ -52,12 +49,9 @@ class InstructorReviewController extends Controller
     /**
      * Update an existing review.
      */
-    public function update(Request $request, $reviewId)
+    public function update(InstructorReviewRequest $request, $reviewId)
     {
-        $validated = $request->validate([
-            'rating' => 'required|integer|min:1|max:5',
-            'comment' => 'nullable|string|max:1000',
-        ]);
+        $validated = $request->validated();
 
         $review = InstructorReview::findOrFail($reviewId);
         $user = Auth::user();

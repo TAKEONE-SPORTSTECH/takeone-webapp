@@ -623,14 +623,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
         searchTimeout = setTimeout(async () => {
             try {
-                const response = await fetch(`/admin/club/{{ $club->slug }}/members/search?q=${encodeURIComponent(query)}`);
+                const response = await fetch(`/admin/club/{{ $club->slug }}/members/search?query=${encodeURIComponent(query)}`);
                 const data = await response.json();
+                const users = data.users ?? data;
 
-                if (data.length > 0) {
-                    searchResults.innerHTML = data.map(member => `
+                if (users.length > 0) {
+                    searchResults.innerHTML = users.map(member => `
                         <div class="p-4 hover:bg-gray-50 cursor-pointer flex items-center gap-3 member-result" data-id="${member.id}" data-name="${member.name || member.full_name}">
-                            ${member.photo || member.profile_picture ?
-                                `<img src="/storage/${member.photo || member.profile_picture}" class="w-12 h-12 rounded-full object-cover">` :
+                            ${member.profile_picture ?
+                                `<img src="${member.profile_picture}" class="w-12 h-12 rounded-full object-cover">` :
                                 `<div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center"><i class="bi bi-person text-primary"></i></div>`
                             }
                             <div class="flex-1 min-w-0">

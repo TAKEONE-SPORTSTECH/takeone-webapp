@@ -2,6 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ConfirmDeleteRequest;
+use App\Http\Requests\HealthRecordRequest;
+use App\Http\Requests\StoreMemberRequest;
+use App\Http\Requests\TournamentRequest;
+use App\Http\Requests\UpdateGoalRequest;
+use App\Http\Requests\UpdateMemberRequest;
+use App\Http\Requests\UploadImageRequest;
 use App\Models\User;
 use App\Models\UserRelationship;
 use App\Models\HealthRecord;
@@ -11,7 +18,6 @@ use App\Models\Goal;
 use App\Models\Attendance;
 use App\Models\ClubAffiliation;
 use App\Models\ClubEventRegistration;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
@@ -52,18 +58,9 @@ class MemberController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function store(Request $request)
+    public function store(StoreMemberRequest $request)
     {
-        $validated = $request->validate([
-            'full_name' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'gender' => 'required|in:m,f',
-            'birthdate' => 'required|date',
-            'blood_type' => 'nullable|string|max:10',
-            'nationality' => 'required|string|max:100',
-            'relationship_type' => 'required|string|max:50',
-            'is_billing_contact' => 'boolean',
-        ]);
+        $validated = $request->validated();
 
         $guardian = Auth::user();
 
@@ -265,27 +262,9 @@ class MemberController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
      */
-    public function update(Request $request, $id)
+    public function update(UpdateMemberRequest $request, $id)
     {
-        $validated = $request->validate([
-            'full_name' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255|unique:users,email,' . $id,
-            'mobile_code' => 'nullable|string|max:5',
-            'mobile' => 'nullable|string|max:20',
-            'gender' => 'required|in:m,f',
-            'marital_status' => 'nullable|in:single,married,divorced,widowed',
-            'birthdate' => 'required|date',
-            'blood_type' => 'nullable|string|max:10',
-            'nationality' => 'required|string|max:100',
-            'social_links' => 'nullable|array',
-            'social_links.*.platform' => 'required_with:social_links.*.url|string',
-            'social_links.*.url' => 'required_with:social_links.*.platform|url',
-            'motto' => 'nullable|string|max:500',
-            'relationship_type' => 'nullable|string|max:50',
-            'is_billing_contact' => 'boolean',
-            'remove_profile_picture' => 'nullable|boolean',
-            'profile_picture_is_public' => 'nullable|boolean',
-        ]);
+        $validated = $request->validated();
 
         $user = Auth::user();
 
@@ -395,13 +374,8 @@ class MemberController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
      */
-    public function uploadPicture(Request $request, $id)
+    public function uploadPicture(UploadImageRequest $request, $id)
     {
-        $request->validate([
-            'image' => 'required',
-            'folder' => 'required|string',
-            'filename' => 'required|string',
-        ]);
 
         try {
             $user = Auth::user();
@@ -458,22 +432,9 @@ class MemberController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function storeHealth(Request $request, $id)
+    public function storeHealth(HealthRecordRequest $request, $id)
     {
-        $validated = $request->validate([
-            'recorded_at' => 'required|date',
-            'height' => 'nullable|numeric|min:50|max:250',
-            'weight' => 'nullable|numeric|min:0|max:999.9',
-            'body_fat_percentage' => 'nullable|numeric|min:0|max:100',
-            'bmi' => 'nullable|numeric|min:0|max:100',
-            'body_water_percentage' => 'nullable|numeric|min:0|max:100',
-            'muscle_mass' => 'nullable|numeric|min:0|max:999.9',
-            'bone_mass' => 'nullable|numeric|min:0|max:999.9',
-            'visceral_fat' => 'nullable|integer|min:0|max:50',
-            'bmr' => 'nullable|integer|min:0|max:10000',
-            'protein_percentage' => 'nullable|numeric|min:0|max:100',
-            'body_age' => 'nullable|integer|min:0|max:150',
-        ]);
+        $validated = $request->validated();
 
         $user = Auth::user();
 
@@ -511,22 +472,9 @@ class MemberController extends Controller
      * @param  int  $recordId
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function updateHealth(Request $request, $id, $recordId)
+    public function updateHealth(HealthRecordRequest $request, $id, $recordId)
     {
-        $validated = $request->validate([
-            'recorded_at' => 'required|date',
-            'height' => 'nullable|numeric|min:50|max:250',
-            'weight' => 'nullable|numeric|min:0|max:999.9',
-            'body_fat_percentage' => 'nullable|numeric|min:0|max:100',
-            'bmi' => 'nullable|numeric|min:0|max:100',
-            'body_water_percentage' => 'nullable|numeric|min:0|max:100',
-            'muscle_mass' => 'nullable|numeric|min:0|max:999.9',
-            'bone_mass' => 'nullable|numeric|min:0|max:999.9',
-            'visceral_fat' => 'nullable|integer|min:0|max:50',
-            'bmr' => 'nullable|integer|min:0|max:10000',
-            'protein_percentage' => 'nullable|numeric|min:0|max:100',
-            'body_age' => 'nullable|integer|min:0|max:150',
-        ]);
+        $validated = $request->validated();
 
         $user = Auth::user();
 
@@ -567,25 +515,9 @@ class MemberController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
      */
-    public function storeTournament(Request $request, $id)
+    public function storeTournament(TournamentRequest $request, $id)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'type' => 'required|in:championship,tournament,competition,exhibition',
-            'sport' => 'required|string|max:100',
-            'date' => 'required|date',
-            'time' => 'nullable|date_format:H:i',
-            'location' => 'nullable|string|max:255',
-            'participants_count' => 'nullable|integer|min:1',
-            'club_affiliation_id' => 'nullable|exists:club_affiliations,id',
-            'performance_results' => 'nullable|array',
-            'performance_results.*.medal_type' => 'nullable|in:special,1st,2nd,3rd',
-            'performance_results.*.points' => 'nullable|numeric|min:0',
-            'performance_results.*.description' => 'nullable|string|max:500',
-            'notes_media' => 'nullable|array',
-            'notes_media.*.note_text' => 'nullable|string|max:1000',
-            'notes_media.*.media_link' => 'nullable|url',
-        ]);
+        $validated = $request->validated();
 
         $user = Auth::user();
 
@@ -641,7 +573,7 @@ class MemberController extends Controller
      * @param  int  $goalId
      * @return \Illuminate\Http\JsonResponse
      */
-    public function updateGoal(Request $request, $goalId)
+    public function updateGoal(UpdateGoalRequest $request, $goalId)
     {
         $user = Auth::user();
 
@@ -664,10 +596,7 @@ class MemberController extends Controller
         }
 
         // Validate the request
-        $validated = $request->validate([
-            'current_progress_value' => 'required|numeric|min:0',
-            'status' => 'required|in:active,completed',
-        ]);
+        $validated = $request->validated();
 
         // Update the goal
         $goal->update($validated);
@@ -682,11 +611,9 @@ class MemberController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function confirmDelete(Request $request, $id)
+    public function confirmDelete(ConfirmDeleteRequest $request, $id)
     {
-        $validated = $request->validate([
-            'confirm_name' => 'required|string',
-        ]);
+        $validated = $request->validated();
 
         $user = Auth::user();
 

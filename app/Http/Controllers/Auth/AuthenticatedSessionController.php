@@ -51,16 +51,24 @@ class AuthenticatedSessionController extends Controller
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
 
-            // Temporarily disable email verification for testing
-            // if (!$request->user()->hasVerifiedEmail()) {
-            //     Auth::logout();
-            //     return redirect()->route('verification.notice')->withErrors([
-            //         'email' => 'You need to verify your email address before logging in.',
-            //     ]);
-            // }
+            if (!$request->user()->hasVerifiedEmail()) {
+                Auth::logout();
+                return redirect()->route('verification.notice')->withErrors([
+                    'email' => 'You need to verify your email address before logging in.',
+                ]);
+            }
+
+            activity('auth')
+                ->causedBy(Auth::user())
+                ->withProperties(['ip' => $request->ip(), 'user_agent' => $request->userAgent()])
+                ->log('User logged in');
 
             return redirect()->route('clubs.explore');
         }
+
+        activity('auth')
+            ->withProperties(['ip' => $request->ip(), 'email' => $request->input('email')])
+            ->log('Failed login attempt');
 
         return back()->withErrors([
             'email' => 'The provided credentials do not match our records.',
@@ -75,6 +83,11 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request)
     {
+        activity('auth')
+            ->causedBy(Auth::user())
+            ->withProperties(['ip' => $request->ip()])
+            ->log('User logged out');
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

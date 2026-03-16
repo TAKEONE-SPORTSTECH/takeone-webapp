@@ -2,6 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\HealthRecordRequest;
+use App\Http\Requests\StoreFamilyMemberRequest;
+use App\Http\Requests\TournamentRequest;
+use App\Http\Requests\UpdateFamilyMemberRequest;
+use App\Http\Requests\UpdateGoalRequest;
+use App\Http\Requests\UpdateProfileRequest;
+use App\Http\Requests\UploadImageRequest;
 use App\Models\User;
 use App\Models\UserRelationship;
 use App\Models\HealthRecord;
@@ -11,7 +18,6 @@ use App\Models\Goal;
 use App\Models\Attendance;
 use App\Models\ClubAffiliation;
 use App\Services\FamilyService;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
@@ -177,13 +183,8 @@ class FamilyController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function uploadProfilePicture(Request $request)
+    public function uploadProfilePicture(UploadImageRequest $request)
     {
-        $request->validate([
-            'image' => 'required',
-            'folder' => 'required|string',
-            'filename' => 'required|string',
-        ]);
 
         try {
             $user = Auth::user();
@@ -246,25 +247,9 @@ class FamilyController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function updateProfile(Request $request)
+    public function updateProfile(UpdateProfileRequest $request)
     {
-        $validated = $request->validate([
-            'full_name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email,' . Auth::id(),
-            'mobile_code' => 'nullable|string|max:5',
-            'mobile' => 'nullable|string|max:20',
-            'gender' => 'required|in:m,f',
-            'marital_status' => 'nullable|in:single,married,divorced,widowed',
-            'birthdate' => 'required|date',
-            'blood_type' => 'nullable|string|max:10',
-            'nationality' => 'required|string|max:100',
-            'social_links' => 'nullable|array',
-            'social_links.*.platform' => 'required_with:social_links.*.url|string',
-            'social_links.*.url' => 'required_with:social_links.*.platform|url',
-            'motto' => 'nullable|string|max:500',
-            'remove_profile_picture' => 'nullable|boolean',
-            'profile_picture_is_public' => 'nullable|boolean',
-        ]);
+        $validated = $request->validated();
 
         $user = Auth::user();
 
@@ -332,31 +317,9 @@ class FamilyController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function store(Request $request)
+    public function store(StoreFamilyMemberRequest $request)
     {
-        $validated = $request->validate([
-            'full_name'         => 'required|string|max:255',
-            'email'             => 'nullable|email|max:255|unique:users,email',
-            'gender'            => 'required|in:m,f',
-            'birthdate'         => 'required|date|before:today',
-            'blood_type'        => 'nullable|string|max:10',
-            'nationality'       => 'required|string|max:100',
-            'relationship_type' => 'required|string|max:50',
-            'is_billing_contact'=> 'boolean',
-            'mobile_code'       => 'nullable|string|max:10',
-            'mobile'            => 'nullable|string|max:20',
-            'marital_status'    => 'nullable|string|max:50',
-            'motto'             => 'nullable|string|max:500',
-        ], [
-            'full_name.required'         => 'Full name is required.',
-            'email.email'                => 'Please enter a valid email address.',
-            'email.unique'               => 'This email address is already registered.',
-            'gender.required'            => 'Please select a gender.',
-            'birthdate.required'         => 'Date of birth is required.',
-            'birthdate.before'           => 'Date of birth must be in the past.',
-            'nationality.required'       => 'Please select a nationality.',
-            'relationship_type.required' => 'Please select a relationship type.',
-        ]);
+        $validated = $request->validated();
 
         $guardian = Auth::user();
         $dependent = $this->familyService->createDependent($guardian, $validated);
@@ -553,27 +516,9 @@ class FamilyController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function update(Request $request, $id)
+    public function update(UpdateFamilyMemberRequest $request, $id)
     {
-        $validated = $request->validate([
-            'full_name' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255|unique:users,email,' . $id,
-            'mobile_code' => 'nullable|string|max:5',
-            'mobile' => 'nullable|string|max:20',
-            'gender' => 'required|in:m,f',
-            'marital_status' => 'nullable|in:single,married,divorced,widowed',
-            'birthdate' => 'required|date',
-            'blood_type' => 'nullable|string|max:10',
-            'nationality' => 'required|string|max:100',
-            'social_links' => 'nullable|array',
-            'social_links.*.platform' => 'required_with:social_links.*.url|string',
-            'social_links.*.url' => 'required_with:social_links.*.platform|url',
-            'motto' => 'nullable|string|max:500',
-            'relationship_type' => 'nullable|string|max:50',
-            'is_billing_contact' => 'boolean',
-            'remove_profile_picture' => 'nullable|boolean',
-            'profile_picture_is_public' => 'nullable|boolean',
-        ]);
+        $validated = $request->validated();
 
         $user = Auth::user();
 
@@ -665,13 +610,8 @@ class FamilyController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
      */
-    public function uploadFamilyMemberPicture(Request $request, $id)
+    public function uploadFamilyMemberPicture(UploadImageRequest $request, $id)
     {
-        $request->validate([
-            'image' => 'required',
-            'folder' => 'required|string',
-            'filename' => 'required|string',
-        ]);
 
         try {
             $user = Auth::user();
@@ -722,22 +662,9 @@ class FamilyController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function storeHealth(Request $request, $id)
+    public function storeHealth(HealthRecordRequest $request, $id)
     {
-        $validated = $request->validate([
-            'recorded_at' => 'required|date',
-            'height' => 'nullable|numeric|min:50|max:250',
-            'weight' => 'nullable|numeric|min:0|max:999.9',
-            'body_fat_percentage' => 'nullable|numeric|min:0|max:100',
-            'bmi' => 'nullable|numeric|min:0|max:100',
-            'body_water_percentage' => 'nullable|numeric|min:0|max:100',
-            'muscle_mass' => 'nullable|numeric|min:0|max:999.9',
-            'bone_mass' => 'nullable|numeric|min:0|max:999.9',
-            'visceral_fat' => 'nullable|integer|min:0|max:50',
-            'bmr' => 'nullable|integer|min:0|max:10000',
-            'protein_percentage' => 'nullable|numeric|min:0|max:100',
-            'body_age' => 'nullable|integer|min:0|max:150',
-        ]);
+        $validated = $request->validated();
 
         // Check that at least one metric is provided besides the date
         $metrics = array_filter([
@@ -793,22 +720,9 @@ class FamilyController extends Controller
      * @param  int  $recordId
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function updateHealth(Request $request, $id, $recordId)
+    public function updateHealth(HealthRecordRequest $request, $id, $recordId)
     {
-        $validated = $request->validate([
-            'recorded_at' => 'required|date',
-            'height' => 'nullable|numeric|min:50|max:250',
-            'weight' => 'nullable|numeric|min:0|max:999.9',
-            'body_fat_percentage' => 'nullable|numeric|min:0|max:100',
-            'bmi' => 'nullable|numeric|min:0|max:100',
-            'body_water_percentage' => 'nullable|numeric|min:0|max:100',
-            'muscle_mass' => 'nullable|numeric|min:0|max:999.9',
-            'bone_mass' => 'nullable|numeric|min:0|max:999.9',
-            'visceral_fat' => 'nullable|integer|min:0|max:50',
-            'bmr' => 'nullable|integer|min:0|max:10000',
-            'protein_percentage' => 'nullable|numeric|min:0|max:100',
-            'body_age' => 'nullable|integer|min:0|max:150',
-        ]);
+        $validated = $request->validated();
 
         // Check that at least one metric is provided besides the date
         $metrics = array_filter([
@@ -869,7 +783,7 @@ class FamilyController extends Controller
      * @param  int  $goalId
      * @return \Illuminate\Http\JsonResponse
      */
-    public function updateGoal(Request $request, $goalId)
+    public function updateGoal(UpdateGoalRequest $request, $goalId)
     {
         $user = Auth::user();
 
@@ -889,10 +803,7 @@ class FamilyController extends Controller
         }
 
         // Validate the request
-        $validated = $request->validate([
-            'current_progress_value' => 'required|numeric|min:0',
-            'status' => 'required|in:active,completed',
-        ]);
+        $validated = $request->validated();
 
         // Update the goal
         $goal->update($validated);
@@ -907,7 +818,7 @@ class FamilyController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
      */
-    public function storeTournament(Request $request, $id)
+    public function storeTournament(TournamentRequest $request, $id)
     {
         $user = Auth::user();
 
@@ -923,23 +834,7 @@ class FamilyController extends Controller
         }
 
         // Validate the request
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'type' => 'required|in:championship,tournament,competition,exhibition',
-            'sport' => 'required|string|max:100',
-            'date' => 'required|date',
-            'time' => 'nullable|date_format:H:i',
-            'location' => 'nullable|string|max:255',
-            'participants_count' => 'nullable|integer|min:1',
-            'club_affiliation_id' => 'nullable|exists:club_affiliations,id',
-            'performance_results' => 'nullable|array',
-            'performance_results.*.medal_type' => 'nullable|in:special,1st,2nd,3rd',
-            'performance_results.*.points' => 'nullable|numeric|min:0',
-            'performance_results.*.description' => 'nullable|string|max:500',
-            'notes_media' => 'nullable|array',
-            'notes_media.*.note_text' => 'nullable|string|max:1000',
-            'notes_media.*.media_link' => 'nullable|url',
-        ]);
+        $validated = $request->validated();
 
         // Create the tournament event
         $tournament = TournamentEvent::create([

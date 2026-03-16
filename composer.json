@@ -14,8 +14,11 @@
     "require": {
         "php": "^8.2",
         "laravel/framework": "^12.0",
+        "laravel/horizon": "^5.45",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
+        "sentry/sentry-laravel": "^4.22",
+        "spatie/laravel-activitylog": "^4.12",
         "takeone/cropper": "dev-main"
     },
     "require-dev": {
