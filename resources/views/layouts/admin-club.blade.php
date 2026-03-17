@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="{ sidebarOpen: false }">
+<div x-data="{ sidebarOpen: false, showNotificationModal: false }">
 
 <!-- Mobile Sidebar Toggle -->
 <div class="lg:hidden sticky top-16 z-40 bg-background border-b border-border p-4">
@@ -46,12 +46,13 @@
                title="Back to Clubs">
                 <i class="bi bi-arrow-left"></i>
             </a>
-            <a href="{{ route('clubs.show', $club->slug) }}"
+            <a href="{{ $club->url }}"
                class="w-9 h-9 rounded-lg flex items-center justify-center bg-card text-foreground hover:bg-accent hover:shadow-sm transition-all border border-border no-underline"
                title="Preview Club" target="_blank">
                 <i class="bi bi-eye"></i>
             </a>
-            <button class="w-9 h-9 rounded-lg flex items-center justify-center bg-card text-foreground hover:bg-accent hover:shadow-sm transition-all border border-border cursor-pointer"
+            <button @click="showNotificationModal = true"
+                    class="w-9 h-9 rounded-lg flex items-center justify-center bg-card text-foreground hover:bg-accent hover:shadow-sm transition-all border border-border cursor-pointer"
                     title="Send Notification">
                 <i class="bi bi-send"></i>
             </button>
@@ -198,6 +199,15 @@
                 <span>Messages</span>
             </a>
 
+            <a href="{{ route('admin.club.notifications', $clubId) }}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
+                      {{ $currentRoute === 'admin.club.notifications'
+                         ? 'bg-primary text-white shadow-lg'
+                         : 'text-foreground hover:bg-muted' }}">
+                <i class="bi bi-bell w-5"></i>
+                <span>Notifications</span>
+            </a>
+
             <a href="{{ route('admin.club.analytics', $clubId) }}"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
                       {{ $currentRoute === 'admin.club.analytics'
@@ -214,6 +224,8 @@
         @yield('club-admin-content')
     </main>
 </div>
+
+@include('admin.club.notifications.send-modal')
 
 </div>{{-- end x-data sidebarOpen --}}
 @endsection

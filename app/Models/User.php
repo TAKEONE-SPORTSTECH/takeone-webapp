@@ -459,8 +459,18 @@ class User extends Authenticatable implements MustVerifyEmail
         // Do nothing - we handle verification via welcome email
     }
 
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new \App\Notifications\ResetPasswordNotification($token));
+    }
+
     public function eventRegistrations(): HasMany
     {
         return $this->hasMany(ClubEventRegistration::class);
+    }
+
+    public function userNotifications(): HasMany
+    {
+        return $this->hasMany(UserNotification::class);
     }
 }

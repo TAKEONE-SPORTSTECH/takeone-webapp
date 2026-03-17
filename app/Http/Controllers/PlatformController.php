@@ -183,7 +183,7 @@ class PlatformController extends Controller
     /**
      * Display a specific club's details page.
      */
-    public function show($slug)
+    public function show(string $country, string $slug)
     {
         $club = Tenant::with([
             'owner',
@@ -404,6 +404,8 @@ class PlatformController extends Controller
                     'id' => $club->id,
                     'club_name' => $club->club_name,
                     'slug' => $club->slug,
+                    'country_code' => $club->country_code,
+                    'url' => $club->url,
                     'logo' => $club->logo,
                     'cover_image' => $club->cover_image,
                     'gps_lat' => $club->gps_lat ? (float) $club->gps_lat : null,
@@ -474,7 +476,7 @@ class PlatformController extends Controller
     /**
      * Get club packages as JSON for the join modal.
      */
-    public function clubPackages($slug)
+    public function clubPackages(string $country, string $slug)
     {
         $club = Tenant::where('slug', $slug)->firstOrFail();
         $packages = ClubPackage::where('tenant_id', $club->id)->get();
@@ -500,7 +502,7 @@ class PlatformController extends Controller
     /**
      * Handle club join/registration from the explore page.
      */
-    public function joinClub(JoinClubRequest $request, SubscriptionService $subscriptions)
+    public function joinClub(string $country, JoinClubRequest $request, SubscriptionService $subscriptions)
     {
         $user     = Auth::user();
         $club     = Tenant::findOrFail($request->club_id);
@@ -559,7 +561,7 @@ class PlatformController extends Controller
     /**
      * Collect a member exclusive perk (active members only).
      */
-    public function collectPerk(Request $request, string $slug, ClubPerk $perk)
+    public function collectPerk(string $country, Request $request, string $slug, ClubPerk $perk)
     {
         $user = Auth::user();
 
@@ -588,7 +590,7 @@ class PlatformController extends Controller
     /**
      * Toggle like on a timeline post.
      */
-    public function toggleLike(Request $request, string $slug, ClubTimelinePost $post)
+    public function toggleLike(string $country, Request $request, string $slug, ClubTimelinePost $post)
     {
         $userId = Auth::id();
         $existing = ClubTimelinePostLike::where('post_id', $post->id)->where('user_id', $userId)->first();
@@ -610,7 +612,7 @@ class PlatformController extends Controller
     /**
      * Add a comment to a timeline post.
      */
-    public function addComment(AddCommentRequest $request, string $slug, ClubTimelinePost $post)
+    public function addComment(string $country, AddCommentRequest $request, string $slug, ClubTimelinePost $post)
     {
 
         $comment = ClubTimelinePostComment::create([
@@ -630,14 +632,14 @@ class PlatformController extends Controller
                                 : null,
             'time_ago'   => $comment->created_at->diffForHumans(),
             'is_owner'   => true,
-            'delete_url' => route('clubs.timeline.comment.delete', [$slug, $post->id, $comment->id]),
+            'delete_url' => route('clubs.timeline.comment.delete', [$country, $slug, $post->id, $comment->id]),
         ]);
     }
 
     /**
      * Delete own comment from a timeline post.
      */
-    public function deleteComment(Request $request, string $slug, ClubTimelinePost $post, ClubTimelinePostComment $comment)
+    public function deleteComment(string $country, Request $request, string $slug, ClubTimelinePost $post, ClubTimelinePostComment $comment)
     {
         abort_if($comment->user_id !== Auth::id(), 403);
         $comment->delete();
@@ -648,7 +650,7 @@ class PlatformController extends Controller
     /**
      * Join a club event (or waitlist if full).
      */
-    public function joinEvent(Request $request, string $slug, ClubEvent $event)
+    public function joinEvent(string $country, Request $request, string $slug, ClubEvent $event)
     {
         $user = Auth::user();
 
@@ -678,7 +680,7 @@ class PlatformController extends Controller
     /**
      * Leave a club event (or remove from waitlist).
      */
-    public function leaveEvent(Request $request, string $slug, ClubEvent $event)
+    public function leaveEvent(string $country, Request $request, string $slug, ClubEvent $event)
     {
         $user = Auth::user();
 

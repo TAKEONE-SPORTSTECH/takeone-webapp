@@ -250,10 +250,19 @@ class Tenant extends Model
     }
 
     /**
-     * Get the club URL.
+     * Get the club URL with country prefix.
      */
     public function getUrlAttribute(): string
     {
-        return url("/club/{$this->slug}");
+        $country = strtolower($this->country ?? 'bh');
+        return route('clubs.show', ['country' => $country, 'slug' => $this->slug]);
+    }
+
+    /**
+     * Get the lowercase country code.
+     */
+    public function getCountryCodeAttribute(): string
+    {
+        return strtolower($this->country ?? 'bh');
     }
 }

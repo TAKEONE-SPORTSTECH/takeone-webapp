@@ -407,7 +407,7 @@
                                         </span>
                                     </div>
                                     @if($slot['club_name'])
-                                    <a href="{{ $slot['club_slug'] ? route('clubs.show', $slot['club_slug']) : '#' }}"
+                                    <a href="{{ $slot['club_url'] ?? '#' }}"
                                        class="text-xs font-medium text-primary hover:underline flex items-center gap-1">
                                         <i class="bi bi-building"></i> {{ $slot['club_name'] }}
                                     </a>

@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to {{ config('app.name', 'Club SaaS') }}</title>
+    <title>Welcome to {{ config('app.name', 'TAKEONE') }}</title>
     <style>
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background-color: #f8f9fa;
+            background-color: #f4f2fb;
             margin: 0;
             padding: 20px;
         }
@@ -15,25 +15,26 @@
             max-width: 600px;
             margin: 0 auto;
             background-color: #ffffff;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(143, 111, 218, 0.12);
             overflow: hidden;
         }
         .header {
             padding: 40px 30px;
             text-align: center;
-            background: linear-gradient(135deg, {{ $user->gender == 'm' ? '#0d6efd 0%, #0a58ca 100%' : '#d63384 0%, #a61e4d 100%' }});
+            background: linear-gradient(135deg, #8f6fda 0%, #6b46c1 100%);
         }
         .header h1 {
             color: #ffffff;
-            margin: 0;
+            margin: 0 0 6px 0;
             font-size: 28px;
-            font-weight: 600;
+            font-weight: 700;
+            letter-spacing: 2px;
         }
         .header p {
-            color: rgba(255, 255, 255, 0.9);
-            margin: 10px 0 0 0;
-            font-size: 16px;
+            color: rgba(255, 255, 255, 0.85);
+            margin: 0;
+            font-size: 15px;
         }
         .content {
             padding: 40px 30px;
@@ -43,8 +44,8 @@
             margin-bottom: 30px;
         }
         .welcome-section h2 {
-            color: {{ $user->gender == 'm' ? '#0d6efd' : '#d63384' }};
-            font-size: 24px;
+            color: #8f6fda;
+            font-size: 22px;
             margin-top: 0;
             margin-bottom: 10px;
         }
@@ -54,22 +55,22 @@
             margin-bottom: 20px;
         }
         .info-box {
-            background-color: {{ $user->gender == 'm' ? 'rgba(13, 110, 253, 0.05)' : 'rgba(214, 51, 132, 0.05)' }};
-            border-left: 4px solid {{ $user->gender == 'm' ? '#0d6efd' : '#d63384' }};
+            background-color: rgba(143, 111, 218, 0.05);
+            border-left: 4px solid #8f6fda;
             padding: 20px;
             margin: 20px 0;
-            border-radius: 5px;
+            border-radius: 6px;
         }
         .info-box h3 {
-            color: {{ $user->gender == 'm' ? '#0d6efd' : '#d63384' }};
-            font-size: 18px;
+            color: #8f6fda;
+            font-size: 17px;
             margin-top: 0;
             margin-bottom: 15px;
         }
         .info-box p {
             color: #666666;
             line-height: 1.6;
-            margin: 0 0 10px 0;
+            margin: 0 0 8px 0;
         }
         .info-box strong {
             color: #333333;
@@ -80,24 +81,23 @@
         }
         .button {
             display: inline-block;
-            background-color: {{ $user->gender == 'm' ? '#0d6efd' : '#d63384' }};
+            background-color: #8f6fda;
             color: #ffffff;
             text-decoration: none;
             padding: 14px 40px;
-            border-radius: 5px;
-            font-weight: 500;
-            font-size: 16px;
-            border: none;
-            cursor: pointer;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 15px;
+            letter-spacing: 0.5px;
         }
         .button:hover {
-            background-color: {{ $user->gender == 'm' ? '#0b5ed7' : '#b02a5c' }};
+            background-color: #7c5bc7;
         }
         .footer {
-            background-color: #f8f9fa;
+            background-color: #f4f2fb;
             padding: 20px 30px;
             text-align: center;
-            border-top: 1px solid #e9ecef;
+            border-top: 1px solid #ede9f8;
         }
         .footer p {
             color: #999999;
@@ -105,34 +105,34 @@
             margin: 0;
         }
         .footer a {
-            color: {{ $user->gender == 'm' ? '#0d6efd' : '#d63384' }};
+            color: #8f6fda;
             text-decoration: none;
         }
         .divider {
             height: 1px;
-            background-color: #e9ecef;
+            background-color: #ede9f8;
             margin: 30px 0;
         }
         .greeting {
-            font-size: 18px;
+            font-size: 17px;
             color: #333333;
             margin-bottom: 20px;
         }
         .greeting strong {
-            color: {{ $user->gender == 'm' ? '#0d6efd' : '#d63384' }};
+            color: #8f6fda;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>{{ config('app.name', 'Club SaaS') }}</h1>
+            <h1>{{ strtoupper(config('app.name', 'TAKEONE')) }}</h1>
             <p>Welcome to the Family</p>
         </div>
         <div class="content">
             <div class="welcome-section">
                 <p class="greeting">Dear <strong>{{ $user->full_name }}</strong>,</p>
-                <h2>Welcome to the Family!</h2>
+                <h2>Welcome to {{ config('app.name', 'TAKEONE') }}!</h2>
                 <p>We are thrilled to have you join our community. Your account has been successfully created and you are now part of our family.</p>
             </div>
 
@@ -149,20 +149,20 @@
 
             <div class="divider"></div>
 
-            <p>Before you can access your account, please verify your email address by clicking the button below.</p>
+            <p style="color: #555; line-height: 1.6;">Before you can access your account, please verify your email address by clicking the button below.</p>
 
             <div class="button-container">
-                <a href="{{ $verificationUrl }}" class="button">Verify Your Email</a>
+                <a href="{{ $verificationUrl }}" class="button">Verify My Email</a>
             </div>
 
-            <p style="text-align: center; color: #999999; font-size: 14px; margin-top: 30px;">
-                If you did not create an account, no further action is required. If you have any questions, feel free to contact us at any time.
+            <p style="text-align: center; color: #aaaaaa; font-size: 13px; margin-top: 20px;">
+                If you did not create an account, no further action is required.
             </p>
         </div>
         <div class="footer">
-            <p>&copy; {{ date('Y') }} {{ config('app.name', 'Club SaaS') }}. All rights reserved.</p>
-            <p style="margin-top: 10px;">
-                <a href="{{ url('/') }}">Visit Website</a> |
+            <p>&copy; {{ date('Y') }} {{ config('app.name', 'TAKEONE') }}. All rights reserved.</p>
+            <p style="margin-top: 8px;">
+                <a href="{{ url('/') }}">Visit Website</a> &nbsp;|&nbsp;
                 <a href="mailto:{{ config('mail.from.address') }}">Contact Support</a>
             </p>
         </div>

@@ -211,12 +211,13 @@ function exploreApp() {
             vatPercentage: 0,
             vatRegNumber: null,
 
-            show(clubId, clubSlug, clubName) {
+            show(clubId, clubSlug, clubName, clubCountry) {
                 this.open = true;
                 this.step = 'select-members';
                 this.clubId = clubId;
                 this.clubSlug = clubSlug;
                 this.clubName = clubName;
+                this.clubCountry = clubCountry || 'bh';
                 this.selectedMemberIds = [];
                 this.registrants = [];
                 this.packages = [];
@@ -236,7 +237,7 @@ function exploreApp() {
             async fetchClubPackages(clubSlug) {
                 this.loadingPackages = true;
                 try {
-                    const response = await fetch(`/clubs/${clubSlug}/packages-json`, {
+                    const response = await fetch(`/${this.clubCountry}/clubs/${clubSlug}/packages-json`, {
                         headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content }
                     });
                     if (response.ok) {
@@ -400,7 +401,7 @@ function exploreApp() {
                         }
                     }
 
-                    const response = await fetch('/clubs/join', {
+                    const response = await fetch(`/${this.clubCountry}/clubs/join`, {
                         method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
@@ -490,8 +491,8 @@ function exploreApp() {
         init() {
             // Expose join modal opener globally so dynamically rendered buttons can use it
             const self = this;
-            window.openJoinModal = function(clubId, clubSlug, clubName) {
-                self.joinModal.show(clubId, clubSlug, clubName);
+            window.openJoinModal = function(clubId, clubSlug, clubName, clubCountry) {
+                self.joinModal.show(clubId, clubSlug, clubName, clubCountry);
             };
 
             // Load countries from JSON file
@@ -841,7 +842,7 @@ function exploreApp() {
                 }
 
                 card.innerHTML = `
-                    <div class="card border shadow-sm overflow-hidden club-card cursor-pointer" style="border-radius: 0;" onclick="window.location.href='/clubs/${club.slug}'">
+                    <div class="card border shadow-sm overflow-hidden club-card cursor-pointer" style="border-radius: 0;" onclick="window.location.href='${club.url}'">
                         <!-- Cover Image -->
                         <div class="relative overflow-hidden h-48">
                             ${coverImageHtml}
@@ -912,7 +913,7 @@ function exploreApp() {
 
                             <!-- Action Buttons -->
                             <div class="flex gap-2">
-                                <button class="btn btn-primary flex-1 font-semibold text-sm" onclick="event.stopPropagation(); event.preventDefault(); window.openJoinModal(${club.id}, '${club.slug}', '${club.club_name.replace(/'/g, "\\\\'")}')">
+                                <button class="btn btn-primary flex-1 font-semibold text-sm" onclick="event.stopPropagation(); event.preventDefault(); window.openJoinModal(${club.id}, '${club.slug}', '${club.club_name.replace(/'/g, "\\\\'")}', '${club.country_code}')">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1">
                                         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
                                         <circle cx="9" cy="7" r="4"></circle>
@@ -921,7 +922,7 @@ function exploreApp() {
                                     </svg>
                                     Join Club
                                 </button>
-                                <a href="/clubs/${club.slug}" class="btn btn-outline-primary flex-1 font-semibold text-sm text-center">View Details</a>
+                                <a href="${club.url}" class="btn btn-outline-primary flex-1 font-semibold text-sm text-center">View Details</a>
                             </div>
                         </div>
                     </div>

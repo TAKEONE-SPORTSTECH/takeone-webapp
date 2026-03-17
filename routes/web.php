@@ -71,16 +71,20 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/explore', [PlatformController::class, 'index'])->name('clubs.explore');
     Route::get('/clubs/nearby', [PlatformController::class, 'nearby'])->name('clubs.nearby');
     Route::get('/clubs/all', [PlatformController::class, 'all'])->name('clubs.all');
-    Route::get('/clubs/{slug}', [PlatformController::class, 'show'])->name('clubs.show');
-    Route::get('/clubs/{slug}/packages-json', [PlatformController::class, 'clubPackages'])->name('clubs.packages.json');
-    Route::post('/clubs/join', [PlatformController::class, 'joinClub'])->name('clubs.join')->middleware('throttle:join-club');
-    Route::post('/clubs/{slug}/events/{event}/join', [PlatformController::class, 'joinEvent'])->name('clubs.events.join')->middleware('throttle:join-club');
-    Route::delete('/clubs/{slug}/events/{event}/leave', [PlatformController::class, 'leaveEvent'])->name('clubs.events.leave');
-    Route::post('/clubs/{slug}/perks/{perk}/collect', [PlatformController::class, 'collectPerk'])->name('clubs.perks.collect')->middleware('throttle:social');
-    Route::post('/clubs/{slug}/timeline/{post}/like', [PlatformController::class, 'toggleLike'])->name('clubs.timeline.like')->middleware('throttle:social');
-    Route::post('/clubs/{slug}/timeline/{post}/comments', [PlatformController::class, 'addComment'])->name('clubs.timeline.comment')->middleware('throttle:social');
-    Route::delete('/clubs/{slug}/timeline/{post}/comments/{comment}', [PlatformController::class, 'deleteComment'])->name('clubs.timeline.comment.delete');
     Route::get('/trainer/{user}', [TrainerController::class, 'show'])->name('trainer.show');
+
+    // Country-prefixed club routes
+    Route::prefix('{country}')->where(['country' => '[a-z]{2,3}'])->group(function () {
+        Route::get('/clubs/{slug}', [PlatformController::class, 'show'])->name('clubs.show');
+        Route::get('/clubs/{slug}/packages-json', [PlatformController::class, 'clubPackages'])->name('clubs.packages.json');
+        Route::post('/clubs/join', [PlatformController::class, 'joinClub'])->name('clubs.join')->middleware('throttle:join-club');
+        Route::post('/clubs/{slug}/events/{event}/join', [PlatformController::class, 'joinEvent'])->name('clubs.events.join')->middleware('throttle:join-club');
+        Route::delete('/clubs/{slug}/events/{event}/leave', [PlatformController::class, 'leaveEvent'])->name('clubs.events.leave');
+        Route::post('/clubs/{slug}/perks/{perk}/collect', [PlatformController::class, 'collectPerk'])->name('clubs.perks.collect')->middleware('throttle:social');
+        Route::post('/clubs/{slug}/timeline/{post}/like', [PlatformController::class, 'toggleLike'])->name('clubs.timeline.like')->middleware('throttle:social');
+        Route::post('/clubs/{slug}/timeline/{post}/comments', [PlatformController::class, 'addComment'])->name('clubs.timeline.comment')->middleware('throttle:social');
+        Route::delete('/clubs/{slug}/timeline/{post}/comments/{comment}', [PlatformController::class, 'deleteComment'])->name('clubs.timeline.comment.delete');
+    });
 });
 
 // Platform Admin routes (Super Admin only)
@@ -220,7 +224,14 @@ Route::middleware(['auth', 'verified', 'tenant'])->prefix('admin/club/{club}')->
 
     // Analytics
     Route::get('/analytics', [App\Http\Controllers\Admin\ClubAnalyticsController::class, 'analytics'])->name('analytics');
+
+    // Notifications
+    Route::get('/notifications', [App\Http\Controllers\Admin\ClubNotificationController::class, 'index'])->name('notifications');
+    Route::post('/notifications', [App\Http\Controllers\Admin\ClubNotificationController::class, 'store'])->name('notifications.store');
 });
+
+// Mark notification as read (global — not club-scoped)
+Route::middleware(['auth', 'verified'])->post('/notifications/mark-read', [App\Http\Controllers\Admin\ClubNotificationController::class, 'markRead'])->name('notifications.mark-read');
 
 // Unified Member routes
 Route::middleware(['auth', 'verified'])->group(function () {

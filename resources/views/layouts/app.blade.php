@@ -186,10 +186,23 @@
                         </div>
 
                         <!-- Notifications Dropdown -->
+                        @auth
+                        @php
+                            $recentNotifs = \App\Models\UserNotification::where('user_id', Auth::id())
+                                ->with('clubNotification.tenant')
+                                ->latest()
+                                ->take(5)
+                                ->get();
+                            $unreadCount = \App\Models\UserNotification::where('user_id', Auth::id())
+                                ->where('is_read', false)
+                                ->count();
+                        @endphp
                         <div class="relative" x-data="{ open: false }">
                             <button @click="open = !open" class="nav-icon-btn text-muted-foreground hover:text-foreground" title="Notifications">
                                 <i class="bi bi-bell text-xl"></i>
-                                <span class="notification-badge">3</span>
+                                @if($unreadCount > 0)
+                                    <span class="notification-badge">{{ $unreadCount > 99 ? '99+' : $unreadCount }}</span>
+                                @endif
                             </button>
                             <div x-show="open" @click.outside="open = false" x-cloak
                                  x-transition:enter="transition ease-out duration-100"
@@ -199,37 +212,43 @@
                                  x-transition:leave-start="opacity-100 scale-100"
                                  x-transition:leave-end="opacity-0 scale-95"
                                  class="absolute right-0 mt-2 notification-dropdown bg-white rounded-lg shadow-lg border border-border z-50">
-                                <h6 class="px-4 py-3 text-sm font-semibold border-b border-border">Notifications</h6>
-                                <div class="notification-item">
-                                    <div class="flex justify-between items-start">
-                                        <div>
-                                            <strong class="text-sm">New Family Member</strong>
-                                            <p class="mb-0 text-xs text-muted-foreground">John Doe joined your family</p>
-                                        </div>
-                                        <small class="text-muted-foreground text-xs">2m</small>
-                                    </div>
+                                <div class="flex items-center justify-between px-4 py-3 border-b border-border">
+                                    <h6 class="text-sm font-semibold mb-0">Notifications</h6>
+                                    @if($unreadCount > 0)
+                                        <button onclick="markAllNotificationsRead(this)"
+                                                class="text-xs text-primary hover:underline cursor-pointer bg-transparent border-0 p-0">
+                                            Mark all read
+                                        </button>
+                                    @endif
                                 </div>
-                                <div class="notification-item">
-                                    <div class="flex justify-between items-start">
-                                        <div>
-                                            <strong class="text-sm">Invoice Due</strong>
-                                            <p class="mb-0 text-xs text-muted-foreground">Payment due in 3 days</p>
+
+                                @forelse($recentNotifs as $notif)
+                                    <div class="notification-item cursor-pointer {{ $notif->is_read ? 'opacity-70' : '' }}"
+                                         onclick="markNotificationRead({{ $notif->id }}, this)">
+                                        <div class="flex justify-between items-start gap-3">
+                                            <div class="flex-1 min-w-0">
+                                                <strong class="text-sm {{ !$notif->is_read ? 'text-primary' : '' }}">
+                                                    {{ Str::limit($notif->clubNotification->subject, 40) }}
+                                                </strong>
+                                                <p class="mb-0 text-xs text-muted-foreground truncate">
+                                                    {{ $notif->clubNotification->tenant->club_name ?? 'Club' }}
+                                                </p>
+                                            </div>
+                                            <small class="text-muted-foreground text-xs whitespace-nowrap">
+                                                {{ $notif->created_at->diffForHumans(null, true, true) }}
+                                            </small>
                                         </div>
-                                        <small class="text-muted-foreground text-xs">1h</small>
                                     </div>
-                                </div>
-                                <div class="notification-item">
-                                    <div class="flex justify-between items-start">
-                                        <div>
-                                            <strong class="text-sm">Welcome!</strong>
-                                            <p class="mb-0 text-xs text-muted-foreground">Thanks for joining TAKEONE</p>
-                                        </div>
-                                        <small class="text-muted-foreground text-xs">2d</small>
+                                @empty
+                                    <div class="px-4 py-8 text-center">
+                                        <i class="bi bi-bell-slash text-2xl text-gray-300 block mb-2"></i>
+                                        <p class="text-sm text-muted-foreground mb-0">No notifications yet</p>
                                     </div>
-                                </div>
-                                <a class="block px-4 py-2 text-center text-sm text-primary hover:bg-muted border-t border-border" href="#">View All Notifications</a>
+                                @endforelse
+
                             </div>
                         </div>
+                        @endauth
 
                         <!-- Profile Dropdown -->
                         <div class="relative ml-2" x-data="{ open: false }">
@@ -732,5 +751,52 @@
 
     <!-- Modals Stack (for cropper and other modals) -->
     @stack('modals')
+
+    <script>
+        function markNotificationRead(id, el) {
+            fetch('{{ route('notifications.mark-read') }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ notification_id: id })
+            }).then(() => {
+                el.classList.add('opacity-70');
+                el.querySelector('strong')?.classList.remove('text-primary');
+                updateBadgeCount(-1);
+            });
+        }
+
+        function markAllNotificationsRead(btn) {
+            fetch('{{ route('notifications.mark-read') }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({})
+            }).then(() => {
+                document.querySelectorAll('.notification-item').forEach(el => {
+                    el.classList.add('opacity-70');
+                    el.querySelector('strong')?.classList.remove('text-primary');
+                });
+                document.querySelector('.notification-badge')?.remove();
+                btn.remove();
+            });
+        }
+
+        function updateBadgeCount(delta) {
+            const badge = document.querySelector('.notification-badge');
+            if (!badge) return;
+            const current = parseInt(badge.textContent) || 0;
+            const next = current + delta;
+            if (next <= 0) {
+                badge.remove();
+            } else {
+                badge.textContent = next > 99 ? '99+' : next;
+            }
+        }
+    </script>
 </body>
 </html>

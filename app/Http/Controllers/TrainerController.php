@@ -70,6 +70,8 @@ class TrainerController extends Controller
                     'package_name'  => $pa->package->name ?? null,
                     'club_name'     => $pa->package->tenant->club_name ?? null,
                     'club_slug'     => $pa->package->tenant->slug ?? null,
+                    'club_country'  => $pa->package->tenant->country_code ?? 'bh',
+                    'club_url'      => $pa->package->tenant?->url ?? null,
                     'days'          => $slot['days'],
                     'start'         => $slot['start'],
                     'end'           => $slot['end'],

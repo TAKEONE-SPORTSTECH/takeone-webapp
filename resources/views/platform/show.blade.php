@@ -157,7 +157,7 @@
                         @foreach($activePerks as $perk)
                         <div class="perk-card"
                              data-perk-id="{{ $perk->id }}"
-                             data-collect-url="{{ Auth::check() ? route('clubs.perks.collect', [$club->slug, $perk->id]) : '' }}"
+                             data-collect-url="{{ Auth::check() ? route('clubs.perks.collect', [$club->country_code, $club->slug, $perk->id]) : '' }}"
                              data-csrf="{{ csrf_token() }}"
                              data-auth="{{ Auth::check() ? '1' : '0' }}"
                              data-login-url="{{ route('login') }}"
@@ -857,7 +857,7 @@
                                 <div class="flex items-center gap-2">
                                     <span class="event-cta-joined" style="background:{{ $pillColor }};"><i class="bi bi-check-circle-fill"></i> Joined</span>
                                     @if($canLeave)
-                                    <form method="POST" action="{{ route('clubs.events.leave', [$club->slug, $event->id]) }}">
+                                    <form method="POST" action="{{ route('clubs.events.leave', [$club->country_code, $club->slug, $event->id]) }}">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="event-cta-leave">Leave</button>
                                     </form>
@@ -868,12 +868,12 @@
                                     @endif
                                 </div>
                                 @elseif($isFull)
-                                <form method="POST" action="{{ route('clubs.events.join', [$club->slug, $event->id]) }}">
+                                <form method="POST" action="{{ route('clubs.events.join', [$club->country_code, $club->slug, $event->id]) }}">
                                     @csrf
                                     <button type="submit" class="event-cta-wait" style="background:{{ $pillColor }};"><i class="bi bi-clock-history"></i> Join Waitlist</button>
                                 </form>
                                 @else
-                                <form method="POST" action="{{ route('clubs.events.join', [$club->slug, $event->id]) }}">
+                                <form method="POST" action="{{ route('clubs.events.join', [$club->country_code, $club->slug, $event->id]) }}">
                                     @csrf
                                     <button type="submit" class="event-cta-open" style="background:{{ $pillColor }};"><i class="bi bi-ticket"></i> {{ $ctaText }}</button>
                                 </form>
@@ -1282,8 +1282,8 @@
                         $isLiked     = in_array($post->id, $likedPostIds ?? []);
                         $likeCount   = $post->likes->count();
                         $commentCount= $post->comments->count();
-                        $likeUrl     = Auth::check() ? route('clubs.timeline.like',    [$club->slug, $post->id]) : null;
-                        $commentUrl  = Auth::check() ? route('clubs.timeline.comment', [$club->slug, $post->id]) : null;
+                        $likeUrl     = Auth::check() ? route('clubs.timeline.like',    [$club->country_code, $club->slug, $post->id]) : null;
+                        $commentUrl  = Auth::check() ? route('clubs.timeline.comment', [$club->country_code, $club->slug, $post->id]) : null;
                     @endphp
                     <article class="news-card" id="post-{{ $post->id }}">
                         <span class="news-dot"></span>
@@ -1336,7 +1336,7 @@
 
                                 {{-- Share --}}
                                 <button class="news-action share-btn"
-                                        data-url="{{ route('clubs.show', $club->slug) }}#post-{{ $post->id }}">
+                                        data-url="{{ $club->url }}#post-{{ $post->id }}">
                                     <i class="bi bi-share"></i> Share
                                 </button>
                             </div>
@@ -1363,7 +1363,7 @@
                                             @if($comment->user_id === Auth::id())
                                             &middot; <button class="comment-delete-btn text-red-400"
                                                             data-comment-id="{{ $comment->id }}"
-                                                            data-url="{{ route('clubs.timeline.comment.delete', [$club->slug, $post->id, $comment->id]) }}"
+                                                            data-url="{{ route('clubs.timeline.comment.delete', [$club->country_code, $club->slug, $post->id, $comment->id]) }}"
                                                             data-csrf="{{ csrf_token() }}">Delete</button>
                                             @endif
                                         </div>
