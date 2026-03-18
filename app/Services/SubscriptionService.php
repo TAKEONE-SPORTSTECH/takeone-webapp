@@ -6,6 +6,7 @@ use App\Models\ClubAffiliation;
 use App\Models\ClubMemberSubscription;
 use App\Models\ClubPackage;
 use App\Models\ClubTransaction;
+use App\Models\Membership;
 use App\Models\SkillAcquisition;
 use App\Models\Tenant;
 use App\Models\User;
@@ -90,6 +91,12 @@ class SubscriptionService
             'transaction_date' => now(),
         ]);
 
+        // Ensure the user appears in the club members index
+        Membership::firstOrCreate(
+            ['tenant_id' => $club->id, 'user_id' => $userId],
+            ['status' => 'active']
+        );
+
         $this->syncAffiliation($club, $userId, $subscription, $package);
 
         ClubCache::flushStats($club->id);
@@ -131,6 +138,12 @@ class SubscriptionService
             'description'      => $transactionDescription,
             'transaction_date' => now(),
         ]);
+
+        // Ensure the user appears in the club members index
+        Membership::firstOrCreate(
+            ['tenant_id' => $club->id, 'user_id' => $userId],
+            ['status' => 'active']
+        );
 
         $this->syncAffiliation($club, $userId, $subscription, $package);
 
