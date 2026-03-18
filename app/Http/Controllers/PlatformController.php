@@ -361,11 +361,47 @@ class PlatformController extends Controller
             ->take(3)
             ->values();
 
+        // Build family members array (same as explore page)
+        $familyMembers = collect();
+        if (Auth::check()) {
+            $user = Auth::user();
+            $familyMembers->push([
+                'id'              => $user->id,
+                'name'            => $user->full_name ?? $user->name,
+                'gender'          => $user->gender,
+                'birthdate'       => $user->birthdate?->format('Y-m-d'),
+                'age'             => $user->birthdate ? $user->birthdate->age : null,
+                'profile_picture' => $user->profile_picture,
+                'type'            => 'guardian',
+                'relationship'    => 'Self',
+            ]);
+
+            $dependents = UserRelationship::where('guardian_user_id', $user->id)
+                ->with('dependent')
+                ->whereHas('dependent')
+                ->get();
+
+            foreach ($dependents as $rel) {
+                $dep = $rel->dependent;
+                $familyMembers->push([
+                    'id'              => $dep->id,
+                    'name'            => $dep->full_name ?? $dep->name,
+                    'gender'          => $dep->gender,
+                    'birthdate'       => $dep->birthdate?->format('Y-m-d'),
+                    'age'             => $dep->birthdate ? $dep->birthdate->age : null,
+                    'profile_picture' => $dep->profile_picture,
+                    'type'            => 'dependent',
+                    'relationship'    => ucfirst($rel->relationship_type ?? 'Family'),
+                ]);
+            }
+        }
+
         return view('platform.show', compact(
             'club', 'activeMembersCount', 'reviews', 'averageRating',
             'nationalityStats', 'ageGroups', 'genderStats', 'horoscopeGroups',
             'bloodTypeStats', 'monthlyTrend', 'totalMembers', 'accessStat', 'distinctClassCount',
-            'goalStats', 'joinedEventIds', 'joinedEventRegistrations', 'likedPostIds', 'achievements'
+            'goalStats', 'joinedEventIds', 'joinedEventRegistrations', 'likedPostIds', 'achievements',
+            'familyMembers'
         ));
     }
 

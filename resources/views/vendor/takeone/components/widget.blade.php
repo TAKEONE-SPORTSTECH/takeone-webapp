@@ -208,12 +208,21 @@ $(function() {
             btn.prop('disabled', true).text('Uploading...');
 
             cropper_{{ $id }}.crop({ type: 'base64' }).then(base64 => {
-                $.post("{{ $uploadUrl }}", {
-                    _token: "{{ csrf_token() }}",
-                    image: base64,
-                    folder: '{{ $folder }}',
-                    filename: '{{ $filename }}'
-                }).done((res) => {
+                // Resize to viewport dimensions before upload to avoid sending full-resolution image
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = {{ $width }};
+                    canvas.height = {{ $height }};
+                    canvas.getContext('2d').drawImage(img, 0, 0, {{ $width }}, {{ $height }});
+                    const compressed = canvas.toDataURL('image/jpeg', 0.88);
+
+                    $.post("{{ $uploadUrl }}", {
+                        _token: "{{ csrf_token() }}",
+                        image: compressed,
+                        folder: '{{ $folder }}',
+                        filename: '{{ $filename }}'
+                    }).done((res) => {
                     $('#cropperModal_{{ $id }}').modal('hide');
                     Toast.success('Photo Updated!', 'Your image has been saved successfully.');
 
@@ -264,6 +273,8 @@ $(function() {
                 }).always(() => {
                     btn.prop('disabled', false).text('Crop & Save Image');
                 });
+                };
+                img.src = base64;
             });
         }
     });

@@ -48,6 +48,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         @foreach($instructors as $instructor)
         @php $user = $instructor->user; @endphp
+        @if(!$user) @continue @endif
         <div class="relative h-full" x-data="{ openMenu: false }">
         <x-member-card
             class="h-full instructor-item"
@@ -59,8 +60,8 @@
         >
             <x-slot:badges>
                 <span class="badge bg-primary">{{ $instructor->role ?? 'Trainer' }}</span>
-                @if($user->experience_years)
-                    <span class="badge bg-info">{{ $user->experience_years }} yrs exp</span>
+                @if($instructor->user?->experience_years)
+                    <span class="badge bg-info">{{ $instructor->user->experience_years }} yrs exp</span>
                 @endif
             </x-slot:badges>
             <x-slot:headerExtra>
@@ -74,22 +75,22 @@
                 </div>
             </x-slot:headerExtra>
             <x-slot:extraDetails>
-                @if($user->skills && count($user->skills) > 0)
+                @if($instructor->user?->skills && count($instructor->user->skills) > 0)
                 <div class="pt-2 border-t">
                     <div class="text-xs text-muted-foreground uppercase font-medium mb-2 tracking-wide">Skills</div>
                     <div class="flex flex-wrap gap-1">
-                        @foreach(array_slice($user->skills, 0, 4) as $skill)
+                        @foreach(array_slice($instructor->user->skills, 0, 4) as $skill)
                             <span class="badge bg-secondary">{{ $skill }}</span>
                         @endforeach
-                        @if(count($user->skills) > 4)
-                            <span class="badge bg-secondary">+{{ count($user->skills) - 4 }}</span>
+                        @if(count($instructor->user->skills) > 4)
+                            <span class="badge bg-secondary">+{{ count($instructor->user->skills) - 4 }}</span>
                         @endif
                     </div>
                 </div>
                 @endif
-                @if($user->bio)
+                @if($instructor->user?->bio)
                 <div class="pt-2 mt-2 border-t">
-                    <p class="text-sm text-muted-foreground line-clamp-2">{{ $user->bio }}</p>
+                    <p class="text-sm text-muted-foreground line-clamp-2">{{ $instructor->user->bio }}</p>
                 </div>
                 @endif
             </x-slot:extraDetails>
@@ -197,10 +198,11 @@
 <script>
 window.instructorData = {
     @foreach($instructors ?? [] as $instructor)
+    @if(!$instructor->user) @continue @endif
     {{ $instructor->id }}: {
         name: @json($instructor->user->full_name ?? $instructor->user->name ?? ''),
         role: @json($instructor->role ?? ''),
-        experience: @json($instructor->user->experience_years),
+        experience: @json($instructor->user->experience_years ?? null),
         skills: @json($instructor->user->skills ?? []),
         bio: @json($instructor->user->bio ?? ''),
         photo: @json($instructor->user->profile_picture ? '/storage/' . $instructor->user->profile_picture : '')

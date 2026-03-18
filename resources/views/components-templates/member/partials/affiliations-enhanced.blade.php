@@ -336,7 +336,7 @@
                             @php
                                 $allInstructors = collect();
                                 foreach($clubAffiliations as $aff) {
-                                    $affInstructors = $aff->skillAcquisitions->pluck('instructor')->filter()->unique('id');
+                                    $affInstructors = $aff->skillAcquisitions->pluck('instructor')->filter()->filter(fn($i) => $i->user !== null)->unique('id');
                                     $allInstructors = $allInstructors->merge($affInstructors);
                                 }
                                 $allInstructors = $allInstructors->unique('id');
