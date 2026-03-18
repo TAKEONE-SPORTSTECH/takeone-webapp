@@ -6630,12 +6630,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/TAKEONE-SPORTSTECH/laravel-image-cropper.git",
-                "reference": "155876bd2165271116f7d8ea3cf3afddd9511ec9"
+                "reference": "5655e8bb5f9c5e9a65546a7faaf7fc7922f92881"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/TAKEONE-SPORTSTECH/laravel-image-cropper/zipball/155876bd2165271116f7d8ea3cf3afddd9511ec9",
-                "reference": "155876bd2165271116f7d8ea3cf3afddd9511ec9",
+                "url": "https://api.github.com/repos/TAKEONE-SPORTSTECH/laravel-image-cropper/zipball/5655e8bb5f9c5e9a65546a7faaf7fc7922f92881",
+                "reference": "5655e8bb5f9c5e9a65546a7faaf7fc7922f92881",
                 "shasum": ""
             },
             "require": {
@@ -6670,7 +6670,7 @@
                 "source": "https://github.com/TAKEONE-SPORTSTECH/laravel-image-cropper/tree/main",
                 "issues": "https://github.com/TAKEONE-SPORTSTECH/laravel-image-cropper/issues"
             },
-            "time": "2026-01-25T11:58:48+00:00"
+            "time": "2026-03-18T08:33:51+00:00"
         },
         {
             "name": "tijsverkoyen/css-to-inline-styles",

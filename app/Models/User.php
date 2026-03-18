@@ -27,6 +27,7 @@ use App\Models\InstructorReview;
 use App\Models\Invoice;
 use App\Models\Membership;
 use App\Models\TournamentEvent;
+use App\Models\PerkCollection;
 use App\Models\UserNotification;
 use App\Models\UserRelationship;
 use Illuminate\Support\Facades\DB;
@@ -88,6 +89,11 @@ class User extends Authenticatable implements MustVerifyEmail
             ClubTimelinePostLike::where('user_id', $id)->delete();
             ClubTimelinePostComment::where('user_id', $id)->delete();
             ClubMessage::where('sender_id', $id)->orWhere('recipient_id', $id)->delete();
+
+            // Perk collections (as collector or beneficiary)
+            PerkCollection::where('collected_by_user_id', $id)
+                ->orWhere('collected_for_user_id', $id)
+                ->delete();
 
             // Notifications
             UserNotification::where('user_id', $id)->delete();

@@ -1858,8 +1858,8 @@ document.addEventListener('DOMContentLoaded', function () {
 <script>
 // ===== Perk Collect =====
 document.addEventListener('DOMContentLoaded', function () {
-    const modal      = document.getElementById('perkModal');
-    const modalClose = document.getElementById('perkModalClose');
+    const modal        = document.getElementById('perkModal');
+    const modalClose   = document.getElementById('perkModalClose');
     const modalContent = document.getElementById('perkModalContent');
 
     modalClose.addEventListener('click', () => { modal.style.display = 'none'; });
@@ -1869,78 +1869,152 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelectorAll('.perk-card[data-perk-id]').forEach(card => {
         card.addEventListener('click', function () {
-            const isAuth    = this.dataset.auth === '1';
-            const loginUrl  = this.dataset.loginUrl;
-            const collectUrl= this.dataset.collectUrl;
-            const csrf      = this.dataset.csrf;
+            const isAuth     = this.dataset.auth === '1';
+            const loginUrl   = this.dataset.loginUrl;
+            const collectUrl = this.dataset.collectUrl;
+            const csrf       = this.dataset.csrf;
 
             if (!isAuth) {
                 window.location.href = loginUrl;
                 return;
             }
 
-            modalContent.innerHTML = '<div class="text-center py-6"><div class="spinner-border text-primary" role="status"></div><p class="mt-3 text-muted-foreground text-sm">Loading your perk...</p></div>';
+            showPerkLoading();
             modal.style.display = 'flex';
-
-            fetch(collectUrl, {
-                method: 'POST',
-                headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (!data.success && data.members_only) {
-                    modalContent.innerHTML = `
-                        <div class="mb-4"><i class="bi bi-lock-fill text-4xl text-primary"></i></div>
-                        <h5 class="font-bold text-lg mb-2">Members Only</h5>
-                        <p class="text-muted-foreground text-sm">${data.message}</p>`;
-                    return;
-                }
-                if (!data.success) {
-                    modalContent.innerHTML = `<p class="text-red-500 text-sm">${data.message || 'Something went wrong.'}</p>`;
-                    return;
-                }
-
-                if (data.perk_type === 'code') {
-                    modalContent.innerHTML = `
-                        <div class="mb-4"><i class="bi bi-ticket-perforated-fill text-4xl text-primary"></i></div>
-                        <h5 class="font-bold text-lg mb-1">${escapeHtml(data.title)}</h5>
-                        <p class="text-muted-foreground text-sm mb-4">Show or copy this code at the partner.</p>
-                        <div class="flex items-center gap-2 bg-gray-50 border border-dashed border-gray-300 rounded-xl px-4 py-3 mb-3">
-                            <span id="perkCode" class="font-mono font-extrabold text-xl tracking-widest flex-1 text-center text-primary">${escapeHtml(data.perk_value)}</span>
-                            <button id="copyPerkCode" class="text-gray-400 hover:text-primary transition-colors" title="Copy">
-                                <i class="bi bi-copy"></i>
-                            </button>
-                        </div>
-                        <p id="copiedMsg" class="text-green-500 text-xs" style="display:none;">Copied to clipboard!</p>`;
-
-                    document.getElementById('copyPerkCode').addEventListener('click', () => {
-                        navigator.clipboard.writeText(data.perk_value).then(() => {
-                            document.getElementById('copiedMsg').style.display = 'block';
-                            setTimeout(() => { document.getElementById('copiedMsg').style.display = 'none'; }, 2000);
-                        });
-                    });
-
-                } else {
-                    // QR code
-                    modalContent.innerHTML = `
-                        <div class="mb-3"><i class="bi bi-qr-code-scan text-3xl text-primary"></i></div>
-                        <h5 class="font-bold text-lg mb-1">${escapeHtml(data.title)}</h5>
-                        <p class="text-muted-foreground text-sm mb-4">Show this QR code at the partner location.</p>
-                        <div id="perkQr" class="flex justify-center mb-2"></div>`;
-
-                    new QRCode(document.getElementById('perkQr'), {
-                        text:   data.perk_value,
-                        width:  180,
-                        height: 180,
-                        correctLevel: QRCode.CorrectLevel.M,
-                    });
-                }
-            })
-            .catch(() => {
-                modalContent.innerHTML = `<p class="text-red-500 text-sm">Something went wrong. Please try again.</p>`;
-            });
+            doCollect(collectUrl, csrf, null);
         });
     });
+
+    function doCollect(collectUrl, csrf, forUserId) {
+        const body = forUserId ? JSON.stringify({ for_user_id: forUserId }) : null;
+        fetch(collectUrl, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrf,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: body,
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.members_only) {
+                modalContent.innerHTML = `
+                    <div class="mb-4"><i class="bi bi-lock-fill text-4xl text-primary"></i></div>
+                    <h5 class="font-bold text-lg mb-2">Members Only</h5>
+                    <p class="text-muted-foreground text-sm">${escapeHtml(data.message)}</p>`;
+                return;
+            }
+
+            if (data.already_collected) {
+                modalContent.innerHTML = `
+                    <div class="mb-4"><i class="bi bi-check-circle-fill text-4xl text-green-500"></i></div>
+                    <h5 class="font-bold text-lg mb-2">Already Collected</h5>
+                    <p class="text-muted-foreground text-sm">This perk was already collected on <strong>${escapeHtml(data.collected_at)}</strong>.</p>`;
+                return;
+            }
+
+            if (data.requires_selection) {
+                showMemberPicker(data.members, collectUrl, csrf);
+                return;
+            }
+
+            if (!data.success) {
+                modalContent.innerHTML = `<p class="text-red-500 text-sm">${escapeHtml(data.message || 'Something went wrong.')}</p>`;
+                return;
+            }
+
+            showPerkValue(data);
+        })
+        .catch(() => {
+            modalContent.innerHTML = `<p class="text-red-500 text-sm">Something went wrong. Please try again.</p>`;
+        });
+    }
+
+    function showMemberPicker(members, collectUrl, csrf) {
+        const rows = members.map(m => {
+            const initials = m.name.trim().split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+            const avatar   = m.profile_picture
+                ? `<img src="/storage/${escapeHtml(m.profile_picture)}" class="w-10 h-10 rounded-full object-cover">`
+                : `<div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">${initials}</div>`;
+
+            if (m.already_collected) {
+                return `<div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 opacity-60 cursor-not-allowed select-none">
+                    ${avatar}
+                    <div class="flex-1 text-left">
+                        <div class="font-semibold text-sm text-gray-700">${escapeHtml(m.name)}</div>
+                        <div class="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                            <i class="bi bi-check-circle-fill text-green-500"></i> Already collected
+                        </div>
+                    </div>
+                </div>`;
+            }
+
+            return `<button class="perk-member-pick w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 hover:border-primary hover:bg-primary/5 transition-all text-left"
+                        data-member-id="${m.id}" data-collect-url="${escapeHtml(collectUrl)}" data-csrf="${escapeHtml(csrf)}">
+                ${avatar}
+                <div class="flex-1">
+                    <div class="font-semibold text-sm">${escapeHtml(m.name)}</div>
+                    <div class="text-xs text-muted-foreground mt-0.5">Tap to collect perk</div>
+                </div>
+                <i class="bi bi-chevron-right text-gray-400 text-xs"></i>
+            </button>`;
+        }).join('');
+
+        modalContent.innerHTML = `
+            <div class="mb-4 text-left">
+                <h5 class="font-bold text-lg mb-1">Who is this perk for?</h5>
+                <p class="text-muted-foreground text-sm">Select a family member to collect this perk for.</p>
+            </div>
+            <div class="flex flex-col gap-2">${rows}</div>`;
+
+        modalContent.querySelectorAll('.perk-member-pick').forEach(btn => {
+            btn.addEventListener('click', function () {
+                showPerkLoading();
+                doCollect(this.dataset.collectUrl, this.dataset.csrf, parseInt(this.dataset.memberId));
+            });
+        });
+    }
+
+    function showPerkValue(data) {
+        if (data.perk_type === 'code') {
+            modalContent.innerHTML = `
+                <div class="mb-4"><i class="bi bi-ticket-perforated-fill text-4xl text-primary"></i></div>
+                <h5 class="font-bold text-lg mb-1">${escapeHtml(data.title)}</h5>
+                <p class="text-muted-foreground text-sm mb-4">Show or copy this code at the partner.</p>
+                <div class="flex items-center gap-2 bg-gray-50 border border-dashed border-gray-300 rounded-xl px-4 py-3 mb-3">
+                    <span id="perkCode" class="font-mono font-extrabold text-xl tracking-widest flex-1 text-center text-primary">${escapeHtml(data.perk_value)}</span>
+                    <button id="copyPerkCode" class="text-gray-400 hover:text-primary transition-colors" title="Copy">
+                        <i class="bi bi-copy"></i>
+                    </button>
+                </div>
+                <p id="copiedMsg" class="text-green-500 text-xs" style="display:none;">Copied to clipboard!</p>`;
+
+            document.getElementById('copyPerkCode').addEventListener('click', () => {
+                navigator.clipboard.writeText(data.perk_value).then(() => {
+                    document.getElementById('copiedMsg').style.display = 'block';
+                    setTimeout(() => { document.getElementById('copiedMsg').style.display = 'none'; }, 2000);
+                });
+            });
+        } else {
+            modalContent.innerHTML = `
+                <div class="mb-3"><i class="bi bi-qr-code-scan text-3xl text-primary"></i></div>
+                <h5 class="font-bold text-lg mb-1">${escapeHtml(data.title)}</h5>
+                <p class="text-muted-foreground text-sm mb-4">Show this QR code at the partner location.</p>
+                <div id="perkQr" class="flex justify-center mb-2"></div>`;
+
+            new QRCode(document.getElementById('perkQr'), {
+                text:   data.perk_value,
+                width:  180,
+                height: 180,
+                correctLevel: QRCode.CorrectLevel.M,
+            });
+        }
+    }
+
+    function showPerkLoading() {
+        modalContent.innerHTML = '<div class="text-center py-6"><div class="spinner-border text-primary" role="status"></div><p class="mt-3 text-muted-foreground text-sm">Loading your perk...</p></div>';
+    }
 
     function escapeHtml(str) {
         return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');

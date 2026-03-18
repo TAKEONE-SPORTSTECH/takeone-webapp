@@ -25,6 +25,7 @@ use App\Models\ClubMessage;
 use App\Models\ClubNotification;
 use App\Models\ClubPackage;
 use App\Models\ClubPerk;
+use App\Models\PerkCollection;
 use App\Models\ClubReview;
 use App\Models\ClubSocialLink;
 use App\Models\ClubTimelinePost;
@@ -101,6 +102,7 @@ class Tenant extends Model
             ClubReview::where('tenant_id', $id)->delete();
 
             // Content
+            PerkCollection::where('tenant_id', $id)->delete();
             ClubPerk::where('tenant_id', $id)->delete();
             ClubAchievement::where('tenant_id', $id)->delete();
 

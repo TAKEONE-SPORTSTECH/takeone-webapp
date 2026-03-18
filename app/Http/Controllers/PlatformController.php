@@ -18,6 +18,7 @@ use App\Models\ClubTimelinePost;
 use App\Models\ClubTimelinePostLike;
 use App\Models\ClubTimelinePostComment;
 use App\Models\ClubPerk;
+use App\Models\PerkCollection;
 use App\Models\UserRelationship;
 use App\Models\ClubTransaction;
 use Illuminate\Http\Request;
@@ -601,19 +602,87 @@ class PlatformController extends Controller
     {
         $user = Auth::user();
 
-        // Check the user has an active subscription to this club
-        $isActiveMember = ClubMemberSubscription::where('user_id', $user->id)
-            ->where('tenant_id', $perk->tenant_id)
+        // Build list of eligible members: the user + their dependents who have an active subscription to this club
+        $eligibleIds = ClubMemberSubscription::where('tenant_id', $perk->tenant_id)
             ->where('status', 'active')
-            ->exists();
+            ->pluck('user_id')
+            ->toArray();
 
-        if (!$isActiveMember) {
+        $familyIds = UserRelationship::where('guardian_user_id', $user->id)
+            ->pluck('dependent_user_id')
+            ->toArray();
+
+        // Members the logged-in user can collect for: themselves + their dependents — filtered to active subscribers
+        $canCollectFor = array_values(array_filter(
+            array_unique(array_merge([$user->id], $familyIds)),
+            fn($id) => in_array($id, $eligibleIds)
+        ));
+
+        if (empty($canCollectFor)) {
             return response()->json([
-                'success' => false,
+                'success'      => false,
                 'members_only' => true,
-                'message' => 'This perk is exclusive to active members.',
+                'message'      => 'This perk is exclusive to active members of this club.',
             ], 403);
         }
+
+        // If a specific beneficiary was provided, validate it
+        $forUserId = $request->input('for_user_id');
+        if ($forUserId !== null) {
+            $forUserId = (int) $forUserId;
+            if (!in_array($forUserId, $canCollectFor)) {
+                return response()->json(['success' => false, 'message' => 'Invalid selection.'], 422);
+            }
+        }
+
+        // Multiple eligible members and no selection yet — return picker data
+        if ($forUserId === null && count($canCollectFor) > 1) {
+            $members = \App\Models\User::whereIn('id', $canCollectFor)->get(['id', 'full_name', 'name', 'profile_picture']);
+            $collected = PerkCollection::where('perk_id', $perk->id)
+                ->whereIn('collected_for_user_id', $canCollectFor)
+                ->pluck('collected_at', 'collected_for_user_id')
+                ->toArray();
+
+            $memberList = $members->map(fn($m) => [
+                'id'              => $m->id,
+                'name'            => $m->full_name ?? $m->name,
+                'profile_picture' => $m->profile_picture,
+                'already_collected' => isset($collected[$m->id]),
+            ])->values()->toArray();
+
+            return response()->json([
+                'success'            => false,
+                'requires_selection' => true,
+                'members'            => $memberList,
+            ]);
+        }
+
+        // Single eligible member — auto-select
+        if ($forUserId === null) {
+            $forUserId = $canCollectFor[0];
+        }
+
+        // Check if already collected for this beneficiary
+        $existing = PerkCollection::where('perk_id', $perk->id)
+            ->where('collected_for_user_id', $forUserId)
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'success'           => false,
+                'already_collected' => true,
+                'message'           => 'This perk has already been collected.',
+                'collected_at'      => $existing->created_at->format('M d, Y'),
+            ]);
+        }
+
+        // Record the collection
+        PerkCollection::create([
+            'perk_id'               => $perk->id,
+            'tenant_id'             => $perk->tenant_id,
+            'collected_by_user_id'  => $user->id,
+            'collected_for_user_id' => $forUserId,
+        ]);
 
         return response()->json([
             'success'    => true,
