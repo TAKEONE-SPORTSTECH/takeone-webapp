@@ -490,6 +490,8 @@ class PlatformController extends Controller
                 'id' => $club->id,
                 'club_name' => $club->club_name,
                 'slug' => $club->slug,
+                'country_code' => $club->country_code,
+                'url' => $club->url,
                 'logo' => $club->logo,
                 'cover_image' => $club->cover_image,
                 'gps_lat' => $club->gps_lat ? (float) $club->gps_lat : null,
