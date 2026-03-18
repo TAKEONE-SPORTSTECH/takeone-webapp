@@ -214,6 +214,7 @@ class MemberController extends Controller
             'totalInstructors' => $totalInstructors,
             'user' => $relationship->dependent,
             'joinedEventRegistrations' => $joinedEventRegistrations,
+            'allClubs' => \App\Models\Tenant::orderBy('club_name')->get(['id', 'club_name', 'address', 'logo']),
         ]);
     }
 
@@ -653,6 +654,176 @@ class MemberController extends Controller
         return redirect()->route('members.index')
             ->with('success', 'Member removed successfully.');
     }
+
+    // ─── Affiliation CRUD ────────────────────────────────────────────────────────
+
+    private function authorizeForMember(int $id): void
+    {
+        $user = Auth::user();
+        if ($user->hasRole('super-admin') || $user->id == $id) return;
+        UserRelationship::where('guardian_user_id', $user->id)
+            ->where('dependent_user_id', $id)
+            ->firstOrFail();
+    }
+
+    public function storeAffiliation(\Illuminate\Http\Request $request, $id)
+    {
+        $this->authorizeForMember($id);
+
+        $validated = $request->validate([
+            'tenant_id'   => 'nullable|exists:tenants,id',
+            'club_name'   => 'required_without:tenant_id|nullable|string|max:255',
+            'start_date'  => 'required|date',
+            'end_date'    => 'nullable|date|after_or_equal:start_date',
+            'location'    => 'nullable|string|max:255',
+            'description' => 'nullable|string|max:1000',
+            'coaches'     => 'nullable|string|max:1000',
+        ]);
+
+        // If a platform club is selected, pull its data
+        $tenant = null;
+        if (!empty($validated['tenant_id'])) {
+            $tenant = \App\Models\Tenant::findOrFail($validated['tenant_id']);
+        }
+
+        $coaches = null;
+        if (!empty($validated['coaches'])) {
+            $coaches = array_values(array_filter(array_map('trim', explode(',', $validated['coaches']))));
+        }
+
+        $member = User::findOrFail($id);
+        $affiliation = $member->clubAffiliations()->create([
+            'tenant_id'   => $tenant?->id,
+            'club_name'   => $tenant ? $tenant->club_name : $validated['club_name'],
+            'logo'        => $tenant?->logo ?? null,
+            'start_date'  => $validated['start_date'],
+            'end_date'    => $validated['end_date'] ?? null,
+            'location'    => $tenant ? ($tenant->address ?? $validated['location']) : ($validated['location'] ?? null),
+            'description' => $validated['description'] ?? null,
+            'coaches'     => $coaches,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Affiliation added successfully.', 'id' => $affiliation->id]);
+    }
+
+    public function updateAffiliation(\Illuminate\Http\Request $request, $id, $affiliationId)
+    {
+        $this->authorizeForMember($id);
+
+        $validated = $request->validate([
+            'club_name'   => 'required|string|max:255',
+            'start_date'  => 'required|date',
+            'end_date'    => 'nullable|date|after_or_equal:start_date',
+            'location'    => 'nullable|string|max:255',
+            'description' => 'nullable|string|max:1000',
+            'coaches'     => 'nullable|string|max:1000',
+        ]);
+
+        $coaches = null;
+        if (!empty($validated['coaches'])) {
+            $coaches = array_values(array_filter(array_map('trim', explode(',', $validated['coaches']))));
+        }
+
+        $member = User::findOrFail($id);
+        $affiliation = $member->clubAffiliations()->findOrFail($affiliationId);
+        $affiliation->update([
+            'club_name'   => $validated['club_name'],
+            'start_date'  => $validated['start_date'],
+            'end_date'    => $validated['end_date'] ?? null,
+            'location'    => $validated['location'] ?? null,
+            'description' => $validated['description'] ?? null,
+            'coaches'     => $coaches,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Affiliation updated successfully.']);
+    }
+
+    public function destroyAffiliation($id, $affiliationId)
+    {
+        $this->authorizeForMember($id);
+
+        $member = User::findOrFail($id);
+        $affiliation = $member->clubAffiliations()->findOrFail($affiliationId);
+        $affiliation->skillAcquisitions()->delete();
+        $affiliation->affiliationMedia()->delete();
+        $affiliation->delete();
+
+        return response()->json(['success' => true, 'message' => 'Affiliation deleted successfully.']);
+    }
+
+    public function storeAffiliationSkill(\Illuminate\Http\Request $request, $id, $affiliationId)
+    {
+        $this->authorizeForMember($id);
+
+        $validated = $request->validate([
+            'skill_name'        => 'required|string|max:255',
+            'proficiency_level' => 'required|in:beginner,intermediate,advanced,expert',
+            'start_date'        => 'nullable|date',
+            'duration_months'   => 'nullable|integer|min:1|max:600',
+            'notes'             => 'nullable|string|max:500',
+        ]);
+
+        $member = User::findOrFail($id);
+        $affiliation = $member->clubAffiliations()->findOrFail($affiliationId);
+        $skill = $affiliation->skillAcquisitions()->create([
+            'skill_name'        => $validated['skill_name'],
+            'proficiency_level' => $validated['proficiency_level'],
+            'start_date'        => $validated['start_date'] ?? null,
+            'duration_months'   => $validated['duration_months'] ?? 1,
+            'notes'             => $validated['notes'] ?? null,
+            'icon'              => 'bi-star',
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Skill added successfully.', 'id' => $skill->id]);
+    }
+
+    public function destroyAffiliationSkill($id, $affiliationId, $skillId)
+    {
+        $this->authorizeForMember($id);
+
+        $member = User::findOrFail($id);
+        $affiliation = $member->clubAffiliations()->findOrFail($affiliationId);
+        $affiliation->skillAcquisitions()->findOrFail($skillId)->delete();
+
+        return response()->json(['success' => true, 'message' => 'Skill removed successfully.']);
+    }
+
+    public function storeAffiliationMedia(\Illuminate\Http\Request $request, $id, $affiliationId)
+    {
+        $this->authorizeForMember($id);
+
+        $validated = $request->validate([
+            'media_type'  => 'required|in:certificate,photo,video,document',
+            'title'       => 'required|string|max:255',
+            'media_url'   => 'required|string|max:500',
+            'description' => 'nullable|string|max:500',
+        ]);
+
+        $member = User::findOrFail($id);
+        $affiliation = $member->clubAffiliations()->findOrFail($affiliationId);
+        $media = $affiliation->affiliationMedia()->create($validated);
+
+        return response()->json(['success' => true, 'message' => 'Media added successfully.', 'id' => $media->id]);
+    }
+
+    public function destroyAffiliationMedia($id, $affiliationId, $mediaId)
+    {
+        $this->authorizeForMember($id);
+
+        $member = User::findOrFail($id);
+        $affiliation = $member->clubAffiliations()->findOrFail($affiliationId);
+        $media = $affiliation->affiliationMedia()->findOrFail($mediaId);
+
+        if (!filter_var($media->media_url, FILTER_VALIDATE_URL)) {
+            Storage::disk('public')->delete($media->media_url);
+        }
+
+        $media->delete();
+
+        return response()->json(['success' => true, 'message' => 'Media removed successfully.']);
+    }
+
+    // ─── End Affiliation CRUD ─────────────────────────────────────────────────────
 
     /**
      * Remove the specified member from storage.

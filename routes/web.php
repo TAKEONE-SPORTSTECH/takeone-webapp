@@ -265,6 +265,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/member/{id}/tournament', [MemberController::class, 'storeTournament'])->name('member.store-tournament');
     Route::put('/member/goal/{goalId}', [MemberController::class, 'updateGoal'])->name('member.update-goal');
 
+    // Affiliation routes
+    Route::post('/member/{id}/affiliations', [MemberController::class, 'storeAffiliation'])->name('member.store-affiliation');
+    Route::put('/member/{id}/affiliations/{affiliationId}', [MemberController::class, 'updateAffiliation'])->name('member.update-affiliation');
+    Route::delete('/member/{id}/affiliations/{affiliationId}', [MemberController::class, 'destroyAffiliation'])->name('member.destroy-affiliation');
+    Route::post('/member/{id}/affiliations/{affiliationId}/skills', [MemberController::class, 'storeAffiliationSkill'])->name('member.store-affiliation-skill');
+    Route::delete('/member/{id}/affiliations/{affiliationId}/skills/{skillId}', [MemberController::class, 'destroyAffiliationSkill'])->name('member.destroy-affiliation-skill');
+    Route::post('/member/{id}/affiliations/{affiliationId}/media', [MemberController::class, 'storeAffiliationMedia'])->name('member.store-affiliation-media');
+    Route::delete('/member/{id}/affiliations/{affiliationId}/media/{mediaId}', [MemberController::class, 'destroyAffiliationMedia'])->name('member.destroy-affiliation-media');
+
     // Keep old family routes for backward compatibility (redirect to new routes)
     Route::get('/family/create', function () {
         return redirect()->route('members.create');

@@ -125,7 +125,7 @@
                                 <a href="{{ route('member.show', Auth::id()) }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-primary hover:text-white transition-colors">
                                     <i class="bi bi-person"></i>Profile
                                 </a>
-                                <a href="#" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-primary hover:text-white transition-colors">
+                                <a href="{{ route('member.show', Auth::id()) }}#affiliations" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-primary hover:text-white transition-colors">
                                     <i class="bi bi-diagram-3"></i>Affiliations
                                 </a>
                                 <a href="#" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-primary hover:text-white transition-colors">

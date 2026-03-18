@@ -10,6 +10,7 @@ class ClubAffiliation extends Model
 {
     protected $fillable = [
         'member_id',
+        'tenant_id',
         'club_name',
         'logo',
         'start_date',
@@ -31,6 +32,14 @@ class ClubAffiliation extends Model
     public function member(): BelongsTo
     {
         return $this->belongsTo(User::class, 'member_id');
+    }
+
+    /**
+     * Get the club (tenant) this affiliation is linked to.
+     */
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class, 'tenant_id');
     }
 
     /**

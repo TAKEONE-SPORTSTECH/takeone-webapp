@@ -287,7 +287,7 @@
                                     <a class="profile-dropdown-item" href="{{ route('member.show', Auth::id()) }}">
                                         <i class="bi bi-person mr-2"></i>Profile
                                     </a>
-                                    <a class="profile-dropdown-item" href="#">
+                                    <a class="profile-dropdown-item" href="{{ route('member.show', Auth::id()) }}#affiliations">
                                         <i class="bi bi-diagram-3 mr-2"></i>Affiliations
                                     </a>
                                     <a class="profile-dropdown-item" href="#">

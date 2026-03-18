@@ -233,7 +233,7 @@
     </div>
 
     <!-- Navigation Tabs -->
-    <div x-data="{ activeTab: 'overview' }">
+    <div x-data="{ activeTab: (window.location.hash ? window.location.hash.substring(1) : 'overview') }">
         <div class="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
         <ul class="nav nav-tabs nav-fill mb-4 flex-nowrap min-w-max md:min-w-0 md:flex-wrap" id="profileTabs" role="tablist">
             <li class="nav-item" role="presentation">

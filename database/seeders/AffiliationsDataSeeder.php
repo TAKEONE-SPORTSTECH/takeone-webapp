@@ -137,10 +137,7 @@ class AffiliationsDataSeeder extends Seeder
                         ],
                         [
                             'role' => ['Martial Arts', 'Fitness', 'Boxing'][rand(0, 2)] . ' Instructor',
-                            'experience_years' => rand(5, 15),
                             'rating' => rand(40, 50) / 10, // 4.0 to 5.0
-                            'skills' => json_encode(['Coaching', 'Training', 'Mentoring']),
-                            'bio' => 'Experienced instructor with over 10 years of teaching experience.',
                         ]
                     );
                     $clubInstructors[] = $instructor;

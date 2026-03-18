@@ -1485,6 +1485,15 @@
             }
         });
 
+        // Activate affiliations tab if URL has #affiliations
+        if (window.location.hash === '#affiliations') {
+            const affiliationsTab = document.querySelector('#affiliations-tab');
+            if (affiliationsTab) {
+                const tab = new bootstrap.Tab(affiliationsTab);
+                tab.show();
+            }
+        }
+
         // Activate health tab if URL has #health
         if (window.location.hash === '#health') {
             const healthTab = document.querySelector('#health-tab');

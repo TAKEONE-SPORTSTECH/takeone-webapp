@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\ClubAffiliation;
 use App\Models\ClubMemberSubscription;
 use App\Models\ClubPackage;
 use App\Models\ClubTransaction;
+use App\Models\SkillAcquisition;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\ClubCache;
@@ -88,6 +90,8 @@ class SubscriptionService
             'transaction_date' => now(),
         ]);
 
+        $this->syncAffiliation($club, $userId, $subscription, $package);
+
         ClubCache::flushStats($club->id);
         ClubCache::flushFinancials($club->id);
 
@@ -128,6 +132,8 @@ class SubscriptionService
             'transaction_date' => now(),
         ]);
 
+        $this->syncAffiliation($club, $userId, $subscription, $package);
+
         ClubCache::flushStats($club->id);
         ClubCache::flushFinancials($club->id);
 
@@ -153,5 +159,97 @@ class SubscriptionService
             ->log('Payment approved');
 
         ClubCache::flushFinancials($subscription->tenant_id);
+    }
+
+    /**
+     * Find or create the ClubAffiliation for this member+club, link the
+     * subscription to it, recalculate its date span, and sync skills from
+     * the package's activities.
+     */
+    private function syncAffiliation(
+        Tenant $club,
+        int $userId,
+        ClubMemberSubscription $subscription,
+        ClubPackage $package
+    ): void {
+        // Find or create one affiliation per member per club
+        $affiliation = ClubAffiliation::firstOrCreate(
+            ['member_id' => $userId, 'tenant_id' => $club->id],
+            [
+                'club_name'   => $club->club_name,
+                'logo'        => $club->logo ?? null,
+                'location'    => $club->address ?? null,
+                'start_date'  => $subscription->start_date,
+                'end_date'    => $subscription->end_date,
+                'description' => null,
+                'coaches'     => [],
+            ]
+        );
+
+        // Link the subscription to the affiliation
+        $subscription->update(['club_affiliation_id' => $affiliation->id]);
+
+        // Recalculate date span across ALL subscriptions for this member+club
+        $allSubs = ClubMemberSubscription::where('tenant_id', $club->id)
+            ->where('user_id', $userId)
+            ->whereNotNull('start_date')
+            ->get();
+
+        $earliestStart = $allSubs->min('start_date');
+        $hasActive     = $allSubs->whereIn('status', ['active', 'pending'])->isNotEmpty();
+        $latestEnd     = $hasActive ? null : $allSubs->max('end_date');
+
+        // Pull coach names from all package activities across all subs for this club
+        $packageIds = $allSubs->pluck('package_id')->unique()->filter();
+        $coaches = \App\Models\ClubPackageActivity::whereIn('package_id', $packageIds)
+            ->with('instructor.user')
+            ->get()
+            ->pluck('instructor.user.full_name')
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $affiliation->update([
+            'club_name'  => $club->club_name,
+            'logo'       => $club->logo ?? $affiliation->logo,
+            'location'   => $club->address ?? $affiliation->location,
+            'start_date' => $earliestStart,
+            'end_date'   => $latestEnd,
+            'coaches'    => $coaches ?: $affiliation->coaches,
+        ]);
+
+        // Sync skills from this package's activities (skip duplicates)
+        $package->load('packageActivities.activity', 'packageActivities.instructor');
+
+        $existingSkillMap = $affiliation->skillAcquisitions()
+            ->whereIn('activity_id', $package->packageActivities->pluck('activity_id')->filter())
+            ->pluck('instructor_id', 'activity_id')
+            ->toArray();
+
+        foreach ($package->packageActivities as $pkgActivity) {
+            if (!$pkgActivity->activity) continue;
+
+            if (array_key_exists($pkgActivity->activity_id, $existingSkillMap)) {
+                // Update instructor if it was previously NULL
+                if (is_null($existingSkillMap[$pkgActivity->activity_id]) && $pkgActivity->instructor_id) {
+                    $affiliation->skillAcquisitions()
+                        ->where('activity_id', $pkgActivity->activity_id)
+                        ->update(['instructor_id' => $pkgActivity->instructor_id]);
+                }
+                continue;
+            }
+
+            $affiliation->skillAcquisitions()->create([
+                'skill_name'        => $pkgActivity->activity->name,
+                'icon'              => 'bi-star',
+                'proficiency_level' => 'beginner',
+                'start_date'        => $subscription->start_date,
+                'duration_months'   => $package->duration_months ?? 1,
+                'package_id'        => $package->id,
+                'activity_id'       => $pkgActivity->activity_id,
+                'instructor_id'     => $pkgActivity->instructor_id,
+            ]);
+        }
     }
 }
