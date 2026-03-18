@@ -9,7 +9,27 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use App\Models\Attendance;
+use App\Models\ClubAffiliation;
+use App\Models\ClubEventRegistration;
+use App\Models\ClubGalleryImage;
 use App\Models\ClubInstructor;
+use App\Models\ClubMemberSubscription;
+use App\Models\ClubMessage;
+use App\Models\ClubNotification;
+use App\Models\ClubReview;
+use App\Models\ClubTimelinePostComment;
+use App\Models\ClubTimelinePostLike;
+use App\Models\ClubTransaction;
+use App\Models\Goal;
+use App\Models\HealthRecord;
+use App\Models\InstructorReview;
+use App\Models\Invoice;
+use App\Models\Membership;
+use App\Models\TournamentEvent;
+use App\Models\UserNotification;
+use App\Models\UserRelationship;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Carbon\Carbon;
 
@@ -29,6 +49,71 @@ class User extends Authenticatable implements MustVerifyEmail
             if ($user->isDirty('full_name') && $user->full_name) {
                 $user->name = $user->full_name;
             }
+        });
+
+        // Clean up all orphan-prone records when a user is soft-deleted.
+        // DB cascades only fire on hard delete; soft delete leaves these behind.
+        static::deleting(function (self $user) {
+            $id = $user->id;
+
+            // Memberships & subscriptions
+            Membership::where('user_id', $id)->delete();
+            ClubMemberSubscription::where('user_id', $id)->delete();
+
+            // Instructor record
+            ClubInstructor::where('user_id', $id)->delete();
+
+            // Affiliations (cascade skills & media)
+            ClubAffiliation::where('member_id', $id)->each(function ($aff) {
+                $aff->skillAcquisitions()->delete();
+                $aff->affiliationMedia()->delete();
+                $aff->delete();
+            });
+
+            // Family relationships
+            UserRelationship::where('guardian_user_id', $id)
+                ->orWhere('dependent_user_id', $id)
+                ->delete();
+
+            // Personal data
+            HealthRecord::where('user_id', $id)->delete();
+            Goal::where('user_id', $id)->delete();
+            TournamentEvent::where('user_id', $id)->delete();
+            Attendance::where('user_id', $id)->delete();
+
+            // Club interactions
+            ClubEventRegistration::where('user_id', $id)->delete();
+            ClubReview::where('user_id', $id)->delete();
+            InstructorReview::where('reviewer_user_id', $id)->delete();
+            ClubTimelinePostLike::where('user_id', $id)->delete();
+            ClubTimelinePostComment::where('user_id', $id)->delete();
+            ClubMessage::where('sender_id', $id)->orWhere('recipient_id', $id)->delete();
+
+            // Notifications
+            UserNotification::where('user_id', $id)->delete();
+            ClubNotification::where('sender_user_id', $id)->delete();
+
+            // Gallery images uploaded by this user
+            ClubGalleryImage::where('uploaded_by', $id)->delete();
+
+            // Invoices
+            Invoice::where('student_user_id', $id)->orWhere('payer_user_id', $id)->delete();
+
+            // Nullify financial transaction user ref (keep for audit, just remove user link)
+            ClubTransaction::where('user_id', $id)->update(['user_id' => null]);
+
+            // Nullify tenant owner (don't delete the club, just unset the owner)
+            Tenant::where('owner_user_id', $id)->update(['owner_user_id' => null]);
+
+            // Roles
+            \DB::table('user_roles')->where('user_id', $id)->delete();
+
+            // Sessions & tokens
+            \DB::table('sessions')->where('user_id', $id)->delete();
+            \DB::table('personal_access_tokens')
+                ->where('tokenable_type', self::class)
+                ->where('tokenable_id', $id)
+                ->delete();
         });
     }
 
