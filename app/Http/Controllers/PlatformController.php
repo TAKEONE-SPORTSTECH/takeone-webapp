@@ -606,7 +606,7 @@ class PlatformController extends Controller
 
         // Build list of eligible members: the user + their dependents who have an active subscription to this club
         $eligibleIds = ClubMemberSubscription::where('tenant_id', $perk->tenant_id)
-            ->where('status', 'active')
+            ->whereIn('status', ['active', 'pending'])
             ->pluck('user_id')
             ->toArray();
 
