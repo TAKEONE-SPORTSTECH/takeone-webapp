@@ -8,12 +8,113 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
+use App\Models\ClubAchievement;
+use App\Models\ClubActivity;
+use App\Models\ClubAffiliation;
+use App\Models\ClubBankAccount;
+use App\Models\ClubEvent;
+use App\Models\ClubEventRegistration;
+use App\Models\ClubFacility;
+use App\Models\ClubGalleryImage;
+use App\Models\ClubInstructor;
+use App\Models\ClubMemberSubscription;
+use App\Models\ClubMessage;
+use App\Models\ClubNotification;
+use App\Models\ClubPackage;
+use App\Models\ClubPerk;
+use App\Models\ClubReview;
+use App\Models\ClubSocialLink;
+use App\Models\ClubTimelinePost;
+use App\Models\ClubTimelinePostComment;
+use App\Models\ClubTimelinePostLike;
+use App\Models\ClubTransaction;
+use App\Models\Invoice;
+use App\Models\Membership;
+use App\Models\UserNotification;
 
 class Tenant extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity;
+
+    /**
+     * Clean up all orphan-prone records when a tenant is soft-deleted.
+     * DB cascades only fire on hard delete; soft delete leaves these behind.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (self $tenant) {
+            $id = $tenant->id;
+
+            // Memberships & subscriptions
+            Membership::where('tenant_id', $id)->delete();
+            ClubMemberSubscription::where('tenant_id', $id)->delete();
+
+            // Instructor records
+            ClubInstructor::where('tenant_id', $id)->delete();
+
+            // Affiliations (cascade skills & media)
+            ClubAffiliation::where('tenant_id', $id)->each(function ($aff) {
+                $aff->skillAcquisitions()->delete();
+                $aff->affiliationMedia()->delete();
+                $aff->delete();
+            });
+
+            // Club structure
+            ClubActivity::where('tenant_id', $id)->delete();
+            ClubFacility::where('tenant_id', $id)->delete();
+
+            // Packages + their pivot data
+            ClubPackage::where('tenant_id', $id)->each(function ($pkg) {
+                $pkg->activities()->detach();
+                $pkg->delete();
+            });
+
+            // Financial records
+            ClubTransaction::where('tenant_id', $id)->delete();
+            Invoice::where('tenant_id', $id)->delete();
+            ClubBankAccount::where('tenant_id', $id)->delete();
+
+            // Media & branding
+            ClubGalleryImage::where('tenant_id', $id)->delete();
+            ClubSocialLink::where('tenant_id', $id)->delete();
+
+            // Communication
+            ClubMessage::where('tenant_id', $id)->delete();
+
+            // Events (cascade registrations)
+            ClubEvent::where('tenant_id', $id)->each(function ($event) {
+                ClubEventRegistration::where('event_id', $event->id)->delete();
+                $event->delete();
+            });
+
+            // Timeline (cascade likes & comments)
+            ClubTimelinePost::where('tenant_id', $id)->each(function ($post) {
+                ClubTimelinePostLike::where('post_id', $post->id)->delete();
+                ClubTimelinePostComment::where('post_id', $post->id)->delete();
+                $post->delete();
+            });
+
+            // Reviews
+            ClubReview::where('tenant_id', $id)->delete();
+
+            // Content
+            ClubPerk::where('tenant_id', $id)->delete();
+            ClubAchievement::where('tenant_id', $id)->delete();
+
+            // Notifications (cascade user notifications)
+            ClubNotification::where('tenant_id', $id)->each(function ($notif) {
+                UserNotification::where('club_notification_id', $notif->id)->delete();
+                $notif->delete();
+            });
+            UserNotification::where('tenant_id', $id)->delete();
+
+            // Role assignments for this club
+            DB::table('user_roles')->where('tenant_id', $id)->delete();
+        });
+    }
 
     public function getActivitylogOptions(): LogOptions
     {
