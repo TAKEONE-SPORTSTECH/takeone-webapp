@@ -50,6 +50,7 @@ class ClubMemberSubscription extends Model
         'amount_due',
         'notes',
         'proof_of_payment',
+        'refund_proof',
         'active_key',
     ];
 

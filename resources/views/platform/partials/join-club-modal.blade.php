@@ -427,6 +427,7 @@
                                         id="joinPaymentProofCropper"
                                         :width="900"
                                         :height="600"
+                                        :canvasHeight="680"
                                         shape="rectangle"
                                         mode="form"
                                         inputName="payment_proof_base64"

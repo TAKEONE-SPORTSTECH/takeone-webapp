@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreTransactionRequest;
 use App\Http\Requests\Admin\UpdateTransactionRequest;
+use App\Models\ClubRecurringExpense;
 use App\Models\ClubTransaction;
 use App\Models\Tenant;
 use App\Services\FinancialService;
@@ -20,10 +21,11 @@ class ClubFinancialController extends Controller
 
         $transactions      = ClubTransaction::where('tenant_id', $club->id)->with(['subscription.user'])->latest('transaction_date')->get();
         $summary           = $financials->getSummary($club->id, $transactions);
-        $monthlyData       = $financials->getMonthlyData($transactions);
+        $monthlyData       = $financials->getMonthlyData($transactions, $club->id);
         $expenseCategories = $financials->getExpenseBreakdown($transactions);
+        $recurringExpenses = ClubRecurringExpense::where('tenant_id', $club->id)->orderBy('day_of_month')->get();
 
-        return view('admin.club.financials.index', compact('club', 'transactions', 'summary', 'monthlyData', 'expenseCategories'));
+        return view('admin.club.financials.index', compact('club', 'transactions', 'summary', 'monthlyData', 'expenseCategories', 'recurringExpenses'));
     }
 
     public function storeIncome(StoreTransactionRequest $request, Tenant $club, FinancialService $financials)
@@ -80,5 +82,78 @@ class ClubFinancialController extends Controller
         $transaction->delete();
 
         return back()->with('success', 'Transaction deleted successfully.');
+    }
+
+    public function storeRecurringExpense(Tenant $club)
+    {
+        $this->authorizeClub($club);
+
+        $data = request()->validate([
+            'description'    => 'required|string|max:255',
+            'amount'         => 'required|numeric|min:0',
+            'category'       => 'nullable|string|max:255',
+            'payment_method' => 'nullable|in:cash,card,bank_transfer,online,other',
+            'recurring_date' => 'required|date',
+            'notes'          => 'nullable|string|max:255',
+        ]);
+
+        ClubRecurringExpense::create([
+            'tenant_id'      => $club->id,
+            'description'    => $data['description'],
+            'amount'         => $data['amount'],
+            'category'       => $data['category'] ?? null,
+            'payment_method' => $data['payment_method'] ?? 'bank_transfer',
+            'day_of_month'   => \Carbon\Carbon::parse($data['recurring_date'])->day,
+            'notes'          => $data['notes'] ?? null,
+            'is_active'      => true,
+        ]);
+
+        return back()->with('success', 'Recurring expense added successfully.');
+    }
+
+    public function updateRecurringExpense(Tenant $club, ClubRecurringExpense $recurringExpense)
+    {
+        $this->authorizeClub($club);
+        abort_if($recurringExpense->tenant_id !== $club->id, 403);
+
+        $data = request()->validate([
+            'description'    => 'required|string|max:255',
+            'amount'         => 'required|numeric|min:0',
+            'category'       => 'nullable|string|max:255',
+            'payment_method' => 'nullable|in:cash,card,bank_transfer,online,other',
+            'recurring_date' => 'required|date',
+            'notes'          => 'nullable|string|max:255',
+        ]);
+
+        $recurringExpense->update([
+            'description'    => $data['description'],
+            'amount'         => $data['amount'],
+            'category'       => $data['category'] ?? null,
+            'payment_method' => $data['payment_method'] ?? 'bank_transfer',
+            'day_of_month'   => \Carbon\Carbon::parse($data['recurring_date'])->day,
+            'notes'          => $data['notes'] ?? null,
+        ]);
+
+        return back()->with('success', 'Recurring expense updated successfully.');
+    }
+
+    public function destroyRecurringExpense(Tenant $club, ClubRecurringExpense $recurringExpense)
+    {
+        $this->authorizeClub($club);
+        abort_if($recurringExpense->tenant_id !== $club->id, 403);
+
+        $recurringExpense->delete();
+
+        return back()->with('success', 'Recurring expense removed.');
+    }
+
+    public function toggleRecurringExpense(Tenant $club, ClubRecurringExpense $recurringExpense)
+    {
+        $this->authorizeClub($club);
+        abort_if($recurringExpense->tenant_id !== $club->id, 403);
+
+        $recurringExpense->update(['is_active' => ! $recurringExpense->is_active]);
+
+        return back()->with('success', 'Recurring expense ' . ($recurringExpense->is_active ? 'activated' : 'paused') . '.');
     }
 }

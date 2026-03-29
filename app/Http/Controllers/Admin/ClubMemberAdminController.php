@@ -12,6 +12,7 @@ use App\Models\Membership;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\UserRelationship;
+use App\Services\FinancialService;
 use App\Services\SubscriptionService;
 use App\Traits\HandlesClubAuthorization;
 use App\Traits\StoresBase64Images;
@@ -263,7 +264,67 @@ class ClubMemberAdminController extends Controller
         }
 
         return response()->file(
-            storage_path('app/' . $path),
+            Storage::disk('local')->path($path),
+            ['Content-Type' => Storage::disk('local')->mimeType($path)]
+        );
+    }
+
+    public function refundPayment(Request $request, Tenant $club, ClubMemberSubscription $subscription, FinancialService $financials)
+    {
+        $this->authorizeClub($club);
+
+        if ($subscription->tenant_id !== $club->id) {
+            abort(403);
+        }
+
+        if ($subscription->payment_status !== 'paid') {
+            return response()->json(['success' => false, 'message' => 'Subscription is not paid.'], 422);
+        }
+
+        $refundProofPath = null;
+        if ($request->filled('refund_proof_base64')) {
+            $refundProofPath = $this->storeBase64Image(
+                $request->input('refund_proof_base64'),
+                'payment-proofs',
+                'refund_proof_' . $subscription->id . '_' . time(),
+                'local'
+            );
+        }
+
+        $financials->recordTransaction($club, [
+            'type'             => 'refund',
+            'amount'           => $subscription->amount_paid,
+            'description'      => 'Refund - ' . ($subscription->package?->name ?? 'Subscription'),
+            'category'         => 'refund',
+            'payment_method'   => 'bank_transfer',
+            'transaction_date' => now()->toDateString(),
+            'subscription_id'  => $subscription->id,
+        ]);
+
+        $subscription->update([
+            'payment_status' => 'refunded',
+            'refund_proof'   => $refundProofPath,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Refund processed successfully.']);
+    }
+
+    public function serveRefundProof(Tenant $club, ClubMemberSubscription $subscription)
+    {
+        $this->authorizeClub($club);
+
+        if ($subscription->tenant_id !== $club->id || !$subscription->refund_proof) {
+            abort(404);
+        }
+
+        $path = $subscription->refund_proof;
+
+        if (!Storage::disk('local')->exists($path)) {
+            abort(404);
+        }
+
+        return response()->file(
+            Storage::disk('local')->path($path),
             ['Content-Type' => Storage::disk('local')->mimeType($path)]
         );
     }

@@ -1,14 +1,16 @@
+@props(['club'])
+
 {{-- Record Expense/Transaction Modal --}}
 <div x-show="showExpenseModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto"
      x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
      x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
     <div class="fixed inset-0 bg-black/50" @click="showExpenseModal = false"></div>
     <div class="flex min-h-full items-center justify-center p-4">
-        <div class="modal-content border-0 shadow-lg w-full max-w-2xl relative rounded-lg overflow-hidden" @click.stop>
+        <div class="modal-content border-0 shadow-lg w-full max-w-xl relative rounded-lg overflow-hidden" @click.stop>
             <div class="modal-header border-b px-6 py-4">
                 <div>
-                    <h5 class="modal-title font-bold">Record Transaction</h5>
-                    <p class="text-sm text-muted-foreground mb-0">Add a new expense, refund, or income transaction to the ledger</p>
+                    <h5 class="modal-title font-bold">Record Manual Expense</h5>
+                    <p class="text-sm text-muted-foreground mb-0">Add a new expense or refund transaction to the ledger</p>
                 </div>
                 <button type="button" class="text-muted-foreground hover:text-foreground" @click="showExpenseModal = false">
                     <i class="bi bi-x-lg"></i>
@@ -20,24 +22,51 @@
                     <input type="hidden" name="_expense_type" x-bind:value="expenseType">
 
                     <div class="space-y-4">
-                        <!-- Transaction Type -->
-                        <div>
+
+                        {{-- Transaction Type --}}
+                        <div class="relative"
+                             x-data="{
+                                open: false,
+                                options: [
+                                    { value: 'expense', label: 'Expense', icon: 'bi-dash-circle',           color: 'text-red-500' },
+                                    { value: 'refund',  label: 'Refund',  icon: 'bi-arrow-counterclockwise', color: 'text-orange-500' },
+                                ],
+                                get current() { return this.options.find(o => o.value === expenseType) }
+                             }" @click.outside="open = false">
                             <label class="form-label">Transaction Type</label>
-                            <select name="type_display" class="form-select" x-model="expenseType"
-                                    @change="
-                                        if (expenseType === 'income') {
-                                            $el.closest('form').action = '{{ route('admin.club.financials.income', $club->slug) }}';
-                                        } else {
-                                            $el.closest('form').action = '{{ route('admin.club.financials.expense', $club->slug) }}';
-                                        }
-                                    ">
-                                <option value="expense">Expense</option>
-                                <option value="refund">Refund</option>
-                                <option value="income">Product Sale</option>
-                            </select>
+                            <input type="hidden" name="type_display" :value="expenseType">
+                            <button type="button"
+                                    @click="open = !open"
+                                    class="w-full flex items-center justify-between gap-2 form-control text-left">
+                                <span class="flex items-center gap-2">
+                                    <i class="bi text-base" :class="[current.icon, current.color]"></i>
+                                    <span x-text="current.label"></span>
+                                </span>
+                                <i class="bi bi-chevron-down text-muted-foreground text-xs transition-transform duration-200"
+                                   :class="{ 'rotate-180': open }"></i>
+                            </button>
+                            <div x-show="open" x-cloak
+                                 x-transition:enter="transition ease-out duration-100"
+                                 x-transition:enter-start="opacity-0 -translate-y-1"
+                                 x-transition:enter-end="opacity-100 translate-y-0"
+                                 x-transition:leave="transition ease-in duration-75"
+                                 x-transition:leave-start="opacity-100 translate-y-0"
+                                 x-transition:leave-end="opacity-0 -translate-y-1"
+                                 class="absolute z-50 mt-1 w-full bg-white border border-border rounded-lg shadow-lg overflow-hidden">
+                                <template x-for="opt in options" :key="opt.value">
+                                    <button type="button"
+                                            @click="expenseType = opt.value; open = false"
+                                            class="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors"
+                                            :class="{ 'bg-primary/5 font-medium': expenseType === opt.value }">
+                                        <i class="bi text-base w-5 text-center" :class="[opt.icon, opt.color]"></i>
+                                        <span x-text="opt.label"></span>
+                                        <i x-show="expenseType === opt.value" class="bi bi-check2 ml-auto text-primary"></i>
+                                    </button>
+                                </template>
+                            </div>
                         </div>
 
-                        <!-- Expense Category (only for expense type) -->
+                        {{-- Expense Category --}}
                         <div x-show="expenseType === 'expense'" x-transition>
                             <label class="form-label">Expense Category</label>
                             <select name="category" class="form-select">
@@ -54,14 +83,14 @@
                             <small class="text-muted-foreground">Choose the category for proper expense tracking</small>
                         </div>
 
-                        <!-- Description -->
+                        {{-- Description --}}
                         <div>
                             <label class="form-label">Description <span class="text-destructive">*</span></label>
                             <input type="text" name="description" class="form-control" placeholder="e.g., Monthly gym rent" required>
                             <small class="text-muted-foreground">Brief description of the transaction</small>
                         </div>
 
-                        <!-- Amount & Date -->
+                        {{-- Amount & Date --}}
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="form-label">Amount <span class="text-destructive">*</span></label>
@@ -74,7 +103,7 @@
                             </div>
                         </div>
 
-                        <!-- Payment Method -->
+                        {{-- Payment Method --}}
                         <div x-data="{ method: 'cash' }">
                             <label class="form-label">Payment Method</label>
                             <input type="hidden" name="payment_method" :value="method">
@@ -98,7 +127,7 @@
                             </div>
                         </div>
 
-                        <!-- Notes -->
+                        {{-- Notes --}}
                         <div>
                             <label class="form-label">Notes (Optional)</label>
                             <textarea name="reference_number" class="form-control" rows="2" placeholder="Additional details..."></textarea>

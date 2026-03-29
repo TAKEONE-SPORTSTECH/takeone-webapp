@@ -46,12 +46,20 @@ class FinancialService
     /**
      * Build 12-month income/expense/profit chart data from a transaction collection.
      */
-    public function getMonthlyData(Collection $transactions): array
+    public function getMonthlyData(Collection $transactions, int $clubId): array
     {
         $cutoff  = now()->subMonths(11)->startOfMonth();
         $byMonth = $transactions
             ->filter(fn($t) => Carbon::parse($t->transaction_date)->gte($cutoff))
             ->groupBy(fn($t) => Carbon::parse($t->transaction_date)->format('Y-m'));
+
+        // Monthly cash to collect: unpaid subscriptions grouped by start_date month (PHP-side, DB-agnostic)
+        $pendingByMonth = ClubMemberSubscription::where('tenant_id', $clubId)
+            ->whereIn('payment_status', ['unpaid', 'pending_approval'])
+            ->where('start_date', '>=', $cutoff)
+            ->get(['start_date', 'amount_due'])
+            ->groupBy(fn($s) => Carbon::parse($s->start_date)->format('Y-m'))
+            ->map(fn($items) => $items->sum('amount_due'));
 
         $monthlyData = [];
         for ($i = 11; $i >= 0; $i--) {
@@ -62,11 +70,13 @@ class FinancialService
             $refund  = (float) $month->where('type', 'refund')->sum('amount');
 
             $monthlyData[] = [
-                'month'    => $date->format('M'),
-                'income'   => $income,
-                'expenses' => $expense,
-                'refunds'  => $refund,
-                'profit'   => $income - $expense - $refund,
+                'month'           => $date->format('M'),
+                'year_month'      => $date->format('Y-m'),
+                'income'          => $income,
+                'expenses'        => $expense,
+                'refunds'         => $refund,
+                'profit'          => $income - $expense - $refund,
+                'cash_to_collect' => (float) ($pendingByMonth->get($date->format('Y-m')) ?? 0),
             ];
         }
 

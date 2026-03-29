@@ -37,9 +37,10 @@
                               :class="{
                                   'bg-amber-100 text-amber-700': activeTransaction?.payment_status === 'unpaid',
                                   'bg-blue-100 text-blue-700': activeTransaction?.payment_status === 'pending_approval',
-                                  'bg-green-100 text-green-700': activeTransaction?.payment_status === 'paid'
+                                  'bg-green-100 text-green-700': activeTransaction?.payment_status === 'paid',
+                                  'bg-red-100 text-red-700': activeTransaction?.payment_status === 'refunded'
                               }"
-                              x-text="activeTransaction?.payment_status === 'pending_approval' ? 'Pending Approval' : (activeTransaction?.payment_status === 'paid' ? 'Paid' : 'Unpaid')">
+                              x-text="activeTransaction?.payment_status === 'pending_approval' ? 'Pending Approval' : (activeTransaction?.payment_status === 'paid' ? 'Paid' : (activeTransaction?.payment_status === 'refunded' ? 'Refunded' : 'Unpaid'))">
                         </span>
                     </div>
                     <div class="col-span-2">
@@ -60,8 +61,7 @@
                 </template>
 
                 {{-- Approve Payment section (only for unpaid/pending) --}}
-                <template x-if="activeTransaction?.payment_status !== 'paid' && activeTransaction?.subscription_id">
-                    <div class="border-t pt-4 space-y-4">
+                <div x-show="activeTransaction?.payment_status !== 'paid' && activeTransaction?.subscription_id" class="border-t pt-4 space-y-4">
                         <p class="text-sm font-semibold">Approve Payment</p>
 
                         <div>
@@ -70,6 +70,7 @@
                                 id="adminProofCropper"
                                 :width="900"
                                 :height="600"
+                                :canvasHeight="680"
                                 shape="rectangle"
                                 mode="form"
                                 inputName="admin_proof_base64"
@@ -89,15 +90,37 @@
                             <span x-show="!approvingPayment"><i class="bi bi-check-circle mr-1"></i>Confirm & Approve Payment</span>
                             <span x-show="approvingPayment"><span class="inline-block animate-spin mr-2">&#8635;</span>Approving...</span>
                         </button>
-                    </div>
-                </template>
+                </div>
 
                 <template x-if="activeTransaction?.payment_status === 'paid'">
-                    <div class="border-t pt-4">
+                    <div class="border-t pt-4 space-y-3">
                         <div class="flex items-center gap-2 text-green-600">
                             <i class="bi bi-check-circle-fill"></i>
                             <span class="font-semibold text-sm">Payment has been approved</span>
                         </div>
+                        <button type="button"
+                                class="w-full btn btn-outline-danger flex items-center justify-center gap-2"
+                                @click="showTransactionDetailModal = false; openRefundModal(activeTransaction)">
+                            <i class="bi bi-arrow-counterclockwise"></i> Refund Payment
+                        </button>
+                    </div>
+                </template>
+
+                <template x-if="activeTransaction?.payment_status === 'refunded'">
+                    <div class="border-t pt-4 space-y-3">
+                        <div class="flex items-center gap-2 text-red-600">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                            <span class="font-semibold text-sm">Payment has been refunded</span>
+                        </div>
+                        <template x-if="activeTransaction?.refund_proof">
+                            <div>
+                                <p class="text-sm font-semibold mb-2">Refund Proof</p>
+                                <img :src="activeTransaction.refund_proof" alt="Refund proof"
+                                     class="w-full rounded-lg border border-gray-200 cursor-pointer"
+                                     @click="window.open(activeTransaction.refund_proof, '_blank')">
+                                <p class="text-xs text-muted-foreground mt-1">Click image to view full size</p>
+                            </div>
+                        </template>
                     </div>
                 </template>
             </div>

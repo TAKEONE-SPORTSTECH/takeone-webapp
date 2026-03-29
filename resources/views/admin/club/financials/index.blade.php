@@ -1,7 +1,7 @@
 @extends('layouts.admin-club')
 
 @section('club-admin-content')
-<div x-data="{
+<div id="financialsRoot" x-data="{
     activeTab: 'ledger',
     showIncomeModal: false,
     showExpenseModal: false,
@@ -10,12 +10,23 @@
     showEditModal: false,
     showDeleteModal: false,
     showTransactionDetailModal: false,
+    showMonthModal: false,
+    showRefundModal: false,
+    monthModalLabel: '',
+    monthModalTransactions: [],
     editTransaction: null,
     deleteTransactionId: null,
     deleteTransactionRef: '',
     activeTransaction: null,
     approvingPayment: false,
+    refundingPayment: false,
+    refundTarget: null,
     expenseType: 'expense',
+    openMonthModal(label, transactions) {
+        this.monthModalLabel = label;
+        this.monthModalTransactions = transactions;
+        this.showMonthModal = true;
+    },
     openEdit(t) {
         this.editTransaction = t;
         this.showEditModal = true;
@@ -28,6 +39,34 @@
     openTransactionDetail(id) {
         this.activeTransaction = window.transactionData?.[id] || null;
         this.showTransactionDetailModal = true;
+    },
+    openRefundModal(transaction) {
+        this.refundTarget = transaction;
+        this.showRefundModal = true;
+    },
+    async processRefund() {
+        if (this.refundingPayment || !this.refundTarget) return;
+        this.refundingPayment = true;
+        try {
+            const formData = new FormData();
+            formData.append('_token', document.querySelector('meta[name=\'csrf-token\']')?.content);
+            const refundProof = document.getElementById('hiddenInput_refundProofCropper')?.value;
+            if (refundProof) formData.append('refund_proof_base64', refundProof);
+            const res = await fetch(`{{ url('admin/club/' . $club->slug . '/subscriptions') }}/${this.refundTarget.subscription_id}/refund`, {
+                method: 'POST', body: formData, headers: { 'Accept': 'application/json' }
+            });
+            const data = await res.json();
+            if (data.success) {
+                this.showRefundModal = false;
+                location.reload();
+            } else {
+                alert(data.message || 'Failed to process refund.');
+            }
+        } catch(e) {
+            alert('An error occurred.');
+        } finally {
+            this.refundingPayment = false;
+        }
     },
     async approvePayment(subscriptionId) {
         if (this.approvingPayment) return;
@@ -250,6 +289,7 @@
                             $isClickable  = $transaction->type === 'income' && $transaction->subscription_id && $subPayStatus !== null;
                         @endphp
                         <tr class="{{ $isClickable ? 'cursor-pointer hover:bg-primary/5' : '' }}"
+                            data-year-month="{{ $transaction->transaction_date ? $transaction->transaction_date->format('Y-m') : '' }}"
                             {{ $isClickable ? '@click=openTransactionDetail(' . $transaction->id . ')' : '' }}>
                             <td class="whitespace-nowrap">{{ $transaction->transaction_date ? $transaction->transaction_date->format('M d, Y') : 'N/A' }}</td>
                             <td class="font-mono text-sm">{{ $transaction->reference_number ?? '-' }}</td>
@@ -425,9 +465,9 @@
                             <span class="font-medium text-orange-600">-{{ $currency }} {{ number_format($summary['refunds'] ?? 0, 2) }}</span>
                         </div>
                         <div class="pt-2 border-t flex justify-between font-bold text-lg">
-                            <span>Net Profit</span>
+                            <span>{{ $netIncome >= 0 ? 'Net Profit' : 'Net Loss' }}</span>
                             <span class="{{ $netIncome >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                {{ $currency }} {{ number_format($netIncome, 2) }}
+                                {{ $currency }} {{ number_format(abs($netIncome), 2) }}
                             </span>
                         </div>
                     </div>
@@ -454,14 +494,84 @@
         </div>
     </div>
 
+    {{-- Month Transactions Modal --}}
+    <div x-show="showMonthModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto"
+         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+        <div class="fixed inset-0 bg-black/50" @click="showMonthModal = false"></div>
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div class="modal-content border-0 shadow-lg w-full max-w-3xl relative rounded-lg overflow-hidden" @click.stop>
+                <div class="modal-header border-b px-6 py-4">
+                    <div>
+                        <h5 class="modal-title font-bold flex items-center gap-2">
+                            <i class="bi bi-calendar3 text-primary"></i>
+                            Transactions — <span x-text="monthModalLabel"></span>
+                        </h5>
+                        <p class="text-sm text-muted-foreground mb-0" x-text="monthModalTransactions.length + ' transaction(s) found'"></p>
+                    </div>
+                    <button type="button" class="text-muted-foreground hover:text-foreground" @click="showMonthModal = false">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div class="modal-body px-6 py-4">
+                    <template x-if="monthModalTransactions.length === 0">
+                        <div class="text-center py-10 text-muted-foreground">
+                            <i class="bi bi-receipt text-5xl mb-3 block"></i>
+                            <p>No transactions recorded for this month.</p>
+                        </div>
+                    </template>
+                    <template x-if="monthModalTransactions.length > 0">
+                        <div class="overflow-x-auto">
+                            <table class="table table-hover mb-0">
+                                <thead class="bg-muted/50">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Type</th>
+                                        <th>Description</th>
+                                        <th>Category</th>
+                                        <th class="text-right">Amount</th>
+                                        <th>Payment</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="t in monthModalTransactions" :key="t.id">
+                                        <tr>
+                                            <td class="whitespace-nowrap text-sm" x-text="t.transaction_date"></td>
+                                            <td>
+                                                <span x-show="t.type === 'income'" class="badge bg-green-100 text-green-700">Income</span>
+                                                <span x-show="t.type === 'expense'" class="badge bg-red-100 text-red-700">Expense</span>
+                                                <span x-show="t.type === 'refund'" class="badge bg-orange-100 text-orange-700">Refund</span>
+                                            </td>
+                                            <td x-text="t.description || '—'"></td>
+                                            <td class="text-sm text-muted-foreground" x-text="t.category || '—'"></td>
+                                            <td class="text-right font-semibold whitespace-nowrap"
+                                                :class="t.type === 'income' ? 'text-green-600' : 'text-red-600'"
+                                                x-text="(t.type === 'income' ? '+' : '-') + ' {{ $currency }} ' + parseFloat(t.amount).toFixed(2)">
+                                            </td>
+                                            <td class="text-sm text-muted-foreground" x-text="t.payment_method ? t.payment_method.replace('_', ' ') : '—'"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </template>
+                </div>
+                <div class="modal-footer px-6 py-3 border-t flex justify-end">
+                    <button type="button" class="btn btn-outline-secondary" @click="showMonthModal = false">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- Modals --}}
-    @include('admin.club.financials.partials.income-modal')
-    @include('admin.club.financials.partials.expense-modal')
+    <x-income-modal :club="$club" :currency="$currency" />
+    <x-expense-modal :club="$club" />
     @include('admin.club.financials.partials.auto-expense-modal')
     @include('admin.club.financials.partials.export-modal')
     @include('admin.club.financials.partials.edit-modal')
     @include('admin.club.financials.partials.delete-modal')
     @include('admin.club.financials.partials.transaction-detail-modal')
+    @include('admin.club.financials.partials.refund-modal')
 </div>
 
 {{-- Styles moved to app.css (Phase 6) --}}
@@ -480,8 +590,10 @@ window.transactionData = {
         category: @json($transaction->category ?? ''),
         payment_method: @json($transaction->payment_method ?? ''),
         subscription_id: {{ $transaction->subscription_id ?? 'null' }},
+        amount_paid: {{ $transaction->subscription?->amount_paid ?? 'null' }},
         payment_status: @json($transaction->subscription?->payment_status ?? ''),
         proof_of_payment: @json($transaction->subscription?->proof_of_payment ? route('admin.club.subscriptions.payment-proof', ['club' => $club, 'subscription' => $transaction->subscription_id]) : ''),
+        refund_proof: @json($transaction->subscription?->refund_proof ? route('admin.club.subscriptions.refund-proof', ['club' => $club, 'subscription' => $transaction->subscription_id]) : ''),
         member_name: @json($transaction->subscription?->user?->full_name ?? $transaction->subscription?->user?->name ?? ''),
     },
     @endforeach
@@ -532,6 +644,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         borderWidth: 2,
                         tension: 0.3,
                         fill: true
+                    },
+                    {
+                        label: 'Cash to Collect',
+                        data: monthlyData.map(d => d.cash_to_collect),
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: false,
+                        borderDash: [5, 5]
                     }
                 ]
             },
@@ -541,6 +663,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 interaction: {
                     intersect: false,
                     mode: 'index'
+                },
+                onHover: (event, elements) => {
+                    event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
                 },
                 plugins: {
                     legend: {
@@ -567,11 +692,28 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         }
                     }
+                },
+                onClick: function(event, elements, chart) {
+                    const points = chart.getElementsAtEventForMode(event.native, 'index', { intersect: false }, true);
+                    if (points.length === 0) return;
+                    const index = points[0].index;
+                    const { year_month } = monthlyData[index];
+                    // Match by year_month (YYYY-MM) against transaction_date string (e.g. "Mar 19, 2026")
+                    const [year, mon] = year_month.split('-');
+                    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                    const shortMonth = monthNames[parseInt(mon) - 1];
+                    const txns = Object.values(window.transactionData).filter(t => {
+                        if (!t.transaction_date) return false;
+                        return t.transaction_date.startsWith(shortMonth) && t.transaction_date.endsWith(year);
+                    });
+                    const alpineRoot = document.getElementById('financialsRoot');
+                    Alpine.$data(alpineRoot).openMonthModal(shortMonth + ' ' + year, txns);
                 }
             }
         });
     }
 });
+
 
 // Export CSV
 function exportCSV() {
