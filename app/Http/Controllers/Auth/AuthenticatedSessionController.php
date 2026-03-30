@@ -63,7 +63,7 @@ class AuthenticatedSessionController extends Controller
                 ->withProperties(['ip' => $request->ip(), 'user_agent' => $request->userAgent()])
                 ->log('User logged in');
 
-            return redirect()->route('clubs.explore');
+            return redirect()->intended(route('clubs.explore'));
         }
 
         activity('auth')

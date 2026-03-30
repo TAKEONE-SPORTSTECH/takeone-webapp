@@ -14,9 +14,16 @@
 
             <!-- Logo -->
             <div class="text-center mb-6">
-                <a href="{{ url('/') }}">
-                    <img src="{{ asset('images/logo.png') }}" alt="TAKEONE" class="h-12 mx-auto">
-                </a>
+                @if(session('club.context'))
+                    @if(session('club.context.logo'))
+                        <img src="{{ asset('storage/' . session('club.context.logo')) }}" alt="{{ session('club.context.name') }}" class="h-16 mx-auto rounded-xl object-contain">
+                    @endif
+                    <p class="text-sm text-gray-400 mt-2">One step away from joining <span class="font-semibold text-foreground">{{ session('club.context.name') }}</span></p>
+                @else
+                    <a href="{{ url('/') }}">
+                        <img src="{{ asset('images/logo.png') }}" alt="TAKEONE" class="h-12 mx-auto">
+                    </a>
+                @endif
             </div>
 
             <!-- Email icon -->

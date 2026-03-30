@@ -38,18 +38,27 @@ class WelcomeEmail extends Mailable implements ShouldQueue
     public $relationship;
 
     /**
+     * The intended redirect URL after verification.
+     *
+     * @var string|null
+     */
+    public $intended;
+
+    /**
      * Create a new message instance.
      *
      * @param \App\Models\User $user
      * @param \App\Models\User|null $guardian
      * @param \App\Models\UserRelationship|null $relationship
+     * @param string|null $intended
      * @return void
      */
-    public function __construct(User $user, ?User $guardian = null, ?UserRelationship $relationship = null)
+    public function __construct(User $user, ?User $guardian = null, ?UserRelationship $relationship = null, ?string $intended = null)
     {
         $this->user = $user;
         $this->guardian = $guardian;
         $this->relationship = $relationship;
+        $this->intended = $intended;
     }
 
     /**
@@ -74,10 +83,11 @@ class WelcomeEmail extends Mailable implements ShouldQueue
         return new Content(
             view: 'emails.welcome',
             with: [
-                'verificationUrl' => URL::temporarySignedRoute('verification.verify', now()->addMinutes(60), [
+                'verificationUrl' => URL::temporarySignedRoute('verification.verify', now()->addMinutes(60), array_filter([
                     'id' => $this->user->getKey(),
                     'hash' => sha1($this->user->getEmailForVerification()),
-                ]),
+                    'intended' => $this->intended,
+                ])),
             ],
         );
     }

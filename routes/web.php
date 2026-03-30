@@ -46,13 +46,23 @@ Route::get('/email/verify/{id}/{hash}', function (Request $request, $id, $hash) 
         abort(403, 'Invalid verification link.');
     }
 
+    $intended = $request->query('intended') ?: session()->pull('url.intended', route('clubs.explore'));
+    session()->forget('club.context');
+
     if ($user->hasVerifiedEmail()) {
-        return redirect('/login')->with('status', 'Email already verified.');
+        if (!auth()->check()) {
+            Auth::login($user);
+        }
+        return redirect($intended)->with('status', 'Email already verified.');
     }
 
     $user->markEmailAsVerified();
 
-    return redirect('/login')->with('status', 'Email verified successfully. You can now log in.');
+    if (!auth()->check()) {
+        Auth::login($user);
+    }
+
+    return redirect($intended)->with('status', 'Email verified! Welcome to TakeOne.');
 })->middleware(['signed'])->name('verification.verify');
 
 Route::post('/email/verification-notification', function (Request $request) {
@@ -77,13 +87,13 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('{country}')->where(['country' => '[a-z]{2,3}'])->group(function () {
         Route::get('/clubs/{slug}', [PlatformController::class, 'show'])->name('clubs.show');
         Route::get('/clubs/{slug}/packages-json', [PlatformController::class, 'clubPackages'])->name('clubs.packages.json');
-        Route::post('/clubs/join', [PlatformController::class, 'joinClub'])->name('clubs.join')->middleware('throttle:join-club');
-        Route::post('/clubs/{slug}/events/{event}/join', [PlatformController::class, 'joinEvent'])->name('clubs.events.join')->middleware('throttle:join-club');
-        Route::delete('/clubs/{slug}/events/{event}/leave', [PlatformController::class, 'leaveEvent'])->name('clubs.events.leave');
-        Route::post('/clubs/{slug}/perks/{perk}/collect', [PlatformController::class, 'collectPerk'])->name('clubs.perks.collect')->middleware('throttle:social');
-        Route::post('/clubs/{slug}/timeline/{post}/like', [PlatformController::class, 'toggleLike'])->name('clubs.timeline.like')->middleware('throttle:social');
-        Route::post('/clubs/{slug}/timeline/{post}/comments', [PlatformController::class, 'addComment'])->name('clubs.timeline.comment')->middleware('throttle:social');
-        Route::delete('/clubs/{slug}/timeline/{post}/comments/{comment}', [PlatformController::class, 'deleteComment'])->name('clubs.timeline.comment.delete');
+        Route::post('/clubs/join', [PlatformController::class, 'joinClub'])->name('clubs.join')->middleware('verified', 'throttle:join-club');
+        Route::post('/clubs/{slug}/events/{event}/join', [PlatformController::class, 'joinEvent'])->name('clubs.events.join')->middleware('verified', 'throttle:join-club');
+        Route::delete('/clubs/{slug}/events/{event}/leave', [PlatformController::class, 'leaveEvent'])->name('clubs.events.leave')->middleware('verified');
+        Route::post('/clubs/{slug}/perks/{perk}/collect', [PlatformController::class, 'collectPerk'])->name('clubs.perks.collect')->middleware('verified', 'throttle:social');
+        Route::post('/clubs/{slug}/timeline/{post}/like', [PlatformController::class, 'toggleLike'])->name('clubs.timeline.like')->middleware('verified', 'throttle:social');
+        Route::post('/clubs/{slug}/timeline/{post}/comments', [PlatformController::class, 'addComment'])->name('clubs.timeline.comment')->middleware('verified', 'throttle:social');
+        Route::delete('/clubs/{slug}/timeline/{post}/comments/{comment}', [PlatformController::class, 'deleteComment'])->name('clubs.timeline.comment.delete')->middleware('verified');
     });
 });
 

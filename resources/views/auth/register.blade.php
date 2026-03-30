@@ -20,12 +20,25 @@
         <div class="tf-auth-card">
             <!-- Logo -->
             <div class="text-center mb-4">
-                <a href="{{ url('/') }}">
-                    <img src="{{ asset('images/logo.png') }}" alt="TAKEONE" class="h-12 mx-auto">
-                </a>
+                @if(session('club.context'))
+                    @php $clubCtx = session('club.context'); @endphp
+                    @if($clubCtx['logo'])
+                        <img src="{{ asset('storage/' . $clubCtx['logo']) }}" alt="{{ $clubCtx['name'] }}" class="h-16 mx-auto rounded-xl object-contain">
+                    @endif
+                @else
+                    <a href="{{ url('/') }}">
+                        <img src="{{ asset('images/logo.png') }}" alt="TAKEONE" class="h-12 mx-auto">
+                    </a>
+                @endif
             </div>
 
-            <p class="text-center text-gray-500 text-lg mb-8 tracking-tight">Register a new membership</p>
+            @if(session('club.context'))
+                <p class="text-center text-gray-500 text-lg mb-8 tracking-tight">
+                    Registering to join <span class="font-semibold text-foreground">{{ session('club.context.name') }}</span>
+                </p>
+            @else
+                <p class="text-center text-gray-500 text-lg mb-8 tracking-tight">Register a new membership</p>
+            @endif
 
             <form method="POST" action="{{ route('register') }}" id="registrationForm">
                 @csrf

@@ -19,9 +19,28 @@ class RegisteredUserController extends Controller
      *
      * @return \Illuminate\View\View
      */
-    public function create()
+    public function create(Request $request)
     {
+        if ($request->input('intended')) {
+            session(['url.intended' => $request->input('intended')]);
+            $this->storeClubContext($request->input('intended'));
+        }
+
         return view('auth.register');
+    }
+
+    private function storeClubContext(string $intendedUrl): void
+    {
+        if (preg_match('#/mobile/([^/?]+)#', $intendedUrl, $matches)) {
+            $club = \App\Models\Tenant::where('slug', $matches[1])->first(['club_name', 'slug', 'logo']);
+            if ($club) {
+                session(['club.context' => [
+                    'name' => $club->club_name,
+                    'logo' => $club->logo,
+                    'slug' => $club->slug,
+                ]]);
+            }
+        }
     }
 
     /**
@@ -73,9 +92,16 @@ class RegisteredUserController extends Controller
             // Log the user in
             Auth::login($user);
 
+            // Preserve the intended URL and club context across email verification
+            if ($request->input('intended')) {
+                session(['url.intended' => $request->input('intended')]);
+                $this->storeClubContext($request->input('intended'));
+            }
+
             // Send welcome email with verification link
             try {
-                Mail::to($user->email)->queue(new WelcomeEmail($user, $user, null));
+                $intended = session('url.intended') ?: $request->input('intended');
+            Mail::to($user->email)->queue(new WelcomeEmail($user, $user, null, $intended));
             } catch (\Exception $e) {
                 // Log the error but don't stop the registration process
                 \Log::error('Failed to send welcome email: ' . $e->getMessage());

@@ -408,7 +408,7 @@ class PlatformController extends Controller
 
     public function showPublic($slug)
     {
-        return $this->show($slug);
+        return $this->show('', $slug);
     }
 
     /**

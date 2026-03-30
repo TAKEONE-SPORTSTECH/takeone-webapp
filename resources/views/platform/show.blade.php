@@ -68,28 +68,46 @@
                 </div>
                 @endif
             </div>
-            <div class="glass-hub">
-                @foreach($club->socialLinks as $link)
-                    @php
-                        $icon = 'bi-link-45deg';
-                        $platform = strtolower($link->platform);
-                        if (str_contains($platform, 'whatsapp')) $icon = 'bi-whatsapp';
-                        elseif (str_contains($platform, 'instagram')) $icon = 'bi-instagram';
-                        elseif (str_contains($platform, 'facebook')) $icon = 'bi-facebook';
-                        elseif (str_contains($platform, 'twitter') || str_contains($platform, 'x')) $icon = 'bi-twitter-x';
-                        elseif (str_contains($platform, 'youtube')) $icon = 'bi-youtube';
-                        elseif (str_contains($platform, 'tiktok')) $icon = 'bi-tiktok';
-                        elseif (str_contains($platform, 'linkedin')) $icon = 'bi-linkedin';
-                    @endphp
-                    <a href="{{ $link->url }}" target="_blank" class="hub-link" title="{{ $link->platform }}">
-                        <i class="bi {{ $icon }}"></i>
+            <div class="flex flex-col items-end gap-3">
+                <div class="glass-hub">
+                    @foreach($club->socialLinks as $link)
+                        @php
+                            $icon = 'bi-link-45deg';
+                            $platform = strtolower($link->platform);
+                            if (str_contains($platform, 'whatsapp')) $icon = 'bi-whatsapp';
+                            elseif (str_contains($platform, 'instagram')) $icon = 'bi-instagram';
+                            elseif (str_contains($platform, 'facebook')) $icon = 'bi-facebook';
+                            elseif (str_contains($platform, 'twitter') || str_contains($platform, 'x')) $icon = 'bi-twitter-x';
+                            elseif (str_contains($platform, 'youtube')) $icon = 'bi-youtube';
+                            elseif (str_contains($platform, 'tiktok')) $icon = 'bi-tiktok';
+                            elseif (str_contains($platform, 'linkedin')) $icon = 'bi-linkedin';
+                        @endphp
+                        <a href="{{ $link->url }}" target="_blank" class="hub-link" title="{{ $link->platform }}">
+                            <i class="bi {{ $icon }}"></i>
+                        </a>
+                    @endforeach
+                    @if($club->phone)
+                    <a href="tel:{{ is_array($club->phone) ? (($club->phone['code'] ?? '') . ($club->phone['number'] ?? '')) : $club->phone }}" class="hub-link" title="Call">
+                        <i class="bi bi-telephone"></i>
                     </a>
-                @endforeach
-                @if($club->phone)
-                <a href="tel:{{ is_array($club->phone) ? (($club->phone['code'] ?? '') . ($club->phone['number'] ?? '')) : $club->phone }}" class="hub-link" title="Call">
-                    <i class="bi bi-telephone"></i>
+                    @endif
+                </div>
+
+                {{-- Join This Club CTA — below the social icons --}}
+                @guest
+                <a href="{{ route('register') }}?intended={{ urlencode(url()->current()) }}"
+                   class="flex items-center gap-2 px-5 py-2 rounded-full font-semibold text-sm text-white no-underline"
+                   style="background: var(--color-primary);">
+                    <i class="bi bi-person-plus-fill"></i> Join This Club
                 </a>
-                @endif
+                @endguest
+                @auth
+                <button onclick="switchToPackagesTab()"
+                        class="flex items-center gap-2 px-5 py-2 rounded-full font-semibold text-sm text-white border-0"
+                        style="background: var(--color-primary);">
+                    <i class="bi bi-person-plus-fill"></i> Join This Club
+                </button>
+                @endauth
             </div>
         </div>
 
@@ -2324,6 +2342,17 @@ function selectPackageApp() {
             window._joinModal = this.joinModal;
         }
     };
+}
+
+// Switch to the Packages tab and scroll to it
+function switchToPackagesTab() {
+    const tab = document.querySelector('[data-bs-target="#tab-packages"]');
+    if (tab) {
+        tab.click();
+        setTimeout(() => {
+            document.getElementById('tab-packages')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 150);
+    }
 }
 
 // Global function called by the "Select Package" buttons
