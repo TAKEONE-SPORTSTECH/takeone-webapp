@@ -84,5 +84,27 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('social', function (Request $request) {
             return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());
         });
+
+        // Email verification resend: 6 per minute keyed by email+IP.
+        RateLimiter::for('verification', function (Request $request) {
+            return Limit::perMinute(6)->by($request->user()?->email . '|' . $request->ip());
+        });
+
+        // Member data writes (health records, tournaments, affiliations, goals, family):
+        // 30 per minute per user — prevents scripted data flooding.
+        RateLimiter::for('member-write', function (Request $request) {
+            return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // Sensitive admin operations (messaging, notifications, ownership transfer):
+        // 60 per minute per user — generous for normal admin use, blocks abuse.
+        RateLimiter::for('admin-write', function (Request $request) {
+            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // Backup restore: 3 per hour per user — extremely destructive operation.
+        RateLimiter::for('backup', function (Request $request) {
+            return Limit::perHour(3)->by($request->user()?->id ?: $request->ip());
+        });
     }
 }
