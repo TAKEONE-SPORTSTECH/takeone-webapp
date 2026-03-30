@@ -41,6 +41,37 @@ class PlatformController extends Controller
     }
 
     /**
+     * Display the audit log.
+     */
+    public function auditLog(Request $request)
+    {
+        $search   = $request->input('search');
+        $logName  = $request->input('log_name');
+        $event    = $request->input('event');
+        $dateFrom = $request->input('date_from');
+        $dateTo   = $request->input('date_to');
+
+        $logs = \Spatie\Activitylog\Models\Activity::with('causer')
+            ->when($search, function ($q) use ($search) {
+                $q->where('description', 'like', "%{$search}%")
+                  ->orWhere('subject_type', 'like', "%{$search}%")
+                  ->orWhereHas('causer', fn($u) => $u->where('full_name', 'like', "%{$search}%")
+                                                      ->orWhere('email', 'like', "%{$search}%"));
+            })
+            ->when($logName,  fn($q) => $q->where('log_name', $logName))
+            ->when($event,    fn($q) => $q->where('event', $event))
+            ->when($dateFrom, fn($q) => $q->whereDate('created_at', '>=', $dateFrom))
+            ->when($dateTo,   fn($q) => $q->whereDate('created_at', '<=', $dateTo))
+            ->latest()
+            ->paginate(25)
+            ->withQueryString();
+
+        $logNames = \Spatie\Activitylog\Models\Activity::distinct()->pluck('log_name')->filter()->sort()->values();
+
+        return view('admin.platform.audit-log.index', compact('logs', 'search', 'logName', 'event', 'dateFrom', 'dateTo', 'logNames'));
+    }
+
+    /**
      * Display all clubs management page.
      */
     public function clubs(Request $request)

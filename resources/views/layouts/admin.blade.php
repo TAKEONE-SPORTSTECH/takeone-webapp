@@ -39,7 +39,7 @@
                 <div class="flex-1 text-left">
                     <p class="font-semibold text-sm m-0">All Clubs</p>
                     <p class="text-xs m-0 mt-1 {{ request()->routeIs('admin.platform.clubs*') || request()->routeIs('admin.platform.index') ? 'text-white/80' : 'text-muted-foreground' }}">
-                        Manage {{ $clubsCount ?? 0 }} {{ ($clubsCount ?? 0) === 1 ? 'club' : 'clubs' }}
+                        Manage all clubs
                     </p>
                 </div>
             </a>
@@ -66,6 +66,20 @@
                     <p class="font-semibold text-sm m-0">Backup & Restore</p>
                     <p class="text-xs m-0 mt-1 {{ request()->routeIs('admin.platform.backup*') ? 'text-white/80' : 'text-muted-foreground' }}">
                         Database management
+                    </p>
+                </div>
+            </a>
+
+            <a href="{{ route('admin.platform.audit-log') }}"
+               class="flex items-start gap-3 p-4 rounded-lg transition-all no-underline
+                      {{ request()->routeIs('admin.platform.audit-log*')
+                         ? 'bg-primary text-white shadow-lg'
+                         : 'bg-card text-foreground hover:bg-muted hover:shadow-md' }}">
+                <i class="bi bi-journal-text w-5 h-5 flex-shrink-0 mt-0.5"></i>
+                <div class="flex-1 text-left">
+                    <p class="font-semibold text-sm m-0">Audit Log</p>
+                    <p class="text-xs m-0 mt-1 {{ request()->routeIs('admin.platform.audit-log*') ? 'text-white/80' : 'text-muted-foreground' }}">
+                        Who did what & when
                     </p>
                 </div>
             </a>
