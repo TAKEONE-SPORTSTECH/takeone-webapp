@@ -65,20 +65,25 @@ Route::get('/email/verify/{id}/{hash}', function (Request $request, $id, $hash) 
     $intended = $request->query('intended') ?: session()->pull('url.intended', route('clubs.explore'));
     session()->forget('club.context');
 
+    // Log the user in and set the 2FA session flag so all middleware passes.
+    if (!auth()->check()) {
+        Auth::login($user);
+        $request->session()->regenerate();
+        $request->session()->put('two_factor.verified', true);
+    }
+
     if ($user->hasVerifiedEmail()) {
-        if (!auth()->check()) {
-            Auth::login($user);
-        }
-        return redirect($intended)->with('status', 'Email already verified.');
+        return redirect($intended)->with('success', 'Your email is already verified.');
     }
 
     $user->markEmailAsVerified();
 
-    if (!auth()->check()) {
-        Auth::login($user);
-    }
-
-    return redirect($intended)->with('status', 'Email verified! Welcome to TakeOne.');
+    // Redirect to the verify-email page with verified=true so the success
+    // message shows in the same auth card the user is familiar with.
+    // The page will auto-redirect them to the app after 3 seconds.
+    return redirect()->route('verification.notice')
+        ->with('verified', true)
+        ->with('verified_intended', $intended);
 })->middleware(['signed'])->name('verification.verify');
 
 Route::post('/email/verification-notification', function (Request $request) {

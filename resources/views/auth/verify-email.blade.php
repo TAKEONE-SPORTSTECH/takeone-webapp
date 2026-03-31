@@ -26,69 +26,80 @@
                 @endif
             </div>
 
-            <!-- Email icon -->
-            <div class="flex justify-center mb-5">
-                <div class="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
-                    <svg class="w-10 h-10 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                    </svg>
+            @if(session('verified'))
+                {{-- ── SUCCESS STATE ── --}}
+                <div class="flex justify-center mb-5">
+                    <div class="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
+                        <svg class="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </div>
                 </div>
-            </div>
 
-            <h2 class="text-center text-gray-800 text-xl font-semibold mb-2 tracking-tight">Check Your Inbox</h2>
-            <p class="text-center text-gray-400 text-sm mb-6 leading-relaxed">
-                We sent a verification link to your email address.<br>
-                Click the link in the email to activate your account.
-            </p>
+                <h2 class="text-center text-gray-800 text-xl font-semibold mb-2 tracking-tight">Email Verified!</h2>
+                <p class="text-center text-gray-400 text-sm mb-6 leading-relaxed">
+                    Your account is now active. You will be taken to the app shortly.
+                </p>
 
-            <!-- Alerts -->
-            @if (session('resent') || session('status') == 'verification-link-sent')
-                <div class="flex items-start gap-3 bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 mb-5 text-sm">
-                    <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                    </svg>
-                    <span>A fresh verification link has been sent to your email address.</span>
-                </div>
-            @endif
-
-            @if (session('verified'))
-                <div class="flex items-start gap-3 bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 mb-5 text-sm">
-                    <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                    </svg>
-                    <span>Your email has been verified! You can now <a href="{{ route('login') }}" class="font-medium underline">log in</a>.</span>
-                </div>
-            @endif
-
-            <!-- Divider with hint -->
-            <div class="flex items-center gap-3 mb-5">
-                <div class="flex-1 h-px bg-gray-100"></div>
-                <span class="text-xs text-gray-400 whitespace-nowrap">Didn't receive the email?</span>
-                <div class="flex-1 h-px bg-gray-100"></div>
-            </div>
-
-            <!-- Resend Button -->
-            <form method="POST" action="{{ route('verification.send') }}">
-                @csrf
-                <button type="submit" class="tf-auth-btn mb-4">
-                    RESEND VERIFICATION EMAIL
-                </button>
-            </form>
-
-            <!-- Logout link -->
-            <p class="text-center text-sm text-gray-400">
-                Wrong account?
-                <a href="{{ route('logout') }}"
-                   class="tf-auth-link"
-                   onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                    Sign out
+                <a href="{{ session('verified_intended', route('clubs.explore')) }}" class="tf-auth-btn mb-4 block text-center">
+                    GO TO APP
                 </a>
-            </p>
 
-            <form id="logout-form" action="{{ route('logout') }}" method="POST" class="hidden">
-                @csrf
-            </form>
+                <p class="text-center text-xs text-gray-400" x-data="{ secs: 3 }" x-init="setInterval(() => { if (secs > 0) secs--; else window.location.href = '{{ session('verified_intended', route('clubs.explore')) }}'; }, 1000)">
+                    Redirecting in <span x-text="secs"></span> second(s)…
+                </p>
+            @else
+                {{-- ── WAITING STATE ── --}}
+                <div class="flex justify-center mb-5">
+                    <div class="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+                        <svg class="w-10 h-10 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <h2 class="text-center text-gray-800 text-xl font-semibold mb-2 tracking-tight">Check Your Inbox</h2>
+                <p class="text-center text-gray-400 text-sm mb-6 leading-relaxed">
+                    We sent a verification link to your email address.<br>
+                    Click the link in the email to activate your account.
+                </p>
+
+                @if (session('resent') || session('status') == 'verification-link-sent')
+                    <div class="flex items-start gap-3 bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 mb-5 text-sm">
+                        <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span>A fresh verification link has been sent to your email address.</span>
+                    </div>
+                @endif
+
+                <div class="flex items-center gap-3 mb-5">
+                    <div class="flex-1 h-px bg-gray-100"></div>
+                    <span class="text-xs text-gray-400 whitespace-nowrap">Didn't receive the email?</span>
+                    <div class="flex-1 h-px bg-gray-100"></div>
+                </div>
+
+                <form method="POST" action="{{ route('verification.send') }}">
+                    @csrf
+                    <button type="submit" class="tf-auth-btn mb-4">
+                        RESEND VERIFICATION EMAIL
+                    </button>
+                </form>
+
+                <p class="text-center text-sm text-gray-400">
+                    Wrong account?
+                    <a href="{{ route('logout') }}"
+                       class="tf-auth-link"
+                       onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                        Sign out
+                    </a>
+                </p>
+
+                <form id="logout-form" action="{{ route('logout') }}" method="POST" class="hidden">
+                    @csrf
+                </form>
+            @endif
 
         </div>
     </div>
