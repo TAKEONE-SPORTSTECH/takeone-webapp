@@ -124,19 +124,20 @@ class PlatformController extends Controller
         }
 
         $user = User::create([
-            'full_name'         => $request->full_name,
-            'name'              => $request->full_name,
-            'email'             => $request->email,
-            'password'          => Hash::make($request->password),
-            'gender'            => $request->gender,
-            'birthdate'         => $request->birthdate,
-            'nationality'       => $request->nationality,
-            'blood_type'        => $request->blood_type,
-            'mobile'            => $mobile,
-            'marital_status'    => $request->marital_status,
-            'motto'             => $request->motto,
-            'email_verified_at' => now(),
+            'full_name'      => $request->full_name,
+            'name'           => $request->full_name,
+            'email'          => $request->email,
+            'password'       => Hash::make($request->password),
+            'gender'         => $request->gender,
+            'birthdate'      => $request->birthdate,
+            'nationality'    => $request->nationality,
+            'blood_type'     => $request->blood_type,
+            'mobile'         => $mobile,
+            'marital_status' => $request->marital_status,
+            'motto'          => $request->motto,
         ]);
+
+        $user->sendEmailVerificationNotification();
 
         return response()->json([
             'success'  => true,
