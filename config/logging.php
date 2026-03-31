@@ -74,8 +74,10 @@ return [
             'replace_placeholders' => true,
         ],
 
-        // JSON structured logging — use in production for log aggregators
-        // (Datadog, Logtail, CloudWatch). Switch with: LOG_CHANNEL=json
+        // JSON structured logging — one line per entry, machine-readable.
+        // Every entry includes request_id, user_id, ip, route (injected by
+        // StructuredLogging middleware via Log::shareContext()).
+        // Use in production: LOG_CHANNEL=json  or  LOG_STACK=json
         'json' => [
             'driver'    => 'monolog',
             'level'     => env('LOG_LEVEL', 'debug'),
@@ -85,7 +87,26 @@ return [
             ],
             'formatter'      => JsonFormatter::class,
             'formatter_with' => [
-                'appendNewline' => true,
+                'appendNewline'          => true,
+                'includeStacktraces'     => true,
+            ],
+            'processors' => [PsrLogMessageProcessor::class],
+        ],
+
+        // Daily-rotating JSON — keeps 30 days, good for production servers
+        // without a log aggregator. Switch with: LOG_CHANNEL=json-daily
+        'json-daily' => [
+            'driver'    => 'monolog',
+            'level'     => env('LOG_LEVEL', 'debug'),
+            'handler'   => \Monolog\Handler\RotatingFileHandler::class,
+            'handler_with' => [
+                'filename'   => storage_path('logs/laravel.log'),
+                'maxFiles'   => env('LOG_DAILY_DAYS', 30),
+            ],
+            'formatter'      => JsonFormatter::class,
+            'formatter_with' => [
+                'appendNewline'      => true,
+                'includeStacktraces' => true,
             ],
             'processors' => [PsrLogMessageProcessor::class],
         ],
