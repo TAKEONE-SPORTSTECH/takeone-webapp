@@ -61,10 +61,11 @@ class AuthenticatedSessionController extends Controller
             $authedUser = $request->user();
 
             if (!$authedUser->hasVerifiedEmail()) {
+                $email = $authedUser->email;
                 Auth::logout();
-                return redirect()->route('verification.notice')->withErrors([
-                    'email' => 'You need to verify your email address before logging in.',
-                ]);
+                return redirect()->route('login')
+                    ->with('warning', 'Your email address is not verified. Please check your inbox and click the verification link.')
+                    ->with('unverified_email', $email);
             }
 
             if ($authedUser->hasTwoFactorEnabled()) {

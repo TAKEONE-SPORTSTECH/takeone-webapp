@@ -76,6 +76,24 @@
                 </a>
             </form>
 
+            <!-- Unverified email notice -->
+            @if(session('unverified_email'))
+            <div class="flex items-start gap-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl px-4 py-3 mb-4 text-sm">
+                <i class="bi bi-envelope-exclamation mt-0.5 shrink-0"></i>
+                <div class="flex-1">
+                    <p class="font-medium mb-1">Email not verified</p>
+                    <p class="text-yellow-700 mb-2">Didn't receive the email or it expired?</p>
+                    <form method="POST" action="{{ route('verification.resend.public') }}">
+                        @csrf
+                        <input type="hidden" name="email" value="{{ session('unverified_email') }}">
+                        <button type="submit" class="text-yellow-800 underline font-medium text-xs hover:text-yellow-900">
+                            Resend verification email
+                        </button>
+                    </form>
+                </div>
+            </div>
+            @endif
+
             <!-- Forgot password link -->
             <p class="text-center text-sm text-gray-500">
                 @if (Route::has('password.request'))

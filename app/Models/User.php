@@ -31,6 +31,7 @@ use App\Models\PerkCollection;
 use App\Models\UserNotification;
 use App\Models\UserRelationship;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Carbon\Carbon;
 
@@ -559,13 +560,12 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Send the email verification notification.
-     * Override to prevent sending the default Laravel notification.
-     * We send our custom welcome email instead.
+     * Send the email verification notification using the custom WelcomeEmail.
+     * Called by Laravel on registration, and manually for resend flows.
      */
     public function sendEmailVerificationNotification()
     {
-        // Do nothing - we handle verification via welcome email
+        Mail::to($this->email)->queue(new \App\Mail\WelcomeEmail($this));
     }
 
     public function sendPasswordResetNotification($token): void

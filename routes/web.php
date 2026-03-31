@@ -86,6 +86,18 @@ Route::post('/email/verification-notification', function (Request $request) {
     return back()->with('resent', true);
 })->middleware(['auth', 'throttle:verification'])->name('verification.send');
 
+// Public resend — for users who are not yet logged in (e.g. walk-in registrations).
+Route::post('/email/resend-verification', function (Request $request) {
+    $request->validate(['email' => 'required|email']);
+    $user = \App\Models\User::where('email', $request->email)->first();
+    if ($user && !$user->hasVerifiedEmail()) {
+        $user->sendEmailVerificationNotification();
+    }
+    // Always return the same message to avoid email enumeration.
+    return redirect()->route('login')
+        ->with('info', 'If that email exists and is unverified, a new verification link has been sent.');
+})->middleware('throttle:verification')->name('verification.resend.public');
+
 // Public club page - no login required (used for QR code)
 Route::get('/mobile/{slug}', [PlatformController::class, 'showPublic'])->name('clubs.show.public');
 

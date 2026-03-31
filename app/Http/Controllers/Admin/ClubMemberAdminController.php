@@ -78,15 +78,14 @@ class ClubMemberAdminController extends Controller
             $g = $request->guardian;
 
             $guardianUser = User::create([
-                'full_name'         => $g['name'],
-                'name'              => $g['name'],
-                'email'             => $g['email'],
-                'password'          => Hash::make($g['password']),
-                'gender'            => $g['gender'],
-                'birthdate'         => $g['dob'],
-                'nationality'       => $g['nationality'],
-                'mobile'            => ['code' => $g['countryCode'] ?? '+973', 'number' => $g['phone']],
-                'email_verified_at' => now(),
+                'full_name'   => $g['name'],
+                'name'        => $g['name'],
+                'email'       => $g['email'],
+                'password'    => Hash::make($g['password']),
+                'gender'      => $g['gender'],
+                'birthdate'   => $g['dob'],
+                'nationality' => $g['nationality'],
+                'mobile'      => ['code' => $g['countryCode'] ?? '+973', 'number' => $g['phone']],
             ]);
 
             $childUsers = [];
@@ -152,6 +151,9 @@ class ClubMemberAdminController extends Controller
             }
 
             DB::commit();
+
+            // Send verification email so the user can activate their account and log in.
+            $guardianUser->sendEmailVerificationNotification();
 
             activity('membership')
                 ->causedBy(auth()->user())
