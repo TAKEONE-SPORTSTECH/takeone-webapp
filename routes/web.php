@@ -13,12 +13,28 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\TwoFactorController;
 
 Route::get('/', function () {
     if (Auth::check()) {
         return redirect()->route('clubs.explore');
     }
     return redirect()->route('login');
+});
+
+// Two-Factor Authentication challenge (no auth required — user is between login and session)
+Route::get('/two-factor-challenge', [TwoFactorController::class, 'challenge'])->name('two-factor.challenge');
+Route::post('/two-factor-challenge', [TwoFactorController::class, 'verifyChallenge'])->name('two-factor.verify')->middleware('throttle:6,1');
+
+// Security Settings (requires full auth + 2FA if enabled)
+Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
+    Route::get('/security', [TwoFactorController::class, 'show'])->name('security.show');
+    Route::post('/security/two-factor/setup', [TwoFactorController::class, 'setup'])->name('security.2fa.setup');
+    Route::get('/security/two-factor/setup', [TwoFactorController::class, 'setup'])->name('security.2fa.setup.get');
+    Route::post('/security/two-factor/confirm', [TwoFactorController::class, 'confirm'])->name('security.2fa.confirm');
+    Route::post('/security/two-factor/disable', [TwoFactorController::class, 'disable'])->name('security.2fa.disable');
+    Route::post('/security/two-factor/recovery-codes', [TwoFactorController::class, 'regenerateRecoveryCodes'])->name('security.2fa.recovery-codes');
+    Route::post('/security/password', [TwoFactorController::class, 'changePassword'])->name('security.password.change')->middleware('throttle:6,1');
 });
 
 // Authentication routes
@@ -77,7 +93,7 @@ Route::get('/mobile/{slug}', [PlatformController::class, 'showPublic'])->name('c
 Route::get('/t/{user}', [TrainerController::class, 'showPublic'])->name('trainer.show.public');
 
 // Explore routes (accessible to authenticated users)
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'two-factor'])->group(function () {
     Route::get('/explore', [PlatformController::class, 'index'])->name('clubs.explore');
     Route::get('/clubs/nearby', [PlatformController::class, 'nearby'])->name('clubs.nearby');
     Route::get('/clubs/all', [PlatformController::class, 'all'])->name('clubs.all');
@@ -98,7 +114,7 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Platform Admin routes (Super Admin only)
-Route::middleware(['auth', 'verified', 'role:super-admin'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', function () {
         return redirect()->route('admin.platform.clubs');
     })->name('platform.index');
@@ -141,7 +157,7 @@ Route::middleware(['auth', 'verified', 'role:super-admin'])->prefix('admin')->na
 });
 
 // Club Admin routes (Club owners and admins)
-Route::middleware(['auth', 'verified', 'tenant', 'throttle:admin-write'])->prefix('admin/club/{club}')->name('admin.club.')->group(function () {
+Route::middleware(['auth', 'verified', 'two-factor', 'tenant', 'throttle:admin-write'])->prefix('admin/club/{club}')->name('admin.club.')->group(function () {
     // Dashboard & club details
     Route::get('/dashboard', [App\Http\Controllers\Admin\ClubAdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/details', [App\Http\Controllers\Admin\ClubAdminController::class, 'details'])->name('details');
@@ -250,10 +266,10 @@ Route::middleware(['auth', 'verified', 'tenant', 'throttle:admin-write'])->prefi
 });
 
 // Mark notification as read (global — not club-scoped)
-Route::middleware(['auth', 'verified'])->post('/notifications/mark-read', [App\Http\Controllers\Admin\ClubNotificationController::class, 'markRead'])->name('notifications.mark-read');
+Route::middleware(['auth', 'verified', 'two-factor'])->post('/notifications/mark-read', [App\Http\Controllers\Admin\ClubNotificationController::class, 'markRead'])->name('notifications.mark-read');
 
 // Unified Member routes
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     // Redirect old /profile route to /member/{id}
     Route::get('/profile', function () {
         return redirect()->route('member.show', Auth::id());

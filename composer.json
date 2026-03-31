@@ -13,10 +13,12 @@
     ],
     "require": {
         "php": "^8.2",
+        "bacon/bacon-qr-code": "^3.0",
         "laravel/framework": "^12.0",
         "laravel/horizon": "^5.45",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
+        "pragmarx/google2fa-laravel": "^3.0",
         "sentry/sentry-laravel": "^4.22",
         "spatie/laravel-activitylog": "^4.12",
         "takeone/cropper": "dev-main"

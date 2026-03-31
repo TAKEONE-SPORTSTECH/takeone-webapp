@@ -18,9 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
         $middleware->alias([
-            'role' => \App\Http\Middleware\CheckRole::class,
+            'role'       => \App\Http\Middleware\CheckRole::class,
             'permission' => \App\Http\Middleware\CheckPermission::class,
-            'tenant' => \App\Http\Middleware\SetCurrentTenant::class,
+            'tenant'     => \App\Http\Middleware\SetCurrentTenant::class,
+            'two-factor' => \App\Http\Middleware\RequiresTwoFactor::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

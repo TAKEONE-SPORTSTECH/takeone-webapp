@@ -149,6 +149,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'skills',
         'experience_years',
         'is_personal_trainer',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
+        'two_factor_confirmed_at',
     ];
 
     /**
@@ -179,7 +182,16 @@ class User extends Authenticatable implements MustVerifyEmail
             'skills' => 'array',
             'experience_years' => 'integer',
             'is_personal_trainer' => 'boolean',
+            'two_factor_confirmed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Whether the user has fully confirmed 2FA setup.
+     */
+    public function hasTwoFactorEnabled(): bool
+    {
+        return $this->two_factor_secret !== null && $this->two_factor_confirmed_at !== null;
     }
 
     /**
@@ -520,6 +532,9 @@ class User extends Authenticatable implements MustVerifyEmail
         $role = Role::where('slug', $roleSlug)->firstOrFail();
 
         $this->roles()->attach($role->id, ['tenant_id' => $tenantId]);
+
+        // Invalidate all active sessions so the new role takes effect immediately.
+        DB::table('sessions')->where('user_id', $this->id)->delete();
     }
 
     /**
@@ -538,6 +553,9 @@ class User extends Authenticatable implements MustVerifyEmail
         } else {
             $this->roles()->detach($role->id);
         }
+
+        // Invalidate all active sessions so the removed role takes effect immediately.
+        DB::table('sessions')->where('user_id', $this->id)->delete();
     }
 
     /**

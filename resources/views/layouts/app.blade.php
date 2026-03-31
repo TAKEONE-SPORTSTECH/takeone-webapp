@@ -325,6 +325,11 @@
                                 </div>
                                 @endif
                                 <div class="border-t border-border py-1">
+                                    <a class="profile-dropdown-item" href="{{ route('security.show') }}">
+                                        <i class="bi bi-shield-lock mr-2"></i>Security
+                                    </a>
+                                </div>
+                                <div class="border-t border-border py-1">
                                     <a class="profile-dropdown-item" href="{{ route('logout') }}"
                                        onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                                         <i class="bi bi-box-arrow-right mr-2"></i>Sign Out
