@@ -3,6 +3,12 @@
 @section('club-admin-content')
 <div id="financialsRoot" x-data="{
     activeTab: 'ledger',
+    ledgerPage: 1,
+    ledgerPerPage: 25,
+    ledgerTotal: {{ $transactions->count() }},
+    get ledgerTotalPages() { return Math.ceil(this.ledgerTotal / this.ledgerPerPage); },
+    get ledgerStart() { return (this.ledgerPage - 1) * this.ledgerPerPage; },
+    get ledgerEnd()   { return this.ledgerPage * this.ledgerPerPage; },
     showIncomeModal: false,
     showExpenseModal: false,
     showAutoExpenseModal: false,
@@ -290,6 +296,7 @@
                         @endphp
                         <tr class="{{ $isClickable ? 'cursor-pointer hover:bg-primary/5' : '' }}"
                             data-year-month="{{ $transaction->transaction_date ? $transaction->transaction_date->format('Y-m') : '' }}"
+                            x-show="{{ $loop->index }} >= ledgerStart && {{ $loop->index }} < ledgerEnd"
                             {{ $isClickable ? '@click=openTransactionDetail(' . $transaction->id . ')' : '' }}>
                             <td class="whitespace-nowrap">{{ $transaction->transaction_date ? $transaction->transaction_date->format('M d, Y') : 'N/A' }}</td>
                             <td class="font-mono text-sm">{{ $transaction->reference_number ?? '-' }}</td>
@@ -362,6 +369,24 @@
                         @endforeach
                     </tbody>
                 </table>
+            </div>
+            <div class="flex items-center justify-between px-4 py-3 border-t" x-show="ledgerTotalPages > 1">
+                <span class="text-sm text-muted-foreground">
+                    Showing <span x-text="ledgerStart + 1"></span>–<span x-text="Math.min(ledgerEnd, ledgerTotal)"></span> of <span x-text="ledgerTotal"></span>
+                </span>
+                <div class="flex items-center gap-2">
+                    <button @click="ledgerPage--" :disabled="ledgerPage === 1"
+                            class="btn btn-sm btn-outline-secondary"
+                            :class="{ 'opacity-50 pointer-events-none': ledgerPage === 1 }">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                    <span class="text-sm text-muted-foreground" x-text="ledgerPage + ' / ' + ledgerTotalPages"></span>
+                    <button @click="ledgerPage++" :disabled="ledgerPage >= ledgerTotalPages"
+                            class="btn btn-sm btn-outline-secondary"
+                            :class="{ 'opacity-50 pointer-events-none': ledgerPage >= ledgerTotalPages }">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
             </div>
             @else
             <div class="card-body text-center py-12 text-muted-foreground">
@@ -542,7 +567,27 @@
                                                 <span x-show="t.type === 'expense'" class="badge bg-red-100 text-red-700">Expense</span>
                                                 <span x-show="t.type === 'refund'" class="badge bg-orange-100 text-orange-700">Refund</span>
                                             </td>
-                                            <td x-text="t.description || '—'"></td>
+                                            <td>
+                                                <template x-if="t.member_name">
+                                                    <div class="flex items-center gap-2">
+                                                        <template x-if="t.member_avatar">
+                                                            <img :src="t.member_avatar" class="w-6 h-6 rounded-full object-cover flex-shrink-0">
+                                                        </template>
+                                                        <template x-if="!t.member_avatar">
+                                                            <div class="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                                                <i class="bi bi-person text-xs text-primary"></i>
+                                                            </div>
+                                                        </template>
+                                                        <div>
+                                                            <div class="text-xs text-muted-foreground leading-tight" x-text="t.member_name"></div>
+                                                            <div x-text="t.description || '—'"></div>
+                                                        </div>
+                                                    </div>
+                                                </template>
+                                                <template x-if="!t.member_name">
+                                                    <span x-text="t.description || '—'"></span>
+                                                </template>
+                                            </td>
                                             <td class="text-sm text-muted-foreground" x-text="t.category || '—'"></td>
                                             <td class="text-right font-semibold whitespace-nowrap"
                                                 :class="t.type === 'income' ? 'text-green-600' : 'text-red-600'"
@@ -595,6 +640,7 @@ window.transactionData = {
         proof_of_payment: @json($transaction->subscription?->proof_of_payment ? route('admin.club.subscriptions.payment-proof', ['club' => $club, 'subscription' => $transaction->subscription_id]) : ''),
         refund_proof: @json($transaction->subscription?->refund_proof ? route('admin.club.subscriptions.refund-proof', ['club' => $club, 'subscription' => $transaction->subscription_id]) : ''),
         member_name: @json($transaction->subscription?->user?->full_name ?? $transaction->subscription?->user?->name ?? ''),
+        member_avatar: @json($transaction->subscription?->user?->profile_picture ? asset('storage/' . $transaction->subscription->user->profile_picture) : ''),
     },
     @endforeach
 };
