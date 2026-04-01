@@ -16,6 +16,7 @@ use App\Models\Membership;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\UserRelationship;
+use App\Services\FinancialService;
 use App\Support\ClubCache;
 use App\Traits\HandlesClubAuthorization;
 use App\Traits\StoresBase64Images;
@@ -32,7 +33,7 @@ class ClubAdminController extends Controller
     /**
      * Dashboard overview
      */
-    public function dashboard(Tenant $club)
+    public function dashboard(Tenant $club, FinancialService $financials)
     {
         $this->authorizeClub($club);
         $clubId = $club->id;
@@ -48,12 +49,11 @@ class ClubAdminController extends Controller
             ];
         });
 
-        $monthlyFinancials = Cache::remember(ClubCache::dashboardFinancials($clubId), ClubCache::TTL_FINANCIALS, function () use ($clubId) {
-            return $this->getMonthlyFinancials($clubId);
-        });
-        $expiringSubscriptions = collect(); // TODO: Implement when subscription model is ready
+        $transactions  = ClubTransaction::where('tenant_id', $clubId)->with(['subscription.user'])->latest('transaction_date')->get();
+        $monthlyData   = $financials->getMonthlyData($transactions, $clubId);
+        $expiringSubscriptions = collect();
 
-        return view('admin.club.dashboard.index', compact('club', 'stats', 'monthlyFinancials', 'expiringSubscriptions'));
+        return view('admin.club.dashboard.index', compact('club', 'stats', 'monthlyData', 'transactions', 'expiringSubscriptions'));
     }
 
     /**

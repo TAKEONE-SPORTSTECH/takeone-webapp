@@ -99,17 +99,14 @@
     </div>
 
     <!-- Financial Overview Chart -->
-    <div class="card border-0 shadow-sm">
-        <div class="px-6 pt-6 pb-0">
-            <h5 class="font-bold mb-1">Financial Overview (Last 12 Months)</h5>
-            <p class="text-muted-foreground text-sm">Monthly income, expenses, and profit trends</p>
-        </div>
-        <div class="card-body">
-            <div class="h-48 md:h-72">
-                <canvas id="financialChart"></canvas>
-            </div>
-        </div>
-    </div>
+    <x-financial-chart
+        :monthly-data="$monthlyData"
+        :transactions="$transactions"
+        :currency="$club->currency ?? 'BHD'"
+        canvas-id="dashboardFinancialChart"
+        :maintain-aspect-ratio="false"
+        container-class="h-48 md:h-72"
+    />
 
     <!-- Expiring Subscriptions -->
     @if(isset($expiringSubscriptions) && count($expiringSubscriptions) > 0)
@@ -150,72 +147,4 @@
     @endif
 </div>
 
-@push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const ctx = document.getElementById('financialChart').getContext('2d');
-
-        // Sample data - replace with actual data from controller
-        const monthlyData = @json($monthlyFinancials ?? []);
-
-        const labels = monthlyData.map(d => d.month) || ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const incomeData = monthlyData.map(d => d.income) || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-        const expensesData = monthlyData.map(d => d.expenses) || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-        const profitData = monthlyData.map(d => d.profit) || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'Income',
-                        data: incomeData,
-                        borderColor: '#22c55e',
-                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.3
-                    },
-                    {
-                        label: 'Expenses',
-                        data: expensesData,
-                        borderColor: '#ef4444',
-                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.3
-                    },
-                    {
-                        label: 'Profit',
-                        data: profitData,
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.3
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return '{{ $club->currency ?? "BHD" }} ' + value.toLocaleString();
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    });
-</script>
-@endpush
 @endsection
