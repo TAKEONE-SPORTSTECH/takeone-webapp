@@ -80,6 +80,8 @@ class FinancialService
             ];
         }
 
+        usort($monthlyData, fn($a, $b) => (int) explode('-', $a['year_month'])[1] <=> (int) explode('-', $b['year_month'])[1]);
+
         return $monthlyData;
     }
 
