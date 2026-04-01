@@ -65,6 +65,7 @@ class ClubApiController extends Controller
             'currency' => $club->currency,
             'timezone' => $club->timezone,
             'country' => $club->country,
+            'url' => $club->url,
             'address' => $club->address,
             'gps_lat' => $club->gps_lat,
             'gps_long' => $club->gps_long,

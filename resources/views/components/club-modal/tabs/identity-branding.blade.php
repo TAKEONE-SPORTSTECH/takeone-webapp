@@ -37,7 +37,7 @@
         <div class="border border-border rounded-lg p-3 bg-muted/20">
             <div class="flex items-center gap-2">
                 <i class="bi bi-globe text-primary"></i>
-                <code id="clubUrlPreview" class="text-primary mb-0">{{ url('/club/') }}/{{ $club->slug ?? 'your-club-slug' }}</code>
+                <code id="clubUrlPreview" class="text-primary mb-0">{{ $isEdit && $club ? $club->url : url(strtolower(config('app.default_country', 'bh')) . '/clubs/your-club-slug') }}</code>
                 <button type="button" class="btn btn-sm btn-outline-primary ml-auto" onclick="copyClubUrl()">
                     <i class="bi bi-clipboard"></i>
                 </button>
@@ -268,7 +268,7 @@
 
         if (slugInput && urlPreview) {
             slugInput.addEventListener('input', function() {
-                const baseUrl = '{{ url("/club/") }}';
+                const baseUrl = '{{ url(strtolower($club?->country ?? "bh") . "/clubs") }}';
                 const slug = this.value || 'your-club-slug';
                 urlPreview.textContent = `${baseUrl}/${slug}`;
 

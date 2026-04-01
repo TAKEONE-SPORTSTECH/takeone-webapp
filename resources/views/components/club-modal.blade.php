@@ -404,7 +404,7 @@
                 if (club.slug) {
                     const urlPreview = document.getElementById('clubUrlPreview');
                     if (urlPreview) {
-                        urlPreview.textContent = `{{ url('/club/') }}/${club.slug}`;
+                        urlPreview.textContent = club.url;
                     }
                 }
 
