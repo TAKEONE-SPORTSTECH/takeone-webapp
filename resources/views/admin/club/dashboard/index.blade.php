@@ -9,7 +9,7 @@
     </div>
 
     <!-- Stats Cards -->
-    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
         <!-- Active Members -->
         <div class="card h-full border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onclick="window.location='{{ route('admin.club.members', $club->slug) }}'">
             <div class="card-body">
