@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreFamilyMemberRequest extends FormRequest
 {
@@ -15,7 +16,7 @@ class StoreFamilyMemberRequest extends FormRequest
     {
         return [
             'full_name'           => 'required|string|max:255',
-            'email'               => 'nullable|email|max:255|unique:users,email',
+            'email'               => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->whereNull('deleted_at')],
             'gender'              => 'required|in:m,f',
             'birthdate'           => 'required|date|before:today',
             'blood_type'          => 'nullable|string|max:10',

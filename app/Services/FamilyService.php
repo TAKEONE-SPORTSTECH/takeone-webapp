@@ -24,21 +24,34 @@ class FamilyService
         $genderMap = ['male' => 'm', 'female' => 'f'];
         $gender = $genderMap[$gender] ?? $gender;
 
-        // Create the dependent user
-        $dependent = User::create([
-            'name' => $data['full_name'], // Required by database
-            'full_name' => $data['full_name'],
-            'email' => $data['email'] ?? null,
-            'password' => $data['password'] ?? null,
-            'mobile' => !empty($data['mobile'] ?? []) ? $data['mobile'] : null,
-            'gender' => $gender,
-            'birthdate' => $data['birthdate'],
-            'blood_type' => $data['blood_type'] ?? 'Unknown',
-            'nationality' => $data['nationality'],
-            'addresses' => $data['addresses'] ?? [],
-            'social_links' => $data['social_links'] ?? [],
+        // Create (or restore soft-deleted) dependent user
+        $dependentData = [
+            'name'          => $data['full_name'],
+            'full_name'     => $data['full_name'],
+            'email'         => $data['email'] ?? null,
+            'password'      => $data['password'] ?? null,
+            'mobile'        => !empty($data['mobile'] ?? []) ? $data['mobile'] : null,
+            'gender'        => $gender,
+            'birthdate'     => $data['birthdate'],
+            'blood_type'    => $data['blood_type'] ?? 'Unknown',
+            'nationality'   => $data['nationality'],
+            'addresses'     => $data['addresses'] ?? [],
+            'social_links'  => $data['social_links'] ?? [],
             'media_gallery' => $data['media_gallery'] ?? [],
-        ]);
+            'email_verified_at' => null,
+        ];
+
+        $softDeleted = !empty($data['email'])
+            ? User::withTrashed()->where('email', $data['email'])->whereNotNull('deleted_at')->first()
+            : null;
+
+        if ($softDeleted) {
+            $softDeleted->restore();
+            $softDeleted->update($dependentData);
+            $dependent = $softDeleted;
+        } else {
+            $dependent = User::create($dependentData);
+        }
 
         // Create the relationship between guardian and dependent
         $relationship = UserRelationship::create([

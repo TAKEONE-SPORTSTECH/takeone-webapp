@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class WalkInRegistrationRequest extends FormRequest
 {
@@ -16,7 +17,7 @@ class WalkInRegistrationRequest extends FormRequest
         return [
             'guardian'                      => 'required|array',
             'guardian.name'                 => 'required|string|max:255',
-            'guardian.email'                => 'required|email|max:255|unique:users,email',
+            'guardian.email'                => ['required', 'email', 'max:255', Rule::unique('users', 'email')->whereNull('deleted_at')],
             'guardian.password'             => 'required|string|min:8',
             'guardian.phone'                => 'required|string|max:30',
             'guardian.dob'                  => 'required|date|before:today',

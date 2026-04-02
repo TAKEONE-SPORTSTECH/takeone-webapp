@@ -123,19 +123,29 @@ class PlatformController extends Controller
             $mobile = ['code' => $request->mobile_code, 'number' => $request->mobile];
         }
 
-        $user = User::create([
-            'full_name'      => $request->full_name,
-            'name'           => $request->full_name,
-            'email'          => $request->email,
-            'password'       => Hash::make($request->password),
-            'gender'         => $request->gender,
-            'birthdate'      => $request->birthdate,
-            'nationality'    => $request->nationality,
-            'blood_type'     => $request->blood_type,
-            'mobile'         => $mobile,
-            'marital_status' => $request->marital_status,
-            'motto'          => $request->motto,
-        ]);
+        $data = [
+            'full_name'         => $request->full_name,
+            'name'              => $request->full_name,
+            'email'             => $request->email,
+            'password'          => Hash::make($request->password),
+            'gender'            => $request->gender,
+            'birthdate'         => $request->birthdate,
+            'nationality'       => $request->nationality,
+            'blood_type'        => $request->blood_type,
+            'mobile'            => $mobile,
+            'marital_status'    => $request->marital_status,
+            'motto'             => $request->motto,
+            'email_verified_at' => null,
+        ];
+
+        $softDeleted = User::withTrashed()->where('email', $request->email)->whereNotNull('deleted_at')->first();
+        if ($softDeleted) {
+            $softDeleted->restore();
+            $softDeleted->update($data);
+            $user = $softDeleted;
+        } else {
+            $user = User::create($data);
+        }
 
         $user->sendEmailVerificationNotification();
 
