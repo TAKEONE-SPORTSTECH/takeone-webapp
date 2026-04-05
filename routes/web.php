@@ -104,7 +104,7 @@ Route::post('/email/resend-verification', function (Request $request) {
 })->middleware('throttle:verification')->name('verification.resend.public');
 
 // Public club page - no login required (used for QR code)
-Route::get('/mobile/{slug}', [PlatformController::class, 'showPublic'])->name('clubs.show.public');
+Route::get('/mobile/{country}/{slug}', [PlatformController::class, 'showPublic'])->name('clubs.show.public');
 
 // Public trainer page - no login required (used for QR code)
 Route::get('/t/{user}', [TrainerController::class, 'showPublic'])->name('trainer.show.public');

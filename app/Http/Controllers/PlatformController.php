@@ -406,9 +406,9 @@ class PlatformController extends Controller
         ));
     }
 
-    public function showPublic($slug)
+    public function showPublic($country, $slug)
     {
-        return $this->show('', $slug);
+        return $this->show($country, $slug);
     }
 
     /**

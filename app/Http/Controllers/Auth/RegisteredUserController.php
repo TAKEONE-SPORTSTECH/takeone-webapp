@@ -31,7 +31,7 @@ class RegisteredUserController extends Controller
 
     private function storeClubContext(string $intendedUrl): void
     {
-        if (preg_match('#/mobile/([^/?]+)#', $intendedUrl, $matches)) {
+        if (preg_match('#/mobile/[^/?]+/([^/?]+)#', $intendedUrl, $matches)) {
             $club = \App\Models\Tenant::where('slug', $matches[1])->first(['club_name', 'slug', 'logo']);
             if ($club) {
                 session(['club.context' => [
