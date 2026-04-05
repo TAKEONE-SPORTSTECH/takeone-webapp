@@ -454,6 +454,8 @@
 
 {{-- Styles moved to app.css (Phase 6) --}}
 
+<x-toast-notification />
+
 @push('scripts')
 <script>
 function {{ $alpineComponent }}() {

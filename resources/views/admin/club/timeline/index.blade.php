@@ -2,20 +2,6 @@
 
 @section('club-admin-content')
 
-@php
-$postsJson = $posts->map(function($p) {
-    return [
-        'id'          => $p->id,
-        'body'        => $p->body,
-        'category'    => $p->category,
-        'image_path'  => $p->image_path ?? '',
-        'posted_at'   => $p->posted_at ? $p->posted_at->format('Y-m-d\TH:i') : '',
-        'status'      => $p->status,
-        'likes_count' => $p->likes_count,
-        'comments_count' => $p->comments_count,
-    ];
-});
-@endphp
 
 <div x-data="timelineAdmin()">
 
@@ -55,7 +41,9 @@ $postsJson = $posts->map(function($p) {
             @php
                 $isDraft = $post->status === 'draft';
             @endphp
-            <div class="card border-0 shadow-sm overflow-hidden {{ $isDraft ? 'opacity-60' : '' }}">
+            <div class="card border-0 shadow-sm overflow-hidden {{ $isDraft ? 'opacity-60' : '' }}"
+                 data-post-id="{{ $post->id }}"
+                 data-post='{{ json_encode(['id' => $post->id, 'body' => $post->body, 'category' => $post->category, 'posted_at' => $post->posted_at?->format('Y-m-d\TH:i') ?? '', 'status' => $post->status, 'image_path' => $post->image_path ?? '']) }}'>
                 <div class="card-body p-4">
                     <div class="flex items-start gap-4">
 
@@ -115,6 +103,12 @@ $postsJson = $posts->map(function($p) {
             </div>
             @endforeach
         </div>
+
+        {{-- Pagination --}}
+        @if($posts->hasPages())
+        <div class="mt-4">{{ $posts->links() }}</div>
+        @endif
+
     @endif
 
     {{-- ===== SINGLE MODAL (Add & Edit) ===== --}}
@@ -157,9 +151,8 @@ $postsJson = $posts->map(function($p) {
 
 @push('scripts')
 <script>
-const timelineData  = @json($postsJson);
-const storeUrl      = '{{ route('admin.club.timeline.store', $club->slug) }}';
-const baseEditUrl   = '{{ url('admin/club/' . $club->slug . '/timeline') }}';
+const storeUrl    = '{{ route('admin.club.timeline.store', $club->slug) }}';
+const baseEditUrl = '{{ url('admin/club/' . $club->slug . '/timeline') }}';
 
 const emptyForm = {
     body: '', category: 'Announcement', posted_at: '',
@@ -181,8 +174,9 @@ function timelineAdmin() {
         },
 
         openEdit(id) {
-            const p = timelineData.find(p => p.id === id);
-            if (!p) return;
+            const el = document.querySelector(`[data-post-id="${id}"]`);
+            if (!el) return;
+            const p = JSON.parse(el.dataset.post);
             this.isEdit     = true;
             this.formAction = baseEditUrl + '/' + id;
             this.formData   = { ...emptyForm, ...p, image_preview: '' };

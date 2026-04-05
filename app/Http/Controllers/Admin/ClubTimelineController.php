@@ -19,7 +19,7 @@ class ClubTimelineController extends Controller
         $posts = ClubTimelinePost::where('tenant_id', $club->id)
             ->withCount(['likes', 'comments'])
             ->orderBy('posted_at', 'desc')
-            ->get();
+            ->paginate(20);
 
         return view('admin.club.timeline.index', compact('club', 'posts'));
     }

@@ -77,16 +77,26 @@ class ClubMemberAdminController extends Controller
         try {
             $g = $request->guardian;
 
-            $guardianUser = User::create([
-                'full_name'   => $g['name'],
-                'name'        => $g['name'],
-                'email'       => $g['email'],
-                'password'    => Hash::make($g['password']),
-                'gender'      => $g['gender'],
-                'birthdate'   => $g['dob'],
-                'nationality' => $g['nationality'],
-                'mobile'      => ['code' => $g['countryCode'] ?? '+973', 'number' => $g['phone']],
-            ]);
+            $guardianData = [
+                'full_name'         => $g['name'],
+                'name'              => $g['name'],
+                'email'             => $g['email'],
+                'password'          => Hash::make($g['password']),
+                'gender'            => $g['gender'],
+                'birthdate'         => $g['dob'],
+                'nationality'       => $g['nationality'],
+                'mobile'            => ['code' => $g['countryCode'] ?? '+973', 'number' => $g['phone']],
+                'email_verified_at' => null,
+            ];
+
+            $softDeletedGuardian = User::withTrashed()->where('email', $g['email'])->whereNotNull('deleted_at')->first();
+            if ($softDeletedGuardian) {
+                $softDeletedGuardian->restore();
+                $softDeletedGuardian->update($guardianData);
+                $guardianUser = $softDeletedGuardian;
+            } else {
+                $guardianUser = User::create($guardianData);
+            }
 
             $childUsers = [];
             foreach ($request->people as $person) {
