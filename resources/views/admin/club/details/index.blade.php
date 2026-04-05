@@ -168,11 +168,11 @@
                             <div class="mt-2 p-2 bg-light rounded">
                                 <small class="text-muted">Club URL:</small>
                                 <div class="flex items-center gap-2 mt-1">
-                                    <code class="flex-1">{{ url('/club/' . strtolower($club->country) . '/' . $club->slug) }}</code>
+                                    <code class="flex-1">{{ route('clubs.show', [strtolower($club->country), $club->slug]) }}</code>
                                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyClubUrl()">
                                         <i class="bi bi-clipboard"></i>
                                     </button>
-                                    <a href="{{ url('/club/' . strtolower($club->country) . '/' . $club->slug) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                    <a href="{{ route('clubs.show', [strtolower($club->country), $club->slug]) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
                                         <i class="bi bi-box-arrow-up-right"></i>
                                     </a>
                                 </div>
@@ -856,7 +856,7 @@ function confirmOwnerTransfer() {
 
 // Copy club URL
 function copyClubUrl() {
-    const url = '{{ $club->slug && $club->country ? url("/club/" . strtolower($club->country) . "/" . $club->slug) : "" }}';
+    const url = '{{ $club->slug && $club->country ? route("clubs.show", [strtolower($club->country), $club->slug]) : "" }}';
     if (url) {
         navigator.clipboard.writeText(url).then(function() {
             alert('URL copied to clipboard!');
