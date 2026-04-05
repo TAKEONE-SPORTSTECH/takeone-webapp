@@ -567,6 +567,9 @@
                                 class="w-full bg-primary text-white font-bold py-2 shadow-sm rounded-xl hover:bg-primary/90 transition-colors">
                                 Select Package
                             </button>
+                            @if(($club->enrollment_fee ?? 0) > 0)
+                            <p class="text-xs text-center text-muted-foreground mt-1.5">+ {{ $club->currency ?? 'BHD' }} {{ number_format($club->enrollment_fee, 2) }} enrollment fee (first-time)</p>
+                            @endif
                         </x-slot:footer>
                     </x-package-card>
                     @endforeach
@@ -2178,7 +2181,8 @@ function selectPackageApp() {
                         gender: m.gender || '',
                         dateOfBirth: m.birthdate || '',
                         avatarUrl: m.profile_picture ? '/storage/' + m.profile_picture : null,
-                        relationship: m.relationship
+                        relationship: m.relationship,
+                        isMember: m.is_member || false,
                     }));
             },
 
@@ -2316,7 +2320,7 @@ function selectPackageApp() {
                 return (parseFloat(this.calculateSubtotal()) + parseFloat(this.calculateVat())).toFixed(2);
             },
 
-            firstTimerCount() { return this.registrants.length; },
+            firstTimerCount() { return this.registrants.filter(r => !r.isMember).length; },
             firstTimerNames() { return this.registrants.map(r => r.name).join(', '); },
 
             genderLabel(g) {

@@ -21,6 +21,7 @@ use App\Models\ClubPerk;
 use App\Models\PerkCollection;
 use App\Models\UserRelationship;
 use App\Models\ClubTransaction;
+use App\Models\Membership;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -397,6 +398,17 @@ class PlatformController extends Controller
             }
         }
 
+        // Mark which family members are already enrolled in this club
+        $familyIds = $familyMembers->pluck('id')->toArray();
+        $existingMemberIds = Membership::where('tenant_id', $club->id)
+            ->whereIn('user_id', $familyIds)
+            ->pluck('user_id')
+            ->toArray();
+        $familyMembers = $familyMembers->map(function ($m) use ($existingMemberIds) {
+            $m['is_member'] = in_array($m['id'], $existingMemberIds);
+            return $m;
+        });
+
         return view('platform.show', compact(
             'club', 'activeMembersCount', 'reviews', 'averageRating',
             'nationalityStats', 'ageGroups', 'genderStats', 'horoscopeGroups',
@@ -580,10 +592,36 @@ class PlatformController extends Controller
             }
         }
 
+        // Identify which registrants are joining the club for the first time
+        $registrantIds = collect($request->registrants)
+            ->map(fn($r) => !empty($r['user_id']) ? $r['user_id'] : $user->id)
+            ->unique()->toArray();
+        $existingMemberIds = Membership::where('tenant_id', $club->id)
+            ->whereIn('user_id', $registrantIds)
+            ->pluck('user_id')->toArray();
+        $chargedEnrollmentIds = [];
+
         foreach ($request->registrants as $registrant) {
             $package  = ClubPackage::findOrFail($registrant['package_id']);
             $memberId = !empty($registrant['user_id']) ? $registrant['user_id'] : $user->id;
             $notes    = "Member: {$registrant['name']} ({$registrant['type']}). Registered by: {$user->name}." . ($payLater ? ' Pay later requested.' : '');
+
+            // Create enrollment fee transaction for first-time members (once per member per submission)
+            if ($club->enrollment_fee > 0
+                && !in_array($memberId, $existingMemberIds)
+                && !in_array($memberId, $chargedEnrollmentIds)
+            ) {
+                ClubTransaction::create([
+                    'tenant_id'        => $club->id,
+                    'user_id'          => $memberId,
+                    'type'             => 'income',
+                    'category'         => 'enrollment',
+                    'amount'           => $club->enrollment_fee,
+                    'description'      => "Enrollment fee: {$registrant['name']}",
+                    'transaction_date' => now(),
+                ]);
+                $chargedEnrollmentIds[] = $memberId;
+            }
 
             $subscriptions->createPending($club, $memberId, $package, $paymentStatus, $proofPath, $notes);
         }
