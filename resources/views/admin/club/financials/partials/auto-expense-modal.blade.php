@@ -89,20 +89,7 @@
                                             <small class="text-muted-foreground">Pick any date — only the day number repeats</small>
                                         </div>
                                     </div>
-                                    <div>
-                                        <label class="form-label">Category</label>
-                                        <select name="category" class="form-select" x-model="category">
-                                            <option value="">Select category</option>
-                                            <option value="rent">Rent</option>
-                                            <option value="utilities">Utilities</option>
-                                            <option value="salaries">Salaries</option>
-                                            <option value="equipment">Equipment</option>
-                                            <option value="maintenance">Maintenance</option>
-                                            <option value="insurance">Insurance</option>
-                                            <option value="marketing">Marketing</option>
-                                            <option value="other">Other</option>
-                                        </select>
-                                    </div>
+                                    {{-- Category field hidden for now --}}
                                     <div>
                                         <label class="form-label">Payment Method</label>
                                         <input type="hidden" name="payment_method" x-model="method">
