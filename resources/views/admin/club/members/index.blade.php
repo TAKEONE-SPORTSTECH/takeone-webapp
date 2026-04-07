@@ -60,9 +60,6 @@
                         <button type="button" class="status-btn px-3 py-1.5 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-100 transition-colors" data-status="all">
                             All <span class="ml-1 text-xs opacity-75" id="allCount">0</span>
                         </button>
-                        <button type="button" class="status-btn px-3 py-1.5 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-100 transition-colors" data-status="former">
-                            Former <span class="ml-1 text-xs opacity-75" id="formerCount">0</span>
-                        </button>
                     </div>
                 </div>
             </div>
