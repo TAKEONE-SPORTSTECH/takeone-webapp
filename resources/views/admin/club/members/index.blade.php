@@ -671,12 +671,11 @@ function initializeStatusFilters() {
 
 function updateStatusCounts() {
     const items = document.querySelectorAll('.member-item');
-    let active = 0, notActive = 0, all = 0, former = 0;
+    let active = 0, notActive = 0, all = 0;
     items.forEach(item => {
         const status = item.dataset.status;
         const hasEnrollment = item.dataset.hasEnrollment === '1';
-        if (status === 'inactive') former++;
-        else if (status === 'active') {
+        if (status === 'active') {
             all++;
             if (hasEnrollment) active++; else notActive++;
         }
@@ -684,7 +683,6 @@ function updateStatusCounts() {
     document.getElementById('activeCount').textContent = active;
     document.getElementById('notActiveCount').textContent = notActive;
     document.getElementById('allCount').textContent = all;
-    document.getElementById('formerCount').textContent = former;
 }
 
 function initializeSearch() {
@@ -709,7 +707,6 @@ function filterMembers() {
             case 'active': matchesStatus = status === 'active' && hasEnrollment; break;
             case 'not_active': matchesStatus = status === 'active' && !hasEnrollment; break;
             case 'all': matchesStatus = status === 'active'; break;
-            case 'former': matchesStatus = status === 'inactive'; break;
         }
         item.style.display = matchesSearch && matchesStatus ? '' : 'none';
     });
