@@ -420,6 +420,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updateStatusCounts();
     initializeSearch();
     initializeStatusFilters();
+    filterMembers();
     loadNationalityFlags();
 });
 
