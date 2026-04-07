@@ -325,7 +325,7 @@ class Tenant extends Model
 
     public function achievements(): HasMany
     {
-        return $this->hasMany(ClubAchievement::class)->orderBy('sort_order')->orderBy('id');
+        return $this->hasMany(ClubAchievement::class)->orderBy('sort_order')->orderByDesc('id');
     }
 
     /**
