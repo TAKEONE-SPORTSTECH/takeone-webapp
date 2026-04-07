@@ -78,6 +78,7 @@
                 $isOwner = $userSubs->where('type', 'owner')->isNotEmpty();
                 $memberPackages = $userSubs->where('type', 'regular')->pluck('package')->filter();
                 $phoneNumber = is_array($user->mobile) ? ($user->mobile['number'] ?? '') : preg_replace('/^\+?\d{1,3}/', '', $user->mobile ?? '');
+                $hasActivePackage = $isOwner || $userSubs->where('type', 'regular')->where('status', 'active')->isNotEmpty();
             @endphp
             <x-member-card
                 :member="$user"
@@ -93,7 +94,7 @@
                 data-phone="{{ $phoneNumber }}"
                 data-email="{{ strtolower($user->email ?? '') }}"
                 data-status="{{ $member->status }}"
-                data-has-enrollment="{{ $member->status === 'active' ? '1' : '0' }}"
+                data-has-enrollment="{{ $hasActivePackage ? '1' : '0' }}"
             >
                 <x-slot:badges>
                     @if($isOwner)
