@@ -5,7 +5,7 @@
     <!-- Hero Section -->
     <div class="text-center mb-3">
         <h1 class="text-4xl md:text-5xl font-bold text-primary mb-2">Find Your Perfect Fit</h1>
-        <p class="text-lg md:text-xl text-muted-foreground">Discover sports clubs, trainers, nutrition clinics, and more near you</p>
+        <p class="text-lg md:text-xl text-muted-foreground mb-3">Discover sports clubs, trainers, nutrition clinics, and more near you</p>
         <p class="text-muted-foreground"><span id="currentLocation" class="badge bg-primary text-white rounded-full px-3 py-2 text-lg"><i class="bi bi-geo-alt-fill mr-1"></i>Detecting location...</span></p>
     </div>
 

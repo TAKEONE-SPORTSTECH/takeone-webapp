@@ -45,7 +45,7 @@
                 <div class="flex-1">
                     <div class="relative">
                         <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                        <input type="text" id="searchMembers" placeholder="Search members by name or rank..." autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly')" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <input type="text" id="searchMembers" placeholder="Search members by name, rank, or phone number..." autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly')" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                     </div>
                 </div>
                 <div class="flex flex-col sm:flex-row gap-2">
@@ -80,6 +80,7 @@
                 $userSubs = ($subscriptions ?? collect())->get((string) $user->id) ?? ($subscriptions ?? collect())->get($user->id, collect());
                 $isOwner = $userSubs->where('type', 'owner')->isNotEmpty();
                 $memberPackages = $userSubs->where('type', 'regular')->pluck('package')->filter();
+                $phoneNumber = is_array($user->mobile) ? ($user->mobile['number'] ?? '') : preg_replace('/^\+?\d{1,3}/', '', $user->mobile ?? '');
             @endphp
             <x-member-card
                 :member="$user"
@@ -92,6 +93,7 @@
                 class="member-item"
                 data-name="{{ strtolower($user->full_name ?? '') }}"
                 data-rank="member"
+                data-phone="{{ $phoneNumber }}"
                 data-status="{{ $member->status }}"
                 data-has-enrollment="{{ $member->status === 'active' ? '1' : '0' }}"
             >
@@ -698,9 +700,10 @@ function filterMembers() {
     document.querySelectorAll('.member-item').forEach(item => {
         const name = item.dataset.name;
         const rank = item.dataset.rank;
+        const phone = item.dataset.phone || '';
         const status = item.dataset.status;
         const hasEnrollment = item.dataset.hasEnrollment === '1';
-        const matchesSearch = name.includes(query) || rank.includes(query);
+        const matchesSearch = name.includes(query) || rank.includes(query) || phone.startsWith(query);
         let matchesStatus = false;
         switch(statusFilter) {
             case 'active': matchesStatus = status === 'active' && hasEnrollment; break;
