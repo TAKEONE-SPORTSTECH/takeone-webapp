@@ -78,7 +78,7 @@
                 $isOwner = $userSubs->where('type', 'owner')->isNotEmpty();
                 $memberPackages = $userSubs->where('type', 'regular')->pluck('package')->filter();
                 $phoneNumber = is_array($user->mobile) ? ($user->mobile['number'] ?? '') : preg_replace('/^\+?\d{1,3}/', '', $user->mobile ?? '');
-                $hasActivePackage = $isOwner || $userSubs->where('type', 'regular')->where('status', 'active')->isNotEmpty();
+                $hasActivePackage = $isOwner || $userSubs->where('type', 'regular')->whereIn('status', ['active', 'pending'])->isNotEmpty();
             @endphp
             <x-member-card
                 :member="$user"
