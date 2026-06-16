@@ -1,3 +1,7 @@
+@props([
+    'title' => 'Select Club Owner',
+    'subtitle' => 'Search and select a user to be the club owner',
+])
 <!-- User Picker Modal -->
 <div x-data="userPickerModal()" x-cloak>
     <!-- Modal Backdrop -->
@@ -27,8 +31,8 @@
                 <div class="p-6 border-b border-gray-100">
                     <div class="flex items-start justify-between">
                         <div>
-                            <h3 class="text-xl font-bold text-gray-900">Select Club Owner</h3>
-                            <p class="text-sm text-gray-500 mt-1">Search and select a user to be the club owner</p>
+                            <h3 class="text-xl font-bold text-gray-900">{{ $title }}</h3>
+                            <p class="text-sm text-gray-500 mt-1">{{ $subtitle }}</p>
                         </div>
                         <button @click="close()" class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
                             <i class="bi bi-x-lg text-gray-500"></i>
@@ -61,26 +65,26 @@
                     </div>
 
                     <!-- Users List -->
-                    <div x-show="!loading && filteredUsers.length > 0" class="max-h-96 overflow-y-auto space-y-2">
+                    <div x-show="!loading && filteredUsers.length > 0" class="max-h-96 overflow-y-auto overflow-x-hidden space-y-2 pr-1">
                         <template x-for="user in filteredUsers" :key="user.id">
                             <div @click="selectUser(user)"
-                                 class="border border-gray-200 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:bg-gray-50 hover:translate-x-1 hover:border-primary/30">
+                                 class="border border-gray-200 rounded-xl p-4 cursor-pointer transition-colors duration-200 hover:bg-gray-50 hover:border-primary/30">
                                 <div class="flex items-center gap-4">
                                     <!-- Avatar -->
                                     <template x-if="user.profile_picture">
                                         <img :src="user.profile_picture"
                                              :alt="user.full_name"
-                                             class="w-12 h-12 rounded-full object-cover">
+                                             class="w-12 h-12 shrink-0 rounded-full object-cover">
                                     </template>
                                     <template x-if="!user.profile_picture">
-                                        <div class="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center text-xl font-semibold"
-                                             x-text="user.full_name.charAt(0).toUpperCase()">
+                                        <div class="w-12 h-12 shrink-0 rounded-full bg-primary text-white flex items-center justify-center text-xl font-semibold"
+                                             x-text="(user.full_name || '?').charAt(0).toUpperCase()">
                                         </div>
                                     </template>
 
                                     <!-- User Info -->
                                     <div class="flex-1 min-w-0">
-                                        <div class="font-semibold text-gray-900" x-text="user.full_name"></div>
+                                        <div class="font-semibold text-gray-900 truncate" x-text="user.full_name"></div>
                                         <div class="text-sm text-gray-500 truncate">
                                             <i class="bi bi-envelope mr-1"></i>
                                             <span x-text="user.email"></span>
@@ -94,7 +98,7 @@
                                     </div>
 
                                     <!-- Check Icon -->
-                                    <div>
+                                    <div class="shrink-0">
                                         <i class="bi bi-check-circle text-primary text-2xl"></i>
                                     </div>
                                 </div>
@@ -179,12 +183,18 @@ function userPickerModal() {
                 return;
             }
 
-            const term = this.searchTerm.toLowerCase();
+            const term = this.searchTerm.toLowerCase().trim();
+            const digits = term.replace(/\D/g, '');
             this.filteredUsers = this.allUsers.filter(user => {
+                const name = (user.full_name || '').toLowerCase();
+                const email = (user.email || '').toLowerCase();
+                const mobile = (user.mobile || '').toLowerCase();
+                const mobileDigits = mobile.replace(/\D/g, '');
                 return (
-                    user.full_name.toLowerCase().includes(term) ||
-                    user.email.toLowerCase().includes(term) ||
-                    (user.mobile && user.mobile.toLowerCase().includes(term))
+                    name.includes(term) ||
+                    email.includes(term) ||
+                    mobile.includes(term) ||
+                    (digits.length > 0 && mobileDigits.includes(digits))
                 );
             });
         },

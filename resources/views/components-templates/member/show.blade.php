@@ -37,7 +37,7 @@
                 @if($relationship->dependent->profile_picture)
                     <img id="member-profile-pic" src="{{ asset('storage/' . $relationship->dependent->profile_picture) }}?v={{ $relationship->dependent->updated_at->timestamp }}" alt="{{ $relationship->dependent->full_name }}" class="w-full h-full" style="object-fit: cover;">
                 @endif
-                <div id="member-profile-placeholder" class="w-full h-full flex items-center justify-center text-white font-bold" style="font-size: 3rem; background: linear-gradient(135deg, {{ $relationship->dependent->gender == 'm' ? '#0d6efd 0%, #0a58ca 100%' : '#d63384 0%, #a61e4d 100%' }}); {{ $relationship->dependent->profile_picture ? 'display:none;' : '' }}">
+                <div id="member-profile-placeholder" class="w-full h-full flex items-center justify-center text-white font-bold" style="font-size: 3rem; background: linear-gradient(135deg, {{ $relationship->dependent->gender === 'Male' ? '#0d6efd 0%, #0a58ca 100%' : '#d63384 0%, #a61e4d 100%' }}); {{ $relationship->dependent->profile_picture ? 'display:none;' : '' }}">
                     {{ strtoupper(substr($relationship->dependent->full_name, 0, 1)) }}
                 </div>
             </div>
@@ -45,7 +45,7 @@
             <!-- Profile Info -->
             <div class="flex-1 p-4">
                 <div class="flex justify-between items-start mb-2">
-                    <h3 class="font-bold mb-0">{{ $relationship->dependent->full_name }}</h3>
+                    <h3 class="font-bold mb-0" id="profile-display-name">{{ $relationship->dependent->full_name }}</h3>
                     @if($relationship->relationship_type == 'self' || Auth::id() == $relationship->guardian_user_id)
                         <div x-data="{ open: false }" class="relative">
                             <button @click="open = !open" class="bg-primary text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-primary/90 transition-colors" type="button">
@@ -61,6 +61,9 @@
                                 <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="$dispatch('open-tournament-modal'); open = false"><i class="bi bi-award text-amber-500" style="width:16px;text-align:center"></i>Add Tournament Participation</a></li>
                                 <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="$dispatch('open-profile-modal'); open = false"><i class="bi bi-pencil text-gray-500" style="width:16px;text-align:center"></i>Edit Info</a></li>
                                 <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#"><i class="bi bi-bullseye text-blue-600" style="width:16px;text-align:center"></i>Set a Goal</a></li>
+                                @if($canResetPassword)
+                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="$dispatch('open-reset-password-modal'); open = false"><i class="bi bi-key text-amber-600" style="width:16px;text-align:center"></i>Reset Password</a></li>
+                                @endif
                                 <li><hr class="my-1 border-0 border-t border-gray-100"></li>
                                 <li><a class="flex items-center gap-2 py-2 px-4 text-red-600 no-underline whitespace-nowrap hover:bg-red-50 text-sm" href="#" @click="$dispatch('open-delete-account-modal'); open = false"><i class="bi bi-trash" style="width:16px;text-align:center"></i>Delete Account</a></li>
                             </ul>
@@ -71,9 +74,7 @@
                         </button>
                     @endif
                 </div>
-                            @if($relationship->dependent->motto)
-                                <p class="text-gray-500 italic mb-3">"{{ $relationship->dependent->motto }}"</p>
-                            @endif
+                            <p id="profile-display-motto" class="text-gray-500 italic mb-3"@if(!$relationship->dependent->motto) style="display:none"@endif>@if($relationship->dependent->motto)"{{ $relationship->dependent->motto }}"@endif</p>
 
                             <!-- Achievement Badges -->
                             <div class="flex gap-2 mb-3 flex-wrap">
@@ -86,30 +87,26 @@
                             </div>
 
                             <!-- Status Badges -->
-                            <div class="flex gap-3 mb-3 items-center flex-wrap">
+                            <div id="profile-status-row" class="flex gap-3 mb-3 items-center flex-wrap">
                                 <span class="text-gray-500 text-sm">
                                     <span class="font-semibold text-gray-900 nationality-display" data-iso3="{{ $relationship->dependent->nationality }}">{{ $relationship->dependent->nationality }}</span>
                                 </span>
                                 <span class="text-gray-500 text-sm">
-                                    <i class="bi bi-{{ $relationship->dependent->gender == 'm' ? 'gender-male' : 'gender-female' }} mr-1" style="font-size: 1.1rem; color: {{ $relationship->dependent->gender == 'm' ? '#17a2b8' : '#6f42c1' }};"></i>
-                                    <span class="font-semibold text-gray-900">{{ $relationship->dependent->gender == 'm' ? 'Male' : 'Female' }}</span>
+                                    <i class="bi bi-{{ $relationship->dependent->gender === 'Male' ? 'gender-male' : 'gender-female' }} mr-1" style="font-size: 1.1rem; color: {{ $relationship->dependent->gender === 'Male' ? '#17a2b8' : '#6f42c1' }};"></i>
+                                    <span class="font-semibold text-gray-900">{{ $relationship->dependent->gender === 'Male' ? 'Male' : 'Female' }}</span>
                                 </span>
-                                @if($relationship->dependent->marital_status)
-                                <span class="text-gray-500 text-sm">
+                                <span id="profile-marital-wrap" class="text-gray-500 text-sm"@if(!$relationship->dependent->marital_status) style="display:none"@endif>
                                     <i class="bi bi-heart mr-1" style="color: #e91e63;"></i>
-                                    <span class="font-semibold text-gray-900">{{ ucfirst($relationship->dependent->marital_status) }}</span>
+                                    <span class="font-semibold text-gray-900" data-profile-marital>{{ ucfirst($relationship->dependent->marital_status ?? '') }}</span>
                                 </span>
-                                @endif
                                 <span class="text-gray-500 text-sm">
                                     <i class="bi bi-calendar-event mr-1"></i>
-                                    Age <span class="font-semibold text-gray-900">{{ $relationship->dependent->age }}</span>
+                                    Age <span class="font-semibold text-gray-900" data-profile-age>{{ $relationship->dependent->age }}</span>
                                 </span>
-                                @if($relationship->dependent->blood_type)
-                                <span class="text-gray-500 text-sm">
+                                <span id="profile-blood-type-wrap" class="text-gray-500 text-sm"@if(!$relationship->dependent->blood_type) style="display:none"@endif>
                                     <i class="bi bi-droplet-fill text-red-600 mr-1"></i>
-                                    <span class="font-semibold text-gray-900">{{ $relationship->dependent->blood_type }}</span>
+                                    <span class="font-semibold text-gray-900" data-profile-blood-type>{{ $relationship->dependent->blood_type ?? '' }}</span>
                                 </span>
-                                @endif
                                 <span class="text-gray-500 text-sm">
                                     @php
                                         $horoscopeSymbols = [
@@ -160,11 +157,10 @@
                             </div>
 
                             <!-- Social Media Icons -->
-                            @if($relationship->dependent->social_links && count($relationship->dependent->social_links) > 0)
-                                <div class="flex gap-2 flex-wrap">
+                            <div id="profile-social-row" class="flex gap-2 flex-wrap"@if(!$relationship->dependent->social_links || count($relationship->dependent->social_links) === 0) style="display:none"@endif>
                                     @php
-                                        $socialLinks = $relationship->dependent->social_links;
-                                        ksort($socialLinks); // Sort by platform name
+                                        $socialLinks = $relationship->dependent->social_links ?? [];
+                                        if (is_array($socialLinks)) ksort($socialLinks); // Sort by platform name
 
                                         $socialIcons = [
                                             'facebook' => 'bi-facebook',
@@ -226,8 +222,7 @@
                                             </a>
                                         @endif
                                     @endforeach
-                                </div>
-                            @endif
+                            </div>
             </div>
         </div>
     </div>
@@ -392,54 +387,71 @@
             <!-- Complete Payment & Revenue History -->
             <div class="bg-white rounded-xl shadow-sm mb-4">
                 <div class="p-4">
-                    <div class="flex items-center mb-2">
+                    <div class="flex items-center mb-1">
                         <i class="bi bi-receipt text-primary mr-2"></i>
-                        <h5 class="mb-0 font-bold">Complete Payment & Revenue History</h5>
+                        <h5 class="mb-0 font-bold">Payment History</h5>
                     </div>
-                    <p class="text-gray-500 text-sm mb-4">All package payments and revenue transactions in one view</p>
+                    <p class="text-gray-500 text-sm mb-4">All package payments and revenue transactions</p>
 
-                    <div class="overflow-x-auto">
+                    <div class="overflow-x-auto rounded-lg border border-gray-100">
                         <table class="w-full text-sm">
-                            <thead class="bg-gray-50 border-b border-gray-200">
-                                <tr>
-                                    <th class="text-gray-500 text-sm font-semibold">Date</th>
-                                    <th class="text-gray-500 text-sm font-semibold">Transaction Type</th>
-                                    <th class="text-gray-500 text-sm font-semibold">Package/Item</th>
-                                    <th class="text-gray-500 text-sm font-semibold">Duration</th>
-                                    <th class="text-gray-500 text-sm font-semibold">Sessions</th>
-                                    <th class="text-gray-500 text-sm font-semibold">Amount</th>
-                                    <th class="text-gray-500 text-sm font-semibold">Status</th>
-                                    <th class="text-gray-500 text-sm font-semibold">Method</th>
-                                    <th class="text-gray-500 text-sm font-semibold">Evidence</th>
+                            <thead>
+                                <tr class="bg-gray-50 border-b border-gray-200">
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Date</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Club / Item</th>
+                                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Amount</th>
+                                    <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Status</th>
+                                    <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Receipt</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody class="divide-y divide-gray-100">
                                 @forelse($invoices as $invoice)
-                                <tr>
-                                    <td class="small">{{ $invoice->created_at->format('Y-m-d') }}</td>
-                                    <td class="small text-primary">Invoice</td>
-                                    <td class="small">{{ $invoice->tenant->club_name ?? 'N/A' }}</td>
-                                    <td class="small text-gray-500">-</td>
-                                    <td class="small">-</td>
-                                    <td class="small font-semibold" style="color: {{ $invoice->status == 'paid' ? '#10b981' : '#f59e0b' }};">{{ $invoice->amount }} BHD</td>
-                                    <td>
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <span class="text-sm text-gray-700">{{ $invoice->created_at->format('M j, Y') }}</span>
+                                        <div class="text-xs text-gray-400">{{ $invoice->created_at->format('g:i A') }}</div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="text-sm font-medium text-gray-800">{{ $invoice->tenant->club_name ?? 'N/A' }}</span>
+                                        <div class="text-xs text-primary">Invoice</div>
+                                    </td>
+                                    <td class="px-4 py-3 text-right whitespace-nowrap">
+                                        <span class="text-sm font-semibold {{ $invoice->status == 'paid' ? 'text-green-600' : 'text-amber-600' }}">
+                                            {{ $invoice->amount }} BHD
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-center">
                                         @if($invoice->status == 'paid')
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">✓ Paid</span>
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                                                <i class="bi bi-check-circle-fill"></i> Paid
+                                            </span>
                                         @elseif($invoice->status == 'due')
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">○ Due</span>
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                                                <i class="bi bi-clock"></i> Due
+                                            </span>
                                         @else
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">{{ ucfirst($invoice->status) }}</span>
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                                {{ ucfirst($invoice->status) }}
+                                            </span>
                                         @endif
                                     </td>
-                                    <td class="small">-</td>
-                                    <td class="small">
-                                        <a href="{{ route('bills.receipt', $invoice->id) }}" target="_blank" title="View Receipt"><i class="bi bi-file-earmark-text text-primary"></i></a>
-                                        <a href="{{ route('bills.receipt', $invoice->id) }}?download=1" download title="Download Receipt"><i class="bi bi-download text-secondary ml-1"></i></a>
+                                    <td class="px-4 py-3 text-center whitespace-nowrap">
+                                        <a href="{{ route('bills.receipt', $invoice->id) }}" target="_blank"
+                                           class="inline-flex items-center justify-center w-7 h-7 rounded-lg text-primary hover:bg-primary/10 transition-colors" title="View Receipt">
+                                            <i class="bi bi-file-earmark-text"></i>
+                                        </a>
+                                        <a href="{{ route('bills.receipt', $invoice->id) }}?download=1" download
+                                           class="inline-flex items-center justify-center w-7 h-7 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors ml-1" title="Download">
+                                            <i class="bi bi-download"></i>
+                                        </a>
                                     </td>
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="9" class="text-center text-gray-500 text-sm">No invoices found</td>
+                                    <td colspan="5" class="px-4 py-10 text-center">
+                                        <i class="bi bi-receipt text-gray-200" style="font-size:2.5rem;"></i>
+                                        <p class="text-gray-400 text-sm mt-2 mb-0">No payment records found</p>
+                                    </td>
                                 </tr>
                                 @endforelse
                             </tbody>
@@ -448,6 +460,96 @@
                 </div>
             </div>
 
+            @if($relationship->relationship_type == 'self' || Auth::id() == $relationship->guardian_user_id || in_array($relationship->relationship_type, ['admin_view']))
+            <!-- Emergency Contacts & Documents row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+
+                <!-- Emergency Contacts -->
+                <div class="bg-white rounded-xl shadow-sm">
+                    <div class="p-4">
+                        <div class="flex items-center mb-2">
+                            <i class="bi bi-telephone-fill text-red-500 mr-2"></i>
+                            <h5 class="mb-0 font-bold">Emergency Contacts</h5>
+                        </div>
+                        <p class="text-gray-500 text-sm mb-4">People to contact in case of an emergency</p>
+
+                        <div id="emergency-contacts-list">
+                        @if($relationship->dependent->emergency_contacts && count($relationship->dependent->emergency_contacts) > 0)
+                            <div class="flex flex-col gap-3">
+                                @foreach($relationship->dependent->emergency_contacts as $contact)
+                                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                    <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                                        <i class="bi bi-person-fill text-red-500"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="font-semibold text-sm text-gray-800">{{ $contact['name'] ?? '—' }}</div>
+                                        <div class="text-xs text-gray-500">{{ ucfirst($contact['relationship'] ?? '') }}</div>
+                                    </div>
+                                    @if(!empty($contact['phone']))
+                                    <a href="tel:{{ ($contact['phone_code'] ?? '') }}{{ $contact['phone'] }}"
+                                       class="flex items-center gap-1 text-xs text-primary font-medium hover:underline flex-shrink-0">
+                                        <i class="bi bi-telephone"></i>
+                                        {{ ($contact['phone_code'] ?? '') }} {{ $contact['phone'] }}
+                                    </a>
+                                    @endif
+                                </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="text-center py-6">
+                                <i class="bi bi-telephone text-gray-300" style="font-size:2rem;"></i>
+                                <p class="text-gray-400 text-sm mt-2 mb-0">No emergency contacts added</p>
+                            </div>
+                        @endif
+                        </div>{{-- #emergency-contacts-list --}}
+                    </div>
+                </div>
+
+                <!-- Identity Documents -->
+                <div class="bg-white rounded-xl shadow-sm">
+                    <div class="p-4">
+                        <div class="flex items-center mb-2">
+                            <i class="bi bi-file-earmark-person-fill text-primary mr-2"></i>
+                            <h5 class="mb-0 font-bold">Identity Documents</h5>
+                        </div>
+                        <p class="text-gray-500 text-sm mb-4">Official ID and verification documents</p>
+
+                        <div id="documents-list">
+                        @if($relationship->dependent->documents && count($relationship->dependent->documents) > 0)
+                            <div class="flex flex-col gap-3">
+                                @foreach($relationship->dependent->documents as $doc)
+                                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                    <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                        <i class="bi bi-card-text text-primary"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="font-semibold text-sm text-gray-800">{{ $doc['type'] ?? '—' }}</div>
+                                        <div class="text-xs text-gray-500 font-mono">{{ $doc['number'] ?? '' }}</div>
+                                        @if(!empty($doc['uploaded_at']))
+                                        <div class="text-xs text-gray-400">Uploaded {{ \Carbon\Carbon::parse($doc['uploaded_at'])->format('M j, Y') }}</div>
+                                        @endif
+                                    </div>
+                                    @if(!empty($doc['file_path']))
+                                    <a href="{{ asset('storage/' . $doc['file_path']) }}" target="_blank"
+                                       class="flex-shrink-0 w-8 h-8 rounded-lg border border-primary text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-colors" title="View Document">
+                                        <i class="bi bi-eye" style="font-size:0.85rem;"></i>
+                                    </a>
+                                    @endif
+                                </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="text-center py-6">
+                                <i class="bi bi-file-earmark text-gray-300" style="font-size:2rem;"></i>
+                                <p class="text-gray-400 text-sm mt-2 mb-0">No documents uploaded</p>
+                            </div>
+                        @endif
+                        </div>{{-- #documents-list --}}
+                    </div>
+                </div>
+
+            </div>
+            @endif
 
         </div>
 
@@ -546,6 +648,36 @@
 
         <!-- Health Tab -->
         <div x-show="activeTab === 'health'" x-transition id="health" role="tabpanel">
+
+            <!-- Chronic Health Conditions -->
+            <div id="health-conditions-card" class="bg-white rounded-xl shadow-sm mb-4"@if(!$relationship->dependent->health_conditions || count($relationship->dependent->health_conditions) === 0) style="display:none"@endif>
+                <div class="p-4">
+                    <div class="flex items-center mb-2">
+                        <i class="bi bi-clipboard2-pulse-fill text-amber-500 mr-2"></i>
+                        <h5 class="mb-0 font-bold">Chronic Health Conditions</h5>
+                    </div>
+                    <p class="text-gray-500 text-sm mb-4">Known conditions that may affect training and health plans</p>
+                    <div id="health-conditions-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        @foreach($relationship->dependent->health_conditions ?? [] as $condition)
+                        <div class="flex items-start gap-3 p-3 bg-amber-50 border border-amber-100 rounded-lg">
+                            <div class="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <i class="bi bi-exclamation-circle-fill text-amber-500"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-semibold text-sm text-gray-800">{{ $condition['condition'] ?? '—' }}</div>
+                                @if(!empty($condition['noted_at']))
+                                <div class="text-xs text-gray-400 mt-0.5">Noted {{ \Carbon\Carbon::parse($condition['noted_at'])->format('M j, Y') }}</div>
+                                @endif
+                                @if(!empty($condition['notes']))
+                                <div class="text-xs text-gray-500 mt-1">{{ $condition['notes'] }}</div>
+                                @endif
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+
             <!-- Health Tracking Header -->
             <div class="bg-white rounded-xl shadow-sm mb-4">
                 <div class="p-4">
@@ -934,7 +1066,7 @@
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4" id="goalsGrid">
                             @foreach($goals as $goal)
                         <div class="goal-card">
-                            <div class="bg-white rounded-xl shadow-sm h-full relative">
+                            <div class="bg-white rounded-xl shadow-sm h-full relative" id="goal-{{ $goal->id }}">
                                 <!-- Edit Button (only for active goals and authorized users) -->
                                 @if($goal->status == 'active' && ($relationship->relationship_type == 'self' || Auth::id() == $relationship->guardian_user_id))
                                     <button class="w-8 h-8 rounded-full border border-primary text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-colors absolute top-0 right-0 mt-2 mr-2 edit-goal-btn" data-goal-id="{{ $goal->id }}" title="Edit Goal">
@@ -965,11 +1097,11 @@
                                             <!-- Progress Indicator -->
                                             <div class="mb-3">
                                                 <div class="flex justify-between items-center mb-2">
-                                                    <small class="text-gray-500">Progress: {{ number_format($goal->current_progress_value, 1) }} / {{ number_format($goal->target_value, 1) }} {{ $goal->unit }}</small>
-                                                    <small class="font-semibold">{{ number_format($goal->progress_percentage, 1) }}%</small>
+                                                    <small class="text-gray-500" data-goal-progress-text>Progress: {{ number_format($goal->current_progress_value, 1) }} / {{ number_format($goal->target_value, 1) }} {{ $goal->unit }}</small>
+                                                    <small class="font-semibold" data-goal-progress-pct>{{ number_format($goal->progress_percentage, 1) }}%</small>
                                                 </div>
                                                 <div class="h-2 bg-gray-200 rounded-full overflow-hidden" style="height: 8px;">
-                                                    <div class="h-full bg-primary transition-all" role="progressbar" style="width: {{ $goal->progress_percentage }}%; background: linear-gradient(90deg, #8b5cf6 0%, #10b981 100%);" aria-valuenow="{{ $goal->progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                                    <div class="h-full bg-primary transition-all" role="progressbar" data-goal-progress-bar style="width: {{ $goal->progress_percentage }}%; background: linear-gradient(90deg, #8b5cf6 0%, #10b981 100%);" aria-valuenow="{{ $goal->progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
                                                 </div>
                                             </div>
 
@@ -987,7 +1119,7 @@
 
                                             <!-- Status Badges -->
                                             <div class="flex gap-2 flex-wrap">
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $goal->status == 'active' ? 'bg-primary/10 text-primary' : 'bg-green-100 text-green-800' }}">
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $goal->status == 'active' ? 'bg-primary/10 text-primary' : 'bg-green-100 text-green-800' }}" data-goal-status-badge>
                                                     {{ ucfirst($goal->status) }}
                                                 </span>
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $goal->priority_level == 'high' ? 'bg-red-100 text-red-800' : ($goal->priority_level == 'medium' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800') }}">
@@ -1085,8 +1217,7 @@
                 <div class="p-4">
                     <h6 class="font-bold mb-3"><i class="bi bi-list-ul mr-2"></i>Tournament & Championships History</h6>
 
-                    @if($tournamentEvents->count() > 0)
-                        <div class="overflow-x-auto">
+                    <div class="overflow-x-auto" id="tournamentsTableWrapper" style="{{ $tournamentEvents->count() > 0 ? '' : 'display:none;' }}">
                             <table class="w-full text-sm" id="tournamentsTable">
                                 <thead class="bg-gray-50 border-b border-gray-200">
                                     <tr>
@@ -1096,7 +1227,7 @@
                                         <th class="text-gray-500 text-sm font-semibold">Notes & Media</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="tournamentsTableBody">
                                     @foreach($tournamentEvents as $event)
                                         <tr data-sport="{{ $event->sport }}">
                                             <td>
@@ -1178,13 +1309,11 @@
                                 </tbody>
                             </table>
                         </div>
-                    @else
-                        <div class="text-center py-5">
+                        <div class="text-center py-5" id="tournamentsEmptyState" style="{{ $tournamentEvents->count() > 0 ? 'display:none;' : '' }}">
                             <i class="bi bi-trophy text-gray-500" style="font-size: 3rem;"></i>
                             <p class="text-gray-500 mt-3">No tournament records found</p>
                             <small class="text-gray-500">Tournament participation will appear here once records are added</small>
                         </div>
-                    @endif
                 </div>
             </div>
         </div>
@@ -1255,7 +1384,7 @@
 </div>
 
 <!-- Goal Edit Modal -->
-<div x-data="{ open: false }" @open-goal-edit-modal.window="open = true" x-cloak>
+<div x-data="{ open: false }" @open-goal-edit-modal.window="open = true" @close-goal-edit-modal.window="open = false" x-cloak>
     <div x-show="open" class="fixed inset-0 z-50 overflow-y-auto" @keydown.escape.window="open = false">
         <div x-show="open" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
              x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
@@ -1396,7 +1525,7 @@
 </div>
 
 <!-- Tournament Participation Modal -->
-<div x-data="{ open: false }" @open-tournament-modal.window="open = true" x-cloak>
+<div x-data="{ open: false }" @open-tournament-modal.window="open = true" @close-tournament-modal.window="open = false" x-cloak>
     <div x-show="open" class="fixed inset-0 z-50 overflow-y-auto" @keydown.escape.window="open = false">
         <div x-show="open" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
              x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
@@ -2195,6 +2324,49 @@
         // Update progress preview on input change
         document.getElementById('current_progress_value').addEventListener('input', updateProgressPreview);
 
+        // Patch a goal card in place from the server-returned goal object (no reload)
+        function patchGoalCard(goal) {
+            const idx = goalsData.findIndex(g => g.id == goal.id);
+            if (idx !== -1) {
+                goalsData[idx] = Object.assign({}, goalsData[idx], goal);
+            }
+
+            const card = document.getElementById('goal-' + goal.id);
+            if (!card) return;
+
+            const current = parseFloat(goal.current_progress_value) || 0;
+            const target = parseFloat(goal.target_value) || 0;
+            const pct = parseFloat(goal.progress_percentage) || 0;
+
+            const progressText = card.querySelector('[data-goal-progress-text]');
+            if (progressText) {
+                progressText.textContent = `Progress: ${current.toFixed(1)} / ${target.toFixed(1)} ${goal.unit}`;
+            }
+            const pctText = card.querySelector('[data-goal-progress-pct]');
+            if (pctText) {
+                pctText.textContent = `${pct.toFixed(1)}%`;
+            }
+            const bar = card.querySelector('[data-goal-progress-bar]');
+            if (bar) {
+                bar.style.width = `${pct}%`;
+                bar.setAttribute('aria-valuenow', pct);
+            }
+            const statusBadge = card.querySelector('[data-goal-status-badge]');
+            if (statusBadge) {
+                statusBadge.classList.remove('bg-primary/10', 'text-primary', 'bg-green-100', 'text-green-800');
+                if (goal.status === 'active') {
+                    statusBadge.classList.add('bg-primary/10', 'text-primary');
+                } else {
+                    statusBadge.classList.add('bg-green-100', 'text-green-800');
+                }
+                statusBadge.textContent = goal.status.charAt(0).toUpperCase() + goal.status.slice(1);
+            }
+            if (goal.status !== 'active') {
+                const editBtn = card.querySelector('.edit-goal-btn');
+                if (editBtn) editBtn.remove();
+            }
+        }
+
         // Handle form submission
         goalEditForm.addEventListener('submit', function(e) {
             e.preventDefault();
@@ -2212,15 +2384,19 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Close modal via Alpine.js by dispatching escape key event or reload
-                    window.location.reload();
+                    window.dispatchEvent(new CustomEvent('close-goal-edit-modal'));
+                    if (data.goal) {
+                        patchGoalCard(data.goal);
+                        window.dispatchEvent(new CustomEvent('member-profile-updated', { detail: { goal: data.goal } }));
+                    }
+                    window.showToast('success', data.message || 'Goal updated successfully');
                 } else {
-                    alert('Error updating goal: ' + (data.message || 'Unknown error'));
+                    window.showToast('error', 'Error updating goal: ' + (data.message || 'Unknown error'));
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Error updating goal. Please try again.');
+                window.showToast('error', 'Error updating goal. Please try again.');
             });
         });
     });
@@ -2571,13 +2747,13 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Show success message and reload
+                // Close modal and insert the new row in place (no reload)
+                window.dispatchEvent(new CustomEvent('close-tournament-modal'));
+                if (data.tournament) {
+                    addTournamentRow(data.tournament);
+                    window.dispatchEvent(new CustomEvent('member-profile-updated', { detail: { tournament: data.tournament } }));
+                }
                 showAlert('Tournament record added successfully!', 'success');
-
-                // Reload page to show new data
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
             } else {
                 showAlert('Error adding tournament record: ' + (data.message || 'Unknown error'), 'danger');
             }
@@ -2588,24 +2764,91 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    function showAlert(message, type) {
-        const alertDiv = document.createElement('div');
-        const bgColor = type === 'success' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200';
-        alertDiv.className = `fixed top-5 right-5 z-50 min-w-[300px] p-4 rounded-lg border ${bgColor} flex items-center justify-between`;
-        alertDiv.innerHTML = `
-            <span>${message}</span>
-            <button type="button" class="ml-4 text-gray-500 hover:text-gray-700" onclick="this.parentElement.remove()">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
-            </button>
-        `;
-        document.body.appendChild(alertDiv);
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str).replace(/[&<>"']/g, s => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[s]);
+    }
 
-        // Auto remove after 5 seconds
-        setTimeout(() => {
-            if (alertDiv.parentNode) {
-                alertDiv.remove();
-            }
-        }, 5000);
+    function buildTournamentRow(t) {
+        const tr = document.createElement('tr');
+        tr.setAttribute('data-sport', t.sport || '');
+
+        let perfHtml = '';
+        if (t.performance_results && t.performance_results.length > 0) {
+            t.performance_results.forEach(r => {
+                let medal = '';
+                if (r.medal_type === '1st') {
+                    medal = '<i class="bi bi-award-fill text-warning"></i><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">1st Place</span>';
+                } else if (r.medal_type === '2nd') {
+                    medal = '<i class="bi bi-award-fill text-secondary"></i><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">2nd Place</span>';
+                } else if (r.medal_type === '3rd') {
+                    medal = '<i class="bi bi-award-fill" style="color: #CD7F32;"></i><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white" style="background-color: #CD7F32;">3rd Place</span>';
+                } else if (r.medal_type === 'special') {
+                    medal = '<i class="bi bi-trophy-fill text-warning"></i><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Special Award</span>';
+                }
+                perfHtml += `<div class="flex items-center gap-2 mb-1">${medal}${r.points ? `<small class="text-gray-500">${escapeHtml(r.points)} pts</small>` : ''}</div>`;
+                if (r.description) {
+                    perfHtml += `<small class="text-gray-500">${escapeHtml(r.description)}</small>`;
+                }
+            });
+        } else {
+            perfHtml = '<span class="text-gray-500 text-sm">No results recorded</span>';
+        }
+
+        let notesHtml = '';
+        if (t.notes_media && t.notes_media.length > 0) {
+            t.notes_media.forEach(n => {
+                if (n.note_text) notesHtml += `<p class="mb-1 small">${escapeHtml(n.note_text)}</p>`;
+                if (n.media_link) notesHtml += `<a href="${escapeHtml(n.media_link)}" target="_blank" class="border border-primary text-primary px-2 py-1 rounded text-xs hover:bg-primary hover:text-white transition-colors"><i class="bi bi-image mr-1"></i>View Media</a>`;
+            });
+        } else {
+            notesHtml = '<span class="text-gray-500 text-sm">No notes available</span>';
+        }
+
+        let affHtml;
+        if (t.club_affiliation) {
+            affHtml = `<div><div class="small font-semibold">${escapeHtml(t.club_affiliation.club_name)}</div><div class="text-gray-500 text-sm">${escapeHtml(t.club_affiliation.location)}</div></div>`;
+        } else {
+            affHtml = '<span class="text-gray-500 text-sm">Individual</span>';
+        }
+
+        let meta = `<i class="bi bi-calendar-event mr-1"></i>${escapeHtml(t.date)}`;
+        if (t.time) meta += `<i class="bi bi-clock mr-1 ml-2"></i>${escapeHtml(t.time)}`;
+        if (t.location) meta += `<i class="bi bi-geo-alt mr-1 ml-2"></i>${escapeHtml(t.location)}`;
+        if (t.participants_count) meta += `<i class="bi bi-people mr-1 ml-2"></i>${escapeHtml(t.participants_count)} participants`;
+
+        const typeBadge = (t.type === 'championship') ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-800';
+
+        tr.innerHTML = `
+            <td>
+                <div class="font-bold">${escapeHtml(t.title)}</div>
+                <div class="flex gap-2 mt-1 flex-wrap">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${typeBadge}">${escapeHtml(t.type_label)}</span>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">${escapeHtml(t.sport)}</span>
+                </div>
+                <div class="text-gray-500 text-sm mt-1">${meta}</div>
+            </td>
+            <td>${affHtml}</td>
+            <td>${perfHtml}</td>
+            <td>${notesHtml}</td>`;
+        return tr;
+    }
+
+    function addTournamentRow(t) {
+        const tbody = document.getElementById('tournamentsTableBody');
+        if (!tbody) return;
+        tbody.insertBefore(buildTournamentRow(t), tbody.firstChild);
+        const wrapper = document.getElementById('tournamentsTableWrapper');
+        if (wrapper) wrapper.style.display = '';
+        const empty = document.getElementById('tournamentsEmptyState');
+        if (empty) empty.style.display = 'none';
+    }
+
+    function showAlert(message, type) {
+        // Route through the global toast — never render an inline alert on the page.
+        window.showToast(type === 'danger' ? 'error' : type, message);
     }
 });
 </script>
@@ -2619,6 +2862,97 @@ document.addEventListener('DOMContentLoaded', function() {
     :showRelationshipFields="$relationship->relationship_type !== 'admin_view' && $relationship->relationship_type !== 'self'"
     :relationship="$relationship"
 />
+
+<!-- Reset Password Modal -->
+@if($canResetPassword)
+<div x-data="{ open: false }" @open-reset-password-modal.window="open = true" @close-reset-password-modal.window="open = false; document.getElementById('resetPasswordForm').reset(); document.getElementById('resetPasswordError').classList.add('hidden')" x-cloak>
+    <div x-show="open" class="fixed inset-0 z-50 overflow-y-auto" @keydown.escape.window="open = false">
+        <div x-show="open" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+             class="fixed inset-0 bg-black/50" @click="open = false"></div>
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div x-show="open" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                 class="relative bg-white rounded-lg shadow-xl w-full max-w-md border border-gray-200" @click.stop>
+                <div class="flex items-center justify-between p-4 border-b rounded-t-lg">
+                    <h5 class="font-medium text-lg flex items-center">
+                        <i class="bi bi-key-fill text-amber-500 mr-2"></i>Reset Password
+                    </h5>
+                    <button type="button" @click="open = false" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                </div>
+                <form id="resetPasswordForm" onsubmit="submitResetPassword(event)">
+                    @csrf
+                    <div class="p-4 space-y-4">
+                        <p class="text-sm text-gray-500">Set a new password for <strong>{{ $relationship->dependent->full_name }}</strong>.</p>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                            <input type="password" id="resetNewPassword" name="password" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="Min. 8 characters" required minlength="8">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+                            <input type="password" id="resetPasswordConfirm" name="password_confirmation" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="Repeat password" required minlength="8">
+                        </div>
+                        <div id="resetPasswordError" class="hidden p-3 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm"></div>
+                    </div>
+                    <div class="flex justify-end gap-2 p-4 border-t bg-gray-50 rounded-b-lg">
+                        <button type="button" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 transition-colors" @click="open = false">Cancel</button>
+                        <button type="submit" id="resetPasswordSubmitBtn" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">
+                            <i class="bi bi-key mr-1"></i>Reset Password
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+function submitResetPassword(e) {
+    e.preventDefault();
+    const newPass = document.getElementById('resetNewPassword').value;
+    const confirm = document.getElementById('resetPasswordConfirm').value;
+    const errEl = document.getElementById('resetPasswordError');
+    const btn = document.getElementById('resetPasswordSubmitBtn');
+
+    errEl.classList.add('hidden');
+
+    if (newPass !== confirm) {
+        errEl.textContent = 'Passwords do not match.';
+        errEl.classList.remove('hidden');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split mr-1"></i>Resetting...';
+
+    fetch('{{ route('member.reset-password', $relationship->dependent->id) }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+        },
+        body: JSON.stringify({ password: newPass, password_confirmation: confirm }),
+    })
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+        if (ok) {
+            window.dispatchEvent(new CustomEvent('close-reset-password-modal'));
+            showToast('success', 'Success', data.message || 'Password reset successfully.');
+        } else {
+            errEl.textContent = data.message || (data.errors?.password?.[0] ?? 'Something went wrong.');
+            errEl.classList.remove('hidden');
+        }
+    })
+    .catch(() => {
+        errEl.textContent = 'An error occurred. Please try again.';
+        errEl.classList.remove('hidden');
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-key mr-1"></i>Reset Password';
+    });
+}
+</script>
+@endif
 
 <!-- Delete Account Modal -->
 <div x-data="{ open: false, confirmName: '', expectedName: '{{ $relationship->dependent->full_name }}' }" @open-delete-account-modal.window="open = true; confirmName = ''" x-cloak>
@@ -2673,3 +3007,138 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+window.addEventListener('member-profile-updated', function(e) {
+    const m = e.detail;
+
+    // Name
+    const nameEl = document.getElementById('profile-display-name');
+    if (nameEl) nameEl.textContent = m.full_name;
+
+    // Motto
+    const mottoEl = document.getElementById('profile-display-motto');
+    if (mottoEl) {
+        if (m.motto) {
+            mottoEl.textContent = '"' + m.motto + '"';
+            mottoEl.style.display = '';
+        } else {
+            mottoEl.style.display = 'none';
+        }
+    }
+
+    // Age in status row
+    const statusRow = document.getElementById('profile-status-row');
+    if (statusRow && m.age !== undefined) {
+        const ageSpan = statusRow.querySelector('[data-profile-age]');
+        if (ageSpan) ageSpan.textContent = m.age;
+    }
+
+    // Blood type
+    const bloodWrap = document.getElementById('profile-blood-type-wrap');
+    if (bloodWrap) {
+        if (m.blood_type) {
+            bloodWrap.querySelector('[data-profile-blood-type]').textContent = m.blood_type;
+            bloodWrap.style.display = '';
+        } else {
+            bloodWrap.style.display = 'none';
+        }
+    }
+
+    // Marital status
+    const maritalWrap = document.getElementById('profile-marital-wrap');
+    if (maritalWrap) {
+        if (m.marital_status) {
+            maritalWrap.querySelector('[data-profile-marital]').textContent = m.marital_status.charAt(0).toUpperCase() + m.marital_status.slice(1);
+            maritalWrap.style.display = '';
+        } else {
+            maritalWrap.style.display = 'none';
+        }
+    }
+
+    // Social links
+    const socialRow = document.getElementById('profile-social-row');
+    if (socialRow) {
+        const icons = { facebook:'bi-facebook', twitter:'X', instagram:'bi-instagram', linkedin:'bi-linkedin', youtube:'bi-youtube', tiktok:'bi-tiktok', snapchat:'bi-snapchat', whatsapp:'bi-whatsapp', telegram:'bi-telegram', discord:'bi-discord', reddit:'bi-reddit', pinterest:'bi-pinterest', twitch:'bi-twitch', github:'bi-github', spotify:'bi-spotify', skype:'bi-skype', slack:'bi-slack', medium:'bi-medium', vimeo:'bi-vimeo', messenger:'bi-messenger', wechat:'bi-wechat', line:'bi-line' };
+        const titles = { facebook:'Facebook', twitter:'Twitter/X', instagram:'Instagram', linkedin:'LinkedIn', youtube:'YouTube', tiktok:'TikTok', snapchat:'Snapchat', whatsapp:'WhatsApp', telegram:'Telegram', discord:'Discord', reddit:'Reddit', pinterest:'Pinterest', twitch:'Twitch', github:'GitHub', spotify:'Spotify', skype:'Skype', slack:'Slack', medium:'Medium', vimeo:'Vimeo', messenger:'Messenger', wechat:'WeChat', line:'Line' };
+        const links = m.social_links || {};
+        const keys = Object.keys(links).sort();
+        if (keys.length) {
+            socialRow.innerHTML = keys.filter(p => links[p] && icons[p]).map(p =>
+                p === 'twitter'
+                ? `<a href="${links[p]}" target="_blank" rel="noopener noreferrer" class="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors" title="${titles[p]}"><span style="font-weight:bold;font-size:1.2rem">X</span></a>`
+                : `<a href="${links[p]}" target="_blank" rel="noopener noreferrer" class="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors" title="${titles[p]}"><i class="bi ${icons[p]}"></i></a>`
+            ).join('');
+            socialRow.style.display = '';
+        } else {
+            socialRow.innerHTML = '';
+            socialRow.style.display = 'none';
+        }
+    }
+
+    // Emergency contacts
+    const ecList = document.getElementById('emergency-contacts-list');
+    if (ecList) {
+        const contacts = m.emergency_contacts || [];
+        if (contacts.length) {
+            ecList.innerHTML = '<div class="flex flex-col gap-3">' + contacts.map(c =>
+                `<div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0"><i class="bi bi-person-fill text-red-500"></i></div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-semibold text-sm text-gray-800">${c.name || '—'}</div>
+                        <div class="text-xs text-gray-500">${c.relationship ? c.relationship.charAt(0).toUpperCase() + c.relationship.slice(1) : ''}</div>
+                    </div>
+                    ${(c.phone) ? `<a href="tel:${c.phone_code || ''}${c.phone}" class="flex items-center gap-1 text-xs text-primary font-medium hover:underline flex-shrink-0"><i class="bi bi-telephone"></i> ${c.phone_code || ''} ${c.phone}</a>` : ''}
+                </div>`
+            ).join('') + '</div>';
+        } else {
+            ecList.innerHTML = '<div class="text-center py-6"><i class="bi bi-telephone text-gray-300" style="font-size:2rem;"></i><p class="text-gray-400 text-sm mt-2 mb-0">No emergency contacts added</p></div>';
+        }
+    }
+
+    // Identity documents
+    const docsList = document.getElementById('documents-list');
+    if (docsList) {
+        const docs = m.documents || [];
+        if (docs.length) {
+            docsList.innerHTML = '<div class="flex flex-col gap-3">' + docs.map(d =>
+                `<div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0"><i class="bi bi-card-text text-primary"></i></div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-semibold text-sm text-gray-800">${d.type || '—'}</div>
+                        <div class="text-xs text-gray-500 font-mono">${d.number || ''}</div>
+                        ${d.uploaded_at ? `<div class="text-xs text-gray-400">Uploaded ${d.uploaded_at}</div>` : ''}
+                    </div>
+                    ${d.file_path ? `<a href="/storage/${d.file_path}" target="_blank" class="flex-shrink-0 w-8 h-8 rounded-lg border border-primary text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-colors"><i class="bi bi-eye" style="font-size:0.85rem;"></i></a>` : ''}
+                </div>`
+            ).join('') + '</div>';
+        } else {
+            docsList.innerHTML = '<div class="text-center py-6"><i class="bi bi-file-earmark text-gray-300" style="font-size:2rem;"></i><p class="text-gray-400 text-sm mt-2 mb-0">No documents uploaded</p></div>';
+        }
+    }
+
+    // Health conditions
+    const hcCard = document.getElementById('health-conditions-card');
+    const hcList = document.getElementById('health-conditions-list');
+    if (hcCard && hcList) {
+        const conditions = m.health_conditions || [];
+        if (conditions.length) {
+            hcList.innerHTML = conditions.map(c =>
+                `<div class="flex items-start gap-3 p-3 bg-amber-50 border border-amber-100 rounded-lg">
+                    <div class="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5"><i class="bi bi-exclamation-circle-fill text-amber-500"></i></div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-semibold text-sm text-gray-800">${c.condition || '—'}</div>
+                        ${c.noted_at ? `<div class="text-xs text-gray-400 mt-0.5">Noted ${c.noted_at}</div>` : ''}
+                        ${c.notes ? `<div class="text-xs text-gray-500 mt-1">${c.notes}</div>` : ''}
+                    </div>
+                </div>`
+            ).join('');
+            hcCard.style.display = '';
+        } else {
+            hcCard.style.display = 'none';
+        }
+    }
+});
+</script>
+@endpush

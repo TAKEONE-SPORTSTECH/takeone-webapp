@@ -27,7 +27,7 @@
                     @endif
                 @else
                     <a href="{{ url('/') }}">
-                        <img src="{{ asset('images/logo.png') }}" alt="TAKEONE" class="h-12 mx-auto">
+                        <img src="{{ asset('images/fullLogo.png') }}" alt="TAKEONE" class="h-12 mx-auto">
                     </a>
                 @endif
             </div>

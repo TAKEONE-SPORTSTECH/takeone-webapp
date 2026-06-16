@@ -18,7 +18,7 @@
     <div class="flex justify-between items-center mb-6">
         <div>
             <h2 class="tf-section-title">Packages Management</h2>
-            <p class="text-muted-foreground mb-0">Create and manage membership packages</p>
+            <p class="text-sm text-gray-500 mt-1">Create and manage membership packages</p>
         </div>
         <button class="btn btn-primary" @click="openAddModal()">
             <i class="bi bi-plus-lg mr-2"></i>Add Package
@@ -37,7 +37,7 @@
                 <button class="btn btn-sm btn-secondary" title="Duplicate">
                     <i class="bi bi-copy"></i>
                 </button>
-                <form action="{{ route('admin.club.packages.destroy', [$club->slug, $package->id]) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this package?')">
+                <form action="{{ route('admin.club.packages.destroy', [$club->slug, $package->id]) }}" method="POST" class="inline" onsubmit="event.preventDefault(); const f = this; window.confirmAction({ title: 'Delete Package', message: 'Are you sure you want to delete this package?', type: 'danger', confirmText: 'Delete' }).then(ok => { if (ok) f.submit(); }); return false;">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="btn btn-sm btn-danger" title="Delete">

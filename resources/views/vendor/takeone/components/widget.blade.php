@@ -21,6 +21,8 @@
     $modalWidth = $attributes->get('modalWidth', 1000);           // Modal width in px
     $viewportFill = $attributes->get('viewportFill', 0.75);      // How much of the canvas the viewport fills (0-1)
     $maxScale = $attributes->get('maxScale', 3);                  // Max scale multiplier for auto-sizing
+    $uploadAsIs = $attributes->get('uploadAsIs', false);          // Show "Upload As Is" button alongside crop
+    $uploadAsIsText = $attributes->get('uploadAsIsText', 'Upload As Is'); // Label for the as-is button
 @endphp
 
 <x-toast-notification />
@@ -90,13 +92,20 @@
                 </div>
 
                 <div class="grid gap-2 mt-2">
+                    @if($uploadAsIs)
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" class="btn btn-outline-secondary btn-lg font-bold py-3" id="saveAsIs_{{ $id }}">
+                            {{ $uploadAsIsText }}
+                        </button>
+                        <button type="button" class="btn btn-success btn-lg font-bold py-3" id="save_{{ $id }}">
+                            @if($mode === 'form') Crop & Apply @else Crop & Save Image @endif
+                        </button>
+                    </div>
+                    @else
                     <button type="button" class="btn btn-success btn-lg font-bold py-3" id="save_{{ $id }}">
-                        @if($mode === 'form')
-                            Crop & Apply
-                        @else
-                            Crop & Save Image
-                        @endif
+                        @if($mode === 'form') Crop & Apply @else Crop & Save Image @endif
                     </button>
+                    @endif
                 </div>
             </div>
         </div>
@@ -278,6 +287,78 @@ $(function() {
             });
         }
     });
+
+    @if($uploadAsIs)
+    $('#saveAsIs_{{ $id }}').on('click', function() {
+        const fileInput = document.getElementById('input_{{ $id }}');
+        if (!fileInput.files || !fileInput.files[0]) return;
+
+        const btn = $(this);
+        btn.prop('disabled', true).text('Uploading...');
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const rawImg = new Image();
+            rawImg.onload = function() {
+                const maxW = 1920, maxH = 1080;
+                let w = rawImg.width, h = rawImg.height;
+                if (w > maxW || h > maxH) {
+                    const ratio = Math.min(maxW / w, maxH / h);
+                    w = Math.round(w * ratio);
+                    h = Math.round(h * ratio);
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(rawImg, 0, 0, w, h);
+                const base64 = canvas.toDataURL('image/jpeg', 0.88);
+
+                if (mode_{{ $id }} === 'form') {
+                    $('#hiddenInput_{{ $id }}').val(base64);
+
+                    const previewContainer = $('#previewContainer_{{ $id }}');
+                    const borderRadius = '{{ $shape }}' === 'circle' ? '50%' : '8px';
+                    previewContainer.html(`
+                        <img src="${base64}"
+                             id="preview_{{ $id }}"
+                             class="cropper-preview-image"
+                             style="width: {{ $previewWidth }}px; height: {{ $previewHeight }}px; border-radius: ${borderRadius};">
+                        <button type="button" class="cropper-remove-btn" id="removeBtn_{{ $id }}" onclick="removeImage_{{ $id }}()">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    `);
+                    previewContainer.addClass('has-image');
+                    $('#cropperModal_{{ $id }}').modal('hide');
+                    btn.prop('disabled', false).text('{{ $uploadAsIsText }}');
+                } else {
+                    $.post("{{ $uploadUrl }}", {
+                        _token: "{{ csrf_token() }}",
+                        image: base64,
+                        folder: '{{ $folder }}',
+                        filename: '{{ $filename }}'
+                    }).done((res) => {
+                        $('#cropperModal_{{ $id }}').modal('hide');
+                        Toast.success('Photo Updated!', 'Your image has been saved successfully.');
+
+                        if (res.url) {
+                            const newUrl = res.url + '?t=' + new Date().getTime();
+                            $('img[data-cropper-id="{{ $id }}"]').attr('src', newUrl);
+                            if (typeof window.imageUploadSuccess === 'function') {
+                                window.imageUploadSuccess(res);
+                            }
+                            document.dispatchEvent(new CustomEvent('imageUploaded', { detail: res }));
+                        }
+                    }).fail((err) => {
+                        Toast.error('Upload Failed', err.responseJSON?.message || 'An error occurred while uploading.');
+                    }).always(() => {
+                        btn.prop('disabled', false).text('{{ $uploadAsIsText }}');
+                    });
+                }
+            };
+            rawImg.src = event.target.result;
+        };
+        reader.readAsDataURL(fileInput.files[0]);
+    });
+    @endif
 
     // Remove image function for form mode
     window.removeImage_{{ $id }} = function() {

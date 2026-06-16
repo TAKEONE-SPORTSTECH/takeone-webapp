@@ -808,7 +808,21 @@ class FamilyController extends Controller
         // Update the goal
         $goal->update($validated);
 
-        return response()->json(['success' => true, 'message' => 'Goal updated successfully']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Goal updated successfully',
+            'goal' => [
+                'id' => $goal->id,
+                'title' => $goal->title,
+                'description' => $goal->description,
+                'unit' => $goal->unit,
+                'status' => $goal->status,
+                'current_progress_value' => $goal->current_progress_value,
+                'target_value' => $goal->target_value,
+                'progress_percentage' => $goal->progress_percentage,
+                'priority_level' => $goal->priority_level,
+            ],
+        ]);
     }
 
     /**
@@ -867,7 +881,47 @@ class FamilyController extends Controller
             }
         }
 
-        return response()->json(['success' => true, 'message' => 'Tournament record added successfully']);
+        $tournament->load(['clubAffiliation', 'performanceResults', 'notesMedia']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tournament record added successfully',
+            'tournament' => $this->tournamentPayload($tournament),
+        ]);
+    }
+
+    /**
+     * Build a JSON-friendly payload for a tournament event for in-place rendering.
+     *
+     * @param  \App\Models\TournamentEvent  $tournament
+     * @return array
+     */
+    private function tournamentPayload(TournamentEvent $tournament): array
+    {
+        return [
+            'id' => $tournament->id,
+            'title' => $tournament->title,
+            'type' => $tournament->type,
+            'type_label' => ucfirst($tournament->type),
+            'sport' => $tournament->sport,
+            'date' => optional($tournament->date)->format('M j, Y'),
+            'time' => optional($tournament->time)->format('H:i'),
+            'location' => $tournament->location,
+            'participants_count' => $tournament->participants_count,
+            'club_affiliation' => $tournament->clubAffiliation ? [
+                'club_name' => $tournament->clubAffiliation->club_name,
+                'location' => $tournament->clubAffiliation->location,
+            ] : null,
+            'performance_results' => $tournament->performanceResults->map(fn ($r) => [
+                'medal_type' => $r->medal_type,
+                'points' => $r->points,
+                'description' => $r->description,
+            ])->values()->all(),
+            'notes_media' => $tournament->notesMedia->map(fn ($n) => [
+                'note_text' => $n->note_text,
+                'media_link' => $n->media_link,
+            ])->values()->all(),
+        ];
     }
 
     /**

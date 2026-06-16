@@ -5,7 +5,7 @@
     <div class="flex justify-between items-center mb-4">
         <div>
             <h2 class="tf-section-title">Analytics</h2>
-            <p class="text-muted mb-0">Track your club's performance</p>
+            <p class="text-sm text-gray-500 mt-1">Track your club's performance</p>
         </div>
         <div class="flex gap-2">
             <select class="form-select" style="width: auto;">
@@ -21,48 +21,70 @@
     </div>
 
     <!-- Key Metrics -->
+    @php
+        $newMembersChange  = $analytics['new_members_change']  ?? 0;
+        $retentionChange   = $analytics['retention_change']    ?? 0;
+        $checkinsChange    = $analytics['checkins_change']     ?? 0;
+        $monthlySpark      = $analytics['monthly_members']     ?? array_fill(0, 12, 0);
+        $hourlySpark       = $analytics['hourly_checkins']     ?? array_fill(0, 9, 0);
+        $monthLabels       = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        $hourLabels        = ['6am','8am','10am','12pm','2pm','4pm','6pm','8pm','10pm'];
+    @endphp
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <p class="text-muted small mb-1">New Members</p>
-                <div class="flex items-center gap-2">
-                    <h4 class="font-bold mb-0">{{ $analytics['new_members'] ?? 0 }}</h4>
-                    <span class="badge bg-success-subtle text-success">
-                        <i class="bi bi-arrow-up"></i> {{ $analytics['new_members_change'] ?? 0 }}%
-                    </span>
-                </div>
-            </div>
-        </div>
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <p class="text-muted small mb-1">Retention Rate</p>
-                <div class="flex items-center gap-2">
-                    <h4 class="font-bold mb-0">{{ $analytics['retention_rate'] ?? 0 }}%</h4>
-                    <span class="badge bg-success-subtle text-success">
-                        <i class="bi bi-arrow-up"></i> {{ $analytics['retention_change'] ?? 0 }}%
-                    </span>
-                </div>
-            </div>
-        </div>
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <p class="text-muted small mb-1">Avg. Revenue/Member</p>
-                <div class="flex items-center gap-2">
-                    <h4 class="font-bold mb-0">{{ $club->currency ?? 'BHD' }} {{ number_format($analytics['avg_revenue'] ?? 0, 2) }}</h4>
-                </div>
-            </div>
-        </div>
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <p class="text-muted small mb-1">Check-ins</p>
-                <div class="flex items-center gap-2">
-                    <h4 class="font-bold mb-0">{{ $analytics['total_checkins'] ?? 0 }}</h4>
-                    <span class="badge bg-info-subtle text-info">
-                        <i class="bi bi-arrow-up"></i> {{ $analytics['checkins_change'] ?? 0 }}%
-                    </span>
-                </div>
-            </div>
-        </div>
+        <x-stat-card
+            card-id="sc-new-members"
+            label="New Members"
+            :value="$analytics['new_members'] ?? 0"
+            sub-label="this month"
+            icon="bi-person-plus-fill"
+            icon-bg="bg-violet-100"
+            icon-color="text-violet-600"
+            :spark-data="$monthlySpark"
+            :spark-labels="$monthLabels"
+            spark-color="#7c3aed"
+            :trend="($newMembersChange > 0 ? '+' : '') . $newMembersChange . '%'"
+            :trend-up="$newMembersChange >= 0"
+        />
+        <x-stat-card
+            card-id="sc-retention"
+            label="Retention Rate"
+            :value="($analytics['retention_rate'] ?? 0) . '%'"
+            sub-label="active members kept"
+            icon="bi-arrow-repeat"
+            icon-bg="bg-green-100"
+            icon-color="text-green-600"
+            :spark-data="$monthlySpark"
+            :spark-labels="$monthLabels"
+            spark-color="#16a34a"
+            :trend="($retentionChange > 0 ? '+' : '') . $retentionChange . '%'"
+            :trend-up="$retentionChange >= 0"
+        />
+        <x-stat-card
+            card-id="sc-avg-revenue"
+            label="Avg. Revenue / Member"
+            :value="($club->currency ?? 'BHD') . ' ' . number_format($analytics['avg_revenue'] ?? 0, 2)"
+            sub-label="per active member"
+            icon="bi-cash-coin"
+            icon-bg="bg-amber-100"
+            icon-color="text-amber-600"
+            :spark-data="$analytics['monthly_revenue'] ?? array_fill(0, 12, 0)"
+            :spark-labels="$monthLabels"
+            spark-color="#d97706"
+        />
+        <x-stat-card
+            card-id="sc-checkins"
+            label="Check-ins"
+            :value="$analytics['total_checkins'] ?? 0"
+            sub-label="this month"
+            icon="bi-door-open-fill"
+            icon-bg="bg-sky-100"
+            icon-color="text-sky-600"
+            :spark-data="$hourlySpark"
+            :spark-labels="$hourLabels"
+            spark-color="#0284c7"
+            :trend="($checkinsChange > 0 ? '+' : '') . $checkinsChange . '%'"
+            :trend-up="$checkinsChange >= 0"
+        />
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -142,6 +164,12 @@
 </div>
 
 @push('scripts')
+@php
+$chartMonthlyMembers = $analytics['monthly_members'] ?? array_fill(0, 12, 0);
+$chartActivityLabels = $analytics['activity_labels'] ?? ['No data'];
+$chartActivityData   = $analytics['activity_data']   ?? [100];
+$chartHourlyCheckins = $analytics['hourly_checkins'] ?? array_fill(0, 9, 0);
+@endphp
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -152,7 +180,7 @@
                 labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
                 datasets: [{
                     label: 'Members',
-                    data: @json($analytics['monthly_members'] ?? [0,0,0,0,0,0,0,0,0,0,0,0]),
+                    data: @json($chartMonthlyMembers),
                     borderColor: 'hsl(355, 84%, 44%)',
                     backgroundColor: 'hsla(355, 84%, 44%, 0.1)',
                     fill: true,
@@ -170,9 +198,9 @@
         new Chart(document.getElementById('activityChart'), {
             type: 'doughnut',
             data: {
-                labels: @json($analytics['activity_labels'] ?? ['No data']),
+                labels: @json($chartActivityLabels),
                 datasets: [{
-                    data: @json($analytics['activity_data'] ?? [100]),
+                    data: @json($chartActivityData),
                     backgroundColor: ['#CE1126', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6']
                 }]
             },
@@ -189,7 +217,7 @@
                 labels: ['6am', '8am', '10am', '12pm', '2pm', '4pm', '6pm', '8pm', '10pm'],
                 datasets: [{
                     label: 'Check-ins',
-                    data: @json($analytics['hourly_checkins'] ?? [0,0,0,0,0,0,0,0,0]),
+                    data: @json($chartHourlyCheckins),
                     backgroundColor: 'hsl(355, 84%, 44%)'
                 }]
             },

@@ -1,4 +1,6 @@
 import './bootstrap';
+import './client-paginator';
+import './realtime';
 import $ from 'jquery';
 import 'jquery-cropbox';
 import 'select2';

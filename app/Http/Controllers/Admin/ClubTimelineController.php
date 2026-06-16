@@ -21,7 +21,7 @@ class ClubTimelineController extends Controller
             ->orderBy('posted_at', 'desc')
             ->paginate(20);
 
-        return view('admin.club.timeline.index', compact('club', 'posts'));
+        return view(\App\Support\ClubView::pick('timeline'), compact('club', 'posts'));
     }
 
     public function storeTimelinePost(TimelinePostRequest $request, Tenant $club)

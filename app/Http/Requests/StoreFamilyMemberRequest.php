@@ -17,7 +17,7 @@ class StoreFamilyMemberRequest extends FormRequest
         return [
             'full_name'           => 'required|string|max:255',
             'email'               => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->whereNull('deleted_at')],
-            'gender'              => 'required|in:m,f',
+            'gender'              => 'required|in:Male,Female',
             'birthdate'           => 'required|date|before:today',
             'blood_type'          => 'nullable|string|max:10',
             'nationality'         => 'required|string|max:100',
@@ -25,8 +25,11 @@ class StoreFamilyMemberRequest extends FormRequest
             'is_billing_contact'  => 'boolean',
             'mobile_code'         => 'nullable|string|max:10',
             'mobile'              => 'nullable|string|max:20',
-            'marital_status'      => 'nullable|string|max:50',
-            'motto'               => 'nullable|string|max:500',
+            'marital_status'                    => 'nullable|string|max:50',
+            'motto'                             => 'nullable|string|max:500',
+            'emergency_contacts_json' => 'nullable|string',
+            'health_conditions_json'  => 'nullable|string',
+            'documents_json'          => 'nullable|string',
         ];
     }
 }

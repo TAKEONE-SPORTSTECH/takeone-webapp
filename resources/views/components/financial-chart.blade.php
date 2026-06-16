@@ -1,143 +1,58 @@
 @props([
     'monthlyData'         => [],
     'transactions'        => collect(),
+    'cashToCollect'       => collect(),
     'currency'            => 'BHD',
     'canvasId'            => 'financialChart',
-    'maintainAspectRatio' => true,
+    'maintainAspectRatio' => true,   // kept for backwards-compat; the chart always uses a fixed-height box
     'canvasHeightAttr'    => null,
     'containerClass'      => '',
 ])
 
-@php $wrapperId = 'financialChartWrap_' . $canvasId; @endphp
+@php
+    $wrapperId  = 'financialChartWrap_' . $canvasId;
+    $clickEvent = 'financialChartClick_' . $canvasId;
 
-<div id="{{ $wrapperId }}" x-data="{
-    showMonthModal: false,
-    monthModalLabel: '',
-    monthModalTransactions: [],
-    openMonthModal(label, transactions) {
-        this.monthModalLabel = label;
-        this.monthModalTransactions = transactions;
-        this.showMonthModal = true;
-    }
-}">
+    $col = fn ($key) => array_map(fn ($d) => $d[$key] ?? 0, $monthlyData);
 
-    {{-- Chart Card --}}
-    <div class="card border-0 shadow-sm mb-6">
-        <div class="card-header bg-white border-0">
-            <h5 class="card-title mb-0 font-semibold">Financial Overview (Last 12 Months)</h5>
-            <p class="text-sm text-muted-foreground mb-0">Monthly income, expenses, and profit trends</p>
-        </div>
-        <div class="card-body">
-            @if($containerClass)
-            <div class="{{ $containerClass }}">
-                <canvas id="{{ $canvasId }}"{{ $canvasHeightAttr !== null ? ' height="'.$canvasHeightAttr.'"' : '' }}></canvas>
-            </div>
-            @else
-            <canvas id="{{ $canvasId }}"{{ $canvasHeightAttr !== null ? ' height="'.$canvasHeightAttr.'"' : '' }}></canvas>
-            @endif
-        </div>
-    </div>
+    $chartLabels   = array_map(fn ($d) => $d['month'] ?? '', $monthlyData);
+    $chartDatasets = [
+        ['label' => 'Income',          'data' => $col('income'),          'color' => '#10b981', 'fill' => true],
+        ['label' => 'Expenses',        'data' => $col('expenses'),        'color' => '#ef4444', 'fill' => true],
+        ['label' => 'Profit',          'data' => $col('profit'),          'color' => '#8b5cf6', 'fill' => true, 'borderWidth' => 3],
+        ['label' => 'Refunds',         'data' => $col('refunds'),         'color' => '#f97316', 'dashed' => true, 'hidden' => true],
+        ['label' => 'Cash to Collect', 'data' => $col('cash_to_collect'), 'color' => '#f59e0b', 'dashed' => true, 'hidden' => true],
+    ];
+@endphp
 
-    {{-- Month Transactions Modal --}}
-    <div x-show="showMonthModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto"
-         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
-        <div class="fixed inset-0 bg-black/50" @click="showMonthModal = false"></div>
-        <div class="flex min-h-full items-center justify-center p-4">
-            <div class="modal-content border-0 shadow-lg w-full max-w-3xl relative rounded-lg overflow-hidden" @click.stop>
-                <div class="modal-header border-b px-6 py-4">
-                    <div>
-                        <h5 class="modal-title font-bold flex items-center gap-2">
-                            <i class="bi bi-calendar3 text-primary"></i>
-                            Transactions — <span x-text="monthModalLabel"></span>
-                        </h5>
-                        <p class="text-sm text-muted-foreground mb-0" x-text="monthModalTransactions.length + ' transaction(s) found'"></p>
-                    </div>
-                    <button type="button" class="text-muted-foreground hover:text-foreground" @click="showMonthModal = false">
-                        <i class="bi bi-x-lg"></i>
-                    </button>
-                </div>
-                <div class="modal-body px-6 py-4">
-                    <template x-if="monthModalTransactions.length === 0">
-                        <div class="text-center py-10 text-muted-foreground">
-                            <i class="bi bi-receipt text-5xl mb-3 block"></i>
-                            <p>No transactions recorded for this month.</p>
-                        </div>
-                    </template>
-                    <template x-if="monthModalTransactions.length > 0">
-                        <div class="overflow-x-auto">
-                            <table class="table table-hover mb-0">
-                                <thead class="bg-muted/50">
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Type</th>
-                                        <th>Description</th>
-                                        <th>Category</th>
-                                        <th class="text-right">Amount</th>
-                                        <th>Payment</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <template x-for="t in monthModalTransactions" :key="t.id">
-                                        <tr>
-                                            <td class="whitespace-nowrap text-sm" x-text="t.transaction_date"></td>
-                                            <td>
-                                                <span x-show="t.type === 'income'" class="badge bg-green-100 text-green-700">Income</span>
-                                                <span x-show="t.type === 'expense'" class="badge bg-red-100 text-red-700">Expense</span>
-                                                <span x-show="t.type === 'refund'" class="badge bg-orange-100 text-orange-700">Refund</span>
-                                            </td>
-                                            <td>
-                                                <template x-if="t.member_name">
-                                                    <div class="flex items-center gap-2">
-                                                        <template x-if="t.member_avatar">
-                                                            <img :src="t.member_avatar" class="w-6 h-6 rounded-full object-cover flex-shrink-0">
-                                                        </template>
-                                                        <template x-if="!t.member_avatar">
-                                                            <div class="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                                                <i class="bi bi-person text-xs text-primary"></i>
-                                                            </div>
-                                                        </template>
-                                                        <div>
-                                                            <div class="text-xs text-muted-foreground leading-tight" x-text="t.member_name"></div>
-                                                            <div x-text="t.description || '—'"></div>
-                                                        </div>
-                                                    </div>
-                                                </template>
-                                                <template x-if="!t.member_name">
-                                                    <span x-text="t.description || '—'"></span>
-                                                </template>
-                                            </td>
-                                            <td class="text-sm text-muted-foreground" x-text="t.category || '—'"></td>
-                                            <td class="text-right font-semibold whitespace-nowrap"
-                                                :class="t.type === 'income' ? 'text-green-600' : 'text-red-600'"
-                                                x-text="(t.type === 'income' ? '+' : '-') + ' {{ $currency }} ' + parseFloat(t.amount).toFixed(2)">
-                                            </td>
-                                            <td class="text-sm text-muted-foreground" x-text="t.payment_method ? t.payment_method.replace('_', ' ') : '—'"></td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
-                        </div>
-                    </template>
-                </div>
-                <div class="modal-footer px-6 py-3 border-t flex justify-end">
-                    <button type="button" class="btn btn-outline-secondary" @click="showMonthModal = false">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
+<div id="{{ $wrapperId }}" class="mb-6">
 
+    {{-- Reusable chart component does all the rendering --}}
+    <x-chart
+        :id="$canvasId"
+        type="line"
+        :labels="$chartLabels"
+        :datasets="$chartDatasets"
+        :height="$canvasHeightAttr !== null ? (int) $canvasHeightAttr : 320"
+        :value-prefix="$currency.' '"
+        :legend="true"
+        :click-event="$clickEvent"
+        title="Financial Overview"
+        subtitle="Last 12 months · income, expenses &amp; profit"
+        badge="12M"
+        hint="Click any month on the chart to view its transactions"
+        :container-class="$containerClass"
+    />
+
+    {{-- Reusable transactions modal (opened from the chart click below) --}}
+    @once
+        <x-transactions-modal :currency="$currency" />
+    @endonce
 </div>
-
-@once
-@push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-@endpush
-@endonce
 
 @push('scripts')
 <script>
-(function() {
+(function () {
     const txData = {};
     @foreach($transactions as $t)
     txData[{{ $t->id }}] = {
@@ -153,116 +68,37 @@
     };
     @endforeach
 
-    document.addEventListener('DOMContentLoaded', function() {
-        const chartEl = document.getElementById('{{ $canvasId }}');
-        if (!chartEl) return;
-        const monthlyData = @json($monthlyData);
-        new Chart(chartEl, {
-            type: 'line',
-            data: {
-                labels: monthlyData.map(d => d.month),
-                datasets: [
-                    {
-                        label: 'Income',
-                        data: monthlyData.map(d => d.income),
-                        borderColor: '#22c55e',
-                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.3,
-                        fill: false
-                    },
-                    {
-                        label: 'Expenses',
-                        data: monthlyData.map(d => d.expenses),
-                        borderColor: '#ef4444',
-                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.3,
-                        fill: false
-                    },
-                    {
-                        label: 'Refunds',
-                        data: monthlyData.map(d => d.refunds ?? 0),
-                        borderColor: '#f97316',
-                        backgroundColor: 'rgba(249, 115, 22, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.3,
-                        fill: false
-                    },
-                    {
-                        label: 'Profit',
-                        data: monthlyData.map(d => d.profit),
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.3,
-                        fill: true
-                    },
-                    {
-                        label: 'Cash to Collect',
-                        data: monthlyData.map(d => d.cash_to_collect ?? 0),
-                        borderColor: '#f59e0b',
-                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.3,
-                        fill: false,
-                        borderDash: [5, 5]
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: {{ $maintainAspectRatio ? 'true' : 'false' }},
-                interaction: {
-                    intersect: false,
-                    mode: 'index'
-                },
-                onHover: (event, elements) => {
-                    event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
-                },
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            usePointStyle: true,
-                            padding: 20
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return context.dataset.label + ': {{ $currency }} ' + context.parsed.y.toFixed(2);
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return '{{ $currency }} ' + value.toLocaleString();
-                            }
-                        }
-                    }
-                },
-                onClick: function(event, elements, chart) {
-                    const points = chart.getElementsAtEventForMode(event.native, 'index', { intersect: false }, true);
-                    if (points.length === 0) return;
-                    const index = points[0].index;
-                    const { year_month } = monthlyData[index];
-                    const [year, mon] = year_month.split('-');
-                    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-                    const shortMonth = monthNames[parseInt(mon) - 1];
-                    const txns = Object.values(txData).filter(t => {
-                        if (!t.transaction_date) return false;
-                        return t.transaction_date.startsWith(shortMonth) && t.transaction_date.endsWith(year);
-                    });
-                    const wrapper = document.getElementById('{{ $wrapperId }}');
-                    Alpine.$data(wrapper).openMonthModal(shortMonth + ' ' + year, txns);
-                }
-            }
-        });
+    // Cash to Collect — unpaid / pending subscriptions (not real transactions, surfaced here for the modal)
+    @foreach($cashToCollect as $s)
+    txData["ctc-{{ $s->id }}"] = {
+        id: "ctc-{{ $s->id }}",
+        type: 'cash_to_collect',
+        description: @json($s->package?->name ? $s->package->name . ' — outstanding' : 'Outstanding balance'),
+        amount: {{ (float) $s->amount_due }},
+        transaction_date: @json($s->start_date ? \Illuminate\Support\Carbon::parse($s->start_date)->format('M d, Y') : ''),
+        category: 'subscription',
+        payment_method: '',
+        member_name: @json($s->user?->full_name ?? $s->user?->name ?? ''),
+        member_avatar: @json($s->user?->profile_picture ? asset('storage/' . $s->user->profile_picture) : ''),
+    };
+    @endforeach
+
+    const monthlyData = @json($monthlyData);
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    // When a month is clicked on the chart, open the transactions modal for that month.
+    window.addEventListener(@json($clickEvent), function (e) {
+        if (!e.detail || e.detail.id !== @json($canvasId)) return;
+        const md = monthlyData[e.detail.index];
+        if (!md || !md.year_month) return;
+        const [year, mon] = md.year_month.split('-');
+        const shortMonth = monthNames[parseInt(mon) - 1];
+        const txns = Object.values(txData).filter(t =>
+            t.transaction_date && t.transaction_date.startsWith(shortMonth) && t.transaction_date.endsWith(year)
+        );
+        window.dispatchEvent(new CustomEvent('open-transactions-modal', {
+            detail: { label: shortMonth + ' ' + year, transactions: txns, currency: @json($currency) }
+        }));
     });
 })();
 </script>

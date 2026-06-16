@@ -18,7 +18,7 @@ class StorePlatformMemberRequest extends FormRequest
             'full_name'      => 'required|string|max:255',
             'email'          => ['required', 'email', 'max:255', Rule::unique('users', 'email')->whereNull('deleted_at')],
             'password'       => 'required|string|min:8|confirmed',
-            'gender'         => 'required|in:m,f',
+            'gender'         => 'required|in:Male,Female',
             'birthdate'      => 'required|date|before:today',
             'nationality'    => 'required|string|max:100',
             'blood_type'     => 'nullable|string|max:10',

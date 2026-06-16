@@ -21,25 +21,49 @@ class InvoiceController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        $query = Invoice::where('payer_user_id', $user->id)
-            ->with(['student', 'tenant']);
 
-        // Filter by status
-        if ($request->has('status') && in_array($request->status, ['pending', 'paid'])) {
-            $query->where('status', $request->status);
+        // Pull every invoice once: the summary band is always all-time, while the
+        // list below reacts to the status / date filters.
+        $all = Invoice::where('payer_user_id', $user->id)
+            ->with(['student', 'tenant'])
+            ->orderBy('due_date', 'desc')
+            ->get();
+
+        $today = now()->startOfDay();
+
+        $summary = [
+            'outstanding'   => (float) $all->where('status', 'pending')->sum('amount'),
+            'paid_total'    => (float) $all->where('status', 'paid')->sum('amount'),
+            'pending_count' => $all->where('status', 'pending')->count(),
+            'paid_count'    => $all->where('status', 'paid')->count(),
+            'overdue_count' => $all->where('status', 'pending')
+                ->filter(fn ($i) => $i->due_date && $i->due_date->lt($today))->count(),
+            'next_due'      => $all->where('status', 'pending')
+                ->filter(fn ($i) => $i->due_date)
+                ->sortBy('due_date')->first(),
+        ];
+
+        // The currency follows the user's club(s); fall back to BHD.
+        $currency = $all->first()?->tenant?->currency ?? 'BHD';
+
+        // Apply the active filters in-memory to produce the visible list.
+        $status = in_array($request->status, ['pending', 'paid']) ? $request->status : null;
+        $list = $all
+            ->when($status, fn ($c) => $c->where('status', $status))
+            ->when($request->start_date, fn ($c) => $c->filter(fn ($i) => $i->due_date && $i->due_date->gte($request->start_date)))
+            ->when($request->end_date, fn ($c) => $c->filter(fn ($i) => $i->due_date && $i->due_date->lte($request->end_date)))
+            ->values();
+
+        // Group the list by month for the statement-style timeline.
+        $grouped = $list->groupBy(fn ($i) => $i->due_date?->format('F Y') ?? 'Undated');
+
+        $viewData = compact('summary', 'currency', 'list', 'grouped', 'status', 'today');
+
+        if ($request->ajax()) {
+            return view('components-templates.invoices._list', $viewData);
         }
 
-        // Filter by date range
-        if ($request->has('start_date') && $request->start_date) {
-            $query->where('due_date', '>=', $request->start_date);
-        }
-        if ($request->has('end_date') && $request->end_date) {
-            $query->where('due_date', '<=', $request->end_date);
-        }
-
-        $invoices = $query->get();
-
-        return view('components-templates.invoices.index', compact('invoices'));
+        return view('components-templates.invoices.index', $viewData);
     }
 
     /**

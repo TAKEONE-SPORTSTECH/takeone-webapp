@@ -17,7 +17,7 @@ class ClubAchievementController extends Controller
     {
         $this->authorizeClub($club);
         $achievements = ClubAchievement::where('tenant_id', $club->id)->orderBy('sort_order')->orderBy('id')->get();
-        return view('admin.club.achievements.index', compact('club', 'achievements'));
+        return view(\App\Support\ClubView::pick('achievements'), compact('club', 'achievements'));
     }
 
     public function storeAchievement(AchievementRequest $request, Tenant $club)

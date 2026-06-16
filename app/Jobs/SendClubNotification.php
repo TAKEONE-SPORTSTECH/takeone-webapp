@@ -51,5 +51,39 @@ class SendClubNotification implements ShouldQueue
 
         // Update actual dispatched count
         $this->notification->update(['recipient_count' => $count]);
+
+        // Push the in-app notification to any connected browsers over MQTT so
+        // the bell updates without a page reload. DB rows above are the source
+        // of truth; this is best-effort (fails silently if the broker is down).
+        $this->pushRealtime();
+    }
+
+    /** Fan the freshly-created notifications out to the realtime broker. */
+    private function pushRealtime(): void
+    {
+        if (! Realtime()->enabled()) {
+            return;
+        }
+
+        $clubName = $this->notification->tenant->club_name ?? 'Club';
+        $messages = [];
+
+        UserNotification::where('club_notification_id', $this->notification->id)
+            ->whereIn('user_id', $this->recipients->pluck('id'))
+            ->get(['id', 'user_id'])
+            ->each(function ($un) use (&$messages, $clubName) {
+                $messages[] = [
+                    'topic'   => Realtime()->userTopic($un->user_id, 'notifications'),
+                    'payload' => [
+                        'id'               => $un->id,
+                        'subject'          => $this->notification->subject,
+                        'club_name'        => $clubName,
+                        'action_url'       => $this->notification->action_url,
+                        'created_at_human' => 'just now',
+                    ],
+                ];
+            });
+
+        Realtime()->publishMany($messages);
     }
 }

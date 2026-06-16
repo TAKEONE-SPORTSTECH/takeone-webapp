@@ -19,7 +19,7 @@ class ClubEventController extends Controller
         $this->authorizeClub($club);
         $events     = ClubEvent::where('tenant_id', $club->id)->orderBy('date')->orderBy('start_time')->get();
         $facilities = ClubFacility::where('tenant_id', $club->id)->orderBy('name')->get();
-        return view('admin.club.events.index', compact('club', 'events', 'facilities'));
+        return view(\App\Support\ClubView::pick('events'), compact('club', 'events', 'facilities'));
     }
 
     public function storeEvent(EventRequest $request, Tenant $club)

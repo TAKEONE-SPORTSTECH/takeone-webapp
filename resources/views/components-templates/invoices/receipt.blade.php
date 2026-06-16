@@ -292,7 +292,7 @@
                 </div>
             </div>
         </div>
-        <img src="{{ asset('images/logo.png') }}" alt="Company Logo">
+        <img src="{{ asset('images/fullLogo.png') }}" alt="Company Logo">
     </div>
 
     <div class="main-content">

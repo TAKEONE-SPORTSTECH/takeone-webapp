@@ -8,6 +8,8 @@ use App\Http\Requests\Admin\StorePlatformMemberRequest;
 use App\Http\Requests\HealthRecordRequest;
 use App\Http\Requests\TournamentRequest;
 use App\Http\Requests\UploadImageRequest;
+use App\Models\ClubMemberSubscription;
+use App\Models\Membership;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\HealthRecord;
@@ -98,18 +100,101 @@ class PlatformController extends Controller
     {
         $search = $request->input('search');
 
-        $members = User::with(['memberClubs', 'dependents', 'guardians.guardian'])
+        $members = User::with(['memberClubs', 'dependents', 'guardians.guardian', 'latestHealthRecord'])
             ->withCount('memberClubs')
             ->when($search, function ($query, $search) {
                 $query->where('full_name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
                     ->orWhere('nationality', 'like', "%{$search}%")
+                    ->orWhere('gender', 'like', "%{$search}%")
                     ->orWhereRaw("JSON_EXTRACT(mobile, '$.number') LIKE ?", ["%{$search}%"]);
             })
             ->latest()
             ->paginate(20);
 
+        // AJAX search / pagination returns just the results region for in-place swap.
+        if ($request->ajax()) {
+            return view('admin.platform.members._results', compact('members', 'search'));
+        }
+
         return view('admin.platform.members.index', compact('members', 'search'));
+    }
+
+    public function memberPopup(User $user)
+    {
+        $membership = Membership::where('user_id', $user->id)->latest()->first();
+
+        $subscriptions = ClubMemberSubscription::where('user_id', $user->id)
+            ->where('type', 'regular')
+            ->with(['package', 'package.tenant'])
+            ->latest()
+            ->get()
+            ->map(function ($sub) {
+                $clubName = $sub->package?->tenant?->name ?? 'N/A';
+                return [
+                    'id'             => $sub->id,
+                    'package'        => ($sub->package?->name ?? 'N/A') . ' — ' . $clubName,
+                    'currency'       => $sub->package?->currency ?? 'BHD',
+                    'start_date'     => $sub->start_date?->format('M d, Y') ?? 'N/A',
+                    'end_date'       => $sub->end_date?->format('M d, Y') ?? 'Ongoing',
+                    'payment_status' => $sub->payment_status ?? 'pending',
+                    'amount_due'     => number_format((float) ($sub->amount_due ?? 0), 2),
+                    'amount_paid'    => number_format((float) ($sub->amount_paid ?? 0), 2),
+                    'status'         => $sub->status,
+                    'is_active'      => in_array($sub->status, ['active', 'pending']),
+                    'has_proof'      => (bool) $sub->proof_of_payment,
+                    'approve_url'    => $sub->package?->tenant
+                        ? route('admin.club.subscriptions.approve-payment', [$sub->package->tenant->slug, $sub->id])
+                        : null,
+                    'proof_url'      => ($sub->proof_of_payment && $sub->package?->tenant)
+                        ? route('admin.club.subscriptions.payment-proof', [$sub->package->tenant->slug, $sub->id])
+                        : null,
+                ];
+            });
+
+        $phone = is_array($user->mobile)
+            ? trim(($user->mobile['code'] ?? '') . ' ' . ($user->mobile['number'] ?? ''))
+            : ($user->mobile ?? '');
+
+        return response()->json([
+            'id'          => $user->id,
+            'name'        => $user->full_name,
+            'initial'     => mb_strtoupper(mb_substr($user->full_name ?? 'M', 0, 1, 'UTF-8'), 'UTF-8'),
+            'has_picture' => (bool) $user->profile_picture,
+            'picture_url' => $user->profile_picture
+                ? asset('storage/' . $user->profile_picture) . '?v=' . $user->updated_at->timestamp
+                : null,
+            'gender'        => $user->gender ?? 'Male',
+            'phone'         => $phone ?: 'N/A',
+            'email'         => $user->email ?? 'N/A',
+            'age'           => $user->age ? $user->age . ' years' : 'N/A',
+            'since'         => $membership ? $membership->created_at->format('d/m/Y') : $user->created_at->format('d/m/Y'),
+            'profile_url'     => route('member.show', $user->uuid),
+            'subscriptions'   => $subscriptions,
+            'context'         => 'platform',
+            'enroll_data_url' => route('admin.platform.members.enroll-data', $user->id),
+        ]);
+    }
+
+    public function memberEnrollData(User $user)
+    {
+        $clubs = Membership::where('user_id', $user->id)
+            ->with('tenant')
+            ->get()
+            ->filter(fn($m) => $m->tenant !== null)
+            ->map(fn($m) => [
+                'id'           => $m->tenant->id,
+                'name'         => $m->tenant->club_name,
+                'slug'         => $m->tenant->slug,
+                'packages_url' => route('admin.club.members.enroll-packages', [$m->tenant->slug, $user->id]),
+                'enroll_url'   => route('admin.club.members.enroll', [$m->tenant->slug, $user->id]),
+            ])
+            ->values();
+
+        return response()->json([
+            'clubs'       => $clubs,
+            'single_club' => $clubs->count() === 1,
+        ]);
     }
 
     /**
@@ -702,19 +787,22 @@ class PlatformController extends Controller
     public function updateMember(Request $request, $id)
     {
         $validated = $request->validate([
-            'full_name' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255|unique:users,email,' . $id,
-            'mobile_code' => 'nullable|string|max:5',
-            'mobile' => 'nullable|string|max:20',
-            'gender' => 'required|in:m,f',
-            'marital_status' => 'nullable|in:single,married,divorced,widowed',
-            'birthdate' => 'required|date',
-            'blood_type' => 'nullable|string|max:10',
-            'nationality' => 'required|string|max:100',
-            'social_links' => 'nullable|array',
-            'social_links.*.platform' => 'required_with:social_links.*.url|string',
-            'social_links.*.url' => 'required_with:social_links.*.platform|url',
-            'motto' => 'nullable|string|max:500',
+            'full_name'                  => 'required|string|max:255',
+            'email'                      => 'nullable|email|max:255|unique:users,email,' . $id,
+            'mobile_code'                => 'nullable|string|max:5',
+            'mobile'                     => 'nullable|string|max:20',
+            'gender'                     => 'required|in:Male,Female',
+            'marital_status'             => 'nullable|in:single,married,divorced,widowed',
+            'birthdate'                  => 'required|date',
+            'blood_type'                 => 'nullable|string|max:10',
+            'nationality'                => 'required|string|max:100',
+            'social_links'               => 'nullable|array',
+            'social_links.*.platform'    => 'required_with:social_links.*.url|string',
+            'social_links.*.url'         => 'required_with:social_links.*.platform|url',
+            'motto'                      => 'nullable|string|max:500',
+            'emergency_contacts_json'    => 'nullable|string',
+            'health_conditions_json'     => 'nullable|string',
+            'documents_json'             => 'nullable|string',
         ]);
 
         // Process social links
@@ -733,25 +821,70 @@ class PlatformController extends Controller
             'number' => $validated['mobile'] ?? null,
         ];
 
+        // Process the three JSON-encoded fields from the Medical & Contacts tab
+        $emergencyContacts = collect(json_decode($request->input('emergency_contacts_json', '[]'), true) ?? [])
+            ->filter(fn($c) => !empty($c['name']) || !empty($c['phone']))
+            ->map(fn($c) => [
+                'name'         => trim($c['name'] ?? ''),
+                'relationship' => $c['relationship'] ?? '',
+                'phone_code'   => $c['phone_code'] ?? '',
+                'phone'        => trim($c['phone'] ?? ''),
+            ])->values()->all();
+
+        $healthConditions = collect(json_decode($request->input('health_conditions_json', '[]'), true) ?? [])
+            ->filter(fn($c) => !empty($c['condition']))
+            ->map(fn($c) => [
+                'condition' => trim($c['condition']),
+                'noted_at'  => $c['noted_at'] ?? now()->format('Y-m-d'),
+                'notes'     => trim($c['notes'] ?? ''),
+            ])->values()->all();
+
+        $documents = collect(json_decode($request->input('documents_json', '[]'), true) ?? [])
+            ->filter(fn($d) => !empty($d['type']) || !empty($d['number']))
+            ->map(fn($d) => [
+                'type'        => trim($d['type'] ?? ''),
+                'number'      => trim($d['number'] ?? ''),
+                'file_path'   => $d['file_path'] ?? null,
+                'file_name'   => $d['file_name'] ?? null,
+                'file_url'    => $d['file_url'] ?? null,
+                'uploaded_at' => $d['uploaded_at'] ?? now()->format('Y-m-d'),
+            ])->values()->all();
+
         $member = User::findOrFail($id);
         $member->update([
-            'full_name' => $validated['full_name'],
-            'email' => $validated['email'],
-            'mobile' => $mobile,
-            'gender' => $validated['gender'],
-            'marital_status' => $validated['marital_status'] ?? null,
-            'birthdate' => $validated['birthdate'],
-            'blood_type' => $validated['blood_type'],
-            'nationality' => $validated['nationality'],
-            'social_links' => $socialLinks,
-            'motto' => $validated['motto'],
+            'full_name'          => $validated['full_name'],
+            'email'              => $validated['email'],
+            'mobile'             => $mobile,
+            'gender'             => $validated['gender'],
+            'marital_status'     => $validated['marital_status'] ?? null,
+            'birthdate'          => $validated['birthdate'],
+            'blood_type'         => $validated['blood_type'],
+            'nationality'        => $validated['nationality'],
+            'social_links'       => $socialLinks,
+            'motto'              => $validated['motto'],
+            'emergency_contacts' => $emergencyContacts,
+            'health_conditions'  => $healthConditions,
+            'documents'          => $documents,
         ]);
 
         // Return JSON for AJAX requests
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Member updated successfully.'
+                'message' => 'Member updated successfully.',
+                'member' => [
+                    'full_name'          => $member->full_name,
+                    'motto'              => $member->motto,
+                    'nationality'        => $member->nationality,
+                    'gender'             => $member->gender,
+                    'marital_status'     => $member->marital_status,
+                    'blood_type'         => $member->blood_type,
+                    'age'                => $member->age,
+                    'social_links'       => $member->social_links ?? [],
+                    'emergency_contacts' => $member->emergency_contacts ?? [],
+                    'health_conditions'  => $member->health_conditions ?? [],
+                    'documents'          => $member->documents ?? [],
+                ],
             ]);
         }
 
@@ -912,6 +1045,46 @@ class PlatformController extends Controller
             }
         }
 
-        return response()->json(['success' => true, 'message' => 'Tournament record added successfully']);
+        $tournament->load(['clubAffiliation', 'performanceResults', 'notesMedia']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tournament record added successfully',
+            'tournament' => $this->tournamentPayload($tournament),
+        ]);
+    }
+
+    /**
+     * Build a JSON-friendly payload for a tournament event for in-place rendering.
+     *
+     * @param  \App\Models\TournamentEvent  $tournament
+     * @return array
+     */
+    private function tournamentPayload(TournamentEvent $tournament): array
+    {
+        return [
+            'id' => $tournament->id,
+            'title' => $tournament->title,
+            'type' => $tournament->type,
+            'type_label' => ucfirst($tournament->type),
+            'sport' => $tournament->sport,
+            'date' => optional($tournament->date)->format('M j, Y'),
+            'time' => optional($tournament->time)->format('H:i'),
+            'location' => $tournament->location,
+            'participants_count' => $tournament->participants_count,
+            'club_affiliation' => $tournament->clubAffiliation ? [
+                'club_name' => $tournament->clubAffiliation->club_name,
+                'location' => $tournament->clubAffiliation->location,
+            ] : null,
+            'performance_results' => $tournament->performanceResults->map(fn ($r) => [
+                'medal_type' => $r->medal_type,
+                'points' => $r->points,
+                'description' => $r->description,
+            ])->values()->all(),
+            'notes_media' => $tournament->notesMedia->map(fn ($n) => [
+                'note_text' => $n->note_text,
+                'media_link' => $n->media_link,
+            ])->values()->all(),
+        ];
     }
 }

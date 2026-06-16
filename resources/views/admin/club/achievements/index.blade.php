@@ -52,14 +52,6 @@ $achievementsJson = $achievements->map(function($a) {
         </button>
     </div>
 
-    {{-- Session messages --}}
-    @if(session('success'))
-        <div class="alert alert-success mb-4">{{ session('success') }}</div>
-    @endif
-    @if(session('error'))
-        <div class="alert alert-danger mb-4">{{ session('error') }}</div>
-    @endif
-
     {{-- Achievements list --}}
     @if($achievements->isEmpty())
         <div class="card border-0 shadow-sm">
@@ -80,6 +72,7 @@ $achievementsJson = $achievements->map(function($a) {
                 if (empty($achCardImages) && $achievement->image_path) $achCardImages = [asset('storage/'.$achievement->image_path)];
             @endphp
             <div class="card border-0 shadow-sm overflow-hidden {{ $isInactive ? 'opacity-60' : '' }} cursor-pointer"
+                 id="achievement-{{ $achievement->id }}"
                  @click="openDetail({{ $achievement->id }})">
                 {{-- Card visual --}}
                 <div class="relative" style="height:120px;"
@@ -485,10 +478,15 @@ function achievementsAdmin() {
                 })
                 .then(r => r.json())
                 .then(data => {
-                    if (data.success) location.reload();
-                    else alert(data.message || 'Failed to delete achievement.');
+                    if (data.success) {
+                        document.getElementById(`achievement-${id}`)?.remove();
+                        this.showDetail = false;
+                        window.showToast('success', data.message || 'Achievement deleted.');
+                    } else {
+                        window.showToast('error', data.message || 'Failed to delete achievement.');
+                    }
                 })
-                .catch(() => alert('Failed to delete achievement.'));
+                .catch(() => window.showToast('error', 'Failed to delete achievement.'));
             });
         },
     };

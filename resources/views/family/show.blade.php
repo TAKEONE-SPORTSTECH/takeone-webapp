@@ -32,7 +32,7 @@
                 @if($relationship->dependent->profile_picture)
                     <img src="{{ asset('storage/' . $relationship->dependent->profile_picture) }}?v={{ $relationship->dependent->updated_at->timestamp }}" alt="{{ $relationship->dependent->full_name }}" class="w-full h-full" style="object-fit: cover; border-radius: 0.375rem 0 0 0.375rem;">
                 @else
-                    <div class="w-full h-full flex items-center justify-center text-white font-bold" style="font-size: 3rem; background: linear-gradient(135deg, {{ $relationship->dependent->gender == 'm' ? '#0d6efd 0%, #0a58ca 100%' : '#d63384 0%, #a61e4d 100%' }}); border-radius: 0.375rem 0 0 0.375rem;">
+                    <div class="w-full h-full flex items-center justify-center text-white font-bold" style="font-size: 3rem; background: linear-gradient(135deg, {{ $relationship->dependent->gender === 'Male' ? '#0d6efd 0%, #0a58ca 100%' : '#d63384 0%, #a61e4d 100%' }}); border-radius: 0.375rem 0 0 0.375rem;">
                         {{ strtoupper(substr($relationship->dependent->full_name, 0, 1)) }}
                     </div>
                 @endif
@@ -86,8 +86,8 @@
                                     <span class="font-semibold text-dark nationality-display" data-iso3="{{ $relationship->dependent->nationality }}">{{ $relationship->dependent->nationality }}</span>
                                 </span>
                                 <span class="text-muted small">
-                                    <i class="bi bi-{{ $relationship->dependent->gender == 'm' ? 'gender-male' : 'gender-female' }} mr-1"></i>
-                                    <span class="font-semibold text-dark">{{ $relationship->dependent->gender == 'm' ? 'Male' : 'Female' }}</span>
+                                    <i class="bi bi-{{ $relationship->dependent->gender === 'Male' ? 'gender-male' : 'gender-female' }} mr-1"></i>
+                                    <span class="font-semibold text-dark">{{ $relationship->dependent->gender === 'Male' ? 'Male' : 'Female' }}</span>
                                 </span>
                                 <span class="text-muted small">
                                     <i class="bi bi-calendar-event mr-1"></i>
@@ -896,7 +896,7 @@
                         <div class="row g-4">
                             @foreach($goals as $goal)
                         <div class="col-lg-6">
-                            <div class="card shadow-sm border-0 h-full relative">
+                            <div class="card shadow-sm border-0 h-full relative" id="goal-{{ $goal->id }}">
                                 <!-- Edit Button (only for active goals and authorized users) -->
                                 @if($goal->status == 'active' && ($relationship->relationship_type == 'self' || Auth::id() == $relationship->guardian_user_id))
                                     <button class="btn btn-sm btn-outline-primary rounded-circle absolute top-0 right-0 mt-2 mr-2 edit-goal-btn" style="width: 32px; height: 32px; padding: 0;" data-goal-id="{{ $goal->id }}" title="Edit Goal">
@@ -927,11 +927,11 @@
                                             <!-- Progress Indicator -->
                                             <div class="mb-3">
                                                 <div class="flex justify-between items-center mb-2">
-                                                    <small class="text-muted">Progress: {{ number_format($goal->current_progress_value, 1) }} / {{ number_format($goal->target_value, 1) }} {{ $goal->unit }}</small>
-                                                    <small class="font-semibold">{{ number_format($goal->progress_percentage, 1) }}%</small>
+                                                    <small class="text-muted" data-goal-progress-text>Progress: {{ number_format($goal->current_progress_value, 1) }} / {{ number_format($goal->target_value, 1) }} {{ $goal->unit }}</small>
+                                                    <small class="font-semibold" data-goal-progress-pct>{{ number_format($goal->progress_percentage, 1) }}%</small>
                                                 </div>
                                                 <div class="progress" style="height: 8px;">
-                                                    <div class="progress-bar" role="progressbar" style="width: {{ $goal->progress_percentage }}%; background: linear-gradient(90deg, #8b5cf6 0%, #10b981 100%);" aria-valuenow="{{ $goal->progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                                    <div class="progress-bar" role="progressbar" data-goal-progress-bar style="width: {{ $goal->progress_percentage }}%; background: linear-gradient(90deg, #8b5cf6 0%, #10b981 100%);" aria-valuenow="{{ $goal->progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
                                                 </div>
                                             </div>
 
@@ -949,7 +949,7 @@
 
                                             <!-- Status Badges -->
                                             <div class="flex gap-2 flex-wrap">
-                                                <span class="badge {{ $goal->status == 'active' ? 'bg-primary' : 'bg-success' }} small">
+                                                <span class="badge {{ $goal->status == 'active' ? 'bg-primary' : 'bg-success' }} small" data-goal-status-badge>
                                                     {{ ucfirst($goal->status) }}
                                                 </span>
                                                 <span class="badge {{ $goal->priority_level == 'high' ? 'bg-danger' : ($goal->priority_level == 'medium' ? 'bg-warning text-dark' : 'bg-secondary') }} small">
@@ -1047,8 +1047,7 @@
                 <div class="card-body p-4">
                     <h6 class="font-bold mb-3"><i class="bi bi-list-ul mr-2"></i>Tournament & Championships History</h6>
 
-                    @if($tournamentEvents->count() > 0)
-                        <div class="table-responsive">
+                    <div class="table-responsive" id="tournamentsTableWrapper" style="{{ $tournamentEvents->count() > 0 ? '' : 'display:none;' }}">
                             <table class="table table-hover align-middle" id="tournamentsTable">
                                 <thead class="table-light">
                                     <tr>
@@ -1058,7 +1057,7 @@
                                         <th class="text-muted small font-semibold">Notes & Media</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="tournamentsTableBody">
                                     @foreach($tournamentEvents as $event)
                                         <tr data-sport="{{ $event->sport }}">
                                             <td>
@@ -1140,13 +1139,11 @@
                                 </tbody>
                             </table>
                         </div>
-                    @else
-                        <div class="text-center py-5">
+                        <div class="text-center py-5" id="tournamentsEmptyState" style="{{ $tournamentEvents->count() > 0 ? 'display:none;' : '' }}">
                             <i class="bi bi-trophy text-muted" style="font-size: 3rem;"></i>
                             <p class="text-muted mt-3">No tournament records found</p>
                             <small class="text-muted">Tournament participation will appear here once records are added</small>
                         </div>
-                    @endif
                 </div>
             </div>
         </div>
@@ -2037,6 +2034,47 @@
         // Update progress preview on input change
         document.getElementById('current_progress_value').addEventListener('input', updateProgressPreview);
 
+        // Patch a goal card in place from the server-returned goal object (no reload)
+        function patchGoalCard(goal) {
+            // Keep local cache in sync for subsequent edits
+            const idx = goalsData.findIndex(g => g.id == goal.id);
+            if (idx !== -1) {
+                goalsData[idx] = Object.assign({}, goalsData[idx], goal);
+            }
+
+            const card = document.getElementById('goal-' + goal.id);
+            if (!card) return;
+
+            const current = parseFloat(goal.current_progress_value) || 0;
+            const target = parseFloat(goal.target_value) || 0;
+            const pct = parseFloat(goal.progress_percentage) || 0;
+
+            const progressText = card.querySelector('[data-goal-progress-text]');
+            if (progressText) {
+                progressText.textContent = `Progress: ${current.toFixed(1)} / ${target.toFixed(1)} ${goal.unit}`;
+            }
+            const pctText = card.querySelector('[data-goal-progress-pct]');
+            if (pctText) {
+                pctText.textContent = `${pct.toFixed(1)}%`;
+            }
+            const bar = card.querySelector('[data-goal-progress-bar]');
+            if (bar) {
+                bar.style.width = `${pct}%`;
+                bar.setAttribute('aria-valuenow', pct);
+            }
+            const statusBadge = card.querySelector('[data-goal-status-badge]');
+            if (statusBadge) {
+                statusBadge.classList.remove('bg-primary', 'bg-success');
+                statusBadge.classList.add(goal.status === 'active' ? 'bg-primary' : 'bg-success');
+                statusBadge.textContent = goal.status.charAt(0).toUpperCase() + goal.status.slice(1);
+            }
+            // Remove the edit button if the goal is no longer active
+            if (goal.status !== 'active') {
+                const editBtn = card.querySelector('.edit-goal-btn');
+                if (editBtn) editBtn.remove();
+            }
+        }
+
         // Handle form submission
         goalEditForm.addEventListener('submit', function(e) {
             e.preventDefault();
@@ -2055,15 +2093,18 @@
             .then(data => {
                 if (data.success) {
                     goalEditModal.hide();
-                    // Reload the page to show updated data
-                    window.location.reload();
+                    if (data.goal) {
+                        patchGoalCard(data.goal);
+                        window.dispatchEvent(new CustomEvent('member-profile-updated', { detail: { goal: data.goal } }));
+                    }
+                    window.showToast('success', data.message || 'Goal updated successfully');
                 } else {
-                    alert('Error updating goal: ' + (data.message || 'Unknown error'));
+                    window.showToast('error', 'Error updating goal: ' + (data.message || 'Unknown error'));
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Error updating goal. Please try again.');
+                window.showToast('error', 'Error updating goal. Please try again.');
             });
         });
     });
@@ -2415,15 +2456,16 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 // Close modal
                 const modal = bootstrap.Modal.getInstance(document.getElementById('tournamentParticipationModal'));
-                modal.hide();
+                if (modal) modal.hide();
+
+                // Insert the new tournament row in place (no reload)
+                if (data.tournament) {
+                    addTournamentRow(data.tournament);
+                    window.dispatchEvent(new CustomEvent('member-profile-updated', { detail: { tournament: data.tournament } }));
+                }
 
                 // Show success message
                 showAlert('Tournament record added successfully!', 'success');
-
-                // Reload page to show new data
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
             } else {
                 showAlert('Error adding tournament record: ' + (data.message || 'Unknown error'), 'danger');
             }
@@ -2434,22 +2476,95 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    function showAlert(message, type) {
-        const alertDiv = document.createElement('div');
-        alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-        alertDiv.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        `;
-        document.body.appendChild(alertDiv);
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str).replace(/[&<>"']/g, s => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[s]);
+    }
 
-        // Auto remove after 5 seconds
-        setTimeout(() => {
-            if (alertDiv.parentNode) {
-                alertDiv.remove();
-            }
-        }, 5000);
+    function buildTournamentRow(t) {
+        const tr = document.createElement('tr');
+        tr.setAttribute('data-sport', t.sport || '');
+
+        // Performance & Result cell
+        let perfHtml = '';
+        if (t.performance_results && t.performance_results.length > 0) {
+            t.performance_results.forEach(r => {
+                let medal = '';
+                if (r.medal_type === '1st') {
+                    medal = '<i class="bi bi-award-fill text-warning"></i><span class="badge bg-warning text-dark small">1st Place</span>';
+                } else if (r.medal_type === '2nd') {
+                    medal = '<i class="bi bi-award-fill text-secondary"></i><span class="badge bg-secondary small">2nd Place</span>';
+                } else if (r.medal_type === '3rd') {
+                    medal = '<i class="bi bi-award-fill" style="color: #CD7F32;"></i><span class="badge" style="background-color: #CD7F32; color: white;" small>3rd Place</span>';
+                } else if (r.medal_type === 'special') {
+                    medal = '<i class="bi bi-trophy-fill text-warning"></i><span class="badge bg-warning text-dark small">Special Award</span>';
+                }
+                perfHtml += `<div class="flex items-center gap-2 mb-1">${medal}${r.points ? `<small class="text-muted">${escapeHtml(r.points)} pts</small>` : ''}</div>`;
+                if (r.description) {
+                    perfHtml += `<small class="text-muted">${escapeHtml(r.description)}</small>`;
+                }
+            });
+        } else {
+            perfHtml = '<span class="text-muted small">No results recorded</span>';
+        }
+
+        // Notes & Media cell
+        let notesHtml = '';
+        if (t.notes_media && t.notes_media.length > 0) {
+            t.notes_media.forEach(n => {
+                if (n.note_text) notesHtml += `<p class="mb-1 small">${escapeHtml(n.note_text)}</p>`;
+                if (n.media_link) notesHtml += `<a href="${escapeHtml(n.media_link)}" target="_blank" class="btn btn-sm btn-outline-primary small"><i class="bi bi-image mr-1"></i>View Media</a>`;
+            });
+        } else {
+            notesHtml = '<span class="text-muted small">No notes available</span>';
+        }
+
+        // Affiliation cell
+        let affHtml;
+        if (t.club_affiliation) {
+            affHtml = `<div><div class="small font-semibold">${escapeHtml(t.club_affiliation.club_name)}</div><div class="text-muted small">${escapeHtml(t.club_affiliation.location)}</div></div>`;
+        } else {
+            affHtml = '<span class="text-muted small">Individual</span>';
+        }
+
+        // Details cell
+        let meta = `<i class="bi bi-calendar-event mr-1"></i>${escapeHtml(t.date)}`;
+        if (t.time) meta += `<i class="bi bi-clock mr-1 ml-2"></i>${escapeHtml(t.time)}`;
+        if (t.location) meta += `<i class="bi bi-geo-alt mr-1 ml-2"></i>${escapeHtml(t.location)}`;
+        if (t.participants_count) meta += `<i class="bi bi-people mr-1 ml-2"></i>${escapeHtml(t.participants_count)} participants`;
+
+        const typeBadge = (t.type === 'championship') ? 'bg-primary' : 'bg-secondary';
+
+        tr.innerHTML = `
+            <td>
+                <div class="font-bold">${escapeHtml(t.title)}</div>
+                <div class="flex gap-2 mt-1 flex-wrap">
+                    <span class="badge ${typeBadge} small">${escapeHtml(t.type_label)}</span>
+                    <span class="badge bg-info small">${escapeHtml(t.sport)}</span>
+                </div>
+                <div class="text-muted small mt-1">${meta}</div>
+            </td>
+            <td>${affHtml}</td>
+            <td>${perfHtml}</td>
+            <td>${notesHtml}</td>`;
+        return tr;
+    }
+
+    function addTournamentRow(t) {
+        const tbody = document.getElementById('tournamentsTableBody');
+        if (!tbody) return;
+        tbody.insertBefore(buildTournamentRow(t), tbody.firstChild);
+        const wrapper = document.getElementById('tournamentsTableWrapper');
+        if (wrapper) wrapper.style.display = '';
+        const empty = document.getElementById('tournamentsEmptyState');
+        if (empty) empty.style.display = 'none';
+    }
+
+    function showAlert(message, type) {
+        // Route through the global toast — never render an inline alert on the page.
+        window.showToast(type === 'danger' ? 'error' : type, message);
     }
 });
 </script>

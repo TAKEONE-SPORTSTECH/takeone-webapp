@@ -36,7 +36,7 @@ class ClubPackageController extends Controller
             ]];
         });
 
-        return view('admin.club.packages.index', compact('club', 'packages', 'facilities', 'activities', 'instructors', 'instructorsMap'));
+        return view(\App\Support\ClubView::pick('packages'), compact('club', 'packages', 'facilities', 'activities', 'instructors', 'instructorsMap'));
     }
 
     public function storePackage(PackageRequest $request, Tenant $club)

@@ -30,8 +30,8 @@ class SubscriptionService
         }
 
         if ($package->gender && $package->gender !== 'mixed' && $gender) {
-            $match = ($package->gender === 'male'   && $gender === 'm')
-                  || ($package->gender === 'female' && $gender === 'f');
+            $match = ($package->gender === 'male'   && $gender === 'Male')
+                  || ($package->gender === 'female' && $gender === 'Female');
             if (!$match) {
                 return "Package '{$package->name}' is restricted to " . ucfirst($package->gender) . " members. '{$memberName}' is not eligible.";
             }
@@ -140,6 +140,54 @@ class SubscriptionService
         ]);
 
         // Ensure the user appears in the club members index
+        Membership::firstOrCreate(
+            ['tenant_id' => $club->id, 'user_id' => $userId],
+            ['status' => 'active']
+        );
+
+        $this->syncAffiliation($club, $userId, $subscription, $package);
+
+        ClubCache::flushStats($club->id);
+        ClubCache::flushFinancials($club->id);
+
+        return $subscription;
+    }
+
+    /**
+     * Create an active subscription with pending payment (admin enroll from popup).
+     * Subscription is immediately active; payment stays pending until manually approved.
+     */
+    public function createEnrollment(
+        Tenant $club,
+        int $userId,
+        ClubPackage $package,
+        string $notes = 'Admin enrollment'
+    ): ClubMemberSubscription {
+        $subscription = ClubMemberSubscription::create([
+            'tenant_id'      => $club->id,
+            'user_id'        => $userId,
+            'package_id'     => $package->id,
+            'type'           => 'regular',
+            'status'         => 'active',
+            'payment_status' => 'pending',
+            'amount_paid'    => 0,
+            'amount_due'     => $package->price,
+            'start_date'     => now(),
+            'end_date'       => now()->addMonths($package->duration_months),
+            'notes'          => $notes,
+        ]);
+
+        ClubTransaction::create([
+            'tenant_id'        => $club->id,
+            'user_id'          => $userId,
+            'subscription_id'  => $subscription->id,
+            'type'             => 'income',
+            'category'         => 'subscription',
+            'amount'           => $package->price,
+            'description'      => $notes,
+            'transaction_date' => now(),
+        ]);
+
         Membership::firstOrCreate(
             ['tenant_id' => $club->id, 'user_id' => $userId],
             ['status' => 'active']

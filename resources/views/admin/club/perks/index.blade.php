@@ -34,14 +34,6 @@ $perksJson = $perks->map(function($p) {
         </button>
     </div>
 
-    {{-- Session messages --}}
-    @if(session('success'))
-        <div class="alert alert-success mb-4">{{ session('success') }}</div>
-    @endif
-    @if(session('error'))
-        <div class="alert alert-danger mb-4">{{ session('error') }}</div>
-    @endif
-
     {{-- Perks list --}}
     @if($perks->isEmpty())
         <div class="card border-0 shadow-sm">
@@ -57,7 +49,8 @@ $perksJson = $perks->map(function($p) {
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             @foreach($perks as $perk)
             @php $isInactive = $perk->status === 'inactive'; @endphp
-            <div class="card border-0 shadow-sm overflow-hidden {{ $isInactive ? 'opacity-60' : '' }}">
+            <div class="card border-0 shadow-sm overflow-hidden {{ $isInactive ? 'opacity-60' : '' }}"
+                 id="perk-{{ $perk->id }}">
                 {{-- Card visual --}}
                 <div class="relative" style="height:120px;">
                     @if($perk->image_path)
@@ -205,10 +198,14 @@ function perksAdmin() {
                 })
                 .then(r => r.json())
                 .then(data => {
-                    if (data.success) location.reload();
-                    else alert(data.message || 'Failed to delete perk.');
+                    if (data.success) {
+                        document.getElementById('perk-' + id)?.remove();
+                        window.showToast('success', data.message || 'Perk deleted.');
+                    } else {
+                        window.showToast('error', data.message || 'Failed to delete perk.');
+                    }
                 })
-                .catch(() => alert('Failed to delete perk.'));
+                .catch(() => window.showToast('error', 'Failed to delete perk.'));
             });
         },
     };

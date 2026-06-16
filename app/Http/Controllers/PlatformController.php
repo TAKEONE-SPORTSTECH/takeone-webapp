@@ -92,7 +92,9 @@ class PlatformController extends Controller
                 ];
             });
 
-        return view('platform.explore', compact('familyMembers', 'instructors'));
+        $isMobile = request()->attributes->get('is_mobile', false);
+
+        return view($isMobile ? 'platform.mobile.explore' : 'platform.explore', compact('familyMembers', 'instructors'));
     }
 
     /**
@@ -220,11 +222,18 @@ class PlatformController extends Controller
             $memberIds = $club->members()->pluck('users.id');
             $members   = \App\Models\User::whereIn('id', $memberIds)->get();
 
-            // Nationality breakdown
+            // Nationality breakdown — map ISO-2 codes to full country names
+            static $countryNames = null;
+            if ($countryNames === null) {
+                $raw          = json_decode(file_get_contents(public_path('data/countries.json')), true) ?? [];
+                $countryNames = collect($raw)->pluck('name', 'iso2')->all(); // ['BH' => 'Bahrain', ...]
+            }
+
             $nationalityStats = $members->groupBy('nationality')
                 ->map(fn($group) => $group->count())
                 ->sortDesc()
-                ->take(4);
+                ->take(4)
+                ->mapWithKeys(fn($count, $code) => [($countryNames[$code] ?? ($code ?: 'Unknown')) => $count]);
 
             // Age group breakdown
             $ageGroups = ['Kids (5-10)' => 0, 'Juniors (11-15)' => 0, 'Youth (16-21)' => 0, 'Adults (22+)' => 0];
@@ -240,19 +249,14 @@ class PlatformController extends Controller
             // Gender breakdown
             $genderStats = $members->groupBy('gender')->map(fn($group) => $group->count());
 
-            // Horoscope breakdown
-            $horoscopeGroups = ['Fire' => 0, 'Earth' => 0, 'Air' => 0, 'Water' => 0];
-            $fireSigns  = ['Aries', 'Leo', 'Sagittarius'];
-            $earthSigns = ['Taurus', 'Virgo', 'Capricorn'];
-            $airSigns   = ['Gemini', 'Libra', 'Aquarius'];
-            $waterSigns = ['Cancer', 'Scorpio', 'Pisces'];
+            // Horoscope breakdown — individual signs in calendar order
+            $horoscopeGroups = array_fill_keys(
+                ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'],
+                0
+            );
             foreach ($members as $member) {
                 $sign = $member->horoscope;
-                if (!$sign) continue;
-                if (in_array($sign, $fireSigns))       $horoscopeGroups['Fire']++;
-                elseif (in_array($sign, $earthSigns))  $horoscopeGroups['Earth']++;
-                elseif (in_array($sign, $airSigns))    $horoscopeGroups['Air']++;
-                elseif (in_array($sign, $waterSigns))  $horoscopeGroups['Water']++;
+                if ($sign && isset($horoscopeGroups[$sign])) $horoscopeGroups[$sign]++;
             }
 
             // Blood type breakdown
@@ -285,17 +289,16 @@ class PlatformController extends Controller
             'totalMembers'     => $totalMembers,
         ] = $memberStats;
 
-        // Monthly active members trend — 12 separate queries, cached for 1 hour.
+        // Monthly new members — count of members who joined in each of the last 12 months.
         $monthlyTrend = Cache::remember(ClubCache::showMonthlyTrend($club->id), ClubCache::TTL_STATS, function () use ($club) {
             $trend = [];
             for ($i = 11; $i >= 0; $i--) {
-                $date         = now()->subMonths($i);
-                $trend[$date->format('M')] = $club->memberships()
-                    ->where('created_at', '<=', $date->endOfMonth())
-                    ->where(function ($q) use ($date) {
-                        $q->where('status', 'active')
-                          ->orWhere('updated_at', '>=', $date->startOfMonth());
-                    })
+                $month = now()->subMonths($i);
+                $start = $month->copy()->startOfMonth();
+                $end   = $month->copy()->endOfMonth();
+
+                $trend[$month->format('M Y')] = $club->memberships()
+                    ->whereBetween('created_at', [$start, $end])
                     ->count();
             }
             return $trend;

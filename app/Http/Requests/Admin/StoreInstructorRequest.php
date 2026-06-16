@@ -19,7 +19,7 @@ class StoreInstructorRequest extends FormRequest
                 'password'    => 'required|string|min:6',
                 'name'        => 'required|string|max:255',
                 'phone'       => 'required|string',
-                'gender'      => 'required|in:m,f',
+                'gender'      => 'required|in:Male,Female',
                 'birthdate'   => 'required|date',
                 'nationality' => 'required|string',
                 'specialty'   => 'nullable|string|max:255',

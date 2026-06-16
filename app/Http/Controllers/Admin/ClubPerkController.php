@@ -17,7 +17,7 @@ class ClubPerkController extends Controller
     {
         $this->authorizeClub($club);
         $perks = ClubPerk::where('tenant_id', $club->id)->orderBy('sort_order')->orderBy('id')->get();
-        return view('admin.club.perks.index', compact('club', 'perks'));
+        return view(\App\Support\ClubView::pick('perks'), compact('club', 'perks'));
     }
 
     public function storePerk(PerkRequest $request, Tenant $club)

@@ -280,12 +280,12 @@
                                                     @endphp
                                                     <div class="mb-3">
                                                         <div class="flex justify-center items-center gap-2">
-                                                            <div class="stars-display">
+                                                            <div class="stars-display" id="avgStars_{{ $instructor->id }}">
                                                                 @for($i = 1; $i <= 5; $i++)
                                                                     <i class="bi bi-star{{ $i <= round($avgRating) ? '-fill' : '' }} text-warning"></i>
                                                                 @endfor
                                                             </div>
-                                                            <span class="text-muted-foreground text-sm">({{ number_format($avgRating, 1) }} / {{ $reviewCount }} {{ $reviewCount == 1 ? 'review' : 'reviews' }})</span>
+                                                            <span class="text-muted-foreground text-sm" id="avgMeta_{{ $instructor->id }}">({{ number_format($avgRating, 1) }} / {{ $reviewCount }} {{ $reviewCount == 1 ? 'review' : 'reviews' }})</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -383,7 +383,7 @@
                                                     <!-- Reviews List -->
                                                     <div class="reviews-list" id="reviewsList_{{ $instructor->id }}">
                                                         @foreach($instructor->reviews()->with('reviewer')->latest()->get() as $review)
-                                                            <div class="card mb-2">
+                                                            <div class="card mb-2" id="review-row-{{ $review->id }}">
                                                                 <div class="card-body p-3">
                                                                     <div class="flex items-start mb-2">
                                                                         <div class="grow">
@@ -666,7 +666,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Validate rating
             if (!data.rating || data.rating == 0) {
-                alert('Please select a rating');
+                window.showToast('error', 'Please select a rating');
                 return;
             }
 
@@ -686,14 +686,12 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(response => response.json())
             .then(result => {
-                if (result.success) {
-                    // Show success message
+                if (result.success && result.review) {
+                    patchInstructorReview(this, instructorId, result.review);
                     showAlert(result.message, 'success');
-
-                    // Reload the page to show updated reviews
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
+                } else if (result.success) {
+                    showAlert(result.message, 'success');
+                    setTimeout(() => { window.location.reload(); }, 1000);
                 } else {
                     showAlert(result.message || 'Error submitting review', 'danger');
                 }
@@ -705,21 +703,61 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    function showAlert(message, type) {
-        const alertDiv = document.createElement('div');
-        alertDiv.className = `alert alert-${type} alert-dismissible fade show fixed`;
-        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-        alertDiv.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        `;
-        document.body.appendChild(alertDiv);
+    function escapeHtml(s) {
+        return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+    }
 
-        setTimeout(() => {
-            if (alertDiv.parentNode) {
-                alertDiv.remove();
+    function starsHtml(rating) {
+        let html = '';
+        for (let i = 1; i <= 5; i++) {
+            html += `<i class="bi bi-star${i <= rating ? '-fill' : ''} text-warning"></i>`;
+        }
+        return html;
+    }
+
+    function patchInstructorReview(form, instructorId, review) {
+        form.setAttribute('data-review-id', review.id);
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.innerHTML = `<i class="bi bi-pencil mr-1"></i>Update Review`;
+
+        const list = document.getElementById(`reviewsList_${instructorId}`);
+        if (list) {
+            let row = document.getElementById(`review-row-${review.id}`);
+            const reviewerName = (review.reviewer && (review.reviewer.full_name || review.reviewer.name)) || 'You';
+            const commentHtml = review.comment ? `<p class="mb-0 text-sm text-muted-foreground">${escapeHtml(review.comment)}</p>` : '';
+            const cardHtml = `
+                <div class="card-body p-3">
+                    <div class="flex items-start mb-2">
+                        <div class="grow">
+                            <div class="font-semibold text-sm">${escapeHtml(reviewerName)}</div>
+                            <div class="stars-display text-sm">${starsHtml(review.rating)}</div>
+                        </div>
+                        <small class="text-muted-foreground">Updated just now</small>
+                    </div>
+                    ${commentHtml}
+                </div>`;
+            if (row) {
+                row.innerHTML = cardHtml;
+            } else {
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = `<div class="card mb-2" id="review-row-${review.id}">${cardHtml}</div>`;
+                row = wrapper.firstElementChild;
+                list.prepend(row);
             }
-        }, 5000);
+        }
+
+        const ratings = list ? Array.from(list.querySelectorAll('.stars-display')).map(d => d.querySelectorAll('.bi-star-fill').length) : [];
+        const count = ratings.length;
+        const avg = count ? (ratings.reduce((a, b) => a + b, 0) / count) : 0;
+        const headerStars = document.getElementById(`avgStars_${instructorId}`);
+        if (headerStars) headerStars.innerHTML = starsHtml(Math.round(avg));
+        const headerMeta = document.getElementById(`avgMeta_${instructorId}`);
+        if (headerMeta) headerMeta.textContent = `(${avg.toFixed(1)} / ${count} ${count === 1 ? 'review' : 'reviews'})`;
+    }
+
+    function showAlert(message, type) {
+        // Route through the global toast — never render an inline alert on the page.
+        window.showToast(type === 'danger' ? 'error' : type, message);
     }
 
     if (skillFilter) {

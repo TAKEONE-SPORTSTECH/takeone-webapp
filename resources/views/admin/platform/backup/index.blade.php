@@ -28,7 +28,7 @@
                 <p class="text-muted-foreground text-sm mb-4">
                     Export the complete database as a JSON file. This includes all tables from the public schema.
                 </p>
-                <a href="{{ route('admin.platform.backup.download') }}" class="btn btn-primary w-full" onclick="return confirm('This will download a complete backup of the database. Continue?')">
+                <a href="{{ route('admin.platform.backup.download') }}" class="btn btn-primary w-full" onclick="event.preventDefault(); (async (href) => { const ok = await window.confirmAction({ title: 'Download Backup', message: 'This will download a complete backup of the database. Continue?', type: 'info', confirmText: 'Download' }); if (ok) window.location.href = href; })(this.href); return false;">
                     <i class="bi bi-download mr-2"></i>Download Full Backup
                 </a>
                 <small class="text-muted-foreground block mt-3">
@@ -148,7 +148,7 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="{{ route('admin.platform.backup.restore') }}" method="POST" enctype="multipart/form-data" onsubmit="return confirmRestore()">
+            <form action="{{ route('admin.platform.backup.restore') }}" method="POST" enctype="multipart/form-data" onsubmit="event.preventDefault(); confirmRestore(this); return false;">
                 @csrf
                 <div class="modal-body">
                     <div class="alert alert-danger">
@@ -181,8 +181,9 @@
 
 @push('scripts')
 <script>
-function confirmRestore() {
-    return confirm('FINAL WARNING: Are you absolutely sure you want to restore the database? This will delete ALL current data!');
+async function confirmRestore(form) {
+    const ok = await window.confirmAction({ title: 'Restore Database', message: 'FINAL WARNING: Are you absolutely sure you want to restore the database? This will delete ALL current data!', type: 'danger', confirmText: 'Restore' });
+    if (ok) form.submit();
 }
 </script>
 @endpush

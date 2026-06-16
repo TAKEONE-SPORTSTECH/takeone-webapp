@@ -17,7 +17,7 @@
         @foreach($dependents as $relationship)
             <x-member-card
                 :member="$relationship->dependent"
-                :href="route('member.show', $relationship->dependent->id)"
+                :href="route('member.show', $relationship->dependent->uuid)"
                 :footerLabel="$relationship->relationship_type === 'spouse' ? 'WIFE' : strtoupper($relationship->relationship_type)"
                 :guardian="$user"
             />

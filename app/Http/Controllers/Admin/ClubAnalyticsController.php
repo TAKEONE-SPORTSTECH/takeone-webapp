@@ -40,6 +40,6 @@ class ClubAnalyticsController extends Controller
                 ->get();
         });
 
-        return view('admin.club.analytics.index', compact('club', 'analytics', 'popularPackages'));
+        return view(\App\Support\ClubView::pick('analytics'), compact('club', 'analytics', 'popularPackages'));
     }
 }

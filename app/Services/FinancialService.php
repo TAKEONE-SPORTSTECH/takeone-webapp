@@ -86,6 +86,22 @@ class FinancialService
     }
 
     /**
+     * Unpaid / pending subscriptions that make up the "Cash to Collect" figure.
+     * Returned with user + package so the transactions modal can list them per month.
+     */
+    public function getCashToCollect(int $clubId): Collection
+    {
+        $cutoff = now()->subMonths(11)->startOfMonth();
+
+        return ClubMemberSubscription::where('tenant_id', $clubId)
+            ->whereIn('payment_status', ['unpaid', 'pending_approval'])
+            ->where('start_date', '>=', $cutoff)
+            ->with(['user', 'package'])
+            ->orderByDesc('start_date')
+            ->get();
+    }
+
+    /**
      * Group expense transactions by category for the breakdown chart.
      */
     public function getExpenseBreakdown(Collection $transactions): Collection

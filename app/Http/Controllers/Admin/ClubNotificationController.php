@@ -27,7 +27,7 @@ class ClubNotificationController extends Controller
             ->latest('sent_at')
             ->paginate(20);
 
-        return view('admin.club.notifications.index', compact('club', 'notifications'));
+        return view(\App\Support\ClubView::pick('notifications'), compact('club', 'notifications'));
     }
 
     public function store(SendNotificationRequest $request, Tenant $club)

@@ -59,7 +59,7 @@
         </div>
         @endif
 
-        {{-- Banner Top: Logo + Social Links --}}
+        {{-- Banner Top: Logo only --}}
         <div class="banner-top">
             <div>
                 @if($club->logo)
@@ -67,47 +67,6 @@
                     <img src="{{ asset('storage/' . $club->logo) }}" alt="{{ $club->club_name }}" style="width:100%">
                 </div>
                 @endif
-            </div>
-            <div class="flex flex-col items-end gap-3">
-                <div class="glass-hub">
-                    @foreach($club->socialLinks as $link)
-                        @php
-                            $icon = 'bi-link-45deg';
-                            $platform = strtolower($link->platform);
-                            if (str_contains($platform, 'whatsapp')) $icon = 'bi-whatsapp';
-                            elseif (str_contains($platform, 'instagram')) $icon = 'bi-instagram';
-                            elseif (str_contains($platform, 'facebook')) $icon = 'bi-facebook';
-                            elseif (str_contains($platform, 'twitter') || str_contains($platform, 'x')) $icon = 'bi-twitter-x';
-                            elseif (str_contains($platform, 'youtube')) $icon = 'bi-youtube';
-                            elseif (str_contains($platform, 'tiktok')) $icon = 'bi-tiktok';
-                            elseif (str_contains($platform, 'linkedin')) $icon = 'bi-linkedin';
-                        @endphp
-                        <a href="{{ $link->url }}" target="_blank" class="hub-link" title="{{ $link->platform }}">
-                            <i class="bi {{ $icon }}"></i>
-                        </a>
-                    @endforeach
-                    @if($club->phone)
-                    <a href="tel:{{ is_array($club->phone) ? (($club->phone['code'] ?? '') . ($club->phone['number'] ?? '')) : $club->phone }}" class="hub-link" title="Call">
-                        <i class="bi bi-telephone"></i>
-                    </a>
-                    @endif
-                </div>
-
-                {{-- Join This Club CTA — below the social icons --}}
-                @guest
-                <a href="{{ route('register') }}?intended={{ urlencode(url()->current()) }}"
-                   class="flex items-center gap-2 px-5 py-2 rounded-full font-semibold text-sm text-white no-underline"
-                   style="background: var(--color-primary);">
-                    <i class="bi bi-person-plus-fill"></i> Join This Club
-                </a>
-                @endguest
-                @auth
-                <button onclick="switchToPackagesTab()"
-                        class="flex items-center gap-2 px-5 py-2 rounded-full font-semibold text-sm text-white border-0"
-                        style="background: var(--color-primary);">
-                    <i class="bi bi-person-plus-fill"></i> Join This Club
-                </button>
-                @endauth
             </div>
         </div>
 
@@ -120,7 +79,7 @@
                 @endif
                 @if($club->established_date)
                 <i class="bi bi-fire ml-3 mr-2 text-primary"></i>
-                <span>Since {{ \Carbon\Carbon::parse($club->established_date)->format('Y') }} &middot; {{ \Carbon\Carbon::parse($club->established_date)->diffInYears(now()) }} years</span>
+                <span>Since {{ \Carbon\Carbon::parse($club->established_date)->format('Y') }} &middot; {{ round(\Carbon\Carbon::parse($club->established_date)->diffInYears(now()), 1) }} years</span>
                 @endif
             </p>
             <div class="stats-row mt-4">
@@ -143,6 +102,38 @@
             </div>
         </div>
     </div>
+
+    {{-- Social & Contact Strip --}}
+    @if($club->socialLinks->isNotEmpty() || $club->phone)
+    <div class="social-strip">
+        @foreach($club->socialLinks as $link)
+            @php
+                $icon = 'bi-link-45deg';
+                $platform = strtolower($link->platform);
+                if (str_contains($platform, 'whatsapp')) $icon = 'bi-whatsapp';
+                elseif (str_contains($platform, 'instagram')) $icon = 'bi-instagram';
+                elseif (str_contains($platform, 'facebook')) $icon = 'bi-facebook';
+                elseif (str_contains($platform, 'twitter') || str_contains($platform, 'x')) $icon = 'bi-twitter-x';
+                elseif (str_contains($platform, 'youtube')) $icon = 'bi-youtube';
+                elseif (str_contains($platform, 'tiktok')) $icon = 'bi-tiktok';
+                elseif (str_contains($platform, 'linkedin')) $icon = 'bi-linkedin';
+                elseif (str_contains($platform, 'snapchat')) $icon = 'bi-snapchat';
+                elseif (str_contains($platform, 'telegram')) $icon = 'bi-telegram';
+                elseif (str_contains($platform, 'pinterest')) $icon = 'bi-pinterest';
+                elseif (str_contains($platform, 'threads')) $icon = 'bi-threads';
+            @endphp
+            <a href="{{ $link->url }}" target="_blank" class="social-strip-link" title="{{ $link->platform }}">
+                <i class="bi {{ $icon }}"></i>
+            </a>
+        @endforeach
+        @if($club->phone)
+        <a href="tel:{{ is_array($club->phone) ? (($club->phone['code'] ?? '') . ($club->phone['number'] ?? '')) : $club->phone }}"
+           class="social-strip-link" title="Call">
+            <i class="bi bi-telephone"></i>
+        </a>
+        @endif
+    </div>
+    @endif
 
     {{-- CONTENT CARD WITH TABS --}}
     <div class="content-card">
@@ -1075,62 +1066,65 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                     {{-- Nationality --}}
                     <div class="stat-card">
-                        <h6 class="mb-0 flex items-center justify-between text-sm font-bold">
-                            Active Members by Nationality
-                        </h6>
-                        <div class="mt-3">
-                            <canvas id="donutNationalities" height="160"></canvas>
+                        <div class="stat-card-header">
+                            <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">Nationality</span>
+                            <span class="inline-flex items-center gap-1 text-xs text-gray-400"><i class="bi bi-globe2 text-primary"></i> Top 4</span>
                         </div>
-                        <ul class="stat-legend">
-                            @php $natColors = ['#ef4444', '#0ea5e9', '#22c55e', '#8b5cf6']; $ni = 0; @endphp
-                            @foreach($nationalityStats as $country => $count)
-                            <li>
-                                <span><span class="legend-dot" style="background:{{ $natColors[$ni % 4] }};"></span> {{ $country ?: 'Unknown' }}</span>
-                                <span>{{ $totalMembers > 0 ? round($count / $totalMembers * 100) : 0 }}%</span>
-                            </li>
-                            @php $ni++; @endphp
-                            @endforeach
-                        </ul>
+                        <div class="stat-card-body">
+                            <div class="relative"><canvas id="donutNationalities" height="160"></canvas></div>
+                            <ul class="stat-legend">
+                                @php $P = ['#6366f1','#0891b2','#059669','#d97706','#dc2626','#7c3aed','#0284c7','#16a34a','#b45309','#be185d','#1d4ed8','#0f766e']; $ni = 0; @endphp
+                                @foreach($nationalityStats as $country => $count)
+                                <li>
+                                    <span><span class="legend-dot" style="background:{{ $P[$ni % 12] }};"></span> {{ $country }}</span>
+                                    <span>{{ $totalMembers > 0 ? round($count / $totalMembers * 100) : 0 }}%</span>
+                                </li>
+                                @php $ni++; @endphp
+                                @endforeach
+                            </ul>
+                        </div>
                     </div>
 
                     {{-- Age Groups --}}
                     <div class="stat-card">
-                        <h6 class="mb-0 flex items-center justify-between text-sm font-bold">
-                            Members by Age Group
-                        </h6>
-                        <div class="mt-3">
-                            <canvas id="donutAgeGroups" height="160"></canvas>
+                        <div class="stat-card-header">
+                            <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">Age Groups</span>
+                            <span class="inline-flex items-center gap-1 text-xs text-gray-400"><i class="bi bi-people text-primary"></i> Active</span>
                         </div>
-                        <ul class="stat-legend">
-                            @php $ageColors = ['#f97316', '#22c55e', '#3b82f6', '#94a3b8']; $ai = 0; @endphp
-                            @foreach($ageGroups as $group => $count)
-                            <li>
-                                <span><span class="legend-dot" style="background:{{ $ageColors[$ai % 4] }};"></span> {{ $group }}</span>
-                                <span>{{ $totalMembers > 0 ? round($count / $totalMembers * 100) : 0 }}%</span>
-                            </li>
-                            @php $ai++; @endphp
-                            @endforeach
-                        </ul>
+                        <div class="stat-card-body">
+                            <div class="relative"><canvas id="donutAgeGroups" height="160"></canvas></div>
+                            <ul class="stat-legend">
+                                @php $ageP = ['#6366f1','#059669','#0284c7','#d97706']; $ai = 0; @endphp
+                                @foreach($ageGroups as $group => $count)
+                                <li>
+                                    <span><span class="legend-dot" style="background:{{ $ageP[$ai % 4] }};"></span> {{ $group }}</span>
+                                    <span>{{ $totalMembers > 0 ? round($count / $totalMembers * 100) : 0 }}%</span>
+                                </li>
+                                @php $ai++; @endphp
+                                @endforeach
+                            </ul>
+                        </div>
                     </div>
 
                     {{-- Gender --}}
                     <div class="stat-card">
-                        <h6 class="mb-0 flex items-center justify-between text-sm font-bold">
-                            Gender Ratio
-                        </h6>
-                        <div class="mt-3">
-                            <canvas id="donutGender" height="160"></canvas>
+                        <div class="stat-card-header">
+                            <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">Gender Ratio</span>
+                            <span class="inline-flex items-center gap-1 text-xs text-gray-400"><i class="bi bi-gender-ambiguous text-primary"></i> All</span>
                         </div>
-                        <ul class="stat-legend">
-                            @php $genderColors = ['#3b82f6', '#ec4899', '#94a3b8']; $gi = 0; @endphp
-                            @foreach($genderStats as $gender => $count)
-                            <li>
-                                <span><span class="legend-dot" style="background:{{ $genderColors[$gi % 3] }};"></span> {{ ucfirst($gender ?: 'Unknown') }}</span>
-                                <span>{{ $totalMembers > 0 ? round($count / $totalMembers * 100) : 0 }}%</span>
-                            </li>
-                            @php $gi++; @endphp
-                            @endforeach
-                        </ul>
+                        <div class="stat-card-body">
+                            <div class="relative"><canvas id="donutGender" height="160"></canvas></div>
+                            <ul class="stat-legend">
+                                @php $genderP = ['#0284c7','#be185d','#64748b']; $gi = 0; @endphp
+                                @foreach($genderStats as $gender => $count)
+                                <li>
+                                    <span><span class="legend-dot" style="background:{{ $genderP[$gi % 3] }};"></span> {{ ucfirst($gender ?: 'Unknown') }}</span>
+                                    <span>{{ $totalMembers > 0 ? round($count / $totalMembers * 100) : 0 }}%</span>
+                                </li>
+                                @php $gi++; @endphp
+                                @endforeach
+                            </ul>
+                        </div>
                     </div>
                 </div>
 
@@ -1138,140 +1132,177 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                     {{-- Horoscope --}}
                     <div class="stat-card">
-                        <h6 class="mb-0 flex items-center justify-between text-sm font-bold">
-                            Active Members - Horoscope
-                            <span class="badge-pill bg-secondary-light">For fun</span>
-                        </h6>
-                        <div class="mt-3">
-                            <canvas id="donutHoroscope" height="160"></canvas>
+                        <div class="stat-card-header">
+                            <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">Horoscope</span>
+                            <span class="inline-flex items-center gap-1 text-xs text-gray-400"><i class="bi bi-stars text-primary"></i> For fun</span>
                         </div>
-                        <ul class="stat-legend">
-                            @php $hColors = ['#6366f1', '#22c55e', '#0ea5e9', '#ec4899']; $hi = 0; @endphp
-                            @foreach($horoscopeGroups as $element => $count)
-                            <li>
-                                <span><span class="legend-dot" style="background:{{ $hColors[$hi % 4] }};"></span> {{ $element }} signs</span>
-                                <span>{{ $totalMembers > 0 ? round($count / $totalMembers * 100) : 0 }}%</span>
-                            </li>
-                            @php $hi++; @endphp
-                            @endforeach
-                        </ul>
+                        <div class="stat-card-body">
+                            <div class="relative"><canvas id="donutHoroscope" height="160"></canvas></div>
+                            <ul class="stat-legend">
+                                @php $hP = ['#6366f1','#0891b2','#059669','#d97706','#dc2626','#7c3aed','#0284c7','#16a34a','#b45309','#be185d','#1d4ed8','#0f766e']; $hi = 0; @endphp
+                                @foreach($horoscopeGroups as $element => $count)
+                                <li>
+                                    <span><span class="legend-dot" style="background:{{ $hP[$hi % 12] }};"></span> {{ $element }}</span>
+                                    <span>{{ $totalMembers > 0 ? round($count / $totalMembers * 100) : 0 }}%</span>
+                                </li>
+                                @php $hi++; @endphp
+                                @endforeach
+                            </ul>
+                        </div>
                     </div>
 
                     {{-- Blood Type --}}
                     <div class="stat-card">
-                        <h6 class="mb-0 flex items-center justify-between text-sm font-bold">
-                            Members by Blood Type
-                            <span class="badge-pill bg-secondary-light">Self-reported</span>
-                        </h6>
-                        <div class="mt-3">
-                            <canvas id="donutBloodType" height="160"></canvas>
+                        <div class="stat-card-header">
+                            <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">Blood Type</span>
+                            <span class="inline-flex items-center gap-1 text-xs text-gray-400"><i class="bi bi-droplet-half text-primary"></i> Self-reported</span>
                         </div>
-                        <ul class="stat-legend">
-                            @php $btColors = ['#ef4444', '#f97316', '#22c55e', '#3b82f6']; $bi_idx = 0; @endphp
-                            @foreach($bloodTypeStats as $type => $count)
-                            <li>
-                                <span><span class="legend-dot" style="background:{{ $btColors[$bi_idx % 4] }};"></span> {{ $type }}</span>
-                                <span>{{ $totalMembers > 0 ? round($count / $totalMembers * 100) : 0 }}%</span>
-                            </li>
-                            @php $bi_idx++; @endphp
-                            @endforeach
-                        </ul>
+                        <div class="stat-card-body">
+                            <div class="relative"><canvas id="donutBloodType" height="160"></canvas></div>
+                            <ul class="stat-legend">
+                                @php $btP = ['#dc2626','#d97706','#059669','#0284c7','#6366f1','#be185d','#0f766e','#16a34a']; $bi_idx = 0; @endphp
+                                @foreach($bloodTypeStats as $type => $count)
+                                <li>
+                                    <span><span class="legend-dot" style="background:{{ $btP[$bi_idx % 8] }};"></span> {{ $type }}</span>
+                                    <span>{{ $totalMembers > 0 ? round($count / $totalMembers * 100) : 0 }}%</span>
+                                </li>
+                                @php $bi_idx++; @endphp
+                                @endforeach
+                            </ul>
+                        </div>
                     </div>
 
                     {{-- Member Goals --}}
                     <div class="stat-card">
-                        <h6 class="mb-0 flex items-center justify-between text-sm font-bold">
-                            Members by Goal Status
-                            <span class="badge-pill bg-secondary-light">Progress</span>
-                        </h6>
-                        <div class="mt-3">
-                            <canvas id="donutGoals" height="160"></canvas>
+                        <div class="stat-card-header">
+                            <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">Goal Status</span>
+                            <span class="inline-flex items-center gap-1 text-xs text-gray-400"><i class="bi bi-bullseye text-primary"></i> Progress</span>
                         </div>
-                        <ul class="stat-legend">
-                            @php $goalColors = ['#22c55e', '#3b82f6', '#eab308', '#e5e7eb']; $gsi = 0; @endphp
-                            @foreach($goalStats as $label => $count)
-                            <li>
-                                <span><span class="legend-dot" style="background:{{ $goalColors[$gsi % 4] }};"></span> {{ $label }}</span>
-                                <span>{{ $totalMembers > 0 ? round($count / $totalMembers * 100) : 0 }}%</span>
-                            </li>
-                            @php $gsi++; @endphp
-                            @endforeach
-                        </ul>
+                        <div class="stat-card-body">
+                            <div class="relative"><canvas id="donutGoals" height="160"></canvas></div>
+                            <ul class="stat-legend">
+                                @php $goalP = ['#059669','#0284c7','#d97706','#94a3b8']; $gsi = 0; @endphp
+                                @foreach($goalStats as $label => $count)
+                                <li>
+                                    <span><span class="legend-dot" style="background:{{ $goalP[$gsi % 4] }};"></span> {{ $label }}</span>
+                                    <span>{{ $totalMembers > 0 ? round($count / $totalMembers * 100) : 0 }}%</span>
+                                </li>
+                                @php $gsi++; @endphp
+                                @endforeach
+                            </ul>
+                        </div>
                     </div>
                 </div>
 
                 {{-- Monthly Trend --}}
                 <div class="grid grid-cols-1 gap-3">
                     <div class="stat-card">
-                        <div class="flex justify-between items-center mb-2">
-                            <h6 class="mb-0 text-sm font-bold">Active Members - Last 12 Months</h6>
-                            <span class="bg-gray-900 text-white text-xs font-semibold rounded-full px-2 py-1 flex items-center gap-1">
-                                <i class="bi bi-people"></i> 12-month trend
-                            </span>
+                        <div class="stat-card-header">
+                            <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">New Members — Last 12 Months</span>
+                            <span class="inline-flex items-center gap-1 text-xs text-gray-400"><i class="bi bi-graph-up text-primary"></i> 12-month trend</span>
                         </div>
-                        <p class="text-muted-foreground text-sm mb-2">Membership trends across seasons and holidays.</p>
-                        <div class="bar-wrapper-fixed">
-                            <canvas id="barMonthlyMembers"></canvas>
+                        <div class="stat-card-body">
+                            <div class="bar-wrapper-fixed">
+                                <canvas id="barMonthlyMembers"></canvas>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {{-- Rating Breakdown --}}
-                <div class="rating-breakdown-card">
-                    <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                        <div class="md:col-span-3">
-                            <div class="rating-main-score">{{ number_format($averageRating, 1) }}</div>
-                            <div class="rating-stars">
+                <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mt-3">
+
+                    {{-- Header bar --}}
+                    <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50/60">
+                        <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">Member Reviews</span>
+                        <span class="inline-flex items-center gap-1.5 text-xs text-gray-400">
+                            <i class="bi bi-patch-check-fill text-primary"></i>
+                            Verified members only
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-px bg-gray-100">
+
+                        {{-- Column 1 — Overall score --}}
+                        <div class="flex flex-col items-center justify-center gap-2 px-6 py-6 bg-white">
+                            <div class="text-6xl font-black tracking-tight text-gray-900 leading-none">
+                                {{ number_format($averageRating, 1) }}
+                            </div>
+                            <div class="flex items-center gap-0.5 text-amber-400 text-base">
                                 @for($i = 1; $i <= 5; $i++)
                                     @if($i <= floor($averageRating))
                                         <i class="bi bi-star-fill"></i>
                                     @elseif($i - $averageRating < 1 && $i - $averageRating > 0)
                                         <i class="bi bi-star-half"></i>
                                     @else
-                                        <i class="bi bi-star"></i>
+                                        <i class="bi bi-star text-gray-300"></i>
                                     @endif
                                 @endfor
                             </div>
-                            <div class="rating-subtext mt-1">Based on {{ $reviews->count() }} verified member reviews</div>
-                        </div>
-                        <div class="md:col-span-6">
-                            <div class="aspect-row">
-                                <div class="aspect-label"><i class="bi bi-person-check text-green-500"></i> Trainers</div>
-                                <div class="aspect-bar"><div class="aspect-fill" style="width:{{ min($averageRating * 20, 100) }}%;"></div></div>
-                                <div class="aspect-score">{{ number_format($averageRating, 1) }}</div>
-                            </div>
-                            <div class="aspect-row">
-                                <div class="aspect-label"><i class="bi bi-droplet text-sky-500"></i> Cleanliness</div>
-                                <div class="aspect-bar"><div class="aspect-fill" style="width:{{ min(($averageRating - 0.1) * 20, 100) }}%;"></div></div>
-                                <div class="aspect-score">{{ number_format(max($averageRating - 0.1, 0), 1) }}</div>
-                            </div>
-                            <div class="aspect-row">
-                                <div class="aspect-label"><i class="bi bi-house text-indigo-400"></i> Comfort</div>
-                                <div class="aspect-bar"><div class="aspect-fill" style="width:{{ min(($averageRating - 0.2) * 20, 100) }}%;"></div></div>
-                                <div class="aspect-score">{{ number_format(max($averageRating - 0.2, 0), 1) }}</div>
-                            </div>
-                            <div class="aspect-row">
-                                <div class="aspect-label"><i class="bi bi-bullseye text-amber-400"></i> Keeps on track</div>
-                                <div class="aspect-bar"><div class="aspect-fill" style="width:{{ min(($averageRating - 0.1) * 20, 100) }}%;"></div></div>
-                                <div class="aspect-score">{{ number_format(max($averageRating - 0.1, 0), 1) }}</div>
-                            </div>
-                            <div class="aspect-row mb-0">
-                                <div class="aspect-label"><i class="bi bi-heart text-rose-400"></i> Community vibe</div>
-                                <div class="aspect-bar"><div class="aspect-fill" style="width:{{ min($averageRating * 20, 100) }}%;"></div></div>
-                                <div class="aspect-score">{{ number_format($averageRating, 1) }}</div>
+                            <p class="text-xs text-gray-400 text-center leading-snug">
+                                Based on <span class="font-semibold text-gray-600">{{ $reviews->count() }}</span> verified reviews
+                            </p>
+                            <div class="mt-1 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-600 text-xs font-semibold">
+                                <i class="bi bi-graph-up-arrow text-emerald-500"></i>
+                                +0.2 vs last year
                             </div>
                         </div>
-                        <div class="md:col-span-3">
-                            <div class="rating-badge-row">
-                                <span class="rating-badge"><i class="bi bi-emoji-smile text-yellow-400"></i> 9.7 / 10 enjoyment</span>
-                                <span class="rating-badge"><i class="bi bi-shield-check text-green-500"></i> Members feel safe</span>
-                                <span class="rating-badge"><i class="bi bi-stopwatch text-sky-500"></i> 92% better discipline</span>
+
+                        {{-- Column 2 — Aspect bars --}}
+                        <div class="flex flex-col justify-center gap-3.5 px-6 py-5 bg-white">
+                            @php
+                                $aspects = [
+                                    ['icon' => 'bi-person-check',  'color' => 'text-violet-500',  'label' => 'Trainers',        'pct' => min($averageRating * 20, 100),              'score' => number_format($averageRating, 1)],
+                                    ['icon' => 'bi-droplet',       'color' => 'text-sky-500',     'label' => 'Cleanliness',     'pct' => min(($averageRating - 0.1) * 20, 100),      'score' => number_format(max($averageRating - 0.1, 0), 1)],
+                                    ['icon' => 'bi-house',         'color' => 'text-indigo-400',  'label' => 'Comfort',         'pct' => min(($averageRating - 0.2) * 20, 100),      'score' => number_format(max($averageRating - 0.2, 0), 1)],
+                                    ['icon' => 'bi-bullseye',      'color' => 'text-amber-400',   'label' => 'Keeps on track',  'pct' => min(($averageRating - 0.1) * 20, 100),      'score' => number_format(max($averageRating - 0.1, 0), 1)],
+                                    ['icon' => 'bi-heart',         'color' => 'text-rose-400',    'label' => 'Community vibe',  'pct' => min($averageRating * 20, 100),              'score' => number_format($averageRating, 1)],
+                                ];
+                            @endphp
+                            @foreach($aspects as $a)
+                            <div class="flex items-center gap-3">
+                                <i class="bi {{ $a['icon'] }} {{ $a['color'] }} text-sm w-4 flex-shrink-0"></i>
+                                <span class="text-xs text-gray-500 w-24 flex-shrink-0">{{ $a['label'] }}</span>
+                                <div class="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                    <div class="h-full rounded-full bg-primary transition-all duration-500"
+                                         style="width: {{ max($a['pct'], 0) }}%"></div>
+                                </div>
+                                <span class="text-xs font-semibold text-gray-700 w-6 text-right flex-shrink-0">{{ $a['score'] }}</span>
                             </div>
-                            <div class="rating-trend">
-                                <i class="bi bi-graph-up-arrow"></i>
-                                Rating up +0.2 vs last year
+                            @endforeach
+                        </div>
+
+                        {{-- Column 3 — Highlight badges --}}
+                        <div class="flex flex-col justify-start gap-3 px-6 py-5 bg-white">
+                            <div class="flex items-center gap-3 p-3 rounded-xl bg-amber-50 border border-amber-100">
+                                <div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                                    <i class="bi bi-emoji-smile text-amber-500 text-base"></i>
+                                </div>
+                                <div>
+                                    <div class="text-sm font-bold text-gray-800">9.7 / 10</div>
+                                    <div class="text-xs text-gray-400">Enjoyment score</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3 p-3 rounded-xl bg-emerald-50 border border-emerald-100">
+                                <div class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                                    <i class="bi bi-shield-check text-emerald-500 text-base"></i>
+                                </div>
+                                <div>
+                                    <div class="text-sm font-bold text-gray-800">Members feel safe</div>
+                                    <div class="text-xs text-gray-400">Safe environment</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3 p-3 rounded-xl bg-sky-50 border border-sky-100">
+                                <div class="w-8 h-8 rounded-lg bg-sky-100 flex items-center justify-center flex-shrink-0">
+                                    <i class="bi bi-stopwatch text-sky-500 text-base"></i>
+                                </div>
+                                <div>
+                                    <div class="text-sm font-bold text-gray-800">92% improvement</div>
+                                    <div class="text-xs text-gray-400">Better discipline</div>
+                                </div>
                             </div>
                         </div>
+
                     </div>
                 </div>
             </div>
@@ -1420,6 +1451,26 @@
         </div>
     </div>
 </div>
+
+{{-- Floating Join CTA --}}
+@guest
+<a href="{{ route('register') }}?intended={{ urlencode(url()->current()) }}"
+   class="flex items-center gap-2 font-semibold text-sm text-white no-underline"
+   style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:999;padding:0.75rem 1.25rem;border-radius:9999px;background:var(--color-primary);box-shadow:0 4px 24px rgba(0,0,0,0.18);transition:transform 0.15s,box-shadow 0.15s;"
+   onmouseover="this.style.transform='scale(1.05)';this.style.boxShadow='0 8px 32px rgba(0,0,0,0.22)'"
+   onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 24px rgba(0,0,0,0.18)'">
+    <i class="bi bi-person-plus-fill"></i> Join This Club
+</a>
+@endguest
+@auth
+<button onclick="switchToPackagesTab()"
+        class="flex items-center gap-2 font-semibold text-sm text-white border-0 cursor-pointer"
+        style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:999;padding:0.75rem 1.25rem;border-radius:9999px;background:var(--color-primary);box-shadow:0 4px 24px rgba(0,0,0,0.18);transition:transform 0.15s,box-shadow 0.15s;"
+        onmouseover="this.style.transform='scale(1.05)';this.style.boxShadow='0 8px 32px rgba(0,0,0,0.22)'"
+        onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 24px rgba(0,0,0,0.18)'">
+    <i class="bi bi-person-plus-fill"></i> Join This Club
+</button>
+@endauth
 
 {{-- Package-select modal (package-first flow) --}}
 <div id="selectPackageModalWrap" x-data="selectPackageApp()" x-cloak>
@@ -1577,12 +1628,30 @@ document.addEventListener('DOMContentLoaded', function() {
     const monthlyData = @json(array_values($monthlyTrend));
 
     const donutOptions = {
+        responsive: true,
+        maintainAspectRatio: true,
         cutout: '65%',
         plugins: {
             legend: { display: false },
             tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed}` } }
         }
     };
+
+    // Professional 12-colour palette — consistent saturation, no pastels
+    const P = [
+        '#6366f1', // indigo
+        '#0891b2', // cyan
+        '#059669', // emerald
+        '#d97706', // amber
+        '#dc2626', // red
+        '#7c3aed', // violet
+        '#0284c7', // sky
+        '#16a34a', // green
+        '#b45309', // bronze
+        '#be185d', // pink
+        '#1d4ed8', // blue
+        '#0f766e', // teal
+    ];
 
     // Nationality
     const natCtx = document.getElementById('donutNationalities');
@@ -1591,7 +1660,7 @@ document.addEventListener('DOMContentLoaded', function() {
             type: 'doughnut',
             data: {
                 labels: nationalityLabels,
-                datasets: [{ data: nationalityData, backgroundColor: ['#ef4444','#0ea5e9','#22c55e','#8b5cf6'], borderWidth: 0 }]
+                datasets: [{ data: nationalityData, backgroundColor: P, borderWidth: 0 }]
             },
             options: donutOptions
         });
@@ -1604,7 +1673,7 @@ document.addEventListener('DOMContentLoaded', function() {
             type: 'doughnut',
             data: {
                 labels: ageLabels,
-                datasets: [{ data: ageData, backgroundColor: ['#f97316','#22c55e','#3b82f6','#94a3b8'], borderWidth: 0 }]
+                datasets: [{ data: ageData, backgroundColor: [P[0],P[2],P[6],P[3]], borderWidth: 0 }]
             },
             options: donutOptions
         });
@@ -1617,20 +1686,20 @@ document.addEventListener('DOMContentLoaded', function() {
             type: 'doughnut',
             data: {
                 labels: genderLabels,
-                datasets: [{ data: genderData, backgroundColor: ['#3b82f6','#ec4899','#94a3b8'], borderWidth: 0 }]
+                datasets: [{ data: genderData, backgroundColor: [P[6],P[9],'#64748b'], borderWidth: 0 }]
             },
             options: donutOptions
         });
     }
 
-    // Horoscope
+    // Horoscope — 12 signs, one colour each
     const horoCtx = document.getElementById('donutHoroscope');
     if (horoCtx) {
         new Chart(horoCtx, {
             type: 'doughnut',
             data: {
                 labels: horoscopeLabels,
-                datasets: [{ data: horoscopeData, backgroundColor: ['#6366f1','#22c55e','#0ea5e9','#ec4899'], borderWidth: 0 }]
+                datasets: [{ data: horoscopeData, backgroundColor: P, borderWidth: 0 }]
             },
             options: donutOptions
         });
@@ -1643,7 +1712,7 @@ document.addEventListener('DOMContentLoaded', function() {
             type: 'doughnut',
             data: {
                 labels: bloodLabels,
-                datasets: [{ data: bloodData, backgroundColor: ['#ef4444','#f97316','#22c55e','#3b82f6'], borderWidth: 0 }]
+                datasets: [{ data: bloodData, backgroundColor: [P[4],P[3],P[2],P[6],P[0],P[9],P[11],P[7]], borderWidth: 0 }]
             },
             options: donutOptions
         });
@@ -1656,7 +1725,7 @@ document.addEventListener('DOMContentLoaded', function() {
             type: 'doughnut',
             data: {
                 labels: goalLabels,
-                datasets: [{ data: goalData, backgroundColor: ['#22c55e','#3b82f6','#eab308','#e5e7eb'], borderWidth: 0 }]
+                datasets: [{ data: goalData, backgroundColor: [P[2],P[6],P[3],'#94a3b8'], borderWidth: 0 }]
             },
             options: donutOptions
         });
@@ -1683,7 +1752,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 animation: false,
                 scales: {
                     x: { grid: { display: false }, ticks: { color: '#6b7280', font: { size: 11 } } },
-                    y: { grid: { color: '#e5e7eb' }, ticks: { color: '#6b7280', font: { size: 11 }, stepSize: 10 } }
+                    y: { grid: { color: '#e5e7eb' }, ticks: { color: '#6b7280', font: { size: 11 } }, beginAtZero: true }
                 },
                 plugins: {
                     legend: { labels: { font: { size: 11 }, color: '#374151' } }
@@ -2127,8 +2196,8 @@ function selectPackageApp() {
                     if (pkg.age_min !== null && pkg.age_min !== undefined && age !== null && age < pkg.age_min) return false;
                     if (pkg.age_max !== null && pkg.age_max !== undefined && age !== null && age > pkg.age_max) return false;
                     if (pkg.gender && pkg.gender !== 'mixed' && m.gender) {
-                        if (pkg.gender === 'male'   && m.gender !== 'm') return false;
-                        if (pkg.gender === 'female' && m.gender !== 'f') return false;
+                        if (pkg.gender === 'male'   && m.gender !== 'Male') return false;
+                        if (pkg.gender === 'female' && m.gender !== 'Female') return false;
                     }
                     return true;
                 });
@@ -2203,8 +2272,8 @@ function selectPackageApp() {
                     if (pkg.age_min !== null && pkg.age_min !== undefined && age !== null && age < pkg.age_min) return false;
                     if (pkg.age_max !== null && pkg.age_max !== undefined && age !== null && age > pkg.age_max) return false;
                     if (pkg.gender && pkg.gender !== 'mixed' && reg.gender) {
-                        if (pkg.gender === 'male'   && reg.gender !== 'm') return false;
-                        if (pkg.gender === 'female' && reg.gender !== 'f') return false;
+                        if (pkg.gender === 'male'   && reg.gender !== 'Male') return false;
+                        if (pkg.gender === 'female' && reg.gender !== 'Female') return false;
                     }
                     return true;
                 });
@@ -2324,8 +2393,8 @@ function selectPackageApp() {
             firstTimerNames() { return this.registrants.map(r => r.name).join(', '); },
 
             genderLabel(g) {
-                if (g === 'm') return 'Male';
-                if (g === 'f') return 'Female';
+                
+                
                 return g ? g.charAt(0).toUpperCase() + g.slice(1) : '';
             },
 

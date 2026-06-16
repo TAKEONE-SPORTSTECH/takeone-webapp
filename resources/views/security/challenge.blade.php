@@ -11,7 +11,7 @@
         <div class="tf-auth-card">
             <div class="text-center mb-6">
                 <a href="{{ url('/') }}">
-                    <img src="{{ asset('images/logo.png') }}" alt="TAKEONE" class="h-12 mx-auto">
+                    <img src="{{ asset('images/fullLogo.png') }}" alt="TAKEONE" class="h-12 mx-auto">
                 </a>
             </div>
 
@@ -22,12 +22,6 @@
                 <h2 class="text-xl font-semibold text-foreground">Two-Factor Authentication</h2>
                 <p class="text-sm text-gray-500 mt-1">Enter the code from your authenticator app.</p>
             </div>
-
-            @if(session('error'))
-            <div class="alert alert-danger mb-4 text-sm">
-                <i class="bi bi-exclamation-triangle mr-2"></i>{{ session('error') }}
-            </div>
-            @endif
 
             <form method="POST" action="{{ route('two-factor.verify') }}" x-data="{ useRecovery: false }">
                 @csrf

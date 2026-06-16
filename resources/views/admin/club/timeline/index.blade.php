@@ -16,14 +16,6 @@
         </button>
     </div>
 
-    {{-- Session messages --}}
-    @if(session('success'))
-        <div class="alert alert-success mb-4">{{ session('success') }}</div>
-    @endif
-    @if(session('error'))
-        <div class="alert alert-danger mb-4">{{ session('error') }}</div>
-    @endif
-
     {{-- Posts list --}}
     @if($posts->isEmpty())
         <div class="card border-0 shadow-sm">
@@ -42,6 +34,7 @@
                 $isDraft = $post->status === 'draft';
             @endphp
             <div class="card border-0 shadow-sm overflow-hidden {{ $isDraft ? 'opacity-60' : '' }}"
+                 id="timeline-post-{{ $post->id }}"
                  data-post-id="{{ $post->id }}"
                  data-post='{{ json_encode(['id' => $post->id, 'body' => $post->body, 'category' => $post->category, 'posted_at' => $post->posted_at?->format('Y-m-d\TH:i') ?? '', 'status' => $post->status, 'image_path' => $post->image_path ?? '']) }}'>
                 <div class="card-body p-4">
@@ -218,10 +211,14 @@ function timelineAdmin() {
                 })
                 .then(r => r.json())
                 .then(data => {
-                    if (data.success) location.reload();
-                    else alert(data.message || 'Failed to delete post.');
+                    if (data.success) {
+                        document.getElementById('timeline-post-' + id)?.remove();
+                        window.showToast('success', data.message || 'Post deleted.');
+                    } else {
+                        window.showToast('error', data.message || 'Failed to delete post.');
+                    }
                 })
-                .catch(() => alert('Failed to delete post.'));
+                .catch(() => window.showToast('error', 'Failed to delete post.'));
             });
         },
     };

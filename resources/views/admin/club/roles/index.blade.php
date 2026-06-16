@@ -14,7 +14,7 @@
                 <i class="bi bi-shield-check"></i>
                 Role Management
             </h2>
-            <p class="text-muted-foreground mb-0">Assign and manage roles for club members</p>
+            <p class="text-sm text-gray-500 mt-1">Assign and manage roles for club members</p>
         </div>
     </div>
 

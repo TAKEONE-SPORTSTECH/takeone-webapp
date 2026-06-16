@@ -18,33 +18,10 @@
         </button>
     </div>
 
-    <!-- Members Grid -->
-    @if($members->count() > 0)
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4" id="membersGrid">
-            @foreach($members as $member)
-                <x-member-card :member="$member" :href="route('member.show', $member->id)" :guardian="$member->guardians->first()?->guardian ?? null" />
-            @endforeach
-        </div>
-
-        <!-- Pagination -->
-        <div class="flex justify-center mb-4">
-            {{ $members->links() }}
-        </div>
-    @else
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-body text-center py-12">
-                <i class="bi bi-people text-muted-foreground text-6xl"></i>
-                <h5 class="mt-3 mb-2">No Members Found</h5>
-                <p class="text-muted-foreground mb-0">
-                    @if($search)
-                        No members match your search criteria.
-                    @else
-                        No members registered on the platform yet.
-                    @endif
-                </p>
-            </div>
-        </div>
-    @endif
+    <!-- Members Grid + Pagination (swapped in place on search) -->
+    <div id="membersResults">
+        @include('admin.platform.members._results')
+    </div>
 </div>
 
 {{-- Member Create Modal --}}
@@ -57,55 +34,97 @@
     formMethod="POST"
 />
 
-{{-- Styles moved to app.css (Phase 6) --}}
+{{-- Member quick-view popup --}}
+@include('admin.club.members.partials.member-popup')
 
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Load countries from JSON file
+        const baseUrl   = @json(route('admin.platform.members'));
+        const resultsEl = document.getElementById('membersResults');
+        const searchEl  = document.getElementById('memberSearch');
+        let countriesCache = null;
+        let searchDebounce = null;
+        let currentSearch  = @json($search ?? '');
+        let activeFetch    = 0;
+
+        // Convert ISO nationality codes to "🏳 Country" within a given root element.
+        function convertNationalities(root) {
+            if (!countriesCache) return;
+            root.querySelectorAll('.nationality-display').forEach(element => {
+                const iso3Code = element.getAttribute('data-iso3');
+                if (!iso3Code) return;
+                const country = countriesCache.find(c => c.iso2 === iso3Code || c.iso3 === iso3Code);
+                if (country) {
+                    const flagEmoji = country.iso2.toUpperCase().split('')
+                        .map(char => String.fromCodePoint(127397 + char.charCodeAt(0))).join('');
+                    element.textContent = `${flagEmoji} ${country.name}`;
+                }
+            });
+        }
+
+        // Load countries once, then run the initial conversion.
         fetch('/data/countries.json')
             .then(response => response.json())
             .then(countries => {
-                // Convert all nationality displays from ISO3 to country name with flag
-                document.querySelectorAll('.nationality-display').forEach(element => {
-                    const iso3Code = element.getAttribute('data-iso3');
-                    if (!iso3Code) return;
-
-                    const country = countries.find(c => c.iso2 === iso3Code || c.iso3 === iso3Code);
-                    if (country) {
-                        // Get flag emoji from ISO2 code
-                        const flagEmoji = country.iso2
-                            .toUpperCase()
-                            .split('')
-                            .map(char => String.fromCodePoint(127397 + char.charCodeAt(0)))
-                            .join('');
-
-                        element.textContent = `${flagEmoji} ${country.name}`;
-                    }
-                });
+                countriesCache = countries;
+                convertNationalities(resultsEl);
             })
             .catch(error => console.error('Error loading countries:', error));
 
-        // Real-time search filtering
-        document.getElementById('memberSearch').addEventListener('input', function(e) {
-            const searchTerm = e.target.value.toLowerCase();
-            const memberCards = document.querySelectorAll('.member-card-wrapper');
+        // Fetch a results page from the server and swap it in — no reload.
+        function loadResults(url) {
+            const requestId = ++activeFetch;
+            resultsEl.classList.add('opacity-50', 'pointer-events-none');
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' } })
+                .then(r => r.text())
+                .then(html => {
+                    if (requestId !== activeFetch) return; // a newer request superseded this one
+                    resultsEl.innerHTML = html;
+                    convertNationalities(resultsEl);
+                })
+                .catch(() => window.showToast?.('error', 'Could not load members. Please try again.'))
+                .finally(() => {
+                    if (requestId === activeFetch) resultsEl.classList.remove('opacity-50', 'pointer-events-none');
+                });
+        }
 
-            memberCards.forEach(function(card) {
-                const memberName = card.getAttribute('data-member-name').toLowerCase();
-                const memberPhone = card.getAttribute('data-member-phone').toLowerCase();
-                const memberNationality = card.getAttribute('data-member-nationality').toLowerCase();
-                const memberGender = card.getAttribute('data-member-gender').toLowerCase();
+        function runSearch(term) {
+            currentSearch = term;
+            const url = baseUrl + (term ? ('?search=' + encodeURIComponent(term)) : '');
+            history.replaceState(null, '', url);
+            loadResults(url);
+        }
 
-                if (memberName.includes(searchTerm) ||
-                    memberPhone.includes(searchTerm) ||
-                    memberNationality.includes(searchTerm) ||
-                    memberGender.includes(searchTerm)) {
-                    card.classList.remove('hidden');
-                } else {
-                    card.classList.add('hidden');
-                }
-            });
+        // Debounced server-side search (matches across ALL members, not just this page).
+        searchEl.addEventListener('input', function(e) {
+            clearTimeout(searchDebounce);
+            const term = e.target.value.trim();
+            searchDebounce = setTimeout(() => runSearch(term), 300);
+        });
+
+        // Delegated handlers on the stable results container (survives innerHTML swaps).
+        resultsEl.addEventListener('click', function(e) {
+            // Pagination links → fetch in place, preserving the active search.
+            const pageLink = e.target.closest('.pagination a, nav[role="navigation"] a, [aria-label="Pagination Navigation"] a');
+            if (pageLink && pageLink.getAttribute('href')) {
+                e.preventDefault();
+                history.replaceState(null, '', pageLink.href);
+                loadResults(pageLink.href);
+                resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                return;
+            }
+
+            // Member card → quick-view popup.
+            const wrapper = e.target.closest('.member-card-wrapper[data-member-id]');
+            if (!wrapper) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const userId   = wrapper.getAttribute('data-member-id');
+            const popupUrl = wrapper.getAttribute('data-popup-url');
+            if (userId && popupUrl && window.openMemberPopup) {
+                window.openMemberPopup(userId, popupUrl);
+            }
         });
     });
 </script>

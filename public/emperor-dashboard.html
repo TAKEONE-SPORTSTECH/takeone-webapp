@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Emperor Taekwondo Academy — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg-void: #04040a;
+  --bg-deep: #07070f;
+  --bg-card: rgba(14,12,22,0.88);
+  --bg-card-s: #0e0c16;
+  --metal-dark: #0b0b16;
+  --metal-mid: #141420;
+  --metal-light: #1c1c2c;
+  --purple: #7c3aed;
+  --purple-m: #6d28d9;
+  --purple-l: #8b5cf6;
+  --purple-glow: rgba(124,58,237,0.45);
+  --red: #dc2626;
+  --red-g: rgba(220,38,38,0.35);
+  --gold: #c9a84c;
+  --gold-l: #e8c96a;
+  --gold-dim: rgba(201,168,76,0.25);
+  --cyan: #06b6d4;
+  --t-bright: #f0f0fa;
+  --t-primary: #c0c0d0;
+  --t-muted: #5a5a72;
+  --t-dim: #32324a;
+  --border-s: rgba(255,255,255,0.05);
+  --border-m: rgba(255,255,255,0.08);
+  --border-b: rgba(255,255,255,0.13);
+  --green: #22c55e;
+  --orange: #f97316;
+  --amber: #f59e0b;
+  --blue: #3b82f6;
+  --coral: #f43f5e;
+  --emerald: #10b981;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+html,body{
+  width:100%;height:100vh;overflow:hidden;
+  background:var(--bg-void);
+  font-family:'Rajdhani',sans-serif;
+  color:var(--t-primary);
+}
+
+/* ── BACKGROUND ── */
+.bg-scene{
+  position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    repeating-linear-gradient(92deg,transparent,transparent 60px,rgba(255,255,255,0.004) 60px,rgba(255,255,255,0.004) 61px),
+    repeating-linear-gradient(180deg,transparent,transparent 90px,rgba(0,0,0,0.25) 90px,rgba(0,0,0,0.25) 91px),
+    radial-gradient(ellipse 120% 60% at 50% 110%,rgba(55,25,8,0.5) 0%,transparent 60%),
+    radial-gradient(ellipse 60% 40% at 20% 50%,rgba(10,8,20,0.8) 0%,transparent 70%),
+    linear-gradient(160deg,#060610 0%,#09070e 45%,#0c0808 100%);
+}
+
+/* temple silhouette left edge */
+.temple-left-svg{
+  position:fixed;left:220px;top:56px;pointer-events:none;z-index:2;opacity:0.9;
+}
+/* temple silhouette right edge */
+.temple-right-svg{
+  position:fixed;right:44px;top:56px;pointer-events:none;z-index:2;opacity:0.9;
+}
+
+/* floor glow lines */
+.floor-glow{
+  position:fixed;bottom:0;left:220px;right:44px;height:2px;z-index:3;pointer-events:none;
+  background:linear-gradient(90deg,transparent 0%,var(--purple) 20%,var(--cyan) 50%,var(--purple) 80%,transparent 100%);
+  box-shadow:0 0 18px 3px rgba(124,58,237,0.55),0 0 60px 8px rgba(6,182,212,0.2);
+}
+.floor-glow-2{
+  position:fixed;bottom:3px;left:220px;right:44px;height:1px;z-index:3;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(124,58,237,0.3),rgba(6,182,212,0.25),rgba(124,58,237,0.3),transparent);
+}
+
+/* ── CALLIGRAPHY SCROLL ── */
+.calli-scroll{
+  position:fixed;right:0;top:56px;bottom:0;width:44px;z-index:4;pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;padding:8px 0;
+}
+.calli-rod{width:6px;height:10px;background:linear-gradient(180deg,#e8c96a,#8a6020);border-radius:3px;box-shadow:0 0 6px rgba(201,168,76,0.5);}
+.calli-body{
+  flex:1;width:32px;
+  background:linear-gradient(180deg,#1c1408,#120e06,#1c1408);
+  border:1px solid rgba(201,168,76,0.18);
+  display:flex;align-items:center;justify-content:center;
+  writing-mode:vertical-rl;text-orientation:upright;
+  font-size:12px;letter-spacing:5px;
+  color:rgba(201,168,76,0.38);font-family:serif;
+  box-shadow:inset 0 0 24px rgba(0,0,0,0.7),3px 0 10px rgba(0,0,0,0.5);
+}
+.calli-rod-b{width:6px;height:10px;background:linear-gradient(180deg,#8a6020,#e8c96a);border-radius:3px;box-shadow:0 0 6px rgba(201,168,76,0.5);}
+
+/* ── TOP NAV ── */
+.topnav{
+  position:fixed;top:0;left:0;right:0;height:56px;z-index:100;
+  display:flex;align-items:center;padding:0;
+  background:
+    repeating-linear-gradient(180deg,rgba(255,255,255,0.012) 0,rgba(255,255,255,0.012) 1px,transparent 1px,transparent 3px),
+    linear-gradient(180deg,#1c1c2a 0%,#0f0f1c 100%);
+  border-bottom:1px solid var(--border-m);
+  box-shadow:0 2px 24px rgba(0,0,0,0.85),0 1px 0 rgba(255,255,255,0.04);
+}
+.brand{
+  width:220px;flex-shrink:0;
+  display:flex;align-items:center;gap:9px;padding:0 18px;height:100%;
+  border-right:1px solid var(--border-m);
+  background:linear-gradient(90deg,rgba(124,58,237,0.04),transparent);
+}
+.brand-flame{font-size:19px;filter:drop-shadow(0 0 8px var(--red));}
+.brand-wordmark{font-family:'Cinzel',serif;font-weight:900;font-size:17px;letter-spacing:2.5px;line-height:1;}
+.brand-wordmark .t{color:var(--t-bright);}
+.brand-wordmark .o{color:var(--red);text-shadow:0 0 14px rgba(220,38,38,0.7);}
+.nav-spacer{flex:1;}
+.nav-icons{display:flex;align-items:center;gap:5px;margin-right:10px;}
+.nav-icon-btn{
+  width:35px;height:35px;border-radius:8px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;color:var(--t-muted);
+  background:linear-gradient(135deg,#1e1e2e,#131320);
+  border:1px solid var(--border-m);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.05),0 2px 5px rgba(0,0,0,0.4);
+  transition:all 0.18s;
+}
+.nav-icon-btn:hover{border-color:var(--purple-l);color:var(--purple-l);box-shadow:0 0 14px var(--purple-glow),inset 0 1px 0 rgba(255,255,255,0.05);}
+.nav-user{
+  display:flex;align-items:center;gap:9px;
+  padding:5px 12px;border-radius:10px;cursor:pointer;
+  background:linear-gradient(135deg,#1a1a2a,#111120);
+  border:1px solid var(--border-m);transition:all 0.18s;
+}
+.nav-user:hover{border-color:rgba(124,58,237,0.4);}
+.user-avatar{
+  width:32px;height:32px;border-radius:7px;
+  background:linear-gradient(135deg,var(--purple),var(--red));
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Cinzel',serif;font-weight:700;font-size:11px;color:#fff;
+  box-shadow:0 0 12px rgba(124,58,237,0.45);
+}
+.user-name{font-weight:600;font-size:13px;color:var(--t-bright);letter-spacing:0.5px;}
+.user-id{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--t-muted);}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  position:fixed;top:56px;left:0;bottom:0;width:220px;z-index:50;
+  display:flex;flex-direction:column;
+  background:
+    repeating-linear-gradient(95deg,rgba(255,255,255,0.007) 0,rgba(255,255,255,0.007) 1px,transparent 1px,transparent 38px),
+    linear-gradient(180deg,#0d0d1a 0%,#090914 100%);
+  border-right:1px solid var(--border-m);
+  box-shadow:5px 0 25px rgba(0,0,0,0.65),inset -1px 0 0 rgba(124,58,237,0.12);
+}
+.sanctum-ttl{
+  padding:14px 16px 6px;
+  font-family:'Cinzel',serif;font-size:8.5px;font-weight:600;
+  letter-spacing:2.5px;color:var(--gold);text-align:center;text-transform:uppercase;
+  text-shadow:0 0 10px var(--gold-dim);
+}
+.dragon-wrap{
+  display:flex;flex-direction:column;align-items:center;
+  padding:4px 16px 8px;gap:5px;
+}
+.seal-name .big{display:block;font-family:'Cinzel',serif;font-size:12px;font-weight:700;color:var(--t-bright);letter-spacing:2px;text-align:center;}
+.seal-name .sm{display:block;font-family:'Rajdhani',sans-serif;font-size:8.5px;font-weight:500;color:var(--gold);letter-spacing:2px;text-align:center;}
+.sb-actions{display:flex;justify-content:center;gap:7px;padding:6px 16px 10px;}
+.sb-btn{
+  width:30px;height:30px;border-radius:7px;cursor:pointer;
+  background:linear-gradient(135deg,#1c1c2a,#131320);
+  border:1px solid var(--border-m);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;color:var(--t-muted);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.05);
+  transition:all 0.18s;
+}
+.sb-btn:hover{border-color:var(--gold);color:var(--gold);box-shadow:0 0 12px var(--gold-dim);}
+.sb-divider{height:1px;margin:0 16px;background:linear-gradient(90deg,transparent,var(--border-b),transparent);}
+.sb-nav{flex:1;overflow-y:auto;padding:6px 8px;display:flex;flex-direction:column;gap:2px;}
+.sb-nav::-webkit-scrollbar{width:3px;}
+.sb-nav::-webkit-scrollbar-track{background:transparent;}
+.sb-nav::-webkit-scrollbar-thumb{background:var(--purple-m);border-radius:2px;}
+.sb-nav::-webkit-scrollbar-thumb:hover{background:var(--purple-l);}
+.nav-item{
+  display:flex;align-items:center;gap:7px;
+  padding:6.5px 10px;border-radius:7px;cursor:pointer;
+  font-size:11.5px;font-weight:500;letter-spacing:0.5px;
+  color:var(--t-muted);text-transform:uppercase;
+  transition:all 0.15s;border:1px solid transparent;position:relative;
+}
+.nav-item:hover{background:rgba(255,255,255,0.035);color:var(--t-primary);border-color:var(--border-s);}
+.nav-item.active{
+  background:rgba(124,58,237,0.11);color:var(--purple-l);
+  border-color:rgba(124,58,237,0.28);
+  box-shadow:inset 0 0 22px rgba(124,58,237,0.07),0 0 0 1px rgba(124,58,237,0.18) inset;
+}
+.nav-item.active::before{
+  content:'';position:absolute;left:-8px;top:50%;transform:translateY(-50%);
+  width:3px;height:58%;background:var(--purple-l);border-radius:0 2px 2px 0;
+  box-shadow:0 0 8px var(--purple),0 0 16px rgba(124,58,237,0.4);
+}
+.nav-item .ni{font-size:12px;width:14px;text-align:center;flex-shrink:0;}
+.has-tip{position:relative;}
+.tip-box{
+  position:absolute;left:calc(100% + 6px);top:50%;transform:translateY(-50%);
+  background:#15121e;border:1px solid var(--border-b);border-radius:8px;
+  padding:9px 12px;width:148px;
+  opacity:0;pointer-events:none;transition:opacity 0.2s;z-index:300;
+  box-shadow:0 6px 24px rgba(0,0,0,0.7);
+}
+.has-tip:hover .tip-box{opacity:1;}
+.tip-ttl{font-family:'Cinzel',serif;font-size:8px;color:var(--gold);letter-spacing:1.5px;margin-bottom:7px;text-transform:uppercase;}
+.tip-row{display:flex;justify-content:space-between;font-size:10.5px;color:var(--t-muted);margin-bottom:3px;}
+.tip-row .v{font-family:'Share Tech Mono',monospace;color:var(--t-primary);}
+.tip-row .vp{color:var(--green);}
+.tip-row .vn{color:var(--coral);}
+.tip-tot{border-top:1px solid var(--border-s);padding-top:5px;margin-top:5px;display:flex;justify-content:space-between;font-size:10.5px;}
+.tip-tot .v{font-family:'Share Tech Mono',monospace;color:var(--amber);}
+
+/* ── MAIN ── */
+.main{
+  position:fixed;top:56px;left:220px;right:44px;bottom:0;
+  overflow-y:auto;overflow-x:hidden;
+  padding:12px 14px 8px 14px;z-index:10;
+}
+.main::-webkit-scrollbar{width:3px;}
+.main::-webkit-scrollbar-track{background:transparent;}
+.main::-webkit-scrollbar-thumb{background:var(--border-m);border-radius:2px;}
+
+.main-hdr{margin-bottom:10px;}
+.main-title{font-family:'Cinzel',serif;font-size:19px;font-weight:700;color:var(--t-bright);letter-spacing:1px;}
+.main-sub{font-size:10.5px;color:var(--t-muted);margin-top:2px;letter-spacing:0.4px;}
+
+/* ── CARD GRID ── */
+.c-row{display:grid;gap:9px;margin-bottom:9px;}
+.c-row-4{grid-template-columns:repeat(4,1fr);}
+
+.card{
+  background:var(--bg-card);backdrop-filter:blur(14px);
+  border:1px solid var(--border-m);border-radius:11px;
+  padding:11px;position:relative;overflow:hidden;
+  transition:transform 0.2s,border-color 0.2s,box-shadow 0.2s;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.06),0 4px 22px rgba(0,0,0,0.45);
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.11),transparent);
+}
+.card::after{
+  content:'';position:absolute;top:0;left:0;right:0;bottom:0;border-radius:11px;
+  background:linear-gradient(135deg,rgba(255,255,255,0.018) 0%,transparent 50%);
+  pointer-events:none;
+}
+.card:hover{
+  transform:translateY(-2px);border-color:rgba(124,58,237,0.22);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.08),0 8px 32px rgba(0,0,0,0.55),0 0 22px rgba(124,58,237,0.07);
+}
+.c-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;}
+.c-ttl{font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.8px;color:var(--t-muted);}
+.c-ico{
+  width:22px;height:22px;border-radius:6px;
+  background:rgba(124,58,237,0.13);border:1px solid rgba(124,58,237,0.28);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;color:var(--purple-l);
+}
+
+/* ── MEMBERS ── */
+.m-cnt{
+  text-align:center;
+  font-family:'Share Tech Mono',monospace;font-size:27px;font-weight:700;
+  color:var(--t-bright);line-height:1;margin-bottom:3px;
+}
+.m-cnt .sl{color:var(--t-dim);font-size:18px;}
+.m-cnt .tot{font-size:15px;color:var(--t-muted);}
+.m-chart-wrap{position:relative;width:96px;height:96px;margin:0 auto 7px;}
+.m-legend{display:flex;flex-direction:column;gap:3px;}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:9.5px;color:var(--t-muted);}
+.leg-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+
+/* ── ACTIVITIES ── */
+.act-grid{font-size:0;}
+.act-hdr-row{display:flex;padding-left:70px;margin-bottom:3px;}
+.act-col-n{flex:1;text-align:center;font-family:'Share Tech Mono',monospace;font-size:7.5px;color:var(--t-dim);}
+.act-row{display:flex;align-items:center;margin-bottom:4px;gap:5px;}
+.act-lbl{width:65px;display:flex;align-items:center;gap:3px;flex-shrink:0;}
+.act-av{width:17px;height:17px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--purple),var(--blue));}
+.act-nm{font-size:7.5px;color:var(--t-muted);line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.act-bars{flex:1;display:flex;height:17px;border-radius:4px;overflow:hidden;gap:1px;}
+.act-seg{flex:1;border-radius:2px;}
+.act-legend{display:flex;gap:7px;margin-top:7px;flex-wrap:wrap;}
+.act-leg-i{display:flex;align-items:center;gap:4px;font-size:8px;color:var(--t-muted);}
+
+/* ── PACKAGES ── */
+.pkg-track{display:flex;gap:7px;}
+.pkg-item{
+  flex:1;min-width:0;
+  background:rgba(255,255,255,0.025);border:1px solid var(--border-s);
+  border-radius:7px;padding:7px;
+}
+.pkg-badge{
+  font-size:7.5px;font-weight:700;letter-spacing:0.5px;color:var(--gold);
+  background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.22);
+  border-radius:3px;padding:2px 5px;margin-bottom:5px;display:inline-block;text-transform:uppercase;
+}
+.pkg-price{font-family:'Share Tech Mono',monospace;font-size:17px;font-weight:700;color:var(--t-bright);line-height:1;margin-bottom:4px;}
+.pkg-price .cur{font-size:9px;color:var(--t-muted);}
+.pkg-pill{font-size:6.5px;font-weight:600;border-radius:20px;padding:2px 5px;text-transform:uppercase;letter-spacing:0.5px;display:inline-block;}
+.pill-g{background:rgba(34,197,94,0.12);color:var(--green);border:1px solid rgba(34,197,94,0.28);}
+.pill-b{background:rgba(59,130,246,0.12);color:var(--blue);border:1px solid rgba(59,130,246,0.28);}
+.pill-o{background:rgba(249,115,22,0.12);color:var(--orange);border:1px solid rgba(249,115,22,0.28);}
+.arr-btns{display:flex;justify-content:center;gap:5px;margin-top:7px;}
+.arr-btn{
+  width:20px;height:20px;border-radius:6px;cursor:pointer;
+  background:rgba(255,255,255,0.05);border:1px solid var(--border-m);
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;color:var(--t-muted);transition:all 0.18s;
+}
+.arr-btn:hover{background:rgba(124,58,237,0.15);border-color:var(--purple);color:var(--purple-l);}
+
+/* ── TRAINERS ── */
+.tr-list{display:flex;flex-direction:column;gap:7px;}
+.tr-item{
+  display:flex;align-items:center;gap:7px;
+  padding:6px;border-radius:7px;
+  background:rgba(255,255,255,0.02);border:1px solid var(--border-s);
+}
+.tr-photo{
+  width:30px;height:30px;border-radius:50%;flex-shrink:0;
+  border:1px solid var(--border-m);overflow:hidden;
+  background:linear-gradient(135deg,#2a2a3a,#18182a);
+  display:flex;align-items:center;justify-content:center;
+}
+.tr-info{flex:1;min-width:0;}
+.tr-name{font-size:11px;font-weight:600;color:var(--t-primary);line-height:1;margin-bottom:1px;}
+.tr-exp{font-size:8px;color:var(--t-dim);}
+.tr-sub{font-size:7.5px;margin-top:2px;}
+.tr-badge{font-size:7px;font-weight:600;border-radius:4px;padding:2px 5px;text-transform:uppercase;letter-spacing:0.5px;flex-shrink:0;}
+.badge-act{background:rgba(34,197,94,0.13);color:var(--green);border:1px solid rgba(34,197,94,0.24);}
+.badge-av{background:rgba(107,114,128,0.13);color:#9ca3af;border:1px solid rgba(107,114,128,0.22);}
+
+/* ── EVENTS ── */
+.ev-sub{font-size:8.5px;color:var(--t-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;}
+.ev-num{font-family:'Share Tech Mono',monospace;font-size:30px;color:var(--t-bright);line-height:1;}
+.ev-lbl{font-size:8.5px;color:var(--t-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px;}
+.cal-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-bottom:5px;}
+.cal-cell{height:18px;background:rgba(255,255,255,0.035);border:1px solid var(--border-s);border-radius:3px;}
+.ev-pending{font-size:8px;color:var(--t-dim);text-align:center;font-style:italic;}
+
+/* ── ACCESS ── */
+.ac-stat{font-family:'Share Tech Mono',monospace;font-size:19px;color:var(--t-bright);text-align:center;margin-bottom:7px;}
+.ac-body{display:flex;gap:7px;}
+.ac-hm{flex:1;}
+.ac-lbl{font-size:7.5px;color:var(--t-dim);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px;}
+.hm-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;}
+.hm-cell{aspect-ratio:1;border-radius:2px;}
+.ac-bar-wrap{width:58px;}
+.ac-bar-chart{position:relative;height:72px;}
+
+/* ── CLASSES ── */
+.cl-stat{margin-bottom:5px;}
+.cl-num{font-family:'Share Tech Mono',monospace;font-size:22px;color:var(--t-bright);line-height:1;display:inline;}
+.cl-lbl{font-size:8.5px;color:var(--t-muted);text-transform:uppercase;letter-spacing:1px;display:block;margin-top:1px;}
+.dm-hdr{display:flex;padding-left:15px;margin-bottom:2px;}
+.dm-col{flex:1;text-align:center;font-size:7px;color:var(--t-dim);font-family:'Share Tech Mono',monospace;}
+.dm{display:flex;flex-direction:column;gap:3px;}
+.dm-row{display:flex;align-items:center;gap:2px;}
+.dm-rl{width:12px;font-size:7.5px;color:var(--t-dim);font-family:'Share Tech Mono',monospace;text-align:center;flex-shrink:0;}
+.dm-cells{display:flex;gap:2px;flex:1;}
+.dot{flex:1;aspect-ratio:1;border-radius:50%;max-width:13px;}
+.dot.on{background:rgba(255,255,255,0.72);box-shadow:0 0 4px rgba(255,255,255,0.28);}
+.dot.off{background:rgba(255,255,255,0.055);border:1px solid rgba(255,255,255,0.04);}
+
+/* ── RATING ── */
+.rt-main{text-align:center;margin-bottom:5px;}
+.rt-score{font-family:'Share Tech Mono',monospace;font-size:26px;color:var(--t-bright);}
+.rt-stars{display:flex;justify-content:center;gap:2px;font-size:13px;color:var(--t-dim);margin-bottom:7px;}
+.rt-bars{display:flex;flex-direction:column;gap:4px;}
+.rt-row{display:flex;align-items:center;gap:5px;font-size:8.5px;}
+.rt-lbl{width:56px;color:var(--t-muted);text-transform:uppercase;letter-spacing:0.5px;font-size:8px;}
+.rt-track{flex:1;height:3px;background:rgba(255,255,255,0.055);border-radius:2px;}
+.rt-fill{height:100%;background:var(--purple);border-radius:2px;}
+.rt-val{width:18px;text-align:right;color:var(--t-dim);font-family:'Share Tech Mono',monospace;font-size:8px;}
+.rt-pend{font-size:7.5px;color:var(--t-dim);margin-top:7px;font-style:italic;line-height:1.45;}
+
+/* ── FINANCIAL ── */
+.fin-card{
+  background:var(--bg-card);backdrop-filter:blur(14px);
+  border:1px solid var(--border-m);border-radius:11px;
+  padding:11px 13px;position:relative;overflow:hidden;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.06),0 4px 22px rgba(0,0,0,0.45);
+  transition:transform 0.2s;
+}
+.fin-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent);}
+.fin-card:hover{transform:translateY(-1px);}
+.fin-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:7px;gap:10px;flex-wrap:wrap;}
+.fin-ttl{font-family:'Cinzel',serif;font-size:12.5px;font-weight:700;color:var(--t-bright);letter-spacing:1px;}
+.fin-sub{font-size:8.5px;color:var(--t-muted);margin-top:2px;}
+.fin-legend{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.leg-ent{display:flex;align-items:center;gap:4px;font-size:8.5px;color:var(--t-muted);text-transform:uppercase;letter-spacing:0.4px;}
+.leg-c{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.leg-ln{width:13px;height:2px;flex-shrink:0;border-radius:1px;}
+.fin-body{display:flex;gap:11px;align-items:stretch;}
+.fin-main{flex:1;}
+.main-chart-wrap{position:relative;height:145px;}
+.fin-arrows{display:flex;gap:5px;margin-top:6px;}
+.fin-arr{
+  width:22px;height:22px;border-radius:6px;cursor:pointer;
+  background:rgba(255,255,255,0.05);border:1px solid var(--border-m);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;color:var(--t-muted);transition:all 0.18s;
+}
+.fin-arr:hover{background:rgba(124,58,237,0.15);border-color:var(--purple);color:var(--purple-l);}
+.growth-panel{width:155px;flex-shrink:0;display:flex;flex-direction:column;}
+.growth-ttl{font-family:'Cinzel',serif;font-size:8.5px;font-weight:600;color:var(--gold);letter-spacing:1px;margin-bottom:4px;text-transform:uppercase;text-shadow:0 0 8px var(--gold-dim);}
+.growth-wrap{flex:1;position:relative;min-height:110px;}
+</style>
+</head>
+<body>
+
+<!-- Background -->
+<div class="bg-scene"></div>
+
+<!-- Temple Silhouettes -->
+<svg class="temple-left-svg" width="90" height="220" viewBox="0 0 90 220" style="opacity:0.85">
+  <defs><linearGradient id="tg" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#070510" stop-opacity="1"/><stop offset="100%" stop-color="#070510" stop-opacity="0"/></linearGradient></defs>
+  <g fill="url(#tg)" stroke="rgba(201,168,76,0.08)" stroke-width="0.5">
+    <polygon points="45,8 -5,52 -5,90 95,90 95,52"/>
+    <polygon points="45,0 -12,58 102,58"/>
+    <rect x="22" y="90" width="10" height="130"/>
+    <rect x="58" y="90" width="10" height="130"/>
+    <polygon points="45,80 30,90 60,90"/>
+  </g>
+  <g fill="rgba(201,168,76,0.12)">
+    <rect x="18" y="54" width="3" height="6" rx="1"/>
+    <rect x="35" y="50" width="3" height="6" rx="1"/>
+    <rect x="52" y="50" width="3" height="6" rx="1"/>
+    <rect x="69" y="54" width="3" height="6" rx="1"/>
+  </g>
+</svg>
+<svg class="temple-right-svg" width="90" height="220" viewBox="0 0 90 220" style="opacity:0.85">
+  <defs><linearGradient id="tg2" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#070510" stop-opacity="1"/><stop offset="100%" stop-color="#070510" stop-opacity="0"/></linearGradient></defs>
+  <g fill="url(#tg2)" stroke="rgba(201,168,76,0.08)" stroke-width="0.5">
+    <polygon points="45,8 -5,52 -5,90 95,90 95,52"/>
+    <polygon points="45,0 -12,58 102,58"/>
+    <rect x="22" y="90" width="10" height="130"/>
+    <rect x="58" y="90" width="10" height="130"/>
+  </g>
+</svg>
+
+<!-- Floor Glow -->
+<div class="floor-glow"></div>
+<div class="floor-glow-2"></div>
+
+<!-- Calligraphy Scroll -->
+<div class="calli-scroll">
+  <div class="calli-rod"></div>
+  <div class="calli-body">帝道武魂</div>
+  <div class="calli-rod-b"></div>
+</div>
+
+<!-- ══ TOP NAV ══ -->
+<nav class="topnav">
+  <div class="brand">
+    <span class="brand-flame">🔥</span>
+    <div class="brand-wordmark"><span class="t">TAKE</span><span class="o">ONE</span></div>
+  </div>
+  <div class="nav-spacer"></div>
+  <div class="nav-icons">
+    <button class="nav-icon-btn" title="Search">🔍</button>
+    <button class="nav-icon-btn" title="Explore">🧭</button>
+    <button class="nav-icon-btn" title="Messages">💬</button>
+    <button class="nav-icon-btn" title="Notifications">🔔</button>
+  </div>
+  <div class="nav-user">
+    <div class="user-avatar">T2</div>
+    <div>
+      <div class="user-name">TAKE 2</div>
+      <div class="user-id">#USR-00421</div>
+    </div>
+  </div>
+  <div style="width:10px"></div>
+</nav>
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="sidebar">
+  <div class="sanctum-ttl">The Emperor's Sanctum</div>
+
+  <div class="dragon-wrap">
+    <!-- Dragon Seal SVG -->
+    <svg width="108" height="108" viewBox="0 0 108 108">
+      <defs>
+        <radialGradient id="sg" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#e8c96a"/>
+          <stop offset="35%" stop-color="#c9a84c"/>
+          <stop offset="65%" stop-color="#8a6020"/>
+          <stop offset="100%" stop-color="#5a3e08"/>
+        </radialGradient>
+        <radialGradient id="ig" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#1e1430"/>
+          <stop offset="100%" stop-color="#0a0814"/>
+        </radialGradient>
+        <linearGradient id="rs" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#e8c96a"/>
+          <stop offset="50%" stop-color="#8a6020"/>
+          <stop offset="100%" stop-color="#c9a84c"/>
+        </linearGradient>
+        <filter id="gf" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="1.2" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="gf2" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="2.5" result="b2"/>
+          <feMerge><feMergeNode in="b2"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+
+      <!-- Outer glow ring -->
+      <circle cx="54" cy="54" r="52" fill="none" stroke="rgba(201,168,76,0.15)" stroke-width="4" filter="url(#gf2)"/>
+      <!-- Outer ring -->
+      <circle cx="54" cy="54" r="51" fill="none" stroke="url(#sg)" stroke-width="1.5" filter="url(#gf)"/>
+      <circle cx="54" cy="54" r="48" fill="none" stroke="rgba(201,168,76,0.2)" stroke-width="0.5"/>
+
+      <!-- Tick marks at 8 cardinal+diagonal positions -->
+      <g stroke="url(#sg)" stroke-width="1.5" filter="url(#gf)">
+        <line x1="54" y1="2" x2="54" y2="9"/>
+        <line x1="54" y1="99" x2="54" y2="106"/>
+        <line x1="2" y1="54" x2="9" y2="54"/>
+        <line x1="99" y1="54" x2="106" y2="54"/>
+        <line x1="17" y1="17" x2="22" y2="22"/>
+        <line x1="91" y1="17" x2="86" y2="22"/>
+        <line x1="17" y1="91" x2="22" y2="86"/>
+        <line x1="91" y1="91" x2="86" y2="86"/>
+      </g>
+      <!-- Diamond jewels at cardinal points -->
+      <g fill="url(#sg)">
+        <polygon points="54,3 56.2,6 54,9 51.8,6"/>
+        <polygon points="54,99 56.2,102 54,105 51.8,102"/>
+        <polygon points="3,54 6,56.2 3,58.4 0,56.2" transform="translate(3,0)"/>
+        <polygon points="99,54 102,56.2 99,58.4 96,56.2" transform="translate(-3,0)"/>
+      </g>
+
+      <!-- Seal body -->
+      <circle cx="54" cy="54" r="45" fill="#09071a"/>
+      <!-- Metallic band -->
+      <circle cx="54" cy="54" r="43" fill="none" stroke="url(#rs)" stroke-width="2.5"/>
+      <!-- Inner body -->
+      <circle cx="54" cy="54" r="40" fill="url(#ig)"/>
+      <circle cx="54" cy="54" r="38" fill="none" stroke="rgba(201,168,76,0.35)" stroke-width="0.5"/>
+      <circle cx="54" cy="54" r="34" fill="none" stroke="rgba(201,168,76,0.12)" stroke-width="0.5"/>
+
+      <!-- Dragon silhouette — S-curve body -->
+      <g filter="url(#gf)" opacity="0.95">
+        <!-- Dragon head -->
+        <ellipse cx="38" cy="26" rx="9" ry="7" fill="url(#sg)"/>
+        <!-- Snout -->
+        <ellipse cx="32" cy="28" rx="5" ry="3.5" fill="url(#sg)"/>
+        <!-- Eye -->
+        <circle cx="36" cy="24" r="2.5" fill="#0a081c"/>
+        <circle cx="36" cy="24" r="1.2" fill="#dc2626"/>
+        <circle cx="36.5" cy="23.5" r="0.5" fill="rgba(255,255,255,0.6)"/>
+        <!-- Nostrils -->
+        <circle cx="30" cy="29" r="0.8" fill="rgba(0,0,0,0.6)"/>
+        <circle cx="32" cy="30" r="0.8" fill="rgba(0,0,0,0.6)"/>
+        <!-- Horns -->
+        <path d="M36,19 L32,11 L34,18" fill="url(#sg)"/>
+        <path d="M40,18 L38,10 L40,17" fill="url(#sg)"/>
+        <!-- Whiskers -->
+        <path d="M28,26 Q20,24 16,22" stroke="url(#sg)" stroke-width="0.8" fill="none"/>
+        <path d="M28,28 Q20,28 15,28" stroke="url(#sg)" stroke-width="0.8" fill="none"/>
+        <!-- Dragon body S-curve -->
+        <path d="M42,30 C48,34 56,28 60,36 C64,44 56,52 60,60 C64,68 72,66 74,74"
+              stroke="url(#sg)" stroke-width="5" fill="none" stroke-linecap="round" filter="url(#gf)"/>
+        <!-- Scale markings -->
+        <path d="M47,34 Q50,37 47,40" stroke="rgba(201,168,76,0.5)" stroke-width="0.8" fill="none"/>
+        <path d="M52,36 Q55,39 52,42" stroke="rgba(201,168,76,0.5)" stroke-width="0.8" fill="none"/>
+        <path d="M57,39 Q60,42 57,45" stroke="rgba(201,168,76,0.5)" stroke-width="0.8" fill="none"/>
+        <path d="M60,46 Q63,49 60,52" stroke="rgba(201,168,76,0.5)" stroke-width="0.8" fill="none"/>
+        <path d="M60,54 Q63,57 60,60" stroke="rgba(201,168,76,0.5)" stroke-width="0.8" fill="none"/>
+        <path d="M63,62 Q66,65 63,68" stroke="rgba(201,168,76,0.5)" stroke-width="0.8" fill="none"/>
+        <!-- Front claws -->
+        <path d="M54,32 L62,26 M55,33 L64,30 M55,35 L63,36" stroke="url(#sg)" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+        <!-- Rear claws -->
+        <path d="M64,62 L72,56 M65,64 L73,63 M64,66 L71,70" stroke="url(#sg)" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+        <!-- Tail curl -->
+        <path d="M74,74 C78,82 70,86 64,84 C58,82 56,76 60,74" stroke="url(#sg)" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <!-- Cloud/fire motifs -->
+        <circle cx="30" cy="70" r="5" fill="none" stroke="rgba(201,168,76,0.4)" stroke-width="1"/>
+        <circle cx="25" cy="67" r="3.5" fill="none" stroke="rgba(201,168,76,0.35)" stroke-width="0.8"/>
+        <circle cx="35" cy="73" r="3" fill="none" stroke="rgba(201,168,76,0.3)" stroke-width="0.8"/>
+        <circle cx="76" cy="36" r="5" fill="none" stroke="rgba(201,168,76,0.4)" stroke-width="1"/>
+        <circle cx="80" cy="33" r="3.5" fill="none" stroke="rgba(201,168,76,0.35)" stroke-width="0.8"/>
+        <!-- Pearl -->
+        <circle cx="36" cy="82" r="5.5" fill="none" stroke="url(#sg)" stroke-width="1.5" filter="url(#gf)"/>
+        <circle cx="36" cy="82" r="3" fill="rgba(201,168,76,0.4)"/>
+        <circle cx="34.5" cy="80.5" r="1" fill="rgba(255,255,255,0.5)"/>
+      </g>
+
+      <!-- Chinese characters at compass points -->
+      <g fill="rgba(201,168,76,0.65)" font-family="serif" font-size="7.5" filter="url(#gf)">
+        <text x="54" y="18" text-anchor="middle">帝</text>
+        <text x="88" y="57" text-anchor="middle">武</text>
+        <text x="54" y="96" text-anchor="middle">道</text>
+        <text x="20" y="57" text-anchor="middle">魂</text>
+      </g>
+    </svg>
+
+    <div class="seal-name">
+      <span class="big">EMPEROR</span>
+      <span class="sm">TAEKWONDO ACADEMY</span>
+    </div>
+  </div>
+
+  <div class="sb-actions">
+    <button class="sb-btn" title="Back">←</button>
+    <button class="sb-btn" title="View">👁</button>
+    <button class="sb-btn" title="Send">✈</button>
+  </div>
+
+  <div class="sb-divider"></div>
+
+  <nav class="sb-nav">
+    <div class="nav-item active"><span class="ni">⚡</span>Dashboard</div>
+    <div class="nav-item"><span class="ni">👥</span>Members</div>
+    <div class="nav-item has-tip">
+      <span class="ni">💰</span>Financials
+      <div class="tip-box">
+        <div class="tip-ttl">Cash Flow</div>
+        <div class="tip-row"><span>Income</span><span class="v vp">BHD 250</span></div>
+        <div class="tip-row"><span>Expenses</span><span class="v vn">BHD -250</span></div>
+        <div class="tip-tot"><span>Total</span><span class="v">BHD 50</span></div>
+      </div>
+    </div>
+    <div class="nav-item"><span class="ni">🏢</span>Club Details</div>
+    <div class="nav-item"><span class="ni">📍</span>Facilities</div>
+    <div class="nav-item"><span class="ni">🥋</span>Instructors</div>
+    <div class="nav-item"><span class="ni">⚔️</span>Activities</div>
+    <div class="nav-item"><span class="ni">📅</span>Events</div>
+    <div class="nav-item"><span class="ni">📰</span>Timeline</div>
+    <div class="nav-item"><span class="ni">🎁</span>Perks</div>
+    <div class="nav-item"><span class="ni">🏆</span>Achievements</div>
+    <div class="nav-item"><span class="ni">📦</span>Packages</div>
+    <div class="nav-item"><span class="ni">🖼️</span>Gallery</div>
+    <div class="nav-item"><span class="ni">🛡️</span>Roles</div>
+    <div class="nav-item"><span class="ni">💬</span>Messages</div>
+    <div class="nav-item"><span class="ni">🔔</span>Notifications</div>
+    <div class="nav-item"><span class="ni">📊</span>Analytics</div>
+  </nav>
+</aside>
+
+<!-- ══ MAIN CONTENT ══ -->
+<main class="main">
+  <div class="main-hdr">
+    <div class="main-title">The Pillars of Progress</div>
+    <div class="main-sub">Welcome to EMPEROR TAEKWONDO ACADEMY management</div>
+  </div>
+
+  <!-- Row 1 -->
+  <div class="c-row c-row-4">
+
+    <!-- Card: Active Members -->
+    <div class="card">
+      <div class="c-hdr">
+        <div class="c-ttl">Active Members</div>
+        <div class="c-ico">👥</div>
+      </div>
+      <div class="m-cnt"><span>2</span><span class="sl">/</span><span class="tot">890</span></div>
+      <div class="m-chart-wrap"><canvas id="membersChart"></canvas></div>
+      <div class="m-legend">
+        <div class="leg-item"><div class="leg-dot" style="background:#f97316"></div>Empt — 45%</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#f59e0b"></div>Stratum — 30%</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#8b5cf6"></div>Belt — 25%</div>
+      </div>
+    </div>
+
+    <!-- Card: Activities -->
+    <div class="card">
+      <div class="c-hdr">
+        <div class="c-ttl">Activities</div>
+        <div class="c-ico">⚡</div>
+      </div>
+      <div class="act-grid">
+        <div class="act-hdr-row">
+          <div class="act-col-n">1</div><div class="act-col-n">2</div><div class="act-col-n">3</div>
+          <div class="act-col-n">4</div><div class="act-col-n">5</div><div class="act-col-n">6</div>
+          <div class="act-col-n">7</div><div class="act-col-n">8</div><div class="act-col-n">9</div>
+        </div>
+        <div class="act-row">
+          <div class="act-lbl">
+            <div class="act-av"></div>
+            <div class="act-nm">Kay<br>Instructor</div>
+          </div>
+          <div class="act-bars">
+            <div class="act-seg" style="background:#22c55e;flex:2.2"></div>
+            <div class="act-seg" style="background:#3b82f6;flex:1.4"></div>
+            <div class="act-seg" style="background:#22c55e;flex:1.1"></div>
+            <div class="act-seg" style="background:#f43f5e;flex:0.9"></div>
+            <div class="act-seg" style="background:#8b5cf6;flex:1.6"></div>
+            <div class="act-seg" style="background:#22c55e;flex:1.8"></div>
+          </div>
+        </div>
+        <div class="act-row">
+          <div class="act-lbl">
+            <div class="act-av" style="background:linear-gradient(135deg,#f97316,#dc2626)"></div>
+            <div class="act-nm">Mini<br>Activity</div>
+          </div>
+          <div class="act-bars">
+            <div class="act-seg" style="background:#3b82f6;flex:1.3"></div>
+            <div class="act-seg" style="background:#8b5cf6;flex:2.1"></div>
+            <div class="act-seg" style="background:#f43f5e;flex:0.8"></div>
+            <div class="act-seg" style="background:#22c55e;flex:2.5"></div>
+            <div class="act-seg" style="background:#f59e0b;flex:1.3"></div>
+          </div>
+        </div>
+      </div>
+      <div class="act-legend">
+        <div class="act-leg-i"><div class="leg-dot" style="background:#22c55e;width:6px;height:6px"></div>Active</div>
+        <div class="act-leg-i"><div class="leg-dot" style="background:#3b82f6;width:6px;height:6px"></div>Sched</div>
+        <div class="act-leg-i"><div class="leg-dot" style="background:#f43f5e;width:6px;height:6px"></div>Break</div>
+        <div class="act-leg-i"><div class="leg-dot" style="background:#8b5cf6;width:6px;height:6px"></div>Review</div>
+      </div>
+    </div>
+
+    <!-- Card: Packages -->
+    <div class="card">
+      <div class="c-hdr">
+        <div class="c-ttl">Packages</div>
+        <div class="c-ico">📦</div>
+      </div>
+      <div class="pkg-track">
+        <div class="pkg-item">
+          <div class="pkg-badge">Highlights</div>
+          <div class="pkg-price"><span class="cur">BHD </span>330</div>
+          <div class="pkg-pill pill-g">Highly Recommended</div>
+        </div>
+        <div class="pkg-item">
+          <div class="pkg-badge" style="color:var(--blue);background:rgba(59,130,246,0.1);border-color:rgba(59,130,246,0.22)">Seco</div>
+          <div class="pkg-price"><span class="cur">BHD </span>350</div>
+          <div class="pkg-pill pill-b">Commsts</div>
+        </div>
+        <div class="pkg-item">
+          <div class="pkg-badge" style="color:var(--orange);background:rgba(249,115,22,0.1);border-color:rgba(249,115,22,0.22)">Feature</div>
+          <div class="pkg-price"><span class="cur">BHD </span>250</div>
+          <div class="pkg-pill pill-o">Highlg</div>
+        </div>
+      </div>
+      <div class="arr-btns">
+        <button class="arr-btn">◀</button>
+        <button class="arr-btn">▶</button>
+      </div>
+    </div>
+
+    <!-- Card: Trainers -->
+    <div class="card">
+      <div class="c-hdr">
+        <div class="c-ttl">Trainers</div>
+        <div class="c-ico">🥋</div>
+      </div>
+      <div class="tr-list">
+        <div class="tr-item">
+          <div class="tr-photo">
+            <svg viewBox="0 0 30 30" width="30" height="30"><circle cx="15" cy="11" r="5.5" fill="#3a3a52"/><ellipse cx="15" cy="27" rx="9.5" ry="7" fill="#3a3a52"/></svg>
+          </div>
+          <div class="tr-info">
+            <div class="tr-name">Profile Rennan</div>
+            <div class="tr-exp">Areas of Expertise</div>
+            <div class="tr-sub" style="color:var(--purple-l)">Class Active</div>
+          </div>
+          <div class="tr-badge badge-act">Active</div>
+        </div>
+        <div class="tr-item">
+          <div class="tr-photo">
+            <svg viewBox="0 0 30 30" width="30" height="30"><circle cx="15" cy="11" r="5.5" fill="#282836"/><ellipse cx="15" cy="27" rx="9.5" ry="7" fill="#282836"/></svg>
+          </div>
+          <div class="tr-info">
+            <div class="tr-name">Profile Hens</div>
+            <div class="tr-exp">Areas of Expertise</div>
+            <div class="tr-sub" style="color:#9ca3af">Available</div>
+          </div>
+          <div class="tr-badge badge-av">Avail</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2 -->
+  <div class="c-row c-row-4">
+
+    <!-- Card: Events -->
+    <div class="card">
+      <div class="c-hdr">
+        <div class="c-ttl">Events</div>
+        <div class="c-ico">📅</div>
+      </div>
+      <div class="ev-sub">Future Planning</div>
+      <div class="ev-num">0</div>
+      <div class="ev-lbl">Active</div>
+      <div class="cal-grid">
+        <div class="cal-cell"></div><div class="cal-cell"></div><div class="cal-cell"></div><div class="cal-cell"></div><div class="cal-cell"></div>
+        <div class="cal-cell"></div><div class="cal-cell"></div><div class="cal-cell"></div><div class="cal-cell"></div><div class="cal-cell"></div>
+      </div>
+      <div class="ev-pending">Data for next grading session pending</div>
+    </div>
+
+    <!-- Card: Access -->
+    <div class="card">
+      <div class="c-hdr">
+        <div class="c-ttl">Access</div>
+        <div class="c-ico">⏰</div>
+      </div>
+      <div class="ac-stat">6h/6</div>
+      <div class="ac-body">
+        <div class="ac-hm">
+          <div class="ac-lbl">Facility Usage</div>
+          <div class="hm-grid" id="hmGrid"></div>
+        </div>
+        <div class="ac-bar-wrap">
+          <div class="ac-lbl">Target Hours</div>
+          <div class="ac-bar-chart"><canvas id="acChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card: Classes -->
+    <div class="card">
+      <div class="c-hdr">
+        <div class="c-ttl">Classes</div>
+        <div class="c-ico">📆</div>
+      </div>
+      <div class="cl-stat">
+        <span class="cl-num">24+</span>
+        <span class="cl-lbl">Scheduled class slots</span>
+      </div>
+      <div class="dm-hdr">
+        <div class="dm-col">1</div><div class="dm-col">2</div><div class="dm-col">3</div>
+        <div class="dm-col">4</div><div class="dm-col">5</div><div class="dm-col">6</div>
+        <div class="dm-col">7</div><div class="dm-col">8</div><div class="dm-col">9</div>
+        <div class="dm-col">10</div><div class="dm-col">11</div>
+      </div>
+      <div class="dm" id="dotMatrix"></div>
+    </div>
+
+    <!-- Card: Member Rating -->
+    <div class="card">
+      <div class="c-hdr">
+        <div class="c-ttl">Member Rating</div>
+        <div class="c-ico">⭐</div>
+      </div>
+      <div class="rt-main"><div class="rt-score">0.0 ★</div></div>
+      <div class="rt-stars">☆ ☆ ☆ ☆ ☆</div>
+      <div class="rt-bars">
+        <div class="rt-row"><div class="rt-lbl">Technique</div><div class="rt-track"><div class="rt-fill" style="width:0%"></div></div><div class="rt-val">0</div></div>
+        <div class="rt-row"><div class="rt-lbl">Discipline</div><div class="rt-track"><div class="rt-fill" style="width:0%"></div></div><div class="rt-val">0</div></div>
+        <div class="rt-row"><div class="rt-lbl">Focus</div><div class="rt-track"><div class="rt-fill" style="width:0%"></div></div><div class="rt-val">0</div></div>
+      </div>
+      <div class="rt-pend">Reviews Pending — Data will populate after the first seasonal grading.</div>
+    </div>
+  </div>
+
+  <!-- Financial Chart -->
+  <div class="fin-card">
+    <div class="fin-hdr">
+      <div>
+        <div class="fin-ttl">The Fiscal Current</div>
+        <div class="fin-sub">Monthly income, expenses, and profit trends</div>
+      </div>
+      <div class="fin-legend">
+        <div class="leg-ent"><div class="leg-c" style="background:#22c55e"></div>Income</div>
+        <div class="leg-ent"><div class="leg-c" style="background:#f43f5e"></div>Expenses</div>
+        <div class="leg-ent"><div class="leg-ln" style="background:#10b981"></div>Profit</div>
+        <div class="leg-ent"><div class="leg-c" style="background:#3b82f6"></div>Refunds</div>
+        <div class="leg-ent"><div class="leg-ln" style="background:#f59e0b;border-top:2px dashed #f59e0b;height:0"></div>Cash to Collect</div>
+      </div>
+    </div>
+    <div class="fin-body">
+      <div class="fin-main">
+        <div class="main-chart-wrap"><canvas id="fiscalChart"></canvas></div>
+        <div class="fin-arrows">
+          <button class="fin-arr">◀</button>
+          <button class="fin-arr">▶</button>
+        </div>
+      </div>
+      <div class="growth-panel">
+        <div class="growth-ttl">Projected Growth & Retention</div>
+        <div class="growth-wrap"><canvas id="growthChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:10px"></div>
+</main>
+
+<script>
+// ── roundRect polyfill ──
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){
+    this.beginPath();
+    this.moveTo(x+r,y);this.lineTo(x+w-r,y);this.quadraticCurveTo(x+w,y,x+w,y+r);
+    this.lineTo(x+w,y+h-r);this.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    this.lineTo(x+r,y+h);this.quadraticCurveTo(x,y+h,x,y+h-r);
+    this.lineTo(x,y+r);this.quadraticCurveTo(x,y,x+r,y);this.closePath();
+  };
+}
+
+// ── Heatmap ──
+const hmGrid = document.getElementById('hmGrid');
+const hmColors = [
+  'rgba(20,16,32,0.9)','rgba(59,130,246,0.25)','rgba(59,130,246,0.5)',
+  'rgba(34,197,94,0.35)','rgba(34,197,94,0.65)','rgba(234,179,8,0.5)',
+  'rgba(249,115,22,0.6)','rgba(244,63,94,0.65)',
+];
+[[0,2,3,4,3,2,0,1],[1,3,5,6,5,3,2,0],[0,4,6,7,6,4,2,1],[0,2,4,5,4,3,1,0],[0,1,2,3,2,1,0,0]]
+.flat().forEach(v=>{
+  const c=document.createElement('div');
+  c.className='hm-cell';c.style.background=hmColors[v];
+  hmGrid.appendChild(c);
+});
+
+// ── Dot Matrix ──
+const dm=document.getElementById('dotMatrix');
+const dmData=[[1,1,1,1,1,1,0,0,0,0,0],[1,1,1,1,1,1,1,0,0,0,0],[1,1,1,1,1,1,1,1,0,0,0],[1,1,1,1,0,1,1,0,0,0,0],[1,1,0,0,0,0,0,0,0,0,0]];
+const dmLabels=['P','3','5','7','9'];
+dmData.forEach((row,ri)=>{
+  const rowEl=document.createElement('div');rowEl.className='dm-row';
+  const lbl=document.createElement('div');lbl.className='dm-rl';lbl.textContent=dmLabels[ri];
+  rowEl.appendChild(lbl);
+  const cells=document.createElement('div');cells.className='dm-cells';
+  row.forEach(v=>{const d=document.createElement('div');d.className='dot '+(v?'on':'off');cells.appendChild(d);});
+  rowEl.appendChild(cells);dm.appendChild(rowEl);
+});
+
+// Chart defaults
+Chart.defaults.color='rgba(90,90,114,0.8)';
+Chart.defaults.font.family="'Share Tech Mono', monospace";
+
+// ── Members Doughnut ──
+new Chart(document.getElementById('membersChart'),{
+  type:'doughnut',
+  data:{datasets:[
+    {data:[45,55],backgroundColor:['rgba(249,115,22,0.82)','rgba(14,12,22,0.4)'],borderColor:['#f97316','transparent'],borderWidth:1,cutout:'74%'},
+    {data:[30,70],backgroundColor:['rgba(245,158,11,0.82)','rgba(14,12,22,0.4)'],borderColor:['#f59e0b','transparent'],borderWidth:1,cutout:'58%'},
+    {data:[25,75],backgroundColor:['rgba(139,92,246,0.82)','rgba(14,12,22,0.4)'],borderColor:['#8b5cf6','transparent'],borderWidth:1,cutout:'42%'},
+  ]},
+  options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false},tooltip:{enabled:false}},animation:{duration:1200,easing:'easeOutQuart'}},
+});
+
+// ── Access Bar Chart ──
+new Chart(document.getElementById('acChart'),{
+  type:'bar',
+  data:{
+    labels:['Used','Target'],
+    datasets:[{data:[60,100],backgroundColor:['rgba(139,92,246,0.7)','rgba(59,130,246,0.4)'],borderColor:['#8b5cf6','#3b82f6'],borderWidth:1,borderRadius:3}]
+  },
+  options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+    plugins:{legend:{display:false},tooltip:{enabled:false}},
+    scales:{x:{display:true,max:120,grid:{color:'rgba(255,255,255,0.03)'},ticks:{font:{size:7},maxTicksLimit:3,callback:v=>v}},y:{display:false}},
+    animation:{duration:800}},
+});
+
+// ── Fiscal Area Chart ──
+const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const income=[42,58,220,88,74,90,114,98,85,78,84,68];
+const expense=[62,64,74,70,68,72,78,74,68,66,70,63];
+const profit=income.map((v,i)=>Math.max(0,v-expense[i]));
+const refunds=[7,11,19,9,8,10,14,9,7,9,11,8];
+const cash=[44,48,58,50,52,54,60,52,46,50,54,46];
+
+new Chart(document.getElementById('fiscalChart'),{
+  type:'line',
+  data:{
+    labels:months,
+    datasets:[
+      {label:'Income',data:income,fill:true,backgroundColor:'rgba(34,197,94,0.18)',borderColor:'#22c55e',borderWidth:2,tension:0.42,pointRadius:0,order:5},
+      {label:'Expenses',data:expense,fill:true,backgroundColor:'rgba(244,63,94,0.18)',borderColor:'#f43f5e',borderWidth:2,tension:0.42,pointRadius:0,order:4},
+      {label:'Profit',data:profit,fill:true,backgroundColor:'rgba(16,185,129,0.15)',borderColor:'#10b981',borderWidth:2,tension:0.42,pointRadius:0,order:3},
+      {label:'Refunds',data:refunds,fill:true,backgroundColor:'rgba(59,130,246,0.18)',borderColor:'#3b82f6',borderWidth:1.5,tension:0.42,pointRadius:0,order:2},
+      {label:'Cash to Collect',data:cash,fill:false,borderColor:'#f59e0b',borderWidth:2,borderDash:[5,3],tension:0.42,pointRadius:0,order:1},
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{
+      legend:{display:false},
+      tooltip:{
+        backgroundColor:'rgba(10,8,20,0.95)',borderColor:'rgba(124,58,237,0.35)',borderWidth:1,
+        titleColor:'#c9a84c',bodyColor:'#c0c0d0',padding:8,
+        titleFont:{family:"'Cinzel',serif",size:10},
+        bodyFont:{family:"'Share Tech Mono',monospace",size:9},
+        callbacks:{label:ctx=>` ${ctx.dataset.label}: BHD ${ctx.parsed.y}`}
+      }
+    },
+    scales:{
+      x:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{font:{size:8.5},color:'rgba(90,90,114,0.8)'}},
+      y:{min:0,max:250,grid:{color:'rgba(255,255,255,0.04)'},border:{display:false},
+         ticks:{font:{size:8},color:'rgba(90,90,114,0.8)',stepSize:50,callback:v=>`BHD ${v}`}}
+    },
+    animation:{duration:1600,easing:'easeOutQuart'},
+  },
+  plugins:[{
+    id:'marchCallout',
+    afterDraw(chart){
+      const {ctx,scales}=chart;
+      const mx=scales.x.getPixelForValue(2);
+      const my=scales.y.getPixelForValue(220);
+      ctx.save();
+      ctx.strokeStyle='rgba(201,168,76,0.55)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+      ctx.beginPath();ctx.moveTo(mx,my);ctx.lineTo(mx+28,my-28);ctx.stroke();
+      const bx=mx+30,by=my-52,bw=132,bh=30;
+      ctx.fillStyle='rgba(12,8,22,0.92)';ctx.strokeStyle='rgba(201,168,76,0.35)';ctx.setLineDash([]);ctx.lineWidth=1;
+      ctx.roundRect(bx,by,bw,bh,4);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#c9a84c';ctx.font="9px 'Rajdhani',sans-serif";ctx.letterSpacing='0.3px';
+      ctx.fillText('March: Grading and',bx+7,by+12);
+      ctx.fillText('Uniform Fees Surge',bx+7,by+24);
+      ctx.restore();
+    }
+  }]
+});
+
+// ── Growth Bar Chart ──
+new Chart(document.getElementById('growthChart'),{
+  type:'bar',
+  data:{
+    labels:months,
+    datasets:[{
+      data:[14,20,34,26,28,36,42,36,32,28,30,26],
+      backgroundColor:months.map((_,i)=>{
+        const t=i/11;
+        return `rgba(${Math.round(124+(59-124)*t)},${Math.round(58+(130-58)*t)},${Math.round(237+(246-237)*t)},0.72)`;
+      }),
+      borderWidth:0,borderRadius:2,
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{backgroundColor:'rgba(10,8,20,0.9)',borderColor:'rgba(124,58,237,0.3)',borderWidth:1,
+               titleColor:'#c9a84c',bodyColor:'#c0c0d0',titleFont:{family:"'Cinzel',serif",size:9},
+               bodyFont:{family:"'Share Tech Mono',monospace",size:8},
+               callbacks:{label:ctx=>` BHD ${ctx.parsed.y}`}}
+    },
+    scales:{
+      x:{grid:{display:false},ticks:{font:{size:7},color:'rgba(90,90,114,0.6)',maxRotation:0}},
+      y:{grid:{color:'rgba(255,255,255,0.03)'},border:{display:false},
+         ticks:{font:{size:7},color:'rgba(90,90,114,0.6)',callback:v=>`BHD ${v}`}}
+    },
+    animation:{duration:1200},
+  }
+});
+</script>
+</body>
+</html>

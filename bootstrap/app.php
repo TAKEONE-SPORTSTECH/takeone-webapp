@@ -18,11 +18,16 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
         $middleware->append(\App\Http\Middleware\StructuredLogging::class);
+        $middleware->web(append: [\App\Http\Middleware\DetectDevice::class]);
         $middleware->alias([
+            'no-store'   => \App\Http\Middleware\NoStoreCache::class,
             'role'       => \App\Http\Middleware\CheckRole::class,
             'permission' => \App\Http\Middleware\CheckPermission::class,
             'tenant'     => \App\Http\Middleware\SetCurrentTenant::class,
             'two-factor' => \App\Http\Middleware\RequiresTwoFactor::class,
+            'business'   => \App\Http\Middleware\EnsureHasBusiness::class,
+            // Override the default `verified` gate so impersonation can bypass it.
+            'verified'   => \App\Http\Middleware\EnsureEmailIsVerifiedOrImpersonating::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -18,7 +18,10 @@ use App\Models\Goal;
 use App\Models\Attendance;
 use App\Models\ClubAffiliation;
 use App\Models\ClubEventRegistration;
+use App\Models\Membership;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
 class MemberController extends Controller
@@ -78,20 +81,30 @@ class MemberController extends Controller
      * @param  int  $id
      * @return \Illuminate\View\View
      */
-    public function show($id)
+    public function show($uuid)
     {
         $user = Auth::user();
+
+        // Get the member to display by UUID
+        $member = User::where('uuid', $uuid)->firstOrFail();
+        $id = $member->id;
 
         // Check if user is super-admin or viewing their own profile
         $isSuperAdmin = $user->hasRole('super-admin');
         $isOwnProfile = $user->id == $id;
 
-        // Get the member to display
-        $member = User::findOrFail($id);
+        // Check if the current user is a club admin for any club this member belongs to
+        $isClubAdminOfMember = false;
+        if (!$isSuperAdmin && !$isOwnProfile && $user->isClubAdmin()) {
+            $memberTenantIds = Membership::where('user_id', $member->id)->pluck('tenant_id');
+            $isClubAdminOfMember = $memberTenantIds->contains(fn($tenantId) => $user->isClubAdmin($tenantId));
+        }
 
-        // For super-admin or own profile, create a mock relationship
+        $canResetPassword = $isSuperAdmin || $isOwnProfile || $isClubAdminOfMember;
+
+        // For super-admin, own profile, or club admin of this member — create a mock relationship
         // For regular users, verify family relationship exists
-        if ($isSuperAdmin || $isOwnProfile) {
+        if ($isSuperAdmin || $isOwnProfile || $isClubAdminOfMember) {
             $relationship = (object)[
                 'dependent' => $member,
                 'relationship_type' => $isOwnProfile ? 'self' : 'admin_view',
@@ -189,7 +202,11 @@ class MemberController extends Controller
             ->orderBy('registered_at', 'desc')
             ->get();
 
-        return view('components-templates.member.show', [
+        $memberView = request()->attributes->get('is_mobile')
+            ? 'components-templates.member.mobile.show'
+            : 'components-templates.member.show';
+
+        return view($memberView, [
             'relationship' => $relationship,
             'latestHealthRecord' => $latestHealthRecord,
             'healthRecords' => $healthRecords,
@@ -215,7 +232,41 @@ class MemberController extends Controller
             'user' => $relationship->dependent,
             'joinedEventRegistrations' => $joinedEventRegistrations,
             'allClubs' => \App\Models\Tenant::orderBy('club_name')->get(['id', 'club_name', 'address', 'logo']),
+            'canResetPassword' => $canResetPassword,
         ]);
+    }
+
+    /**
+     * Reset the password for a member.
+     * Authorized for: super-admin, club admin of member's club, and the member themselves.
+     */
+    public function resetPassword(Request $request, $id)
+    {
+        $user = Auth::user();
+        $member = User::findOrFail($id);
+
+        $isSuperAdmin = $user->hasRole('super-admin');
+        $isOwnProfile = $user->id == $id;
+
+        $isClubAdminOfMember = false;
+        if (!$isSuperAdmin && !$isOwnProfile && $user->isClubAdmin()) {
+            $memberTenantIds = Membership::where('user_id', $member->id)->pluck('tenant_id');
+            $isClubAdminOfMember = $memberTenantIds->contains(fn($tenantId) => $user->isClubAdmin($tenantId));
+        }
+
+        if (!$isSuperAdmin && !$isOwnProfile && !$isClubAdminOfMember) {
+            abort(403);
+        }
+
+        $request->validate([
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $member->update([
+            'password' => Hash::make($request->password),
+        ]);
+
+        return response()->json(['message' => 'Password has been reset successfully.']);
     }
 
     /**
@@ -318,6 +369,43 @@ class MemberController extends Controller
             $member->profile_picture = null;
         }
 
+        // Process emergency contacts from JSON hidden input
+        $emergencyContacts = collect(json_decode($request->input('emergency_contacts_json', '[]'), true) ?? [])
+            ->filter(fn($c) => !empty($c['name']) || !empty($c['phone']))
+            ->map(fn($c) => [
+                'name'         => trim($c['name'] ?? ''),
+                'relationship' => $c['relationship'] ?? '',
+                'phone_code'   => $c['phone_code'] ?? '',
+                'phone'        => trim($c['phone'] ?? ''),
+            ])
+            ->values()
+            ->all();
+
+        // Process health conditions from JSON hidden input
+        $healthConditions = collect(json_decode($request->input('health_conditions_json', '[]'), true) ?? [])
+            ->filter(fn($c) => !empty($c['condition']))
+            ->map(fn($c) => [
+                'condition' => trim($c['condition']),
+                'noted_at'  => $c['noted_at'] ?? now()->format('Y-m-d'),
+                'notes'     => trim($c['notes'] ?? ''),
+            ])
+            ->values()
+            ->all();
+
+        // Process documents from JSON hidden input (file_path already set by upload-document endpoint)
+        $documents = collect(json_decode($request->input('documents_json', '[]'), true) ?? [])
+            ->filter(fn($d) => !empty($d['type']) || !empty($d['number']))
+            ->map(fn($d) => [
+                'type'        => trim($d['type'] ?? ''),
+                'number'      => trim($d['number'] ?? ''),
+                'file_path'   => $d['file_path'] ?? null,
+                'file_name'   => $d['file_name'] ?? null,
+                'file_url'    => $d['file_url'] ?? null,
+                'uploaded_at' => $d['uploaded_at'] ?? now()->format('Y-m-d'),
+            ])
+            ->values()
+            ->all();
+
         $member->update([
             'full_name' => $validated['full_name'],
             'email' => $validated['email'],
@@ -330,6 +418,9 @@ class MemberController extends Controller
             'social_links' => $socialLinks,
             'motto' => $validated['motto'],
             'profile_picture_is_public' => $request->has('profile_picture_is_public') ? true : false,
+            'emergency_contacts' => $emergencyContacts,
+            'health_conditions'  => $healthConditions,
+            'documents'          => $documents,
         ]);
 
         // Update relationship if it exists (not for admin or own profile)
@@ -360,11 +451,24 @@ class MemberController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Member updated successfully.',
-                'profile_picture_url' => $profilePictureUrl
+                'profile_picture_url' => $profilePictureUrl,
+                'member' => [
+                    'full_name'          => $member->full_name,
+                    'motto'              => $member->motto,
+                    'nationality'        => $member->nationality,
+                    'gender'             => $member->gender,
+                    'marital_status'     => $member->marital_status,
+                    'blood_type'         => $member->blood_type,
+                    'age'                => $member->age,
+                    'social_links'       => $member->social_links ?? [],
+                    'emergency_contacts' => $member->emergency_contacts ?? [],
+                    'health_conditions'  => $member->health_conditions ?? [],
+                    'documents'          => $member->documents ?? [],
+                ],
             ]);
         }
 
-        return redirect()->route('member.show', $id)
+        return redirect()->route('member.show', $member->uuid)
             ->with('success', 'Member updated successfully.');
     }
 
@@ -421,6 +525,74 @@ class MemberController extends Controller
                 'path' => $fullPath,
                 'url' => asset('storage/' . $fullPath)
             ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Upload an identity document file for a member.
+     */
+    public function uploadDocument(\Illuminate\Http\Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'file' => 'required|file|mimes:pdf,jpg,jpeg,png,webp,gif,bmp,tiff',
+            ]);
+
+            $user = Auth::user();
+            $isSuperAdmin = $user->hasRole('super-admin');
+            $isOwnProfile = $user->id == $id;
+
+            if (!$isSuperAdmin && !$isOwnProfile) {
+                UserRelationship::where('guardian_user_id', $user->id)
+                    ->where('dependent_user_id', $id)
+                    ->firstOrFail();
+            }
+
+            $path = $request->file('file')->store('documents/' . $id, 'public');
+
+            return response()->json([
+                'success'   => true,
+                'path'      => $path,
+                'url'       => asset('storage/' . $path),
+                'file_name' => $request->file('file')->getClientOriginalName(),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Permanently delete a document file from storage for a member.
+     */
+    public function deleteDocument(\Illuminate\Http\Request $request, $id)
+    {
+        try {
+            $request->validate(['file_path' => 'required|string']);
+
+            $user = Auth::user();
+            $isSuperAdmin = $user->hasRole('super-admin');
+            $isOwnProfile = $user->id == $id;
+
+            if (!$isSuperAdmin && !$isOwnProfile) {
+                UserRelationship::where('guardian_user_id', $user->id)
+                    ->where('dependent_user_id', $id)
+                    ->firstOrFail();
+            }
+
+            $filePath = $request->input('file_path');
+
+            // Restrict deletion to files within that member's documents directory
+            if (!str_starts_with($filePath, 'documents/' . $id . '/')) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized file path.'], 403);
+            }
+
+            if (Storage::disk('public')->exists($filePath)) {
+                Storage::disk('public')->delete($filePath);
+            }
+
+            return response()->json(['success' => true]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
@@ -564,7 +736,47 @@ class MemberController extends Controller
             }
         }
 
-        return response()->json(['success' => true, 'message' => 'Tournament record added successfully']);
+        $tournament->load(['clubAffiliation', 'performanceResults', 'notesMedia']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tournament record added successfully',
+            'tournament' => $this->tournamentPayload($tournament),
+        ]);
+    }
+
+    /**
+     * Build a JSON-friendly payload for a tournament event for in-place rendering.
+     *
+     * @param  \App\Models\TournamentEvent  $tournament
+     * @return array
+     */
+    private function tournamentPayload(TournamentEvent $tournament): array
+    {
+        return [
+            'id' => $tournament->id,
+            'title' => $tournament->title,
+            'type' => $tournament->type,
+            'type_label' => ucfirst($tournament->type),
+            'sport' => $tournament->sport,
+            'date' => optional($tournament->date)->format('M j, Y'),
+            'time' => optional($tournament->time)->format('H:i'),
+            'location' => $tournament->location,
+            'participants_count' => $tournament->participants_count,
+            'club_affiliation' => $tournament->clubAffiliation ? [
+                'club_name' => $tournament->clubAffiliation->club_name,
+                'location' => $tournament->clubAffiliation->location,
+            ] : null,
+            'performance_results' => $tournament->performanceResults->map(fn ($r) => [
+                'medal_type' => $r->medal_type,
+                'points' => $r->points,
+                'description' => $r->description,
+            ])->values()->all(),
+            'notes_media' => $tournament->notesMedia->map(fn ($n) => [
+                'note_text' => $n->note_text,
+                'media_link' => $n->media_link,
+            ])->values()->all(),
+        ];
     }
 
     /**
@@ -602,7 +814,21 @@ class MemberController extends Controller
         // Update the goal
         $goal->update($validated);
 
-        return response()->json(['success' => true, 'message' => 'Goal updated successfully']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Goal updated successfully',
+            'goal' => [
+                'id' => $goal->id,
+                'title' => $goal->title,
+                'description' => $goal->description,
+                'unit' => $goal->unit,
+                'status' => $goal->status,
+                'current_progress_value' => $goal->current_progress_value,
+                'target_value' => $goal->target_value,
+                'progress_percentage' => $goal->progress_percentage,
+                'priority_level' => $goal->priority_level,
+            ],
+        ]);
     }
 
     /**
@@ -703,7 +929,34 @@ class MemberController extends Controller
             'coaches'     => $coaches,
         ]);
 
-        return response()->json(['success' => true, 'message' => 'Affiliation added successfully.', 'id' => $affiliation->id]);
+        $logoUrl = null;
+        if ($tenant?->logo) {
+            $logoUrl = asset('storage/' . $tenant->logo);
+        } elseif ($affiliation->logo) {
+            $logoUrl = filter_var($affiliation->logo, FILTER_VALIDATE_URL)
+                ? $affiliation->logo
+                : asset('storage/' . $affiliation->logo);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Affiliation added successfully.',
+            'id' => $affiliation->id,
+            'affiliation' => [
+                'id'          => $affiliation->id,
+                'club_name'   => $affiliation->club_name,
+                'logo_url'    => $logoUrl,
+                'location'    => $affiliation->location,
+                'description' => $affiliation->description,
+                'coaches'     => is_array($affiliation->coaches) ? implode(', ', $affiliation->coaches) : '',
+                'start_date'  => $affiliation->start_date?->format('Y-m-d'),
+                'end_date'    => $affiliation->end_date?->format('Y-m-d'),
+                'start_label' => $affiliation->start_date?->format('M Y'),
+                'end_label'   => $affiliation->end_date ? $affiliation->end_date->format('M Y') : 'Present',
+                'is_ongoing'  => !$affiliation->end_date,
+                'formatted_duration' => $affiliation->formatted_duration,
+            ],
+        ]);
     }
 
     public function updateAffiliation(\Illuminate\Http\Request $request, $id, $affiliationId)
@@ -735,7 +988,23 @@ class MemberController extends Controller
             'coaches'     => $coaches,
         ]);
 
-        return response()->json(['success' => true, 'message' => 'Affiliation updated successfully.']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Affiliation updated successfully.',
+            'affiliation' => [
+                'id'          => $affiliation->id,
+                'club_name'   => $affiliation->club_name,
+                'location'    => $affiliation->location,
+                'description' => $affiliation->description,
+                'coaches'     => is_array($affiliation->coaches) ? implode(', ', $affiliation->coaches) : '',
+                'start_date'  => $affiliation->start_date?->format('Y-m-d'),
+                'end_date'    => $affiliation->end_date?->format('Y-m-d'),
+                'start_label' => $affiliation->start_date?->format('M Y'),
+                'end_label'   => $affiliation->end_date ? $affiliation->end_date->format('M Y') : 'Present',
+                'is_ongoing'  => !$affiliation->end_date,
+                'formatted_duration' => $affiliation->formatted_duration,
+            ],
+        ]);
     }
 
     public function destroyAffiliation($id, $affiliationId)
@@ -774,7 +1043,19 @@ class MemberController extends Controller
             'icon'              => 'bi-star',
         ]);
 
-        return response()->json(['success' => true, 'message' => 'Skill added successfully.', 'id' => $skill->id]);
+        return response()->json([
+            'success' => true,
+            'message' => 'Skill added successfully.',
+            'id' => $skill->id,
+            'skill' => [
+                'id'                => $skill->id,
+                'skill_name'        => $skill->skill_name,
+                'proficiency_level' => $skill->proficiency_level,
+                'formatted_duration'=> $skill->formatted_duration,
+                'start_label'       => $skill->start_date ? $skill->start_date->format('M Y') : null,
+                'badge_color'       => $skill->proficiency_level == 'expert' ? 'danger' : ($skill->proficiency_level == 'advanced' ? 'warning' : ($skill->proficiency_level == 'intermediate' ? 'info' : 'secondary')),
+            ],
+        ]);
     }
 
     public function destroyAffiliationSkill($id, $affiliationId, $skillId)
@@ -803,7 +1084,17 @@ class MemberController extends Controller
         $affiliation = $member->clubAffiliations()->findOrFail($affiliationId);
         $media = $affiliation->affiliationMedia()->create($validated);
 
-        return response()->json(['success' => true, 'message' => 'Media added successfully.', 'id' => $media->id]);
+        return response()->json([
+            'success' => true,
+            'message' => 'Media added successfully.',
+            'id' => $media->id,
+            'media' => [
+                'id'         => $media->id,
+                'title'      => $media->title,
+                'full_url'   => $media->full_url,
+                'icon_class' => $media->icon_class,
+            ],
+        ]);
     }
 
     public function destroyAffiliationMedia($id, $affiliationId, $mediaId)

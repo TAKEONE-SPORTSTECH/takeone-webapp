@@ -13,6 +13,7 @@ class ClubNotification extends Model
         'sender_user_id',
         'subject',
         'message',
+        'action_url',
         'recipient_type',
         'recipient_count',
         'sent_at',

@@ -20,7 +20,7 @@ class UpdateMemberRequest extends FormRequest
             'email'                     => 'nullable|email|max:255|unique:users,email,' . $id,
             'mobile_code'               => 'nullable|string|max:5',
             'mobile'                    => 'nullable|string|max:20',
-            'gender'                    => 'required|in:m,f',
+            'gender'                    => 'required|in:Male,Female',
             'marital_status'            => 'nullable|in:single,married,divorced,widowed',
             'birthdate'                 => 'required|date',
             'blood_type'                => 'nullable|string|max:10',
@@ -33,6 +33,9 @@ class UpdateMemberRequest extends FormRequest
             'is_billing_contact'        => 'boolean',
             'remove_profile_picture'    => 'nullable|boolean',
             'profile_picture_is_public' => 'nullable|boolean',
+            'emergency_contacts_json' => 'nullable|string',
+            'health_conditions_json'  => 'nullable|string',
+            'documents_json'          => 'nullable|string',
         ];
     }
 }

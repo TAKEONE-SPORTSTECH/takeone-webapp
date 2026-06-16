@@ -86,7 +86,7 @@
     let countriesData = null;
 
     function getClubMapInstance() {
-        return window.LocationMap ? window.LocationMap['_locationMap_' + CLUB_MAP_ID] : null;
+        return window.LocationMap ? window.LocationMap.get(CLUB_MAP_ID) : null;
     }
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -265,7 +265,7 @@
 
     function getCurrentLocation() {
         if (!navigator.geolocation) {
-            alert('Geolocation is not supported by your browser');
+            window.showToast('error', 'Geolocation is not supported by your browser');
             return;
         }
 
@@ -292,7 +292,7 @@
             },
             function(error) {
                 console.error('Geolocation error:', error);
-                alert('Unable to get your location. Please check your browser permissions.');
+                window.showToast('error', 'Unable to get your location. Please check your browser permissions.');
                 btn.disabled = false;
                 btn.innerHTML = originalHtml;
             }

@@ -54,14 +54,6 @@ $eventsJson = $events->map(function($e) {
         </div>
     </div>
 
-    {{-- Session messages --}}
-    @if(session('success'))
-        <div class="alert alert-success mb-4">{{ session('success') }}</div>
-    @endif
-    @if(session('error'))
-        <div class="alert alert-danger mb-4">{{ session('error') }}</div>
-    @endif
-
     {{-- Events list --}}
     @if($activeEvents->isEmpty())
         <div class="card border-0 shadow-sm">
@@ -82,6 +74,7 @@ $eventsJson = $events->map(function($e) {
                 $tagsArr   = is_array($event->tags) ? $event->tags : [];
             @endphp
             <div class="card border-0 shadow-sm overflow-hidden cursor-pointer {{ $event->isOngoing() ? 'border border-green-200 bg-green-50' : ($isPast ? 'opacity-60' : '') }}"
+                 id="event-{{ $event->id }}"
                  @click="openDetail({{ $event->id }})">
                 <div class="card-body p-4">
                     <div class="flex items-start gap-4">
@@ -166,7 +159,8 @@ $eventsJson = $events->map(function($e) {
                 <div class="modal-body px-6 py-4 space-y-3 max-h-[70vh] overflow-y-auto">
                     @forelse($archivedEvents as $event)
                     @php $pillColor = $event->color ?: '#1d4ed8'; @endphp
-                    <div class="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/20">
+                    <div class="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/20"
+                         id="event-archived-{{ $event->id }}">
                         <div class="flex-shrink-0 rounded-lg text-white text-center px-2 py-1.5 min-w-[46px]"
                              style="background:{{ $pillColor }};">
                             <div class="text-[10px] font-semibold uppercase">{{ $event->date->format('D') }}</div>
@@ -459,7 +453,7 @@ $(function() {
 
     $('#eventCropperSave').on('click', function() {
         if (!eventCropperInstance || !eventCropperInstance.properties?.image) {
-            alert('Please select an image first.');
+            window.showToast('warning', 'Please select an image first.');
             return;
         }
         const btn = $(this);
@@ -593,10 +587,16 @@ function eventsAdmin() {
                 })
                 .then(r => r.json())
                 .then(data => {
-                    if (data.success) location.reload();
-                    else alert(data.message || 'Failed to delete event.');
+                    if (data.success) {
+                        document.getElementById(`event-${id}`)?.remove();
+                        document.getElementById(`event-archived-${id}`)?.remove();
+                        this.showDetail = false;
+                        window.showToast('success', data.message || 'Event deleted.');
+                    } else {
+                        window.showToast('error', data.message || 'Failed to delete event.');
+                    }
                 })
-                .catch(() => alert('Failed to delete event.'));
+                .catch(() => window.showToast('error', 'Failed to delete event.'));
             });
         },
     };

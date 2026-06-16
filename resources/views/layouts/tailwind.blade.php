@@ -27,7 +27,7 @@
             <div class="flex items-center justify-between h-16">
                 <!-- Logo -->
                 <a href="{{ Auth::check() ? route('clubs.explore') : url('/') }}" class="flex items-center">
-                    <img src="{{ asset('images/logo.png') }}" alt="TAKEONE" class="h-10">
+                    <img src="{{ asset('images/fullLogo.png') }}" alt="TAKEONE" class="h-10">
                 </a>
 
                 <!-- Mobile Menu Button -->
@@ -38,6 +38,9 @@
                 <!-- Right Side Navigation -->
                 <div class="hidden md:flex items-center gap-2">
                     @auth
+                        <!-- Exit Impersonation Button -->
+                        <x-impersonation-banner />
+
                         <!-- Explore Button -->
                         <a href="{{ route('clubs.explore') }}" class="p-2 rounded-full hover:bg-gray-200 transition-all hover:scale-110" title="Explore">
                             <i class="bi bi-compass text-xl"></i>
@@ -122,10 +125,10 @@
                                     <p class="font-semibold text-sm">{{ Auth::user()->full_name }}</p>
                                     <p class="text-xs text-gray-500">{{ Auth::user()->email }}</p>
                                 </div>
-                                <a href="{{ route('member.show', Auth::id()) }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-primary hover:text-white transition-colors">
+                                <a href="{{ route('member.show', Auth::user()->uuid) }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-primary hover:text-white transition-colors">
                                     <i class="bi bi-person"></i>Profile
                                 </a>
-                                <a href="{{ route('member.show', Auth::id()) }}#affiliations" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-primary hover:text-white transition-colors">
+                                <a href="{{ route('member.show', Auth::user()->uuid) }}#affiliations" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-primary hover:text-white transition-colors">
                                     <i class="bi bi-diagram-3"></i>Affiliations
                                 </a>
                                 <a href="#" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-primary hover:text-white transition-colors">

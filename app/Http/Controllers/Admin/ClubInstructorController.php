@@ -21,7 +21,7 @@ class ClubInstructorController extends Controller
     {
         $this->authorizeClub($club);
         $instructors = ClubInstructor::where('tenant_id', $club->id)->with('user')->get();
-        return view('admin.club.instructors.index', compact('club', 'instructors'));
+        return view(\App\Support\ClubView::pick('instructors'), compact('club', 'instructors'));
     }
 
     public function storeInstructor(StoreInstructorRequest $request, Tenant $club)

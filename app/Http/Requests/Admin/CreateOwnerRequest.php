@@ -16,7 +16,7 @@ class CreateOwnerRequest extends FormRequest
         return [
             'full_name'   => 'required|string|max:255',
             'email'       => 'nullable|email',
-            'gender'      => 'required|in:m,f',
+            'gender'      => 'required|in:Male,Female',
             'birthdate'   => 'required|date',
             'nationality' => 'required|string|max:100',
             'password'    => 'required|string|min:8',

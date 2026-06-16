@@ -39,7 +39,7 @@
     $horoscope = $member->horoscope ?? 'N/A';
     $symbol = $horoscopeSymbols[$horoscope] ?? '';
 
-    $isMale = ($member->gender ?? 'm') === 'm';
+    $isMale = ($member->gender ?? 'Male') === 'Male';
     $sinceDate = $memberSince ?? $member->created_at;
 
     // Nationality: resolve ISO2/ISO3 code → flag emoji + full name
@@ -63,6 +63,29 @@
         $nationalityDisplay = $member->nationality ?? 'N/A';
     }
 
+    // Taekwondo classification
+    $latestRecord = $member->relationLoaded('latestHealthRecord')
+        ? $member->latestHealthRecord
+        : null;
+    $weight = $latestRecord ? (float) $latestRecord->weight : null;
+
+    // Category derives from age alone; weight class requires both age + weight
+    $tkdFull = ($age !== null && $weight > 0)
+        ? classifyTaekwondo(strtolower($member->gender ?? 'male'), $age, $weight)
+        : null;
+    $weightClass = $tkdFull ? $tkdFull['category'] . ' kg' : null;
+
+    $tkdCategory = $tkdFull
+        ? $tkdFull['age_group']
+        : ($age !== null ? match(true) {
+            $age < 6  => null,
+            $age < 12 => 'Kids',
+            $age < 15 => 'Cadet',
+            $age < 18 => 'Junior',
+            $age < 31 => 'Senior',
+            default   => 'Masters',
+        } : null);
+
     // Guardian contact fallback
     $displayMobile = $member->mobile;
     $displayEmail = $member->email;
@@ -79,7 +102,11 @@
      data-member-name="{{ $member->full_name ?? '' }}"
      data-member-phone="{{ $member->formatted_mobile ?? '' }}"
      data-member-nationality="{{ $member->nationality ?? '' }}"
-     data-member-gender="{{ $member->gender ?? '' }}">
+     data-member-gender="{{ $member->gender ?? '' }}"
+     data-age="{{ $age ?? '' }}"
+     data-gender="{{ strtolower($member->gender ?? '') }}"
+     data-tkd-category="{{ $tkdCategory ?? '' }}"
+     data-weight-class="{{ $weightClass ?? '' }}">
 
     @if($href)
     <a href="{{ $href }}" class="no-underline h-full flex flex-col">
@@ -183,6 +210,27 @@
                         </div>
                     </div>
                 </div>
+
+                @if($weightClass || $tkdCategory)
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                        <div class="text-xs text-muted-foreground uppercase font-medium mb-1 tracking-wide">Category</div>
+                        <div class="font-bold text-primary">
+                            <i class="bi bi-trophy-fill mr-1"></i>{{ $tkdCategory ?? 'N/A' }}
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-muted-foreground uppercase font-medium mb-1 tracking-wide">Weight Class</div>
+                        <div class="font-bold text-primary">
+                            @if($weightClass)
+                                <span class="mr-1">⚖️</span>{{ $weightClass }}
+                            @else
+                                <span class="text-muted-foreground font-normal">No weight data</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                @endif
 
                 {{ $extraDetails ?? '' }}
 

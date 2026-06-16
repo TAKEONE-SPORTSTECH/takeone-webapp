@@ -26,18 +26,23 @@ class RegisteredUserController extends Controller
             $this->storeClubContext($request->input('intended'));
         }
 
+        if (session('club.context')) {
+            return view('auth.register-wizard');
+        }
+
         return view('auth.register');
     }
 
     private function storeClubContext(string $intendedUrl): void
     {
         if (preg_match('#/mobile/[^/?]+/([^/?]+)#', $intendedUrl, $matches)) {
-            $club = \App\Models\Tenant::where('slug', $matches[1])->first(['club_name', 'slug', 'logo']);
+            $club = \App\Models\Tenant::where('slug', $matches[1])->first(['club_name', 'slug', 'logo', 'cover_image']);
             if ($club) {
                 session(['club.context' => [
-                    'name' => $club->club_name,
-                    'logo' => $club->logo,
-                    'slug' => $club->slug,
+                    'name'        => $club->club_name,
+                    'logo'        => $club->logo,
+                    'slug'        => $club->slug,
+                    'cover_image' => $club->cover_image,
                 ]]);
             }
         }
@@ -58,7 +63,7 @@ class RegisteredUserController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'mobile_number' => ['required', 'string', 'max:20'],
-            'gender' => ['required', 'in:m,f'],
+            'gender' => ['required', 'in:Male,Female'],
             'birthdate' => ['required', 'date', 'before:today'],
             'country_code' => ['required', 'string', 'max:10'],
             'nationality' => ['required', 'string', 'max:255'],

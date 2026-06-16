@@ -104,7 +104,7 @@
 @layer components {
     /* ==================== BUTTONS ==================== */
     .btn {
-        @apply inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 cursor-pointer;
+        @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 cursor-pointer;
     }
 
     .btn-primary {
@@ -1003,7 +1003,7 @@
     }
 
     .tf-section-title {
-        @apply text-2xl font-bold mb-1;
+        @apply text-xl font-bold text-gray-900 mb-1;
     }
 
     /* ---- Empty States ---- */
@@ -1081,7 +1081,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.25), rgba(0,0,0,0.95));
+    background: linear-gradient(to bottom, rgba(0,0,0,0.05), rgba(0,0,0,0.55));
 }
 
 .hero-bg-slide.active {
@@ -1162,6 +1162,35 @@
 .banner-bottom {
     margin-bottom: 20px;
     text-shadow: 0 2px 12px rgba(0,0,0,0.85), 0 1px 4px rgba(0,0,0,0.9);
+}
+
+.social-strip {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px 0;
+}
+
+.social-strip-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--color-muted);
+    color: var(--color-foreground);
+    text-decoration: none;
+    border: 1px solid var(--color-border);
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    font-size: 1.2rem;
+}
+
+.social-strip-link:hover {
+    background: var(--color-primary);
+    color: #fff;
+    border-color: var(--color-primary);
 }
 
 .stats-row {
@@ -1939,11 +1968,24 @@
 .event-ribbon.limited { background: #f97316; }
 
 .stat-card {
-    border-radius: 20px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    padding: 18px 18px 16px;
+    border-radius: 12px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
     height: 100%;
+}
+
+.stat-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: #f9fafb;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.stat-card-body {
+    padding: 16px 16px 14px;
 }
 
 .stat-legend {
@@ -1988,78 +2030,7 @@
     max-height: 220px;
 }
 
-.rating-breakdown-card {
-    border-radius: 20px;
-    background: #f9fafb;
-    color: #111827;
-    padding: 18px 20px;
-    margin-top: 24px;
-    border: 1px solid #e5e7eb;
-}
-
-.rating-main-score { font-size: 32px; font-weight: 800; line-height: 1; }
-.rating-stars { color: #facc15; font-size: 14px; }
-.rating-subtext { font-size: 11px; color: #6b7280; }
-
-.aspect-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-}
-
-.aspect-label {
-    width: 150px;
-    font-size: 11px;
-    color: #111827;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.aspect-bar {
-    flex: 1;
-    height: 6px;
-    border-radius: 999px;
-    background: #e2e8f0;
-    overflow: hidden;
-}
-
-.aspect-fill {
-    height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(to right, #22c55e, #a3e635);
-}
-
-.aspect-score { width: 40px; text-align: right; font-size: 11px; color: #111827; }
-
-.rating-badge-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 8px;
-}
-
-.rating-badge {
-    border-radius: 999px;
-    padding: 4px 10px;
-    background: white;
-    color: #111827;
-    font-size: 11px;
-    border: 1px solid #e5e7eb;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.rating-trend {
-    font-size: 12px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: #16a34a;
-    margin-top: 4px;
-}
+/* rating breakdown — old classes removed, replaced with Tailwind in template */
 
 .news-timeline {
     position: relative;
@@ -2394,7 +2365,6 @@
 
 .club-card {
     transition: all 0.3s ease-in-out;
-    min-height: 450px;
 }
 
 .club-card:hover {
@@ -2988,9 +2958,11 @@
     z-index: 9999;
     pointer-events: none;
 }
-.toast-container.top-right { top: 20px; right: 20px; }
-.toast-container.top-left { top: 20px; left: 20px; }
-.toast-container.top-center { top: 20px; left: 50%; transform: translateX(-50%); }
+/* 76px keeps top toasts clear of the 64px sticky header so they never overlay
+   (and block taps on) the top-bar icons (chat, notifications, etc.). */
+.toast-container.top-right { top: 76px; right: 20px; }
+.toast-container.top-left { top: 76px; left: 20px; }
+.toast-container.top-center { top: 76px; left: 50%; transform: translateX(-50%); }
 .toast-container.bottom-right { bottom: 20px; right: 20px; }
 .toast-container.bottom-left { bottom: 20px; left: 20px; }
 .toast-container.bottom-center { bottom: 20px; left: 50%; transform: translateX(-50%); }
@@ -3368,3 +3340,268 @@ a.text-decoration-none:hover .family-card { text-decoration: none; }
     background-color: hsl(var(--primary) / 0.1);
 }
 .section-icon i { font-size: 1.125rem; }
+
+/* ================================================================
+   Profile Modal — uniform 42 px height for every interactive element.
+   Selectors use BOTH the form IDs (always present in the DOM) and
+   the class (set in Blade) so the rules fire regardless of cache.
+   All values are hardcoded — no CSS variables that need an ancestor.
+   ================================================================ */
+
+/* shorthand: both forms share the same rules */
+#profileEditForm .form-control:not(textarea),
+#profileEditForm .form-select,
+#memberCreateForm .form-control:not(textarea),
+#memberCreateForm .form-select,
+.profile-modal-form .form-control:not(textarea),
+.profile-modal-form .form-select {
+    height: 42px !important;
+    box-sizing: border-box !important;
+    padding: 0 0.875rem !important;
+    font-size: 0.875rem !important;
+    line-height: 42px !important;
+    border: 2px solid hsl(var(--primary) / 0.2) !important;
+    border-radius: 0.75rem !important;
+    background: rgb(255 255 255 / 0.85) !important;
+    box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.04) !important;
+    transition: border-color 0.2s, box-shadow 0.2s !important;
+    outline: none !important;
+}
+#profileEditForm .form-control:not(textarea):focus,
+#profileEditForm .form-select:focus,
+#memberCreateForm .form-control:not(textarea):focus,
+#memberCreateForm .form-select:focus,
+.profile-modal-form .form-control:not(textarea):focus,
+.profile-modal-form .form-select:focus {
+    border-color: hsl(var(--primary)) !important;
+    background: white !important;
+    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.12) !important;
+}
+/* password eye-button padding */
+#profileEditForm .form-control.pr-10,
+#memberCreateForm .form-control.pr-10,
+.profile-modal-form .form-control.pr-10 {
+    padding-right: 2.5rem !important;
+}
+/* validation error */
+#profileEditForm .form-control.is-invalid:not(textarea),
+#memberCreateForm .form-control.is-invalid:not(textarea),
+.profile-modal-form .form-control.is-invalid:not(textarea) {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 3px rgb(239 68 68 / 0.15) !important;
+}
+
+/* Textarea (motto) — auto-height, no fixed constraint */
+#profileEditForm textarea.form-control,
+#memberCreateForm textarea.form-control,
+.profile-modal-form textarea.form-control {
+    height: auto !important;
+    min-height: 84px !important;
+    padding: 0.6rem 0.875rem !important;
+    line-height: 1.5 !important;
+    font-size: 0.875rem !important;
+    border: 2px solid hsl(var(--primary) / 0.2) !important;
+    border-radius: 0.75rem !important;
+    background: rgb(255 255 255 / 0.85) !important;
+    box-shadow: none !important;
+    resize: none !important;
+    outline: none !important;
+}
+#profileEditForm textarea.form-control:focus,
+#memberCreateForm textarea.form-control:focus,
+.profile-modal-form textarea.form-control:focus {
+    border-color: hsl(var(--primary)) !important;
+    background: white !important;
+    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.12) !important;
+}
+
+/* Alpine custom dropdown triggers (gender, blood type, birthdate, nationality…) */
+#profileEditForm .tf-dropdown-trigger,
+#memberCreateForm .tf-dropdown-trigger,
+.profile-modal-form .tf-dropdown-trigger {
+    height: 42px !important;
+    box-sizing: border-box !important;
+    padding: 0 0.875rem !important;
+    font-size: 0.875rem !important;
+    border: 2px solid hsl(var(--primary) / 0.2) !important;
+    border-radius: 0.75rem !important;
+}
+
+/* tf-input (social links URL input) — also needs to match */
+#profileEditForm .tf-input,
+.profile-modal-form .tf-input {
+    height: 42px !important;
+    box-sizing: border-box !important;
+    padding: 0 0.875rem !important;
+    font-size: 0.875rem !important;
+    border: 2px solid hsl(var(--primary) / 0.2) !important;
+    border-radius: 0.75rem !important;
+}
+#profileEditForm .tf-input:focus,
+.profile-modal-form .tf-input:focus {
+    border-color: hsl(var(--primary)) !important;
+    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.12) !important;
+    outline: none !important;
+}
+
+/* tf-input-group (mobile number: code button + phone input side-by-side) */
+#profileEditForm .tf-input-group,
+#memberCreateForm .tf-input-group,
+.profile-modal-form .tf-input-group {
+    height: 42px !important;
+    box-sizing: border-box !important;
+    border: 2px solid hsl(var(--primary) / 0.2) !important;
+    border-radius: 0.75rem !important;
+    background: rgb(255 255 255 / 0.85) !important;
+    box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.04) !important;
+}
+#profileEditForm .tf-input-group:focus-within,
+#memberCreateForm .tf-input-group:focus-within,
+.profile-modal-form .tf-input-group:focus-within {
+    border-color: hsl(var(--primary)) !important;
+    background: white !important;
+    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.12) !important;
+}
+/* code-picker button inside the group */
+#profileEditForm .tf-input-group > div > button,
+#memberCreateForm .tf-input-group > div > button,
+.profile-modal-form .tf-input-group > div > button {
+    height: 100% !important;
+    padding: 0 0.625rem !important;
+    font-size: 0.875rem !important;
+    box-sizing: border-box !important;
+}
+/* phone number input inside the group — strip its own border */
+#profileEditForm .tf-input-group input,
+#profileEditForm .tf-input-group .form-control,
+#memberCreateForm .tf-input-group input,
+#memberCreateForm .tf-input-group .form-control,
+.profile-modal-form .tf-input-group input,
+.profile-modal-form .tf-input-group .form-control {
+    height: 100% !important;
+    border: none !important;
+    border-radius: 0 0.75rem 0.75rem 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 0.75rem !important;
+    font-size: 0.875rem !important;
+    outline: none !important;
+    line-height: 1 !important;
+}
+#profileEditForm .tf-input-group input:focus,
+#profileEditForm .tf-input-group .form-control:focus,
+#memberCreateForm .tf-input-group input:focus,
+#memberCreateForm .tf-input-group .form-control:focus,
+.profile-modal-form .tf-input-group input:focus,
+.profile-modal-form .tf-input-group .form-control:focus {
+    box-shadow: none !important;
+    background: transparent !important;
+    border: none !important;
+}
+
+/* Social links delete/trash button — match 42 px height */
+#profileEditForm .social-link-row > div:last-child > button,
+.profile-modal-form .social-link-row > div:last-child > button {
+    height: 42px !important;
+    width: 42px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+}
+
+/* Labels */
+#profileEditForm .form-label,
+#memberCreateForm .form-label,
+.profile-modal-form .form-label {
+    display: block !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    color: #374151 !important;
+    margin-bottom: 0.25rem !important;
+}
+
+/* ==========================================================================
+   MOBILE MOTION & DESIGN FOUNDATION
+   Scoped, additive, on-system (primary hsl(var(--primary))). Class-gated so it
+   never affects desktop or any element not explicitly tagged in a mobile view.
+   Unifies entrance motion + micro-interactions across all mobile pages.
+   ========================================================================== */
+
+@keyframes m-rise   { from { opacity: 0; transform: translate3d(0, 14px, 0); } to { opacity: 1; transform: none; } }
+@keyframes m-fade   { from { opacity: 0; } to { opacity: 1; } }
+@keyframes m-pop    { 0% { opacity: 0; transform: scale(.92); } 60% { transform: scale(1.015); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes m-bar    { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes m-float  { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes m-shimmer{ 100% { background-position: 200% 0; } }
+@keyframes m-sheen  { 0% { transform: translateX(-120%) skewX(-18deg); } 60%,100% { transform: translateX(320%) skewX(-18deg); } }
+
+/* Staggered entrance — applied to a container; direct children rise in sequence. */
+.mobile-stagger > * {
+    opacity: 0;
+    animation: m-rise .52s cubic-bezier(.22,.61,.36,1) both;
+}
+.mobile-stagger > *:nth-child(1){ animation-delay:.02s } .mobile-stagger > *:nth-child(2){ animation-delay:.07s }
+.mobile-stagger > *:nth-child(3){ animation-delay:.12s } .mobile-stagger > *:nth-child(4){ animation-delay:.17s }
+.mobile-stagger > *:nth-child(5){ animation-delay:.22s } .mobile-stagger > *:nth-child(6){ animation-delay:.27s }
+.mobile-stagger > *:nth-child(7){ animation-delay:.32s } .mobile-stagger > *:nth-child(8){ animation-delay:.37s }
+.mobile-stagger > *:nth-child(9){ animation-delay:.42s } .mobile-stagger > *:nth-child(n+10){ animation-delay:.47s }
+
+/* Entrance primitives for one-off elements. */
+.m-in       { animation: m-rise .52s cubic-bezier(.22,.61,.36,1) both; }
+.m-in-pop   { animation: m-pop  .5s  cubic-bezier(.22,.61,.36,1) both; }
+.m-in-fade  { animation: m-fade .6s ease both; }
+
+/* Tap micro-interaction — tactile press for cards/buttons/links on mobile. */
+.m-press { transition: transform .14s cubic-bezier(.22,.61,.36,1), box-shadow .2s ease; -webkit-tap-highlight-color: transparent; }
+.m-press:active { transform: scale(.975); }
+
+/* Elevated, on-system card with a hairline gradient edge + soft depth. */
+.m-card {
+    position: relative;
+    background: #fff;
+    border-radius: 1rem;
+    border: 1px solid hsl(210 14% 90%);
+    box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 8px 24px -16px rgba(16,24,40,.22);
+}
+
+/* Hero with a living gradient glow (uses the brand primary, stays on-theme). */
+.m-hero {
+    position: relative;
+    overflow: hidden;
+    background:
+        radial-gradient(120% 120% at 0% 0%, hsl(250 65% 72%) 0%, transparent 55%),
+        radial-gradient(120% 140% at 100% 0%, hsl(265 70% 62%) 0%, transparent 50%),
+        hsl(var(--primary));
+}
+.m-hero::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(115deg, transparent 0%, rgba(255,255,255,.18) 50%, transparent 60%);
+    transform: translateX(-120%) skewX(-18deg);
+    animation: m-sheen 5.5s ease-in-out 1s infinite;
+    pointer-events: none;
+}
+
+/* Animated progress/stat bar fill (set width inline; animation grows it in). */
+.m-bar-fill { transform-origin: left center; animation: m-bar .9s cubic-bezier(.22,.61,.36,1) .15s both; }
+
+/* Skeleton shimmer for loading states. */
+.m-skeleton {
+    background: linear-gradient(90deg, hsl(220 15% 94%) 25%, hsl(220 15% 97%) 37%, hsl(220 15% 94%) 63%);
+    background-size: 200% 100%;
+    animation: m-shimmer 1.4s ease-in-out infinite;
+}
+
+/* Gentle floating accent (e.g., empty-state icons). */
+.m-float { animation: m-float 3.4s ease-in-out infinite; }
+
+/* Respect users who prefer less motion. */
+@media (prefers-reduced-motion: reduce) {
+    .mobile-stagger > *, .m-in, .m-in-pop, .m-in-fade, .m-bar-fill, .m-hero::after, .m-float, .m-skeleton {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+}

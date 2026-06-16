@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\Attendance;
 use App\Models\ClubAffiliation;
@@ -47,6 +48,12 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     protected static function booted(): void
     {
+        static::creating(function (self $user) {
+            if (empty($user->uuid)) {
+                $user->uuid = (string) \Illuminate\Support\Str::uuid();
+            }
+        });
+
         static::saving(function (self $user) {
             if ($user->isDirty('full_name') && $user->full_name) {
                 $user->name = $user->full_name;
@@ -130,6 +137,7 @@ class User extends Authenticatable implements MustVerifyEmail
      * @var list<string>
      */
     protected $fillable = [
+        'uuid',
         'name',
         'full_name',
         'email',
@@ -141,6 +149,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'blood_type',
         'nationality',
         'addresses',
+        'documents',
+        'emergency_contacts',
+        'health_conditions',
         'social_links',
         'media_gallery',
         'profile_picture',
@@ -177,6 +188,9 @@ class User extends Authenticatable implements MustVerifyEmail
             'password' => 'hashed',
             'birthdate' => 'date',
             'addresses' => 'array',
+            'documents' => 'array',
+            'emergency_contacts' => 'array',
+            'health_conditions' => 'array',
             'social_links' => 'array',
             'media_gallery' => 'array',
             'mobile' => 'array',
@@ -329,6 +343,24 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Get the business (chain) owned by the user. One business per user.
+     */
+    public function ownedBusiness(): HasOne
+    {
+        return $this->hasOne(Business::class, 'owner_user_id');
+    }
+
+    /**
+     * Whether the user owns an approved business (controls the Personal/Business switcher).
+     */
+    public function hasApprovedBusiness(): bool
+    {
+        return $this->ownedBusiness()
+            ->where('status', Business::STATUS_APPROVED)
+            ->exists();
+    }
+
+    /**
      * Get the clubs the user is a member of.
      */
     public function memberClubs(): BelongsToMany
@@ -360,6 +392,14 @@ class User extends Authenticatable implements MustVerifyEmail
     public function healthRecords(): HasMany
     {
         return $this->hasMany(HealthRecord::class);
+    }
+
+    /**
+     * Get the most recent health record for the user.
+     */
+    public function latestHealthRecord(): HasOne
+    {
+        return $this->hasOne(HealthRecord::class)->latestOfMany('recorded_at');
     }
 
     /**

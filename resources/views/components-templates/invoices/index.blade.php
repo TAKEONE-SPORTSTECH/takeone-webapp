@@ -1,85 +1,185 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 py-4">
-    <div class="flex justify-between items-center mb-4">
+@php
+    $hasOutstanding = $summary['outstanding'] > 0;
+@endphp
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6" x-data="billsPage()">
+
+    {{-- ── Header ── --}}
+    <div class="flex items-center justify-between gap-4 mb-6">
         <div>
-            <h1 class="text-2xl font-bold mb-0">Payments & Subscriptions</h1>
-            <p class="text-muted-foreground mb-0">Manage your club membership payments, subscriptions, and billing history</p>
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary/70">Wallet</p>
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Bills &amp; Payments</h1>
         </div>
-        <a href="{{ url()->previous() }}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Back
+        <a href="{{ url()->previous() }}"
+           class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 transition-colors">
+            <i class="bi bi-arrow-left"></i> <span class="hidden sm:inline">Back</span>
         </a>
     </div>
 
-    <div class="card shadow-sm">
-        <div class="card-header bg-card">
-            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                <h4 class="mb-0">All Bills</h4>
-                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                    <form method="GET" action="{{ route('bills.index') }}" class="flex flex-wrap gap-2 items-center">
-                        <label for="start_date" class="form-label mb-0 mr-1">From:</label>
-                        <input type="date" name="start_date" id="start_date" class="form-control form-control-sm" value="{{ request('start_date') }}">
-                        <label for="end_date" class="form-label mb-0 mr-1 ml-2">To:</label>
-                        <input type="date" name="end_date" id="end_date" class="form-control form-control-sm" value="{{ request('end_date') }}">
-                        <button type="submit" class="btn btn-primary btn-sm ml-2">Filter</button>
-                    </form>
-                    <div class="flex gap-2">
-                        <a href="{{ route('bills.index') }}" class="btn btn-outline-secondary {{ !request('status') ? 'active' : '' }}">All</a>
-                        <a href="{{ route('bills.index', ['status' => 'pending']) }}" class="btn btn-warning {{ request('status') === 'pending' ? 'active' : '' }}">Pending</a>
-                        <a href="{{ route('bills.index', ['status' => 'paid']) }}" class="btn btn-success {{ request('status') === 'paid' ? 'active' : '' }}">Paid</a>
-                    </div>
+    {{-- ── Balance hero ── --}}
+    <div class="relative overflow-hidden rounded-3xl p-6 sm:p-8 mb-5 text-white shadow-lg"
+         style="background-image: linear-gradient(135deg, hsl(250 65% 60%) 0%, hsl(255 60% 55%) 45%, hsl(265 55% 48%) 100%);">
+        {{-- Decorative orbs --}}
+        <div class="pointer-events-none absolute -top-16 -right-10 w-64 h-64 rounded-full bg-white/10 blur-2xl"></div>
+        <div class="pointer-events-none absolute -bottom-24 -left-10 w-72 h-72 rounded-full bg-black/10 blur-2xl"></div>
+        <div class="pointer-events-none absolute inset-0 opacity-[0.07]"
+             style="background-image:radial-gradient(circle at 1px 1px, #fff 1px, transparent 0);background-size:22px 22px;"></div>
+
+        <div class="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+            <div>
+                <p class="text-sm font-medium text-white/70 flex items-center gap-2">
+                    <i class="bi bi-wallet2"></i> Total outstanding
+                </p>
+                <div class="mt-2 flex items-end gap-2">
+                    <span class="text-base font-semibold text-white/80 mb-1.5">{{ $currency }}</span>
+                    <span class="text-5xl sm:text-6xl font-bold tracking-tight tabular-nums leading-none">{{ number_format($summary['outstanding'], 2) }}</span>
+                </div>
+                <div class="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                    @if($summary['overdue_count'] > 0)
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/90 text-white font-semibold text-xs">
+                            <i class="bi bi-exclamation-octagon-fill"></i> {{ $summary['overdue_count'] }} overdue
+                        </span>
+                    @endif
+                    @if($summary['next_due'])
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-white/90 text-xs font-medium">
+                            <i class="bi bi-calendar-event"></i>
+                            Next due {{ $summary['next_due']->due_date->format('M d') }}
+                        </span>
+                    @endif
+                    @unless($hasOutstanding)
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-400/90 text-emerald-950 text-xs font-semibold">
+                            <i class="bi bi-check-circle-fill"></i> All settled
+                        </span>
+                    @endunless
                 </div>
             </div>
-        </div>
-        <div class="card-body">
-            @if($invoices->count() > 0)
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Invoice #</th>
-                                <th>Student</th>
-                                <th>Amount</th>
-                                <th>Status</th>
-                                <th>Due Date</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($invoices as $invoice)
-                                <tr>
-                                    <td>{{ $invoice->id }}</td>
-                                    <td>{{ $invoice->student_user->full_name ?? 'N/A' }}</td>
-                                    <td>${{ number_format($invoice->amount, 2) }}</td>
-                                    <td>
-                                        <span class="badge bg-{{ $invoice->status === 'paid' ? 'success' : 'warning' }}">
-                                            {{ ucfirst($invoice->status) }}
-                                        </span>
-                                    </td>
-                                    <td>{{ $invoice->due_date->format('M d, Y') }}</td>
-                                    <td>
-                                        <a href="{{ route('bills.show', $invoice->id) }}" class="btn btn-sm btn-outline-primary">View</a>
-                                        @if($invoice->status === 'pending')
-                                            <a href="{{ route('bills.pay', $invoice->id) }}" class="btn btn-sm btn-success">Pay Now</a>
-                                        @else
-                                            <a href="{{ route('bills.receipt', $invoice->id) }}" class="btn btn-sm btn-outline-secondary">Receipt</a>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-                {{ $invoices->links() }}
-            @else
-                <div class="text-center py-12">
-                    <i class="bi bi-receipt text-muted-foreground text-5xl mb-3 block"></i>
-                    <h5 class="text-muted-foreground">No invoices found</h5>
-                    <p class="text-muted-foreground">You don't have any invoices yet.</p>
-                </div>
+
+            @if($hasOutstanding)
+            <a href="{{ route('bills.pay-all') }}"
+               class="group inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-white text-primary font-bold text-sm shadow-md hover:shadow-xl hover:scale-[1.02] active:scale-95 transition-all">
+                <i class="bi bi-lightning-charge-fill group-hover:scale-110 transition-transform"></i>
+                Pay all ({{ $summary['pending_count'] }})
+            </a>
             @endif
         </div>
     </div>
+
+    {{-- ── KPI strip ── --}}
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        @php
+            $kpis = [
+                ['label'=>'Paid to date','value'=>$currency.' '.number_format($summary['paid_total'],2),'icon'=>'bi-check2-circle','tint'=>'emerald'],
+                ['label'=>'Pending bills','value'=>$summary['pending_count'],'icon'=>'bi-hourglass-split','tint'=>'amber'],
+                ['label'=>'Overdue','value'=>$summary['overdue_count'],'icon'=>'bi-exclamation-triangle','tint'=>'red'],
+                ['label'=>'Paid bills','value'=>$summary['paid_count'],'icon'=>'bi-receipt','tint'=>'primary'],
+            ];
+        @endphp
+        @foreach($kpis as $kpi)
+            <div class="rounded-2xl bg-white border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0
+                    @class([
+                        'bg-emerald-50 text-emerald-600' => $kpi['tint']==='emerald',
+                        'bg-amber-50 text-amber-600'      => $kpi['tint']==='amber',
+                        'bg-red-50 text-red-500'          => $kpi['tint']==='red',
+                        'bg-accent text-primary'          => $kpi['tint']==='primary',
+                    ])">
+                    <i class="bi {{ $kpi['icon'] }} text-lg"></i>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground truncate">{{ $kpi['label'] }}</p>
+                    <p class="text-lg font-bold text-gray-900 tabular-nums leading-tight">{{ $kpi['value'] }}</p>
+                </div>
+            </div>
+        @endforeach
+    </div>
+
+    {{-- ── Filter bar ── --}}
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+        {{-- Segmented status control --}}
+        <div class="inline-flex p-1 rounded-xl bg-muted/70 self-start">
+            @php $segments = ['' => 'All', 'pending' => 'Pending', 'paid' => 'Paid']; @endphp
+            @foreach($segments as $val => $label)
+                <button type="button"
+                        @click="setStatus('{{ $val }}')"
+                        :class="status === '{{ $val }}' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-gray-700'"
+                        class="px-4 py-1.5 rounded-lg text-sm font-semibold transition-all">
+                    {{ $label }}
+                </button>
+            @endforeach
+        </div>
+
+        {{-- Date range --}}
+        <div class="flex items-center gap-2">
+            <div class="relative">
+                <i class="bi bi-calendar3 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+                <input type="date" x-model="startDate" @change="reload()"
+                       class="pl-9 pr-2 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+            </div>
+            <span class="text-muted-foreground text-sm">–</span>
+            <div class="relative">
+                <i class="bi bi-calendar3 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+                <input type="date" x-model="endDate" @change="reload()"
+                       class="pl-9 pr-2 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+            </div>
+            <button type="button" x-show="startDate || endDate" @click="clearDates()"
+                    class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Clear dates">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    </div>
+
+    {{-- ── List (AJAX-swapped) ── --}}
+    <div id="billsList" :class="loading ? 'opacity-40 pointer-events-none transition-opacity' : 'transition-opacity'">
+        @include('components-templates.invoices._list')
+    </div>
 </div>
+
+@push('styles')
+<style>
+    .bill-card { animation: billUp .5s cubic-bezier(.22,1,.36,1) both; animation-delay: var(--d, 0s); }
+    @keyframes billUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+    @media (prefers-reduced-motion: reduce) { .bill-card { animation: none; } }
+</style>
+@endpush
+
+@push('scripts')
+<script>
+    function billsPage() {
+        return {
+            status: @json($status ?? ''),
+            startDate: @json(request('start_date') ?? ''),
+            endDate: @json(request('end_date') ?? ''),
+            loading: false,
+            _seq: 0,
+
+            setStatus(v) { this.status = v; this.reload(); },
+            clearDates() { this.startDate = ''; this.endDate = ''; this.reload(); },
+
+            reload() {
+                const params = new URLSearchParams();
+                if (this.status)    params.set('status', this.status);
+                if (this.startDate) params.set('start_date', this.startDate);
+                if (this.endDate)   params.set('end_date', this.endDate);
+                const qs  = params.toString();
+                const url = '{{ route('bills.index') }}' + (qs ? ('?' + qs) : '');
+
+                history.replaceState(null, '', url);
+                const seq = ++this._seq;
+                this.loading = true;
+
+                fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' } })
+                    .then(r => r.text())
+                    .then(html => {
+                        if (seq !== this._seq) return;   // a newer request won
+                        document.getElementById('billsList').innerHTML = html;
+                    })
+                    .catch(() => window.showToast?.('error', 'Could not load bills. Please try again.'))
+                    .finally(() => { if (seq === this._seq) this.loading = false; });
+            },
+        };
+    }
+</script>
+@endpush
 @endsection

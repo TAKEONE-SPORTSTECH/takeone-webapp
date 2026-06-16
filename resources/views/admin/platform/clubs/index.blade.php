@@ -9,20 +9,33 @@
     </div>
 
     <!-- Search and Actions Bar -->
-    <div class="flex justify-between items-center mb-4">
-        <div class="grow mr-3">
-            <input type="text" id="clubSearch" class="form-control" placeholder="Search clubs by name, location, or description..." value="{{ $search ?? '' }}">
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+        <div class="grow">
+            <input type="text" id="clubSearch" class="form-control w-full" placeholder="Search clubs by name, location, or description..." value="{{ $search ?? '' }}">
         </div>
-        <button type="button" class="btn btn-primary" onclick="window.dispatchEvent(new CustomEvent('open-club-modal', { detail: { mode: 'create' } }));">
+        <button type="button" class="btn btn-primary w-full sm:w-auto shrink-0" onclick="window.dispatchEvent(new CustomEvent('open-club-modal', { detail: { mode: 'create' } }));">
             <i class="bi bi-plus-circle mr-2"></i>Add New Club
         </button>
     </div>
 
     <!-- Clubs Grid -->
     @if($clubs->count() > 0)
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-4" id="clubsGrid">
+        @php
+            $countryNames = collect(json_decode(@file_get_contents(public_path('data/countries.json')) ?: '[]', true))
+                ->pluck('name', 'iso2');
+        @endphp
+        <div class="flex flex-wrap gap-4 mb-4" id="clubsGrid">
             @foreach($clubs as $club)
-                <div class="club-card-wrapper"
+                @php
+                    $cc = strtoupper($club->country ?? '');
+                    $flag = (strlen($cc) === 2 && ctype_alpha($cc))
+                        ? mb_chr(127397 + ord($cc[0])) . mb_chr(127397 + ord($cc[1]))
+                        : '';
+                    $countryName = $countryNames[$cc] ?? $cc;
+                @endphp
+                <div class="club-card-wrapper w-80 max-w-full"
+                     data-club-country="{{ $cc }}"
+                     data-club-id="{{ $club->id }}"
                      data-club-name="{{ $club->club_name }}"
                      data-club-address="{{ $club->address ?? '' }}"
                      data-club-owner="{{ $club->owner->full_name ?? '' }}">
@@ -56,6 +69,15 @@
                                 <span class="badge text-white px-3 py-1 rounded-full text-xs font-semibold" style="background-color: rgba(147, 51, 234, 0.9);">Admin</span>
                             </div>
 
+                            <!-- Country Flag - Bottom Right -->
+                            @if($flag)
+                                <div class="absolute bottom-2 right-2">
+                                    <span class="club-flag inline-flex items-center gap-1 bg-white/90 shadow-sm rounded-full pl-2 pr-2.5 py-1 text-xs font-semibold text-foreground whitespace-nowrap">
+                                        <span class="club-flag-emoji text-base leading-none">{{ $flag }}</span><span class="club-flag-code">{{ $countryName }}</span>
+                                    </span>
+                                </div>
+                            @endif
+
                             <!-- Edit Button - Top Right -->
                             <div class="absolute top-2 right-2">
                                 <button type="button"
@@ -68,7 +90,7 @@
                         </div>
 
                             <!-- Card Body -->
-                            <div class="p-4 pb-0 bg-white">
+                            <div class="p-4 bg-white">
                                 <div class="mb-3">
                                     <!-- Club Name -->
                                     <h3 class="font-semibold mb-2 club-title text-lg text-foreground transition-colors duration-300">{{ $club->club_name }}</h3>
@@ -172,6 +194,31 @@
                 card.classList.add('hidden');
             }
         });
+    });
+
+    // Patch a club card in place after an edit — no reload.
+    window.addEventListener('club-saved', function (e) {
+        const detail = e.detail || {};
+        if (detail.mode !== 'edit' || !detail.club) return;
+        const c = detail.club;
+        const wrapper = document.querySelector('.club-card-wrapper[data-club-id="' + c.id + '"]');
+        if (!wrapper) return;
+
+        // Keep search filter attributes in sync.
+        if (c.club_name != null)  wrapper.setAttribute('data-club-name', c.club_name);
+        wrapper.setAttribute('data-club-address', c.address || '');
+
+        const title = wrapper.querySelector('.club-title');
+        if (title && c.club_name != null) title.textContent = c.club_name;
+
+        const addrText = wrapper.querySelector('.flex.items-center.text-muted-foreground .truncate');
+        if (addrText && c.address != null) addrText.textContent = c.address;
+
+        // Cover + logo images (cache-bust so a freshly uploaded image shows).
+        const cover = wrapper.querySelector('.club-cover-img');
+        if (cover && c.cover_image) cover.src = '/storage/' + c.cover_image + '?t=' + Date.now();
+        const logo = wrapper.querySelector('.absolute.bottom-2.left-2 img');
+        if (logo && c.logo) logo.src = '/storage/' + c.logo + '?t=' + Date.now();
     });
 </script>
 @endpush

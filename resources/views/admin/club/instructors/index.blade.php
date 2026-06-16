@@ -3,25 +3,8 @@
 {{-- Styles moved to app.css (Phase 6) --}}
 
 @section('club-admin-content')
-<div class="space-y-6" x-data="{ showAddInstructorModal: false, removeInstructorId: null, removeInstructorName: '', showEditInstructorModal: false }">
-    @if(session('success'))
-    <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg relative" role="alert">
-        {{ session('success') }}
-        <button type="button" class="absolute top-3 right-3 text-green-500 hover:text-green-700" onclick="this.parentElement.remove()">
-            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
-        </button>
-    </div>
-    @endif
-
-    @if(session('error'))
-    <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg relative" role="alert">
-        {{ session('error') }}
-        <button type="button" class="absolute top-3 right-3 text-red-500 hover:text-red-700" onclick="this.parentElement.remove()">
-            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
-        </button>
-    </div>
-    @endif
-
+<div class="space-y-6" x-data="{ showAddInstructorModal: false, removeInstructorId: null, removeInstructorName: '', showEditInstructorModal: false }"
+     @instructor-removed.window="removeInstructorId = null; removeInstructorName = ''">
     @if ($errors->any())
     <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg" role="alert">
         <ul class="list-disc list-inside">
@@ -35,12 +18,11 @@
     <!-- Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-            <h2 class="text-3xl font-bold text-gray-900">Instructors</h2>
+            <h2 class="text-xl font-bold text-gray-900">Instructors</h2>
             <p class="text-gray-500 mt-1">Manage your club instructors and trainers</p>
         </div>
-        <button class="inline-flex items-center px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors font-medium" @click="showAddInstructorModal = true">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-            Add Instructor
+        <button class="btn btn-primary" @click="showAddInstructorModal = true">
+            <i class="bi bi-plus-lg mr-2"></i>Add Instructor
         </button>
     </div>
 
@@ -49,7 +31,7 @@
         @foreach($instructors as $instructor)
         @php $user = $instructor->user; @endphp
         @if(!$user) @continue @endif
-        <div class="relative h-full" x-data="{ openMenu: false }">
+        <div class="relative h-full" id="instructor-{{ $instructor->id }}" x-data="{ openMenu: false }">
         <x-member-card
             class="h-full instructor-item"
             :member="$user"
@@ -147,9 +129,8 @@
         </div>
         <h5 class="text-lg font-semibold text-gray-900 mb-2">No instructors yet</h5>
         <p class="text-gray-500 mb-4">Add instructors to your club</p>
-        <button class="inline-flex items-center px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors font-medium" @click="showAddInstructorModal = true">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-            Add Instructor
+        <button class="btn btn-primary" @click="showAddInstructorModal = true">
+            <i class="bi bi-plus-lg mr-2"></i>Add Instructor
         </button>
     </div>
     @endif
@@ -227,12 +208,14 @@ function removeInstructor(id) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            location.reload();
+            document.getElementById('instructor-' + id)?.remove();
+            window.dispatchEvent(new CustomEvent('instructor-removed'));
+            window.showToast('success', data.message || 'Instructor removed.');
         } else {
-            alert(data.message || 'Failed to remove instructor.');
+            window.showToast('error', data.message || 'Failed to remove instructor.');
         }
     })
-    .catch(() => alert('An error occurred. Please try again.'));
+    .catch(() => window.showToast('error', 'An error occurred. Please try again.'));
 }
 
 function loadNationalityFlags() {

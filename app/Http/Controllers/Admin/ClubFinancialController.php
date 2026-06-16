@@ -22,10 +22,11 @@ class ClubFinancialController extends Controller
         $transactions      = ClubTransaction::where('tenant_id', $club->id)->with(['subscription.user'])->latest('transaction_date')->get();
         $summary           = $financials->getSummary($club->id, $transactions);
         $monthlyData       = $financials->getMonthlyData($transactions, $club->id);
+        $pendingSubscriptions = $financials->getCashToCollect($club->id);
         $expenseCategories = $financials->getExpenseBreakdown($transactions);
         $recurringExpenses = ClubRecurringExpense::where('tenant_id', $club->id)->orderBy('day_of_month')->get();
 
-        return view('admin.club.financials.index', compact('club', 'transactions', 'summary', 'monthlyData', 'expenseCategories', 'recurringExpenses'));
+        return view(\App\Support\ClubView::pick('financials'), compact('club', 'transactions', 'summary', 'monthlyData', 'pendingSubscriptions', 'expenseCategories', 'recurringExpenses'));
     }
 
     public function storeIncome(StoreTransactionRequest $request, Tenant $club, FinancialService $financials)

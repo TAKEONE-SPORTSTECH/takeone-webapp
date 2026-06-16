@@ -1,12 +1,24 @@
 @extends('layouts.admin-club')
 
 @section('club-admin-content')
-<div id="financialsRoot" x-data="{
+@php
+    $currency      = $club->currency ?? 'BHD';
+    $netIncome     = $summary['net_profit'] ?? 0;
+    $totalIncome   = $summary['total_income'] ?? 0;
+    $totalExpenses = $summary['total_expenses'] ?? 0;
+    $totalRefunds  = $summary['refunds'] ?? 0;
+    $cashToCollect = $summary['pending'] ?? 0;
+    $marginPct     = $totalIncome > 0 ? round(($netIncome / $totalIncome) * 100, 1) : 0;
+    $incomeCount   = $transactions->where('type','income')->count();
+    $expenseCount  = $transactions->where('type','expense')->count();
+@endphp
+
+<div x-data="{
     activeTab: 'ledger',
     ledgerPage: 1,
     ledgerPerPage: 25,
     ledgerTotal: {{ $transactions->count() }},
-    get ledgerTotalPages() { return Math.ceil(this.ledgerTotal / this.ledgerPerPage); },
+    get ledgerTotalPages() { return Math.max(1, Math.ceil(this.ledgerTotal / this.ledgerPerPage)); },
     get ledgerStart() { return (this.ledgerPage - 1) * this.ledgerPerPage; },
     get ledgerEnd()   { return this.ledgerPage * this.ledgerPerPage; },
     showIncomeModal: false,
@@ -24,566 +36,654 @@
     approvingPayment: false,
     refundingPayment: false,
     refundTarget: null,
-    expenseType: 'expense',
-    openEdit(t) {
-        this.editTransaction = t;
-        this.showEditModal = true;
-    },
-    openDelete(id, ref) {
-        this.deleteTransactionId = id;
-        this.deleteTransactionRef = ref;
-        this.showDeleteModal = true;
-    },
-    openTransactionDetail(id) {
-        this.activeTransaction = window.transactionData?.[id] || null;
-        this.showTransactionDetailModal = true;
-    },
-    openRefundModal(transaction) {
-        this.refundTarget = transaction;
-        this.showRefundModal = true;
-    },
+    openEdit(t) { this.editTransaction = t; this.showEditModal = true; },
+    openDelete(id, ref) { this.deleteTransactionId = id; this.deleteTransactionRef = ref; this.showDeleteModal = true; },
+    openTransactionDetail(id) { this.activeTransaction = window.transactionData?.[id] || null; this.showTransactionDetailModal = true; },
+    openRefundModal(t) { this.refundTarget = t; this.showRefundModal = true; },
     async processRefund() {
         if (this.refundingPayment || !this.refundTarget) return;
         this.refundingPayment = true;
         try {
-            const formData = new FormData();
-            formData.append('_token', document.querySelector('meta[name=\'csrf-token\']')?.content);
-            const refundProof = document.getElementById('hiddenInput_refundProofCropper')?.value;
-            if (refundProof) formData.append('refund_proof_base64', refundProof);
-            const res = await fetch(`{{ url('admin/club/' . $club->slug . '/subscriptions') }}/${this.refundTarget.subscription_id}/refund`, {
-                method: 'POST', body: formData, headers: { 'Accept': 'application/json' }
-            });
-            const data = await res.json();
-            if (data.success) {
+            const fd = new FormData();
+            fd.append('_token', document.querySelector('meta[name=csrf-token]')?.content);
+            const proof = document.getElementById('hiddenInput_refundProofCropper')?.value;
+            if (proof) fd.append('refund_proof_base64', proof);
+            const r = await fetch(`{{ url('admin/club/'.$club->slug.'/subscriptions') }}/${this.refundTarget.subscription_id}/refund`, { method:'POST', body:fd, headers:{'Accept':'application/json'} });
+            const d = await r.json();
+            if (d.success) {
                 this.showRefundModal = false;
-                location.reload();
-            } else {
-                alert(data.message || 'Failed to process refund.');
+                window.applyFinancials?.(d.financials);
+                window.patchLedgerStatus?.(d.subscription_id, d.payment_status);
+                if (window.prependLedgerRow?.(d.transaction)) this.ledgerTotal++;
+                window.showToast('success', d.message || 'Refund processed successfully.');
             }
-        } catch(e) {
-            alert('An error occurred.');
-        } finally {
-            this.refundingPayment = false;
-        }
+            else window.showToast('error', d.message || 'Failed to process refund.');
+        } catch { window.showToast('error', 'An error occurred.'); }
+        finally { this.refundingPayment = false; }
     },
     async approvePayment(subscriptionId) {
         if (this.approvingPayment) return;
         this.approvingPayment = true;
         try {
-            const formData = new FormData();
-            formData.append('_token', document.querySelector('meta[name=\'csrf-token\']')?.content);
-            const adminProof = document.getElementById('hiddenInput_adminProofCropper')?.value;
-            if (adminProof) formData.append('admin_proof_base64', adminProof);
-            const res = await fetch(`{{ url('admin/club/' . $club->slug . '/subscriptions') }}/${subscriptionId}/approve-payment`, {
-                method: 'POST', body: formData, headers: { 'Accept': 'application/json' }
-            });
-            const data = await res.json();
-            if (data.success) {
+            const fd = new FormData();
+            fd.append('_token', document.querySelector('meta[name=csrf-token]')?.content);
+            const proof = document.getElementById('hiddenInput_adminProofCropper')?.value;
+            if (proof) fd.append('admin_proof_base64', proof);
+            const r = await fetch(`{{ url('admin/club/'.$club->slug.'/subscriptions') }}/${subscriptionId}/approve-payment`, { method:'POST', body:fd, headers:{'Accept':'application/json'} });
+            const d = await r.json();
+            if (d.success) {
                 this.showTransactionDetailModal = false;
-                location.reload();
-            } else {
-                alert(data.message || 'Failed to approve payment.');
+                window.applyFinancials?.(d.financials);
+                window.patchLedgerStatus?.(d.subscription_id, d.payment_status);
+                window.showToast('success', d.message || 'Payment approved successfully.');
             }
-        } catch(e) {
-            alert('An error occurred.');
-        } finally {
-            this.approvingPayment = false;
-        }
+            else window.showToast('error', d.message || 'Failed to approve payment.');
+        } catch { window.showToast('error', 'An error occurred.'); }
+        finally { this.approvingPayment = false; }
     }
-}">
-    <!-- Header -->
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-6">
-        <div>
-            <h2 class="text-3xl font-bold mb-1">Financial Management</h2>
-            <p class="text-muted-foreground mb-0">Track income, expenses, and generate reports</p>
-        </div>
-        <div class="flex gap-2 flex-wrap">
-            <button type="button" class="btn btn-outline-secondary" @click="showExportModal = true">
-                <i class="bi bi-download mr-2"></i>Export CSV
-            </button>
-            <button type="button" class="btn btn-outline-primary" @click="showIncomeModal = true">
-                <i class="bi bi-plus-circle mr-2"></i>Manual Income
-            </button>
-            <button type="button" class="btn btn-outline-primary" @click="showAutoExpenseModal = true">
-                <i class="bi bi-calendar-check mr-2"></i>Auto Expense
-            </button>
-            <button type="button" class="btn btn-primary" @click="showExpenseModal = true">
-                <i class="bi bi-dash-circle mr-2"></i>Record Expense
-            </button>
-        </div>
-    </div>
+}" class="space-y-6">
 
-    <!-- Success/Error Messages -->
-    @if(session('success'))
-    <div class="alert alert-success relative mb-4" role="alert" x-data="{ show: true }" x-show="show">
-        <i class="bi bi-check-circle mr-2"></i>{{ session('success') }}
-        <button type="button" class="absolute top-3 right-3 text-green-600 hover:text-green-800" @click="show = false">
-            <i class="bi bi-x-lg"></i>
+{{-- ─── Flash ─── --}}
+@if($errors->any())
+<div class="flex items-start gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-800" x-data="{show:true}" x-show="show">
+    <i class="bi bi-exclamation-triangle-fill text-red-500 mt-0.5"></i>
+    <ul class="flex-1 space-y-0.5">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
+    <button @click="show=false" class="text-red-400 hover:text-red-600"><i class="bi bi-x-lg"></i></button>
+</div>
+@endif
+
+{{-- ─── Page header ─── --}}
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div>
+        <h2 class="text-xl font-bold text-gray-900">Financials</h2>
+        <p class="text-sm text-gray-500 mt-1">Income, expenses, and financial reports</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <button @click="showExportModal=true" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+            <i class="bi bi-download"></i> Export
+        </button>
+        <button @click="showAutoExpenseModal=true" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+            <i class="bi bi-arrow-repeat"></i> Auto Expense
+        </button>
+        <button @click="showIncomeModal=true" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors">
+            <i class="bi bi-plus-lg"></i> Income
+        </button>
+        <button @click="showExpenseModal=true" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors">
+            <i class="bi bi-dash-lg"></i> Expense
         </button>
     </div>
-    @endif
+</div>
 
-    @if($errors->any())
-    <div class="alert alert-danger relative mb-4" role="alert" x-data="{ show: true }" x-show="show">
-        <i class="bi bi-exclamation-triangle mr-2"></i>
-        <ul class="mb-0">
-            @foreach($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-        <button type="button" class="absolute top-3 right-3 text-red-600 hover:text-red-800" @click="show = false">
-            <i class="bi bi-x-lg"></i>
-        </button>
-    </div>
-    @endif
+{{-- ─── KPI cards ─── --}}
+@php
+    $sparkNet      = array_column($monthlyData, 'profit');
+    $sparkIncome   = array_column($monthlyData, 'income');
+    $sparkExpenses = array_column($monthlyData, 'expenses');
+    $sparkCollect  = array_column($monthlyData, 'cash_to_collect');
+    $sparkRefunds  = array_column($monthlyData, 'refunds');
+    $sparkLabels   = array_column($monthlyData, 'month');
+    $netColor      = $netIncome >= 0 ? '#10b981' : '#ef4444';
+    $netIconBg     = $netIncome >= 0 ? 'bg-emerald-100' : 'bg-red-100';
+    $netIcon       = $netIncome >= 0 ? 'bi-graph-up-arrow' : 'bi-graph-down-arrow';
+    $netIconColor  = $netIncome >= 0 ? 'text-emerald-600' : 'text-red-500';
+@endphp
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
 
-    <!-- Summary Cards -->
-    @php
-        $currency = $club->currency ?? 'BHD';
-        $netIncome = ($summary['net_profit'] ?? 0);
-    @endphp
-    <div class="tf-stat-grid">
-        <!-- Total Income -->
-        <div class="card border-0 shadow-sm">
-            <div class="card-body pb-2">
-                <p class="text-sm font-medium text-muted-foreground mb-1">Total Income</p>
-                <div class="text-lg font-bold text-green-600 flex items-center gap-2 break-words">
-                    <i class="bi bi-graph-up-arrow flex-shrink-0"></i>
-                    {{ $currency }} {{ number_format($summary['total_income'] ?? 0, 2) }}
-                </div>
-            </div>
-        </div>
+    <x-stat-card
+        card-id="sc-net"
+        :label="$netIncome >= 0 ? 'Net Profit' : 'Net Loss'"
+        :value="number_format(abs($netIncome), 2)"
+        :sub-label="$currency.' · '.abs($marginPct).'% margin'"
+        :icon="$netIcon"
+        :icon-bg="$netIconBg"
+        :icon-color="$netIconColor"
+        :spark-data="$sparkNet"
+        :spark-labels="$sparkLabels"
+        :spark-color="$netColor"
+        refresh-event="financials:updated"
+    />
 
-        <!-- Total Expenses -->
-        <div class="card border-0 shadow-sm">
-            <div class="card-body pb-2">
-                <p class="text-sm font-medium text-muted-foreground mb-1">Total Expenses</p>
-                <div class="text-lg font-bold text-red-600 flex items-center gap-2 break-words">
-                    <i class="bi bi-graph-down-arrow flex-shrink-0"></i>
-                    {{ $currency }} {{ number_format($summary['total_expenses'] ?? 0, 2) }}
-                </div>
-            </div>
-        </div>
+    <x-stat-card
+        card-id="sc-income"
+        label="Income"
+        :value="number_format($totalIncome, 2)"
+        :sub-label="$currency.' · '.$incomeCount.' transactions'"
+        icon="bi-arrow-down-circle"
+        icon-bg="bg-emerald-100"
+        icon-color="text-emerald-600"
+        :spark-data="$sparkIncome"
+        :spark-labels="$sparkLabels"
+        spark-color="#10b981"
+        refresh-event="financials:updated"
+    />
 
-        <!-- Refunds -->
-        <div class="card border-0 shadow-sm">
-            <div class="card-body pb-2">
-                <p class="text-sm font-medium text-muted-foreground mb-1">Refunds</p>
-                <div class="text-lg font-bold text-orange-600 break-words">
-                    {{ $currency }} {{ number_format($summary['refunds'] ?? 0, 2) }}
-                </div>
-            </div>
-        </div>
+    <x-stat-card
+        card-id="sc-expenses"
+        label="Expenses"
+        :value="number_format($totalExpenses, 2)"
+        :sub-label="$currency.' · '.$expenseCount.' transactions'"
+        icon="bi-arrow-up-circle"
+        icon-bg="bg-red-100"
+        icon-color="text-red-500"
+        :spark-data="$sparkExpenses"
+        :spark-labels="$sparkLabels"
+        spark-color="#ef4444"
+        refresh-event="financials:updated"
+    />
 
-        <!-- Net Income -->
-        <div class="card border-0 shadow-sm">
-            <div class="card-body pb-2">
-                <p class="text-sm font-medium text-muted-foreground mb-1">Net Income</p>
-                <div class="text-lg font-bold break-words {{ $netIncome >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                    {{ $currency }} {{ number_format($netIncome, 2) }}
-                </div>
-            </div>
-        </div>
+    <x-stat-card
+        card-id="sc-collect"
+        label="To Collect"
+        :value="number_format($cashToCollect, 2)"
+        :sub-label="$currency.' · pending payments'"
+        icon="bi-hourglass-split"
+        icon-bg="bg-amber-100"
+        icon-color="text-amber-600"
+        :spark-data="$sparkCollect"
+        :spark-labels="$sparkLabels"
+        spark-color="#f59e0b"
+        refresh-event="financials:updated"
+    />
 
-        <!-- Cash (paid income - paid expenses) -->
-        @php
-            $cashIn = $transactions->where('type', 'income')->where('payment_method', '!=', null)->sum('amount');
-            $cashOut = $transactions->where('type', 'expense')->sum('amount') + $transactions->where('type', 'refund')->sum('amount');
-            $cash = $cashIn - $cashOut;
-        @endphp
-        <div class="card border-0 shadow-sm">
-            <div class="card-body pb-2">
-                <p class="text-sm font-medium text-muted-foreground mb-1">Cash</p>
-                <div class="text-lg font-bold text-emerald-600 break-words">
-                    {{ $currency }} {{ number_format($cash, 2) }}
-                </div>
-                <p class="text-xs text-muted-foreground mt-1">Paid transactions</p>
-            </div>
-        </div>
+    <x-stat-card
+        card-id="sc-refunds"
+        label="Refunds"
+        :value="number_format($totalRefunds, 2)"
+        :sub-label="$currency.' · issued'"
+        icon="bi-arrow-counterclockwise"
+        icon-bg="bg-orange-100"
+        icon-color="text-orange-500"
+        :spark-data="$sparkRefunds"
+        :spark-labels="$sparkLabels"
+        spark-color="#f97316"
+        refresh-event="financials:updated"
+    />
 
-        <!-- Cash to Collect -->
-        @php
-            $cashToCollect = $summary['pending'] ?? 0;
-        @endphp
-        <div class="card border-0 shadow-sm">
-            <div class="card-body pb-2">
-                <p class="text-sm font-medium text-muted-foreground mb-1">Cash to Collect</p>
-                <div class="text-lg font-bold text-amber-600 break-words">
-                    {{ $currency }} {{ number_format($cashToCollect, 2) }}
-                </div>
-                <p class="text-xs text-muted-foreground mt-1">Pending payments</p>
-            </div>
-        </div>
-    </div>
+</div>
 
-    <!-- Financial Overview Chart -->
-    @if(count($monthlyData) > 0)
+{{-- ─── Chart ─── --}}
+@if(count($monthlyData) > 0)
+<div class="rounded-xl overflow-hidden">
     <x-financial-chart
         :monthly-data="$monthlyData"
         :transactions="$transactions"
+        :cash-to-collect="$pendingSubscriptions"
         :currency="$currency"
         canvas-id="financialChart"
-        canvas-height-attr="100"
+        :maintain-aspect-ratio="false"
+        canvas-height-attr="280"
     />
-    @endif
+</div>
+@endif
 
-    <!-- Tabs -->
-    <div class="border-b mb-4">
-        <nav class="flex gap-1" role="tablist">
-            <button type="button"
-                    class="tab-btn"
-                    :class="{ 'active': activeTab === 'ledger' }"
-                    @click="activeTab = 'ledger'">
-                <i class="bi bi-journal-text mr-2"></i>Transaction Ledger
+{{-- ─── Tabs ─── --}}
+<div class="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+
+    <div class="border-b border-gray-100 px-1 overflow-x-auto">
+        <nav class="-mb-px flex min-w-max">
+            <button @click="activeTab='ledger'"
+                class="px-5 py-3.5 text-sm font-medium border-b-2 transition-colors"
+                :class="activeTab==='ledger'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'">
+                <i class="bi bi-journal-text mr-1.5"></i>
+                Ledger
+                <span id="ledgerCountBadge" class="ml-1.5 px-2 py-0.5 rounded-full text-xs font-medium"
+                    :class="activeTab==='ledger' ? 'bg-accent text-primary' : 'bg-gray-100 text-gray-500'">
+                    {{ $transactions->count() }}
+                </span>
             </button>
-            <button type="button"
-                    class="tab-btn"
-                    :class="{ 'active': activeTab === 'expenses' }"
-                    @click="activeTab = 'expenses'">
-                <i class="bi bi-pie-chart mr-2"></i>Expenses
+            <button @click="activeTab='expenses'"
+                class="px-5 py-3.5 text-sm font-medium border-b-2 transition-colors"
+                :class="activeTab==='expenses'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'">
+                <i class="bi bi-pie-chart mr-1.5"></i>
+                Expenses
             </button>
-            <button type="button"
-                    class="tab-btn"
-                    :class="{ 'active': activeTab === 'reports' }"
-                    @click="activeTab = 'reports'">
-                <i class="bi bi-file-earmark-bar-graph mr-2"></i>Reports
+            <button @click="activeTab='reports'"
+                class="px-5 py-3.5 text-sm font-medium border-b-2 transition-colors"
+                :class="activeTab==='reports'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'">
+                <i class="bi bi-file-earmark-bar-graph mr-1.5"></i>
+                Reports
             </button>
         </nav>
     </div>
 
-    <!-- Tab: Transaction Ledger -->
-    <div x-show="activeTab === 'ledger'" x-transition>
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-0">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
-                    <div>
-                        <h5 class="font-semibold mb-0">All Transactions</h5>
-                        <p class="text-sm text-muted-foreground mb-0">Complete record of all financial transactions</p>
-                    </div>
-                </div>
-            </div>
-            @if($transactions->count() > 0)
-            <div class="overflow-x-auto">
-                <table class="table table-hover mb-0">
-                    <thead class="bg-muted/50">
-                        <tr>
-                            <th>Date</th>
-                            <th>Ref #</th>
-                            <th>Type</th>
-                            <th>Description</th>
-                            <th>Category</th>
-                            <th class="text-right">Amount</th>
-                            <th>Payment</th>
-                            <th>Status</th>
-                            <th class="text-center">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($transactions as $transaction)
-                        @php
-                            $subPayStatus = $transaction->subscription?->payment_status ?? null;
-                            $isClickable  = $transaction->type === 'income' && $transaction->subscription_id && $subPayStatus !== null;
-                        @endphp
-                        <tr class="{{ $isClickable ? 'cursor-pointer hover:bg-primary/5' : '' }}"
-                            data-year-month="{{ $transaction->transaction_date ? $transaction->transaction_date->format('Y-m') : '' }}"
-                            x-show="{{ $loop->index }} >= ledgerStart && {{ $loop->index }} < ledgerEnd"
-                            {{ $isClickable ? '@click=openTransactionDetail(' . $transaction->id . ')' : '' }}>
-                            <td class="whitespace-nowrap">{{ $transaction->transaction_date ? $transaction->transaction_date->format('M d, Y') : 'N/A' }}</td>
-                            <td class="font-mono text-sm">{{ $transaction->reference_number ?? '-' }}</td>
-                            <td>
-                                @if($transaction->type === 'income')
-                                    <span class="badge bg-green-100 text-green-700">Income</span>
-                                @elseif($transaction->type === 'expense')
-                                    <span class="badge bg-red-100 text-red-700">Expense</span>
+    {{-- ── Ledger tab ── --}}
+    <div x-show="activeTab==='ledger'" x-transition.opacity.duration.150ms>
+        @if($transactions->count() > 0)
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-100 bg-gray-50/60">
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Date</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Description</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Category</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Method</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Amount</th>
+                        <th class="px-5 py-3"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50" id="ledgerBody">
+                    @foreach($transactions as $t)
+                    @php
+                        $subPayStatus = $t->subscription?->payment_status ?? null;
+                        $isClickable  = $t->type === 'income' && $t->subscription_id && $subPayStatus !== null;
+                    @endphp
+                    <tr class="group transition-colors hover:bg-gray-50/70 {{ $isClickable ? 'cursor-pointer' : '' }}"
+                        data-sub-id="{{ $t->subscription_id ?? '' }}" data-txn-type="{{ $t->type }}"
+                        x-show="{{ $loop->index }} >= ledgerStart && {{ $loop->index }} < ledgerEnd"
+                        {{ $isClickable ? '@click=openTransactionDetail('.$t->id.')' : '' }}>
+
+                        <td class="px-5 py-3.5 whitespace-nowrap text-gray-500 text-xs">
+                            {{ $t->transaction_date?->format('d M Y') ?? '—' }}
+                        </td>
+
+                        <td class="px-5 py-3.5">
+                            <div class="flex items-center gap-2.5">
+                                @if($t->type === 'income')
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></span>
+                                @elseif($t->type === 'expense')
+                                    <span class="w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0"></span>
                                 @else
-                                    <span class="badge bg-orange-100 text-orange-700">{{ ucfirst($transaction->type) }}</span>
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0"></span>
                                 @endif
-                            </td>
-                            <td>{{ $transaction->description ?? 'N/A' }}</td>
-                            <td class="text-sm text-muted-foreground">{{ $transaction->category ?? '-' }}</td>
-                            <td class="text-right font-semibold whitespace-nowrap {{ $transaction->type === 'income' ? 'text-green-600' : 'text-red-600' }}">
-                                {{ $transaction->type === 'income' ? '+' : '-' }}{{ $currency }} {{ number_format($transaction->amount, 2) }}
-                            </td>
-                            <td>
-                                @if($transaction->payment_method === 'cash')
-                                    <span class="badge bg-emerald-50 text-emerald-700 text-xs"><i class="bi bi-cash-stack mr-1"></i>Cash</span>
-                                @elseif($transaction->payment_method === 'bank_transfer')
-                                    <span class="badge bg-blue-50 text-blue-700 text-xs"><i class="bi bi-bank mr-1"></i>Bank</span>
-                                @elseif($transaction->payment_method === 'card')
-                                    <span class="badge bg-purple-50 text-purple-700 text-xs"><i class="bi bi-credit-card mr-1"></i>Card</span>
-                                @elseif($transaction->payment_method === 'online')
-                                    <span class="badge bg-cyan-50 text-cyan-700 text-xs"><i class="bi bi-globe mr-1"></i>Online</span>
-                                @elseif($transaction->payment_method)
-                                    <span class="badge bg-gray-100 text-gray-700 text-xs"><i class="bi bi-three-dots mr-1"></i>Other</span>
-                                @else
-                                    <span class="text-muted-foreground">-</span>
+                                <span class="text-gray-800 font-medium truncate max-w-[180px]">{{ $t->description ?? '—' }}</span>
+                            </div>
+                            @if($t->reference_number)
+                            <p class="ml-4 text-xs text-gray-400 font-mono mt-0.5">{{ $t->reference_number }}</p>
+                            @endif
+                        </td>
+
+                        <td class="px-5 py-3.5 text-gray-500 text-xs capitalize">{{ $t->category ?? '—' }}</td>
+
+                        <td class="px-5 py-3.5">
+                            @if($t->payment_method)
+                            <span class="inline-flex items-center gap-1 text-xs text-gray-500 capitalize">
+                                @if($t->payment_method === 'cash') <i class="bi bi-cash-stack text-emerald-500"></i>
+                                @elseif($t->payment_method === 'bank_transfer') <i class="bi bi-bank text-blue-500"></i>
+                                @elseif($t->payment_method === 'card') <i class="bi bi-credit-card text-primary"></i>
+                                @else <i class="bi bi-globe text-gray-400"></i>
                                 @endif
-                            </td>
-                            <td>
-                                @if($subPayStatus === 'pending_approval')
-                                    <span class="badge bg-blue-100 text-blue-700 flex items-center gap-1 w-fit"><i class="bi bi-hourglass-split text-xs"></i>Pending</span>
-                                @elseif($subPayStatus === 'paid')
-                                    <span class="badge bg-green-100 text-green-700 flex items-center gap-1 w-fit"><i class="bi bi-check-circle text-xs"></i>Paid</span>
-                                @elseif($subPayStatus === 'unpaid')
-                                    <span class="badge bg-amber-100 text-amber-700 flex items-center gap-1 w-fit"><i class="bi bi-clock text-xs"></i>Unpaid</span>
-                                @else
-                                    <span class="text-muted-foreground text-xs">—</span>
-                                @endif
-                            </td>
-                            <td>
-                                <div class="flex gap-1 justify-center">
-                                    <button type="button"
-                                            class="btn btn-sm p-1 text-muted-foreground hover:text-primary"
-                                            title="Edit transaction"
-                                            @click="openEdit({
-                                                id: {{ $transaction->id }},
-                                                description: '{{ addslashes($transaction->description) }}',
-                                                amount: {{ $transaction->amount }},
-                                                transaction_date: '{{ $transaction->transaction_date ? $transaction->transaction_date->format('Y-m-d') : '' }}',
-                                                type: '{{ $transaction->type }}',
-                                                category: '{{ addslashes($transaction->category ?? '') }}',
-                                                payment_method: '{{ $transaction->payment_method ?? 'cash' }}',
-                                                reference_number: '{{ addslashes($transaction->reference_number ?? '') }}'
-                                            })">
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
-                                    <button type="button"
-                                            class="btn btn-sm p-1 text-muted-foreground hover:text-destructive"
-                                            title="Delete transaction"
-                                            @click="openDelete({{ $transaction->id }}, '{{ addslashes($transaction->reference_number ?? $transaction->description) }}')">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            <div class="flex items-center justify-between px-4 py-3 border-t" x-show="ledgerTotalPages > 1">
-                <span class="text-sm text-muted-foreground">
-                    Showing <span x-text="ledgerStart + 1"></span>–<span x-text="Math.min(ledgerEnd, ledgerTotal)"></span> of <span x-text="ledgerTotal"></span>
-                </span>
-                <div class="flex items-center gap-2">
-                    <button @click="ledgerPage--" :disabled="ledgerPage === 1"
-                            class="btn btn-sm btn-outline-secondary"
-                            :class="{ 'opacity-50 pointer-events-none': ledgerPage === 1 }">
-                        <i class="bi bi-chevron-left"></i>
-                    </button>
-                    <span class="text-sm text-muted-foreground" x-text="ledgerPage + ' / ' + ledgerTotalPages"></span>
-                    <button @click="ledgerPage++" :disabled="ledgerPage >= ledgerTotalPages"
-                            class="btn btn-sm btn-outline-secondary"
-                            :class="{ 'opacity-50 pointer-events-none': ledgerPage >= ledgerTotalPages }">
-                        <i class="bi bi-chevron-right"></i>
-                    </button>
-                </div>
-            </div>
-            @else
-            <div class="card-body text-center py-12 text-muted-foreground">
-                <i class="bi bi-currency-dollar text-6xl mb-3 block"></i>
-                <h5 class="mb-2">No transactions found</h5>
-                <p>Transactions will appear here as they are recorded</p>
-            </div>
-            @endif
+                                {{ ucfirst(str_replace('_',' ',$t->payment_method)) }}
+                            </span>
+                            @else
+                            <span class="text-gray-300">—</span>
+                            @endif
+                        </td>
+
+                        <td class="px-5 py-3.5 js-status-cell">
+                            @if($subPayStatus === 'pending_approval')
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600">
+                                    <i class="bi bi-hourglass-split text-[10px]"></i> Pending
+                                </span>
+                            @elseif($subPayStatus === 'paid')
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-600">
+                                    <i class="bi bi-check-circle-fill text-[10px]"></i> Paid
+                                </span>
+                            @elseif($subPayStatus === 'unpaid')
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-600">
+                                    <i class="bi bi-clock-fill text-[10px]"></i> Unpaid
+                                </span>
+                            @else
+                                <span class="text-gray-300 text-xs">—</span>
+                            @endif
+                        </td>
+
+                        <td class="px-5 py-3.5 text-right font-semibold tabular-nums whitespace-nowrap
+                            {{ $t->type === 'income' ? 'text-emerald-600' : ($t->type === 'refund' ? 'text-amber-600' : 'text-red-500') }}">
+                            {{ $t->type === 'income' ? '+' : '−' }}{{ $currency }} {{ number_format($t->amount, 2) }}
+                        </td>
+
+                        <td class="px-3 py-3.5">
+                            <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button type="button"
+                                    title="Edit"
+                                    @click.stop="openEdit({
+                                        id: {{ $t->id }},
+                                        description: @js($t->description ?? ''),
+                                        amount: {{ $t->amount }},
+                                        transaction_date: '{{ $t->transaction_date?->format('Y-m-d') }}',
+                                        type: '{{ $t->type }}',
+                                        category: @js($t->category ?? ''),
+                                        payment_method: '{{ $t->payment_method ?? 'cash' }}',
+                                        reference_number: @js($t->reference_number ?? '')
+                                    })"
+                                    class="w-7 h-7 flex items-center justify-center rounded-md border border-gray-200 text-gray-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-colors text-xs">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button"
+                                    title="Delete"
+                                    @click.stop="openDelete({{ $t->id }}, @js($t->reference_number ?? $t->description))"
+                                    class="w-7 h-7 flex items-center justify-center rounded-md border border-gray-200 text-gray-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-colors text-xs">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
         </div>
+
+        {{-- Ledger pagination --}}
+        <div class="flex items-center justify-between px-5 py-3.5 border-t border-gray-100 text-sm" x-show="ledgerTotalPages > 1">
+            <span class="text-gray-400 text-xs">
+                Showing <strong class="text-gray-700" x-text="ledgerStart + 1"></strong>–<strong class="text-gray-700" x-text="Math.min(ledgerEnd, ledgerTotal)"></strong>
+                of <strong class="text-gray-700" x-text="ledgerTotal"></strong>
+            </span>
+            <div class="flex items-center gap-1.5">
+                <button @click="ledgerPage = Math.max(1, ledgerPage - 1)" :disabled="ledgerPage === 1"
+                    class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:pointer-events-none transition-colors text-xs">
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+                <span class="px-2 text-xs text-gray-500" x-text="ledgerPage + ' / ' + ledgerTotalPages"></span>
+                <button @click="ledgerPage = Math.min(ledgerTotalPages, ledgerPage + 1)" :disabled="ledgerPage >= ledgerTotalPages"
+                    class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:pointer-events-none transition-colors text-xs">
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+
+        @else
+        <div class="py-16 text-center">
+            <div class="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                <i class="bi bi-receipt text-2xl text-gray-300"></i>
+            </div>
+            <p class="text-gray-500 font-medium">No transactions yet</p>
+            <p class="text-gray-400 text-sm mt-1 mb-4">Record your first income or expense to get started</p>
+            <div class="flex gap-2 justify-center">
+                <button @click="showIncomeModal=true" class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors">
+                    <i class="bi bi-plus-lg"></i> Income
+                </button>
+                <button @click="showExpenseModal=true" class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors">
+                    <i class="bi bi-dash-lg"></i> Expense
+                </button>
+            </div>
+        </div>
+        @endif
     </div>
 
-    <!-- Tab: Expenses -->
-    <div x-show="activeTab === 'expenses'" x-transition>
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-0">
-                <h5 class="font-semibold mb-0">Expense Breakdown</h5>
-                <p class="text-sm text-muted-foreground mb-0">Categorized expenses for accounting</p>
-            </div>
-            <div class="card-body">
-                @if(count($expenseCategories) > 0)
-                <div class="space-y-4">
-                    @foreach($expenseCategories as $catData)
-                    <div class="border rounded-lg p-4">
-                        <h3 class="font-semibold capitalize mb-2">{{ $catData['category'] }}</h3>
-                        <div class="space-y-2">
-                            @foreach($catData['items'] as $item)
-                            <div class="flex justify-between text-sm">
-                                <span>
-                                    {{ $item->description }}
-                                    @if($item->transaction_date)
-                                        <span class="text-muted-foreground ml-2">{{ $item->transaction_date->format('M d, Y') }}</span>
-                                    @endif
-                                </span>
-                                <span class="font-medium">{{ $currency }} {{ number_format($item->amount, 2) }}</span>
-                            </div>
-                            @endforeach
-                        </div>
-                        <div class="mt-2 pt-2 border-t flex justify-between font-bold">
-                            <span>Total</span>
-                            <span>{{ $currency }} {{ number_format($catData['total'], 2) }}</span>
+    {{-- ── Expenses tab ── --}}
+    <div x-show="activeTab==='expenses'" x-transition.opacity.duration.150ms class="p-5">
+        @if($expenseCategories->count() > 0)
+        @php $expTotal = $expenseCategories->sum('total'); @endphp
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            @foreach($expenseCategories as $cat)
+            @php $pct = $expTotal > 0 ? round($cat['total'] / $expTotal * 100) : 0; @endphp
+            <div class="border border-gray-100 rounded-xl p-4 space-y-3">
+                <div class="flex items-center justify-between">
+                    <p class="text-sm font-semibold text-gray-800 capitalize">{{ $cat['category'] ?? 'Uncategorized' }}</p>
+                    <p class="text-sm font-bold text-red-500">{{ $currency }} {{ number_format($cat['total'], 2) }}</p>
+                </div>
+                <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div class="h-full bg-red-400 rounded-full transition-all duration-500" style="width: {{ $pct }}%"></div>
+                </div>
+                <div class="space-y-1.5">
+                    @foreach($cat['items'] as $item)
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="text-gray-500 truncate max-w-[60%]">{{ $item->description }}</span>
+                        <div class="flex items-center gap-3 flex-shrink-0">
+                            <span class="text-gray-400">{{ $item->transaction_date?->format('d M') }}</span>
+                            <span class="font-medium text-gray-700">{{ $currency }} {{ number_format($item->amount, 2) }}</span>
                         </div>
                     </div>
                     @endforeach
                 </div>
-                @else
-                <div class="text-center py-12 text-muted-foreground">
-                    <i class="bi bi-receipt text-6xl mb-3 block"></i>
-                    <h5 class="mb-2">No expenses recorded</h5>
-                    <p>Expense categories will appear here when expenses are added</p>
+            </div>
+            @endforeach
+        </div>
+        @else
+        <div class="py-16 text-center">
+            <div class="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                <i class="bi bi-pie-chart text-2xl text-gray-300"></i>
+            </div>
+            <p class="text-gray-500 font-medium">No expenses recorded</p>
+            <p class="text-gray-400 text-sm mt-1">Expense categories will appear here once expenses are added</p>
+        </div>
+        @endif
+    </div>
+
+    {{-- ── Reports tab ── --}}
+    <div x-show="activeTab==='reports'" x-transition.opacity.duration.150ms class="p-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            {{-- P&L --}}
+            <div class="border border-gray-100 rounded-xl p-5 space-y-2.5">
+                <p class="text-sm font-semibold text-gray-700 mb-4">Profit & Loss</p>
+                <div class="flex justify-between items-center py-2.5 px-3 bg-green-50 rounded-lg">
+                    <span class="text-sm text-green-700 flex items-center gap-2"><i class="bi bi-arrow-down-circle"></i> Gross Income</span>
+                    <span class="text-sm font-bold text-green-700">{{ $currency }} {{ number_format($totalIncome, 2) }}</span>
+                </div>
+                <div class="flex justify-between items-center py-2.5 px-3 bg-red-50 rounded-lg">
+                    <span class="text-sm text-red-600 flex items-center gap-2"><i class="bi bi-arrow-up-circle"></i> Total Expenses</span>
+                    <span class="text-sm font-bold text-red-600">−{{ $currency }} {{ number_format($totalExpenses, 2) }}</span>
+                </div>
+                @if($totalRefunds > 0)
+                <div class="flex justify-between items-center py-2.5 px-3 bg-amber-50 rounded-lg">
+                    <span class="text-sm text-amber-700 flex items-center gap-2"><i class="bi bi-arrow-counterclockwise"></i> Refunds</span>
+                    <span class="text-sm font-bold text-amber-700">−{{ $currency }} {{ number_format($totalRefunds, 2) }}</span>
                 </div>
                 @endif
+                <div class="flex justify-between items-center py-3 px-3 rounded-lg mt-1
+                    {{ $netIncome >= 0 ? 'bg-emerald-500' : 'bg-red-500' }} text-white">
+                    <span class="text-sm font-bold">{{ $netIncome >= 0 ? 'Net Profit' : 'Net Loss' }}</span>
+                    <span class="text-base font-bold">{{ $currency }} {{ number_format(abs($netIncome), 2) }}</span>
+                </div>
             </div>
+
+            {{-- Transaction summary --}}
+            <div class="border border-gray-100 rounded-xl p-5">
+                <p class="text-sm font-semibold text-gray-700 mb-4">Transaction Summary</p>
+                <div class="space-y-3">
+                    @php
+                        $rows = [
+                            ['label'=>'Total Transactions','value'=> $transactions->count(),'color'=>'text-gray-900'],
+                            ['label'=>'Income','value'=> $incomeCount,'color'=>'text-emerald-600'],
+                            ['label'=>'Expenses','value'=> $expenseCount,'color'=>'text-red-500'],
+                            ['label'=>'Refunds','value'=> $transactions->where('type','refund')->count(),'color'=>'text-amber-600'],
+                            ['label'=>'Profit Margin','value'=> $marginPct.'%','color'=> $marginPct >= 0 ? 'text-emerald-600' : 'text-red-500'],
+                        ];
+                    @endphp
+                    @foreach($rows as $i => $row)
+                    <div class="flex justify-between items-center {{ $i > 0 ? 'pt-3 border-t border-gray-50' : '' }}">
+                        <span class="text-sm text-gray-500">{{ $row['label'] }}</span>
+                        <span class="text-sm font-bold {{ $row['color'] }}">{{ $row['value'] }}</span>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- Payment methods --}}
+            @php
+                $paymentMethods = $transactions->whereNotNull('payment_method')->groupBy('payment_method')->map(fn($i) => $i->sum('amount'));
+                $pmTotal = $paymentMethods->sum();
+            @endphp
+            @if($paymentMethods->count() > 0)
+            <div class="border border-gray-100 rounded-xl p-5 md:col-span-2">
+                <p class="text-sm font-semibold text-gray-700 mb-4">Payment Methods</p>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    @foreach($paymentMethods as $method => $total)
+                    @php
+                        $pct = $pmTotal > 0 ? round($total / $pmTotal * 100) : 0;
+                        $icons = ['cash'=>'bi-cash-stack','bank_transfer'=>'bi-bank','card'=>'bi-credit-card','online'=>'bi-globe'];
+                        $icon = $icons[$method] ?? 'bi-three-dots';
+                    @endphp
+                    <div class="border border-gray-100 rounded-xl p-4 text-center">
+                        <i class="bi {{ $icon }} text-xl text-primary mb-2 block"></i>
+                        <p class="text-xs text-gray-400 capitalize">{{ ucfirst(str_replace('_',' ',$method)) }}</p>
+                        <p class="text-sm font-bold text-gray-800 mt-1">{{ $currency }} {{ number_format($total, 2) }}</p>
+                        <p class="text-xs text-gray-400">{{ $pct }}%</p>
+                        <div class="h-1 bg-gray-100 rounded-full mt-2 overflow-hidden">
+                            <div class="h-full bg-primary rounded-full" style="width: {{ $pct }}%"></div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
         </div>
     </div>
 
-    <!-- Tab: Reports -->
-    <div x-show="activeTab === 'reports'" x-transition>
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-0">
-                <h5 class="font-semibold mb-0">Financial Reports</h5>
-                <p class="text-sm text-muted-foreground mb-0">Summary reports for accounting and tax compliance</p>
-            </div>
-            <div class="card-body space-y-4">
-                <!-- Summary -->
-                <div class="border rounded-lg p-4">
-                    <h3 class="font-semibold mb-2">Summary</h3>
-                    <div class="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                            <span class="text-muted-foreground">Total Transactions:</span>
-                            <p class="font-medium">{{ $transactions->count() }}</p>
-                        </div>
-                        <div>
-                            <span class="text-muted-foreground">Income Transactions:</span>
-                            <p class="font-medium">{{ $transactions->where('type', 'income')->count() }}</p>
-                        </div>
-                        <div>
-                            <span class="text-muted-foreground">Expense Transactions:</span>
-                            <p class="font-medium">{{ $transactions->where('type', 'expense')->count() }}</p>
-                        </div>
-                        <div>
-                            <span class="text-muted-foreground">Refund Transactions:</span>
-                            <p class="font-medium">{{ $transactions->where('type', 'refund')->count() }}</p>
-                        </div>
-                    </div>
-                </div>
+</div>{{-- /tabs card --}}
 
-                <!-- Income vs Expenses -->
-                <div class="border rounded-lg p-4">
-                    <h3 class="font-semibold mb-4">Income vs Expenses</h3>
-                    <div class="space-y-2">
-                        <div class="flex justify-between">
-                            <span>Gross Income</span>
-                            <span class="font-medium text-green-600">{{ $currency }} {{ number_format($summary['total_income'] ?? 0, 2) }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Total Expenses</span>
-                            <span class="font-medium text-red-600">-{{ $currency }} {{ number_format($summary['total_expenses'] ?? 0, 2) }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Refunds</span>
-                            <span class="font-medium text-orange-600">-{{ $currency }} {{ number_format($summary['refunds'] ?? 0, 2) }}</span>
-                        </div>
-                        <div class="pt-2 border-t flex justify-between font-bold text-lg">
-                            <span>{{ $netIncome >= 0 ? 'Net Profit' : 'Net Loss' }}</span>
-                            <span class="{{ $netIncome >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                {{ $currency }} {{ number_format(abs($netIncome), 2) }}
-                            </span>
-                        </div>
-                    </div>
-                </div>
+{{-- ─── Modals ─── --}}
+<x-income-modal :club="$club" :currency="$currency" />
+<x-expense-modal :club="$club" />
+@include('admin.club.financials.partials.auto-expense-modal')
+@include('admin.club.financials.partials.export-modal')
+@include('admin.club.financials.partials.edit-modal')
+@include('admin.club.financials.partials.delete-modal')
+@include('admin.club.financials.partials.transaction-detail-modal')
+@include('admin.club.financials.partials.refund-modal')
 
-                <!-- Payment Methods Breakdown -->
-                @php
-                    $paymentMethods = $transactions->groupBy('payment_method')->map(fn($items) => $items->sum('amount'));
-                @endphp
-                @if($paymentMethods->count() > 0)
-                <div class="border rounded-lg p-4">
-                    <h3 class="font-semibold mb-4">Payment Methods</h3>
-                    <div class="space-y-2">
-                        @foreach($paymentMethods as $method => $total)
-                        <div class="flex justify-between text-sm">
-                            <span>{{ ucfirst(str_replace('_', ' ', $method ?? 'Unknown')) }}</span>
-                            <span class="font-medium">{{ $currency }} {{ number_format($total, 2) }}</span>
-                        </div>
-                        @endforeach
-                    </div>
-                </div>
-                @endif
-            </div>
-        </div>
-    </div>
-
-    {{-- Modals --}}
-    <x-income-modal :club="$club" :currency="$currency" />
-    <x-expense-modal :club="$club" />
-    @include('admin.club.financials.partials.auto-expense-modal')
-    @include('admin.club.financials.partials.export-modal')
-    @include('admin.club.financials.partials.edit-modal')
-    @include('admin.club.financials.partials.delete-modal')
-    @include('admin.club.financials.partials.transaction-detail-modal')
-    @include('admin.club.financials.partials.refund-modal')
-</div>
-
-{{-- Styles moved to app.css (Phase 6) --}}
+</div>{{-- /x-data root --}}
 
 @push('scripts')
 <script>
 window.transactionData = {
-    @foreach($transactions as $transaction)
-    {{ $transaction->id }}: {
-        id: {{ $transaction->id }},
-        type: @json($transaction->type),
-        description: @json($transaction->description ?? ''),
-        amount: {{ $transaction->amount }},
-        transaction_date: @json($transaction->transaction_date ? $transaction->transaction_date->format('M d, Y') : ''),
-        category: @json($transaction->category ?? ''),
-        payment_method: @json($transaction->payment_method ?? ''),
-        subscription_id: {{ $transaction->subscription_id ?? 'null' }},
-        amount_paid: {{ $transaction->subscription?->amount_paid ?? 'null' }},
-        payment_status: @json($transaction->subscription?->payment_status ?? ''),
-        proof_of_payment: @json($transaction->subscription?->proof_of_payment ? route('admin.club.subscriptions.payment-proof', ['club' => $club, 'subscription' => $transaction->subscription_id]) : ''),
-        refund_proof: @json($transaction->subscription?->refund_proof ? route('admin.club.subscriptions.refund-proof', ['club' => $club, 'subscription' => $transaction->subscription_id]) : ''),
-        member_name: @json($transaction->subscription?->user?->full_name ?? $transaction->subscription?->user?->name ?? ''),
-        member_avatar: @json($transaction->subscription?->user?->profile_picture ? asset('storage/' . $transaction->subscription->user->profile_picture) : ''),
+    @foreach($transactions as $t)
+    {{ $t->id }}: {
+        id: {{ $t->id }},
+        type: @json($t->type),
+        description: @json($t->description ?? ''),
+        amount: {{ $t->amount }},
+        transaction_date: @json($t->transaction_date?->format('M d, Y') ?? ''),
+        category: @json($t->category ?? ''),
+        payment_method: @json($t->payment_method ?? ''),
+        subscription_id: {{ $t->subscription_id ?? 'null' }},
+        amount_paid: {{ $t->subscription?->amount_paid ?? 'null' }},
+        payment_status: @json($t->subscription?->payment_status ?? ''),
+        proof_of_payment: @json($t->subscription?->proof_of_payment ? route('admin.club.subscriptions.payment-proof', ['club'=>$club,'subscription'=>$t->subscription_id]) : ''),
+        refund_proof: @json($t->subscription?->refund_proof ? route('admin.club.subscriptions.refund-proof', ['club'=>$club,'subscription'=>$t->subscription_id]) : ''),
+        member_name: @json($t->subscription?->user?->full_name ?? $t->subscription?->user?->name ?? ''),
+        member_avatar: @json($t->subscription?->user?->profile_picture ? asset('storage/'.$t->subscription->user->profile_picture) : ''),
     },
     @endforeach
 };
 
-// Export CSV
+// ── In-place financial UI updates (no page reload) ───────────────────────────
+window._finCurrency = @json($currency);
+
+window._finMoney = function (n) {
+    return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+// Escape user-supplied strings before inserting via innerHTML (prevents stored XSS).
+window._finEsc = function (s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+};
+
+// Re-render the 5 KPI stat cards + their sparklines from a fresh summary/monthly payload.
+window.applyFinancials = function (data) {
+    if (!data || !window.StatCard) return;
+    var s = data.summary || {};
+    var m = data.monthly || [];
+    var col = function (k) { return m.map(function (row) { return Number(row[k] || 0); }); };
+    var net    = Number(s.net_profit || 0);
+    var income = Number(s.total_income || 0);
+    var margin = income > 0 ? Math.round((net / income) * 1000) / 10 : 0;
+
+    StatCard.update('sc-net', {
+        value:    window._finMoney(Math.abs(net)),
+        label:    net >= 0 ? 'Net Profit' : 'Net Loss',
+        subLabel: window._finCurrency + ' · ' + Math.abs(margin) + '% margin',
+        sparkData: col('profit'),
+    });
+    StatCard.update('sc-income',   { value: window._finMoney(s.total_income),     sparkData: col('income') });
+    StatCard.update('sc-expenses', { value: window._finMoney(s.total_expenses),   sparkData: col('expenses') });
+    StatCard.update('sc-collect',  { value: window._finMoney(s.pending),          sparkData: col('cash_to_collect') });
+    StatCard.update('sc-refunds',  { value: window._finMoney(s.refunds),          sparkData: col('refunds') });
+};
+
+// Build the status-badge markup matching the server-rendered ledger.
+window._finStatusBadge = function (status) {
+    switch (status) {
+        case 'pending_approval':
+            return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600"><i class="bi bi-hourglass-split text-[10px]"></i> Pending</span>';
+        case 'paid':
+            return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-600"><i class="bi bi-check-circle-fill text-[10px]"></i> Paid</span>';
+        case 'unpaid':
+            return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-600"><i class="bi bi-clock-fill text-[10px]"></i> Unpaid</span>';
+        default:
+            return '<span class="text-gray-300 text-xs">—</span>';
+    }
+};
+
+// Patch the status badge of every ledger row tied to a subscription.
+window.patchLedgerStatus = function (subId, status) {
+    if (!subId) return;
+    document.querySelectorAll('#ledgerBody tr[data-sub-id="' + subId + '"]').forEach(function (row) {
+        var cell = row.querySelector('.js-status-cell');
+        if (cell) cell.innerHTML = window._finStatusBadge(status);
+    });
+};
+
+// Prepend a freshly created refund transaction to the ledger (shown on page 1 only).
+window.prependLedgerRow = function (t) {
+    var body = document.getElementById('ledgerBody');
+    if (!body || !t) return false;
+    var cur = window._finEsc(window._finCurrency);
+    var esc = window._finEsc;
+    var tr = document.createElement('tr');
+    tr.className = 'group transition-colors hover:bg-gray-50/70';
+    tr.setAttribute('data-sub-id', '');
+    tr.setAttribute('data-txn-type', 'refund');
+    tr.setAttribute('x-show', 'ledgerPage === 1');
+    tr.innerHTML =
+        '<td class="px-5 py-3.5 whitespace-nowrap text-gray-500 text-xs">' + esc(t.transaction_date || '—') + '</td>' +
+        '<td class="px-5 py-3.5"><div class="flex items-center gap-2.5">' +
+            '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0"></span>' +
+            '<span class="text-gray-800 font-medium truncate max-w-[180px]">' + esc(t.description || '—') + '</span>' +
+        '</div></td>' +
+        '<td class="px-5 py-3.5 text-gray-500 text-xs capitalize">' + esc(t.category || '—') + '</td>' +
+        '<td class="px-5 py-3.5"><span class="inline-flex items-center gap-1 text-xs text-gray-500 capitalize"><i class="bi bi-bank text-blue-500"></i> Bank transfer</span></td>' +
+        '<td class="px-5 py-3.5 js-status-cell"><span class="text-gray-300 text-xs">—</span></td>' +
+        '<td class="px-5 py-3.5 text-right font-semibold tabular-nums whitespace-nowrap text-amber-600">−' + cur + ' ' + window._finMoney(t.amount) + '</td>' +
+        '<td class="px-3 py-3.5"></td>';
+    body.insertBefore(tr, body.firstElementChild);
+
+    var badge = document.getElementById('ledgerCountBadge');
+    if (badge) badge.textContent = (parseInt(badge.textContent, 10) || 0) + 1;
+    return true;
+};
+
 function exportCSV() {
     @php
-        $csvData = $transactions->map(function($t) {
-            return [
-                'date' => $t->transaction_date ? $t->transaction_date->format('Y-m-d') : '',
-                'type' => $t->type,
-                'description' => $t->description,
-                'category' => $t->category ?? '',
-                'amount' => $t->amount,
-                'payment_method' => $t->payment_method ?? '',
-                'reference_number' => $t->reference_number ?? '',
-            ];
-        })->values();
+        $csvData = $transactions->map(fn($t) => [
+            'date'             => $t->transaction_date?->format('Y-m-d') ?? '',
+            'type'             => $t->type,
+            'description'      => $t->description ?? '',
+            'category'         => $t->category ?? '',
+            'amount'           => $t->amount,
+            'payment_method'   => $t->payment_method ?? '',
+            'reference_number' => $t->reference_number ?? '',
+        ])->values();
     @endphp
-    const transactions = @json($csvData);
-
-    if (!transactions.length) {
-        alert('No transactions to export');
-        return;
-    }
-
-    const headers = ['Date', 'Type', 'Description', 'Category', 'Amount', 'Payment Method', 'Reference #'];
-    const rows = transactions.map(t => [
-        t.date, t.type, '"' + (t.description || '').replace(/"/g, '""') + '"',
-        '"' + (t.category || '').replace(/"/g, '""') + '"',
-        t.amount, t.payment_method, t.reference_number
-    ]);
-
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const fileNameInput = document.getElementById('exportFileName');
-    a.download = (fileNameInput ? fileNameInput.value : 'transactions-{{ now()->format("Y-m-d") }}') + '.csv';
+    const rows = @json($csvData);
+    if (!rows.length) { window.showToast('info', 'No transactions to export'); return; }
+    const headers = ['Date','Type','Description','Category','Amount','Payment Method','Reference #'];
+    const csv = [headers, ...rows.map(r => [
+        r.date, r.type,
+        '"' + (r.description||'').replace(/"/g,'""') + '"',
+        '"' + (r.category||'').replace(/"/g,'""') + '"',
+        r.amount, r.payment_method, r.reference_number
+    ])].map(r => r.join(',')).join('\n');
+    const a = Object.assign(document.createElement('a'), {
+        href: URL.createObjectURL(new Blob([csv], {type:'text/csv'})),
+        download: (document.getElementById('exportFileName')?.value || 'transactions-{{ now()->format("Y-m-d") }}') + '.csv'
+    });
     a.click();
-    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(a.href);
 }
+
 </script>
 @endpush
 @endsection

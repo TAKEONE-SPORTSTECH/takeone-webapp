@@ -1,0 +1,142 @@
+@extends('layouts.app')
+
+{{-- Hide the global brand navbar so this shell is the single top bar.
+     Toasts/assets/notification script still load (they live outside the navbar block). --}}
+@section('hide-navbar', true)
+
+@section('content')
+@php
+    $clubId = $club->slug ?? $club->id ?? null;
+    $currentRoute = request()->route()?->getName();
+
+    // Grouped navigation for the drawer (matches the liked mockup structure).
+    $navGroups = [
+        'Analytics' => [
+            ['route'=>'admin.club.dashboard',   'icon'=>'bi-speedometer2', 'label'=>'Dashboard'],
+            ['route'=>'admin.club.analytics',   'icon'=>'bi-bar-chart',    'label'=>'Analytics'],
+        ],
+        'People' => [
+            ['route'=>'admin.club.members',     'icon'=>'bi-people',        'label'=>'Members'],
+            ['route'=>'admin.club.instructors', 'icon'=>'bi-person-badge',  'label'=>'Instructors'],
+            ['route'=>'admin.club.roles',       'icon'=>'bi-shield-check',  'label'=>'Roles'],
+            ['route'=>'admin.club.messages',    'icon'=>'bi-chat-dots',     'label'=>'Messages'],
+        ],
+        'Operations' => [
+            ['route'=>'admin.club.packages',    'icon'=>'bi-box',           'label'=>'Packages'],
+            ['route'=>'admin.club.activities',  'icon'=>'bi-activity',      'label'=>'Activities'],
+            ['route'=>'admin.club.events',      'icon'=>'bi-calendar-event','label'=>'Events'],
+            ['route'=>'admin.club.facilities',  'icon'=>'bi-geo-alt',       'label'=>'Facilities'],
+            ['route'=>'admin.club.gallery',     'icon'=>'bi-images',        'label'=>'Gallery'],
+            ['route'=>'admin.club.timeline',    'icon'=>'bi-newspaper',     'label'=>'Timeline'],
+            ['route'=>'admin.club.perks',       'icon'=>'bi-gift',          'label'=>'Perks'],
+            ['route'=>'admin.club.achievements','icon'=>'bi-trophy',        'label'=>'Achievements'],
+        ],
+        'Finance' => [
+            ['route'=>'admin.club.financials',  'icon'=>'bi-currency-dollar','label'=>'Financials'],
+        ],
+        'System' => [
+            ['route'=>'admin.club.details',     'icon'=>'bi-building',      'label'=>'Club Details'],
+            ['route'=>'admin.club.notifications','icon'=>'bi-bell',         'label'=>'Notifications'],
+        ],
+    ];
+
+    // Flatten for label lookup + bottom-tab definition.
+    $allNav = collect($navGroups)->flatten(1);
+    $activeLabel = optional($allNav->firstWhere('route', $currentRoute))['label'] ?? '';
+    $bottomTabs = [
+        ['route'=>'admin.club.dashboard',  'icon'=>'bi-speedometer2',    'label'=>'Home'],
+        ['route'=>'admin.club.members',    'icon'=>'bi-people',          'label'=>'Members'],
+        ['route'=>'admin.club.financials', 'icon'=>'bi-currency-dollar', 'label'=>'Billing'],
+        ['route'=>'admin.club.packages',   'icon'=>'bi-box',             'label'=>'Packages'],
+    ];
+
+    $hasBusiness = Auth::user()->hasApprovedBusiness();
+    $businessName = $hasBusiness ? Auth::user()->ownedBusiness->name : null;
+@endphp
+
+<div x-data="{ drawer:false, switcher:false, showNotificationModal:false }" @shell:navigated.window="drawer=false; switcher=false">
+
+    {{-- ===== Header (shared, identical to Personal) ===== --}}
+    @include('partials.mobile-header', ['switcherCurrent' => 'business', 'shellTitle' => ($activeLabel ?: ($club->club_name ?? 'Dashboard'))])
+
+    {{-- ===== Left drawer ===== --}}
+    <div x-show="drawer" x-cloak class="fixed inset-0 z-50" style="display:none;">
+        <div class="absolute inset-0 bg-black/40" @click="drawer=false"
+             x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"></div>
+        <aside class="absolute top-0 left-0 h-full w-[280px] max-w-[85vw] bg-white shadow-2xl flex flex-col overflow-y-auto"
+               x-transition:enter="transition ease-out duration-250" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
+               x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full">
+            {{-- Drawer header --}}
+            <div class="flex items-center justify-between p-4 border-b border-border">
+                <div class="flex items-center gap-2 min-w-0">
+                    @if(!empty($club->logo))
+                        <img src="{{ asset('storage/'.$club->logo) }}" alt="" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">
+                    @else
+                        <span class="w-10 h-10 rounded-lg bg-accent flex items-center justify-center text-primary font-bold text-xs flex-shrink-0">{{ strtoupper(substr($club->club_name ?? 'CL',0,2)) }}</span>
+                    @endif
+                    <div class="min-w-0">
+                        <p class="font-bold text-foreground truncate text-sm">{{ $club->club_name }}</p>
+                        <p class="text-[10px] text-muted-foreground">Club Management</p>
+                    </div>
+                </div>
+                <button @click="drawer=false" class="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground"><i class="bi bi-x-lg"></i></button>
+            </div>
+            {{-- Drawer nav --}}
+            <nav class="p-3 flex-1">
+                @foreach($navGroups as $groupLabel => $items)
+                    <p class="px-2 mt-3 mb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{{ $groupLabel }}</p>
+                    @foreach($items as $item)
+                        @php $active = $currentRoute === $item['route']; @endphp
+                        <a href="{{ route($item['route'], $clubId) }}" data-shell-link data-route="{{ $item['route'] }}"
+                           class="shell-nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors {{ $active ? 'is-active' : '' }}">
+                            <i class="bi {{ $item['icon'] }} text-lg w-5 text-center"></i>{{ $item['label'] }}
+                        </a>
+                    @endforeach
+                @endforeach
+                {{-- Back out --}}
+                <div class="border-t border-border mt-3 pt-3">
+                    <a href="{{ $club->url ?? '#' }}" target="_blank" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent">
+                        <i class="bi bi-eye text-lg w-5 text-center"></i>Preview club page
+                    </a>
+                    <button type="button" @click="showNotificationModal = true; drawer = false" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent">
+                        <i class="bi bi-send text-lg w-5 text-center"></i>Send notification
+                    </button>
+                    <a href="{{ $hasBusiness ? route('business.dashboard') : route('clubs.explore') }}"
+                       class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-accent">
+                        <i class="bi bi-arrow-left text-lg w-5 text-center"></i>{{ $hasBusiness ? 'Back to chain' : 'Back to explore' }}
+                    </a>
+                    @include('partials.mobile-account-links')
+                </div>
+            </nav>
+        </aside>
+    </div>
+
+    {{-- ===== Content ===== --}}
+    <main id="shell-content" data-route="{{ $currentRoute }}" data-title="{{ $activeLabel }}" class="mobile-stagger px-4 py-4 pb-24 min-h-[60vh]">
+        @yield('club-admin-content')
+    </main>
+
+    {{-- ===== Bottom tab bar ===== --}}
+    <nav class="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-border lg:hidden">
+        <div class="grid grid-cols-5">
+            @foreach($bottomTabs as $tab)
+                @php $active = $currentRoute === $tab['route']; @endphp
+                <a href="{{ route($tab['route'], $clubId) }}" data-shell-link data-route="{{ $tab['route'] }}"
+                   class="shell-tab flex flex-col items-center justify-center gap-0.5 py-2.5 {{ $active ? 'is-active' : '' }}">
+                    <i class="bi {{ $tab['icon'] }} text-lg"></i>
+                    <span class="text-[10px] font-medium">{{ $tab['label'] }}</span>
+                </a>
+            @endforeach
+            <button @click="drawer = true" class="flex flex-col items-center justify-center gap-0.5 py-2.5 text-muted-foreground">
+                <i class="bi bi-grid text-lg"></i>
+                <span class="text-[10px] font-medium">Menu</span>
+            </button>
+        </div>
+    </nav>
+
+    @include('admin.club.notifications.send-modal')
+
+</div>
+
+@include('partials.mobile-shell-nav')
+@endsection

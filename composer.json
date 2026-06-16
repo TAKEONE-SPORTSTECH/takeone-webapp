@@ -9,6 +9,11 @@
         {
             "type": "vcs",
             "url": "https://github.com/TAKEONE-SPORTSTECH/laravel-image-cropper.git"
+        },
+        {
+            "type": "path",
+            "url": "packages/takeone/realtime",
+            "options": { "symlink": true }
         }
     ],
     "require": {
@@ -18,10 +23,12 @@
         "laravel/horizon": "^5.45",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
+        "phpoffice/phpspreadsheet": "^5.7",
         "pragmarx/google2fa-laravel": "^3.0",
         "sentry/sentry-laravel": "^4.22",
         "spatie/laravel-activitylog": "^4.12",
-        "takeone/cropper": "dev-main"
+        "takeone/cropper": "dev-main",
+        "takeone/realtime": "*"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -37,7 +44,10 @@
             "App\\": "app/",
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"
-        }
+        },
+        "files": [
+            "app/Helpers/taekwondo_weightclass.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {

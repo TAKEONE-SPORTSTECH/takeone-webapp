@@ -340,7 +340,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof Toast !== 'undefined') {
                     Toast.success('Facility Added', data.message || 'Facility added successfully.');
                 }
-                setTimeout(() => location.reload(), 1000);
+                // Genuine navigation: return to the facilities index so the new
+                // record renders with its correct server-side markup (handles the
+                // empty-state -> populated-grid transition for free).
+                window.location.href = '{{ route('admin.club.facilities', $club->slug) }}';
             } else if (response.status === 422 && data.errors) {
                 const fieldMap = {
                     name:        { id: 'name',     inputId: 'facilityName' },

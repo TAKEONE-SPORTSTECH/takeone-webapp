@@ -14,7 +14,9 @@ class AuthenticatedSessionController extends Controller
 
     public function create()
     {
-        return view('auth.login');
+        $isMobile = request()->attributes->get('is_mobile', false);
+
+        return view($isMobile ? 'auth.mobile.login' : 'auth.desktop.login');
     }
 
     public function store(Request $request)
@@ -52,7 +54,10 @@ class AuthenticatedSessionController extends Controller
             }
         }
 
-        if (Auth::attempt($credentials)) {
+        // Always "remember" the user so they stay logged in across browser
+        // restarts and session expiry — re-authenticated silently via the
+        // long-lived remember-me cookie until they explicitly log out.
+        if (Auth::attempt($credentials, true)) {
             // Clear any lockout state on successful login.
             Cache::forget($lockKey);
             Cache::forget($lockKey . '.attempts');
@@ -82,7 +87,7 @@ class AuthenticatedSessionController extends Controller
 
             $request->session()->put('two_factor.verified', true);
 
-            return redirect()->intended(route('clubs.explore'));
+            return redirect()->intended(\App\Support\Landing::url($request));
         }
 
         // Failed attempt — increment counter and maybe lock.

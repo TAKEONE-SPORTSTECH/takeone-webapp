@@ -326,7 +326,19 @@ function submitActivityForm(prefix, formId) {
             if (typeof Toast !== 'undefined') {
                 Toast.success('Success', data.message || 'Activity saved successfully.');
             }
-            setTimeout(() => location.reload(), 900);
+            const mode = prefix === 'edit' ? 'edit' : 'create';
+            // Update the page in place — no reload.
+            window.dispatchEvent(new CustomEvent('activity-saved', { detail: { activity: data.activity, mode } }));
+            // Reset & close the modal.
+            const container = document.getElementById('activitiesContainer');
+            if (container && window.Alpine) {
+                const cmp = Alpine.$data(container);
+                if (mode === 'edit') { cmp.showEditModal = false; }
+                else { cmp.showAddModal = false; cmp.duplicateData = null; }
+            }
+            form.reset();
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
         } else if (response.status === 422 && data.errors) {
             const fieldMap = { name: 'name', description: 'description', notes: 'notes', duration_minutes: 'duration_minutes' };
             let first = true;

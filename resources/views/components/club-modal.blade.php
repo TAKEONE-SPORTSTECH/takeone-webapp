@@ -712,11 +712,19 @@
                     if (response.ok && data.success) {
                         this.showToast(data.message || 'Club saved successfully!', 'success');
                         this.clearDraft();
+                        this.closeModal();
 
-                        setTimeout(() => {
-                            this.closeModal();
-                            window.location.reload();
-                        }, 1500);
+                        // Notify any listening page so it can update in place — no reload.
+                        window.dispatchEvent(new CustomEvent('club-saved', {
+                            detail: { mode: this.mode, club: data.club }
+                        }));
+
+                        // Creating a club navigates to the new record (sanctioned by the
+                        // no-reload rule); editing patches the list in place via the event above.
+                        if (this.mode === 'create' && data.club?.slug) {
+                            setTimeout(() => { window.location.href = '/admin/club/' + data.club.slug; }, 800);
+                        }
+                        this.isSubmitting = false;
                     } else {
                         if (response.status === 422 && data.errors) {
                             this.showFieldErrors(data.errors);
@@ -779,7 +787,7 @@
                 if (typeof window.showToast === 'function') {
                     window.showToast(type, message);
                 } else {
-                    alert(message);
+                    console.warn('Toast:', type, message);
                 }
             }
         }

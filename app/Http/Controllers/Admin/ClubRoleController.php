@@ -34,7 +34,7 @@ class ClubRoleController extends Controller
             ]);
         }
 
-        return view('admin.club.roles.index', compact('club', 'members', 'availableRoles'));
+        return view(\App\Support\ClubView::pick('roles'), compact('club', 'members', 'availableRoles'));
     }
 
     public function storeRole(RoleRequest $request, Tenant $club)

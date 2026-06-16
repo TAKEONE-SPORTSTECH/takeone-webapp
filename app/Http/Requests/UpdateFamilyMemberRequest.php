@@ -20,7 +20,7 @@ class UpdateFamilyMemberRequest extends FormRequest
             'email'                     => 'nullable|email|max:255|unique:users,email,' . $id,
             'mobile_code'               => 'nullable|string|max:5',
             'mobile'                    => 'nullable|string|max:20',
-            'gender'                    => 'required|in:m,f',
+            'gender'                    => 'required|in:Male,Female',
             'marital_status'            => 'nullable|in:single,married,divorced,widowed',
             'birthdate'                 => 'required|date',
             'blood_type'                => 'nullable|string|max:10',

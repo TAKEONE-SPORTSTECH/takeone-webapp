@@ -5,8 +5,8 @@
     <!-- Card Header -->
     <div class="flex items-center justify-between border-b border-border px-6 py-4">
         <div>
-            <h5 class="text-lg font-semibold text-foreground">Club Gallery</h5>
-            <p class="text-sm text-gray-500 mt-0.5">Drag to reorder — top item appears first in the banner</p>
+            <h2 class="text-xl font-bold text-gray-900">Club Gallery</h2>
+            <p class="text-sm text-gray-500 mt-1">Drag to reorder — top item appears first in the banner</p>
         </div>
         <button class="btn btn-primary"
                 @click="showUploadModal = true">
@@ -45,6 +45,7 @@
         <div class="flex flex-col gap-3" id="gallery-list">
             @foreach($images as $index => $image)
             <div class="gallery-item flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg transition-shadow hover:shadow-md"
+                 id="gallery-image-{{ $image->id }}"
                  data-id="{{ $image->id }}">
 
                 <!-- Position badge -->
@@ -184,12 +185,14 @@ function deleteImage(id) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                location.reload();
+                const el = document.getElementById(`gallery-image-${id}`);
+                el?.remove();
+                if (typeof updatePositionBadges === 'function') updatePositionBadges();
             } else {
-                alert(data.message || 'Failed to delete picture');
+                window.showToast('error', data.message || 'Failed to delete picture');
             }
         })
-        .catch(() => alert('Failed to delete picture'));
+        .catch(() => window.showToast('error', 'Failed to delete picture'));
     });
 }
 </script>

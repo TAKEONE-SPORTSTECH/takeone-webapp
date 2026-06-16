@@ -18,7 +18,7 @@
     // $user is the primary model (User). Club context comes from their instructor records.
     $primaryInstructor = $user->clubInstructors->first();
     $club = $primaryInstructor?->tenant;
-    $isMale = ($user->gender ?? '') === 'm';
+    $isMale = ($user->gender ?? '') === 'Male';
     // $reviews and $stats are passed from the controller
 @endphp
 

@@ -278,10 +278,11 @@
         block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    function removeBankAccount(button) {
+    async function removeBankAccount(button) {
         const block = button.closest('.bank-account-block');
         if (block) {
-            if (confirm('Are you sure you want to remove this bank account?')) {
+            const ok = await window.confirmAction({ title: 'Remove Bank Account', message: 'Are you sure you want to remove this bank account?', type: 'danger', confirmText: 'Remove' });
+            if (ok) {
                 block.remove();
                 updateSummary();
                 renumberBankAccounts();

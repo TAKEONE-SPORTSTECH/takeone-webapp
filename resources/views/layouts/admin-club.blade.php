@@ -1,231 +1,254 @@
 @extends('layouts.app')
 
+@push('styles')
+<style>
+/* ══ ADMIN CLUB — FULL-HEIGHT LAYOUT ══
+   The page does NOT scroll. Only #emp-main-area scrolls internally.
+   This guarantees the sidebar never separates from the top bar.
+*/
+html, body { overflow: hidden !important; height: 100% !important; }
+
+#emp-layout {
+    display: flex;
+    height: calc(100vh - 64px); /* 64px = h-16 app navbar */
+    overflow: hidden;
+}
+
+/* ── SIDEBAR ── */
+#emp-sidebar {
+    width: 256px;
+    min-width: 256px;
+    background: #fff;
+    border-right: 1px solid #e5e7eb;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    transition: width 0.22s ease, min-width 0.22s ease;
+    flex-shrink: 0;
+}
+#emp-sidebar.collapsed {
+    width: 0 !important;
+    min-width: 0 !important;
+    border-right: none;
+    box-shadow: none;
+}
+
+/* ── MAIN CONTENT ── */
+#emp-main-area {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+    height: 100%;
+    padding: 20px 16px;
+}
+
+/* ── TOGGLE BUTTON ── */
+#emp-sidebar-toggle {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: transparent;
+    border: 1px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #6b7280;
+    font-size: 16px;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+#emp-sidebar-toggle:hover { background: #ede9fe; border-color: #ddd6fe; color: #7c3aed; }
+
+/* ── SIDEBAR INTERNALS ── */
+.emp-sanctum-ttl {
+    font-size:8px; font-weight:600;
+    letter-spacing:2px; color:#7c3aed; text-align:center;
+    text-transform:uppercase; padding:14px 16px 6px;
+    white-space:nowrap;
+}
+.emp-seal-name .big {
+    display:block; font-size:12px; font-weight:700;
+    color:#111827; letter-spacing:0.5px; text-align:center;
+}
+.emp-seal-name .sm {
+    display:block; font-size:8px; font-weight:600;
+    color:#7c3aed; letter-spacing:1px; text-align:center; text-transform:uppercase;
+}
+.emp-sb-btn {
+    width:30px; height:30px; border-radius:7px; cursor:pointer;
+    background:#f3f4f6; border:1px solid #e5e7eb;
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; color:#6b7280; transition:all 0.15s;
+    text-decoration:none;
+}
+.emp-sb-btn:hover { background:#ede9fe; border-color:#8b5cf6; color:#7c3aed; }
+
+#emp-sidebar .nav-item {
+    display:flex; align-items:center; gap:8px;
+    padding:7px 10px; border-radius:8px;
+    font-size:12px; font-weight:600; letter-spacing:0.3px;
+    color:#6b7280; text-transform:uppercase;
+    transition:all 0.15s; border:1px solid transparent;
+    position:relative; text-decoration:none !important;
+    white-space:nowrap; overflow:hidden;
+}
+#emp-sidebar .nav-item:hover { background:#f3f4f6; color:#374151; }
+#emp-sidebar .nav-item.active {
+    background:#ede9fe; color:#7c3aed;
+    border-color:#ddd6fe;
+}
+#emp-sidebar .nav-item.active::before {
+    content:''; position:absolute; left:-8px; top:50%; transform:translateY(-50%);
+    width:3px; height:60%; background:#7c3aed; border-radius:0 2px 2px 0;
+}
+#emp-sidebar .nav-item .ni { font-size:13px; width:15px; text-align:center; flex-shrink:0; }
+
+#emp-sidebar-nav::-webkit-scrollbar { width:3px; }
+#emp-sidebar-nav::-webkit-scrollbar-track { background:transparent; }
+#emp-sidebar-nav::-webkit-scrollbar-thumb { background:#ddd6fe; border-radius:2px; }
+
+.emp-sb-div { height:1px; margin:0 16px; background:#f3f4f6; flex-shrink:0; }
+
+/* Financials tooltip */
+.emp-has-tip { position:relative; }
+.emp-tip-box {
+    position:absolute; left:calc(100% + 8px); top:50%; transform:translateY(-50%);
+    background:#fff; border:1px solid #e5e7eb; border-radius:10px;
+    padding:10px 13px; width:150px;
+    opacity:0; pointer-events:none; transition:opacity 0.2s; z-index:300;
+    box-shadow:0 8px 24px rgba(0,0,0,0.1);
+}
+.emp-has-tip:hover .emp-tip-box { opacity:1; }
+.emp-tip-ttl { font-size:8px; color:#7c3aed; letter-spacing:1px; margin-bottom:7px; text-transform:uppercase; font-weight:700; }
+.emp-tip-row { display:flex; justify-content:space-between; font-size:11px; color:#9ca3af; margin-bottom:3px; }
+.emp-tip-row .v  { color:#374151; font-weight:600; }
+.emp-tip-row .vp { color:#16a34a; }
+.emp-tip-row .vn { color:#dc2626; }
+.emp-tip-tot { border-top:1px solid #f3f4f6; padding-top:5px; margin-top:5px; display:flex; justify-content:space-between; font-size:11px; font-weight:600; }
+.emp-tip-tot .v { color:#7c3aed; font-weight:700; }
+
+</style>
+@endpush
+
 @section('content')
-<div x-data="{ sidebarOpen: false, showNotificationModal: false }">
+@php
+    $clubId = $club->slug ?? $club->id ?? null;
+    $currentRoute = request()->route()->getName();
+    $navItems = [
+        ['route'=>'admin.club.dashboard',    'icon'=>'bi-speedometer2',   'label'=>'Dashboard'],
+        ['route'=>'admin.club.members',      'icon'=>'bi-person-plus',    'label'=>'Members'],
+        ['route'=>'admin.club.financials',   'icon'=>'bi-currency-dollar','label'=>'Financials'],
+        ['route'=>'admin.club.details',      'icon'=>'bi-building',       'label'=>'Club Details'],
+        ['route'=>'admin.club.facilities',   'icon'=>'bi-geo-alt',        'label'=>'Facilities'],
+        ['route'=>'admin.club.instructors',  'icon'=>'bi-people',         'label'=>'Instructors'],
+        ['route'=>'admin.club.activities',   'icon'=>'bi-activity',       'label'=>'Activities'],
+        ['route'=>'admin.club.events',       'icon'=>'bi-calendar-event', 'label'=>'Events'],
+        ['route'=>'admin.club.timeline',     'icon'=>'bi-newspaper',      'label'=>'Timeline'],
+        ['route'=>'admin.club.perks',        'icon'=>'bi-gift',           'label'=>'Perks'],
+        ['route'=>'admin.club.achievements', 'icon'=>'bi-trophy',         'label'=>'Achievements'],
+        ['route'=>'admin.club.packages',     'icon'=>'bi-box',            'label'=>'Packages'],
+        ['route'=>'admin.club.gallery',      'icon'=>'bi-images',         'label'=>'Gallery'],
+        ['route'=>'admin.club.roles',        'icon'=>'bi-shield-check',   'label'=>'Roles'],
+        ['route'=>'admin.club.messages',     'icon'=>'bi-chat-dots',      'label'=>'Messages'],
+        ['route'=>'admin.club.notifications','icon'=>'bi-bell',           'label'=>'Notifications'],
+        ['route'=>'admin.club.analytics',    'icon'=>'bi-bar-chart',      'label'=>'Analytics'],
+    ];
+@endphp
 
-<!-- Mobile Sidebar Toggle -->
-<div class="lg:hidden sticky top-16 z-40 bg-background border-b border-border p-4">
-    <button @click="sidebarOpen = !sidebarOpen"
-            class="flex items-center gap-2 px-4 py-2 border border-border rounded-lg bg-white font-semibold cursor-pointer">
-        <i class="bi bi-list" x-show="!sidebarOpen"></i>
-        <i class="bi bi-x-lg" x-show="sidebarOpen" x-cloak></i>
-        <span class="truncate max-w-[200px]">{{ $club->club_name ?? 'Club Menu' }}</span>
-    </button>
-</div>
+<div x-data="{ showNotificationModal: false }">
 
-<!-- Mobile Overlay Backdrop -->
-<div x-show="sidebarOpen" x-cloak @click="sidebarOpen = false"
-     class="lg:hidden fixed inset-0 bg-black/50 z-30"
-     x-transition:enter="transition ease-out duration-200"
-     x-transition:enter-start="opacity-0"
-     x-transition:enter-end="opacity-100"
-     x-transition:leave="transition ease-in duration-150"
-     x-transition:leave-start="opacity-100"
-     x-transition:leave-end="opacity-0"></div>
+@push('navbar-left')
+<button id="emp-sidebar-toggle" title="Toggle sidebar" onclick="empToggleSidebar()">
+    <i class="bi bi-layout-sidebar-inset" id="emp-toggle-icon"></i>
+</button>
+@endpush
 
-<!-- Club Admin Wrapper -->
-<div class="max-w-[1400px] mx-auto px-4 py-5 flex flex-col lg:flex-row gap-5">
-    <!-- Sidebar -->
-    <aside class="w-full lg:w-72 lg:min-w-72 bg-muted/30 border border-border rounded-xl p-6 h-fit lg:sticky lg:top-24"
-           :class="{ 'hidden lg:block': !sidebarOpen, 'block relative z-40': sidebarOpen }">
+<!-- ── FULL-HEIGHT LAYOUT ── -->
+<div id="emp-layout">
 
-        @if(isset($club) && $club->logo)
-            <div class="w-full p-4 flex items-center justify-center mb-2">
-                <img src="{{ asset('storage/' . $club->logo) }}" alt="{{ $club->club_name }}" class="max-w-full max-h-30 object-contain">
-            </div>
-        @else
-            <h2 class="text-lg font-bold text-foreground px-2 pb-2 text-center">{{ $club->club_name ?? 'Club Admin' }}</h2>
-        @endif
+    <!-- ── SIDEBAR ── -->
+    <aside id="emp-sidebar" class="flex flex-col">
 
-        <h3 class="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-center mb-4">Club Panel</h3>
+        <!-- Club Logo + Name -->
+        <div class="flex flex-col items-center px-4 pb-2 gap-2" style="flex-shrink:0;padding-top:16px;">
+            @if($club->logo)
+                <img src="{{ asset('storage/'.$club->logo) }}"
+                     alt="{{ $club->club_name }}"
+                     style="width:90px;height:90px;object-fit:contain;border-radius:12px;">
+            @else
+                <div style="width:90px;height:90px;border-radius:12px;background:linear-gradient(135deg,#ede9fe,#ddd6fe);border:1.5px solid rgba(124,58,237,0.2);display:flex;align-items:center;justify-content:center;">
+                    <span style="font-size:28px;font-weight:800;color:#7c3aed;letter-spacing:-1px;line-height:1;">
+                        {{ strtoupper(substr($club->club_name, 0, 2)) }}
+                    </span>
+                </div>
+            @endif
 
-        <!-- Action Buttons -->
-        <div class="flex items-center justify-center gap-2 pb-4 mb-4 border-b border-border">
-            <a href="{{ route('admin.platform.clubs') }}"
-               class="w-9 h-9 rounded-lg flex items-center justify-center bg-card text-foreground hover:bg-accent hover:shadow-sm transition-all border border-border no-underline"
-               title="Back to Clubs">
-                <i class="bi bi-arrow-left"></i>
-            </a>
-            <a href="{{ $club->url }}"
-               class="w-9 h-9 rounded-lg flex items-center justify-center bg-card text-foreground hover:bg-accent hover:shadow-sm transition-all border border-border no-underline"
-               title="Preview Club" target="_blank">
-                <i class="bi bi-eye"></i>
-            </a>
-            <button @click="showNotificationModal = true"
-                    class="w-9 h-9 rounded-lg flex items-center justify-center bg-card text-foreground hover:bg-accent hover:shadow-sm transition-all border border-border cursor-pointer"
-                    title="Send Notification">
-                <i class="bi bi-send"></i>
-            </button>
+            <p style="font-size:12px;font-weight:700;color:#3b0764;text-align:center;line-height:1.3;letter-spacing:0.03em;margin:0;">{{ $club->club_name }}</p>
         </div>
 
-        @php
-            $clubId = $club->slug ?? $club->id ?? null;
-            $currentRoute = request()->route()->getName();
-        @endphp
+        <!-- Action buttons -->
+        <div class="flex justify-center gap-2 px-4 pb-3" style="flex-shrink:0">
+            @if(Auth::user()->isSuperAdmin())
+                <a href="{{ route('admin.platform.clubs') }}" class="emp-sb-btn" title="Back to Clubs">←</a>
+            @else
+                <a href="{{ route('clubs.explore') }}" class="emp-sb-btn" title="Back to Explore">←</a>
+            @endif
+            <a href="{{ $club->url }}" class="emp-sb-btn" title="Preview Club" target="_blank">👁</a>
+            <button @click="showNotificationModal = true" class="emp-sb-btn" title="Send Notification">✈</button>
+        </div>
 
-        <nav class="flex flex-col gap-1">
-            <a href="{{ route('admin.club.dashboard', $clubId) }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
-                      {{ $currentRoute === 'admin.club.dashboard'
-                         ? 'bg-primary text-white shadow-lg'
-                         : 'text-foreground hover:bg-muted' }}">
-                <i class="bi bi-speedometer2 w-5"></i>
-                <span>Dashboard</span>
-            </a>
+        <div class="emp-sb-div"></div>
 
-            <a href="{{ route('admin.club.members', $clubId) }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
-                      {{ $currentRoute === 'admin.club.members'
-                         ? 'bg-primary text-white shadow-lg'
-                         : 'text-foreground hover:bg-muted' }}">
-                <i class="bi bi-person-plus w-5"></i>
-                <span>Members</span>
-            </a>
-
-            <a href="{{ route('admin.club.financials', $clubId) }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
-                      {{ $currentRoute === 'admin.club.financials'
-                         ? 'bg-primary text-white shadow-lg'
-                         : 'text-foreground hover:bg-muted' }}">
-                <i class="bi bi-currency-dollar w-5"></i>
-                <span>Financials</span>
-            </a>
-
-            <a href="{{ route('admin.club.details', $clubId) }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
-                      {{ $currentRoute === 'admin.club.details'
-                         ? 'bg-primary text-white shadow-lg'
-                         : 'text-foreground hover:bg-muted' }}">
-                <i class="bi bi-building w-5"></i>
-                <span>Club Details</span>
-            </a>
-
-            <a href="{{ route('admin.club.facilities', $clubId) }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
-                      {{ $currentRoute === 'admin.club.facilities'
-                         ? 'bg-primary text-white shadow-lg'
-                         : 'text-foreground hover:bg-muted' }}">
-                <i class="bi bi-geo-alt w-5"></i>
-                <span>Facilities</span>
-            </a>
-
-            <a href="{{ route('admin.club.instructors', $clubId) }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
-                      {{ $currentRoute === 'admin.club.instructors'
-                         ? 'bg-primary text-white shadow-lg'
-                         : 'text-foreground hover:bg-muted' }}">
-                <i class="bi bi-people w-5"></i>
-                <span>Instructors</span>
-            </a>
-
-            <a href="{{ route('admin.club.activities', $clubId) }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
-                      {{ $currentRoute === 'admin.club.activities'
-                         ? 'bg-primary text-white shadow-lg'
-                         : 'text-foreground hover:bg-muted' }}">
-                <i class="bi bi-activity w-5"></i>
-                <span>Activities</span>
-            </a>
-
-            <a href="{{ route('admin.club.events', $clubId) }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
-                      {{ $currentRoute === 'admin.club.events'
-                         ? 'bg-primary text-white shadow-lg'
-                         : 'text-foreground hover:bg-muted' }}">
-                <i class="bi bi-calendar-event w-5"></i>
-                <span>Events</span>
-            </a>
-
-            <a href="{{ route('admin.club.timeline', $clubId) }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
-                      {{ $currentRoute === 'admin.club.timeline'
-                         ? 'bg-primary text-white shadow-lg'
-                         : 'text-foreground hover:bg-muted' }}">
-                <i class="bi bi-newspaper w-5"></i>
-                <span>Timeline</span>
-            </a>
-
-            <a href="{{ route('admin.club.perks', $clubId) }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
-                      {{ $currentRoute === 'admin.club.perks'
-                         ? 'bg-primary text-white shadow-lg'
-                         : 'text-foreground hover:bg-muted' }}">
-                <i class="bi bi-gift w-5"></i>
-                <span>Perks</span>
-            </a>
-
-            <a href="{{ route('admin.club.achievements', $clubId) }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
-                      {{ $currentRoute === 'admin.club.achievements'
-                         ? 'bg-primary text-white shadow-lg'
-                         : 'text-foreground hover:bg-muted' }}">
-                <i class="bi bi-trophy w-5"></i>
-                <span>Achievements</span>
-            </a>
-
-            <a href="{{ route('admin.club.packages', $clubId) }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
-                      {{ $currentRoute === 'admin.club.packages'
-                         ? 'bg-primary text-white shadow-lg'
-                         : 'text-foreground hover:bg-muted' }}">
-                <i class="bi bi-box w-5"></i>
-                <span>Packages</span>
-            </a>
-
-            <a href="{{ route('admin.club.gallery', $clubId) }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
-                      {{ $currentRoute === 'admin.club.gallery'
-                         ? 'bg-primary text-white shadow-lg'
-                         : 'text-foreground hover:bg-muted' }}">
-                <i class="bi bi-images w-5"></i>
-                <span>Gallery</span>
-            </a>
-
-            <a href="{{ route('admin.club.roles', $clubId) }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
-                      {{ $currentRoute === 'admin.club.roles'
-                         ? 'bg-primary text-white shadow-lg'
-                         : 'text-foreground hover:bg-muted' }}">
-                <i class="bi bi-shield-check w-5"></i>
-                <span>Roles</span>
-            </a>
-
-            <a href="{{ route('admin.club.messages', $clubId) }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
-                      {{ $currentRoute === 'admin.club.messages'
-                         ? 'bg-primary text-white shadow-lg'
-                         : 'text-foreground hover:bg-muted' }}">
-                <i class="bi bi-chat-dots w-5"></i>
-                <span>Messages</span>
-            </a>
-
-            <a href="{{ route('admin.club.notifications', $clubId) }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
-                      {{ $currentRoute === 'admin.club.notifications'
-                         ? 'bg-primary text-white shadow-lg'
-                         : 'text-foreground hover:bg-muted' }}">
-                <i class="bi bi-bell w-5"></i>
-                <span>Notifications</span>
-            </a>
-
-            <a href="{{ route('admin.club.analytics', $clubId) }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all no-underline text-sm font-medium
-                      {{ $currentRoute === 'admin.club.analytics'
-                         ? 'bg-primary text-white shadow-lg'
-                         : 'text-foreground hover:bg-muted' }}">
-                <i class="bi bi-bar-chart w-5"></i>
-                <span>Analytics</span>
-            </a>
+        <!-- Navigation -->
+        <nav id="emp-sidebar-nav" class="flex flex-col gap-0.5 px-2 py-2" style="overflow-y:auto;flex:1">
+            @foreach($navItems as $item)
+                @php $active = $currentRoute === $item['route']; @endphp
+                @if($item['route'] === 'admin.club.financials')
+                    <a href="{{ route($item['route'], $clubId) }}" class="nav-item emp-has-tip {{ $active ? 'active' : '' }}">
+                        <span class="ni"><i class="bi {{ $item['icon'] }}"></i></span>
+                        <span>{{ $item['label'] }}</span>
+                        <div class="emp-tip-box">
+                            <div class="emp-tip-ttl">Cash Flow</div>
+                            <div class="emp-tip-row"><span>Income</span><span class="v vp">BHD 250</span></div>
+                            <div class="emp-tip-row"><span>Expenses</span><span class="v vn">BHD -200</span></div>
+                            <div class="emp-tip-tot"><span>Total</span><span class="v">BHD 50</span></div>
+                        </div>
+                    </a>
+                @else
+                    <a href="{{ route($item['route'], $clubId) }}" class="nav-item {{ $active ? 'active' : '' }}">
+                        <span class="ni"><i class="bi {{ $item['icon'] }}"></i></span>
+                        <span>{{ $item['label'] }}</span>
+                    </a>
+                @endif
+            @endforeach
         </nav>
     </aside>
 
-    <!-- Content -->
-    <main class="flex-1 min-w-0">
+    <!-- ── MAIN CONTENT ── -->
+    <main id="emp-main-area">
         @yield('club-admin-content')
     </main>
-</div>
+
+</div>{{-- #emp-layout --}}
 
 @include('admin.club.notifications.send-modal')
 
-</div>{{-- end x-data sidebarOpen --}}
+</div>{{-- x-data --}}
+
+@push('scripts')
+<script>
+var empSidebarOpen = true;
+function empToggleSidebar() {
+    var sb  = document.getElementById('emp-sidebar');
+    var btn = document.getElementById('emp-sidebar-toggle');
+    var ico = document.getElementById('emp-toggle-icon');
+    empSidebarOpen = !empSidebarOpen;
+    sb.classList.toggle('collapsed', !empSidebarOpen);
+    ico.className = empSidebarOpen ? 'bi bi-layout-sidebar-inset' : 'bi bi-layout-sidebar-inset-reverse';
+}
+</script>
+@endpush
+
 @endsection

@@ -19,7 +19,7 @@ class ClubFacilityController extends Controller
     {
         $this->authorizeClub($club);
         $facilities = ClubFacility::where('tenant_id', $club->id)->get();
-        return view('admin.club.facilities.index', compact('club', 'facilities'));
+        return view(\App\Support\ClubView::pick('facilities'), compact('club', 'facilities'));
     }
 
     public function storeFacility(StoreFacilityRequest $request, Tenant $club)
@@ -41,10 +41,14 @@ class ClubFacilityController extends Controller
         $paths = $this->saveFacilityBase64Images($request->input('facility_images_base64', []), $clubId);
         if ($paths) $data['images'] = $paths;
 
-        ClubFacility::create($data);
+        $facility = ClubFacility::create($data);
 
         if ($request->wantsJson()) {
-            return response()->json(['success' => true, 'message' => 'Facility added successfully.']);
+            return response()->json([
+                'success'  => true,
+                'message'  => 'Facility added successfully.',
+                'facility' => $facility,
+            ]);
         }
 
         return back()->with('success', 'Facility added successfully.');

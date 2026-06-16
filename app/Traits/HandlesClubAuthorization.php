@@ -2,6 +2,7 @@
 
 namespace App\Traits;
 
+use App\Models\Business;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\Auth;
 
@@ -13,6 +14,16 @@ trait HandlesClubAuthorization
         if ($user->isSuperAdmin()) return;
         if ($club->owner_user_id === $user->id) return;
         if ($user->isClubAdmin($club->id)) return;
+        // Chain owners have full control over every club in their approved business.
+        if ($club->business_id && $this->ownsClubBusiness($user->id, $club->business_id)) return;
         abort(403, 'Unauthorized access to this club.');
+    }
+
+    private function ownsClubBusiness(int $userId, int $businessId): bool
+    {
+        return Business::where('id', $businessId)
+            ->where('owner_user_id', $userId)
+            ->where('status', Business::STATUS_APPROVED)
+            ->exists();
     }
 }

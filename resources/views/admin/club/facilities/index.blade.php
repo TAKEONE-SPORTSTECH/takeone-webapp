@@ -1,33 +1,29 @@
 @extends('layouts.admin-club')
 
 @section('club-admin-content')
-<div class="space-y-8" id="facilitiesContainer" x-data="{ showAddFacilityModal: false, showEditFacilityModal: false, editingFacility: null }" @open-edit-facility.window="showEditFacilityModal = true">
+<div class="space-y-8" id="facilitiesContainer" x-data="{ showAddFacilityModal: false, showEditFacilityModal: false, editingFacility: null }" @open-edit-facility.window="showEditFacilityModal = true" @close-edit-facility.window="showEditFacilityModal = false" @close-add-facility.window="showAddFacilityModal = false">
     <!-- Header -->
     <div class="flex flex-wrap gap-3 justify-between items-center pb-6 border-b border-gray-200">
         <div>
-            <h2 class="text-2xl font-bold text-gray-900">Facilities Management</h2>
+            <h2 class="text-xl font-bold text-gray-900">Facilities Management</h2>
             <p class="text-gray-500 mt-1">Manage your club's facilities, locations, and availability</p>
         </div>
-        <button class="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-all shadow-md hover:shadow-lg"
-                @click="showAddFacilityModal = true">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            Add Facility
+        <button class="btn btn-primary" @click="showAddFacilityModal = true">
+            <i class="bi bi-plus-lg mr-2"></i>Add Facility
         </button>
     </div>
 
     @if(isset($facilities) && count($facilities) > 0)
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div id="facilitiesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         @foreach($facilities as $facility)
-        <div class="group relative bg-white rounded-lg shadow hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100">
+        <div id="facility-{{ $facility->id }}" class="group relative bg-white rounded-lg shadow hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100">
             @php $coverImage = ($facility->images && count($facility->images)) ? $facility->images[0] : $facility->photo; @endphp
             <!-- Image Section -->
             <div class="relative w-full h-40 bg-gradient-to-br from-gray-100 to-gray-50 overflow-hidden">
                 @if($coverImage)
                 <img src="{{ asset('storage/' . $coverImage) }}"
                      alt="{{ $facility->name }}"
+                     data-facility-cover
                      class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
                 <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
                 @if($facility->images && count($facility->images) > 1)
@@ -48,7 +44,7 @@
                 @endif
 
                 <!-- Status Badges -->
-                <div class="absolute top-3 left-3 flex flex-col gap-1.5">
+                <div data-facility-status class="absolute top-3 left-3 flex flex-col gap-1.5">
                     @if($facility->is_available)
                     <span class="inline-flex items-center text-xs font-semibold bg-green-500/90 text-white px-2.5 py-1 rounded-full backdrop-blur-sm shadow">
                         ✓ Available
@@ -65,11 +61,11 @@
             <div class="p-4 space-y-3">
                 <!-- Title -->
                 <div>
-                    <h3 class="text-lg font-bold text-gray-900 group-hover:text-primary transition-colors line-clamp-1">
+                    <h3 data-facility-name class="text-lg font-bold text-gray-900 group-hover:text-primary transition-colors line-clamp-1">
                         {{ $facility->name }}
                     </h3>
                     @if($facility->description)
-                    <p class="text-xs text-gray-500 mt-1 line-clamp-1">
+                    <p data-facility-description class="text-xs text-gray-500 mt-1 line-clamp-1">
                         {{ $facility->description }}
                     </p>
                     @endif
@@ -83,7 +79,7 @@
                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                             <circle cx="12" cy="10" r="3"></circle>
                         </svg>
-                        <span class="line-clamp-1">{{ $facility->address }}</span>
+                        <span data-facility-address class="line-clamp-1">{{ $facility->address }}</span>
                     </div>
                     @endif
                 </div>
@@ -213,14 +209,16 @@ function deleteFacility(id) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                location.reload();
+                const card = document.getElementById(`facility-${id}`);
+                if (card) card.remove();
+                window.showToast('success', data.message || 'Facility deleted successfully.');
             } else {
-                alert(data.message || 'Failed to delete facility');
+                window.showToast('error', data.message || 'Failed to delete facility');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Failed to delete facility');
+            window.showToast('error', 'Failed to delete facility');
         });
     });
 }
@@ -246,12 +244,12 @@ function editFacility(id) {
             // Use Alpine.js event to show modal
             window.dispatchEvent(new CustomEvent('open-edit-facility'));
         } else {
-            alert(data.message || 'Failed to load facility data');
+            window.showToast('error', data.message || 'Failed to load facility data');
         }
     })
     .catch(error => {
         console.error('Edit facility error:', error);
-        alert('Failed to load facility data: ' + error.message);
+        window.showToast('error', 'Failed to load facility data: ' + error.message);
     });
 }
 
@@ -389,7 +387,7 @@ $(function() {
 
     $('#facilityCropperSave').on('click', function() {
         if (!facilityCropperInstance || !facilityCropperInstance.properties?.image) {
-            alert('Please select an image first.');
+            window.showToast('warning', 'Please select an image first.');
             return;
         }
         const btn = $(this);
@@ -453,6 +451,38 @@ document.getElementById('addFacilityModal').addEventListener('click', function(e
     }
 });
 
+// Patch a facility card in place from the updated facility JSON (no reload)
+function patchFacilityCard(facility) {
+    const card = document.getElementById(`facility-${facility.id}`);
+    if (!card) return;
+
+    // Name
+    const nameEl = card.querySelector('[data-facility-name]');
+    if (nameEl) nameEl.textContent = facility.name || '';
+
+    // Address
+    const addrEl = card.querySelector('[data-facility-address]');
+    if (addrEl) addrEl.textContent = facility.address || '';
+
+    // Cover image (cache-busted)
+    const coverEl = card.querySelector('[data-facility-cover]');
+    const cover = (facility.images && facility.images.length)
+        ? facility.images[0]
+        : (facility.photo || null);
+    if (coverEl && cover) {
+        coverEl.src = `{{ asset('storage') }}/${cover}?t=${Date.now()}`;
+        coverEl.alt = facility.name || '';
+    }
+
+    // Availability badge
+    const statusEl = card.querySelector('[data-facility-status]');
+    if (statusEl) {
+        statusEl.innerHTML = (facility.is_available == 1)
+            ? `<span class="inline-flex items-center text-xs font-semibold bg-green-500/90 text-white px-2.5 py-1 rounded-full backdrop-blur-sm shadow">✓ Available</span>`
+            : `<span class="inline-flex items-center text-xs font-semibold bg-red-500/90 text-white px-2.5 py-1 rounded-full backdrop-blur-sm shadow">✕ Unavailable</span>`;
+    }
+}
+
 // Handle edit form submission
 document.getElementById('editFacilityForm').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -475,16 +505,20 @@ document.getElementById('editFacilityForm').addEventListener('submit', function(
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            location.reload();
+            patchFacilityCard(data.data);
+            window.showToast('success', data.message || 'Facility updated successfully.');
+            window.dispatchEvent(new CustomEvent('close-edit-facility'));
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
         } else {
-            alert(data.message || 'Failed to update facility');
+            window.showToast('error', data.message || 'Failed to update facility');
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalText;
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Failed to update facility');
+        window.showToast('error', 'Failed to update facility');
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
     });

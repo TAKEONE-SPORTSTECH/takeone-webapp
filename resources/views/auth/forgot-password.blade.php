@@ -14,46 +14,10 @@
             <!-- Logo -->
             <div class="text-center mb-6">
                 <a href="{{ url('/') }}">
-                    <img src="{{ asset('images/logo.png') }}" alt="TAKEONE" class="h-12 mx-auto">
+                    <img src="{{ asset('images/fullLogo.png') }}" alt="TAKEONE" class="h-12 mx-auto">
                 </a>
             </div>
 
-            @if (session('status'))
-                {{-- Confirmation state --}}
-                <div class="flex justify-center mb-5">
-                    <div class="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
-                        <svg class="w-10 h-10 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                        </svg>
-                    </div>
-                </div>
-
-                <h2 class="text-center text-gray-800 text-xl font-semibold mb-2 tracking-tight">Check Your Inbox</h2>
-                <p class="text-center text-gray-400 text-sm mb-6 leading-relaxed">
-                    We sent a password reset link to your email.<br>
-                    Click the link to choose a new password.
-                </p>
-
-                <div class="flex items-center gap-3 mb-5">
-                    <div class="flex-1 h-px bg-gray-100"></div>
-                    <span class="text-xs text-gray-400 whitespace-nowrap">Didn't receive the email?</span>
-                    <div class="flex-1 h-px bg-gray-100"></div>
-                </div>
-
-                <form method="POST" action="{{ route('password.email') }}">
-                    @csrf
-                    <input type="hidden" name="email" value="{{ old('email') }}">
-                    <button type="submit" class="tf-auth-btn mb-4">
-                        RESEND RESET LINK
-                    </button>
-                </form>
-
-                <p class="text-center text-sm text-gray-400">
-                    <a href="{{ route('login') }}" class="tf-auth-link">Back to Login</a>
-                </p>
-
-            @else
                 {{-- Form state --}}
                 <p class="text-center text-gray-500 text-lg mb-8 tracking-tight">Forgot your password?</p>
 
@@ -83,8 +47,6 @@
                 <p class="text-center text-sm text-gray-500">
                     <a href="{{ route('login') }}" class="tf-auth-link">Back to Login</a>
                 </p>
-
-            @endif
 
         </div>
     </div>

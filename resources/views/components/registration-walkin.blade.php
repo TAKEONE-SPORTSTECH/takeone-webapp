@@ -175,12 +175,12 @@
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Gender <span class="text-red-500">*</span></label>
                                         <div class="grid grid-cols-2 gap-2">
-                                            <button type="button" @click="child.gender = 'm'"
+                                            <button type="button" @click="child.gender = 'Male'"
                                                     class="px-3 py-2 border-2 rounded-lg text-sm font-medium transition-colors"
-                                                    :class="child.gender === 'm' ? 'border-purple-500 bg-purple-50' : 'border-gray-200'">Male</button>
-                                            <button type="button" @click="child.gender = 'f'"
+                                                    :class="child.gender === 'Male' ? 'border-purple-500 bg-purple-50' : 'border-gray-200'">Male</button>
+                                            <button type="button" @click="child.gender = 'Female'"
                                                     class="px-3 py-2 border-2 rounded-lg text-sm font-medium transition-colors"
-                                                    :class="child.gender === 'f' ? 'border-purple-500 bg-purple-50' : 'border-gray-200'">Female</button>
+                                                    :class="child.gender === 'Female' ? 'border-purple-500 bg-purple-50' : 'border-gray-200'">Female</button>
                                         </div>
                                     </div>
                                     <div>
@@ -466,7 +466,7 @@ function walkInRegistration() {
                 id: 'child_' + Date.now(),
                 name: '',
                 dob: '',
-                gender: 'm',
+                gender: 'Male',
                 nationality: this.data.guardian.nationality || ''
             });
         },
@@ -521,8 +521,8 @@ function walkInRegistration() {
             return this.availablePackages.filter(pkg => {
                 if (pkg.age_min && age < pkg.age_min) return false;
                 if (pkg.age_max && age > pkg.age_max) return false;
-                if (pkg.gender_restriction === 'male' && person.gender !== 'm') return false;
-                if (pkg.gender_restriction === 'female' && person.gender !== 'f') return false;
+                if (pkg.gender_restriction === 'male' && person.gender !== 'Male') return false;
+                if (pkg.gender_restriction === 'female' && person.gender !== 'Female') return false;
                 return true;
             });
         },
@@ -711,7 +711,12 @@ function walkInRegistration() {
                 if (res.ok && data.success) {
                     this.toast('Walk-in registration completed successfully!', 'success');
                     this.open = false;
-                    setTimeout(() => location.reload(), 1200);
+                    // Refresh the members grid in place (no page reload) if available on this page.
+                    if (typeof window.reloadMemberCards === 'function') {
+                        window.reloadMemberCards();
+                    } else {
+                        setTimeout(() => location.reload(), 1200);
+                    }
                 } else if (res.status === 422 && data.errors) {
                     // Map backend field errors to inline display
                     const map = {
@@ -740,18 +745,9 @@ function walkInRegistration() {
             }
         },
 
-        // --- Toast ---
+        // --- Toast --- always use the global toast; never render an inline alert on the page.
         toast(msg, type = 'info') {
-            if (window.showToast) {
-                window.showToast(type, msg);
-            } else {
-                const colors = { success: 'bg-green-500', error: 'bg-red-500', warning: 'bg-yellow-500', info: 'bg-blue-500' };
-                const toast = document.createElement('div');
-                toast.className = `fixed top-4 right-4 z-[9999] px-6 py-3 rounded-lg text-white font-medium shadow-lg ${colors[type]}`;
-                toast.textContent = msg;
-                document.body.appendChild(toast);
-                setTimeout(() => toast.remove(), 3000);
-            }
+            window.showToast(type, msg);
         }
     };
 }

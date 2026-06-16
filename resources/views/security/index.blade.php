@@ -12,20 +12,6 @@
         </div>
     </div>
 
-    @if(session('success'))
-    <div class="alert alert-success mb-4" x-data="{ show: true }" x-show="show">
-        <i class="bi bi-check-circle mr-2"></i>{{ session('success') }}
-        <button type="button" class="float-end" @click="show = false"><i class="bi bi-x-lg"></i></button>
-    </div>
-    @endif
-
-    @if(session('error'))
-    <div class="alert alert-danger mb-4" x-data="{ show: true }" x-show="show">
-        <i class="bi bi-exclamation-triangle mr-2"></i>{{ session('error') }}
-        <button type="button" class="float-end" @click="show = false"><i class="bi bi-x-lg"></i></button>
-    </div>
-    @endif
-
     {{-- Two-Factor Authentication Card --}}
     <div class="card border-0 shadow-sm mb-6">
         <div class="card-body p-6">

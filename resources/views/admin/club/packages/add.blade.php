@@ -516,12 +516,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const notes = document.getElementById('scheduleNotes').value;
 
         if (selectedDays.length === 0 || !startTime || !endTime || !activityId) {
-            alert('Please select at least one day, activity, and specify start/end times');
+            window.showToast('error', 'Please select at least one day, activity, and specify start/end times');
             return;
         }
 
         if (endTime <= startTime) {
-            alert('End time must be after start time');
+            window.showToast('error', 'End time must be after start time');
             return;
         }
 

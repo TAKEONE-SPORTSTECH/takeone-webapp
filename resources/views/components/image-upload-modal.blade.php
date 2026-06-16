@@ -125,12 +125,12 @@ function imageUploadModal() {
             if (!file) return;
 
             if (!file.type.startsWith('image/')) {
-                alert('Please select a valid image file.');
+                window.showToast('error', 'Please select a valid image file.');
                 return;
             }
 
             if (file.size > {{ $maxSize }} * 2) {
-                alert('File is too large. Please select a smaller image.');
+                window.showToast('error', 'File is too large. Please select a smaller image.');
                 return;
             }
 
@@ -201,12 +201,14 @@ function imageUploadModal() {
                 if (window.imageUploadSuccess) {
                     window.imageUploadSuccess(result);
                 } else {
-                    location.reload();
+                    // No reload — notify any listeners so the page can update in place.
+                    window.dispatchEvent(new CustomEvent('image-uploaded', { detail: result }));
+                    window.showToast('success', result.message || 'Image uploaded');
                 }
 
             } catch (error) {
                 console.error('Upload error:', error);
-                alert('Upload failed: ' + error.message);
+                window.showToast('error', 'Upload failed: ' + error.message);
                 this.canUpload = true;
                 this.uploading = false;
             }

@@ -1,12 +1,12 @@
 @extends('layouts.admin-club')
 
 @section('club-admin-content')
-<div class="space-y-6" x-data="{ showDeleteClubModal: false, showOwnerModal: false, ownerTab: 'existing' }">
+<div class="space-y-6" x-data="{ activeTab: 'basic', showDeleteClubModal: false, showOwnerModal: false, ownerTab: 'existing' }">
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-foreground">Club Details</h1>
-            <p class="text-sm text-muted-foreground">Manage your club's information and settings</p>
+            <h1 class="text-xl font-bold text-gray-900">Club Details</h1>
+            <p class="text-sm text-gray-500 mt-1">Manage your club's information and settings</p>
         </div>
         <button type="submit" form="clubDetailsForm" class="btn btn-primary shrink-0">
             <i class="bi bi-check-lg mr-2"></i>Save All Changes
@@ -14,15 +14,6 @@
     </div>
 
     <!-- Success/Error Messages -->
-    @if(session('success'))
-    <div class="alert alert-success relative" role="alert" x-data="{ show: true }" x-show="show">
-        <i class="bi bi-check-circle mr-2"></i>{{ session('success') }}
-        <button type="button" class="absolute top-3 right-3 text-green-600 hover:text-green-800" @click="show = false">
-            <i class="bi bi-x-lg"></i>
-        </button>
-    </div>
-    @endif
-
     @if($errors->any())
     <div class="alert alert-danger relative" role="alert" x-data="{ show: true }" x-show="show">
         <i class="bi bi-exclamation-triangle mr-2"></i>
@@ -40,19 +31,19 @@
     <!-- Tabs Navigation -->
     <div class="border-b overflow-x-auto">
         <nav class="flex gap-1 min-w-max" role="tablist">
-            <button type="button" class="tab-btn active" data-tab="basic" role="tab">
+            <button type="button" class="tab-btn" :class="{ 'active': activeTab === 'basic' }" @click="activeTab = 'basic'" role="tab">
                 <i class="bi bi-info-circle mr-2"></i>Basic
             </button>
-            <button type="button" class="tab-btn" data-tab="location" role="tab">
+            <button type="button" class="tab-btn" :class="{ 'active': activeTab === 'location' }" @click="activeTab = 'location'; window.LocationMap && window.LocationMap.refresh('clubDetailsLoc')" role="tab">
                 <i class="bi bi-geo-alt mr-2"></i>Location
             </button>
-            <button type="button" class="tab-btn" data-tab="branding" role="tab">
+            <button type="button" class="tab-btn" :class="{ 'active': activeTab === 'branding' }" @click="activeTab = 'branding'" role="tab">
                 <i class="bi bi-palette mr-2"></i>Branding
             </button>
-            <button type="button" class="tab-btn" data-tab="social" role="tab">
+            <button type="button" class="tab-btn" :class="{ 'active': activeTab === 'social' }" @click="activeTab = 'social'" role="tab">
                 <i class="bi bi-share mr-2"></i>Social Media
             </button>
-            <button type="button" class="tab-btn" data-tab="settings" role="tab">
+            <button type="button" class="tab-btn" :class="{ 'active': activeTab === 'settings' }" @click="activeTab = 'settings'" role="tab">
                 <i class="bi bi-gear mr-2"></i>Settings
             </button>
         </nav>
@@ -63,7 +54,7 @@
         @method('PUT')
 
         <!-- Basic Tab -->
-        <div class="tab-content active" id="tab-basic">
+        <div class="tab-content" id="tab-basic" x-show="activeTab === 'basic'">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Left Column - Basic Information -->
                 <div class="card">
@@ -182,11 +173,12 @@
 
                         <h6 class="text-muted text-uppercase small font-semibold border-bottom pb-2 pt-4">Owner Information</h6>
 
+                        <div id="ownerSection">
                         @if($club->owner)
                         <div class="card bg-light">
                             <div class="card-body">
                                 <div class="flex justify-between items-start">
-                                    <div>
+                                    <div id="ownerCardInfo">
                                         <h6 class="mb-1">{{ $club->owner->full_name }}</h6>
                                         @if($club->owner->email)
                                         <p class="text-muted small mb-1">
@@ -219,6 +211,7 @@
                             </div>
                         </div>
                         @endif
+                        </div>{{-- /#ownerSection --}}
 
                         <input type="hidden" name="owner_name" value="{{ old('owner_name', $club->owner_name) }}">
                         <input type="hidden" name="owner_email" value="{{ old('owner_email', $club->owner_email) }}">
@@ -228,7 +221,7 @@
         </div>
 
         <!-- Location Tab -->
-        <div class="tab-content" id="tab-location" style="display: none;">
+        <div class="tab-content" id="tab-location" x-show="activeTab === 'location'" style="display: none;">
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
@@ -275,7 +268,7 @@
         </div>
 
         <!-- Branding Tab -->
-        <div class="tab-content" id="tab-branding" style="display: none;">
+        <div class="tab-content" id="tab-branding" x-show="activeTab === 'branding'" style="display: none;">
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
@@ -332,21 +325,23 @@
                     <!-- Cover Image -->
                     <div>
                         <label class="form-label font-medium">Cover Image</label>
-                        <small class="text-muted block mb-3">Recommended: 1920x600px or similar wide aspect ratio</small>
+                        <small class="text-muted block mb-3">Recommended: 16:9 aspect ratio (e.g. 1920×1080px)</small>
                         <x-takeone-cropper
                             id="clubDetailCover"
                             :width="600"
-                            :height="200"
+                            :height="338"
                             shape="square"
                             mode="form"
                             inputName="cover_image"
                             folder="clubs/{{ $club->id }}/branding"
                             :filename="'cover_' . time()"
                             :previewWidth="400"
-                            :previewHeight="133"
+                            :previewHeight="225"
                             :currentImage="$club->cover_image ? asset('storage/' . $club->cover_image) : ''"
                             buttonText="Change Cover"
                             buttonClass="btn btn-outline-secondary"
+                            :uploadAsIs="true"
+                            uploadAsIsText="Upload Without Cropping"
                         />
                     </div>
                 </div>
@@ -354,7 +349,7 @@
         </div>
 
         <!-- Social Media Tab -->
-        <div class="tab-content" id="tab-social" style="display: none;">
+        <div class="tab-content" id="tab-social" x-show="activeTab === 'social'" style="display: none;">
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
@@ -369,7 +364,7 @@
         </div>
 
         <!-- Settings Tab -->
-        <div class="tab-content" id="tab-settings" style="display: none;">
+        <div class="tab-content" id="tab-settings" x-show="activeTab === 'settings'" style="display: none;">
             <!-- Code Prefixes -->
             <div class="card mb-4">
                 <div class="card-header">
@@ -512,7 +507,6 @@
                     </div>
                 </div>
 
-                <div id="ownerTransferError" class="hidden mt-3 alert alert-danger text-sm"></div>
             </div>
             <div class="modal-footer border-t px-6 py-4 flex justify-end gap-3">
                 <button type="button" class="btn btn-secondary" @click="showOwnerModal = false">Cancel</button>
@@ -607,33 +601,7 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Tab switching
-    const tabButtons = document.querySelectorAll('.tab-btn');
-    const tabContents = document.querySelectorAll('.tab-content');
-
-    tabButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const targetTab = this.dataset.tab;
-
-            // Update button states
-            tabButtons.forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-
-            // Show/hide content
-            tabContents.forEach(content => {
-                if (content.id === 'tab-' + targetTab) {
-                    content.style.display = 'block';
-                } else {
-                    content.style.display = 'none';
-                }
-            });
-
-            // Initialize map when location tab is shown
-            if (targetTab === 'location') {
-                setTimeout(initDetailsMap, 150);
-            }
-        });
-    });
+    // Tab switching is handled by Alpine (activeTab) on the wrapper.
 
     // Delete club confirmation
     const confirmInput = document.getElementById('confirmClubName');
@@ -646,27 +614,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Initialize map when location tab becomes visible
+    // The map auto-initialises itself (see the location-map component); we
+    // only need its id for the "Use My Location" helper below.
     const DETAILS_MAP_ID = 'clubDetailsLoc';
-    let detailsMapInitialized = false;
-
-    function initDetailsMap() {
-        if (detailsMapInitialized) {
-            window.LocationMap.refresh(DETAILS_MAP_ID);
-            return;
-        }
-        if (window.LocationMap) {
-            window.LocationMap.init(DETAILS_MAP_ID, 26.2285, 50.5860);
-            detailsMapInitialized = true;
-        }
-    }
 
     // Use my location button
     const useLocationBtn = document.getElementById('useMyLocationBtn');
     if (useLocationBtn) {
         useLocationBtn.addEventListener('click', function() {
             if (!navigator.geolocation) {
-                alert('Geolocation is not supported by your browser.');
+                window.showToast('error', 'Geolocation is not supported by your browser.');
                 return;
             }
             const btn = this;
@@ -679,13 +636,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 const lng = position.coords.longitude;
                 if (window.LocationMap) {
                     window.LocationMap.setPosition(DETAILS_MAP_ID, lat, lng);
-                    const inst = window.LocationMap['_locationMap_' + DETAILS_MAP_ID];
+                    const inst = window.LocationMap.get(DETAILS_MAP_ID);
                     if (inst) inst.map.setView([lat, lng], 15);
                 }
                 btn.disabled = false;
                 btn.innerHTML = originalHtml;
             }, function(error) {
-                alert('Unable to get your location. Please enter coordinates manually.');
+                window.showToast('error', 'Unable to get your location. Please enter coordinates manually.');
                 btn.disabled = false;
                 btn.innerHTML = originalHtml;
             });
@@ -708,7 +665,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const modal = new bootstrap.Modal(document.getElementById('qrModal'));
                 modal.show();
             } else {
-                alert('Please set a slug first.');
+                window.showToast('error', 'Please set a slug first.');
             }
         });
     }
@@ -787,9 +744,6 @@ function confirmOwnerTransfer() {
     const tab = document.querySelector('[x-data]').__x?.$data?.ownerTab
                || (document.querySelector('.border-primary.text-primary')?.textContent?.includes('Link') ? 'existing' : 'new');
 
-    const errorEl = document.getElementById('ownerTransferError');
-    errorEl.classList.add('hidden');
-
     const btn = document.getElementById('confirmTransferBtn');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span>Transferring...';
@@ -799,8 +753,7 @@ function confirmOwnerTransfer() {
     if (tab === 'existing') {
         const userId = document.getElementById('ownerSelectedUserId').value;
         if (!userId) {
-            errorEl.textContent = 'Please select a member first.';
-            errorEl.classList.remove('hidden');
+            window.showToast('error', 'Please select a member first.');
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-check-lg mr-1"></i>Confirm Transfer';
             return;
@@ -812,8 +765,7 @@ function confirmOwnerTransfer() {
         const email    = document.getElementById('newOwnerEmail').value.trim();
         const password = document.getElementById('newOwnerPassword').value;
         if (!name || !email || !password) {
-            errorEl.textContent = 'Please fill in all fields.';
-            errorEl.classList.remove('hidden');
+            window.showToast('error', 'Please fill in all fields.');
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-check-lg mr-1"></i>Confirm Transfer';
             return;
@@ -832,24 +784,41 @@ function confirmOwnerTransfer() {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            // Update the owner card in the DOM
-            const ownerNameEl = document.querySelector('.card.bg-light h6');
-            if (ownerNameEl) ownerNameEl.textContent = data.owner.name;
-
-            if (typeof Toast !== 'undefined') {
-                Toast.success('Ownership Transferred', data.message);
+            // Regenerate the owner section in place — no reload. Handles both the
+            // "no owner yet" → assigned transition and owner → owner replacement.
+            const section = document.getElementById('ownerSection');
+            if (section && data.owner) {
+                const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+                let inner = '<h6 class="mb-1">' + esc(data.owner.name) + '</h6>';
+                if (data.owner.email) {
+                    inner += '<p class="text-muted small mb-1"><i class="bi bi-envelope mr-1"></i>' + esc(data.owner.email) + '</p>';
+                }
+                if (data.owner.mobile) {
+                    inner += '<p class="text-muted small mb-0"><i class="bi bi-phone mr-1"></i>' + esc(data.owner.mobile) + '</p>';
+                }
+                section.innerHTML =
+                    '<div class="card bg-light"><div class="card-body">' +
+                        '<div class="flex justify-between items-start">' +
+                            '<div id="ownerCardInfo">' + inner + '</div>' +
+                            '<button type="button" class="btn btn-sm btn-outline-secondary" @click="showOwnerModal = true"><i class="bi bi-pencil"></i></button>' +
+                        '</div>' +
+                    '</div></div>';
             }
-            setTimeout(() => window.location.reload(), 1200);
+
+            // Close modal (Alpine 3 scope) — no reload.
+            try { if (window.Alpine) window.Alpine.$data(btn).showOwnerModal = false; } catch (e) {}
+
+            window.showToast('success', data.message || 'Ownership transferred successfully.');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg mr-1"></i>Confirm Transfer';
         } else {
-            errorEl.textContent = data.message || 'Something went wrong.';
-            errorEl.classList.remove('hidden');
+            window.showToast('error', data.message || 'Something went wrong.');
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-check-lg mr-1"></i>Confirm Transfer';
         }
     })
     .catch(() => {
-        errorEl.textContent = 'Network error. Please try again.';
-        errorEl.classList.remove('hidden');
+        window.showToast('error', 'Network error. Please try again.');
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-check-lg mr-1"></i>Confirm Transfer';
     });
@@ -860,7 +829,7 @@ function copyClubUrl() {
     const url = '{{ $club->slug && $club->country ? route("clubs.show", [strtolower($club->country), $club->slug]) : "" }}';
     if (url) {
         navigator.clipboard.writeText(url).then(function() {
-            alert('URL copied to clipboard!');
+            window.showToast('success', 'URL copied to clipboard!');
         });
     }
 }

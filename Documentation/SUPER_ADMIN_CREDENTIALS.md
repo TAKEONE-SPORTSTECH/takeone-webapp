@@ -4,8 +4,8 @@ A super admin user has been successfully created for the TakeOne application.
 
 ## Login Credentials
 
-**Email:** `superadmin@takeone.com`  
-**Password:** `SuperAdmin@2024`
+**Email:** `superadmin@takeone.bh`  
+**Password:** `Gha$$an1983`
 
 ## User Details
 

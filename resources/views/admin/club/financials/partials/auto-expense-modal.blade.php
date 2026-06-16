@@ -176,7 +176,7 @@
                                         </button>
                                     </form>
                                     <form action="{{ route('admin.club.financials.recurring.destroy', [$club->slug, $re->id]) }}" method="POST"
-                                          onsubmit="return confirm('Remove this recurring expense?')">
+                                          onsubmit="event.preventDefault(); (async (f) => { const ok = await window.confirmAction({ title: 'Remove Recurring Expense', message: 'Remove this recurring expense?', type: 'danger', confirmText: 'Remove' }); if (ok) f.submit(); })(this); return false;">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="btn btn-sm btn-outline-danger text-xs">
                                             <i class="bi bi-trash"></i>

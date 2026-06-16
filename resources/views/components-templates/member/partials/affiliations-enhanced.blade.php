@@ -91,7 +91,7 @@
                             </h6>
                         </div>
                         <div class="card-body p-4" style="max-height: 800px; overflow-y: auto;">
-                            <div class="timeline-enhanced">
+                            <div class="timeline-enhanced" id="affiliationsTimeline">
                                 @foreach($clubAffiliations as $index => $affiliation)
                                     @php
                                         $ageAtStart = calculateAgeAtDate($user->birthdate, $affiliation->start_date);
@@ -103,7 +103,7 @@
                                         $skillNames = $affiliationSkills->pluck('skill_name')->unique()->implode(',');
                                     @endphp
 
-                                    <div class="timeline-item-enhanced mb-4" data-affiliation-id="{{ $affiliation->id }}" data-skills="{{ $skillNames }}">
+                                    <div class="timeline-item-enhanced mb-4" id="affiliation-{{ $affiliation->id }}" data-affiliation-id="{{ $affiliation->id }}" data-skills="{{ $skillNames }}">
                                         <!-- Timeline Marker -->
                                         <div class="timeline-marker-enhanced {{ $isOngoing ? 'pulse' : '' }}"></div>
 
@@ -130,15 +130,15 @@
                                                         </div>
                                                     @endif
                                                     <div class="grow text-white">
-                                                        <h5 class="mb-1 font-bold">{{ $affiliation->club_name }}</h5>
+                                                        <h5 class="mb-1 font-bold" id="affiliation-name-{{ $affiliation->id }}">{{ $affiliation->club_name }}</h5>
                                                         <div class="flex gap-3 flex-wrap">
                                                             @if($affiliation->start_date)
-                                                                <small class="opacity-90">
+                                                                <small class="opacity-90" id="affiliation-dates-{{ $affiliation->id }}">
                                                                     <i class="bi bi-calendar-event mr-1"></i>{{ $affiliation->start_date->format('M Y') }} - {{ $isOngoing ? 'Present' : ($affiliation->end_date ? $affiliation->end_date->format('M Y') : 'N/A') }}
                                                                 </small>
                                                             @endif
                                                             @if($affiliation->formatted_duration)
-                                                                <small class="opacity-90">
+                                                                <small class="opacity-90" id="affiliation-duration-{{ $affiliation->id }}">
                                                                     <i class="bi bi-hourglass-split mr-1"></i>{{ $affiliation->formatted_duration }}
                                                                 </small>
                                                             @endif
@@ -197,7 +197,7 @@
                                                 <div class="mb-3">
                                                     <div class="flex justify-between items-center mb-2">
                                                         <h6 class="font-bold mb-0">
-                                                            <i class="bi bi-star-fill mr-2 text-warning"></i>Skills Acquired ({{ $affiliationSkills->count() }})
+                                                            <i class="bi bi-star-fill mr-2 text-warning"></i>Skills Acquired (<span id="skills-count-{{ $affiliation->id }}">{{ $affiliationSkills->count() }}</span>)
                                                         </h6>
                                                         <button type="button"
                                                                 class="btn btn-sm btn-outline-warning btn-add-skill"
@@ -208,10 +208,9 @@
                                                             <i class="bi bi-plus-circle mr-1"></i> Add Skill
                                                         </button>
                                                     </div>
-                                                    @if($affiliationSkills->count() > 0)
-                                                        <div class="flex gap-2 flex-wrap">
+                                                    <div class="flex gap-2 flex-wrap" id="skills-list-{{ $affiliation->id }}" style="{{ $affiliationSkills->count() > 0 ? '' : 'display:none;' }}">
                                                             @foreach($affiliationSkills as $skill)
-                                                                <div class="d-inline-flex align-items-center gap-1">
+                                                                <div class="d-inline-flex align-items-center gap-1" id="skill-{{ $skill->id }}">
                                                                     <span class="badge skill-badge bg-{{ $skill->proficiency_level == 'expert' ? 'danger' : ($skill->proficiency_level == 'advanced' ? 'warning' : ($skill->proficiency_level == 'intermediate' ? 'info' : 'secondary')) }}"
                                                                           data-bs-toggle="tooltip"
                                                                           data-bs-placement="top"
@@ -236,7 +235,6 @@
                                                                 </div>
                                                             @endforeach
                                                         </div>
-                                                    @endif
                                                 </div>
 
                                                 <!-- Training Packages -->
@@ -293,9 +291,7 @@
                                                     <div class="flex justify-between items-center mb-2">
                                                         <h6 class="font-bold mb-0">
                                                             <i class="bi bi-paperclip mr-2 text-info"></i>Media & Certificates
-                                                            @if($affiliation->affiliationMedia->count() > 0)
-                                                                ({{ $affiliation->affiliationMedia->count() }})
-                                                            @endif
+                                                            <span id="media-count-wrap-{{ $affiliation->id }}" style="{{ $affiliation->affiliationMedia->count() > 0 ? '' : 'display:none;' }}">(<span id="media-count-{{ $affiliation->id }}">{{ $affiliation->affiliationMedia->count() }}</span>)</span>
                                                         </h6>
                                                         <button type="button"
                                                                 class="btn btn-sm btn-outline-info btn-add-media"
@@ -306,10 +302,9 @@
                                                             <i class="bi bi-plus-circle mr-1"></i> Add Media
                                                         </button>
                                                     </div>
-                                                    @if($affiliation->affiliationMedia->count() > 0)
-                                                        <div class="flex gap-2 flex-wrap mt-2">
+                                                    <div class="flex gap-2 flex-wrap mt-2" id="media-list-{{ $affiliation->id }}" style="{{ $affiliation->affiliationMedia->count() > 0 ? '' : 'display:none;' }}">
                                                             @foreach($affiliation->affiliationMedia as $media)
-                                                                <div class="d-inline-flex align-items-center gap-1 border rounded px-2 py-1 bg-muted" style="font-size: 0.85rem;">
+                                                                <div class="d-inline-flex align-items-center gap-1 border rounded px-2 py-1 bg-muted" id="media-{{ $media->id }}" style="font-size: 0.85rem;">
                                                                     <i class="bi {{ $media->icon_class }} text-info"></i>
                                                                     <a href="{{ $media->full_url }}" target="_blank" class="text-decoration-none text-dark">{{ $media->title }}</a>
                                                                     <button type="button"
@@ -324,7 +319,6 @@
                                                                 </div>
                                                             @endforeach
                                                         </div>
-                                                    @endif
                                                 </div>
                                             </div>
                                         </div>
@@ -380,12 +374,12 @@
                                                     @endphp
                                                     <div class="mb-3">
                                                         <div class="flex justify-center items-center gap-2">
-                                                            <div class="stars-display">
+                                                            <div class="stars-display" id="avgStars_{{ $instructor->id }}">
                                                                 @for($i = 1; $i <= 5; $i++)
                                                                     <i class="bi bi-star{{ $i <= round($avgRating) ? '-fill' : '' }} text-warning"></i>
                                                                 @endfor
                                                             </div>
-                                                            <span class="text-muted-foreground text-sm">({{ number_format($avgRating, 1) }} / {{ $reviewCount }} {{ $reviewCount == 1 ? 'review' : 'reviews' }})</span>
+                                                            <span class="text-muted-foreground text-sm" id="avgMeta_{{ $instructor->id }}">({{ number_format($avgRating, 1) }} / {{ $reviewCount }} {{ $reviewCount == 1 ? 'review' : 'reviews' }})</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -483,7 +477,7 @@
                                                     <!-- Reviews List -->
                                                     <div class="reviews-list" id="reviewsList_{{ $instructor->id }}">
                                                         @foreach($instructor->reviews()->with('reviewer')->latest()->get() as $review)
-                                                            <div class="card mb-2">
+                                                            <div class="card mb-2" id="review-row-{{ $review->id }}">
                                                                 <div class="card-body p-3">
                                                                     <div class="flex items-start mb-2">
                                                                         <div class="grow">
@@ -1091,12 +1085,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function showAlert(message, type) {
-        const el = document.createElement('div');
-        el.className = `alert alert-${type} alert-dismissible fade show`;
-        el.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;min-width:300px;';
-        el.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
-        document.body.appendChild(el);
-        setTimeout(() => el.parentNode && el.remove(), 5000);
+        // Route through the global toast — never render an inline alert on the page.
+        window.showToast(type === 'danger' ? 'error' : type, message);
     }
 
     function formToObject(form) {
@@ -1135,32 +1125,149 @@ document.addEventListener('DOMContentLoaded', function() {
         if (locationInput && opt.dataset.location) locationInput.value = opt.dataset.location;
     });
 
+    // ── Build a timeline card for a newly-created affiliation (no skills/media yet)
+    function escapeHtml(s) {
+        return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+    }
+    const GRADIENTS = ['#667eea 0%, #764ba2', '#f093fb 0%, #f5576c', '#4facfe 0%, #00f2fe', '#fa709a 0%, #fee140'];
+
+    function buildAffiliationCard(aff, index) {
+        const gradient = GRADIENTS[index % 4];
+        const logoHtml = aff.logo_url
+            ? `<img src="${escapeHtml(aff.logo_url)}" alt="${escapeHtml(aff.club_name)}" class="rounded-full mr-3" style="width: 50px; height: 50px; object-fit: cover; border: 3px solid white;">`
+            : `<div class="rounded-full bg-white flex items-center justify-center mr-3" style="width: 50px; height: 50px;"><i class="bi bi-building" style="font-size: 1.5rem; color: #667eea;"></i></div>`;
+        const datesHtml = aff.start_label
+            ? `<small class="opacity-90" id="affiliation-dates-${aff.id}"><i class="bi bi-calendar-event mr-1"></i>${escapeHtml(aff.start_label)} - ${escapeHtml(aff.end_label)}</small>`
+            : '';
+        const durationHtml = aff.formatted_duration
+            ? `<small class="opacity-90" id="affiliation-duration-${aff.id}"><i class="bi bi-hourglass-split mr-1"></i>${escapeHtml(aff.formatted_duration)}</small>`
+            : '';
+        const activeBadge = aff.is_ongoing
+            ? `<span class="badge bg-success"><i class="bi bi-circle-fill mr-1" style="font-size: 0.5rem;"></i>Active</span>`
+            : '';
+        const locationHtml = aff.location
+            ? `<div class="mb-3"><i class="bi bi-geo-alt text-primary mr-2"></i><span class="text-muted-foreground">${escapeHtml(aff.location)}</span></div>`
+            : '';
+
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = `
+            <div class="timeline-item-enhanced mb-4" id="affiliation-${aff.id}" data-affiliation-id="${aff.id}" data-skills="">
+                <div class="timeline-marker-enhanced ${aff.is_ongoing ? 'pulse' : ''}"></div>
+                <div class="affiliation-card-enhanced card border-0 shadow-sm">
+                    <div class="card-header border-0 p-3" style="background: linear-gradient(135deg, ${gradient} 100%);">
+                        <div class="flex items-center">
+                            ${logoHtml}
+                            <div class="grow text-white">
+                                <h5 class="mb-1 font-bold" id="affiliation-name-${aff.id}">${escapeHtml(aff.club_name)}</h5>
+                                <div class="flex gap-3 flex-wrap">${datesHtml}${durationHtml}</div>
+                            </div>
+                            ${activeBadge}
+                            <div class="flex gap-1 ml-2">
+                                <button type="button" class="btn btn-sm btn-edit-affiliation" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 2px 8px;" data-affiliation-id="${aff.id}" data-club-name="${escapeHtml(aff.club_name)}" data-start-date="${escapeHtml(aff.start_date)}" data-end-date="${escapeHtml(aff.end_date || '')}" data-location="${escapeHtml(aff.location || '')}" data-description="${escapeHtml(aff.description || '')}" data-coaches="${escapeHtml(aff.coaches || '')}" data-member-id="${memberId}" data-bs-toggle="modal" data-bs-target="#editAffiliationModal" title="Edit"><i class="bi bi-pencil"></i></button>
+                                <button type="button" class="btn btn-sm btn-delete-affiliation" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 2px 8px;" data-affiliation-id="${aff.id}" data-club-name="${escapeHtml(aff.club_name)}" data-member-id="${memberId}" title="Delete"><i class="bi bi-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-3">
+                        ${locationHtml}
+                        <div class="mb-3">
+                            <div class="flex justify-between items-center mb-2">
+                                <h6 class="font-bold mb-0"><i class="bi bi-star-fill mr-2 text-warning"></i>Skills Acquired (<span id="skills-count-${aff.id}">0</span>)</h6>
+                                <button type="button" class="btn btn-sm btn-outline-warning btn-add-skill" data-affiliation-id="${aff.id}" data-member-id="${memberId}" data-bs-toggle="modal" data-bs-target="#addSkillModal"><i class="bi bi-plus-circle mr-1"></i> Add Skill</button>
+                            </div>
+                            <div class="flex gap-2 flex-wrap" id="skills-list-${aff.id}" style="display:none;"></div>
+                        </div>
+                        <div class="pt-2 border-top">
+                            <div class="flex justify-between items-center mb-2">
+                                <h6 class="font-bold mb-0"><i class="bi bi-paperclip mr-2 text-info"></i>Media & Certificates <span id="media-count-wrap-${aff.id}" style="display:none;">(<span id="media-count-${aff.id}">0</span>)</span></h6>
+                                <button type="button" class="btn btn-sm btn-outline-info btn-add-media" data-affiliation-id="${aff.id}" data-member-id="${memberId}" data-bs-toggle="modal" data-bs-target="#addMediaModal"><i class="bi bi-plus-circle mr-1"></i> Add Media</button>
+                            </div>
+                            <div class="flex gap-2 flex-wrap mt-2" id="media-list-${aff.id}" style="display:none;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        return wrapper.firstElementChild;
+    }
+
     // ── Add Affiliation ───────────────────────────────────────────────────────
     document.getElementById('addAffiliationForm')?.addEventListener('submit', function(e) {
         e.preventDefault();
         const btn = this.querySelector('[type=submit]');
         btn.disabled = true;
+        const form = this;
         affFetch(`/member/${memberId}/affiliations`, 'POST', formToObject(this))
             .then(res => {
-                if (res.success) { showAlert(res.message, 'success'); setTimeout(() => location.reload(), 800); }
-                else { showAlert(res.message || 'Error saving affiliation', 'danger'); btn.disabled = false; }
+                if (res.success && res.affiliation) {
+                    const timeline = document.getElementById('affiliationsTimeline');
+                    if (!timeline) {
+                        // Empty-state is showing — full scaffold (summary cards/timeline) is not present.
+                        // Reload to render the scaffold for the very first affiliation.
+                        showAlert(res.message, 'success');
+                        setTimeout(() => location.reload(), 800);
+                        return;
+                    }
+                    const index = timeline.querySelectorAll('.timeline-item-enhanced').length;
+                    const card = buildAffiliationCard(res.affiliation, index);
+                    timeline.appendChild(card);
+                    wireAffiliationCard(card);
+                    form.reset();
+                    bsModal.hide(document.getElementById('addAffiliationModal'));
+                    showAlert(res.message, 'success');
+                    btn.disabled = false;
+                } else if (res.success) {
+                    showAlert(res.message, 'success'); setTimeout(() => location.reload(), 800);
+                } else { showAlert(res.message || 'Error saving affiliation', 'danger'); btn.disabled = false; }
             }).catch(() => { showAlert('An error occurred', 'danger'); btn.disabled = false; });
     });
 
-    // ── Edit Affiliation — populate modal ─────────────────────────────────────
-    document.querySelectorAll('.btn-edit-affiliation').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.getElementById('editAffiliationId').value = this.dataset.affiliationId;
-            document.getElementById('editAffiliationMemberId').value = this.dataset.memberId;
-            document.getElementById('editClubName').value = this.dataset.clubName;
-            document.getElementById('editStartDate').value = this.dataset.startDate;
-            document.getElementById('editEndDate').value = this.dataset.endDate;
-            document.getElementById('editLocation').value = this.dataset.location;
-            document.getElementById('editDescription').value = this.dataset.description;
-            document.getElementById('editCoaches').value = this.dataset.coaches;
-        });
-    });
+    // ── Helpers for in-place patching ─────────────────────────────────────────
+    function populateEditModal(btn) {
+        document.getElementById('editAffiliationId').value = btn.dataset.affiliationId;
+        document.getElementById('editAffiliationMemberId').value = btn.dataset.memberId;
+        document.getElementById('editClubName').value = btn.dataset.clubName;
+        document.getElementById('editStartDate').value = btn.dataset.startDate;
+        document.getElementById('editEndDate').value = btn.dataset.endDate;
+        document.getElementById('editLocation').value = btn.dataset.location;
+        document.getElementById('editDescription').value = btn.dataset.description;
+        document.getElementById('editCoaches').value = btn.dataset.coaches;
+    }
 
+    function buildSkillNode(skill, affiliationId) {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = `
+            <div class="d-inline-flex align-items-center gap-1" id="skill-${skill.id}">
+                <span class="badge skill-badge bg-${skill.badge_color}" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true" title="<strong>${escapeHtml(skill.skill_name)}</strong><br>Proficiency: ${escapeHtml(skill.proficiency_level.charAt(0).toUpperCase() + skill.proficiency_level.slice(1))}<br>Duration: ${escapeHtml(skill.formatted_duration)}<br>${skill.start_label ? 'Started: ' + escapeHtml(skill.start_label) : ''}">
+                    <i class="bi bi-star-fill mr-1"></i>${escapeHtml(skill.skill_name)}
+                    <span class="badge bg-white text-dark ml-1" style="font-size: 0.65rem;">${escapeHtml(skill.proficiency_level.charAt(0).toUpperCase() + skill.proficiency_level.slice(1))}</span>
+                </span>
+                <button type="button" class="btn-delete-skill" style="background: none; border: none; color: #dc3545; padding: 0 2px; font-size: 0.8rem; line-height: 1;" data-skill-id="${skill.id}" data-member-id="${memberId}" data-affiliation-id="${affiliationId}" title="Remove skill"><i class="bi bi-x-circle"></i></button>
+            </div>`;
+        return wrapper.firstElementChild;
+    }
+
+    function buildMediaNode(media, affiliationId) {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = `
+            <div class="d-inline-flex align-items-center gap-1 border rounded px-2 py-1 bg-muted" id="media-${media.id}" style="font-size: 0.85rem;">
+                <i class="bi ${escapeHtml(media.icon_class)} text-info"></i>
+                <a href="${escapeHtml(media.full_url)}" target="_blank" class="text-decoration-none text-dark">${escapeHtml(media.title)}</a>
+                <button type="button" class="btn-delete-media" style="background: none; border: none; color: #dc3545; padding: 0 2px; font-size: 0.8rem; line-height: 1;" data-media-id="${media.id}" data-member-id="${memberId}" data-affiliation-id="${affiliationId}" title="Remove"><i class="bi bi-x-circle"></i></button>
+            </div>`;
+        return wrapper.firstElementChild;
+    }
+
+    function initTooltip(el) {
+        if (window.bootstrap && el.getAttribute('data-bs-toggle') === 'tooltip') {
+            try { new bootstrap.Tooltip(el); } catch (e) {}
+        }
+        el.querySelectorAll?.('[data-bs-toggle="tooltip"]').forEach(t => { try { new bootstrap.Tooltip(t); } catch (e) {} });
+    }
+
+    // Placeholder kept for symmetry with the add flow (delegation handles wiring)
+    function wireAffiliationCard(card) { /* events are delegated on document */ }
+
+    // ── Edit Affiliation — submit ─────────────────────────────────────────────
     document.getElementById('editAffiliationForm')?.addEventListener('submit', function(e) {
         e.preventDefault();
         const affiliationId = document.getElementById('editAffiliationId').value;
@@ -1169,98 +1276,184 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.disabled = true;
         affFetch(`/member/${mid}/affiliations/${affiliationId}`, 'PUT', formToObject(this))
             .then(res => {
-                if (res.success) { showAlert(res.message, 'success'); setTimeout(() => location.reload(), 800); }
-                else { showAlert(res.message || 'Error updating affiliation', 'danger'); btn.disabled = false; }
+                if (res.success && res.affiliation) {
+                    const a = res.affiliation;
+                    const nameEl = document.getElementById(`affiliation-name-${a.id}`);
+                    if (nameEl) nameEl.textContent = a.club_name;
+                    const datesEl = document.getElementById(`affiliation-dates-${a.id}`);
+                    if (datesEl && a.start_label) datesEl.innerHTML = `<i class="bi bi-calendar-event mr-1"></i>${escapeHtml(a.start_label)} - ${escapeHtml(a.end_label)}`;
+                    const durEl = document.getElementById(`affiliation-duration-${a.id}`);
+                    if (durEl && a.formatted_duration) durEl.innerHTML = `<i class="bi bi-hourglass-split mr-1"></i>${escapeHtml(a.formatted_duration)}`;
+                    // Refresh the edit button's data-* so a subsequent edit shows fresh values
+                    const editBtn = document.querySelector(`.btn-edit-affiliation[data-affiliation-id="${a.id}"]`);
+                    if (editBtn) {
+                        editBtn.dataset.clubName = a.club_name;
+                        editBtn.dataset.startDate = a.start_date || '';
+                        editBtn.dataset.endDate = a.end_date || '';
+                        editBtn.dataset.location = a.location || '';
+                        editBtn.dataset.description = a.description || '';
+                        editBtn.dataset.coaches = a.coaches || '';
+                    }
+                    bsModal.hide(document.getElementById('editAffiliationModal'));
+                    showAlert(res.message, 'success');
+                    btn.disabled = false;
+                } else if (res.success) {
+                    showAlert(res.message, 'success'); setTimeout(() => location.reload(), 800);
+                } else { showAlert(res.message || 'Error updating affiliation', 'danger'); btn.disabled = false; }
             }).catch(() => { showAlert('An error occurred', 'danger'); btn.disabled = false; });
     });
 
-    // ── Delete Affiliation ────────────────────────────────────────────────────
-    document.querySelectorAll('.btn-delete-affiliation').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const name = this.dataset.clubName;
-            const affiliationId = this.dataset.affiliationId;
-            const mid = this.dataset.memberId;
-            if (!confirm(`Delete affiliation with "${name}"? This will also remove all skills and media linked to it.`)) return;
-            affFetch(`/member/${mid}/affiliations/${affiliationId}`, 'DELETE')
-                .then(res => {
-                    if (res.success) { showAlert(res.message, 'success'); setTimeout(() => location.reload(), 800); }
-                    else { showAlert(res.message || 'Error deleting affiliation', 'danger'); }
-                }).catch(() => showAlert('An error occurred', 'danger'));
-        });
-    });
-
-    // ── Add Skill — set IDs when modal trigger is clicked ────────────────────
-    document.querySelectorAll('.btn-add-skill').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.getElementById('addSkillAffiliationId').value = this.dataset.affiliationId;
-            document.getElementById('addSkillMemberId').value = this.dataset.memberId;
-        });
-    });
-
+    // ── Add Skill — submit ────────────────────────────────────────────────────
     document.getElementById('addSkillForm')?.addEventListener('submit', function(e) {
         e.preventDefault();
         const affiliationId = document.getElementById('addSkillAffiliationId').value;
         const mid = document.getElementById('addSkillMemberId').value;
         const btn = this.querySelector('[type=submit]');
+        const form = this;
         btn.disabled = true;
         affFetch(`/member/${mid}/affiliations/${affiliationId}/skills`, 'POST', formToObject(this))
             .then(res => {
-                if (res.success) { showAlert(res.message, 'success'); setTimeout(() => location.reload(), 800); }
-                else { showAlert(res.message || 'Error adding skill', 'danger'); btn.disabled = false; }
+                if (res.success && res.skill) {
+                    const list = document.getElementById(`skills-list-${affiliationId}`);
+                    if (list) {
+                        const node = buildSkillNode(res.skill, affiliationId);
+                        list.appendChild(node);
+                        list.style.display = '';
+                        initTooltip(node.querySelector('.skill-badge'));
+                        const countEl = document.getElementById(`skills-count-${affiliationId}`);
+                        if (countEl) countEl.textContent = list.querySelectorAll('[id^="skill-"]').length;
+                        const item = document.getElementById(`affiliation-${affiliationId}`);
+                        if (item) {
+                            const names = Array.from(list.querySelectorAll('.skill-badge')).map(b => b.textContent.trim().split('\n')[0]);
+                            item.dataset.skills = names.join(',');
+                        }
+                        form.reset();
+                        bsModal.hide(document.getElementById('addSkillModal'));
+                        showAlert(res.message, 'success');
+                        btn.disabled = false;
+                    } else { showAlert(res.message, 'success'); setTimeout(() => location.reload(), 800); }
+                } else if (res.success) {
+                    showAlert(res.message, 'success'); setTimeout(() => location.reload(), 800);
+                } else { showAlert(res.message || 'Error adding skill', 'danger'); btn.disabled = false; }
             }).catch(() => { showAlert('An error occurred', 'danger'); btn.disabled = false; });
     });
 
-    // ── Delete Skill ─────────────────────────────────────────────────────────
-    document.querySelectorAll('.btn-delete-skill').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            if (!confirm('Remove this skill?')) return;
-            const skillId = this.dataset.skillId;
-            const mid = this.dataset.memberId;
-            const affiliationId = this.dataset.affiliationId;
-            affFetch(`/member/${mid}/affiliations/${affiliationId}/skills/${skillId}`, 'DELETE')
-                .then(res => {
-                    if (res.success) { showAlert(res.message, 'success'); setTimeout(() => location.reload(), 800); }
-                    else { showAlert(res.message || 'Error removing skill', 'danger'); }
-                }).catch(() => showAlert('An error occurred', 'danger'));
-        });
-    });
-
-    // ── Add Media — set IDs when modal trigger is clicked ────────────────────
-    document.querySelectorAll('.btn-add-media').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.getElementById('addMediaAffiliationId').value = this.dataset.affiliationId;
-            document.getElementById('addMediaMemberId').value = this.dataset.memberId;
-        });
-    });
-
+    // ── Add Media — submit ────────────────────────────────────────────────────
     document.getElementById('addMediaForm')?.addEventListener('submit', function(e) {
         e.preventDefault();
         const affiliationId = document.getElementById('addMediaAffiliationId').value;
         const mid = document.getElementById('addMediaMemberId').value;
         const btn = this.querySelector('[type=submit]');
+        const form = this;
         btn.disabled = true;
         affFetch(`/member/${mid}/affiliations/${affiliationId}/media`, 'POST', formToObject(this))
             .then(res => {
-                if (res.success) { showAlert(res.message, 'success'); setTimeout(() => location.reload(), 800); }
-                else { showAlert(res.message || 'Error adding media', 'danger'); btn.disabled = false; }
+                if (res.success && res.media) {
+                    const list = document.getElementById(`media-list-${affiliationId}`);
+                    if (list) {
+                        list.appendChild(buildMediaNode(res.media, affiliationId));
+                        list.style.display = '';
+                        const countEl = document.getElementById(`media-count-${affiliationId}`);
+                        const countWrap = document.getElementById(`media-count-wrap-${affiliationId}`);
+                        if (countEl) countEl.textContent = list.querySelectorAll('[id^="media-"]').length;
+                        if (countWrap) countWrap.style.display = '';
+                        form.reset();
+                        bsModal.hide(document.getElementById('addMediaModal'));
+                        showAlert(res.message, 'success');
+                        btn.disabled = false;
+                    } else { showAlert(res.message, 'success'); setTimeout(() => location.reload(), 800); }
+                } else if (res.success) {
+                    showAlert(res.message, 'success'); setTimeout(() => location.reload(), 800);
+                } else { showAlert(res.message || 'Error adding media', 'danger'); btn.disabled = false; }
             }).catch(() => { showAlert('An error occurred', 'danger'); btn.disabled = false; });
     });
 
-    // ── Delete Media ─────────────────────────────────────────────────────────
-    document.querySelectorAll('.btn-delete-media').forEach(btn => {
-        btn.addEventListener('click', function(e) {
+    // ── Delegated click handling for dynamic + existing cards ─────────────────
+    document.addEventListener('click', async function(e) {
+        const editBtn = e.target.closest('.btn-edit-affiliation');
+        if (editBtn) { populateEditModal(editBtn); return; }
+
+        const addSkillBtn = e.target.closest('.btn-add-skill');
+        if (addSkillBtn) {
+            document.getElementById('addSkillAffiliationId').value = addSkillBtn.dataset.affiliationId;
+            document.getElementById('addSkillMemberId').value = addSkillBtn.dataset.memberId;
+            return;
+        }
+
+        const addMediaBtn = e.target.closest('.btn-add-media');
+        if (addMediaBtn) {
+            document.getElementById('addMediaAffiliationId').value = addMediaBtn.dataset.affiliationId;
+            document.getElementById('addMediaMemberId').value = addMediaBtn.dataset.memberId;
+            return;
+        }
+
+        const delAffBtn = e.target.closest('.btn-delete-affiliation');
+        if (delAffBtn) {
+            const name = delAffBtn.dataset.clubName;
+            const affiliationId = delAffBtn.dataset.affiliationId;
+            const mid = delAffBtn.dataset.memberId;
+            const ok = await window.confirmAction({ title: 'Delete affiliation', message: `Delete affiliation with "${name}"? This will also remove all skills and media linked to it.`, type: 'danger', confirmText: 'Delete' });
+            if (!ok) return;
+            affFetch(`/member/${mid}/affiliations/${affiliationId}`, 'DELETE')
+                .then(res => {
+                    if (res.success) {
+                        document.getElementById(`affiliation-${affiliationId}`)?.remove();
+                        const timeline = document.getElementById('affiliationsTimeline');
+                        if (timeline && timeline.querySelectorAll('.timeline-item-enhanced').length === 0) {
+                            setTimeout(() => location.reload(), 800);
+                        }
+                        showAlert(res.message, 'success');
+                    } else { showAlert(res.message || 'Error deleting affiliation', 'danger'); }
+                }).catch(() => showAlert('An error occurred', 'danger'));
+            return;
+        }
+
+        const delSkillBtn = e.target.closest('.btn-delete-skill');
+        if (delSkillBtn) {
             e.stopPropagation();
-            if (!confirm('Remove this media item?')) return;
-            const mediaId = this.dataset.mediaId;
-            const mid = this.dataset.memberId;
-            const affiliationId = this.dataset.affiliationId;
+            const ok = await window.confirmAction({ title: 'Remove skill', message: 'Remove this skill?', type: 'danger', confirmText: 'Remove' });
+            if (!ok) return;
+            const skillId = delSkillBtn.dataset.skillId;
+            const mid = delSkillBtn.dataset.memberId;
+            const affiliationId = delSkillBtn.dataset.affiliationId;
+            affFetch(`/member/${mid}/affiliations/${affiliationId}/skills/${skillId}`, 'DELETE')
+                .then(res => {
+                    if (res.success) {
+                        document.getElementById(`skill-${skillId}`)?.remove();
+                        const list = document.getElementById(`skills-list-${affiliationId}`);
+                        const countEl = document.getElementById(`skills-count-${affiliationId}`);
+                        const remaining = list ? list.querySelectorAll('[id^="skill-"]').length : 0;
+                        if (countEl) countEl.textContent = remaining;
+                        if (list && remaining === 0) list.style.display = 'none';
+                        showAlert(res.message, 'success');
+                    } else { showAlert(res.message || 'Error removing skill', 'danger'); }
+                }).catch(() => showAlert('An error occurred', 'danger'));
+            return;
+        }
+
+        const delMediaBtn = e.target.closest('.btn-delete-media');
+        if (delMediaBtn) {
+            e.stopPropagation();
+            const ok = await window.confirmAction({ title: 'Remove media', message: 'Remove this media item?', type: 'danger', confirmText: 'Remove' });
+            if (!ok) return;
+            const mediaId = delMediaBtn.dataset.mediaId;
+            const mid = delMediaBtn.dataset.memberId;
+            const affiliationId = delMediaBtn.dataset.affiliationId;
             affFetch(`/member/${mid}/affiliations/${affiliationId}/media/${mediaId}`, 'DELETE')
                 .then(res => {
-                    if (res.success) { showAlert(res.message, 'success'); setTimeout(() => location.reload(), 800); }
-                    else { showAlert(res.message || 'Error removing media', 'danger'); }
+                    if (res.success) {
+                        document.getElementById(`media-${mediaId}`)?.remove();
+                        const list = document.getElementById(`media-list-${affiliationId}`);
+                        const countEl = document.getElementById(`media-count-${affiliationId}`);
+                        const countWrap = document.getElementById(`media-count-wrap-${affiliationId}`);
+                        const remaining = list ? list.querySelectorAll('[id^="media-"]').length : 0;
+                        if (countEl) countEl.textContent = remaining;
+                        if (remaining === 0) { if (list) list.style.display = 'none'; if (countWrap) countWrap.style.display = 'none'; }
+                        showAlert(res.message, 'success');
+                    } else { showAlert(res.message || 'Error removing media', 'danger'); }
                 }).catch(() => showAlert('An error occurred', 'danger'));
-        });
+            return;
+        }
     });
 
     // Initialize Bootstrap tooltips
@@ -1323,7 +1516,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Validate rating
             if (!data.rating || data.rating == 0) {
-                alert('Please select a rating');
+                window.showToast('error', 'Please select a rating');
                 return;
             }
 
@@ -1343,14 +1536,12 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(response => response.json())
             .then(result => {
-                if (result.success) {
-                    // Show success message
+                if (result.success && result.review) {
+                    patchInstructorReview(form, instructorId, result.review);
                     showAlert(result.message, 'success');
-
-                    // Reload the page to show updated reviews
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
+                } else if (result.success) {
+                    showAlert(result.message, 'success');
+                    setTimeout(() => { window.location.reload(); }, 1000);
                 } else {
                     showAlert(result.message || 'Error submitting review', 'danger');
                 }
@@ -1362,21 +1553,59 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    function showAlert(message, type) {
-        const alertDiv = document.createElement('div');
-        alertDiv.className = `alert alert-${type} alert-dismissible fade show fixed`;
-        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-        alertDiv.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        `;
-        document.body.appendChild(alertDiv);
+    function starsHtml(rating) {
+        let html = '';
+        for (let i = 1; i <= 5; i++) {
+            html += `<i class="bi bi-star${i <= rating ? '-fill' : ''} text-warning"></i>`;
+        }
+        return html;
+    }
 
-        setTimeout(() => {
-            if (alertDiv.parentNode) {
-                alertDiv.remove();
+    function patchInstructorReview(form, instructorId, review) {
+        // Mark form as editing the now-existing review (subsequent submits become PUT)
+        form.setAttribute('data-review-id', review.id);
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.innerHTML = `<i class="bi bi-pencil mr-1"></i>Update Review`;
+
+        const list = document.getElementById(`reviewsList_${instructorId}`);
+        if (list) {
+            let row = document.getElementById(`review-row-${review.id}`);
+            const reviewerName = (review.reviewer && (review.reviewer.full_name || review.reviewer.name)) || 'You';
+            const commentHtml = review.comment ? `<p class="mb-0 text-sm text-muted-foreground">${escapeHtml(review.comment)}</p>` : '';
+            const cardHtml = `
+                <div class="card-body p-3">
+                    <div class="flex items-start mb-2">
+                        <div class="grow">
+                            <div class="font-semibold text-sm">${escapeHtml(reviewerName)}</div>
+                            <div class="stars-display text-sm">${starsHtml(review.rating)}</div>
+                        </div>
+                        <small class="text-muted-foreground">Updated just now</small>
+                    </div>
+                    ${commentHtml}
+                </div>`;
+            if (row) {
+                row.innerHTML = cardHtml;
+            } else {
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = `<div class="card mb-2" id="review-row-${review.id}">${cardHtml}</div>`;
+                row = wrapper.firstElementChild;
+                list.prepend(row);
             }
-        }, 5000);
+        }
+
+        // Recompute and patch the average rating display for this instructor
+        const ratings = list ? Array.from(list.querySelectorAll('.stars-display')).map(d => d.querySelectorAll('.bi-star-fill').length) : [];
+        const count = ratings.length;
+        const avg = count ? (ratings.reduce((a, b) => a + b, 0) / count) : 0;
+        const headerStars = document.getElementById(`avgStars_${instructorId}`);
+        if (headerStars) headerStars.innerHTML = starsHtml(Math.round(avg));
+        const headerMeta = document.getElementById(`avgMeta_${instructorId}`);
+        if (headerMeta) headerMeta.textContent = `(${avg.toFixed(1)} / ${count} ${count === 1 ? 'review' : 'reviews'})`;
+    }
+
+    function showAlert(message, type) {
+        // Route through the global toast — never render an inline alert on the page.
+        window.showToast(type === 'danger' ? 'error' : type, message);
     }
 
     if (skillFilter) {

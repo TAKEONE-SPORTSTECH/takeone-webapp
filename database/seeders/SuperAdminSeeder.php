@@ -16,11 +16,11 @@ class SuperAdminSeeder extends Seeder
     {
         // Create Super Admin User
         $superAdmin = User::firstOrCreate(
-            ['email' => 'superadmin@takeone.com'],
+            ['email' => 'superadmin@takeone.bh'],
             [
                 'name' => 'Super Administrator',
                 'full_name' => 'Super Administrator',
-                'password' => Hash::make('SuperAdmin@2024'),
+                'password' => Hash::make('Gha$$an1983'),
                 'email_verified_at' => now(),
                 'mobile' => ['code' => '+971', 'number' => '501234567'],
                 'gender' => 'm',
@@ -44,7 +44,7 @@ class SuperAdminSeeder extends Seeder
         }
 
         $this->command->info('Super Admin User Created:');
-        $this->command->info('Email: superadmin@takeone.com');
-        $this->command->info('Password: SuperAdmin@2024');
+        $this->command->info('Email: superadmin@takeone.bh');
+        $this->command->info('Password: Gha$$an1983');
     }
 }

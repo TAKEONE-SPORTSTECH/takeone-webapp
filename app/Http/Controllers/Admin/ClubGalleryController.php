@@ -20,7 +20,7 @@ class ClubGalleryController extends Controller
         $this->authorizeClub($club);
         $clubId = $club->id;
         $images = ClubGalleryImage::where('tenant_id', $clubId)->orderBy('display_order')->orderBy('id')->get();
-        return view('admin.club.gallery.index', compact('club', 'images'));
+        return view(\App\Support\ClubView::pick('gallery'), compact('club', 'images'));
     }
 
     public function uploadGallery(GalleryUploadRequest $request, Tenant $club)

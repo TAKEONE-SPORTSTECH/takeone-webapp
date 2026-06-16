@@ -8,19 +8,90 @@
     <!-- Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-            <h2 class="text-3xl font-bold text-gray-900">Members Management</h2>
+            <h2 class="text-xl font-bold text-gray-900">Members Management</h2>
             <p class="text-gray-500 mt-1">Manage club members and subscriptions</p>
         </div>
         <div class="flex gap-3 flex-wrap">
-            <button onclick="openAddExistingUserModal()" class="inline-flex items-center px-4 py-2 border border-purple-500 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors font-medium">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-                Add Existing User
+            <button onclick="openAddExistingUserModal()" class="btn btn-outline-primary">
+                <i class="bi bi-person-plus mr-2"></i>Add Existing User
             </button>
-            <button onclick="openWalkInModal()" class="inline-flex items-center px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors font-medium">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                Walk-In Registration
+            <button onclick="document.getElementById('importMembersModal').classList.remove('hidden')" class="btn btn-outline-light">
+                <i class="bi bi-upload mr-2"></i>Import Members
+            </button>
+            <button onclick="openWalkInModal()" class="btn btn-primary">
+                <i class="bi bi-people mr-2"></i>Walk-In Registration
             </button>
         </div>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="space-y-3">
+
+        {{-- Status overview — sparkline = monthly new registrations trend --}}
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
+            <x-stat-card size="sm"
+                card-id="sc-total"
+                label="Total Members"
+                :value="$allCount"
+                sub-label="all active memberships"
+                icon="bi-people-fill"
+                icon-bg="bg-violet-100"
+                icon-color="text-violet-600"
+                :spark-data="$monthlyNewMembers"
+                :spark-labels="$monthlyLabels"
+                spark-color="#7c3aed"
+                :href="route('admin.club.members', [$club->slug, 'filter' => 'all'])"
+            />
+            <x-stat-card size="sm"
+                card-id="sc-subscribed"
+                label="Subscribed"
+                :value="$activeCount"
+                sub-label="with active package"
+                icon="bi-patch-check-fill"
+                icon-bg="bg-green-100"
+                icon-color="text-green-600"
+                :spark-data="$monthlyNewMembers"
+                :spark-labels="$monthlyLabels"
+                spark-color="#16a34a"
+                :href="route('admin.club.members', [$club->slug, 'filter' => 'active'])"
+            />
+            <x-stat-card size="sm"
+                card-id="sc-not-active"
+                label="Not Active"
+                :value="$notActiveCount"
+                sub-label="no active package"
+                icon="bi-person-dash-fill"
+                icon-bg="bg-amber-100"
+                icon-color="text-amber-600"
+                :spark-data="$monthlyNewMembers"
+                :spark-labels="$monthlyLabels"
+                spark-color="#d97706"
+                :href="route('admin.club.members', [$club->slug, 'filter' => 'not_active'])"
+            />
+            <x-stat-card size="sm"
+                card-id="sc-former"
+                label="Former"
+                :value="$formerCount"
+                sub-label="left the club"
+                icon="bi-person-x-fill"
+                icon-bg="bg-gray-100"
+                icon-color="text-gray-500"
+                :spark-data="array_fill(0, 12, 0)"
+                spark-color="#6b7280"
+            />
+        </div>
+
+        {{-- Demographics — each card filters the list when clicked --}}
+        <div class="grid grid-cols-4 lg:grid-cols-7 gap-2">
+            <x-stat-card size="sm" card-id="sc-male"    label="Male"    :value="$maleCount"                 sub-label="click to filter" icon="bi-gender-male"   icon-bg="bg-blue-100"    icon-color="text-blue-600"    spark-color="#2563eb" :spark-data="$monthlyMale"    :spark-labels="$monthlyLabels" on-click="window.dispatchEvent(new CustomEvent('filter-demo',{detail:{type:'gender',value:'male'}}))" />
+            <x-stat-card size="sm" card-id="sc-female"  label="Female"  :value="$femaleCount"               sub-label="click to filter" icon="bi-gender-female" icon-bg="bg-rose-100"    icon-color="text-rose-500"    spark-color="#f43f5e" :spark-data="$monthlyFemale"  :spark-labels="$monthlyLabels" on-click="window.dispatchEvent(new CustomEvent('filter-demo',{detail:{type:'gender',value:'female'}}))" />
+            <x-stat-card size="sm" card-id="sc-kids"    label="Kids"    :value="$ageGroupCounts['Kids']"    sub-label="age 6–11"        icon="bi-star-fill"      icon-bg="bg-emerald-100" icon-color="text-emerald-600" spark-color="#10b981" :spark-data="$monthlyKids"    :spark-labels="$monthlyLabels" on-click="window.dispatchEvent(new CustomEvent('filter-demo',{detail:{type:'category',value:'Kids'}}))" />
+            <x-stat-card size="sm" card-id="sc-cadet"   label="Cadet"   :value="$ageGroupCounts['Cadet']"   sub-label="age 12–14"       icon="bi-lightning-fill" icon-bg="bg-yellow-100"  icon-color="text-yellow-600"  spark-color="#ca8a04" :spark-data="$monthlyCadet"   :spark-labels="$monthlyLabels" on-click="window.dispatchEvent(new CustomEvent('filter-demo',{detail:{type:'category',value:'Cadet'}}))" />
+            <x-stat-card size="sm" card-id="sc-junior"  label="Junior"  :value="$ageGroupCounts['Junior']"  sub-label="age 15–17"       icon="bi-trophy-fill"    icon-bg="bg-orange-100"  icon-color="text-orange-600"  spark-color="#ea580c" :spark-data="$monthlyJunior"  :spark-labels="$monthlyLabels" on-click="window.dispatchEvent(new CustomEvent('filter-demo',{detail:{type:'category',value:'Junior'}}))" />
+            <x-stat-card size="sm" card-id="sc-senior"  label="Senior"  :value="$ageGroupCounts['Senior']"  sub-label="age 18–30"       icon="bi-shield-fill"    icon-bg="bg-violet-100"  icon-color="text-violet-600"  spark-color="#7c3aed" :spark-data="$monthlySenior"  :spark-labels="$monthlyLabels" on-click="window.dispatchEvent(new CustomEvent('filter-demo',{detail:{type:'category',value:'Senior'}}))" />
+            <x-stat-card size="sm" card-id="sc-masters" label="Masters" :value="$ageGroupCounts['Masters']" sub-label="age 31+"         icon="bi-crown-fill"     icon-bg="bg-gray-200"    icon-color="text-gray-600"    spark-color="#6b7280" :spark-data="$monthlyMasters" :spark-labels="$monthlyLabels" on-click="window.dispatchEvent(new CustomEvent('filter-demo',{detail:{type:'category',value:'Masters'}}))" />
+        </div>
+
     </div>
 
     <!-- Tabs -->
@@ -28,11 +99,15 @@
         <nav class="-mb-px flex gap-8">
             <button id="members-tab-btn" onclick="switchTab('members')" class="py-4 px-1 border-b-2 border-purple-500 text-purple-600 font-medium text-sm whitespace-nowrap">
                 Current Members
-                <span class="ml-2 py-0.5 px-2.5 rounded-full text-xs font-medium bg-purple-100 text-purple-600" id="membersCount">{{ $members->total() ?? 0 }}</span>
+                <span class="ml-2 py-0.5 px-2.5 rounded-full text-xs font-medium bg-purple-100 text-purple-600" id="membersCount">{{ $statusCounts[$filter] ?? count($members) }}</span>
             </button>
             <button id="requests-tab-btn" onclick="switchTab('requests')" class="py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm whitespace-nowrap">
                 Pending Requests
                 <span class="ml-2 py-0.5 px-2.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700" id="requestsCount">{{ $pendingRequests ?? 0 }}</span>
+            </button>
+            <button id="former-tab-btn" onclick="switchTab('former')" class="py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm whitespace-nowrap">
+                Former Members
+                <span class="ml-2 py-0.5 px-2.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{{ $formerCount ?? 0 }}</span>
             </button>
         </nav>
     </div>
@@ -40,96 +115,175 @@
     <!-- Members Tab Content -->
     <div id="members-content">
         <!-- Search & Filter -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6"
+             x-data="{
+                showAdvanced: false,
+                gender: '',
+                category: '',
+                weightClass: '',
+                ageMin: '',
+                ageMax: '',
+                get activeCount() {
+                    return [this.gender, this.category, this.weightClass, this.ageMin, this.ageMax].filter(v => v !== '').length;
+                },
+                get weightClasses() {
+                    const map = {
+                        Kids:    { male: ['-26 kg','-30 kg','-33 kg','-36 kg','-40 kg','-45 kg','-50 kg','+50 kg'], female: ['-26 kg','-30 kg','-33 kg','-36 kg','-40 kg','-45 kg','-50 kg','+50 kg'] },
+                        Cadet:   { male: ['-33 kg','-37 kg','-41 kg','-45 kg','-49 kg','-53 kg','-57 kg','-61 kg','-65 kg','+65 kg'], female: ['-29 kg','-33 kg','-37 kg','-41 kg','-44 kg','-47 kg','-51 kg','-55 kg','-59 kg','+59 kg'] },
+                        Junior:  { male: ['-45 kg','-48 kg','-51 kg','-55 kg','-59 kg','-63 kg','-68 kg','-73 kg','-78 kg','+78 kg'], female: ['-42 kg','-44 kg','-46 kg','-49 kg','-52 kg','-55 kg','-59 kg','-63 kg','-68 kg','+68 kg'] },
+                        Senior:  { male: ['-54 kg','-58 kg','-63 kg','-68 kg','-74 kg','-80 kg','-87 kg','+87 kg'], female: ['-46 kg','-49 kg','-53 kg','-57 kg','-62 kg','-67 kg','-73 kg','+73 kg'] },
+                        Masters: { male: ['-60 kg','-70 kg','-80 kg','+80 kg'], female: ['-55 kg','-63 kg','-72 kg','+72 kg'] },
+                    };
+                    if (!this.category) return [];
+                    const entry = map[this.category];
+                    if (!entry) return [];
+                    if (this.gender) return entry[this.gender] || [];
+                    return [...new Set([...(entry.male || []), ...(entry.female || [])])];
+                },
+                reset() {
+                    this.gender = ''; this.category = ''; this.weightClass = ''; this.ageMin = ''; this.ageMax = '';
+                    this.$nextTick(() => {
+                        ['filterGender','filterCategory','filterWeightClass','filterAgeMin','filterAgeMax']
+                            .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+                        applyFilters();
+                    });
+                },
+                filterByDemo(type, value) {
+                    this.gender      = type === 'gender'   ? value : '';
+                    this.category    = type === 'category' ? value : '';
+                    this.weightClass = '';
+                    this.ageMin      = '';
+                    this.ageMax      = '';
+                    this.showAdvanced = true;
+                    this.$nextTick(() => applyFilters());
+                }
+             }"
+             @filter-change.window="applyFilters()"
+             @filter-demo.window="filterByDemo($event.detail.type, $event.detail.value)">
+
+            <!-- Row 1: search + status + advanced toggle -->
             <div class="flex flex-col lg:flex-row gap-4">
                 <div class="flex-1">
                     <div class="relative">
                         <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                        <input type="text" id="searchMembers" placeholder="Search members by name, phone, or email..." autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly')" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <input type="text" id="searchMembers" placeholder="Search members by name, phone, or email..." autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly')" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" @input="applyFilters()">
                     </div>
                 </div>
                 <div class="flex flex-col sm:flex-row gap-2">
                     <span class="text-sm font-medium text-gray-600 self-center">Status:</span>
                     <div class="inline-flex flex-wrap rounded-lg border border-gray-200 p-1 bg-gray-50 overflow-x-auto max-w-full">
-                        <button type="button" class="status-btn active px-3 py-1.5 text-sm font-medium rounded-md transition-colors" data-status="active">
-                            Active <span class="ml-1 text-xs opacity-75" id="activeCount">0</span>
-                        </button>
-                        <button type="button" class="status-btn px-3 py-1.5 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-100 transition-colors" data-status="not_active">
-                            Not Active <span class="ml-1 text-xs opacity-75" id="notActiveCount">0</span>
-                        </button>
-                        <button type="button" class="status-btn px-3 py-1.5 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-100 transition-colors" data-status="all">
-                            All <span class="ml-1 text-xs opacity-75" id="allCount">0</span>
-                        </button>
+                        <a href="{{ request()->fullUrlWithQuery(['filter' => 'active', 'page' => 1]) }}" class="status-btn px-3 py-1.5 text-sm font-medium rounded-md transition-colors {{ $filter === 'active' ? 'active' : 'text-gray-600 hover:bg-gray-100' }}">
+                            Active <span class="ml-1 text-xs opacity-75">{{ $statusCounts['active'] }}</span>
+                        </a>
+                        <a href="{{ request()->fullUrlWithQuery(['filter' => 'not_active', 'page' => 1]) }}" class="status-btn px-3 py-1.5 text-sm font-medium rounded-md transition-colors {{ $filter === 'not_active' ? 'active' : 'text-gray-600 hover:bg-gray-100' }}">
+                            Not Active <span class="ml-1 text-xs opacity-75">{{ $statusCounts['not_active'] }}</span>
+                        </a>
+                        <a href="{{ request()->fullUrlWithQuery(['filter' => 'all', 'page' => 1]) }}" class="status-btn px-3 py-1.5 text-sm font-medium rounded-md transition-colors {{ $filter === 'all' ? 'active' : 'text-gray-600 hover:bg-gray-100' }}">
+                            All <span class="ml-1 text-xs opacity-75">{{ $statusCounts['all'] }}</span>
+                        </a>
                     </div>
+                    <button @click="showAdvanced = !showAdvanced"
+                            class="inline-flex items-center gap-2 px-3 py-2 border rounded-lg text-sm font-medium transition-colors"
+                            :class="activeCount > 0 ? 'border-purple-400 text-purple-600 bg-purple-50' : 'border-gray-200 text-gray-600 hover:bg-gray-50'">
+                        <i class="bi bi-sliders"></i>
+                        Filters
+                        <span x-show="activeCount > 0" x-text="activeCount"
+                              class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-purple-600 text-white text-xs font-bold"></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Row 2: advanced filters panel -->
+            <div x-show="showAdvanced" x-cloak
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 -translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 class="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+
+                <!-- Age Min -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Age Min</label>
+                    <input type="number" id="filterAgeMin" min="0" max="100" placeholder="e.g. 12"
+                           x-model="ageMin" @input="applyFilters()"
+                           class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                </div>
+
+                <!-- Age Max -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Age Max</label>
+                    <input type="number" id="filterAgeMax" min="0" max="100" placeholder="e.g. 17"
+                           x-model="ageMax" @input="applyFilters()"
+                           class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                </div>
+
+                <!-- Gender -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Gender</label>
+                    <select id="filterGender" x-model="gender" @change="weightClass = ''; applyFilters()"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <option value="">All</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                    </select>
+                </div>
+
+                <!-- Category -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Category</label>
+                    <select id="filterCategory" x-model="category" @change="weightClass = ''; applyFilters()"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <option value="">All</option>
+                        <option>Kids</option>
+                        <option>Cadet</option>
+                        <option>Junior</option>
+                        <option>Senior</option>
+                        <option>Masters</option>
+                    </select>
+                </div>
+
+                <!-- Weight Class -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Weight Class</label>
+                    <select id="filterWeightClass" x-model="weightClass" @change="applyFilters()"
+                            :disabled="weightClasses.length === 0"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-40 disabled:cursor-not-allowed">
+                        <option value="">All</option>
+                        <template x-for="wc in weightClasses" :key="wc">
+                            <option :value="wc" x-text="wc"></option>
+                        </template>
+                    </select>
+                </div>
+
+                <!-- Clear -->
+                <div class="col-span-2 sm:col-span-3 lg:col-span-5 flex justify-end">
+                    <button @click="reset()" x-show="activeCount > 0"
+                            class="text-sm text-purple-600 hover:text-purple-800 font-medium flex items-center gap-1">
+                        <i class="bi bi-x-circle"></i> Clear all filters
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- Members Grid -->
-        @if(isset($members) && count($members) > 0)
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="membersGrid">
-            @foreach($members as $member)
-            @php
-                $user = $member->user;
-                if (!$user) continue;
-                $guardian = $user->guardians->first()?->guardian ?? null;
-                $footerLabel = $member->status === 'inactive' ? 'INACTIVE' : ($member->status === 'active' ? 'ACTIVE MEMBER' : 'CLUB MEMBER');
-                $userSubs = ($subscriptions ?? collect())->get((string) $user->id) ?? ($subscriptions ?? collect())->get($user->id, collect());
-                $isOwner = $userSubs->where('type', 'owner')->isNotEmpty();
-                $memberPackages = $userSubs->where('type', 'regular')->pluck('package')->filter();
-                $phoneNumber = is_array($user->mobile) ? ($user->mobile['number'] ?? '') : preg_replace('/^\+?\d{1,3}/', '', $user->mobile ?? '');
-                $hasActivePackage = $isOwner || $userSubs->where('type', 'regular')->whereIn('status', ['active', 'pending'])->isNotEmpty();
-            @endphp
-            <x-member-card
-                :member="$user"
-                :href="route('member.show', $user->id)"
-                :guardian="$guardian"
-                :footerLabel="$footerLabel"
-                footerStyle="translucent"
-                :memberSince="$member->created_at"
-                cardClass="member-card"
-                class="member-item"
-                data-name="{{ strtolower($user->full_name ?? '') }}"
-                data-rank="member"
-                data-phone="{{ $phoneNumber }}"
-                data-email="{{ strtolower($user->email ?? '') }}"
-                data-status="{{ $member->status }}"
-                data-has-enrollment="{{ $hasActivePackage ? '1' : '0' }}"
-            >
-                <x-slot:badges>
-                    @if($isOwner)
-                        <span class="badge bg-warning text-dark">&#128081; Owner</span>
-                    @endif
-                    @foreach($memberPackages as $pkg)
-                        <span class="badge bg-primary">{{ $pkg->name }}</span>
-                    @endforeach
-                    @if($member->achievements > 0)
-                        <span class="badge bg-warning text-dark">{{ $member->achievements }} &#127942;</span>
-                    @endif
-                </x-slot:badges>
-            </x-member-card>
-            @endforeach
-        </div>
-
-        <!-- Pagination -->
-        @if($members instanceof \Illuminate\Pagination\LengthAwarePaginator && $members->hasPages())
-        <div class="flex justify-center mt-8">
-            {{ $members->links() }}
-        </div>
-        @endif
-        @else
-        <div class="tf-empty">
-            <div class="tf-empty-icon">
-                <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+        <!-- Members Grid — cards loaded via AJAX after page ready -->
+        <div id="membersGridWrap">
+            <div id="membersGrid" class="grid gap-6" style="grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));">
+                {{-- Skeleton loaders shown while AJAX is in flight --}}
+                @for($i = 0; $i < 8; $i++)
+                <div class="members-skeleton bg-white rounded-xl border border-gray-100 animate-pulse" style="height:280px;"></div>
+                @endfor
             </div>
-            <h5 class="text-lg font-semibold text-gray-900 mb-2">No members found</h5>
-            <p class="text-gray-500 mb-4">Start adding members to your club</p>
-            <button onclick="openWalkInModal()" class="inline-flex items-center px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors font-medium">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                Add Member
-            </button>
+            <div id="membersEmpty" class="tf-empty hidden">
+                <div class="tf-empty-icon">
+                    <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                </div>
+                <h5 class="text-lg font-semibold text-gray-900 mb-2">No members found</h5>
+                <p class="text-gray-500 mb-4">Start adding members to your club</p>
+                <button onclick="openWalkInModal()" class="btn btn-primary">
+                    <i class="bi bi-plus-lg mr-2"></i>Add Member
+                </button>
+            </div>
+            <x-client-paginator id="membersPagination" :per-page="20" />
         </div>
-        @endif
     </div>
 
     <!-- Requests Tab Content -->
@@ -165,13 +319,11 @@
                         <textarea class="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none" rows="2" placeholder="Add notes about this request..." id="reviewNotes_{{ $request->id }}"></textarea>
                     </div>
                     <div class="flex gap-3">
-                        <button onclick="approveRequest({{ $request->id }}, {{ $request->user_id }})" class="flex-1 inline-flex items-center justify-center px-4 py-2.5 bg-green-500 text-white font-medium rounded-lg hover:bg-green-600 transition-colors">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            Approve
+                        <button onclick="approveRequest({{ $request->id }}, {{ $request->user_id }})" class="flex-1 btn btn-success">
+                            <i class="bi bi-check-lg mr-2"></i>Approve
                         </button>
-                        <button onclick="rejectRequest({{ $request->id }})" class="flex-1 inline-flex items-center justify-center px-4 py-2.5 bg-red-500 text-white font-medium rounded-lg hover:bg-red-600 transition-colors">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                            Reject
+                        <button onclick="rejectRequest({{ $request->id }})" class="flex-1 btn btn-danger">
+                            <i class="bi bi-x-lg mr-2"></i>Reject
                         </button>
                     </div>
                 </div>
@@ -185,6 +337,13 @@
             <p class="text-gray-500">All membership requests have been processed</p>
         </div>
         @endif
+    </div>
+</div>
+
+<!-- Former Members Tab Content — loaded via AJAX on first click -->
+<div id="former-content" class="hidden">
+    <div id="formerCardsWrap">
+        {{-- content injected by JS --}}
     </div>
 </div>
 
@@ -208,8 +367,8 @@
                 </div>
             </div>
             <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
-                <button onclick="closeModal('addExistingUserModal')" class="px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
-                <button onclick="addSelectedMembers()" id="addMembersBtn" disabled class="px-4 py-2.5 bg-purple-500 text-white font-medium rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                <button onclick="closeModal('addExistingUserModal')" class="btn btn-outline-light">Cancel</button>
+                <button onclick="addSelectedMembers()" id="addMembersBtn" disabled class="btn btn-primary">
                     Add <span id="selectedCount">0</span> Member(s)
                 </button>
             </div>
@@ -253,18 +412,15 @@
             </div>
             <div class="px-6 py-4 bg-gray-50 border-t border-gray-100">
                 <div class="flex flex-wrap gap-3">
-                    <button onclick="closeModal('editMemberModal')" class="px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-100 transition-colors">Cancel</button>
-                    <button onclick="openEnrollModal()" class="flex-1 px-4 py-2.5 bg-gray-600 text-white font-medium rounded-lg hover:bg-gray-700 transition-colors">
-                        <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-                        Enroll
+                    <button onclick="closeModal('editMemberModal')" class="btn btn-outline-light">Cancel</button>
+                    <button onclick="openEnrollModal()" class="flex-1 btn btn-dark">
+                        <i class="bi bi-person-plus mr-2"></i>Enroll
                     </button>
-                    <button onclick="openLeaveModal()" class="flex-1 px-4 py-2.5 bg-red-500 text-white font-medium rounded-lg hover:bg-red-600 transition-colors">
-                        <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                        Leave
+                    <button onclick="openLeaveModal()" class="flex-1 btn btn-danger">
+                        <i class="bi bi-box-arrow-right mr-2"></i>Leave
                     </button>
-                    <button onclick="saveEditMember()" class="flex-1 px-4 py-2.5 bg-purple-500 text-white font-medium rounded-lg hover:bg-purple-600 transition-colors">
-                        <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        Save
+                    <button onclick="saveEditMember()" class="flex-1 btn btn-primary">
+                        <i class="bi bi-check-lg mr-2"></i>Save
                     </button>
                 </div>
             </div>
@@ -292,10 +448,9 @@
                 </div>
             </div>
             <div class="px-6 py-4 border-t border-gray-100 flex gap-3">
-                <button onclick="closeModal('enrollPackageModal')" class="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
-                <button onclick="confirmEnrollment()" id="confirmEnrollBtn" disabled class="flex-1 px-4 py-2.5 bg-purple-500 text-white font-medium rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                    Confirm Enrollment
+                <button onclick="closeModal('enrollPackageModal')" class="flex-1 btn btn-outline-light">Cancel</button>
+                <button onclick="confirmEnrollment()" id="confirmEnrollBtn" disabled class="flex-1 btn btn-primary">
+                    <i class="bi bi-check-lg mr-2"></i>Confirm Enrollment
                 </button>
             </div>
         </div>
@@ -326,8 +481,8 @@
                 </div>
             </div>
             <div class="px-6 py-4 border-t border-gray-100 flex gap-3">
-                <button onclick="closeModal('leaveClubModal')" class="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
-                <button onclick="confirmLeave()" class="flex-1 px-4 py-2.5 bg-red-500 text-white font-medium rounded-lg hover:bg-red-600 transition-colors">Confirm Leave</button>
+                <button onclick="closeModal('leaveClubModal')" class="flex-1 btn btn-outline-light">Cancel</button>
+                <button onclick="confirmLeave()" class="flex-1 btn btn-danger">Confirm Leave</button>
             </div>
         </div>
     </div>
@@ -367,8 +522,8 @@
                 </div>
             </div>
             <div class="px-6 py-4 border-t border-gray-100 flex gap-3">
-                <button onclick="closeModal('graduateChildModal')" class="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
-                <button onclick="confirmGraduate()" class="flex-1 px-4 py-2.5 bg-purple-500 text-white font-medium rounded-lg hover:bg-purple-600 transition-colors">Graduate to Adult</button>
+                <button onclick="closeModal('graduateChildModal')" class="flex-1 btn btn-outline-light">Cancel</button>
+                <button onclick="confirmGraduate()" class="flex-1 btn btn-primary">Graduate to Adult</button>
             </div>
         </div>
     </div>
@@ -389,8 +544,8 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Parent Email or Phone <span class="text-red-500">*</span></label>
                     <div class="flex gap-2">
                         <input type="text" id="parentSearchInput" class="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="parent@example.com" autocomplete="new-password">
-                        <button onclick="searchParent()" class="px-4 py-2.5 border border-purple-500 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        <button onclick="searchParent()" class="btn btn-outline-primary">
+                            <i class="bi bi-search"></i>
                         </button>
                     </div>
                 </div>
@@ -398,13 +553,82 @@
                 <div id="selectedParent" class="hidden mb-4 bg-purple-50 rounded-lg p-4"></div>
             </div>
             <div class="px-6 py-4 border-t border-gray-100 flex gap-3">
-                <button onclick="closeModal('degradeToChildModal')" class="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
-                <button onclick="confirmDegrade()" id="confirmDegradeBtn" disabled class="flex-1 px-4 py-2.5 bg-purple-500 text-white font-medium rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Move to Child</button>
+                <button onclick="closeModal('degradeToChildModal')" class="flex-1 btn btn-outline-light">Cancel</button>
+                <button onclick="confirmDegrade()" id="confirmDegradeBtn" disabled class="flex-1 btn btn-primary">Move to Child</button>
             </div>
         </div>
     </div>
 </div>
 @endsection
+
+@include('admin.club.members.partials.member-popup')
+
+{{-- Import Members Modal --}}
+<div id="importMembersModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900">Import Members</h3>
+                <p class="text-sm text-gray-500 mt-0.5">Upload an Excel file to bulk-add members</p>
+            </div>
+            <button onclick="closeImportModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div class="px-6 py-5 space-y-4">
+
+            {{-- Step 1: Download template --}}
+            <div class="bg-purple-50 border border-purple-100 rounded-lg p-4 flex items-start gap-3">
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-sm">1</div>
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-800">Download the template</p>
+                    <p class="text-xs text-gray-500 mt-0.5">Fill it in and upload below. Do not rename or reorder columns.</p>
+                    <a href="{{ route('admin.club.members.import-template', $club->slug) }}"
+                       class="inline-flex items-center mt-2 px-3 py-1.5 text-xs font-medium text-purple-700 bg-white border border-purple-200 rounded-md hover:bg-purple-50 transition-colors">
+                        <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        Download Template (.xlsx)
+                    </a>
+                </div>
+            </div>
+
+            {{-- Step 2: Upload --}}
+            <div class="flex items-start gap-3">
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-sm">2</div>
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-800 mb-2">Upload filled file</p>
+                    <form id="importMembersForm" enctype="multipart/form-data">
+                        @csrf
+                        <label for="import_file"
+                               id="importDropZone"
+                               class="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 hover:border-purple-400 transition-colors">
+                            <div id="importDropLabel" class="flex flex-col items-center text-center px-4">
+                                <svg class="w-7 h-7 text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                                <span class="text-sm text-gray-500">Click to browse or drag &amp; drop</span>
+                                <span class="text-xs text-gray-400 mt-0.5">.xlsx or .csv — max 5 MB</span>
+                            </div>
+                            <input id="import_file" name="import_file" type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleImportFileSelect(this)">
+                        </label>
+                    </form>
+                </div>
+            </div>
+
+            {{-- Result area --}}
+            <div id="importResult" class="hidden rounded-lg p-3 text-sm"></div>
+            <div id="importErrors" class="hidden rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-xs text-yellow-800 space-y-1 max-h-28 overflow-y-auto"></div>
+
+        </div>
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+            <button onclick="closeImportModal()" class="btn btn-outline-light">Cancel</button>
+            <button id="importSubmitBtn" onclick="submitImport()" disabled class="btn btn-primary">
+                <svg id="importSpinner" class="hidden w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+                Import
+            </button>
+        </div>
+    </div>
+</div>
 
 @push('scripts')
 <script>
@@ -417,10 +641,20 @@ let selectedParentId = null;
 let availablePackages = @json($packages ?? []);
 
 document.addEventListener('DOMContentLoaded', function() {
-    updateStatusCounts();
-    initializeSearch();
-    initializeStatusFilters();
-    filterMembers();
+    // Member card click → quick-view popup (delegate from grid)
+    document.getElementById('membersGrid')?.addEventListener('click', function(e) {
+        const wrapper = e.target.closest('.member-card-wrapper[data-member-id]');
+        if (!wrapper) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const userId   = wrapper.getAttribute('data-member-id');
+        const popupUrl = wrapper.getAttribute('data-popup-url');
+        if (userId && popupUrl && window.openMemberPopup) {
+            window.openMemberPopup(userId, popupUrl);
+        }
+    });
+
+    loadMemberCards();
     loadNationalityFlags();
 });
 
@@ -448,28 +682,94 @@ function loadNationalityFlags() {
         .catch(error => console.error('Error loading countries:', error));
 }
 
+const _cardsUrl    = '{{ route('admin.club.members.cards', $club->slug) }}';
+const _cardsFilter = '{{ $filter }}';
+let _formerLoaded  = false;
+
+function loadMemberCards() {
+    const grid  = document.getElementById('membersGrid');
+    const empty = document.getElementById('membersEmpty');
+    if (!grid) return;
+
+    fetch(_cardsUrl + '?filter=' + _cardsFilter)
+        .then(r => r.text())
+        .then(html => {
+            // Remove skeletons
+            grid.querySelectorAll('.members-skeleton').forEach(el => el.remove());
+            grid.insertAdjacentHTML('beforeend', html);
+            const hasCards = grid.querySelectorAll('.member-item').length > 0;
+            if (!hasCards && empty) {
+                grid.classList.add('hidden');
+                empty.classList.remove('hidden');
+            }
+            initializeSearch();
+            loadNationalityFlags();
+        })
+        .catch(() => {
+            grid.querySelectorAll('.members-skeleton').forEach(el => el.remove());
+        });
+}
+
+// Re-fetch and re-render the current members grid in place (no page reload).
+// Reuses the exact server-rendered card markup from the cards partial.
+window.reloadMemberCards = function reloadMemberCards() {
+    const grid  = document.getElementById('membersGrid');
+    const empty = document.getElementById('membersEmpty');
+    if (!grid) return;
+
+    return fetch(_cardsUrl + '?filter=' + _cardsFilter)
+        .then(r => r.text())
+        .then(html => {
+            grid.querySelectorAll('.member-item, .members-skeleton').forEach(el => el.remove());
+            grid.insertAdjacentHTML('beforeend', html);
+            const hasCards = grid.querySelectorAll('.member-item').length > 0;
+            if (hasCards) {
+                grid.classList.remove('hidden');
+                if (empty) empty.classList.add('hidden');
+            } else if (empty) {
+                grid.classList.add('hidden');
+                empty.classList.remove('hidden');
+            }
+            initializeSearch();
+            loadNationalityFlags();
+        })
+        .catch(() => {});
+};
+
+function loadFormerCards() {
+    if (_formerLoaded) return;
+    _formerLoaded = true;
+    const wrap = document.getElementById('formerCardsWrap');
+    if (!wrap) return;
+    wrap.innerHTML = '<div class="py-16 text-center text-gray-400"><i class="bi bi-hourglass-split text-3xl animate-pulse block mb-2"></i><p class="text-sm">Loading...</p></div>';
+    fetch(_cardsUrl + '?filter=former')
+        .then(r => r.text())
+        .then(html => { wrap.innerHTML = html; })
+        .catch(() => { wrap.innerHTML = '<p class="text-center text-red-500 py-8">Failed to load former members</p>'; });
+}
+
 // Tab switching
 function switchTab(tab) {
-    const membersTab = document.getElementById('members-tab-btn');
-    const requestsTab = document.getElementById('requests-tab-btn');
-    const membersContent = document.getElementById('members-content');
-    const requestsContent = document.getElementById('requests-content');
-
-    if (tab === 'members') {
-        membersTab.classList.add('border-purple-500', 'text-purple-600');
-        membersTab.classList.remove('border-transparent', 'text-gray-500');
-        requestsTab.classList.remove('border-purple-500', 'text-purple-600');
-        requestsTab.classList.add('border-transparent', 'text-gray-500');
-        membersContent.classList.remove('hidden');
-        requestsContent.classList.add('hidden');
-    } else {
-        requestsTab.classList.add('border-purple-500', 'text-purple-600');
-        requestsTab.classList.remove('border-transparent', 'text-gray-500');
-        membersTab.classList.remove('border-purple-500', 'text-purple-600');
-        membersTab.classList.add('border-transparent', 'text-gray-500');
-        requestsContent.classList.remove('hidden');
-        membersContent.classList.add('hidden');
-    }
+    const tabs = {
+        members:  { btn: 'members-tab-btn',  content: 'members-content'  },
+        requests: { btn: 'requests-tab-btn', content: 'requests-content' },
+        former:   { btn: 'former-tab-btn',   content: 'former-content'   },
+    };
+    Object.entries(tabs).forEach(([key, { btn, content }]) => {
+        const b = document.getElementById(btn);
+        const c = document.getElementById(content);
+        if (!b || !c) return;
+        if (key === tab) {
+            b.classList.add('border-purple-500', 'text-purple-600');
+            b.classList.remove('border-transparent', 'text-gray-500');
+            c.classList.remove('hidden');
+        } else {
+            b.classList.remove('border-purple-500', 'text-purple-600');
+            b.classList.add('border-transparent', 'text-gray-500');
+            c.classList.add('hidden');
+        }
+    });
+    if (tab === 'former') loadFormerCards();
 }
 
 // Modal functions
@@ -520,13 +820,13 @@ async function searchUser() {
         }
     } catch (error) {
         console.error('Search error:', error);
-        alert('Error searching users. Please try again.');
+        window.showToast('error', 'Error searching users. Please try again.');
     } finally {}
 }
 
 function createUserCard(user, isDependent = false) {
     const card = document.createElement('div');
-    const isMale = user.gender === 'm';
+    const isMale = user.gender === 'Male';
 
     card.className = `search-result-card p-4 border-2 rounded-xl cursor-pointer transition-all ${user.is_member ? 'border-gray-200 bg-gray-50 opacity-60' : 'border-gray-200 hover:border-purple-400'} ${isDependent ? 'ml-8' : ''}`;
     card.dataset.userId = user.id;
@@ -636,13 +936,14 @@ async function addSelectedMembers() {
 
         if (response.ok && data.success) {
             closeModal('addExistingUserModal');
-            window.location.reload();
+            window.showToast('success', data.message || 'Member(s) added successfully.');
+            reloadMemberCards();
         } else {
-            alert(data.message || 'Error adding members');
+            window.showToast('error', data.message || 'Error adding members');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error adding members. Please try again.');
+        window.showToast('error', 'Error adding members. Please try again.');
     } finally {
         btn.disabled = false;
         btn.innerHTML = 'Add <span id="selectedCount">0</span> Member(s)';
@@ -659,58 +960,49 @@ document.getElementById('searchUserInput')?.addEventListener('keydown', function
     if (e.key === 'Enter') { clearTimeout(searchDebounce); searchUser(); }
 });
 
-// Status Filters
-function initializeStatusFilters() {
-    document.querySelectorAll('.status-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            filterMembers();
-        });
-    });
-}
-
-function updateStatusCounts() {
-    const items = document.querySelectorAll('.member-item');
-    let active = 0, notActive = 0, all = 0;
-    items.forEach(item => {
-        const status = item.dataset.status;
-        const hasEnrollment = item.dataset.hasEnrollment === '1';
-        if (status === 'active') {
-            all++;
-            if (hasEnrollment) active++; else notActive++;
-        }
-    });
-    document.getElementById('activeCount').textContent = active;
-    document.getElementById('notActiveCount').textContent = notActive;
-    document.getElementById('allCount').textContent = all;
-}
+let membersPaginator;
 
 function initializeSearch() {
-    const input = document.getElementById('searchMembers');
-    if (input) input.addEventListener('input', filterMembers);
+    membersPaginator = new ClientPaginator({
+        itemsSelector : '.member-item',
+        containerId   : 'membersPagination',
+        perPage       : 20,
+        countBadgeId  : 'membersCount',
+        scrollTargetId: 'membersGrid',
+        labelSingular : 'member',
+        labelPlural   : 'members',
+        filterFn(item) {
+            const query       = (document.getElementById('searchMembers')?.value || '').toLowerCase();
+            const gender      = document.getElementById('filterGender')?.value      || '';
+            const category    = document.getElementById('filterCategory')?.value    || '';
+            const weightClass = document.getElementById('filterWeightClass')?.value || '';
+            const ageMinRaw   = document.getElementById('filterAgeMin')?.value;
+            const ageMaxRaw   = document.getElementById('filterAgeMax')?.value;
+            const ageMin      = ageMinRaw ? parseInt(ageMinRaw) : null;
+            const ageMax      = ageMaxRaw ? parseInt(ageMaxRaw) : null;
+
+            const name            = item.dataset.name  || '';
+            const phone           = item.dataset.phone || '';
+            const email           = item.dataset.email || '';
+            const age             = item.dataset.age !== '' ? parseInt(item.dataset.age) : null;
+            const itemGender      = item.dataset.gender      || '';
+            const itemCategory    = item.dataset.tkdCategory || '';
+            const itemWeightClass = item.dataset.weightClass || '';
+
+            return (!query       || name.includes(query) || phone.startsWith(query) || email.includes(query))
+                && (!gender      || itemGender === gender)
+                && (!category    || itemCategory === category)
+                && (!weightClass || itemWeightClass === weightClass)
+                && (ageMin === null || (age !== null && age >= ageMin))
+                && (ageMax === null || (age !== null && age <= ageMax));
+        },
+    });
+    window._pagers['membersPagination'] = membersPaginator;
+    membersPaginator.refresh();
 }
 
-function filterMembers() {
-    const query = document.getElementById('searchMembers').value.toLowerCase();
-    const activeBtn = document.querySelector('.status-btn.active');
-    const statusFilter = activeBtn ? activeBtn.dataset.status : 'active';
-    document.querySelectorAll('.member-item').forEach(item => {
-        const name = item.dataset.name;
-        const rank = item.dataset.rank;
-        const phone = item.dataset.phone || '';
-        const email = item.dataset.email || '';
-        const status = item.dataset.status;
-        const hasEnrollment = item.dataset.hasEnrollment === '1';
-        const matchesSearch = name.includes(query) || rank.includes(query) || phone.startsWith(query) || email.includes(query);
-        let matchesStatus = false;
-        switch(statusFilter) {
-            case 'active': matchesStatus = status === 'active' && hasEnrollment; break;
-            case 'not_active': matchesStatus = status === 'active' && !hasEnrollment; break;
-            case 'all': matchesStatus = status === 'active'; break;
-        }
-        item.style.display = matchesSearch && matchesStatus ? '' : 'none';
-    });
+function applyFilters() {
+    membersPaginator?.refresh();
 }
 
 // Edit Member
@@ -731,9 +1023,9 @@ async function saveEditMember() {
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
             body: JSON.stringify({ rank: document.getElementById('editRank').value, achievements: parseInt(document.getElementById('editAchievements').value) })
         });
-        if (res.ok) { showToast('Member updated', 'success'); closeModal('editMemberModal'); location.reload(); }
+        if (res.ok) { window.showToast('success', 'Member updated'); closeModal('editMemberModal'); window.reloadMemberCards(); }
         else throw new Error();
-    } catch { showToast('Error updating member', 'error'); }
+    } catch { window.showToast('error', 'Error updating member'); }
 }
 
 // Enroll
@@ -806,9 +1098,9 @@ async function confirmEnrollment() {
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
             body: JSON.stringify({ package_id: selectedPackageId })
         });
-        if (res.ok) { showToast('Member enrolled', 'success'); closeModal('enrollPackageModal'); location.reload(); }
+        if (res.ok) { window.showToast('success', 'Member enrolled'); closeModal('enrollPackageModal'); window.reloadMemberCards(); }
         else throw new Error();
-    } catch { showToast('Error enrolling member', 'error'); }
+    } catch { window.showToast('error', 'Error enrolling member'); }
 }
 
 // Leave
@@ -828,9 +1120,9 @@ async function confirmLeave() {
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
             body: JSON.stringify({ leave_reason: document.getElementById('leaveReason').value })
         });
-        if (res.ok) { showToast('Member left club', 'success'); closeModal('leaveClubModal'); location.reload(); }
+        if (res.ok) { window.showToast('success', 'Member left club'); closeModal('leaveClubModal'); window.reloadMemberCards(); }
         else throw new Error();
-    } catch { showToast('Error processing leave', 'error'); }
+    } catch { window.showToast('error', 'Error processing leave'); }
 }
 
 // Graduate
@@ -845,16 +1137,16 @@ async function confirmGraduate() {
     const email = document.getElementById('graduateEmail').value;
     const password = document.getElementById('graduatePassword').value;
     const phone = document.getElementById('graduatePhone').value;
-    if (!email || !password || !phone) { showToast('Fill all fields', 'warning'); return; }
+    if (!email || !password || !phone) { window.showToast('warning', 'Fill all fields'); return; }
     try {
         const res = await fetch(`/admin/club/${clubId}/members/${currentEditingMember.id}/graduate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
             body: JSON.stringify({ email, password, phone, country_code: document.getElementById('graduateCountryCode').value })
         });
-        if (res.ok) { showToast('Child graduated', 'success'); closeModal('graduateChildModal'); location.reload(); }
+        if (res.ok) { window.showToast('success', 'Child graduated'); closeModal('graduateChildModal'); window.reloadMemberCards(); }
         else throw new Error();
-    } catch { showToast('Error graduating child', 'error'); }
+    } catch { window.showToast('error', 'Error graduating child'); }
 }
 
 // Degrade
@@ -872,13 +1164,13 @@ function openDegradateModal(member) {
 
 async function searchParent() {
     const q = document.getElementById('parentSearchInput').value.trim();
-    if (!q) { showToast('Enter parent email/phone', 'warning'); return; }
+    if (!q) { window.showToast('warning', 'Enter parent email/phone'); return; }
     try {
         const res = await fetch(`/api/users/search?q=${encodeURIComponent(q)}`);
         const data = await res.json();
         if (data.success && data.data.length) displayParentResults(data.data);
-        else showToast('No parent found', 'warning');
-    } catch { showToast('Error searching', 'error'); }
+        else window.showToast('warning', 'No parent found');
+    } catch { window.showToast('error', 'Error searching'); }
 }
 
 function displayParentResults(results) {
@@ -910,29 +1202,110 @@ async function confirmDegrade() {
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
             body: JSON.stringify({ parent_id: selectedParentId })
         });
-        if (res.ok) { showToast('Moved to child', 'success'); closeModal('degradeToChildModal'); location.reload(); }
+        if (res.ok) { window.showToast('success', 'Moved to child'); closeModal('degradeToChildModal'); window.reloadMemberCards(); }
         else throw new Error();
-    } catch { showToast('Error moving to child', 'error'); }
+    } catch { window.showToast('error', 'Error moving to child'); }
 }
 
 async function deleteMember(id) {
-    if (!confirm('Delete this member?')) return;
+    const ok = await window.confirmAction({ title: 'Delete member?', message: 'Delete this member?', type: 'danger', confirmText: 'Delete' });
+    if (!ok) return;
     try {
         const res = await fetch(`/admin/club/${clubId}/members/${id}`, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content } });
-        if (res.ok) { showToast('Member deleted', 'success'); location.reload(); }
+        if (res.ok) {
+            window.showToast('success', 'Member deleted');
+            // Remove the member's card in place; reveal empty-state if the grid empties.
+            const card = document.querySelector(`[data-member-id="${id}"]`);
+            card?.closest('.member-item')?.remove();
+            const grid  = document.getElementById('membersGrid');
+            const empty = document.getElementById('membersEmpty');
+            if (grid && empty && grid.querySelectorAll('.member-item').length === 0) {
+                grid.classList.add('hidden');
+                empty.classList.remove('hidden');
+            }
+            window._pagers?.['membersPagination']?.refresh?.();
+        }
         else throw new Error();
-    } catch { showToast('Error deleting', 'error'); }
+    } catch { window.showToast('error', 'Error deleting'); }
 }
 
 // Walk-In Registration is now handled by the registration-walkin component
+// Notifications use the global window.showToast(type, message) toast.
 
-function showToast(msg, type = 'info') {
-    const colors = { success: 'bg-green-500', error: 'bg-red-500', warning: 'bg-yellow-500', info: 'bg-blue-500' };
-    const toast = document.createElement('div');
-    toast.className = `fixed top-4 right-4 z-[9999] px-6 py-3 rounded-lg text-white font-medium shadow-lg ${colors[type]} animate-fade-in`;
-    toast.textContent = msg;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+// ── Import Members ──────────────────────────────────────────────────────────
+function closeImportModal() {
+    document.getElementById('importMembersModal').classList.add('hidden');
+    document.getElementById('importMembersForm').reset();
+    document.getElementById('importSubmitBtn').disabled = true;
+    document.getElementById('importResult').classList.add('hidden');
+    document.getElementById('importErrors').classList.add('hidden');
+    document.getElementById('importDropLabel').innerHTML = `
+        <svg class="w-7 h-7 text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+        <span class="text-sm text-gray-500">Click to browse or drag &amp; drop</span>
+        <span class="text-xs text-gray-400 mt-0.5">.xlsx or .csv — max 5 MB</span>`;
 }
+
+function handleImportFileSelect(input) {
+    const btn = document.getElementById('importSubmitBtn');
+    const label = document.getElementById('importDropLabel');
+    if (input.files && input.files[0]) {
+        label.innerHTML = `<svg class="w-5 h-5 text-purple-500 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span class="text-sm font-medium text-gray-700">${input.files[0].name}</span>
+            <span class="text-xs text-gray-400 mt-0.5">${(input.files[0].size / 1024).toFixed(1)} KB</span>`;
+        btn.disabled = false;
+    } else {
+        btn.disabled = true;
+    }
+}
+
+async function submitImport() {
+    const form = document.getElementById('importMembersForm');
+    const btn  = document.getElementById('importSubmitBtn');
+    const spinner = document.getElementById('importSpinner');
+    const result  = document.getElementById('importResult');
+    const errBox  = document.getElementById('importErrors');
+
+    const formData = new FormData(form);
+    btn.disabled = true;
+    spinner.classList.remove('hidden');
+    result.classList.add('hidden');
+    errBox.classList.add('hidden');
+
+    try {
+        const resp = await fetch('{{ route("admin.club.members.import", $club->slug) }}', {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+            body: formData,
+        });
+        const data = await resp.json();
+
+        result.classList.remove('hidden');
+        if (data.success) {
+            result.className = 'rounded-lg p-3 text-sm bg-green-50 border border-green-200 text-green-800';
+            result.textContent = data.message;
+            if (data.errors && data.errors.length) {
+                errBox.classList.remove('hidden');
+                errBox.innerHTML = data.errors.map(e => `<div>⚠ ${e}</div>`).join('');
+            }
+            // Refresh the members grid in place so newly imported members appear
+            if (data.imported > 0) reloadMemberCards();
+        } else {
+            result.className = 'rounded-lg p-3 text-sm bg-red-50 border border-red-200 text-red-800';
+            result.textContent = data.message;
+        }
+    } catch (e) {
+        result.classList.remove('hidden');
+        result.className = 'rounded-lg p-3 text-sm bg-red-50 border border-red-200 text-red-800';
+        result.textContent = 'Upload failed. Please try again.';
+    } finally {
+        btn.disabled = false;
+        spinner.classList.add('hidden');
+    }
+}
+
+// Close on backdrop click
+document.getElementById('importMembersModal').addEventListener('click', function(e) {
+    if (e.target === this) closeImportModal();
+});
 </script>
 @endpush

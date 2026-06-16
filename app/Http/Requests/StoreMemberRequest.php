@@ -16,7 +16,7 @@ class StoreMemberRequest extends FormRequest
         return [
             'full_name'           => 'required|string|max:255',
             'email'               => 'nullable|email|max:255|unique:users,email',
-            'gender'              => 'required|in:m,f',
+            'gender'              => 'required|in:Male,Female',
             'birthdate'           => 'required|date',
             'blood_type'          => 'nullable|string|max:10',
             'nationality'         => 'required|string|max:100',

@@ -349,7 +349,7 @@
             if (typeof Toast !== 'undefined') {
                 Toast.success('Copied!', 'Club URL copied to clipboard');
             } else {
-                alert('URL copied to clipboard!');
+                window.showToast('success', 'URL copied to clipboard!');
             }
         }).catch(err => {
             console.error('Failed to copy:', err);

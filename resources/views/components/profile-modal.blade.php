@@ -70,6 +70,13 @@
     // Tabs: create mode skips the photo tab
     $showPhotoTab = !$isCreate && $user;
     $defaultTab = $showPhotoTab ? 'photo' : 'personal';
+
+    // JSON data for dynamic list Alpine components
+    $initEmergencyContacts = !$isCreate && $user ? ($user->emergency_contacts ?? []) : [];
+    $initHealthConditions  = !$isCreate && $user ? ($user->health_conditions ?? []) : [];
+    $initDocuments         = !$isCreate && $user ? ($user->documents ?? []) : [];
+    $docUploadUrl  = !$isCreate && $user ? route('member.upload-document', $user->id) : '';
+    $docDeleteUrl  = !$isCreate && $user ? route('member.delete-document', $user->id) : '';
 @endphp
 
 <!-- Member Profile Modal ({{ $mode }}) -->
@@ -120,20 +127,20 @@
                     <button type="button" @click="activeTab = 'additional'"
                             :class="activeTab === 'additional' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                             class="flex-1 py-3 px-4 text-center border-b-2 font-medium text-sm transition-colors">
-                        <i class="bi bi-info-circle mr-1"></i>Additional Info
+                        <i class="bi bi-shield-plus mr-1"></i>Medical & Docs
                     </button>
                 </nav>
             </div>
 
             <!-- Form -->
-            <form method="POST" action="{{ $formAction }}" id="{{ $formId }}" @submit.prevent="submitForm()">
+            <form method="POST" action="{{ $formAction }}" id="{{ $formId }}" class="profile-modal-form" @submit.prevent="submitForm()">
                 @csrf
                 @if(!$isCreate)
                     @method($formMethod)
                 @endif
 
                 <!-- Tab Content -->
-                <div class="p-4 overflow-y-auto" style="height: 500px;">
+                <div class="p-4 overflow-y-auto relative" style="height: 500px;">
 
                     {{-- ===== Profile Photo Tab (edit only) ===== --}}
                     @if($showPhotoTab)
@@ -268,30 +275,53 @@
 
                     {{-- ===== Personal Info Tab ===== --}}
                     <div x-show="activeTab === 'personal'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
-                        <div class="mb-3">
-                            <label for="{{ $formId }}_full_name" class="form-label">Full Name <span class="text-red-500">*</span></label>
-                            <input type="text" class="form-control @error('full_name') is-invalid @enderror" id="{{ $formId }}_full_name" name="full_name" value="{{ $userName }}" required>
-                            @error('full_name')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+
+                        {{-- Section: Contact --}}
+                        <div class="flex items-center gap-2 mb-3">
+                            <i class="bi bi-person-lines-fill text-primary text-sm"></i>
+                            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Contact</span>
+                            <div class="flex-1 h-px bg-gray-100"></div>
                         </div>
 
-                        @if($showEmailField)
                         <div class="mb-3">
-                            <label for="{{ $formId }}_email" class="form-label">
-                                Email Address
-                                @if(($isCreate || $showRelationshipFields) && !$showPasswordFields)
-                                    <span class="text-gray-400">(Optional for children)</span>
-                                @elseif($showPasswordFields)
-                                    <span class="text-red-500">*</span>
-                                @endif
-                            </label>
-                            <input type="email" class="form-control @error('email') is-invalid @enderror" id="{{ $formId }}_email" name="email" value="{{ $userEmail }}" {{ ($showPasswordFields || (!$isCreate && !$showRelationshipFields)) ? 'required' : '' }}>
-                            @error('email')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            <label for="{{ $formId }}_full_name" class="form-label">Full Name <span class="text-red-500">*</span></label>
+                            <input type="text" class="form-control @error('full_name') is-invalid @enderror" id="{{ $formId }}_full_name" name="full_name" value="{{ $userName }}" required placeholder="Enter full name">
+                            @error('full_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
-                        @endif
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                            @if($showEmailField)
+                            <div>
+                                <label for="{{ $formId }}_email" class="form-label">
+                                    Email
+                                    @if(($isCreate || $showRelationshipFields) && !$showPasswordFields)
+                                        <span class="text-gray-400 font-normal text-xs">(optional)</span>
+                                    @elseif($showPasswordFields)
+                                        <span class="text-red-500">*</span>
+                                    @endif
+                                </label>
+                                <input type="email" class="form-control @error('email') is-invalid @enderror" id="{{ $formId }}_email" name="email" value="{{ $userEmail }}" {{ ($showPasswordFields || (!$isCreate && !$showRelationshipFields)) ? 'required' : '' }} placeholder="email@example.com">
+                                @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            @endif
+                            <div @if(!$showEmailField) class="md:col-span-2" @endif>
+                                <label for="{{ $formId }}_mobile" class="form-label">Mobile Number</label>
+                                <x-country-code-dropdown
+                                    name="mobile_code"
+                                    :id="$formId . '_country_code'"
+                                    :value="$userMobileCode"
+                                    :required="false"
+                                    :error="$errors->first('mobile_code')">
+                                    <input id="{{ $formId }}_mobile_number" type="tel"
+                                           class="form-control @error('mobile') is-invalid @enderror"
+                                           name="mobile"
+                                           value="{{ $userMobileNumber }}"
+                                           autocomplete="tel"
+                                           placeholder="Phone number">
+                                </x-country-code-dropdown>
+                                @error('mobile')<div class="invalid-feedback block">{{ $message }}</div>@enderror
+                            </div>
+                        </div>
 
                         @if($showPasswordFields)
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
@@ -303,9 +333,7 @@
                                         <i class="bi" :class="show ? 'bi-eye-slash' : 'bi-eye'"></i>
                                     </button>
                                 </div>
-                                @error('password')
-                                    <div class="invalid-feedback block">{{ $message }}</div>
-                                @enderror
+                                @error('password')<div class="invalid-feedback block">{{ $message }}</div>@enderror
                             </div>
                             <div>
                                 <label for="{{ $formId }}_password_confirmation" class="form-label">Confirm Password <span class="text-red-500">*</span></label>
@@ -319,28 +347,15 @@
                         </div>
                         @endif
 
-                        <div class="mb-3">
-                            <label for="{{ $formId }}_mobile" class="form-label">Mobile Number</label>
-                            <x-country-code-dropdown
-                                name="mobile_code"
-                                :id="$formId . '_country_code'"
-                                :value="$userMobileCode"
-                                :required="false"
-                                :error="$errors->first('mobile_code')">
-                                <input id="{{ $formId }}_mobile_number" type="tel"
-                                       class="form-control @error('mobile') is-invalid @enderror"
-                                       name="mobile"
-                                       value="{{ $userMobileNumber }}"
-                                       autocomplete="tel"
-                                       placeholder="Phone number">
-                            </x-country-code-dropdown>
-                            @error('mobile')
-                                <div class="invalid-feedback block">{{ $message }}</div>
-                            @enderror
+                        {{-- Section: Demographics --}}
+                        <div class="flex items-center gap-2 mb-3 mt-1">
+                            <i class="bi bi-person-badge text-primary text-sm"></i>
+                            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Demographics</span>
+                            <div class="flex-1 h-px bg-gray-100"></div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 mb-3">
-                            <div class="md:col-span-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                            <div>
                                 <x-gender-dropdown
                                     name="gender"
                                     :id="$formId . '_gender'"
@@ -349,7 +364,7 @@
                                     :required="true"
                                     :error="$errors->first('gender')" />
                             </div>
-                            <div class="md:col-span-3">
+                            <div>
                                 <x-marital-status-dropdown
                                     name="marital_status"
                                     :id="$formId . '_marital_status'"
@@ -357,17 +372,18 @@
                                     :value="$userMaritalStatus"
                                     :error="$errors->first('marital_status')" />
                             </div>
-                            <div class="md:col-span-6">
-                                <x-birthdate-dropdown
-                                    name="birthdate"
-                                    :id="$formId . '_birthdate'"
-                                    label="Birthdate"
-                                    :value="$userBirthdate"
-                                    :required="true"
-                                    :min-age="$isCreate ? 0 : 10"
-                                    :max-age="120"
-                                    :error="$errors->first('birthdate')" />
-                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <x-birthdate-dropdown
+                                name="birthdate"
+                                :id="$formId . '_birthdate'"
+                                label="Date of Birth"
+                                :value="$userBirthdate"
+                                :required="true"
+                                :min-age="$isCreate ? 0 : 10"
+                                :max-age="120"
+                                :error="$errors->first('birthdate')" />
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
@@ -390,23 +406,41 @@
                             </div>
                         </div>
 
+                        {{-- Section: Personal --}}
+                        <div class="flex items-center gap-2 mb-3 mt-1">
+                            <i class="bi bi-chat-quote text-primary text-sm"></i>
+                            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Personal</span>
+                            <div class="flex-1 h-px bg-gray-100"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ $formId }}_motto" class="form-label">Personal Motto</label>
+                            <textarea class="form-control @error('motto') is-invalid @enderror" id="{{ $formId }}_motto" name="motto" rows="2" placeholder="A quote or motto that inspires you...">{{ $userMotto }}</textarea>
+                            @error('motto')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+
                         {{-- Relationship fields --}}
                         @if($showRelationshipFields)
-                            <div class="mb-3">
-                                <x-relationship-dropdown
-                                    name="relationship_type"
-                                    :id="$formId . '_relationship_type'"
-                                    label="Relationship"
-                                    :value="old('relationship_type', $relationship->relationship_type ?? '')"
-                                    :required="true"
-                                    :error="$errors->first('relationship_type')" />
-                            </div>
-
-                            <div class="mb-3 flex items-center">
-                                <input type="checkbox" class="form-check-input mr-2" id="{{ $formId }}_is_billing_contact" name="is_billing_contact" value="1" {{ old('is_billing_contact', $relationship->is_billing_contact ?? false) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="{{ $formId }}_is_billing_contact">Is Billing Contact</label>
-                            </div>
+                        <div class="flex items-center gap-2 mb-3 mt-1">
+                            <i class="bi bi-people text-primary text-sm"></i>
+                            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Relationship</span>
+                            <div class="flex-1 h-px bg-gray-100"></div>
+                        </div>
+                        <div class="mb-3">
+                            <x-relationship-dropdown
+                                name="relationship_type"
+                                :id="$formId . '_relationship_type'"
+                                label="Relationship"
+                                :value="old('relationship_type', $relationship->relationship_type ?? '')"
+                                :required="true"
+                                :error="$errors->first('relationship_type')" />
+                        </div>
+                        <div class="mb-3 flex items-center gap-2">
+                            <input type="checkbox" class="form-check-input" id="{{ $formId }}_is_billing_contact" name="is_billing_contact" value="1" {{ old('is_billing_contact', $relationship->is_billing_contact ?? false) ? 'checked' : '' }}>
+                            <label class="form-check-label" for="{{ $formId }}_is_billing_contact">Set as billing contact</label>
+                        </div>
                         @endif
+
                     </div>
 
                     {{-- ===== Social Media Tab ===== --}}
@@ -416,15 +450,257 @@
 
                     {{-- ===== Additional Info Tab ===== --}}
                     <div x-show="activeTab === 'additional'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
-                        <div class="mb-3">
-                            <label for="{{ $formId }}_motto" class="form-label">Personal Motto</label>
-                            <textarea class="form-control @error('motto') is-invalid @enderror" id="{{ $formId }}_motto" name="motto" rows="4" placeholder="Enter personal motto or quote...">{{ $userMotto }}</textarea>
-                            <div class="text-gray-500 text-sm mt-1">Share a personal motto or quote that inspires {{ $isCreate ? 'them' : 'you' }}.</div>
-                            @error('motto')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+
+                        {{-- Emergency Contacts --}}
+                        <div class="mb-5">
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="form-label mb-0 font-semibold">
+                                    <i class="bi bi-telephone-fill text-red-500 mr-1"></i>Emergency Contacts
+                                </label>
+                                <button type="button" @click="addContact()" class="text-xs text-primary hover:underline flex items-center gap-1">
+                                    <i class="bi bi-plus-circle"></i> Add Contact
+                                </button>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <template x-for="(contact, i) in contacts" :key="i">
+                                    <div class="grid grid-cols-12 gap-2 p-3 bg-gray-50 rounded-lg items-center">
+                                        <div class="col-span-3">
+                                            <input type="text" x-model="contact.name" placeholder="Full name" class="form-control form-control-sm">
+                                        </div>
+                                        <div class="col-span-3">
+                                            <select x-model="contact.relationship" class="form-control form-control-sm">
+                                                <option value="">Relationship</option>
+                                                <option value="parent">Parent</option>
+                                                <option value="spouse">Spouse</option>
+                                                <option value="sibling">Sibling</option>
+                                                <option value="child">Child</option>
+                                                <option value="friend">Friend</option>
+                                                <option value="other">Other</option>
+                                            </select>
+                                        </div>
+                                        {{-- Phone: code picker + number combined --}}
+                                        <div class="col-span-5">
+                                            <div class="tf-input-group"
+                                                 x-data="{
+                                                    open: false, search: '',
+                                                    get flag() { const c = (window._phoneCodes||[]).find(x => x.c === contact.phone_code); return c ? c.f : 'bh'; },
+                                                    get list() { const a = window._phoneCodes||[]; if (!this.search) return a; const t = this.search.toLowerCase(); return a.filter(c => c.n.toLowerCase().includes(t)||c.c.includes(t)); },
+                                                    pick(c) { contact.phone_code = c.c; this.open = false; this.search = ''; }
+                                                 }">
+                                                <div class="relative flex-shrink-0">
+                                                    <button type="button"
+                                                            @click="open = !open"
+                                                            @click.outside="open = false"
+                                                            class="h-full px-2 py-1 flex items-center gap-1 border-r border-primary/20 bg-transparent hover:bg-gray-50 transition-colors cursor-pointer rounded-l-xl whitespace-nowrap">
+                                                        <span :class="'fi fi-' + flag"></span>
+                                                        <span x-text="contact.phone_code || '+973'" class="text-xs font-medium text-gray-700"></span>
+                                                        <i class="bi bi-chevron-down text-xs" :class="{'rotate-180': open}"></i>
+                                                    </button>
+                                                    <div x-show="open" x-cloak
+                                                         class="absolute left-0 z-50 mt-1 w-56 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
+                                                         style="top:100%">
+                                                        <div class="p-2 border-b border-gray-100">
+                                                            <input type="text" x-model="search" @click.stop
+                                                                   placeholder="Search..."
+                                                                   class="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:border-primary">
+                                                        </div>
+                                                        <div class="max-h-44 overflow-y-auto">
+                                                            <template x-for="c in list" :key="c.f + c.c">
+                                                                <div @click="pick(c)"
+                                                                     class="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer"
+                                                                     :class="contact.phone_code === c.c ? 'bg-primary/5 font-semibold' : ''">
+                                                                    <span :class="'fi fi-' + c.f"></span>
+                                                                    <span class="text-xs" x-text="c.n + ' (' + c.c + ')'"></span>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="flex-1">
+                                                    <input type="tel" x-model="contact.phone" placeholder="Phone number"
+                                                           class="w-full px-2 py-1 text-sm bg-transparent focus:outline-none">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-span-1 flex justify-center">
+                                            <button type="button" @click="removeContact(i)" class="text-red-400 hover:text-red-600 transition-colors">
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                            <p x-show="contacts.length === 0" class="text-gray-400 text-sm text-center py-3 border border-dashed border-gray-200 rounded-lg mt-2">
+                                No emergency contacts yet. Click "Add Contact" above.
+                            </p>
+                        </div>
+
+                        {{-- Health Conditions --}}
+                        <div class="mb-5">
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="form-label mb-0 font-semibold">
+                                    <i class="bi bi-clipboard2-pulse-fill text-amber-500 mr-1"></i>Chronic Health Conditions
+                                </label>
+                                <button type="button" @click="addCondition()" class="text-xs text-primary hover:underline flex items-center gap-1">
+                                    <i class="bi bi-plus-circle"></i> Add Condition
+                                </button>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <template x-for="(cond, i) in conditions" :key="i">
+                                    <div class="p-3 bg-amber-50 border border-amber-100 rounded-lg">
+                                        <div class="grid grid-cols-12 gap-2 items-start">
+                                            <div class="col-span-5">
+                                                <input type="text" x-model="cond.condition" placeholder="e.g. Asthma, Diabetes" class="form-control form-control-sm">
+                                            </div>
+                                            <div class="col-span-3">
+                                                <input type="date" x-model="cond.noted_at" class="form-control form-control-sm">
+                                            </div>
+                                            <div class="col-span-3">
+                                                <input type="text" x-model="cond.notes" placeholder="Notes" class="form-control form-control-sm">
+                                            </div>
+                                            <div class="col-span-1 flex justify-center pt-1">
+                                                <button type="button" @click="removeCondition(i)" class="text-red-400 hover:text-red-600 transition-colors">
+                                                    <i class="bi bi-x-circle"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                            <p x-show="conditions.length === 0" class="text-gray-400 text-sm text-center py-3 border border-dashed border-gray-200 rounded-lg mt-2">
+                                No conditions recorded. Click "Add Condition" above.
+                            </p>
+                        </div>
+
+                        {{-- Identity Documents with drag-and-drop upload --}}
+                        <div class="mb-2">
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="form-label mb-0 font-semibold">
+                                    <i class="bi bi-file-earmark-person-fill text-primary mr-1"></i>Identity Documents
+                                </label>
+                                <button type="button" @click="addDoc()" class="text-xs text-primary hover:underline flex items-center gap-1">
+                                    <i class="bi bi-plus-circle"></i> Add Document
+                                </button>
+                            </div>
+                            <div class="flex flex-col gap-3">
+                                <template x-for="(doc, i) in docs" :key="i">
+                                    <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                        <div class="grid grid-cols-12 gap-2 items-center mb-2">
+                                            <div class="col-span-5">
+                                                <select x-model="doc.type" class="form-control form-control-sm">
+                                                    <option value="">Document Type</option>
+                                                    <option value="National ID">National ID</option>
+                                                    <option value="Passport">Passport</option>
+                                                    <option value="CPR">CPR</option>
+                                                    <option value="Driving Licence">Driving Licence</option>
+                                                    <option value="Residence Permit">Residence Permit</option>
+                                                    <option value="Other">Other</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-span-6">
+                                                <input type="text" x-model="doc.number" placeholder="Document number" class="form-control form-control-sm font-mono">
+                                            </div>
+                                            <div class="col-span-1 flex justify-center">
+                                                <button type="button" @click="openDocDelete(i)" class="text-red-400 hover:text-red-600 transition-colors" title="Delete document">
+                                                    <i class="bi bi-x-circle"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div x-data="{ localFileInput: null }"
+                                             x-init="localFileInput = $el.querySelector('input[type=file]')"
+                                             class="rounded-lg border-2 border-dashed transition-colors"
+                                             :class="dragging === i ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-primary/50 cursor-pointer'"
+                                             @dragover.prevent="dragging = i"
+                                             @dragleave.prevent="dragging = null"
+                                             @drop.prevent="handleDocDrop($event, i)"
+                                             @click="localFileInput.click()">
+                                            <input type="file" class="hidden" accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.bmp,.tiff" @change="handleDocFileSelect($event, i)">
+
+                                            {{-- Uploading: progress bar --}}
+                                            <div x-show="uploading[i]" class="py-3 px-4">
+                                                <div class="flex items-center justify-between mb-1">
+                                                    <span class="text-xs text-primary font-medium">Uploading...</span>
+                                                    <span class="text-xs text-primary font-semibold" x-text="(uploadProgress[i] || 0) + '%'"></span>
+                                                </div>
+                                                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                    <div class="h-full bg-primary rounded-full transition-all duration-200"
+                                                         :style="'width:' + (uploadProgress[i] || 0) + '%'"></div>
+                                                </div>
+                                            </div>
+
+                                            {{-- File uploaded --}}
+                                            <div x-show="!uploading[i] && doc.file_path" class="py-2 px-3 flex items-center gap-3">
+                                                <i class="bi bi-file-earmark-check-fill text-green-500 text-xl"></i>
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="text-sm font-medium text-gray-700 truncate" x-text="doc.file_name || doc.file_path"></p>
+                                                    <p class="text-xs text-gray-400">Click to replace</p>
+                                                </div>
+                                                <a :href="doc.file_url || ('/storage/' + doc.file_path)" target="_blank" @click.stop class="flex-shrink-0 text-xs text-primary hover:underline">
+                                                    View <i class="bi bi-box-arrow-up-right"></i>
+                                                </a>
+                                            </div>
+
+                                            {{-- Empty state --}}
+                                            <div x-show="!uploading[i] && !doc.file_path" class="py-3 flex flex-col items-center gap-1 text-gray-400">
+                                                <i class="bi bi-cloud-upload text-2xl"></i>
+                                                <p class="text-xs">Drag & drop or click to upload</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                            <p x-show="docs.length === 0" class="text-gray-400 text-sm text-center py-3 border border-dashed border-gray-200 rounded-lg mt-2">
+                                No documents added. Click "Add Document" above.
+                            </p>
+                        </div>
+
+                    </div>
+
+                    {{-- Document delete confirmation overlay — fixed so it centers over the whole screen --}}
+                    <div x-show="docDeleteState.open" x-cloak
+                         class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60"
+                         @click.self="cancelDocDelete()">
+                        <div class="bg-white rounded-xl shadow-2xl p-5 mx-4 w-full max-w-sm" @click.stop>
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-11 h-11 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                                    <i class="bi bi-trash-fill text-red-500 text-lg"></i>
+                                </div>
+                                <div>
+                                    <h6 class="font-bold text-gray-900 mb-0">Delete Document</h6>
+                                    <p class="text-xs text-gray-500 mb-0">This permanently removes the file from storage and cannot be undone.</p>
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Type <span class="font-mono font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded" x-text="docDeleteState.expectedNumber"></span> to confirm deletion:
+                                </label>
+                                <input type="text"
+                                       x-model="docDeleteState.inputValue"
+                                       @keydown.enter="docDeleteState.inputValue === docDeleteState.expectedNumber && !docDeleteState.loading && confirmDocDelete()"
+                                       @keydown.escape="cancelDocDelete()"
+                                       placeholder="Type to confirm..."
+                                       class="form-control form-control-sm"
+                                       autocomplete="off">
+                                <p x-show="docDeleteState.inputValue && docDeleteState.inputValue !== docDeleteState.expectedNumber"
+                                   class="text-xs text-red-500 mt-1">
+                                    Doesn't match — type exactly as shown above.
+                                </p>
+                            </div>
+                            <div class="flex gap-2 justify-end">
+                                <button type="button" @click="cancelDocDelete()" class="btn btn-secondary btn-sm" :disabled="docDeleteState.loading">
+                                    Cancel
+                                </button>
+                                <button type="button"
+                                        @click="confirmDocDelete()"
+                                        :disabled="docDeleteState.inputValue !== docDeleteState.expectedNumber || docDeleteState.loading"
+                                        class="btn btn-danger btn-sm">
+                                    <span x-show="!docDeleteState.loading"><i class="bi bi-trash mr-1"></i>Delete File</span>
+                                    <span x-show="docDeleteState.loading"><span class="inline-block animate-spin">&#8635;</span> Deleting...</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
+
                 </div>
             </form>
 
@@ -458,6 +734,27 @@
 
 @push('scripts')
 <script>
+// Shared phone country data for inline code pickers inside x-for
+window._phoneCodes = [
+    { c:'+973',f:'bh',n:'Bahrain' },{ c:'+966',f:'sa',n:'Saudi Arabia' },{ c:'+971',f:'ae',n:'UAE' },
+    { c:'+974',f:'qa',n:'Qatar' },{ c:'+965',f:'kw',n:'Kuwait' },{ c:'+968',f:'om',n:'Oman' },
+    { c:'+962',f:'jo',n:'Jordan' },{ c:'+961',f:'lb',n:'Lebanon' },{ c:'+964',f:'iq',n:'Iraq' },
+    { c:'+970',f:'ps',n:'Palestine' },{ c:'+20',f:'eg',n:'Egypt' },{ c:'+212',f:'ma',n:'Morocco' },
+    { c:'+213',f:'dz',n:'Algeria' },{ c:'+216',f:'tn',n:'Tunisia' },{ c:'+91',f:'in',n:'India' },
+    { c:'+92',f:'pk',n:'Pakistan' },{ c:'+880',f:'bd',n:'Bangladesh' },{ c:'+94',f:'lk',n:'Sri Lanka' },
+    { c:'+63',f:'ph',n:'Philippines' },{ c:'+62',f:'id',n:'Indonesia' },{ c:'+60',f:'my',n:'Malaysia' },
+    { c:'+65',f:'sg',n:'Singapore' },{ c:'+66',f:'th',n:'Thailand' },{ c:'+84',f:'vn',n:'Vietnam' },
+    { c:'+1',f:'us',n:'United States' },{ c:'+1',f:'ca',n:'Canada' },{ c:'+44',f:'gb',n:'United Kingdom' },
+    { c:'+49',f:'de',n:'Germany' },{ c:'+33',f:'fr',n:'France' },{ c:'+39',f:'it',n:'Italy' },
+    { c:'+34',f:'es',n:'Spain' },{ c:'+31',f:'nl',n:'Netherlands' },{ c:'+7',f:'ru',n:'Russia' },
+    { c:'+86',f:'cn',n:'China' },{ c:'+81',f:'jp',n:'Japan' },{ c:'+82',f:'kr',n:'South Korea' },
+    { c:'+55',f:'br',n:'Brazil' },{ c:'+52',f:'mx',n:'Mexico' },{ c:'+61',f:'au',n:'Australia' },
+    { c:'+27',f:'za',n:'South Africa' },{ c:'+234',f:'ng',n:'Nigeria' },{ c:'+254',f:'ke',n:'Kenya' },
+    { c:'+90',f:'tr',n:'Turkey' },{ c:'+98',f:'ir',n:'Iran' },{ c:'+32',f:'be',n:'Belgium' },
+    { c:'+41',f:'ch',n:'Switzerland' },{ c:'+43',f:'at',n:'Austria' },{ c:'+46',f:'se',n:'Sweden' },
+    { c:'+47',f:'no',n:'Norway' },{ c:'+45',f:'dk',n:'Denmark' },{ c:'+48',f:'pl',n:'Poland' },
+];
+
 function {{ $alpineComponent }}() {
     return {
         open: false,
@@ -468,6 +765,112 @@ function {{ $alpineComponent }}() {
         showPasswordFields: {{ $showPasswordFields ? 'true' : 'false' }},
         showRelationshipFields: {{ $showRelationshipFields ? 'true' : 'false' }},
         profilePicturePublic: {{ $profilePicturePublic ? 'true' : 'false' }},
+
+        // Medical & Contacts data
+        contacts: @json($initEmergencyContacts),
+        conditions: @json($initHealthConditions),
+        docs: @json($initDocuments),
+        uploading: {},
+        uploadProgress: {},
+        dragging: null,
+        docUploadUrl: '{{ $docUploadUrl }}',
+        docDeleteUrl: '{{ $docDeleteUrl }}',
+        docDeleteState: { open: false, index: -1, expectedNumber: '', inputValue: '', loading: false },
+
+        addContact() { this.contacts.push({ name: '', relationship: '', phone_code: '+973', phone: '' }); },
+        removeContact(i) { this.contacts.splice(i, 1); },
+        addCondition() {
+            const today = new Date().toISOString().split('T')[0];
+            this.conditions.push({ condition: '', noted_at: today, notes: '' });
+        },
+        removeCondition(i) { this.conditions.splice(i, 1); },
+        addDoc() { this.docs.push({ type: '', number: '', file_path: null, file_name: null, file_url: null, uploaded_at: '' }); },
+        removeDoc(i) {
+            this.docs.splice(i, 1);
+            const u = {}, p = {};
+            Object.keys(this.uploading).forEach(k => { const ki = parseInt(k); if (ki < i) { u[ki] = this.uploading[k]; p[ki] = this.uploadProgress[k]; } else if (ki > i) { u[ki - 1] = this.uploading[k]; p[ki - 1] = this.uploadProgress[k]; } });
+            this.uploading = u; this.uploadProgress = p;
+        },
+        openDocDelete(i) {
+            const doc = this.docs[i];
+            if (!doc || !doc.file_path) { this.removeDoc(i); return; }
+            const label = doc.number || doc.type || 'DELETE';
+            this.docDeleteState = { open: true, index: i, expectedNumber: label, inputValue: '', loading: false };
+        },
+        cancelDocDelete() {
+            this.docDeleteState = { open: false, index: -1, expectedNumber: '', inputValue: '', loading: false };
+        },
+        async confirmDocDelete() {
+            const s = this.docDeleteState;
+            if (s.inputValue !== s.expectedNumber || s.loading) return;
+            s.loading = true;
+            const doc = this.docs[s.index];
+            if (doc && doc.file_path && this.docDeleteUrl) {
+                try {
+                    const resp = await fetch(this.docDeleteUrl, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('[name="_token"]').value,
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: JSON.stringify({ file_path: doc.file_path }),
+                    });
+                    const data = await resp.json();
+                    if (!data.success) {
+                        window.showToast && window.showToast('error', data.message || 'Could not delete the file.');
+                        s.loading = false;
+                        return;
+                    }
+                } catch (ex) {
+                    window.showToast && window.showToast('error', 'Delete failed. Please try again.');
+                    s.loading = false;
+                    return;
+                }
+            }
+            this.removeDoc(s.index);
+            this.docDeleteState = { open: false, index: -1, expectedNumber: '', inputValue: '', loading: false };
+            window.showToast && window.showToast('success', 'Document deleted successfully.');
+        },
+        handleDocDrop(e, i) { this.dragging = null; const f = e.dataTransfer.files[0]; if (f) this.uploadDoc(f, i); },
+        handleDocFileSelect(e, i) { const f = e.target.files[0]; if (f) this.uploadDoc(f, i); e.target.value = ''; },
+        uploadDoc(file, i) {
+            if (!this.docUploadUrl) return;
+            this.uploading = { ...this.uploading, [i]: true };
+            this.uploadProgress = { ...this.uploadProgress, [i]: 0 };
+
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('_token', document.querySelector('[name="_token"]').value);
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', this.docUploadUrl);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                    this.uploadProgress = { ...this.uploadProgress, [i]: Math.round(e.loaded / e.total * 100) };
+                }
+            };
+            xhr.onload = () => {
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.success) {
+                        this.docs.splice(i, 1, { ...this.docs[i], file_path: data.path, file_name: data.file_name, file_url: data.url, uploaded_at: new Date().toISOString().split('T')[0] });
+                    } else {
+                        window.showToast && window.showToast('error', data.message || 'Upload failed');
+                    }
+                } catch (ex) {
+                    window.showToast && window.showToast('error', 'Upload failed');
+                }
+                this.uploading = { ...this.uploading, [i]: false };
+            };
+            xhr.onerror = () => {
+                window.showToast && window.showToast('error', 'Upload failed. Please try again.');
+                this.uploading = { ...this.uploading, [i]: false };
+            };
+            xhr.send(fd);
+        },
         init() {
             @if($isCreate)
                 // Global function to open create modal
@@ -686,9 +1089,20 @@ function {{ $alpineComponent }}() {
         submitForm() {
             if (!this.validateForm()) return;
 
+            // Block if a document file is still uploading
+            if (Object.values(this.uploading).some(v => v)) {
+                window.showToast && window.showToast('warning', 'Please wait for the file upload to finish before saving.');
+                return;
+            }
+
             this.isSubmitting = true;
             const form = document.getElementById('{{ $formId }}');
             const formData = new FormData(form);
+
+            // Explicitly inject managed JSON fields — never rely on Alpine :value binding
+            formData.set('emergency_contacts_json', JSON.stringify(this.contacts));
+            formData.set('health_conditions_json',  JSON.stringify(this.conditions));
+            formData.set('documents_json',           JSON.stringify(this.docs));
 
             fetch(form.action, {
                 method: 'POST',
@@ -705,17 +1119,20 @@ function {{ $alpineComponent }}() {
                     if (data.profile_picture_url) {
                         this.syncProfilePicsOnPage(data.profile_picture_url);
                     }
+                    // Live-update the profile page DOM — no reload needed
+                    if (data.member) {
+                        window.dispatchEvent(new CustomEvent('member-profile-updated', { detail: data.member }));
+                    }
                     @endif
 
-                    if (typeof Toast !== 'undefined') {
-                        Toast.success('{{ $isCreate ? "Member Created" : "Profile Updated" }}', data.message || '{{ $isCreate ? "Member created successfully!" : "Profile updated successfully!" }}');
-                    }
+                    window.showToast('success', data.message || '{{ $isCreate ? "Member created successfully!" : "Profile updated successfully!" }}');
+                    this.isSubmitting = false;
                     setTimeout(() => {
                         this.open = false;
                         if (data.redirect) {
                             window.location.href = data.redirect;
                         }
-                    }, 1200);
+                    }, 900);
                 } else if (response.status === 422 && data.errors) {
                     this.showFieldErrors(data.errors);
                     this.isSubmitting = false;
@@ -725,8 +1142,8 @@ function {{ $alpineComponent }}() {
             })
             .catch(error => {
                 console.error('Error:', error);
-                if (typeof Toast !== 'undefined') {
-                    Toast.error('{{ $isCreate ? "Creation Failed" : "Update Failed" }}', error.message || 'Something went wrong. Please try again.');
+                if (typeof window.showToast === 'function') {
+                    window.showToast('error', error.message || 'Something went wrong. Please try again.');
                 } else {
                     this.showAlert('danger', error.message || 'Something went wrong. Please try again.');
                 }
@@ -735,18 +1152,8 @@ function {{ $alpineComponent }}() {
         },
 
         showAlert(type, message) {
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `fixed top-4 left-1/2 transform -translate-x-1/2 z-[9999] px-4 py-3 rounded-lg shadow-lg ${type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'}`;
-            alertDiv.innerHTML = `
-                <div class="flex items-center">
-                    <i class="bi ${type === 'success' ? 'bi-check-circle' : 'bi-exclamation-triangle'} mr-2"></i>
-                    <span>${message}</span>
-                    <button type="button" class="ml-4 text-lg leading-none" onclick="this.parentElement.parentElement.remove()">&times;</button>
-                </div>
-            `;
-            document.body.appendChild(alertDiv);
-
-            setTimeout(() => alertDiv.remove(), 5000);
+            // Route through the global toast — never render an inline alert on the page.
+            window.showToast(type === 'danger' ? 'error' : type, message);
         },
 
         @if(!$isCreate)
@@ -816,7 +1223,7 @@ function {{ $alpineComponent }}() {
                     document.getElementById('removeProfilePictureInput').value = '1';
 
                     const genderInput = document.querySelector('[name="gender"]');
-                    const gender = genderInput ? genderInput.value : 'm';
+                    const gender = genderInput ? genderInput.value : 'Male';
                     const preview = document.getElementById('profile_picture_preview');
                     const placeholder = document.getElementById('profile_picture_placeholder');
 
@@ -828,7 +1235,7 @@ function {{ $alpineComponent }}() {
                         placeholder.style.display = 'flex';
                         const icon = placeholder.querySelector('i');
                         if (icon) {
-                            icon.style.color = gender === 'f' ? '#e91e63' : '#2196f3';
+                            icon.style.color = gender === 'Female' ? '#e91e63' : '#2196f3';
                         }
                         const text = placeholder.querySelector('p');
                         if (text) {
@@ -842,7 +1249,7 @@ function {{ $alpineComponent }}() {
                         newPlaceholder.style.cssText = 'width: 300px; height: 400px; background-color: #f0f0f0; border: 3px solid #dee2e6; border-radius: 8px;';
                         newPlaceholder.innerHTML = `
                             <div class="text-center">
-                                <i class="bi bi-person-circle" style="font-size: 60px; color: ${gender === 'f' ? '#e91e63' : '#2196f3'};"></i>
+                                <i class="bi bi-person-circle" style="font-size: 60px; color: ${gender === 'Female' ? '#e91e63' : '#2196f3'};"></i>
                                 <p class="text-gray-500 mt-2 mb-0">Default avatar will be used</p>
                             </div>
                         `;

@@ -22,7 +22,7 @@ class ClubActivityController extends Controller
         $clubId     = $club->id;
         $activities = ClubActivity::where('tenant_id', $clubId)->with('facility')->get();
         $facilities = ClubFacility::where('tenant_id', $clubId)->get();
-        return view('admin.club.activities.index', compact('club', 'activities', 'facilities'));
+        return view(\App\Support\ClubView::pick('activities'), compact('club', 'activities', 'facilities'));
     }
 
     public function storeActivity(StoreActivityRequest $request, Tenant $club)
@@ -47,10 +47,14 @@ class ClubActivityController extends Controller
             }
         }
 
-        ClubActivity::create($data);
+        $activity = ClubActivity::create($data);
 
         if ($request->wantsJson()) {
-            return response()->json(['success' => true, 'message' => 'Activity added successfully.']);
+            return response()->json([
+                'success'  => true,
+                'message'  => 'Activity added successfully.',
+                'activity' => $this->activityPayload($activity),
+            ]);
         }
 
         return back()->with('success', 'Activity added successfully.');
@@ -79,10 +83,34 @@ class ClubActivityController extends Controller
         $activity->update($data);
 
         if ($request->wantsJson()) {
-            return response()->json(['success' => true, 'message' => 'Activity updated successfully.']);
+            return response()->json([
+                'success'  => true,
+                'message'  => 'Activity updated successfully.',
+                'activity' => $this->activityPayload($activity),
+            ]);
         }
 
         return back()->with('success', 'Activity updated successfully.');
+    }
+
+    /**
+     * Build the JSON payload used by the activities page to update a card in place.
+     */
+    private function activityPayload(ClubActivity $activity): array
+    {
+        $activity->loadMissing('facility');
+
+        return [
+            'id'              => $activity->id,
+            'name'            => $activity->name,
+            'description'     => $activity->description,
+            'notes'           => $activity->notes,
+            'duration_minutes' => $activity->duration_minutes,
+            'picture_url'     => $activity->picture_url,
+            'picture_src'     => $activity->picture_url ? asset('storage/' . $activity->picture_url) : null,
+            'facility'        => $activity->facility ? ['id' => $activity->facility->id, 'name' => $activity->facility->name] : null,
+            'updated_at'      => optional($activity->updated_at)->timestamp,
+        ];
     }
 
     public function destroyActivity(Tenant $club, $activityId)

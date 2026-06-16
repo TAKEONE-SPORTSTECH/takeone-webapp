@@ -56,8 +56,8 @@
             selectedIcon: '',
             selectedColor: '',
             items: [
-                { value: 'm', label: 'Male', icon: 'bi bi-gender-male', color: 'text-blue-500' },
-                { value: 'f', label: 'Female', icon: 'bi bi-gender-female', color: 'text-pink-500' }
+                { value: 'Male', label: 'Male', icon: 'bi bi-gender-male', color: 'text-blue-500' },
+                { value: 'Female', label: 'Female', icon: 'bi bi-gender-female', color: 'text-pink-500' }
             ],
 
             init() {

@@ -172,7 +172,8 @@ class TwoFactorController extends Controller
         }
 
         session()->forget('two_factor.user_id');
-        Auth::login($user);
+        // "remember" so the user stays logged in until they explicitly log out.
+        Auth::login($user, true);
 
         $request->session()->regenerate();
         $request->session()->put('two_factor.verified', true);
@@ -182,7 +183,7 @@ class TwoFactorController extends Controller
             ->withProperties(['ip' => $request->ip(), 'user_agent' => $request->userAgent()])
             ->log('User logged in (2FA verified)');
 
-        return redirect()->intended(route('clubs.explore'));
+        return redirect()->intended(\App\Support\Landing::url($request));
     }
 
     /**

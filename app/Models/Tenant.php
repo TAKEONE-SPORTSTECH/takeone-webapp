@@ -46,6 +46,18 @@ class Tenant extends Model
      */
     protected static function booted(): void
     {
+        // Auto-link a newly created club to its owner's approved chain, if any.
+        static::creating(function (self $tenant) {
+            if (empty($tenant->business_id) && !empty($tenant->owner_user_id)) {
+                $businessId = Business::where('owner_user_id', $tenant->owner_user_id)
+                    ->where('status', Business::STATUS_APPROVED)
+                    ->value('id');
+                if ($businessId) {
+                    $tenant->business_id = $businessId;
+                }
+            }
+        });
+
         static::deleting(function (self $tenant) {
             $id = $tenant->id;
 
@@ -134,6 +146,9 @@ class Tenant extends Model
      */
     protected $fillable = [
         'owner_user_id',
+        // 'business_id' is intentionally NOT mass-assignable — it is set
+        // server-side by the creating() hook and Business::approve() only,
+        // preventing a crafted request from linking a club into another chain.
         'club_name',
         'slug',
         'logo',
@@ -183,6 +198,14 @@ class Tenant extends Model
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_user_id');
+    }
+
+    /**
+     * Get the business (chain) this club belongs to, if any.
+     */
+    public function business(): BelongsTo
+    {
+        return $this->belongsTo(Business::class, 'business_id');
     }
 
     /**
