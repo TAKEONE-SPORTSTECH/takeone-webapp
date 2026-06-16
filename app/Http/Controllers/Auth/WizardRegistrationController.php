@@ -184,10 +184,9 @@ class WizardRegistrationController extends Controller
                 }
             }
 
-            $hasSuperAdmin = User::whereHas('roles', fn($q) => $q->where('slug', 'super-admin'))->exists();
-            if (!$hasSuperAdmin) {
-                $parentUser->assignRole('super-admin');
-            }
+            // NOTE: never grant roles from public registration. The first
+            // super-admin is provisioned out-of-band (SuperAdminSeeder /
+            // `php artisan` command) during deployment — not here.
 
             event(new Registered($parentUser));
             Auth::login($parentUser, true);
@@ -242,7 +241,16 @@ class WizardRegistrationController extends Controller
 
     private function moveTempFile(string $tempPath, string $destDir): string
     {
-        $ext      = pathinfo($tempPath, PATHINFO_EXTENSION);
+        // The path must be one this session uploaded via uploadTemp() — never
+        // trust a client-supplied path that could traverse out of temp/wizard.
+        $expectedPrefix = 'temp/wizard/' . session()->getId() . '/';
+        if (! str_starts_with($tempPath, $expectedPrefix)
+            || str_contains($tempPath, '..')
+            || str_contains($tempPath, '\\')) {
+            abort(422, 'Invalid upload reference.');
+        }
+
+        $ext      = strtolower(pathinfo($tempPath, PATHINFO_EXTENSION));
         $filename = Str::uuid() . '.' . $ext;
         $destPath = "{$destDir}/{$filename}";
 
