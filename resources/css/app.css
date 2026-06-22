@@ -3044,6 +3044,23 @@
 }
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 
+/* Soft custom-styled <select> with a reliable chevron (used by the achievement form). */
+.ach-select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    padding-right: 2.5rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.85rem center;
+    background-size: 1rem;
+}
+[dir="rtl"] .ach-select {
+    padding-right: 0.875rem;
+    padding-left: 2.5rem;
+    background-position: left 0.85rem center;
+}
+
 #clubModal .form-label {
     font-weight: 600;
     color: hsl(220 15% 27%);
@@ -3604,4 +3621,81 @@ a.text-decoration-none:hover .family-card { text-decoration: none; }
         opacity: 1 !important;
         transform: none !important;
     }
+}
+
+/* ============================================================
+   RTL / Localization base
+   ------------------------------------------------------------
+   Global, low-risk rules that apply to every RTL locale. Per-view
+   mirroring of physical Tailwind utilities (ml-/left-/translate-x,
+   drawer & chat slide direction) is handled in the per-feature pass.
+   ============================================================ */
+html[dir="rtl"] body { font-family: 'IBM Plex Sans Arabic', 'Inter', sans-serif; }
+
+/* The mobile motion system pins the hero sheen sweep to the left edge; flip
+   its origin so the sheen travels the correct way in RTL. */
+html[dir="rtl"] .m-bar-fill { transform-origin: right center; }
+
+/* Mirror horizontal/navigational Bootstrap Icons (back arrows, chevrons,
+   exit/forward arrows) in RTL so they point the correct way. Mirroring the
+   glyph (scaleX) — not rotating — keeps non-symmetric icons (box-arrow) correct.
+   Vertical/diagonal arrows (up/down, up-right trends) are intentionally excluded. */
+html[dir="rtl"] :is(
+    .bi-arrow-left, .bi-arrow-right,
+    .bi-arrow-left-short, .bi-arrow-right-short,
+    .bi-arrow-left-circle, .bi-arrow-right-circle,
+    .bi-arrow-left-circle-fill, .bi-arrow-right-circle-fill,
+    .bi-arrow-left-square, .bi-arrow-right-square,
+    .bi-arrow-bar-left, .bi-arrow-bar-right,
+    .bi-arrow-return-left, .bi-arrow-return-right,
+    .bi-chevron-left, .bi-chevron-right,
+    .bi-chevron-double-left, .bi-chevron-double-right,
+    .bi-chevron-bar-left, .bi-chevron-bar-right,
+    .bi-caret-left, .bi-caret-right,
+    .bi-caret-left-fill, .bi-caret-right-fill,
+    .bi-box-arrow-left, .bi-box-arrow-right,
+    .bi-box-arrow-in-left, .bi-box-arrow-in-right,
+    .bi-reply, .bi-reply-fill
+)::before {
+    display: inline-block;
+    transform: scaleX(-1);
+}
+
+/* Inline icon spacing in RTL. Icons are written for LTR with a physical
+   `mr-*` (margin-right) before their label; in RTL the label sits to the LEFT
+   of the icon, so that right-margin opens a gap on the wrong side and the icon
+   visually sticks to the text. Re-map the common right-margins to the logical
+   end (left in RTL). Likewise flip trailing `ml-*` icons to the right. Scoped to
+   `.bi` so it can't disturb non-icon layout. */
+[dir="rtl"] .bi.mr-0\.5 { margin-right: 0; margin-left: 0.125rem; }
+[dir="rtl"] .bi.mr-1    { margin-right: 0; margin-left: 0.25rem; }
+[dir="rtl"] .bi.mr-1\.5 { margin-right: 0; margin-left: 0.375rem; }
+[dir="rtl"] .bi.mr-2    { margin-right: 0; margin-left: 0.5rem; }
+[dir="rtl"] .bi.mr-2\.5 { margin-right: 0; margin-left: 0.625rem; }
+[dir="rtl"] .bi.mr-3    { margin-right: 0; margin-left: 0.75rem; }
+
+[dir="rtl"] .bi.ml-0\.5 { margin-left: 0; margin-right: 0.125rem; }
+[dir="rtl"] .bi.ml-1    { margin-left: 0; margin-right: 0.25rem; }
+[dir="rtl"] .bi.ml-1\.5 { margin-left: 0; margin-right: 0.375rem; }
+[dir="rtl"] .bi.ml-2    { margin-left: 0; margin-right: 0.5rem; }
+[dir="rtl"] .bi.ml-3    { margin-left: 0; margin-right: 0.75rem; }
+
+/* Pop-up menus are written for LTR pinned to the right edge (`absolute right-0`)
+   so they open toward the left. In RTL the trigger sits on the left side, so the
+   menu must pin to the left edge and open toward the right instead. Scoped to the
+   `mt-2` dropdown offset so it only flips menus, not other right-aligned elements. */
+[dir="rtl"] .absolute.right-0.mt-2 { right: auto; left: 0; }
+
+/* Consistent custom-styled <select> for the mobile event/forms (native arrow
+   varies wildly across browsers/iOS; this gives one clean chevron + spacing). */
+.app-select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%239ca3af' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem 1rem;
+    padding-right: 2.5rem;
+    text-overflow: ellipsis;
 }

@@ -42,7 +42,11 @@ class MemberController extends Controller
                 return $relationship->dependent->full_name;
             });
 
-        return view('family.index', compact('user', 'dependents'));
+        // Mobile and desktop have genuinely different layouts — separate files.
+        $isMobile = (bool) request()->attributes->get('is_mobile', false);
+        $view = $isMobile && view()->exists('family.mobile.index') ? 'family.mobile.index' : 'family.index';
+
+        return view($view, compact('user', 'dependents'));
     }
 
     /**
@@ -101,6 +105,18 @@ class MemberController extends Controller
         }
 
         $canResetPassword = $isSuperAdmin || $isOwnProfile || $isClubAdminOfMember;
+        // Auto-generate (regenerate) a password — super-admin only, any account.
+        $canRegeneratePassword = $isSuperAdmin && !$isOwnProfile;
+
+        // Role-based edit matrix for the profile page:
+        //  • basic/personal info → self, guardian/parent, or super-admin
+        //  • health / tournament / attendance / billing → club staff (admin of
+        //    the member's club) or super-admin
+        // A guardian is anyone who reaches this page without being self, a club
+        // admin, or super-admin (the family relationship is enforced below).
+        $isGuardian      = !$isSuperAdmin && !$isOwnProfile && !$isClubAdminOfMember;
+        $canEditBasic    = $isOwnProfile || $isGuardian || $isSuperAdmin;
+        $canManageMember = $isClubAdminOfMember || $isSuperAdmin;
 
         // For super-admin, own profile, or club admin of this member — create a mock relationship
         // For regular users, verify family relationship exists
@@ -123,6 +139,19 @@ class MemberController extends Controller
         $latestHealthRecord = $relationship->dependent->healthRecords()->latest('recorded_at')->first();
         $healthRecords = $relationship->dependent->healthRecords()->orderBy('recorded_at', 'desc')->paginate(10);
         $comparisonRecords = $relationship->dependent->healthRecords()->orderBy('recorded_at', 'desc')->take(2)->get();
+
+        // Weight-reading history with the running difference vs the previous reading.
+        // Built oldest→newest to compute deltas, then reversed for newest-first display.
+        $weightHistory = $relationship->dependent->healthRecords()
+            ->whereNotNull('weight')
+            ->orderBy('recorded_at')
+            ->get(['id', 'weight', 'recorded_at']);
+        $prevWeight = null;
+        foreach ($weightHistory as $rec) {
+            $rec->weight_delta = $prevWeight !== null ? round((float) $rec->weight - (float) $prevWeight, 1) : null;
+            $prevWeight = (float) $rec->weight;
+        }
+        $weightHistory = $weightHistory->reverse()->values();
 
         // Fetch invoices for the member
         $invoices = Invoice::where('student_user_id', $relationship->dependent->id)
@@ -147,6 +176,36 @@ class MemberController extends Controller
         // Get unique sports for filter
         $sports = $tournamentEvents->pluck('sport')->unique()->sort()->values();
 
+        // Club achievements this member is featured in (linked as an athlete). Scoped to the
+        // member's clubs; we filter by the linked user_id stored on each athlete entry.
+        $member = $relationship->dependent;
+        $memberClubIds = $member->memberClubs()->pluck('tenants.id');
+        $awardedAchievements = $memberClubIds->isEmpty()
+            ? collect()
+            : \App\Models\ClubAchievement::whereIn('tenant_id', $memberClubIds)
+                ->where('status', 'active')
+                ->orderByDesc('achievement_date')
+                ->with('tenant:id,club_name,slug,translations')
+                ->get()
+                ->map(function ($a) use ($member) {
+                    $athletes = is_array($a->athletes) ? $a->athletes : [];
+                    $mine = collect($athletes)->first(fn ($x) => is_array($x) && (int) ($x['user_id'] ?? 0) === (int) $member->id);
+                    $a->member_award = $mine['role'] ?? null;
+                    return $mine ? $a : null;
+                })
+                ->filter()
+                ->values();
+
+        // Fold the member's club-achievement medals into the award tally so the
+        // top badges reflect every medal they've earned (a single award entry may
+        // mention more than one medal, e.g. "Gold & Silver").
+        foreach ($awardedAchievements as $a) {
+            $r = mb_strtolower($a->member_award ?? '');
+            if (str_contains($r, 'gold'))   $awardCounts['1st']++;
+            if (str_contains($r, 'silver')) $awardCounts['2nd']++;
+            if (str_contains($r, 'bronze')) $awardCounts['3rd']++;
+        }
+
         // Fetch goals data for the member
         $goals = $relationship->dependent->goals()->orderBy('created_at', 'desc')->get();
         $activeGoalsCount = $goals->where('status', 'active')->count();
@@ -163,6 +222,7 @@ class MemberController extends Controller
         // Fetch affiliations data for the member with enhanced relationships
         $clubAffiliations = $relationship->dependent->clubAffiliations()
             ->with([
+                'tenant:id,slug,country,club_name',
                 'skillAcquisitions.package',
                 'skillAcquisitions.activity',
                 'skillAcquisitions.instructor.user',
@@ -202,19 +262,27 @@ class MemberController extends Controller
             ->orderBy('registered_at', 'desc')
             ->get();
 
-        $memberView = request()->attributes->get('is_mobile')
+        $isMobile = (bool) request()->attributes->get('is_mobile');
+        $memberView = $isMobile
             ? 'components-templates.member.mobile.show'
             : 'components-templates.member.show';
 
         return view($memberView, [
+            // Render the mobile profile inside the personal-mobile shell so it
+            // keeps the persistent top bar + bottom tabs (matches the in-shell
+            // member view served by PersonalMobileController@show).
+            'inShell'      => $isMobile,
+            'shellTitle'   => $relationship->dependent->full_name,
             'relationship' => $relationship,
             'latestHealthRecord' => $latestHealthRecord,
             'healthRecords' => $healthRecords,
             'comparisonRecords' => $comparisonRecords,
+            'weightHistory' => $weightHistory,
             'invoices' => $invoices,
             'tournamentEvents' => $tournamentEvents,
             'awardCounts' => $awardCounts,
             'sports' => $sports,
+            'awardedAchievements' => $awardedAchievements,
             'goals' => $goals,
             'activeGoalsCount' => $activeGoalsCount,
             'completedGoalsCount' => $completedGoalsCount,
@@ -233,6 +301,9 @@ class MemberController extends Controller
             'joinedEventRegistrations' => $joinedEventRegistrations,
             'allClubs' => \App\Models\Tenant::orderBy('club_name')->get(['id', 'club_name', 'address', 'logo']),
             'canResetPassword' => $canResetPassword,
+            'canRegeneratePassword' => $canRegeneratePassword,
+            'canEditBasic' => $canEditBasic,
+            'canManageMember' => $canManageMember,
         ]);
     }
 
@@ -267,6 +338,47 @@ class MemberController extends Controller
         ]);
 
         return response()->json(['message' => 'Password has been reset successfully.']);
+    }
+
+    /**
+     * Generate a brand-new strong password for a member, set it, email it to
+     * the member, and return the plaintext once so the admin can copy/share it.
+     *
+     * Super-admin only — this bypasses all relationship checks ("no matter what").
+     */
+    public function regeneratePassword($id)
+    {
+        abort_unless(Auth::user()->hasRole('super-admin'), 403);
+
+        $member = User::findOrFail($id);
+
+        // Strong random password (letters, numbers, symbols).
+        $newPassword = \Illuminate\Support\Str::password(16);
+
+        $member->update(['password' => Hash::make($newPassword)]);
+
+        // Email the new password to the member (best-effort — the admin still
+        // sees it on screen, so a mail failure must not fail the request).
+        $emailed = false;
+        if (!empty($member->email)) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($member->email)
+                    ->send(new \App\Mail\GeneratedPasswordEmail($member, $newPassword));
+                $emailed = true;
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        return response()->json([
+            'success'  => true,
+            'password' => $newPassword,
+            'emailed'  => $emailed,
+            'email'    => $member->email,
+            'message'  => $emailed
+                ? 'New password generated and emailed to the member.'
+                : 'New password generated. Email could not be sent — share it manually.',
+        ]);
     }
 
     /**
@@ -627,11 +739,27 @@ class MemberController extends Controller
         // Check for duplicate date
         $existing = $member->healthRecords()->where('recorded_at', $validated['recorded_at'])->first();
         if ($existing) {
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => __('member.health_duplicate_date')], 422);
+            }
             return redirect()->back()
                 ->with('error', 'A health record already exists for this date.');
         }
 
-        $member->healthRecords()->create($validated);
+        $record = $member->healthRecords()->create($validated);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => __('member.weight_added'),
+                'record'  => [
+                    'id'             => $record->id,
+                    'weight'         => (float) $record->weight,
+                    'recorded_at'    => optional($record->recorded_at)->format('Y-m-d'),
+                    'recorded_label' => optional($record->recorded_at)->format('d M Y'),
+                ],
+            ]);
+        }
 
         return redirect()->back()->withFragment('health')
             ->with('success', 'Health record added successfully.');

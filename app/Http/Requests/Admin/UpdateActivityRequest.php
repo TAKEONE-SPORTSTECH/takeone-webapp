@@ -18,6 +18,8 @@ class UpdateActivityRequest extends FormRequest
             'description'      => 'nullable|string|max:2000',
             'notes'            => 'nullable|string|max:1000',
             'duration_minutes' => 'nullable|integer|min:1|max:1440',
+            'translations'     => ['nullable', 'array'],
+            'translations.*.*' => ['nullable', 'string', 'max:2000'],
         ];
     }
 

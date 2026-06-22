@@ -44,7 +44,7 @@
     <div class="relative w-full aspect-video overflow-hidden {{ $package->cover_image ? 'bg-gray-200' : 'bg-gradient-to-br from-slate-600 to-slate-800' }}">
         @if($package->cover_image)
             <img src="{{ asset('storage/' . $package->cover_image) }}"
-                 alt="{{ $package->name }}"
+                 alt="{{ $package->tr('name') }}"
                  class="w-full h-full object-cover object-top">
         @else
             <div class="flex items-center justify-center h-full opacity-10">
@@ -63,7 +63,7 @@
 
         {{-- Dark gradient overlay with name + badges --}}
         <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent px-4 pt-10 pb-3">
-            <h3 class="text-base font-bold text-white leading-snug mb-2">{{ $package->name }}</h3>
+            <h3 class="text-base font-bold text-white leading-snug mb-2">{{ $package->tr('name') }}</h3>
             <div class="flex flex-wrap gap-1">
                 <span class="badge {{ count($groupedActivities) <= 1 ? 'bg-secondary text-secondary-foreground' : 'bg-primary text-white' }} text-xs">
                     {{ count($groupedActivities) <= 1 ? 'Single Activity' : 'Multi-Activity' }}
@@ -85,7 +85,7 @@
 
         {{-- Description --}}
         @if($package->description)
-            <p class="text-sm text-muted-foreground mb-3">{{ Str::limit($package->description, 100) }}</p>
+            <p class="text-sm text-muted-foreground mb-3">{{ Str::limit($package->tr('description'), 100) }}</p>
         @endif
 
         {{-- Remaining badges (capacity, discount) --}}

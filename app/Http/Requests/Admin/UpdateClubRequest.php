@@ -35,6 +35,8 @@ class UpdateClubRequest extends FormRequest
             'logo'                      => 'nullable',
             'favicon'                   => 'nullable',
             'cover_image'               => 'nullable',
+            'translations'              => ['nullable', 'array'],
+            'translations.*.*'          => ['nullable', 'string', 'max:2000'],
             'settings'                  => 'nullable|array',
             'social_links'              => 'nullable|array',
             'social_links.*.platform'   => 'required_with:social_links.*.url|string',

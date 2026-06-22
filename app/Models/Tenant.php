@@ -35,10 +35,14 @@ use App\Models\ClubTransaction;
 use App\Models\Invoice;
 use App\Models\Membership;
 use App\Models\UserNotification;
+use App\Traits\HasTranslations;
 
 class Tenant extends Model
 {
-    use HasFactory, SoftDeletes, LogsActivity;
+    use HasFactory, SoftDeletes, LogsActivity, HasTranslations;
+
+    /** Fields a club admin can provide an Arabic (or other-locale) version of. */
+    protected array $translatable = ['club_name', 'slogan', 'description', 'address'];
 
     /**
      * Clean up all orphan-prone records when a tenant is soft-deleted.
@@ -256,6 +260,21 @@ class Tenant extends Model
     public function packages(): HasMany
     {
         return $this->hasMany(ClubPackage::class);
+    }
+
+    public function products(): HasMany
+    {
+        return $this->hasMany(ClubProduct::class);
+    }
+
+    public function productCategories(): HasMany
+    {
+        return $this->hasMany(ClubProductCategory::class);
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
     }
 
     /**

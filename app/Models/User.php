@@ -52,6 +52,9 @@ class User extends Authenticatable implements MustVerifyEmail
             if (empty($user->uuid)) {
                 $user->uuid = (string) \Illuminate\Support\Str::uuid();
             }
+            if (empty($user->slug)) {
+                $user->slug = self::generateUniqueSlug($user->full_name ?: $user->name ?: 'member');
+            }
         });
 
         static::saving(function (self $user) {
@@ -138,6 +141,7 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     protected $fillable = [
         'uuid',
+        'slug',
         'name',
         'full_name',
         'email',
@@ -148,6 +152,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'birthdate',
         'blood_type',
         'nationality',
+        'locale',
         'addresses',
         'documents',
         'emergency_contacts',
@@ -368,6 +373,134 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->belongsToMany(Tenant::class, 'memberships')
                     ->withPivot('status')
                     ->withTimestamps();
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    // ===================== Social graph =====================
+
+    public function following(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'user_follows', 'follower_id', 'followee_id')->withTimestamps();
+    }
+
+    public function followers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'user_follows', 'followee_id', 'follower_id')->withTimestamps();
+    }
+
+    public function blockedUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'user_blocks', 'blocker_id', 'blocked_id')->withTimestamps();
+    }
+
+    public function isFollowing(int $userId): bool
+    {
+        return $this->following()->whereKey($userId)->exists();
+    }
+
+    public function hasBlocked(int $userId): bool
+    {
+        return \App\Models\UserBlock::where('blocker_id', $this->id)->where('blocked_id', $userId)->exists();
+    }
+
+    public function isBlockedBy(int $userId): bool
+    {
+        return \App\Models\UserBlock::where('blocker_id', $userId)->where('blocked_id', $this->id)->exists();
+    }
+
+    public function blockedEitherWay(int $userId): bool
+    {
+        return $this->hasBlocked($userId) || $this->isBlockedBy($userId);
+    }
+
+    public function isConnectedTo(int $userId): bool
+    {
+        return $this->connectionStatusWith($userId) === 'connected';
+    }
+
+    /** none | pending_outgoing | pending_incoming | connected */
+    public function connectionStatusWith(int $userId): string
+    {
+        $row = \App\Models\UserConnection::betweenUsers($this->id, $userId)->first();
+        if (! $row) {
+            return 'none';
+        }
+        if ($row->status === 'accepted') {
+            return 'connected';
+        }
+        return $row->requester_id === $this->id ? 'pending_outgoing' : 'pending_incoming';
+    }
+
+    public function sharesClubWith(User $other): bool
+    {
+        return $this->memberClubs()->whereIn('tenants.id', $other->memberClubs()->pluck('tenants.id'))->exists();
+    }
+
+    /**
+     * Visibility rule for another member's wall: not blocked either way AND
+     * (own wall | club-mate | following them | connected).
+     */
+    public function canViewWall(User $owner): bool
+    {
+        if ($this->id === $owner->id) {
+            return true;
+        }
+        if ($this->blockedEitherWay($owner->id)) {
+            return false;
+        }
+        return $this->sharesClubWith($owner)
+            || $this->isFollowing($owner->id);
+    }
+
+    /**
+     * Messaging consent (Facebook-style): you may DM someone only if you share
+     * a club, are accepted connections (a request they approved), or already
+     * have a 1:1 thread — and neither of you has blocked the other. This stops
+     * unsolicited messages between people who haven't opted into contact.
+     */
+    public function canMessage(User $other): bool
+    {
+        if ($this->id === $other->id) {
+            return false;
+        }
+        if ($this->blockedEitherWay($other->id)) {
+            return false;
+        }
+        return $this->sharesClubWith($other)
+            || $this->isConnectedTo($other->id)
+            || \App\Models\Conversation::where('type', 'direct')
+                ->whereHas('participants', fn ($q) => $q->where('user_id', $this->id))
+                ->whereHas('participants', fn ($q) => $q->where('user_id', $other->id))
+                ->exists();
+    }
+
+    /** A unique, URL-safe slug derived from a display name (e.g. "john-doe", "john-doe-2"). */
+    public static function generateUniqueSlug(string $name, ?int $ignoreId = null): string
+    {
+        $base = \Illuminate\Support\Str::slug($name) ?: 'member';
+        $slug = $base;
+        $i = 1;
+        // withTrashed: the unique index also covers soft-deleted rows.
+        while (static::withTrashed()->where('slug', $slug)->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))->exists()) {
+            $slug = $base . '-' . (++$i);
+        }
+        return $slug;
+    }
+
+    /** Relationship of THIS user toward $other, shaped for the wall UI. */
+    public function relationshipWith(User $other): array
+    {
+        return [
+            'following'  => $this->isFollowing($other->id),
+            'followsYou' => $other->isFollowing($this->id),
+            'blocked'    => $this->hasBlocked($other->id),
+            'blockedBy'  => $this->isBlockedBy($other->id),
+            'sharesClub' => $this->sharesClubWith($other),
+        ];
     }
 
     /**

@@ -82,12 +82,13 @@
 
             <!-- Body -->
             <div class="modal-body px-6 py-6 max-h-[65vh] overflow-y-auto">
-                <form id="editPackageForm" method="POST" enctype="multipart/form-data">
+                <form id="editPackageForm" x-data="{ lang: 'en' }" method="POST" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
 
                     <!-- Tab 1: Basic Info -->
                     <div x-show="currentTab === 'basic'" x-cloak>
+                        <x-lang-toggle class="mb-4" />
                         <!-- Package Image Section -->
                         <div class="card border-0 shadow-sm mb-4 overflow-hidden">
                             <div class="card-body p-4 bg-gradient-to-br from-primary/5 to-transparent">
@@ -167,7 +168,8 @@
                                             <label for="editPackageName" class="form-label font-medium">
                                                 Package Name <span class="text-destructive">*</span>
                                             </label>
-                                            <input type="text" id="editPackageName" name="name" required placeholder="e.g., Premium Monthly Membership" class="form-control">
+                                            <input type="text" id="editPackageName" name="name" required x-show="lang==='en'" placeholder="e.g., Premium Monthly Membership" class="form-control">
+                                            <input type="text" id="editPackageNameAr" name="translations[name][ar]" dir="rtl" x-show="lang==='ar'" x-cloak placeholder="الاسم بالعربية" class="form-control">
                                         </div>
 
                                         <div class="mb-3">
@@ -181,7 +183,8 @@
                                     <div>
                                         <div class="mb-3">
                                             <label for="editPackageDescription" class="form-label font-medium">Description</label>
-                                            <textarea id="editPackageDescription" name="description" rows="5" placeholder="Brief description of what this package includes..." class="form-control resize-none"></textarea>
+                                            <textarea id="editPackageDescription" name="description" rows="5" x-show="lang==='en'" placeholder="Brief description of what this package includes..." class="form-control resize-none"></textarea>
+                                            <textarea id="editPackageDescriptionAr" name="translations[description][ar]" dir="rtl" x-show="lang==='ar'" x-cloak rows="5" class="form-control resize-none" placeholder="الوصف بالعربية"></textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -655,6 +658,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Basic info
         document.getElementById('editPackageName').value = pkg.name || '';
         document.getElementById('editPackageDescription').value = pkg.description || '';
+        document.getElementById('editPackageNameAr').value = (pkg.translations && pkg.translations.name && pkg.translations.name.ar) || '';
+        document.getElementById('editPackageDescriptionAr').value = (pkg.translations && pkg.translations.description && pkg.translations.description.ar) || '';
         document.getElementById('editPackageDuration').value = pkg.duration_months || 1;
         document.getElementById('editPackageGender').value = pkg.gender || 'mixed';
         document.getElementById('editPackageMinAge').value = pkg.age_min || '';

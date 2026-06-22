@@ -524,6 +524,9 @@ class ClubMemberAdminController extends Controller
               ->orWhere('full_name', 'like', "%{$query}%")
               ->orWhere('mobile', 'like', "%{$query}%");
         })
+        // Restrict to this club's members when requested (e.g. the achievement athlete picker).
+        ->when($request->boolean('club_only'), fn ($q) => $q->whereIn('id',
+            Membership::where('tenant_id', $clubId)->select('user_id')))
         ->limit(20)
         ->get()
         ->map(function ($user) use ($clubId) {
@@ -587,6 +590,14 @@ class ClubMemberAdminController extends Controller
         }
 
         $subscriptions->approvePayment($subscription, $proofPath, auth()->user());
+
+        \App\Models\UserNotification::notifyUser($subscription->user_id, 'payment_approved', 'Payment approved', [
+            'tenant_id'  => $club->id,
+            'action_url' => route('bills.index'),
+            'icon'       => 'bi-check-circle-fill',
+            'context'    => $club->club_name,
+            'body'       => 'Your payment for "' . ($subscription->package?->name ?? 'your membership') . '" at ' . $club->club_name . ' was approved.',
+        ]);
 
         return response()->json([
             'success'         => true,
@@ -665,6 +676,14 @@ class ClubMemberAdminController extends Controller
         $subscription->update([
             'payment_status' => 'refunded',
             'refund_proof'   => $refundProofPath,
+        ]);
+
+        \App\Models\UserNotification::notifyUser($subscription->user_id, 'payment_refunded', 'Payment refunded', [
+            'tenant_id'  => $club->id,
+            'action_url' => route('bills.index'),
+            'icon'       => 'bi-arrow-counterclockwise',
+            'context'    => $club->club_name,
+            'body'       => 'A refund of ' . number_format((float) $subscription->amount_paid, 3) . ' for "' . ($subscription->package?->name ?? 'your membership') . '" was processed by ' . $club->club_name . '.',
         ]);
 
         return response()->json([

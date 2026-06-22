@@ -1,7 +1,7 @@
 @extends('layouts.admin-club')
 
 @section('club-admin-content')
-<div class="space-y-8" id="facilitiesContainer" x-data="{ showAddFacilityModal: false, showEditFacilityModal: false, editingFacility: null }" @open-edit-facility.window="showEditFacilityModal = true" @close-edit-facility.window="showEditFacilityModal = false" @close-add-facility.window="showAddFacilityModal = false">
+<div class="space-y-8" id="facilitiesContainer" x-data="{ showAddFacilityModal: false, showEditFacilityModal: false, editingFacility: null, lang: 'en' }" @open-edit-facility.window="showEditFacilityModal = true" @close-edit-facility.window="showEditFacilityModal = false" @close-add-facility.window="showAddFacilityModal = false">
     <!-- Header -->
     <div class="flex flex-wrap gap-3 justify-between items-center pb-6 border-b border-gray-200">
         <div>
@@ -260,7 +260,9 @@ function populateEditForm(facility) {
 
     // Populate fields
     document.getElementById('editFacilityName').value = facility.name || '';
+    document.getElementById('editFacilityNameAr').value = facility.translations?.name?.ar || '';
     document.getElementById('editFacilityAddress').value = facility.address || '';
+    document.getElementById('editFacilityAddressAr').value = facility.translations?.address?.ar || '';
     document.getElementById('editFacilityLat').value = facility.gps_lat || '';
     document.getElementById('editFacilityLng').value = facility.gps_long || '';
     document.getElementById('editFacilityMapsUrl').value = facility.maps_url || '';

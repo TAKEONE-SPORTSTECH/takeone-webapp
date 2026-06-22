@@ -1,13 +1,13 @@
 @extends('layouts.admin-club-mobile')
 
-@section('title', ($club->club_name ?? 'Club') . ' · Roles')
+@section('title', ($club->club_name ?? __('admin.club')) . ' · ' . __('admin.nav_roles'))
 
 @section('club-admin-content')
 <div class="space-y-4">
 
     {{-- Available roles legend --}}
     <div class="m-card p-4">
-        <h3 class="font-semibold text-foreground mb-2">Roles</h3>
+        <h3 class="font-semibold text-foreground mb-2">{{ __('admin.nav_roles') }}</h3>
         <div class="space-y-2 mobile-stagger">
             @foreach($availableRoles as $role)
                 <div>
@@ -20,9 +20,9 @@
 
     {{-- Members with roles --}}
     <div class="m-card p-4">
-        <h3 class="font-semibold text-foreground mb-3">Team members</h3>
+        <h3 class="font-semibold text-foreground mb-3">{{ __('admin.role_team_members') }}</h3>
         @if($members->isEmpty())
-            <p class="text-sm text-muted-foreground">No members with assigned roles.</p>
+            <p class="text-sm text-muted-foreground">{{ __('admin.role_no_members') }}</p>
         @else
             <div class="space-y-3 mobile-stagger">
                 @foreach($members as $m)
@@ -37,7 +37,7 @@
                                 @forelse($userRoles as $r)
                                     <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent text-primary">{{ $r->name }}</span>
                                 @empty
-                                    <span class="text-xs text-muted-foreground">No role</span>
+                                    <span class="text-xs text-muted-foreground">{{ __('admin.role_no_role') }}</span>
                                 @endforelse
                             </div>
                         </div>
@@ -47,6 +47,6 @@
         @endif
     </div>
 
-    <p class="text-xs text-muted-foreground text-center px-4">Assign &amp; remove roles from the desktop view.</p>
+    <p class="text-xs text-muted-foreground text-center px-4">{!! __('admin.role_manage_from_desktop') !!}</p>
 </div>
 @endsection

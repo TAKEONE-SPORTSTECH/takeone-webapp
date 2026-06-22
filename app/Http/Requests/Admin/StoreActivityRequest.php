@@ -19,6 +19,8 @@ class StoreActivityRequest extends FormRequest
             'notes'                => 'nullable|string|max:1000',
             'duration_minutes'     => 'nullable|integer|min:1|max:1440',
             'existing_picture_url' => 'nullable|string',
+            'translations'         => ['nullable', 'array'],
+            'translations.*.*'     => ['nullable', 'string', 'max:2000'],
         ];
     }
 

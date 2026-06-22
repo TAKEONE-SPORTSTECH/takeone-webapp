@@ -1,19 +1,26 @@
 <div class="space-y-4">
+    <x-lang-toggle class="mb-4" />
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="md:col-span-2">
             <label class="form-label">Title <span class="text-red-500">*</span></label>
-            <input type="text" name="title" class="form-control" required
+            <input type="text" name="title" class="form-control" required x-show="lang==='en'"
                    placeholder="e.g. Partner Cafe" x-model="formData.title">
+            <input type="text" name="translations[title][ar]" dir="rtl" x-show="lang==='ar'" x-cloak
+                   class="form-control" placeholder="العنوان بالعربية" x-model="formData.translations_title_ar">
         </div>
         <div class="md:col-span-2">
             <label class="form-label">Description</label>
-            <input type="text" name="description" class="form-control"
+            <input type="text" name="description" class="form-control" x-show="lang==='en'"
                    placeholder="e.g. Post-workout nutrition & coffee" x-model="formData.description">
+            <input type="text" name="translations[description][ar]" dir="rtl" x-show="lang==='ar'" x-cloak
+                   class="form-control" placeholder="الوصف بالعربية" x-model="formData.translations_description_ar">
         </div>
         <div>
             <label class="form-label">Badge Text <span class="text-red-500">*</span></label>
-            <input type="text" name="badge" class="form-control" required
+            <input type="text" name="badge" class="form-control" required x-show="lang==='en'"
                    placeholder="e.g. -20% OFF, +500 PTS, FREE ITEM" x-model="formData.badge">
+            <input type="text" name="translations[badge][ar]" dir="rtl" x-show="lang==='ar'" x-cloak
+                   class="form-control" placeholder="الشارة بالعربية" x-model="formData.translations_badge_ar">
         </div>
         <div>
             <label class="form-label">Status</label>

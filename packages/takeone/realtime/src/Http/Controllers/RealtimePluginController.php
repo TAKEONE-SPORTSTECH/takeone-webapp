@@ -14,8 +14,14 @@ class RealtimePluginController extends Controller
     /** Plugin management screen in the platform admin. */
     public function index()
     {
+        // On phones, render the same content inside a mobile admin shell.
+        $isMobile = (bool) request()->attributes->get('is_mobile', false);
+        $layout = $isMobile && view()->exists('layouts.admin-mobile')
+            ? 'layouts.admin-mobile'
+            : config('realtime.admin.layout');
+
         return view('realtime::admin.index', [
-            'layout'   => config('realtime.admin.layout'),
+            'layout'   => $layout,
             'settings' => $this->currentSettings(),
             'status'   => $this->probe(),
         ]);

@@ -21,6 +21,8 @@ class PackageRequest extends FormRequest
             'gender_restriction' => 'nullable|string|in:mixed,male,female',
             'age_min'            => 'nullable|integer|min:0',
             'age_max'            => 'nullable|integer|min:0',
+            'translations'       => ['nullable', 'array'],
+            'translations.*.*'   => ['nullable', 'string', 'max:2000'],
         ];
     }
 }

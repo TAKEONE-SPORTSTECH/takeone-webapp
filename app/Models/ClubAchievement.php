@@ -3,12 +3,16 @@
 namespace App\Models;
 
 use App\Traits\BelongsToTenant;
+use App\Traits\HasTranslations;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ClubAchievement extends Model
 {
-    use BelongsToTenant;
+    use BelongsToTenant, HasTranslations;
+
+    /** Fields a club admin can provide an Arabic (or other-locale) version of. */
+    protected array $translatable = ['title', 'short_title', 'description', 'location', 'tag'];
 
     protected $fillable = [
         'tenant_id', 'title', 'short_title', 'type_icon', 'description',

@@ -101,6 +101,25 @@ Apply this same pattern to every other feature: health records, goals, affiliati
 
 ---
 
+## Realtime / MQTT — Always Instant — STRICT
+
+**Every action must reflect instantly for *all* affected users — never make anyone refresh.** The actor's own device updates in place (see No Page Reload Rule); everyone *else* affected must be updated live over MQTT. Notifications must arrive the same way.
+
+### Rules
+1. **On every write that affects other users, push over MQTT in the same request.** Use `Realtime()->publishToUser($id, $channel, $payload)` (one user) or `Realtime()->publishMany([...])` (many). It's best-effort — the DB stays the source of truth — but it must always be attempted. Realtime is enabled (`REALTIME_ENABLED=true`).
+2. **Notifications go through `UserNotification::notifyUser()`**, which already writes the row *and* pushes MQTT (`notifications` channel) with an `action_url` deep-link. Never create notification rows without it.
+3. **Client patches in place.** `realtime.js` re-emits each inbound message as a DOM event `realtime:<channel>` (e.g. `realtime:notification`, `realtime:message`, `realtime:schedule`). Feature views add a listener that updates the DOM — no reload.
+4. **Use an `{action: '...'}` discriminator per channel.** Two reliable shapes:
+   - **Targeted patch** — send the changed entity (`{action:'created'|'updated'|'deleted', <entity>:{...}}`); the listener upserts/removes that one item. Best when the payload is identical for every recipient.
+   - **Refresh signal** — send `{action:'refresh'}` and have the view silently re-fetch its data from a JSON endpoint and re-render. **Use this when the same change renders differently per user** (different ids/content/permissions), e.g. a club class where each user sees their own card variant. Don't try to hand-craft per-user card payloads.
+5. **Fan out to the whole audience**, not just the obvious user. A class change touches enrolled members + the coach + substitute(s) + the actor — push to all of them.
+6. **Dedup client listeners** that live inside shell-swapped content: the mobile shell re-runs inline scripts on every AJAX nav, so store the handler on `window.__xxx` and `removeEventListener` the previous one before re-adding, or listeners stack up.
+
+### Reference implementation
+`/me/schedule`: `scheduleData()` returns the schedule as JSON; `pushScheduleRefresh($userIds)` publishes `{action:'refresh'}` on the `schedule` channel to every affected user; the list view's `realtime:schedule` handler calls `reloadData()` on `refresh` (and patches individual cards on `created/updated/deleted`). Personal-session edits use the targeted-patch shape; club-class/substitute changes use the refresh shape.
+
+---
+
 ## LOCKED — Do Not Modify: Profile Picture Cropper Config
 
 These values are final and must never be changed:
@@ -153,6 +172,20 @@ Status: Complete. Key patterns:
 - `overflow-x-auto` for tables and tab containers
 - `flex-col sm:flex-row` for responsive headers
 - `z-40` on sidebar when open (overlay was blocking clicks — resolved in commit `f314f2e`)
+
+---
+
+## Mobile Forms Must Be Mobile-Friendly — STRICT
+
+**Rule:** Any form, modal, or sheet shown in a mobile view MUST be fully usable on a phone — the entire form (including every field AND the submit/cancel actions) must be reachable and visible. Never ship a mobile form where content is clipped off-screen or the submit button can't be reached. This is a default requirement whenever the user is talking about a mobile view — they should not have to ask for it.
+
+**Required patterns:**
+- **Use a bottom-sheet (or full-screen) layout** for non-trivial mobile forms: `fixed inset-x-0 bottom-0 max-h-[92vh] flex flex-col`, with a `flex-shrink-0` header, a `flex-1 overflow-y-auto` scrollable body, and a `flex-shrink-0` sticky footer holding the actions. The body scrolls; the actions stay reachable.
+- **Respect the safe area** on the sticky footer: `padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));`.
+- **⚠️ Teleport fixed overlays to `<body>`.** The mobile shell's `#shell-content` carries `.mobile-stagger`, whose `m-rise` animation leaves a `transform` on every direct child. A CSS `transform` makes that element the containing block for any `position: fixed` descendant — so a bottom-sheet's `bottom-0` / `max-h-[92vh]` resolve against the tiny wrapper instead of the viewport and the form gets clipped. Wrap any fixed sheet/FAB/overlay in `<template x-teleport="body">…</template>` (inside an Alpine `x-data` scope) so it escapes the transformed ancestor. Use `z-[60]+` for teleported sheets so they sit above the bottom tab bar (`z-40`).
+- Inputs full-width (`w-full`), comfortable tap targets, and the design-system input/button tokens. Keep [[Mobile = Creative + Animated]] in mind — animated, on-palette, not a stripped-down desktop form.
+
+> Reference implementation: `resources/views/components/schedule-session-modal.blade.php` (teleported bottom-sheet with scrollable body + sticky footer).
 
 ---
 

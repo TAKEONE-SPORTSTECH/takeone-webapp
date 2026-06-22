@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\StorePlatformMemberRequest;
 use App\Http\Requests\HealthRecordRequest;
 use App\Http\Requests\TournamentRequest;
 use App\Http\Requests\UploadImageRequest;
+use App\Models\Business;
 use App\Models\ClubMemberSubscription;
 use App\Models\Membership;
 use App\Models\Tenant;
@@ -43,6 +44,27 @@ class PlatformController extends Controller
     }
 
     /**
+     * Platform admin landing. Desktop keeps its existing behaviour (straight to
+     * the clubs table); mobile gets a purpose-built dashboard with KPIs and
+     * section navigation.
+     */
+    public function home(Request $request)
+    {
+        if (! $request->attributes->get('is_mobile')) {
+            return redirect()->route('admin.platform.clubs');
+        }
+
+        $stats = [
+            'clubs'             => Tenant::count(),
+            'members'           => User::count(),
+            'businesses'        => Business::count(),
+            'businessesPending' => Business::where('status', Business::STATUS_PENDING)->count(),
+        ];
+
+        return view('admin.platform.mobile.index', compact('stats'));
+    }
+
+    /**
      * Display the audit log.
      */
     public function auditLog(Request $request)
@@ -70,7 +92,9 @@ class PlatformController extends Controller
 
         $logNames = \Spatie\Activitylog\Models\Activity::distinct()->pluck('log_name')->filter()->sort()->values();
 
-        return view('admin.platform.audit-log.index', compact('logs', 'search', 'logName', 'event', 'dateFrom', 'dateTo', 'logNames'));
+        $mobile = $request->attributes->get('is_mobile') && view()->exists('admin.platform.mobile.audit-log');
+
+        return view($mobile ? 'admin.platform.mobile.audit-log' : 'admin.platform.audit-log.index', compact('logs', 'search', 'logName', 'event', 'dateFrom', 'dateTo', 'logNames'));
     }
 
     /**
@@ -90,7 +114,9 @@ class PlatformController extends Controller
             ->latest()
             ->paginate(12);
 
-        return view('admin.platform.clubs.index', compact('clubs', 'search'));
+        $mobile = $request->attributes->get('is_mobile') && view()->exists('admin.platform.mobile.clubs');
+
+        return view($mobile ? 'admin.platform.mobile.clubs' : 'admin.platform.clubs.index', compact('clubs', 'search'));
     }
 
     /**
@@ -112,12 +138,21 @@ class PlatformController extends Controller
             ->latest()
             ->paginate(20);
 
-        // AJAX search / pagination returns just the results region for in-place swap.
+        $isMobile = (bool) $request->attributes->get('is_mobile');
+
+        // AJAX search / pagination returns just the results region for in-place swap
+        // (mobile gets its own compact card layout).
         if ($request->ajax()) {
-            return view('admin.platform.members._results', compact('members', 'search'));
+            $resultsView = $isMobile && view()->exists('admin.platform.members._results-mobile')
+                ? 'admin.platform.members._results-mobile'
+                : 'admin.platform.members._results';
+
+            return view($resultsView, compact('members', 'search'));
         }
 
-        return view('admin.platform.members.index', compact('members', 'search'));
+        $mobile = $isMobile && view()->exists('admin.platform.mobile.members');
+
+        return view($mobile ? 'admin.platform.mobile.members' : 'admin.platform.members.index', compact('members', 'search'));
     }
 
     public function memberPopup(User $user)
@@ -445,7 +480,9 @@ class PlatformController extends Controller
      */
     public function backup()
     {
-        return view('admin.platform.backup.index');
+        $mobile = request()->attributes->get('is_mobile') && view()->exists('admin.platform.mobile.backup');
+
+        return view($mobile ? 'admin.platform.mobile.backup' : 'admin.platform.backup.index');
     }
 
     /**

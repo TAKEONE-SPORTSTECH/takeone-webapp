@@ -86,6 +86,25 @@ class TrainerController extends Controller
         // Aggregate reviews across all club instructor records
         $reviews = $user->clubInstructors->flatMap->reviews->sortByDesc('created_at');
 
+        // Emoji reactions on classes this person actually taught — their own
+        // classes (minus dates substituted away) plus sessions they covered.
+        $myPaIds  = \App\Models\ClubPackageActivity::whereIn('instructor_id', $instructorIds)->pluck('id');
+        $subRows  = \App\Models\ClassSubstitution::where('substitute_user_id', $user->id)->get();
+        $coveredKeys = $subRows->map(fn ($r) => $r->package_activity_id . '|' . $r->slot_day . '|' . (string) $r->slot_start . '|' . $r->date->toDateString())->flip();
+        $awayKeys = \App\Models\ClassSubstitution::whereIn('package_activity_id', $myPaIds)
+            ->where('substitute_user_id', '!=', $user->id)->get()
+            ->map(fn ($r) => $r->package_activity_id . '|' . $r->slot_day . '|' . (string) $r->slot_start . '|' . $r->date->toDateString())->flip();
+
+        $reactionRows = \App\Models\ClassReaction::whereIn('package_activity_id', $myPaIds->merge($subRows->pluck('package_activity_id'))->unique())
+            ->get()
+            ->filter(function ($r) use ($myPaIds, $coveredKeys, $awayKeys) {
+                $key = $r->package_activity_id . '|' . $r->slot_day . '|' . (string) $r->slot_start . '|' . $r->date->toDateString();
+                if (isset($coveredKeys[$key])) return true;                                  // they covered this session
+                return $myPaIds->contains($r->package_activity_id) && ! isset($awayKeys[$key]); // their class, not handed off
+            });
+        $reactions     = $reactionRows->groupBy('emoji')->map->count()->sortDesc();
+        $reactionTotal = $reactionRows->count();
+
         $stats = [
             'clients'          => $user->clubInstructors->sum(fn ($i) => optional($i->tenant)->memberships()->count() ?? 0),
             'sessions'         => $activities->sum('frequency_per_week') * 4,
@@ -93,6 +112,9 @@ class TrainerController extends Controller
             'certifications'   => is_array($user->skills) ? count($user->skills) : 0,
         ];
 
-        return view('trainer.show', compact('user', 'activities', 'scheduleSlots', 'stats', 'reviews'));
+        $isMobile = request()->attributes->get('is_mobile', false);
+        $view = $isMobile && view()->exists('trainer.mobile.show') ? 'trainer.mobile.show' : 'trainer.show';
+
+        return view($view, compact('user', 'activities', 'scheduleSlots', 'stats', 'reviews', 'reactions', 'reactionTotal'));
     }
 }

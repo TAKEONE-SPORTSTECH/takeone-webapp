@@ -81,4 +81,12 @@ class ClubNotificationController extends Controller
 
         return response()->json(['success' => true]);
     }
+
+    /** Clear (delete) all of the current user's notifications. */
+    public function clearAll()
+    {
+        UserNotification::where('user_id', Auth::id())->delete();
+
+        return response()->json(['success' => true]);
+    }
 }

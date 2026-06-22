@@ -53,6 +53,10 @@ class MessengerController extends Controller
         $me = (int) Auth::id();
         abort_if($user->id === $me, 422, "You can't message yourself.");
 
+        // Consent rule: only club-mates, accepted connections, or existing threads.
+        abort_unless(Auth::user()->canMessage($user), 403,
+            'You can only message members of your clubs or people you’re connected with.');
+
         $conversation = Conversation::findOrCreateDirect($me, $user->id);
 
         if ($request->expectsJson()) {
@@ -107,7 +111,6 @@ class MessengerController extends Controller
     {
         $this->authorizeParticipant($conversation);
         $me = (int) Auth::id();
-        $this->guardClubPosting($conversation, $me);
 
         $data = $request->validate([
             'body' => ['required', 'string', 'max:5000'],
@@ -153,13 +156,13 @@ class MessengerController extends Controller
         ]);
     }
 
-    /** Delete a message for everyone — own message, or any message if club moderator. */
+    /** Delete a message for everyone — own message only. */
     public function deleteMessage(Conversation $conversation, Message $message)
     {
         $this->authorizeParticipant($conversation);
         abort_unless($message->conversation_id === $conversation->id, 404);
         $mine = (int) $message->sender_id === (int) Auth::id();
-        abort_unless($mine || $this->isClubModerator($conversation), 403);
+        abort_unless($mine, 403);
 
         if (! $message->isDeleted()) {
             // Blank the (encrypted) body so the content is truly gone; the row
@@ -186,9 +189,6 @@ class MessengerController extends Controller
     {
         $this->authorizeParticipant($conversation);
         $me = (int) Auth::id();
-        // Attachments are disabled in club group chats.
-        abort_if($conversation->type === 'club', 403, 'Attachments are not allowed in club chat.');
-        $this->guardClubPosting($conversation, $me);
 
         $request->validate([
             'file' => ['required', 'file', 'max:' . (int) (self::MAX_ATTACHMENT_BYTES / 1024)],
@@ -356,10 +356,38 @@ class MessengerController extends Controller
     public function searchUsers(Request $request)
     {
         $q  = trim((string) $request->query('q', ''));
-        $me = (int) Auth::id();
+        $me = Auth::user();
 
-        $users = User::query()
-            ->whereKeyNot($me)
+        // You can only reach people you're allowed to message: club-mates,
+        // accepted connections, or someone you already have a thread with.
+        $myClubIds = $me->memberClubs()->pluck('tenants.id');
+
+        $clubMateIds = $myClubIds->isEmpty()
+            ? collect()
+            : User::whereHas('memberClubs', fn ($w) => $w->whereIn('tenants.id', $myClubIds))
+                ->whereKeyNot($me->id)->pluck('id');
+
+        $connectedIds = \App\Models\UserConnection::where('status', 'accepted')
+            ->where(fn ($w) => $w->where('requester_id', $me->id)->orWhere('addressee_id', $me->id))
+            ->get(['requester_id', 'addressee_id'])
+            ->map(fn ($c) => $c->requester_id === $me->id ? $c->addressee_id : $c->requester_id);
+
+        $partnerIds = DB::table('conversation_user as cu1')
+            ->join('conversation_user as cu2', 'cu2.conversation_id', '=', 'cu1.conversation_id')
+            ->join('conversations as c', 'c.id', '=', 'cu1.conversation_id')
+            ->where('c.type', 'direct')
+            ->where('cu1.user_id', $me->id)
+            ->where('cu2.user_id', '!=', $me->id)
+            ->pluck('cu2.user_id');
+
+        $blockedIds = \App\Models\UserBlock::where('blocker_id', $me->id)->pluck('blocked_id')
+            ->merge(\App\Models\UserBlock::where('blocked_id', $me->id)->pluck('blocker_id'));
+
+        $allowedIds = collect()->merge($clubMateIds)->merge($connectedIds)->merge($partnerIds)
+            ->unique()->diff($blockedIds)->values();
+
+        $users = $allowedIds->isEmpty() ? collect() : User::query()
+            ->whereIn('id', $allowedIds)
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(fn ($w) => $w
                     ->where('full_name', 'like', "%{$q}%")
@@ -384,30 +412,6 @@ class MessengerController extends Controller
             $conversation->participants()->whereKey(Auth::id())->exists(),
             403,
         );
-    }
-
-    /** Is the current user a moderator (owner/admin/super) of this club room? */
-    private function isClubModerator(Conversation $conversation): bool
-    {
-        if ($conversation->type !== 'club' || ! $conversation->tenant_id) {
-            return false;
-        }
-        $u    = Auth::user();
-        $club = $conversation->tenant;
-        return $u->isSuperAdmin()
-            || ($club && $club->owner_user_id === $u->id)
-            || $u->isClubAdmin($conversation->tenant_id);
-    }
-
-    /** For club rooms: a blocked or currently-kicked member may not post. */
-    private function guardClubPosting(Conversation $conversation, int $userId): void
-    {
-        if ($conversation->type !== 'club') {
-            return;
-        }
-        $pivot = $conversation->participants()->where('users.id', $userId)->first()?->pivot;
-        abort_if($pivot && $pivot->blocked, 403, 'You are blocked from this chat.');
-        abort_if($pivot && $pivot->banned_until && now()->lt($pivot->banned_until), 403, 'You have been removed from this chat temporarily.');
     }
 
     /** Guard edit/delete: I'm a participant, the message is in this thread, and it's mine. */
@@ -611,7 +615,6 @@ class MessengerController extends Controller
     private function inboxFor(int $userId)
     {
         $conversations = Conversation::query()
-            ->where('type', '!=', 'club') // club rooms live in their own UI
             ->whereHas('participants', fn ($q) => $q->whereKey($userId))
             ->with([
                 'participants:id,full_name,name,profile_picture',
@@ -684,12 +687,15 @@ class MessengerController extends Controller
         }
 
         $name = $user->full_name ?? $user->name ?? 'User';
+        $me   = Auth::user();
 
         return [
             'id'      => $user->id,
+            'slug'    => $user->slug,
             'name'    => $name,
             'avatar'  => $user->profile_picture ? asset('storage/' . $user->profile_picture) : null,
             'initial' => strtoupper(mb_substr($name, 0, 1)),
+            'blocked' => $me && $me->id !== $user->id ? $me->hasBlocked($user->id) : false,
         ];
     }
 
@@ -706,12 +712,9 @@ class MessengerController extends Controller
         $deleted  = $action === 'delete';
         $isFile   = $action === 'file';
 
-        $recipientsQuery = $conversation->participants()->whereKeyNot($message->sender_id);
-        if ($conversation->type === 'club') {
-            // Don't fan out to members who left or were blocked.
-            $recipientsQuery->wherePivot('blocked', false)->wherePivotNull('left_at');
-        }
-        $recipients = $recipientsQuery->pluck('users.id');
+        $recipients = $conversation->participants()
+            ->whereKeyNot($message->sender_id)
+            ->pluck('users.id');
 
         // Attachment fan-out carries only a URL + metadata (no bytes).
         $attachment = null;
@@ -734,7 +737,6 @@ class MessengerController extends Controller
         $payload = [
             'action'           => $action,
             'conversation_id'  => $conversation->id,
-            'club_room'        => $conversation->type === 'club',
             'id'               => $message->id,
             'from_id'          => (int) $message->sender_id,
             'from_name'        => $senderUi['name'],
@@ -749,8 +751,8 @@ class MessengerController extends Controller
             'time'             => $message->created_at->format('g:i A'),
         ];
 
-        // Batch into ONE broker connection — critical for club rooms with many
-        // members (a per-recipient connection would open hundreds of sockets).
+        // Batch into ONE broker connection (a per-recipient connection would
+        // open a separate socket for every participant).
         $batch = $recipients->map(fn ($uid) => [
             'topic'   => \Takeone\Realtime\Support\Topics::user((int) $uid, 'messages'),
             'payload' => $payload,

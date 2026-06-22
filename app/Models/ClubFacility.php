@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\BelongsToTenant;
+use App\Traits\HasTranslations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,7 +13,10 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class ClubFacility extends Model
 {
-    use HasFactory, BelongsToTenant, LogsActivity;
+    use HasFactory, BelongsToTenant, LogsActivity, HasTranslations;
+
+    /** Translatable fields (no description column exists on this model). */
+    protected array $translatable = ['name', 'address'];
 
     public function getActivitylogOptions(): LogOptions
     {

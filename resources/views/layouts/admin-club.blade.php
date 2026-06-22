@@ -149,6 +149,8 @@ html, body { overflow: hidden !important; height: 100% !important; }
         ['route'=>'admin.club.perks',        'icon'=>'bi-gift',           'label'=>'Perks'],
         ['route'=>'admin.club.achievements', 'icon'=>'bi-trophy',         'label'=>'Achievements'],
         ['route'=>'admin.club.packages',     'icon'=>'bi-box',            'label'=>'Packages'],
+        ['route'=>'admin.club.shop',         'icon'=>'bi-shop',           'label'=>'Shop'],
+        ['route'=>'admin.club.orders',       'icon'=>'bi-bag-check',      'label'=>'Orders'],
         ['route'=>'admin.club.gallery',      'icon'=>'bi-images',         'label'=>'Gallery'],
         ['route'=>'admin.club.roles',        'icon'=>'bi-shield-check',   'label'=>'Roles'],
         ['route'=>'admin.club.messages',     'icon'=>'bi-chat-dots',      'label'=>'Messages'],
@@ -190,14 +192,30 @@ html, body { overflow: hidden !important; height: 100% !important; }
 
         <!-- Action buttons -->
         <div class="flex justify-center gap-2 px-4 pb-3" style="flex-shrink:0">
-            @if(Auth::user()->isSuperAdmin())
-                <a href="{{ route('admin.platform.clubs') }}" class="emp-sb-btn" title="Back to Clubs">←</a>
-            @else
+            @unless(Auth::user()->isSuperAdmin())
                 <a href="{{ route('clubs.explore') }}" class="emp-sb-btn" title="Back to Explore">←</a>
-            @endif
+            @endunless
             <a href="{{ $club->url }}" class="emp-sb-btn" title="Preview Club" target="_blank">👁</a>
             <button @click="showNotificationModal = true" class="emp-sb-btn" title="Send Notification">✈</button>
         </div>
+
+        @if(Auth::user()->isSuperAdmin())
+            <!-- Super-admin exits -->
+            <div class="flex flex-col gap-0.5 px-2 pb-2" style="flex-shrink:0">
+                <a href="{{ route('admin.platform.index') }}" class="nav-item">
+                    <span class="ni"><i class="bi bi-shield-check"></i></span>
+                    <span>Admin Dashboard</span>
+                </a>
+                <a href="{{ route('me.home') }}" class="nav-item">
+                    <span class="ni"><i class="bi bi-house"></i></span>
+                    <span>My Home</span>
+                </a>
+                <a href="{{ route('admin.platform.clubs') }}" class="nav-item">
+                    <span class="ni"><i class="bi bi-arrow-left"></i></span>
+                    <span>Back to Clubs</span>
+                </a>
+            </div>
+        @endif
 
         <div class="emp-sb-div"></div>
 

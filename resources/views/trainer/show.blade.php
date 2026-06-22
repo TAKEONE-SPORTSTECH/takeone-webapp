@@ -65,7 +65,7 @@
                                 {{-- Specialty Badge --}}
                                 @if($primaryInstructor?->role)
                                 <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-purple-600 text-white">
-                                    {{ $primaryInstructor->role }}
+                                    {{ $primaryInstructor->tr('role') }}
                                 </span>
                                 @endif
                                 {{-- Experience Badge --}}
@@ -187,7 +187,7 @@
                                     </div>
                                     <div class="flex-1">
                                         <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Specialty</p>
-                                        <p class="text-lg font-bold text-gray-900">{{ $primaryInstructor?->role ?? 'Trainer' }}</p>
+                                        <p class="text-lg font-bold text-gray-900">{{ $primaryInstructor?->tr('role') ?? 'Trainer' }}</p>
                                     </div>
                                 </div>
                             </div>
@@ -462,6 +462,19 @@
                         </div>
                     </div>
                     <div class="p-6 space-y-4">
+                        @if(!empty($reactionTotal) && $reactionTotal > 0)
+                            <div class="p-4 border rounded-xl bg-white">
+                                <p class="text-sm font-semibold text-gray-500 mb-2"><i class="bi bi-emoji-smile mr-1"></i> Class reactions · {{ $reactionTotal }}</p>
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach($reactions as $emoji => $cnt)
+                                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100">
+                                            <span class="text-xl leading-none">{{ $emoji }}</span>
+                                            <span class="text-sm font-bold text-gray-700">{{ $cnt }}</span>
+                                        </span>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
                         @forelse($reviews as $review)
                             <div class="group p-5 border rounded-xl bg-gradient-to-br from-white {{ $isMale ? 'to-blue-50/30' : 'to-purple-50/30' }} hover:shadow-md transition-all">
                                 <div class="flex items-start justify-between mb-3">

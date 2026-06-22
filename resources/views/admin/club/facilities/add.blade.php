@@ -33,6 +33,8 @@
                         <div class="space-y-4">
                             <h6 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Basic Information</h6>
 
+                            <x-lang-toggle class="mb-4" />
+
                             <!-- Facility Name -->
                             <div class="space-y-2">
                                 <label for="facilityName" class="block text-sm font-medium text-gray-700">Facility Name <span class="text-red-500">*</span></label>
@@ -40,9 +42,18 @@
                                        id="facilityName"
                                        name="name"
                                        required
+                                       x-show="lang==='en'"
                                        placeholder="e.g., Main Swimming Pool"
                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                                        oninput="clearAddFacilityError('name')">
+                                <input type="text"
+                                       name="translations[name][ar]"
+                                       dir="rtl"
+                                       x-show="lang==='ar'"
+                                       x-cloak
+                                       placeholder="الاسم بالعربية"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                       value="{{ old('translations.name.ar', data_get($facility ?? null, 'translations.name.ar')) }}">
                                 <span id="addFacilityError_name" class="text-red-500 text-xs hidden block"></span>
                             </div>
 
@@ -72,6 +83,17 @@
                                 :defaultLng="$club->longitude ?? 55.2708"
                                 :required="true"
                             />
+                            <div class="space-y-1" x-show="lang==='ar'" x-cloak>
+                                <label class="block text-sm font-medium text-gray-700">Address (العربية)</label>
+                                <input type="text"
+                                       name="translations[address][ar]"
+                                       dir="rtl"
+                                       x-show="lang==='ar'"
+                                       x-cloak
+                                       placeholder="العنوان بالعربية"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                       value="{{ old('translations.address.ar', data_get($facility ?? null, 'translations.address.ar')) }}">
+                            </div>
                             <input type="hidden" id="facilityMapZoom" name="map_zoom" value="13">
                             <div class="space-y-1">
                                 <label class="block text-sm font-medium text-gray-700">Google Maps URL</label>

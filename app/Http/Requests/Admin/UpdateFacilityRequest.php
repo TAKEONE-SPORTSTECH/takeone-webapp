@@ -22,6 +22,8 @@ class UpdateFacilityRequest extends FormRequest
             'is_available'      => 'nullable|boolean',
             'facility_images'   => 'nullable|array',
             'facility_images.*' => 'image|max:4096',
+            'translations'      => ['nullable', 'array'],
+            'translations.*.*'  => ['nullable', 'string', 'max:2000'],
         ];
     }
 }

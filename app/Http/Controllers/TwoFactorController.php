@@ -28,8 +28,11 @@ class TwoFactorController extends Controller
      */
     public function show()
     {
-        return view('security.index', [
+        $isMobile = (bool) request()->attributes->get('is_mobile', false);
+
+        return view($isMobile ? 'security.mobile' : 'security.index', [
             'user' => Auth::user(),
+            'shellTitle' => 'Security',
         ]);
     }
 

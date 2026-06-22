@@ -1,24 +1,455 @@
 @extends('layouts.personal-mobile')
 
-@section('title', 'My Schedule')
+@section('title', 'Schedule')
+
+{{--
+    Schedule — mobile training schedule (DB-backed). Merges the member's own
+    PERSONAL sessions (editable, created via the + button) with read-only sessions
+    SYNCED from the packages they're enrolled in. Me/Family toggle (real
+    dependents), a horizontal week-day strip, and per-day session cards.
+
+    The dynamic regions (week-strip dot rows, family avatars, hero stats, and the
+    sessions list) are rendered by the inline scheduleBoard() script so writes
+    patch the UI in place — no reload, per project rules. Card markup mirrors the
+    original Blade exactly. The create/edit sheet is <x-schedule-session-modal>.
+--}}
 
 @section('personal-content')
-<div class="space-y-4">
-    <h2 class="font-semibold text-foreground">My enrolments</h2>
-    @forelse($subscriptions as $sub)
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-center gap-3">
-            <span class="w-11 h-11 rounded-xl bg-accent flex items-center justify-center text-primary flex-shrink-0"><i class="bi bi-calendar-event text-lg"></i></span>
-            <div class="min-w-0 flex-1">
-                <p class="font-semibold text-foreground truncate">{{ $sub->package->name ?? 'Membership' }}</p>
-                <p class="text-xs text-muted-foreground truncate">{{ $sub->tenant->club_name ?? '' }}</p>
+<div class="-mx-4 -mt-4 pb-4">
+
+    {{-- ===== Hero ===== --}}
+    <header class="m-hero px-5 pt-7 pb-12 text-white relative overflow-hidden">
+        <div class="absolute -right-8 -top-8 w-36 h-36 rounded-full bg-white/10"></div>
+        <div class="flex items-center justify-between relative z-10">
+            <div>
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">This week</p>
+                <h1 class="text-2xl font-black mt-0.5">Training Plan</h1>
             </div>
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-medium {{ $sub->status === 'active' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700' }} flex-shrink-0 capitalize">{{ $sub->status }}</span>
+            <div class="flex items-center gap-2">
+                <button type="button"
+                        onclick="window.dispatchEvent(new CustomEvent('open-schedule-form'))"
+                        class="m-press w-12 h-12 rounded-2xl bg-white/20 border border-white/30 backdrop-blur grid place-items-center active:scale-95 transition-transform"
+                        aria-label="Add personal session">
+                    <i class="bi bi-plus-lg text-xl"></i>
+                </button>
+                <div class="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center">
+                    <i class="bi bi-calendar2-week-fill text-xl m-float"></i>
+                </div>
+            </div>
         </div>
-    @empty
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
-            <i class="bi bi-calendar-x text-4xl text-gray-300"></i>
-            <p class="text-sm text-muted-foreground mt-3">You're not enrolled in any classes yet.</p>
+
+        <div class="flex gap-2 mt-5 relative z-10">
+            <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
+                <p class="text-lg font-black leading-none" id="sched-stat-count">0</p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">Sessions</p>
+            </div>
+            <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
+                <p class="text-lg font-black leading-none" id="sched-stat-done">0</p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">Done</p>
+            </div>
+            <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
+                <p class="text-lg font-black leading-none" id="sched-stat-vol">0h</p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">Volume</p>
+            </div>
         </div>
-    @endforelse
+    </header>
+
+    {{-- ===== Me / Family toggle (overlaps hero) ===== --}}
+    <div class="px-4 -mt-6 relative z-10">
+        <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-1 flex" id="sched-who-toggle">
+            <button type="button" data-who="all"
+                    class="m-press flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2 bg-primary text-white">
+                <i class="bi bi-people-fill"></i> Family
+            </button>
+            <button type="button" data-who="me"
+                    class="m-press flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2 text-muted-foreground">
+                <i class="bi bi-person-fill"></i> Just me
+            </button>
+        </div>
+    </div>
+
+    {{-- ===== Family avatars (JS-rendered) ===== --}}
+    <div class="px-4 mt-4 overflow-x-auto scrollbar-hide" id="sched-avatars-wrap">
+        <div class="flex gap-2 w-max" id="sched-avatars"></div>
+    </div>
+
+    {{-- ===== Week-day strip (JS-rendered) ===== --}}
+    <div class="px-4 mt-4">
+        <div class="flex gap-1" id="sched-strip"></div>
+    </div>
+
+    {{-- ===== Sessions for the selected day (JS-rendered) ===== --}}
+    <div class="px-4 mt-5" id="sched-sessions"></div>
+
 </div>
+
+<x-schedule-session-modal :subjects="$subjectsList" />
+
+<script>
+// ===== Schedule board: renders the dynamic regions from a JS-held array so
+// create / edit / delete patch the UI in place (no reload). =====
+(function () {
+    var root = document.getElementById('sched-sessions');
+    if (!root) return;
+
+    var MEMBERS  = {{ Illuminate\Support\Js::from($members) }};
+    var WEEKDAYS = {{ Illuminate\Support\Js::from($weekDays) }};
+    var TODAY    = @json($todayKey);
+    var SESSIONS = {{ Illuminate\Support\Js::from($sessions) }};
+    var SHOW_URL = "{{ url('/me/schedule') }}";
+    var DATA_URL = "{{ route('me.schedule.data') }}";
+    var ORDER = { sunday:0, monday:1, tuesday:2, wednesday:3, thursday:4, friday:5, saturday:6 };
+    var WEEKDAY_KEYS  = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+    var WEEKDAY_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+    // ===== Browser-LOCAL time helpers =====
+    // The server runs in UTC, so deriving "today"/status from it rolls over hours late
+    // for users ahead of UTC (e.g. just after local midnight). We compute today, the
+    // week strip and every card's status from the user's REAL local clock instead — and
+    // tick a live countdown to each upcoming class.
+    function localTodayKey() { return WEEKDAY_KEYS[new Date().getDay()]; }
+    function startOfLocalWeek() {
+        var d = new Date(); d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() - d.getDay());          // back to Sunday
+        return d;
+    }
+    function buildWeekDays() {
+        var ws = startOfLocalWeek();
+        var todayMid = new Date(); todayMid.setHours(0, 0, 0, 0);
+        var out = [];
+        for (var i = 0; i < 7; i++) {
+            var d = new Date(ws); d.setDate(ws.getDate() + i);
+            out.push({ key: WEEKDAY_KEYS[i], short: WEEKDAY_SHORT[i], d: String(d.getDate()),
+                       isToday: d.getTime() === todayMid.getTime(),
+                       isPast:  d.getTime() <  todayMid.getTime() });
+        }
+        return out;
+    }
+    // This week's local Date for a weekday + "HH:MM[:SS]".
+    function occurrenceDate(dayKey, hhmm) {
+        var ws = startOfLocalWeek();
+        var d = new Date(ws); d.setDate(ws.getDate() + (ORDER[dayKey] || 0));
+        var p = String(hhmm || '00:00').split(':');
+        d.setHours(parseInt(p[0], 10) || 0, parseInt(p[1], 10) || 0, 0, 0);
+        return d;
+    }
+    // Local YYYY-MM-DD (not toISOString, which would shift by the UTC offset).
+    function ymdLocal(d) {
+        var m = d.getMonth() + 1, day = d.getDate();
+        return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (day < 10 ? '0' : '') + day;
+    }
+    function fmtCountdown(ms) {
+        if (ms < 0) ms = 0;
+        var t = Math.floor(ms / 1000);
+        var days = Math.floor(t / 86400), h = Math.floor((t % 86400) / 3600),
+            mn = Math.floor((t % 3600) / 60), sc = t % 60;
+        var p = function (n) { return (n < 10 ? '0' : '') + n; };
+        return (days > 0 ? days + 'd ' : '') + p(h) + ':' + p(mn) + ':' + p(sc);
+    }
+
+    // Override the server's UTC-derived week/today with the user's local clock.
+    WEEKDAYS = buildWeekDays();
+    TODAY    = localTodayKey();
+
+    // Open on the day from the URL (?day=…) when present — so returning from a card
+    // detail keeps the day you were browsing instead of snapping back to today.
+    var _urlDay = new URLSearchParams(window.location.search).get('day');
+    var state = { who: 'all', day: (_urlDay && ORDER[_urlDay] !== undefined) ? _urlDay : TODAY };
+
+    function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+        });
+    }
+    // Time-aware status for a session this week: done (ended) · live (in progress) ·
+    // today (starts later today) · upcoming (a future day).
+    function statusFor(s) {
+        if (typeof s === 'string') s = { day: s };            // legacy day-only callers
+        var now = new Date();
+        var start = occurrenceDate(s.day, s.start_raw || s.start || '00:00');
+        var end = s.end_raw ? occurrenceDate(s.day, s.end_raw)
+                            : new Date(start.getTime() + durMins(s) * 60000);
+        if (end.getTime() <= start.getTime()) end = new Date(end.getTime() + 86400000); // crosses midnight
+        if (now >= end)   return 'done';
+        if (now >= start) return 'live';
+        return s.day === TODAY ? 'today' : 'upcoming';
+    }
+    // Avatar circle: profile photo when available, initials fallback.
+    // sizeClass/textClass are literal Tailwind tokens (so they survive purge).
+    function avatarHTML(m, sizeClass, textClass) {
+        if (m && m.avatar) {
+            return '<span class="' + sizeClass + ' rounded-full overflow-hidden flex-shrink-0 block">'
+                + '<img src="' + esc(m.avatar) + '" alt="" class="' + sizeClass + ' object-cover"></span>';
+        }
+        return '<span class="' + sizeClass + ' rounded-full overflow-hidden flex-shrink-0 grid place-items-center text-white ' + textClass + ' font-bold" style="background:' + esc((m && m.color) || '#7c3aed') + ';">' + esc((m && m.initials) || '') + '</span>';
+    }
+    function durMins(s) {
+        var n = parseInt(String(s.duration || '').replace(/[^0-9]/g, ''), 10);
+        return isNaN(n) ? 0 : n;
+    }
+    function visibleForWho(s) { return state.who === 'all' || s.who === 'me'; }
+
+    // ---- Hero stats ----
+    function renderStats() {
+        var vis = SESSIONS.filter(visibleForWho);
+        document.getElementById('sched-stat-count').textContent = vis.length;
+        document.getElementById('sched-stat-done').textContent = vis.filter(function (s) { return statusFor(s) === 'done'; }).length;
+        var mins = vis.reduce(function (a, s) { return a + durMins(s); }, 0);
+        document.getElementById('sched-stat-vol').textContent = (Math.round(mins / 6) / 10) + 'h';
+    }
+
+    // ---- Family avatars ----
+    function renderAvatars() {
+        var wrap = document.getElementById('sched-avatars-wrap');
+        wrap.style.display = state.who === 'all' ? '' : 'none';
+        var keys = Object.keys(MEMBERS);
+        var html = keys.map(function (k) {
+            var m = MEMBERS[k];
+            var count = SESSIONS.filter(function (s) { return s.who === k; }).length;
+            return '<div class="flex items-center gap-2 rounded-full bg-white border border-gray-100 pl-1.5 pr-3 py-1.5 shadow-sm">'
+                + avatarHTML(m, 'w-7 h-7', 'text-[10px]')
+                + '<span class="text-xs font-semibold text-foreground">' + esc(m.name) + '</span>'
+                + '<span class="text-[10px] text-muted-foreground">' + count + '</span>'
+                + '</div>';
+        }).join('');
+        document.getElementById('sched-avatars').innerHTML = html;
+    }
+
+    // ---- Week-day strip ----
+    function renderStrip() {
+        var html = WEEKDAYS.map(function (wd) {
+            var count = SESSIONS.filter(function (s) { return s.day === wd.key && visibleForWho(s); }).length;
+            var active = state.day === wd.key;
+            var dots = '';
+            for (var i = 0; i < Math.min(count, 3); i++) {
+                dots += '<span class="w-1 h-1 rounded-full ' + (active ? 'bg-white' : 'bg-primary') + '"></span>';
+            }
+            var todayLine = wd.isToday ? '<span class="' + (active ? 'text-white' : 'text-primary') + '">TODAY</span>' : '';
+            return '<button type="button" data-day="' + wd.key + '" '
+                + 'class="m-press flex-1 min-w-0 flex flex-col items-center justify-start pt-2 pb-1.5 rounded-xl border transition-colors '
+                + (active ? 'bg-primary border-primary text-white' : 'bg-white border-gray-100 text-foreground') + '">'
+                + '<span class="text-[10px] uppercase tracking-wide leading-none ' + (active ? 'text-white/80' : 'text-muted-foreground') + '">' + esc(wd.short) + '</span>'
+                + '<span class="text-lg font-black leading-none mt-1.5">' + esc(wd.d) + '</span>'
+                + '<span class="mt-1.5 h-1 flex items-center justify-center gap-0.5">' + dots + '</span>'
+                + '<span class="mt-auto h-3 flex items-center text-[8px] font-bold leading-none">' + todayLine + '</span>'
+                + '</button>';
+        }).join('');
+        document.getElementById('sched-strip').innerHTML = html;
+    }
+
+    // ---- One session card (mirrors the original Blade card markup) ----
+    function cardHTML(s) {
+        var m = MEMBERS[s.who] || MEMBERS.me || { color: '#7c3aed', initials: '', relation: '' };
+        var status = statusFor(s);
+        var statusBadge = '';
+        if (s.is_cancelled) {
+            statusBadge = '';                                   // the "Cancelled" pill says it all
+        } else if (status === 'done') {
+            statusBadge = '<span class="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-50 text-green-600"><i class="bi bi-check2"></i> Done</span>';
+        } else if (status === 'live') {
+            statusBadge = '<span class="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white inline-flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span> Live now</span>';
+        } else {
+            // today (later) or upcoming → live countdown to the start time
+            var startMs = occurrenceDate(s.day, s.start_raw || s.start || '00:00').getTime();
+            statusBadge = '<span class="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent text-primary inline-flex items-center gap-1 js-cd" data-cd="' + startMs + '">'
+                + '<i class="bi bi-hourglass-split"></i> <span class="cd-val">' + fmtCountdown(startMs - Date.now()) + '</span></span>';
+        }
+
+        // Package name line (club classes carry the package as `discipline`).
+        var pkgLine = s.discipline
+            ? '<p class="text-[11px] font-semibold mt-0.5 truncate" style="color:' + esc(s.color) + ';"><i class="bi bi-box-seam text-[10px] mr-1"></i>' + esc(s.discipline) + '</p>'
+            : '';
+
+        // meta line: location · coach (kept short — no club name)
+        var metaParts = [];
+        if (s.location) metaParts.push('<i class="bi bi-geo-alt text-[11px]"></i>' + esc(s.location));
+        if (s.coach) {
+            var coachStr = s.is_substituted
+                ? '<i class="bi bi-arrow-left-right text-[11px] text-amber-500"></i><span class="text-amber-600 font-semibold">' + esc(s.coach) + '</span>'
+                : esc(s.coach);
+            metaParts.push((metaParts.length ? '<span class="text-gray-300">·</span>' : '') + coachStr);
+        }
+        var metaLine = metaParts.length
+            ? '<p class="text-xs text-muted-foreground mt-0.5 truncate flex items-center gap-1.5">' + metaParts.join(' ') + '</p>'
+            : '';
+
+        // right-hand pill: short tag only (no club name — keeps the card compact)
+        var pill;
+        if (s.is_cancelled) {
+            pill = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 inline-flex items-center gap-1"><i class="bi bi-calendar-x"></i> Cancelled</span>';
+        } else if (s.source === 'substituting') {
+            pill = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-50 text-green-600 inline-flex items-center gap-1"><i class="bi bi-person-check-fill"></i> Covering</span>';
+        } else if (s.source === 'teaching') {
+            pill = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 inline-flex items-center gap-1"><i class="bi bi-person-video3"></i> Teaching</span>';
+        } else if (s.source === 'synced') {
+            pill = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-50 text-sky-600 inline-flex items-center gap-1"><i class="bi bi-arrow-repeat"></i> Synced</span>';
+        } else if (s.intensity) {
+            pill = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background:' + esc(s.color) + '1a; color:' + esc(s.color) + ';">' + esc(s.intensity) + '</span>';
+        } else {
+            pill = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background:' + esc(s.color) + '1a; color:' + esc(s.color) + ';">Personal</span>';
+        }
+
+        var inner =
+            '<div class="flex">'
+            + '<div class="w-1.5 flex-shrink-0" style="background:' + esc(s.color) + ';"></div>'
+            + '<div class="flex-1 p-3.5">'
+            + '<div class="flex items-start gap-3">'
+            + '<div class="w-12 h-12 rounded-2xl grid place-items-center text-white flex-shrink-0" style="background: linear-gradient(160deg, ' + esc(s.color) + ', ' + esc(s.color) + 'd0);">'
+            + '<i class="bi ' + esc(s.icon) + ' text-xl"></i></div>'
+            + '<div class="min-w-0 flex-1">'
+            + '<div class="flex items-center gap-2">'
+            + '<span class="text-[11px] font-bold text-foreground">' + esc(s.start || '') + '</span>'
+            + '<span class="text-[10px] text-muted-foreground">· ' + esc(s.duration || '') + '</span>'
+            + statusBadge
+            + '</div>'
+            + '<h3 class="font-bold text-foreground mt-0.5 truncate ' + (s.is_cancelled ? 'line-through opacity-60' : '') + '">' + esc(s.title) + '</h3>'
+            + pkgLine
+            + metaLine
+            + '</div></div>'
+            + '<div class="flex items-center justify-between mt-2.5">'
+            + '<span class="inline-flex items-center gap-1.5">'
+            + avatarHTML(m, 'w-5 h-5', 'text-[8px]')
+            + '<span class="text-[11px] font-medium text-muted-foreground">' + esc(m.relation) + '</span></span>'
+            + pill
+            + '</div>'
+            + '</div></div>';
+
+        if (s.source === 'synced' || s.source === 'teaching' || s.source === 'substituting') {
+            // Club class (enrolled, taught, or covering) — tappable to its detail.
+            // Carry THIS occurrence's date so the detail shows the exact session tapped.
+            var durl = (s.detail_url || '#');
+            var onYmd = ymdLocal(occurrenceDate(s.day, s.start_raw || s.start || '00:00'));
+            if (durl !== '#') durl += (durl.indexOf('?') >= 0 ? '&' : '?') + 'on=' + onYmd;
+            return '<a href="' + durl + '" data-shell-link data-route="me.schedule" '
+                + 'class="block m-card m-press rounded-2xl overflow-hidden">' + inner + '</a>';
+        }
+        return '<a href="' + SHOW_URL + '/' + s.id + '" data-shell-link data-route="me.schedule" '
+            + 'class="block m-card m-press rounded-2xl overflow-hidden">' + inner + '</a>';
+    }
+
+    // ---- Sessions list for the selected day ----
+    function renderSessions() {
+        var day = state.day;
+        var dayAll = SESSIONS.filter(function (s) { return s.day === day; });
+        var dayVis = dayAll.filter(visibleForWho)
+            .sort(function (a, b) { return (a.start_raw || a.start || '').localeCompare(b.start_raw || b.start || ''); });
+
+        var html;
+        if (!dayAll.length) {
+            html = '<div class="bg-white rounded-2xl border border-gray-100 px-5 py-12 text-center">'
+                + '<div class="w-16 h-16 mx-auto rounded-3xl bg-accent text-primary grid place-items-center"><i class="bi bi-cup-hot text-2xl m-float"></i></div>'
+                + '<p class="text-sm font-bold text-foreground mt-3">Rest day</p>'
+                + '<p class="text-xs text-muted-foreground mt-1">No training scheduled. Recover well.</p></div>';
+        } else if (!dayVis.length) {
+            html = '<div class="bg-white rounded-2xl border border-gray-100 px-5 py-10 text-center">'
+                + '<i class="bi bi-cup-hot text-2xl text-gray-300 m-float"></i>'
+                + '<p class="text-sm text-muted-foreground mt-2">No personal training this day.</p></div>';
+        } else {
+            html = dayVis.map(cardHTML).join('');
+        }
+        root.innerHTML = '<div class="space-y-3">' + html + '</div>';
+    }
+
+    function renderAll() {
+        renderStats();
+        renderAvatars();
+        renderStrip();
+        renderSessions();
+    }
+
+    // ---- Events: toggle who / pick day ----
+    document.getElementById('sched-who-toggle').addEventListener('click', function (e) {
+        var b = e.target.closest('button[data-who]');
+        if (!b) return;
+        state.who = b.getAttribute('data-who');
+        this.querySelectorAll('button[data-who]').forEach(function (btn) {
+            var on = btn.getAttribute('data-who') === state.who;
+            btn.classList.toggle('bg-primary', on);
+            btn.classList.toggle('text-white', on);
+            btn.classList.toggle('text-muted-foreground', !on);
+        });
+        renderAll();
+    });
+    document.getElementById('sched-strip').addEventListener('click', function (e) {
+        var b = e.target.closest('button[data-day]');
+        if (!b) return;
+        state.day = b.getAttribute('data-day');
+        // Reflect the selected day in the URL so back (in-page or device) restores it.
+        try { history.replaceState(history.state || { shell: true }, '', '?day=' + state.day); } catch (e2) {}
+        renderAll();
+    });
+
+    // ---- Live updates from the create/edit sheet ----
+    function upsert(session) {
+        if (!session || session.id == null) return;
+        var i = SESSIONS.findIndex(function (s) { return String(s.id) === String(session.id); });
+        if (i >= 0) SESSIONS.splice(i, 1, session); else SESSIONS.push(session);
+        state.day = session.day || state.day;            // jump to the affected day
+        renderAll();
+    }
+    function removeById(id) {
+        var i = SESSIONS.findIndex(function (s) { return String(s.id) === String(id); });
+        if (i >= 0) { SESSIONS.splice(i, 1); renderAll(); }
+    }
+
+    // Re-pull the whole schedule live (used for club-class changes where each
+    // user's cards differ) and re-render in place — no manual refresh.
+    var reloading = false;
+    async function reloadData() {
+        if (reloading || !document.getElementById('sched-sessions')) return;
+        reloading = true;
+        try {
+            var res = await fetch(DATA_URL, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }, credentials: 'same-origin' });
+            if (!res.ok) return;
+            var data = await res.json();
+            if (Array.isArray(data.sessions)) SESSIONS = data.sessions;
+            if (data.members) MEMBERS = data.members;
+            WEEKDAYS = buildWeekDays();   // keep the strip & "today" on the user's local week
+            TODAY    = localTodayKey();
+            renderAll();
+        } catch (e) { /* best-effort */ }
+        finally { reloading = false; }
+    }
+
+    // ---- Live updates (dedup listeners across shell navigations) ----
+    if (window.__schedSaved)   window.removeEventListener('schedule-session-saved', window.__schedSaved);
+    if (window.__schedDeleted) window.removeEventListener('schedule-session-deleted', window.__schedDeleted);
+    if (window.__schedRT)      window.removeEventListener('realtime:schedule', window.__schedRT);
+
+    window.__schedSaved   = function (e) { upsert(e.detail && e.detail.session); };
+    window.__schedDeleted = function (e) { removeById(e.detail && e.detail.id); };
+    // Realtime from the server (this device + others): a card payload patches in
+    // place; a bare {action:'refresh'} re-pulls everything.
+    window.__schedRT = function (e) {
+        var d = e.detail || {};
+        if (d.action === 'refresh') { reloadData(); return; }
+        if (d.action === 'deleted') { removeById(d.session && d.session.id); return; }
+        if (d.session) upsert(d.session);
+    };
+
+    window.addEventListener('schedule-session-saved', window.__schedSaved);
+    window.addEventListener('schedule-session-deleted', window.__schedDeleted);
+    window.addEventListener('realtime:schedule', window.__schedRT);
+
+    // ---- Live countdown ticker: updates each "upcoming" pill every second ----
+    function tickCountdowns() {
+        if (!document.getElementById('sched-sessions')) return;   // left the schedule shell
+        if (localTodayKey() !== TODAY) {                          // crossed midnight while open
+            WEEKDAYS = buildWeekDays(); TODAY = localTodayKey();
+            renderAll(); return;
+        }
+        var now = Date.now(), rerender = false;
+        root.querySelectorAll('[data-cd]').forEach(function (el) {
+            var target = parseInt(el.getAttribute('data-cd'), 10);
+            if (now >= target) { rerender = true; return; }       // class just started
+            var v = el.querySelector('.cd-val'); if (v) v.textContent = fmtCountdown(target - now);
+        });
+        if (rerender) renderSessions();                          // flip the started card to "Live now"
+    }
+    if (window.__schedTick) clearInterval(window.__schedTick);
+    window.__schedTick = setInterval(tickCountdowns, 1000);
+
+    renderAll();
+})();
+</script>
 @endsection

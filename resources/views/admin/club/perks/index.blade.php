@@ -17,6 +17,9 @@ $perksJson = $perks->map(function($p) {
         'perk_value'  => $p->perk_value ?? '',
         'status'      => $p->status,
         'sort_order'  => $p->sort_order,
+        'translations_title_ar'       => data_get($p->translations, 'title.ar', ''),
+        'translations_description_ar' => data_get($p->translations, 'description.ar', ''),
+        'translations_badge_ar'       => data_get($p->translations, 'badge.ar', ''),
     ];
 });
 @endphp
@@ -156,10 +159,12 @@ const emptyForm = {
     icon: 'bi-gift', bg_from: '#f59e0b', bg_to: '#f97316',
     perk_type: 'code', perk_value: '',
     status: 'active', sort_order: 0,
+    translations_title_ar: '', translations_description_ar: '', translations_badge_ar: '',
 };
 
 function perksAdmin() {
     return {
+        lang:       'en',
         showModal:  false,
         isEdit:     false,
         formAction: storeUrl,

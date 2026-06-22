@@ -10,13 +10,14 @@ use App\Models\ClubInstructor;
 use App\Models\ClubPackage;
 use App\Models\Tenant;
 use App\Traits\HandlesClubAuthorization;
+use App\Traits\PersistsTranslations;
 use App\Traits\StoresBase64Images;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class ClubPackageController extends Controller
 {
-    use HandlesClubAuthorization, StoresBase64Images;
+    use HandlesClubAuthorization, PersistsTranslations, StoresBase64Images;
 
     public function packages(Tenant $club)
     {
@@ -64,8 +65,12 @@ class ClubPackageController extends Controller
 
         $package = ClubPackage::create($data);
 
+        $this->applyTranslations($package, $request);
+
         if ($request->schedules) {
-            $package->activities()->sync($this->buildSyncData($request));
+            $syncData = $this->buildSyncData($request);
+            $package->activities()->sync($syncData);
+            $this->mirrorInstructorClasses($syncData);
         }
 
         return back()->with('success', 'Package created successfully.');
@@ -101,8 +106,12 @@ class ClubPackageController extends Controller
 
         $package->update($data);
 
+        $this->applyTranslations($package, $request);
+
         if ($request->schedules) {
-            $package->activities()->sync($this->buildSyncData($request));
+            $syncData = $this->buildSyncData($request);
+            $package->activities()->sync($syncData);
+            $this->mirrorInstructorClasses($syncData);
         } else {
             $package->activities()->detach();
         }
@@ -161,5 +170,22 @@ class ClubPackageController extends Controller
         }
 
         return $syncData;
+    }
+
+    /**
+     * Mirror package-level instructor assignments into the direct "classes taught" link so
+     * the instructor form and the package builder stay in sync. Additive only — we never
+     * detach here, since an instructor may teach a class outside of this package.
+     */
+    private function mirrorInstructorClasses(array $syncData): void
+    {
+        foreach ($syncData as $activityId => $pivot) {
+            $instructorId = $pivot['instructor_id'] ?? null;
+            if (! $instructorId) {
+                continue;
+            }
+            \App\Models\ClubInstructor::find($instructorId)
+                ?->activities()->syncWithoutDetaching([$activityId]);
+        }
     }
 }

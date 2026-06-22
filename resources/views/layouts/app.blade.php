@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ ($isMobile ?? false) ? config('locales.' . app()->getLocale() . '.dir', 'ltr') : 'ltr' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -15,6 +15,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    @if(app()->getLocale() === 'ar')
+    <!-- Arabic webfont (Inter has no Arabic glyphs) -->
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    @endif
 
     <!-- Bootstrap Icons (icons only, no Bootstrap CSS) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
@@ -156,7 +160,7 @@
         .drawer-link:active { transform: scale(.98); }
         .notification-dropdown {
             width: min(320px, calc(100vw - 2rem));
-            max-height: 400px;
+            max-height: min(400px, calc(100dvh - 5rem));
             overflow-y: auto;
         }
         .notification-item {
@@ -312,7 +316,7 @@
                         @auth
                         @php
                             $recentNotifs = \App\Models\UserNotification::where('user_id', Auth::id())
-                                ->with('clubNotification.tenant')
+                                ->with(['clubNotification.tenant', 'actor', 'tenant'])
                                 ->latest()
                                 ->take(5)
                                 ->get();
@@ -338,33 +342,46 @@
                                  class="absolute right-0 mt-2 notification-dropdown bg-white rounded-xl shadow-xl ring-1 ring-black/5 border border-border/60 z-50">
                                 <div id="rt-notif-header" class="flex items-center justify-between px-4 py-3 border-b border-border">
                                     <h6 class="text-sm font-semibold mb-0">Notifications</h6>
-                                    @if($unreadCount > 0)
-                                        <button onclick="markAllNotificationsRead(this)"
-                                                class="text-xs text-primary hover:underline cursor-pointer bg-transparent border-0 p-0">
-                                            Mark all read
-                                        </button>
-                                    @endif
+                                    <div class="flex items-center gap-3">
+                                        @if($unreadCount > 0)
+                                            <button onclick="markAllNotificationsRead(this)"
+                                                    class="text-xs text-primary hover:underline cursor-pointer bg-transparent border-0 p-0">
+                                                Mark all read
+                                            </button>
+                                        @endif
+                                        @if($recentNotifs->isNotEmpty())
+                                            <button onclick="clearAllNotifications(this)"
+                                                    class="text-xs text-destructive hover:underline cursor-pointer bg-transparent border-0 p-0">
+                                                Clear all
+                                            </button>
+                                        @endif
+                                    </div>
                                 </div>
 
                                 @forelse($recentNotifs as $notif)
-                                    @php $notifUrl = $notif->clubNotification->action_url; @endphp
+                                    @php $d = $notif->display(); $notifUrl = $d['url']; @endphp
                                     <div class="notification-item cursor-pointer {{ $notif->is_read ? 'opacity-70' : '' }}"
+                                         data-notif-id="{{ $notif->id }}"
                                          onclick="markNotificationRead({{ $notif->id }}, this, @js($notifUrl))">
                                         <div class="flex items-center gap-2.5">
-                                            <span class="shrink-0 w-7 h-7 rounded-full bg-accent text-primary flex items-center justify-center">
-                                                <i class="bi bi-bell-fill text-xs"></i>
+                                            <span class="shrink-0 w-7 h-7 rounded-full bg-accent text-primary flex items-center justify-center overflow-hidden">
+                                                @if($d['avatar'])
+                                                    <img src="{{ $d['avatar'] }}" alt="" class="w-7 h-7 object-cover">
+                                                @else
+                                                    <i class="bi {{ $d['icon'] }} text-xs"></i>
+                                                @endif
                                             </span>
                                             <div class="flex-1 min-w-0">
                                                 <div class="flex items-center gap-2">
                                                     <strong class="text-[13px] leading-tight truncate {{ !$notif->is_read ? 'text-primary' : '' }}">
-                                                        {{ Str::limit($notif->clubNotification->subject, 40) }}
+                                                        {{ Str::limit($d['title'], 40) }}
                                                     </strong>
                                                     @if(!$notif->is_read)
                                                         <span class="shrink-0 w-1.5 h-1.5 rounded-full bg-primary"></span>
                                                     @endif
                                                 </div>
                                                 <p class="mb-0 text-[11px] text-muted-foreground truncate">
-                                                    {{ $notif->clubNotification->tenant->club_name ?? 'Club' }}
+                                                    {{ $d['context'] ?? 'TakeOne' }}
                                                     · {{ $notif->created_at->diffForHumans(null, true, true) }}
                                                 </p>
                                             </div>
@@ -384,46 +401,57 @@
                         </div>
                         @endauth
 
-                        <!-- Personal / Business View Switcher (Facebook-style) -->
+                        <!-- Personal / Business View Switcher (matches mobile switcher) -->
                         @if(Auth::user()->hasApprovedBusiness())
-                        @php $currentViewMode = session('view_mode', 'personal'); @endphp
+                        @php
+                            $currentViewMode = session('view_mode', 'personal');
+                            $switcherBusinessName = Auth::user()->ownedBusiness->name;
+                        @endphp
                         <div class="relative ml-2" x-data="{ open: false }">
                             <button @click="open = !open" type="button"
                                     class="flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-card text-sm font-medium text-foreground hover:bg-accent transition-colors cursor-pointer">
-                                <i class="bi {{ $currentViewMode === 'business' ? 'bi-buildings' : 'bi-person' }} text-primary"></i>
-                                <span class="hidden sm:inline">{{ $currentViewMode === 'business' ? 'Business' : 'Personal' }}</span>
-                                <i class="bi bi-chevron-down text-xs text-muted-foreground"></i>
+                                <i class="bi {{ $currentViewMode === 'business' ? 'bi-building' : 'bi-person' }} text-primary"></i>
+                                <span class="hidden sm:inline">{{ $currentViewMode === 'business' ? 'Club Management' : 'Personal View' }}</span>
+                                <i class="bi bi-chevron-down text-xs text-muted-foreground" :class="open && 'rotate-180'" style="transition:transform .2s"></i>
                             </button>
                             <div x-show="open" @click.outside="open = false" x-cloak
                                  x-transition:enter="transition ease-out duration-100"
                                  x-transition:enter-start="opacity-0 scale-95"
                                  x-transition:enter-end="opacity-100 scale-100"
-                                 class="absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-xl ring-1 ring-black/5 border border-border/60 z-50 p-1">
+                                 class="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl ring-1 ring-black/5 border border-border/60 z-50 p-1">
                                 <p class="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Switch view</p>
-                                <form action="{{ route('view.switch') }}" method="POST">
-                                    @csrf
-                                    <input type="hidden" name="mode" value="personal">
-                                    <button type="submit" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent transition-colors text-left {{ $currentViewMode === 'personal' ? 'bg-accent/60' : '' }}">
+
+                                {{-- Personal (always first) --}}
+                                @if($currentViewMode === 'personal')
+                                    <div class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-accent/60">
                                         <span class="w-8 h-8 rounded-full bg-muted flex items-center justify-center"><i class="bi bi-person text-foreground"></i></span>
-                                        <span class="flex-1">
-                                            <span class="block text-sm font-medium text-foreground">Personal</span>
-                                            <span class="block text-xs text-muted-foreground">Your member profile</span>
-                                        </span>
-                                        @if($currentViewMode === 'personal')<i class="bi bi-check-lg text-primary"></i>@endif
-                                    </button>
-                                </form>
-                                <form action="{{ route('view.switch') }}" method="POST">
-                                    @csrf
-                                    <input type="hidden" name="mode" value="business">
-                                    <button type="submit" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent transition-colors text-left {{ $currentViewMode === 'business' ? 'bg-accent/60' : '' }}">
-                                        <span class="w-8 h-8 rounded-full bg-accent flex items-center justify-center"><i class="bi bi-buildings text-primary"></i></span>
-                                        <span class="flex-1">
-                                            <span class="block text-sm font-medium text-foreground">Business</span>
-                                            <span class="block text-xs text-muted-foreground">{{ Auth::user()->ownedBusiness->name }}</span>
-                                        </span>
-                                        @if($currentViewMode === 'business')<i class="bi bi-check-lg text-primary"></i>@endif
-                                    </button>
-                                </form>
+                                        <span class="flex-1 text-left"><span class="block text-sm font-medium text-foreground">Personal View</span><span class="block text-xs text-muted-foreground">My profile, bookings, payments</span></span>
+                                        <i class="bi bi-check-lg text-primary"></i>
+                                    </div>
+                                @else
+                                    <form action="{{ route('view.switch') }}" method="POST">@csrf<input type="hidden" name="mode" value="personal">
+                                        <button type="submit" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent transition-colors text-left">
+                                            <span class="w-8 h-8 rounded-full bg-muted flex items-center justify-center"><i class="bi bi-person text-foreground"></i></span>
+                                            <span class="flex-1"><span class="block text-sm font-medium text-foreground">Personal View</span><span class="block text-xs text-muted-foreground">My profile, bookings, payments</span></span>
+                                        </button>
+                                    </form>
+                                @endif
+
+                                {{-- Club Management (always second) --}}
+                                @if($currentViewMode === 'business')
+                                    <div class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-accent/60">
+                                        <span class="w-8 h-8 rounded-full bg-accent flex items-center justify-center"><i class="bi bi-building text-primary"></i></span>
+                                        <span class="flex-1 text-left"><span class="block text-sm font-medium text-foreground">Club Management</span><span class="block text-xs text-muted-foreground truncate">{{ $switcherBusinessName }}</span></span>
+                                        <i class="bi bi-check-lg text-primary"></i>
+                                    </div>
+                                @else
+                                    <form action="{{ route('view.switch') }}" method="POST">@csrf<input type="hidden" name="mode" value="business">
+                                        <button type="submit" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent transition-colors text-left">
+                                            <span class="w-8 h-8 rounded-full bg-accent flex items-center justify-center"><i class="bi bi-building text-primary"></i></span>
+                                            <span class="flex-1"><span class="block text-sm font-medium text-foreground">Club Management</span><span class="block text-xs text-muted-foreground truncate">{{ $switcherBusinessName }}</span></span>
+                                        </button>
+                                    </form>
+                                @endif
                             </div>
                         </div>
                         @endif
@@ -740,7 +768,11 @@
         function toastManager() {
             return {
                 toasts: [],
+                // Stay silent on mobile while a super-admin is impersonating —
+                // toasts (incl. the "viewing as …" flash) are distracting there.
+                suppressed: @json(($isMobile ?? false) && session()->has('impersonate.original_id')),
                 init() {
+                    if (this.suppressed) return;
                     // Surface ALL server-side flash + validation messages as toasts —
                     // never as inline page banners (banners removed from individual views).
                     @if(session('success'))
@@ -761,6 +793,13 @@
                     @if(session('message') && is_string(session('message')))
                         this.addToast('info', @json(session('message')));
                     @endif
+
+                    // Single rendering path: every programmatic toast (window.showToast
+                    // and the legacy Toast.* API) routes through this one container.
+                    window.addEventListener('show-toast', (e) => {
+                        const d = e.detail || {};
+                        this.addToast(d.type || 'info', d.message ?? '', d.duration ?? 3000);
+                    });
                 },
                 addToast(type, message, duration = 3000) {
                     const id = Date.now();
@@ -781,10 +820,23 @@
             }
         }
 
-        // Global toast function for programmatic use
-        window.showToast = function(type, message, duration = 3000) {
-            const event = new CustomEvent('show-toast', { detail: { type, message, duration } });
-            document.dispatchEvent(event);
+        // Global toast — the ONLY toast renderer (routes to toastManager above).
+        // Tolerates every signature used around the app:
+        //   showToast('success', 'Message')
+        //   showToast('success', 'Title', 'Message')
+        //   showToast('Message', 'error')           // reversed
+        window.showToast = function (a, b, c, duration = 3000) {
+            const TYPES = ['success', 'error', 'warning', 'info'];
+            let type, message;
+            if (TYPES.includes(a)) {
+                type = a;
+                message = (c !== undefined && c !== null && c !== '') ? (b + ' — ' + c) : (b ?? '');
+            } else if (TYPES.includes(b)) {
+                type = b; message = a;
+            } else {
+                type = 'info'; message = a ?? '';
+            }
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: { type, message, duration } }));
         };
 
         @auth
@@ -1002,7 +1054,9 @@
     @stack('modals')
 
     <script>
-        // Soft two-tone chime synthesized on the fly — no audio asset needed.
+        // Clear, attention-grabbing two-tone chime synthesized on the fly — no
+        // audio asset needed. Brighter waveform + louder peak so it's easy to
+        // hear (a master gain keeps the two oscillators from clipping).
         function playNotificationChime() {
             try {
                 const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -1010,20 +1064,23 @@
                 const ctx = new Ctx();
                 if (ctx.state === 'suspended') ctx.resume();
                 const now = ctx.currentTime;
+                const master = ctx.createGain();
+                master.gain.value = 0.9;
+                master.connect(ctx.destination);
                 [880, 1174.66].forEach((freq, i) => {
                     const osc = ctx.createOscillator();
                     const gain = ctx.createGain();
-                    osc.type = 'sine';
+                    osc.type = 'triangle';
                     osc.frequency.value = freq;
                     const start = now + i * 0.13;
                     gain.gain.setValueAtTime(0.0001, start);
-                    gain.gain.exponentialRampToValueAtTime(0.07, start + 0.02);
-                    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.5);
-                    osc.connect(gain).connect(ctx.destination);
+                    gain.gain.exponentialRampToValueAtTime(0.38, start + 0.015);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.6);
+                    osc.connect(gain).connect(master);
                     osc.start(start);
-                    osc.stop(start + 0.55);
+                    osc.stop(start + 0.65);
                 });
-                setTimeout(() => ctx.close(), 1500);
+                setTimeout(() => ctx.close(), 1600);
             } catch (e) { /* audio unavailable — fail silently */ }
         }
 
@@ -1093,17 +1150,22 @@
             dropdown.querySelector('.bi-bell-slash')?.closest('div')?.remove();
 
             const subject  = (n.subject || 'Notification').slice(0, 40);
-            const club     = n.club_name || 'Club';
+            const club     = n.context || n.club_name || 'Club';
             const when     = n.created_at_human || 'just now';
             const url      = n.action_url || null;
+            const icon     = n.icon || 'bi-bell-fill';
+            const avatarHtml = n.avatar
+                ? '<img src="' + String(n.avatar).replace(/"/g, '&quot;') + '" alt="" class="w-7 h-7 object-cover">'
+                : '<i class="bi ' + String(icon).replace(/[^a-z0-9-]/gi, '') + ' text-xs"></i>';
 
             const item = document.createElement('div');
             item.className = 'notification-item cursor-pointer';
+            item.setAttribute('data-notif-id', Number(n.id));
             item.setAttribute('onclick', `markNotificationRead(${Number(n.id)}, this, ${url ? JSON.stringify(url) : 'null'})`);
             item.innerHTML =
                 '<div class="flex items-center gap-2.5">' +
-                    '<span class="shrink-0 w-7 h-7 rounded-full bg-accent text-primary flex items-center justify-center">' +
-                        '<i class="bi bi-bell-fill text-xs"></i></span>' +
+                    '<span class="shrink-0 w-7 h-7 rounded-full bg-accent text-primary flex items-center justify-center overflow-hidden">' +
+                        avatarHtml + '</span>' +
                     '<div class="flex-1 min-w-0">' +
                         '<div class="flex items-center gap-2">' +
                             '<strong class="text-[13px] leading-tight truncate text-primary"></strong>' +
@@ -1133,8 +1195,32 @@
             }
         }
 
+        // Drop notification entries the server retracted (e.g. the author
+        // deleted a post), patching the badge count for any unread ones.
+        function rtRemoveNotifications(ids) {
+            const dropdown = document.getElementById('rt-notif-dropdown');
+            if (!dropdown || !Array.isArray(ids)) return;
+            let unreadRemoved = 0;
+            ids.forEach((id) => {
+                const el = dropdown.querySelector(`.notification-item[data-notif-id="${Number(id)}"]`);
+                if (!el) return;
+                // Unread items still show the little primary dot.
+                if (el.querySelector('.bg-primary')) unreadRemoved++;
+                el.remove();
+            });
+            if (unreadRemoved) {
+                const badge = document.querySelector('.notification-badge:not(.chat-badge)');
+                if (badge) {
+                    const next = (parseInt(badge.textContent) || 0) - unreadRemoved;
+                    if (next > 0) badge.textContent = next > 99 ? '99+' : next;
+                    else badge.remove();
+                }
+            }
+        }
+
         window.addEventListener('realtime:notification', (e) => {
             const n = e.detail || {};
+            if (n.action === 'remove') { rtRemoveNotifications((n.ids || []).map(Number)); return; }
             rtPrependNotification(n);
             rtBumpBadge();
             rtRingBell();
@@ -1151,14 +1237,14 @@
                 const now = ctx.currentTime;
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
-                osc.type = 'sine';
+                osc.type = 'triangle';
                 osc.frequency.setValueAtTime(660, now);
                 osc.frequency.exponentialRampToValueAtTime(990, now + 0.08);
                 gain.gain.setValueAtTime(0.0001, now);
-                gain.gain.exponentialRampToValueAtTime(0.05, now + 0.02);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+                gain.gain.exponentialRampToValueAtTime(0.24, now + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
                 osc.connect(gain).connect(ctx.destination);
-                osc.start(now); osc.stop(now + 0.32);
+                osc.start(now); osc.stop(now + 0.34);
                 setTimeout(() => ctx.close(), 800);
             } catch (e) { /* audio unavailable — ignore */ }
         };
@@ -1212,16 +1298,13 @@
         window.addEventListener('realtime:message', (e) => {
             if (window.location.pathname.startsWith('/messages')) return;
             const m = e.detail || {};
-            // Club-room messages are handled by the Club Chat page itself (its own
-            // tone + unread); never surface them through the DM toast/badge.
-            if (m.club_room) return;
             // Edits and deletes patch open threads silently — never toast, bump
             // the badge, or play a sound for them.
             if (m.action === 'edit' || m.action === 'delete') return;
             // Skip the toast/badge/sound when the user is actively reading this
             // conversation in an expanded mobile chat head — it handles it itself.
             if (typeof window.__chatHeadActive === 'function' && window.__chatHeadActive(m.conversation_id)) return;
-            const who = m.from_name || m.club_name || 'New message';
+            const who = m.from_name || 'New message';
             const body = (m.body || '').slice(0, 80);
             if (window.showToast) window.showToast('info', who + ': ' + body);
             // The top-bar chat icon lists Messenger DMs only (its dropdown loads
@@ -1400,6 +1483,28 @@
                 });
                 document.querySelector('.notification-badge')?.remove();
                 btn.remove();
+            });
+        }
+
+        function clearAllNotifications(btn) {
+            fetch('{{ route('notifications.clear') }}', {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                    'Accept': 'application/json',
+                },
+            }).then(() => {
+                document.querySelectorAll('.notification-item').forEach(el => el.remove());
+                document.querySelector('.notification-badge')?.remove();
+                btn.remove();
+                document.querySelector('#rt-notif-header button[onclick^="markAll"]')?.remove();
+                const list = document.getElementById('rt-notif-dropdown');
+                if (list && !list.querySelector('.notification-empty')) {
+                    const empty = document.createElement('div');
+                    empty.className = 'notification-empty px-4 py-8 text-center';
+                    empty.innerHTML = '<i class="bi bi-bell-slash text-2xl text-gray-300 block mb-2"></i><p class="text-sm text-muted-foreground mb-0">No notifications yet</p>';
+                    list.appendChild(empty);
+                }
             });
         }
 

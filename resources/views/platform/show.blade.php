@@ -72,10 +72,10 @@
 
         {{-- Banner Bottom: Club Info + Stats --}}
         <div class="banner-bottom">
-            <h1 class="text-2xl md:text-4xl font-extrabold text-white mb-2 uppercase">{{ $club->club_name }}</h1>
+            <h1 class="text-2xl md:text-4xl font-extrabold text-white mb-2 uppercase">{{ $club->tr('club_name') }}</h1>
             <p class="text-white/50 text-lg">
-                @if($club->address)
-                <i class="bi bi-geo-alt-fill mr-2 text-primary"></i>{{ $club->address }}
+                @if($club->tr('address'))
+                <i class="bi bi-geo-alt-fill mr-2 text-primary"></i>{{ $club->tr('address') }}
                 @endif
                 @if($club->established_date)
                 <i class="bi bi-fire ml-3 mr-2 text-primary"></i>
@@ -171,10 +171,10 @@
                              data-auth="{{ Auth::check() ? '1' : '0' }}"
                              data-login-url="{{ route('login') }}"
                              style="cursor:pointer;">
-                            <span class="perk-badge">{{ $perk->badge }}</span>
+                            <span class="perk-badge">{{ $perk->tr('badge') }}</span>
                             @if($perk->image_path)
                                 <img src="{{ asset('storage/' . $perk->image_path) }}"
-                                     class="w-full h-full object-cover absolute inset-0" alt="{{ $perk->title }}">
+                                     class="w-full h-full object-cover absolute inset-0" alt="{{ $perk->tr('title') }}">
                             @else
                                 <div class="w-full h-full flex items-center justify-center"
                                      style="background: linear-gradient(135deg, {{ $perk->bg_from }}, {{ $perk->bg_to }});">
@@ -182,9 +182,9 @@
                                 </div>
                             @endif
                             <div class="perk-overlay">
-                                <h5 class="text-white font-bold mb-0">{{ $perk->title }}</h5>
-                                @if($perk->description)
-                                <p class="text-white/50 text-sm mb-0">{{ $perk->description }}</p>
+                                <h5 class="text-white font-bold mb-0">{{ $perk->tr('title') }}</h5>
+                                @if($perk->tr('description'))
+                                <p class="text-white/50 text-sm mb-0">{{ $perk->tr('description') }}</p>
                                 @endif
                             </div>
                         </div>
@@ -232,7 +232,7 @@
                                     <span class="text-muted-foreground">{{ number_format($rating, 1) }} &middot; {{ $instructor->reviews->count() }} reviews</span>
                                 </div>
                                 @if($instructor->role && $instructor->role !== 'Instructor')
-                                <p class="text-muted-foreground text-sm mb-0">{{ $instructor->role }}</p>
+                                <p class="text-muted-foreground text-sm mb-0">{{ $instructor->tr('role') }}</p>
                                 @elseif($trainerUser->bio)
                                 <p class="text-muted-foreground text-sm mb-0">{{ Str::limit($trainerUser->bio, 60) }}</p>
                                 @endif
@@ -260,7 +260,7 @@
                             <div>
                                 @if(count($facImages))
                                 <div class="fac-slideshow" data-images="{{ json_encode($facImages) }}">
-                                    <img src="{{ $facImages[0] }}" class="fac-preview" alt="{{ $facility->name }}">
+                                    <img src="{{ $facImages[0] }}" class="fac-preview" alt="{{ $facility->tr('name') }}">
                                     @if(count($facImages) > 1)
                                     <div class="fac-dots">
                                         @foreach($facImages as $i => $_)
@@ -274,7 +274,7 @@
                                     <i class="bi bi-building text-white text-3xl"></i>
                                 </div>
                                 @endif
-                                <h6 class="font-bold mb-1 mt-2">{{ $facility->name }}</h6>
+                                <h6 class="font-bold mb-1 mt-2">{{ $facility->tr('name') }}</h6>
                                 @if($facility->description)
                                 <p class="text-muted-foreground text-xs">{{ Str::limit($facility->description, 50) }}</p>
                                 @endif
@@ -293,7 +293,12 @@
                 {{-- Achievements --}}
                 @if($achievements->isNotEmpty())
                 @php
-                $achievementsJson = $achievements->map(function($a) {
+                // Resolve linked-athlete user ids -> uuids for member-profile links (single query).
+                $achAthleteIds = $achievements->flatMap(fn ($a) => collect($a->athletes ?? [])->pluck('user_id'))->filter()->unique()->values();
+                $achAthleteUuidMap = $achAthleteIds->isNotEmpty()
+                    ? \App\Models\User::whereIn('id', $achAthleteIds)->pluck('uuid', 'id')->toArray()
+                    : [];
+                $achievementsJson = $achievements->map(function($a) use ($achAthleteUuidMap) {
                     $combined = array_values(array_filter(array_merge(
                         $a->image_path ? [$a->image_path] : [],
                         $a->images ?? []
@@ -305,18 +310,20 @@
                     if ($a->medals_bronze) $medals[] = $a->medals_bronze . ' Bronze';
                     return [
                         'id'           => $a->id,
-                        'title'        => $a->title,
-                        'short_title'  => $a->short_title ?: $a->title,
+                        'title'        => $a->tr('title'),
+                        'short_title'  => $a->tr('short_title') ?: $a->tr('title'),
                         'type_icon'    => $a->type_icon ?: '🏆',
-                        'description'  => $a->description ?? '',
-                        'location'     => $a->location ?? '',
+                        'description'  => $a->tr('description') ?? '',
+                        'location'     => $a->tr('location') ?? '',
                         'date_label'   => $a->date_label ?? ($a->achievement_date ? $a->achievement_date->format('M Y') : ''),
                         'category'     => $a->category ?? '',
                         'medal_summary'=> implode(' • ', $medals),
                         'bouts_count'  => $a->bouts_count ?? 0,
                         'wins_count'   => $a->wins_count ?? 0,
                         'chips'        => $a->chips ?? [],
-                        'athletes'     => $a->athletes ?? [],
+                        'athletes'     => collect($a->athletes ?? [])->map(fn ($x) => is_array($x)
+                                              ? $x + ['profile_url' => (!empty($x['user_id']) && isset($achAthleteUuidMap[$x['user_id']])) ? route('member.show', $achAthleteUuidMap[$x['user_id']]) : null]
+                                              : ['name' => (string) $x, 'role' => '', 'profile_url' => null])->values()->all(),
                         'tag'          => $a->tag,
                         'tag_icon'     => $a->tag_icon,
                         'image_url'    => $combinedUrls[0] ?? null,
@@ -358,7 +365,7 @@
                             <div class="achievement-media" style="position:relative;height:180px;overflow:hidden;"
                                  @if(count($achImages) > 1) data-images="{{ json_encode($achImages) }}" @endif>
                                 @if(count($achImages))
-                                    <img src="{{ $achImages[0] }}" class="ach-preview" alt="{{ $achievement->title }}">
+                                    <img src="{{ $achImages[0] }}" class="ach-preview" alt="{{ $achievement->tr('title') }}">
                                     @if(count($achImages) > 1)
                                     <div class="ach-dots">
                                         @foreach($achImages as $j => $_)
@@ -381,11 +388,11 @@
                             <div class="achievement-body" style="padding:12px 14px 14px;color:#111827;background:#fff;">
                                 <div style="font-size:1rem;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:6px;">
                                     <span style="width:18px;height:18px;border-radius:6px;background:var(--color-primary);display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;">{{ $achievement->type_icon ?: '🏆' }}</span>
-                                    {{ $achievement->short_title ?: $achievement->title }}
+                                    {{ $achievement->tr('short_title') ?: $achievement->tr('title') }}
                                 </div>
-                                @if($achievement->location || $achievement->date_label)
+                                @if($achievement->tr('location') || $achievement->date_label)
                                 <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:.78rem;color:var(--color-muted-foreground, #9ca3af);margin-bottom:8px;">
-                                    @if($achievement->location)<span style="display:inline-flex;align-items:center;gap:4px;">📍 {{ $achievement->location }}</span>@endif
+                                    @if($achievement->tr('location'))<span style="display:inline-flex;align-items:center;gap:4px;">📍 {{ $achievement->tr('location') }}</span>@endif
                                     @if($achievement->date_label)<span style="display:inline-flex;align-items:center;gap:4px;">📅 {{ $achievement->date_label }}</span>@endif
                                 </div>
                                 @endif
@@ -510,10 +517,10 @@
                                     <div class="ach-detail-section-label">Athletes</div>
                                     <div class="ach-detail-athlete-grid">
                                         <template x-for="ath in achDetail.athletes" :key="ath.name">
-                                            <div class="ach-detail-athlete-card">
+                                            <a class="ach-detail-athlete-card" :href="ath.profile_url" :style="ath.profile_url ? 'cursor:pointer' : 'cursor:default'" style="text-decoration:none;color:inherit;display:block;">
                                                 <div class="ach-detail-athlete-name" x-text="ath.name"></div>
                                                 <div class="ach-detail-athlete-role" x-text="ath.role"></div>
-                                            </div>
+                                            </a>
                                         </template>
                                     </div>
                                 </section>
@@ -551,8 +558,10 @@
                 @if($club->packages->count() > 0)
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     @foreach($club->packages as $package)
+                    <div class="{{ $package->is_applicable ? '' : 'opacity-60' }}">
                     <x-package-card :package="$package" :club="$club" :instructors-map="$instructorsMap">
                         <x-slot:footer>
+                            @if($package->is_applicable)
                             <button
                                 onclick="openSelectPackageModal({{ $package->id }})"
                                 class="w-full bg-primary text-white font-bold py-2 shadow-sm rounded-xl hover:bg-primary/90 transition-colors">
@@ -561,8 +570,16 @@
                             @if(($club->enrollment_fee ?? 0) > 0)
                             <p class="text-xs text-center text-muted-foreground mt-1.5">+ {{ $club->currency ?? 'BHD' }} {{ number_format($club->enrollment_fee, 2) }} enrollment fee (first-time)</p>
                             @endif
+                            @else
+                            <button disabled
+                                class="w-full bg-gray-100 text-gray-400 font-bold py-2 rounded-xl cursor-not-allowed flex items-center justify-center gap-1.5">
+                                <i class="bi bi-lock"></i> Not eligible
+                            </button>
+                            <p class="text-xs text-center text-muted-foreground mt-1.5">No one in your family fits this package’s age/gender.</p>
+                            @endif
                         </x-slot:footer>
                     </x-package-card>
+                    </div>
                     @endforeach
                 </div>
                 @else
@@ -1451,26 +1468,6 @@
         </div>
     </div>
 </div>
-
-{{-- Floating Join CTA --}}
-@guest
-<a href="{{ route('register') }}?intended={{ urlencode(url()->current()) }}"
-   class="flex items-center gap-2 font-semibold text-sm text-white no-underline"
-   style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:999;padding:0.75rem 1.25rem;border-radius:9999px;background:var(--color-primary);box-shadow:0 4px 24px rgba(0,0,0,0.18);transition:transform 0.15s,box-shadow 0.15s;"
-   onmouseover="this.style.transform='scale(1.05)';this.style.boxShadow='0 8px 32px rgba(0,0,0,0.22)'"
-   onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 24px rgba(0,0,0,0.18)'">
-    <i class="bi bi-person-plus-fill"></i> Join This Club
-</a>
-@endguest
-@auth
-<button onclick="switchToPackagesTab()"
-        class="flex items-center gap-2 font-semibold text-sm text-white border-0 cursor-pointer"
-        style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:999;padding:0.75rem 1.25rem;border-radius:9999px;background:var(--color-primary);box-shadow:0 4px 24px rgba(0,0,0,0.18);transition:transform 0.15s,box-shadow 0.15s;"
-        onmouseover="this.style.transform='scale(1.05)';this.style.boxShadow='0 8px 32px rgba(0,0,0,0.22)'"
-        onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 24px rgba(0,0,0,0.18)'">
-    <i class="bi bi-person-plus-fill"></i> Join This Club
-</button>
-@endauth
 
 {{-- Package-select modal (package-first flow) --}}
 <div id="selectPackageModalWrap" x-data="selectPackageApp()" x-cloak>

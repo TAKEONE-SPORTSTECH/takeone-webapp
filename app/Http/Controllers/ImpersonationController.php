@@ -40,7 +40,8 @@ class ImpersonationController extends Controller
         session(['impersonate.original_id' => $admin->id]);
         session()->put('two_factor.verified', true);
 
-        return redirect()->route('clubs.explore')
+        // Land on the impersonated user's own wall / home feed.
+        return redirect()->route('me.home')
             ->with('success', 'You are now viewing the platform as ' . ($user->full_name ?? $user->name) . '.');
     }
 
@@ -65,7 +66,7 @@ class ImpersonationController extends Controller
         Auth::login($admin);
         session()->put('two_factor.verified', true);
 
-        return redirect()->route('admin.platform.members')
+        return redirect()->route('admin.platform.index')
             ->with('success', 'Returned to your admin account.');
     }
 }

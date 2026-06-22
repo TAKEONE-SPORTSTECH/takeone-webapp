@@ -18,12 +18,14 @@ class ClubTimelinePost extends Model
         'body',
         'category',
         'image_path',
+        'cover',
         'posted_at',
         'status',
     ];
 
     protected $casts = [
         'posted_at' => 'datetime',
+        'cover'     => 'array',
     ];
 
     public function tenant(): BelongsTo

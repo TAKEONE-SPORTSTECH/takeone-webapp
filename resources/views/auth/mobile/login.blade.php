@@ -99,18 +99,18 @@
         background: #fff;
         box-shadow: 0 0 0 4px hsl(var(--p) / .14);
     }
-    .ml-field .ml-ico { position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
+    .ml-field .ml-ico { position: absolute; left: 15px; top: calc(50% + 6px); transform: translateY(-50%);
         font-size: 18px; color: hsl(250 15% 60%); transition: color .2s; pointer-events: none; }
     .ml-field input:focus ~ .ml-ico { color: hsl(var(--p)); }
     .ml-field label {
-        position: absolute; left: 46px; top: 50%; transform: translateY(-50%);
+        position: absolute; left: 46px; top: calc(50% + 6px); transform: translateY(-50%);
         font-size: 16px; color: hsl(250 12% 55%); pointer-events: none;
         transition: all .18s ease; }
     .ml-field input:focus + label,
     .ml-field input:not(:placeholder-shown) + label {
         top: 13px; transform: translateY(0); font-size: 11px; font-weight: 600; color: hsl(var(--p));
         letter-spacing: .02em; }
-    .ml-eye { position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    .ml-eye { position: absolute; right: 12px; top: calc(50% + 6px); transform: translateY(-50%);
         width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
         color: hsl(250 12% 55%); background: none; border: 0; cursor: pointer; font-size: 18px; }
 
@@ -165,10 +165,10 @@
         </div>
         <div class="ml-up ml-wordmark" style="animation-delay:.14s; margin-top:18px">TAKEONE</div>
         <h1 class="ml-up" style="animation-delay:.22s; color:#fff; font-size:30px; font-weight:800; letter-spacing:-.02em; margin-top:14px; line-height:1.1">
-            Welcome back
+            {{ __('auth.welcome_back') }}
         </h1>
         <p class="ml-up" style="animation-delay:.3s; color:rgba(255,255,255,.78); font-size:15px; margin-top:8px">
-            Your club is waiting. Let's go.
+            {{ __('auth.club_waiting') }}
         </p>
     </div>
 
@@ -183,7 +183,7 @@
             <div class="ml-field">
                 <input id="email" type="text" name="email" value="{{ old('email') }}"
                        placeholder=" " required autocomplete="username">
-                <label for="email">Email or phone</label>
+                <label for="email">{{ __('auth.email_or_phone') }}</label>
                 <i class="bi bi-person ml-ico"></i>
             </div>
             @error('email')
@@ -196,10 +196,10 @@
             <div class="ml-field">
                 <input id="password" :type="reveal ? 'text' : 'password'" name="password"
                        placeholder=" " required autocomplete="current-password" style="padding-right:50px">
-                <label for="password">Password</label>
+                <label for="password">{{ __('auth.password') }}</label>
                 <i class="bi bi-shield-lock ml-ico"></i>
                 <button type="button" class="ml-eye" @click="reveal = !reveal"
-                        :aria-label="reveal ? 'Hide password' : 'Show password'">
+                        :aria-label="reveal ? @js(__('auth.hide_password')) : @js(__('auth.show_password'))">
                     <i class="bi" :class="reveal ? 'bi-eye-slash' : 'bi-eye'"></i>
                 </button>
             </div>
@@ -214,16 +214,16 @@
                 <label class="flex items-center gap-2" for="remember" style="font-size:13.5px; color:#5b5470; cursor:pointer">
                     <input type="checkbox" id="remember" name="remember" {{ old('remember') ? 'checked' : '' }}
                            style="width:17px;height:17px;border-radius:5px;accent-color:hsl(250 65% 60%)">
-                    Remember me
+                    {{ __('auth.remember_me') }}
                 </label>
                 @if (Route::has('password.request'))
-                    <a href="{{ route('password.request') }}" style="font-size:13.5px; font-weight:600; color:hsl(250 65% 58%)">Forgot password?</a>
+                    <a href="{{ route('password.request') }}" style="font-size:13.5px; font-weight:600; color:hsl(250 65% 58%)">{{ __('auth.forgot_password') }}</a>
                 @endif
             </div>
 
             {{-- CTA --}}
             <button type="submit" class="ml-cta">
-                <span>Sign In</span><i class="bi bi-arrow-right-short" style="font-size:22px"></i>
+                <span>{{ __('auth.sign_in') }}</span><i class="bi bi-arrow-right-short" style="font-size:22px"></i>
             </button>
         </form>
 
@@ -233,13 +233,13 @@
                     background:#fffbeb; border:1px solid #fde68a; border-radius:14px; font-size:13px; color:#92400e">
             <i class="bi bi-envelope-exclamation" style="margin-top:2px"></i>
             <div style="flex:1">
-                <p style="font-weight:600; margin-bottom:4px">Email not verified</p>
-                <p style="color:#b45309; margin-bottom:8px">Didn't receive the email or it expired?</p>
+                <p style="font-weight:600; margin-bottom:4px">{{ __('auth.email_not_verified') }}</p>
+                <p style="color:#b45309; margin-bottom:8px">{{ __('auth.didnt_receive') }}</p>
                 <form method="POST" action="{{ route('verification.resend.public') }}">
                     @csrf
                     <input type="hidden" name="email" value="{{ session('unverified_email') }}">
                     <button type="submit" style="text-decoration:underline; font-weight:600; font-size:12px; color:#92400e">
-                        Resend verification email
+                        {{ __('auth.resend_verification') }}
                     </button>
                 </form>
             </div>
@@ -248,8 +248,8 @@
 
         {{-- Register --}}
         <p style="text-align:center; margin-top:22px; font-size:14px; color:#6b6480">
-            New to TAKEONE?
-            <a href="{{ route('register') }}" style="font-weight:700; color:hsl(250 65% 58%)">Create account</a>
+            {{ __('auth.new_to_takeone') }}
+            <a href="{{ route('register') }}" style="font-weight:700; color:hsl(250 65% 58%)">{{ __('auth.create_account') }}</a>
         </p>
     </div>
 </div>

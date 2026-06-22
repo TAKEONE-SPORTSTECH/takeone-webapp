@@ -3,49 +3,21 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Conversation extends Model
 {
-    protected $fillable = ['type', 'tenant_id', 'dm_key', 'last_message_at'];
+    protected $fillable = ['type', 'dm_key', 'last_message_at'];
 
     protected $casts = ['last_message_at' => 'datetime'];
 
     public function participants(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'conversation_user')
-            ->withPivot('last_read_at', 'cleared_at', 'muted', 'banned_until', 'blocked', 'left_at')
+            ->withPivot('last_read_at', 'cleared_at')
             ->withTimestamps();
-    }
-
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class);
-    }
-
-    /** The single group room for a club; participants synced to its members. */
-    public static function findOrCreateClubRoom(Tenant $club): self
-    {
-        $room = static::firstOrCreate(
-            ['type' => 'club', 'tenant_id' => $club->id],
-            ['last_message_at' => now()],
-        );
-        $room->syncClubMembers($club);
-
-        return $room;
-    }
-
-    /** Add any club members not yet in the room (never re-adds those who left/blocked). */
-    public function syncClubMembers(Tenant $club): void
-    {
-        $existing = $this->participants()->pluck('users.id')->all();
-        $toAdd    = $club->members()->pluck('users.id')->diff($existing)->all();
-        if ($toAdd) {
-            $this->participants()->attach($toAdd);
-        }
     }
 
     public function messages(): HasMany

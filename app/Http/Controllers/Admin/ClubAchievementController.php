@@ -7,16 +7,19 @@ use App\Http\Requests\Admin\AchievementRequest;
 use App\Models\ClubAchievement;
 use App\Models\Tenant;
 use App\Traits\HandlesClubAuthorization;
+use App\Traits\PersistsTranslations;
 use Illuminate\Support\Facades\Storage;
 
 class ClubAchievementController extends Controller
 {
     use HandlesClubAuthorization;
+    use PersistsTranslations;
 
     public function achievements(Tenant $club)
     {
         $this->authorizeClub($club);
         $achievements = ClubAchievement::where('tenant_id', $club->id)->orderBy('sort_order')->orderBy('id')->get();
+
         return view(\App\Support\ClubView::pick('achievements'), compact('club', 'achievements'));
     }
 
@@ -27,38 +30,34 @@ class ClubAchievementController extends Controller
         $images = $this->saveAchievementBase64Images($request->input('achievement_images_base64', []), $club->id);
 
         try {
-            $chips    = $request->chips    ? json_decode($request->chips, true, 512, JSON_THROW_ON_ERROR)    : null;
             $athletes = $request->athletes ? json_decode($request->athletes, true, 512, JSON_THROW_ON_ERROR) : null;
         } catch (\JsonException) {
-            return back()->withErrors(['chips' => 'Invalid data format.']);
+            return back()->withErrors(['athletes' => 'Invalid data format.']);
         }
 
-        ClubAchievement::create([
+        $achievement = ClubAchievement::create([
             'tenant_id'        => $club->id,
             'title'            => $request->title,
-            'short_title'      => $request->short_title,
+            'short_title'      => null,
             'type_icon'        => $request->type_icon,
             'description'      => $request->description,
             'location'         => $request->location,
             'achievement_date' => $request->achievement_date,
-            'date_label'       => $request->date_label,
-            'medals_gold'      => $request->medals_gold   ?? 0,
-            'medals_silver'    => $request->medals_silver ?? 0,
-            'medals_bronze'    => $request->medals_bronze ?? 0,
-            'bouts_count'      => $request->bouts_count   ?? 0,
-            'wins_count'       => $request->wins_count    ?? 0,
+            'date_label'       => $this->deriveDateLabel($request->achievement_date),
             'category'         => $request->category,
-            'chips'            => $chips,
+            'chips'            => null,
             'athletes'         => $athletes,
-            'tag'              => $request->tag,
-            'tag_icon'         => $request->tag_icon ?: 'bi-trophy',
+            'tag'              => $request->tag ?: 'Achievement',
+            'tag_icon'         => 'bi-trophy',
             'image_path'       => null,
             'images'           => $images ?: null,
-            'bg_from'          => $request->bg_from ?: '#f59e0b',
-            'bg_to'            => $request->bg_to   ?: '#f97316',
+            'bg_from'          => '#f59e0b',
+            'bg_to'            => '#f97316',
             'status'           => $request->status,
             'sort_order'       => $request->sort_order ?? 0,
-        ]);
+        ] + $this->deriveMedals($athletes));
+
+        $this->applyTranslations($achievement, $request);
 
         return back()->with('success', 'Achievement created successfully.');
     }
@@ -68,20 +67,24 @@ class ClubAchievementController extends Controller
         $this->authorizeClub($club);
         abort_if($achievement->tenant_id !== $club->id, 403);
 
-        $data = $request->only([
-            'title', 'short_title', 'type_icon', 'description',
-            'location', 'achievement_date', 'date_label',
-            'medals_gold', 'medals_silver', 'medals_bronze',
-            'bouts_count', 'wins_count', 'category',
-            'tag', 'tag_icon', 'bg_from', 'bg_to', 'status', 'sort_order',
-        ]);
         try {
-            $data['chips']    = $request->chips    ? json_decode($request->chips, true, 512, JSON_THROW_ON_ERROR)    : null;
-            $data['athletes'] = $request->athletes ? json_decode($request->athletes, true, 512, JSON_THROW_ON_ERROR) : null;
-            $kept             = json_decode($request->input('keep_extra_images', '[]'), true, 512, JSON_THROW_ON_ERROR);
+            $athletes = $request->athletes ? json_decode($request->athletes, true, 512, JSON_THROW_ON_ERROR) : null;
+            $kept     = json_decode($request->input('keep_extra_images', '[]'), true, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
-            return back()->withErrors(['chips' => 'Invalid data format.']);
+            return back()->withErrors(['athletes' => 'Invalid data format.']);
         }
+
+        // Only the fields the form still collects; medals & date label are derived. Other
+        // legacy columns (chips, bouts/wins, tag_icon, gradient) are left untouched.
+        $data = $request->only([
+            'title', 'type_icon', 'description', 'location',
+            'achievement_date', 'category', 'status',
+        ]);
+        $data['short_title'] = null;
+        $data['date_label']  = $this->deriveDateLabel($request->achievement_date);
+        $data['athletes']    = $athletes;
+        $data += $this->deriveMedals($athletes);
+
         $newExtra      = $this->saveAchievementBase64Images($request->input('achievement_images_base64', []), $club->id);
         $data['images'] = array_merge($kept, $newExtra) ?: null;
 
@@ -91,6 +94,8 @@ class ClubAchievementController extends Controller
         }
 
         $achievement->update($data);
+
+        $this->applyTranslations($achievement, $request);
 
         return back()->with('success', 'Achievement updated successfully.');
     }
@@ -109,6 +114,29 @@ class ClubAchievementController extends Controller
         $achievement->delete();
 
         return response()->json(['success' => true, 'message' => 'Achievement deleted successfully.']);
+    }
+
+    /**
+     * Medal totals are derived from the athletes' awards — an athlete whose award mentions
+     * a medal counts once per medal (e.g. "Gold &amp; Silver" = +1 gold, +1 silver).
+     */
+    private function deriveMedals(?array $athletes): array
+    {
+        $gold = $silver = $bronze = 0;
+        foreach ($athletes ?? [] as $athlete) {
+            $role = mb_strtolower((string) ($athlete['role'] ?? ''));
+            if (str_contains($role, 'gold'))   $gold++;
+            if (str_contains($role, 'silver')) $silver++;
+            if (str_contains($role, 'bronze')) $bronze++;
+        }
+
+        return ['medals_gold' => $gold, 'medals_silver' => $silver, 'medals_bronze' => $bronze];
+    }
+
+    /** Card date label is derived from the date picker (e.g. "Feb 2026"). */
+    private function deriveDateLabel($date): ?string
+    {
+        return $date ? \Illuminate\Support\Carbon::parse($date)->format('M Y') : null;
     }
 
     private function saveAchievementBase64Images(array $base64List, int $clubId): array

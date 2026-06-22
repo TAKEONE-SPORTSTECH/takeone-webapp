@@ -1,6 +1,6 @@
 @extends('layouts.admin-club-mobile')
 
-@section('title', ($club->club_name ?? 'Club') . ' · Activities')
+@section('title', ($club->club_name ?? __('admin.club')) . ' · ' . __('admin.nav_activities'))
 
 @section('club-admin-content')
 <div class="space-y-4">
@@ -8,7 +8,7 @@
     @if($activities->isEmpty())
         <div class="m-card p-8 text-center">
             <i class="bi bi-activity text-3xl text-gray-300 m-float"></i>
-            <p class="text-sm text-muted-foreground mt-2">No activities yet.</p>
+            <p class="text-sm text-muted-foreground mt-2">{{ __('admin.act_none_yet') }}</p>
         </div>
     @else
         <div class="space-y-4 mobile-stagger">
@@ -25,6 +25,6 @@
         </div>
     @endif
 
-    <p class="text-xs text-muted-foreground text-center px-4">Add &amp; edit activities from the desktop view.</p>
+    <p class="text-xs text-muted-foreground text-center px-4">{!! __('admin.act_desktop_hint') !!}</p>
 </div>
 @endsection

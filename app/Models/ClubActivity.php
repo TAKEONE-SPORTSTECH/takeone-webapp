@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\BelongsToTenant;
+use App\Traits\HasTranslations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,7 +13,10 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class ClubActivity extends Model
 {
-    use HasFactory, BelongsToTenant, LogsActivity;
+    use HasFactory, BelongsToTenant, LogsActivity, HasTranslations;
+
+    /** Translatable fields (notes is internal/admin-only and intentionally excluded). */
+    protected array $translatable = ['name', 'description'];
 
     public function getActivitylogOptions(): LogOptions
     {
@@ -81,6 +85,15 @@ class ClubActivity extends Model
     {
         return $this->belongsToMany(ClubPackage::class, 'club_package_activities', 'activity_id', 'package_id')
                     ->withPivot('instructor_id', 'schedule')
+                    ->withTimestamps();
+    }
+
+    /**
+     * Instructors directly assigned to teach this class (activity).
+     */
+    public function instructors(): BelongsToMany
+    {
+        return $this->belongsToMany(ClubInstructor::class, 'club_activity_instructor', 'activity_id', 'instructor_id')
                     ->withTimestamps();
     }
 }

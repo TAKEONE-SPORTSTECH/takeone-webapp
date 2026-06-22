@@ -18,7 +18,11 @@ class BusinessController extends Controller
     {
         $business = Auth::user()->ownedBusiness;
 
-        return view('business.setup', compact('business'));
+        // Mobile and desktop have genuinely different layouts — separate files.
+        $isMobile = (bool) request()->attributes->get('is_mobile', false);
+        $view = $isMobile && view()->exists('business.mobile.setup') ? 'business.mobile.setup' : 'business.setup';
+
+        return view($view, compact('business'));
     }
 
     /**

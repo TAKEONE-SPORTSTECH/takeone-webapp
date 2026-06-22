@@ -35,6 +35,8 @@
                         <div class="space-y-4">
                             <h6 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Basic Information</h6>
 
+                            <x-lang-toggle class="mb-4" />
+
                             <!-- Facility Name -->
                             <div class="space-y-2">
                                 <label for="editFacilityName" class="block text-sm font-medium text-gray-700">Facility Name <span class="text-red-500">*</span></label>
@@ -42,7 +44,16 @@
                                        id="editFacilityName"
                                        name="name"
                                        required
+                                       x-show="lang==='en'"
                                        placeholder="e.g., Main Swimming Pool"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <input type="text"
+                                       id="editFacilityNameAr"
+                                       name="translations[name][ar]"
+                                       dir="rtl"
+                                       x-show="lang==='ar'"
+                                       x-cloak
+                                       placeholder="الاسم بالعربية"
                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                             </div>
                         </div>
@@ -61,6 +72,17 @@
                                 :defaultLat="$club->latitude ?? 25.2048"
                                 :defaultLng="$club->longitude ?? 55.2708"
                             />
+                            <div class="space-y-1" x-show="lang==='ar'" x-cloak>
+                                <label class="block text-sm font-medium text-gray-700">Address (العربية)</label>
+                                <input type="text"
+                                       id="editFacilityAddressAr"
+                                       name="translations[address][ar]"
+                                       dir="rtl"
+                                       x-show="lang==='ar'"
+                                       x-cloak
+                                       placeholder="العنوان بالعربية"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                            </div>
                             <div class="space-y-1">
                                 <label class="block text-sm font-medium text-gray-700">Google Maps URL</label>
                                 <input type="url" id="editFacilityMapsUrl" name="maps_url" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"

@@ -12,12 +12,22 @@ class ClubEventRegistration extends Model
     protected $fillable = [
         'event_id',
         'user_id',
+        'role',
         'status',
+        'paid',
+        'category_id',
+        'weight',
+        'weighed_in_at',
+        'weighed_in_by',
+        'meta',
         'registered_at',
     ];
 
     protected $casts = [
         'registered_at' => 'datetime',
+        'weighed_in_at' => 'datetime',
+        'paid'          => 'boolean',
+        'weight'        => 'decimal:2',
     ];
 
     public function event(): BelongsTo
@@ -28,5 +38,10 @@ class ClubEventRegistration extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(EventCategory::class, 'category_id');
     }
 }

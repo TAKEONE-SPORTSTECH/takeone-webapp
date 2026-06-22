@@ -82,11 +82,12 @@
 
             <!-- Body -->
             <div class="modal-body px-6 py-6 max-h-[65vh] overflow-y-auto">
-                <form id="addPackageForm" action="{{ route('admin.club.packages.store', $club->slug) }}" method="POST" enctype="multipart/form-data">
+                <form id="addPackageForm" x-data="{ lang: 'en' }" action="{{ route('admin.club.packages.store', $club->slug) }}" method="POST" enctype="multipart/form-data">
                     @csrf
 
                     <!-- Tab 1: Basic Info -->
                     <div x-show="currentTab === 'basic'" x-cloak>
+                        <x-lang-toggle class="mb-4" />
                         <!-- Package Image Section -->
                         <div class="card border-0 shadow-sm mb-4 overflow-hidden">
                             <div class="card-body p-4 bg-gradient-to-br from-primary/5 to-transparent">
@@ -164,7 +165,8 @@
                                             <label for="packageName" class="form-label font-medium">
                                                 Package Name <span class="text-destructive">*</span>
                                             </label>
-                                            <input type="text" id="packageName" name="name" required placeholder="e.g., Premium Monthly Membership" class="form-control">
+                                            <input type="text" id="packageName" name="name" required x-show="lang==='en'" placeholder="e.g., Premium Monthly Membership" class="form-control">
+                                            <input type="text" name="translations[name][ar]" dir="rtl" x-show="lang==='ar'" x-cloak placeholder="الاسم بالعربية" class="form-control" value="{{ old('translations.name.ar') }}">
                                         </div>
 
                                         <div class="mb-3">
@@ -178,7 +180,8 @@
                                     <div>
                                         <div class="mb-3">
                                             <label for="packageDescription" class="form-label font-medium">Description</label>
-                                            <textarea id="packageDescription" name="description" rows="5" placeholder="Brief description of what this package includes..." class="form-control resize-none"></textarea>
+                                            <textarea id="packageDescription" name="description" rows="5" x-show="lang==='en'" placeholder="Brief description of what this package includes..." class="form-control resize-none"></textarea>
+                                            <textarea name="translations[description][ar]" dir="rtl" x-show="lang==='ar'" x-cloak rows="5" class="form-control resize-none" placeholder="الوصف بالعربية">{{ old('translations.description.ar') }}</textarea>
                                         </div>
                                     </div>
                                 </div>

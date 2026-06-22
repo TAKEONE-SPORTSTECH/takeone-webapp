@@ -78,6 +78,12 @@ async function connect(isRefresh = false) {
         let data;
         try { data = JSON.parse(payload.toString()); } catch (e) { return; }
         const channel = channelFromTopic(topic);
+        // Opt-in debug: run localStorage.setItem('rtdebug','1') in the console
+        // to see every inbound realtime event (channel + payload).
+        if (window.__rtDebug || localStorage.getItem('rtdebug')) {
+            // eslint-disable-next-line no-console
+            console.log('[realtime ←]', channel, data);
+        }
         if (channel === 'notifications') emit('realtime:notification', data);
         else if (channel === 'messages') emit('realtime:message', data);
         else emit('realtime:' + channel, data);

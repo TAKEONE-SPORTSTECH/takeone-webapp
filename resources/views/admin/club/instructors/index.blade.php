@@ -27,11 +27,17 @@
     </div>
 
     @if(isset($instructors) && count($instructors) > 0)
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    @if(count($instructors) > 1)
+    <p class="text-sm text-gray-400 -mt-2 flex items-center gap-1"><i class="bi bi-grip-vertical"></i>Drag the handle to set rank — the top trainer ranks highest.</p>
+    @endif
+    <div id="instructor-sortable" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         @foreach($instructors as $instructor)
         @php $user = $instructor->user; @endphp
         @if(!$user) @continue @endif
-        <div class="relative h-full" id="instructor-{{ $instructor->id }}" x-data="{ openMenu: false }">
+        <div class="relative h-full" id="instructor-{{ $instructor->id }}" data-instructor-id="{{ $instructor->id }}" x-data="{ openMenu: false }">
+        <div class="drag-handle absolute top-3 left-3 z-10 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm shadow-md border border-white/60 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-white cursor-grab active:cursor-grabbing transition-all" title="Drag to rank">
+            <i class="bi bi-grip-vertical"></i>
+        </div>
         <x-member-card
             class="h-full instructor-item"
             :member="$user"
@@ -44,6 +50,16 @@
                 <span class="badge bg-primary">{{ $instructor->role ?? 'Trainer' }}</span>
                 @if($instructor->user?->experience_years)
                     <span class="badge bg-info">{{ $instructor->user->experience_years }} yrs exp</span>
+                @endif
+                @if($instructor->compensation_type === 'paid' && $instructor->wage_amount)
+                    @php $perLabels = ['monthly' => '/mo', 'session' => '/session', 'hourly' => '/hr']; @endphp
+                    <span class="badge bg-success">{{ rtrim(rtrim(number_format((float) $instructor->wage_amount, 2), '0'), '.') }}{{ $perLabels[$instructor->wage_period] ?? '' }}</span>
+                @else
+                    <span class="badge bg-secondary">Volunteer</span>
+                @endif
+                @php $slotCount = $slotCountByInstructor[$instructor->id] ?? 0; @endphp
+                @if($slotCount)
+                    <span class="badge bg-accent text-primary"><i class="bi bi-calendar2-week mr-1"></i>{{ $slotCount }}</span>
                 @endif
             </x-slot:badges>
             <x-slot:headerExtra>
@@ -183,10 +199,15 @@ window.instructorData = {
     {{ $instructor->id }}: {
         name: @json($instructor->user->full_name ?? $instructor->user->name ?? ''),
         role: @json($instructor->role ?? ''),
+        translations: @json($instructor->translations ?? []),
         experience: @json($instructor->user->experience_years ?? null),
         skills: @json($instructor->user->skills ?? []),
         bio: @json($instructor->user->bio ?? ''),
-        photo: @json($instructor->user->profile_picture ? '/storage/' . $instructor->user->profile_picture : '')
+        photo: @json($instructor->user->profile_picture ? '/storage/' . $instructor->user->profile_picture : ''),
+        compensation_type: @json($instructor->compensation_type ?? 'volunteer'),
+        wage_amount: @json($instructor->wage_amount !== null ? (float) $instructor->wage_amount : null),
+        wage_period: @json($instructor->wage_period),
+        slot_ids: @json(($packageSlots->where('instructor_id', $instructor->id)->pluck('id')->map(fn ($i) => (int) $i)->values()))
     },
     @endforeach
 };
@@ -240,6 +261,42 @@ function loadNationalityFlags() {
         })
         .catch(error => console.error('Error loading countries:', error));
 }
+
+// ---- Drag-to-rank ordering (top = highest rank) ----
+(function () {
+    var reorderUrl = '{{ route('admin.club.instructors.reorder', $club->slug) }}';
+
+    function persist() {
+        var ids = Array.prototype.map.call(
+            document.querySelectorAll('#instructor-sortable [data-instructor-id]'),
+            function (el) { return el.getAttribute('data-instructor-id'); }
+        );
+        fetch(reorderUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+            body: JSON.stringify({ order: ids })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (d) { if (d && d.success) window.showToast && window.showToast('success', 'Trainer order saved.'); })
+        .catch(function () { window.showToast && window.showToast('error', 'Could not save the new order.'); });
+    }
+
+    function init() {
+        var list = document.getElementById('instructor-sortable');
+        if (!list || list.dataset.sortableInit) return;
+        list.dataset.sortableInit = '1';
+        new Sortable(list, { handle: '.drag-handle', animation: 150, ghostClass: 'opacity-40', onEnd: persist });
+    }
+
+    if (window.Sortable) { init(); return; }
+    var existing = document.getElementById('sortablejs-cdn');
+    if (existing) { existing.addEventListener('load', init); return; }
+    var s = document.createElement('script');
+    s.id = 'sortablejs-cdn';
+    s.src = 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js';
+    s.onload = init;
+    document.head.appendChild(s);
+})();
 </script>
 @endpush
 @endsection

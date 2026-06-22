@@ -9,12 +9,13 @@ use App\Models\ClubActivity;
 use App\Models\ClubFacility;
 use App\Models\Tenant;
 use App\Traits\HandlesClubAuthorization;
+use App\Traits\PersistsTranslations;
 use App\Traits\StoresBase64Images;
 use Illuminate\Support\Facades\Storage;
 
 class ClubActivityController extends Controller
 {
-    use HandlesClubAuthorization, StoresBase64Images;
+    use HandlesClubAuthorization, PersistsTranslations, StoresBase64Images;
 
     public function activities(Tenant $club)
     {
@@ -49,6 +50,8 @@ class ClubActivityController extends Controller
 
         $activity = ClubActivity::create($data);
 
+        $this->applyTranslations($activity, $request);
+
         if ($request->wantsJson()) {
             return response()->json([
                 'success'  => true,
@@ -82,6 +85,8 @@ class ClubActivityController extends Controller
 
         $activity->update($data);
 
+        $this->applyTranslations($activity, $request);
+
         if ($request->wantsJson()) {
             return response()->json([
                 'success'  => true,
@@ -104,6 +109,7 @@ class ClubActivityController extends Controller
             'id'              => $activity->id,
             'name'            => $activity->name,
             'description'     => $activity->description,
+            'translations'    => $activity->translations,
             'notes'           => $activity->notes,
             'duration_minutes' => $activity->duration_minutes,
             'picture_url'     => $activity->picture_url,

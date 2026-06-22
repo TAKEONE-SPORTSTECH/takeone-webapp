@@ -57,6 +57,11 @@
 #memberPopupModal .popup-payment-scroll::-webkit-scrollbar-track { background: #f9fafb; border-radius: 99px; }
 #memberPopupModal .popup-payment-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 99px; }
 #memberPopupModal .popup-payment-scroll::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+/* Bottom-sheet slide-up on phones (centered card on larger screens). */
+@media (max-width: 639px) {
+    #memberPopupModal .mp-panel { animation: mp-sheet-up 0.28s cubic-bezier(0.22, 0.61, 0.36, 1); }
+}
+@keyframes mp-sheet-up { from { transform: translateY(28px); opacity: 0.4; } to { transform: none; opacity: 1; } }
 </style>
 @endpush
 @endonce
@@ -105,16 +110,20 @@
 
 <!-- Member Quick-View Popup Modal -->
 <div id="memberPopupModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
-    <div class="flex min-h-screen items-center justify-center p-4">
+    <div class="flex min-h-full items-end justify-center sm:items-center p-0 sm:p-4">
 
         {{-- Backdrop --}}
         <div class="fixed inset-0 bg-black/50" onclick="closeMemberPopup()"></div>
 
-        {{-- Panel --}}
-        <div class="relative bg-white w-full max-w-[700px] overflow-hidden"
-             style="border-radius: 1.5rem; box-shadow: 0 20px 50px rgba(0,0,0,0.15);">
+        {{-- Panel — bottom sheet on mobile, centered card on desktop --}}
+        <div class="mp-panel relative bg-white w-full sm:max-w-[700px] max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl shadow-2xl">
 
-            <div class="p-6 pt-8">
+            {{-- Grab handle (mobile only) --}}
+            <div class="sm:hidden sticky top-0 z-20 bg-white/95 backdrop-blur pt-2.5 pb-1 flex justify-center">
+                <span class="w-10 h-1.5 rounded-full bg-gray-300"></span>
+            </div>
+
+            <div class="p-5 pt-3 sm:p-6 sm:pt-8">
 
                 {{-- Avatar + Info labels --}}
                 <div class="flex flex-col sm:flex-row gap-6 mb-6">
@@ -177,29 +186,29 @@
                     </div>
                 </div>
 
-                {{-- Buttons --}}
-                <div class="flex flex-col sm:flex-row gap-2">
-                    <a id="mpProfileLink" href="#"
-                       class="flex-1 flex items-center justify-center gap-2 bg-primary text-white rounded-full py-2.5 px-5 font-semibold text-sm hover:bg-primary/90 transition-colors no-underline text-center">
-                        <i class="bi bi-person-circle"></i> Profile
+                {{-- Actions — compact icon buttons in one row on mobile, full labelled pills on desktop --}}
+                <div class="flex items-center justify-center gap-2">
+                    <a id="mpProfileLink" href="#" aria-label="Profile" title="Profile"
+                       class="shrink-0 w-12 h-12 sm:w-auto sm:h-auto sm:flex-1 flex items-center justify-center gap-2 bg-primary text-white rounded-full sm:py-2.5 sm:px-5 font-semibold text-sm hover:bg-primary/90 transition-colors no-underline">
+                        <i class="bi bi-person-circle text-lg sm:text-base"></i><span class="hidden sm:inline">Profile</span>
                     </a>
                     @if(auth()->user()?->isSuperAdmin())
-                    <button id="mpImpersonateBtn" type="button" onclick="impersonateMember()"
-                            class="flex-1 flex items-center justify-center gap-2 bg-amber-500 text-white rounded-full py-2.5 px-5 font-semibold text-sm hover:bg-amber-600 transition-colors">
-                        <i class="bi bi-incognito"></i> Login as
+                    <button id="mpImpersonateBtn" type="button" onclick="impersonateMember()" aria-label="Login as" title="Login as"
+                            class="shrink-0 w-12 h-12 sm:w-auto sm:h-auto sm:flex-1 flex items-center justify-center gap-2 bg-amber-500 text-white rounded-full sm:py-2.5 sm:px-5 font-semibold text-sm hover:bg-amber-600 transition-colors">
+                        <i class="bi bi-incognito text-lg sm:text-base"></i><span class="hidden sm:inline">Login as</span>
                     </button>
                     @endif
-                    <button id="mpEnrollBtn" onclick="openMemberEnroll()"
-                            class="flex-1 flex items-center justify-center gap-2 bg-green-500 text-white rounded-full py-2.5 px-5 font-semibold text-sm hover:bg-green-600 transition-colors">
-                        <i class="bi bi-plus-circle"></i> Enroll
+                    <button id="mpEnrollBtn" onclick="openMemberEnroll()" aria-label="Enroll" title="Enroll"
+                            class="shrink-0 w-12 h-12 sm:w-auto sm:h-auto sm:flex-1 flex items-center justify-center gap-2 bg-green-500 text-white rounded-full sm:py-2.5 sm:px-5 font-semibold text-sm hover:bg-green-600 transition-colors">
+                        <i class="bi bi-plus-circle text-lg sm:text-base"></i><span class="hidden sm:inline">Enroll</span>
                     </button>
-                    <button onclick="closeMemberPopup()"
-                            class="flex-1 flex items-center justify-center gap-2 bg-gray-100 text-gray-700 border border-gray-200 rounded-full py-2.5 px-5 font-semibold text-sm hover:bg-gray-200 transition-colors">
-                        Close
+                    <button onclick="closeMemberPopup()" aria-label="Close" title="Close"
+                            class="shrink-0 w-12 h-12 sm:w-auto sm:h-auto sm:flex-1 flex items-center justify-center gap-2 bg-gray-100 text-gray-700 border border-gray-200 rounded-full sm:py-2.5 sm:px-5 font-semibold text-sm hover:bg-gray-200 transition-colors">
+                        <i class="bi bi-x-lg text-lg sm:text-base"></i><span class="hidden sm:inline">Close</span>
                     </button>
-                    <button id="mpRemoveBtn" onclick="removeMemberFromClub()"
-                            class="flex-1 flex items-center justify-center gap-2 bg-red-500 text-white rounded-full py-2.5 px-5 font-semibold text-sm hover:bg-red-600 transition-colors">
-                        <i class="bi bi-person-dash"></i> Remove
+                    <button id="mpRemoveBtn" onclick="removeMemberFromClub()" aria-label="Remove" title="Remove"
+                            class="shrink-0 w-12 h-12 sm:w-auto sm:h-auto sm:flex-1 flex items-center justify-center gap-2 bg-red-500 text-white rounded-full sm:py-2.5 sm:px-5 font-semibold text-sm hover:bg-red-600 transition-colors">
+                        <i class="bi bi-person-dash text-lg sm:text-base"></i><span class="hidden sm:inline">Remove</span>
                     </button>
                 </div>
 

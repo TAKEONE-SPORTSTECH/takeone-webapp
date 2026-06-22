@@ -64,6 +64,9 @@
                                 @if($canResetPassword)
                                 <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="$dispatch('open-reset-password-modal'); open = false"><i class="bi bi-key text-amber-600" style="width:16px;text-align:center"></i>Reset Password</a></li>
                                 @endif
+                                @if($canRegeneratePassword ?? false)
+                                <li><a class="flex items-center gap-2 py-2 px-4 text-gray-800 no-underline whitespace-nowrap hover:bg-gray-50 text-sm" href="#" @click="regenerateMemberPassword(); open = false"><i class="bi bi-magic text-primary" style="width:16px;text-align:center"></i>Generate Password</a></li>
+                                @endif
                                 <li><hr class="my-1 border-0 border-t border-gray-100"></li>
                                 <li><a class="flex items-center gap-2 py-2 px-4 text-red-600 no-underline whitespace-nowrap hover:bg-red-50 text-sm" href="#" @click="$dispatch('open-delete-account-modal'); open = false"><i class="bi bi-trash" style="width:16px;text-align:center"></i>Delete Account</a></li>
                             </ul>
@@ -1149,6 +1152,36 @@
 
         <!-- Tournaments Tab -->
         <div x-show="activeTab === 'tournaments'" x-transition id="tournaments" role="tabpanel">
+            @if(($awardedAchievements ?? collect())->isNotEmpty())
+            <!-- Medals & Awards (earned by this member, recorded via their club's achievements) -->
+            <div class="bg-white rounded-xl shadow-sm mb-4 p-4">
+                <h5 class="font-bold mb-3"><i class="bi bi-award-fill text-amber-400 mr-2"></i>Medals & Awards</h5>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    @foreach($awardedAchievements as $a)
+                        @php
+                            $r = mb_strtolower($a->member_award ?? '');
+                            $emoji = (str_contains($r, 'gold') ? '🥇' : '') . (str_contains($r, 'silver') ? '🥈' : '') . (str_contains($r, 'bronze') ? '🥉' : '');
+                            $emoji = $emoji ?: '🏅';
+                            $dateLabel = $a->date_label ?: ($a->achievement_date ? $a->achievement_date->format('M Y') : '');
+                            $achLocation = $a->tr('location');
+                            $metaLine = implode(' · ', array_filter([$achLocation, $dateLabel]));
+                        @endphp
+                        <div class="flex items-start gap-3 border border-gray-100 rounded-lg p-3">
+                            <span class="w-12 h-12 rounded-full bg-amber-50 grid place-items-center text-2xl flex-shrink-0">{{ $emoji }}</span>
+                            <div class="min-w-0 flex-1">
+                                {{-- Member-first: the medal they won is the headline --}}
+                                <p class="font-bold text-sm text-gray-900 leading-tight">{{ $a->member_award ?: __('member.award_default') }}</p>
+                                <p class="text-xs text-gray-600 truncate mt-0.5"><i class="bi bi-trophy text-amber-400 mr-1"></i>{{ $a->tr('short_title') ?: $a->tr('title') }}</p>
+                                @if($metaLine)
+                                    <p class="text-[11px] text-gray-400 truncate mt-0.5">@if($achLocation)<i class="bi bi-geo-alt mr-0.5"></i>@endif{{ $metaLine }}</p>
+                                @endif
+                                <p class="text-[11px] text-gray-400 truncate">{{ __('member.award_via', ['club' => $a->tenant?->tr('club_name') ?? '']) }}</p>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
             <!-- Tournament & Event Participation Card -->
             <div class="bg-white rounded-xl shadow-sm mb-4">
                 <div class="p-4">
@@ -2949,6 +2982,59 @@ function submitResetPassword(e) {
     .finally(() => {
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-key mr-1"></i>Reset Password';
+    });
+}
+</script>
+@endif
+
+<!-- Generate Password (super-admin) — result modal showing the new password -->
+@if($canRegeneratePassword ?? false)
+<div x-data="{ open: false, password: '', emailed: false, copied: false }"
+     @show-generated-password.window="open = true; password = $event.detail.password; emailed = $event.detail.emailed; copied = false"
+     x-cloak>
+    <div x-show="open" class="fixed inset-0 z-50 overflow-y-auto" @keydown.escape.window="open = false">
+        <div x-show="open" x-transition.opacity class="fixed inset-0 bg-black/50" @click="open = false"></div>
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div x-show="open" x-transition class="relative bg-white rounded-lg shadow-xl w-full max-w-md border border-gray-200 text-center p-6" @click.stop>
+                <div class="w-14 h-14 rounded-2xl bg-green-50 text-green-600 grid place-items-center mx-auto"><i class="bi bi-check-circle-fill text-2xl"></i></div>
+                <h5 class="font-semibold text-lg mt-3">New password generated</h5>
+                <p class="text-sm text-gray-500 mt-1" x-show="emailed">We've emailed the new password to <strong>{{ $relationship->dependent->full_name }}</strong>.</p>
+                <p class="text-sm text-amber-600 mt-1" x-show="!emailed">Email could not be sent — share the password manually.</p>
+                <button type="button" @click="navigator.clipboard && navigator.clipboard.writeText(password); copied = true; showToast('success', 'Copied', 'Password copied to clipboard.')"
+                        class="w-full mt-4 flex items-center justify-between gap-2 px-4 py-3 rounded-lg bg-gray-50 border border-dashed border-primary/40 hover:bg-gray-100 transition-colors">
+                    <span class="font-mono font-bold text-base tracking-wider select-all" x-text="password"></span>
+                    <i class="bi" :class="copied ? 'bi-clipboard-check text-green-600' : 'bi-clipboard text-primary'"></i>
+                </button>
+                <button type="button" @click="open = false" class="w-full mt-4 bg-primary text-white px-4 py-2.5 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">Done</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+function regenerateMemberPassword() {
+    window.confirmAction({
+        title: 'Generate Password',
+        message: 'Generate a new random password for {{ addslashes($relationship->dependent->full_name) }}? Their current password will stop working immediately.',
+        type: 'warning', confirmText: 'Generate',
+    }).then(ok => {
+        if (!ok) return;
+        fetch('{{ route('member.regenerate-password', $relationship->dependent->id) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            },
+        })
+        .then(r => r.json().then(data => ({ ok: r.ok, data })))
+        .then(({ ok, data }) => {
+            if (ok && data.password) {
+                window.dispatchEvent(new CustomEvent('show-generated-password', { detail: { password: data.password, emailed: !!data.emailed } }));
+            } else {
+                showToast('error', 'Error', data.message || 'Could not generate a password.');
+            }
+        })
+        .catch(() => showToast('error', 'Error', 'An error occurred. Please try again.'));
     });
 }
 </script>

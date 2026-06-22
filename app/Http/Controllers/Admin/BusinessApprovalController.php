@@ -36,7 +36,9 @@ class BusinessApprovalController extends Controller
 
         $pendingCount = $counts['pending'];
 
-        return view('admin.platform.businesses.index', compact('businesses', 'pendingCount', 'counts'));
+        $mobile = $request->attributes->get('is_mobile') && view()->exists('admin.platform.mobile.businesses');
+
+        return view($mobile ? 'admin.platform.mobile.businesses' : 'admin.platform.businesses.index', compact('businesses', 'pendingCount', 'counts'));
     }
 
     /**

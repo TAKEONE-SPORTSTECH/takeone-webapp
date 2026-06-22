@@ -596,7 +596,7 @@ function exploreApp() {
 
                     const trainerCard = document.createElement('div');
                     trainerCard.innerHTML = `
-                        <div class="card border shadow-sm overflow-hidden club-card cursor-pointer" style="border-radius: 0;" onclick="window.location.href='${trainer.url}'">
+                        <div class="card border border-gray-100 shadow-sm overflow-hidden club-card cursor-pointer rounded-2xl" onclick="window.location.href='${trainer.url}'">
                             <!-- Cover Image -->
                             <div class="relative overflow-hidden h-48">
                                 ${coverHtml}
@@ -683,7 +683,7 @@ function exploreApp() {
                 }
 
                 card.innerHTML = `
-                    <div class="card border shadow-sm overflow-hidden club-card cursor-pointer" style="border-radius: 0;" onclick="window.location.href='${club.url}'">
+                    <div class="card border border-gray-100 shadow-sm overflow-hidden club-card cursor-pointer rounded-2xl" onclick="window.location.href='${club.url}'">
                         <!-- Cover Image -->
                         <div class="relative overflow-hidden h-48">
                             ${coverImageHtml}

@@ -9,11 +9,13 @@ use App\Http\Requests\UploadImageRequest;
 use App\Models\ClubFacility;
 use App\Models\Tenant;
 use App\Traits\HandlesClubAuthorization;
+use App\Traits\PersistsTranslations;
 use Illuminate\Support\Facades\Storage;
 
 class ClubFacilityController extends Controller
 {
     use HandlesClubAuthorization;
+    use PersistsTranslations;
 
     public function facilities(Tenant $club)
     {
@@ -42,6 +44,8 @@ class ClubFacilityController extends Controller
         if ($paths) $data['images'] = $paths;
 
         $facility = ClubFacility::create($data);
+
+        $this->applyTranslations($facility, $request);
 
         if ($request->wantsJson()) {
             return response()->json([
@@ -84,6 +88,8 @@ class ClubFacilityController extends Controller
         $data['images'] = array_merge($kept, $newPaths);
 
         $facility->update($data);
+
+        $this->applyTranslations($facility, $request);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([

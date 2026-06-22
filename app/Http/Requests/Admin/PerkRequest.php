@@ -24,6 +24,8 @@ class PerkRequest extends FormRequest
             'perk_value'  => 'nullable|string|max:1000',
             'status'      => 'required|in:active,inactive',
             'sort_order'  => 'nullable|integer|min:0',
+            'translations'     => ['nullable', 'array'],
+            'translations.*.*' => ['nullable', 'string', 'max:2000'],
         ];
     }
 }

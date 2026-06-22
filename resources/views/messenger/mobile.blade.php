@@ -12,17 +12,17 @@
      the desktop navbar when landing on /messages on a phone. --}}
 <header class="sticky top-0 z-40 bg-white border-b border-border">
     <div class="flex items-center gap-2 px-3 h-14">
-        <a href="{{ route('me.home') }}" class="flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0" aria-label="Back">
+        <a href="{{ route('me.home') }}" class="flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0" aria-label="{{ __('shared.back') }}">
             <i class="bi bi-arrow-left text-xl text-foreground"></i>
         </a>
         <div class="flex-1 min-w-0">
             <p class="text-[10px] text-muted-foreground font-medium leading-tight flex items-center gap-1">
                 <span class="w-1.5 h-1.5 rounded-full" :class="connected ? 'bg-green-500' : 'bg-gray-300'"></span>
-                <span x-text="connected ? 'Connected · realtime' : 'Delivers instantly'"></span>
+                <span x-text="connected ? @js(__('messenger.connected')) : @js(__('messenger.delivers_instantly'))"></span>
             </p>
-            <p class="text-base font-bold text-primary leading-tight truncate">Messages</p>
+            <p class="text-base font-bold text-primary leading-tight truncate">{{ __('messenger.title') }}</p>
         </div>
-        <button type="button" @click="openSearch()" class="w-9 h-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground flex-shrink-0" aria-label="New message">
+        <button type="button" @click="openSearch()" class="w-9 h-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground flex-shrink-0" aria-label="{{ __('messenger.new_message') }}">
             <i class="bi bi-pencil-square"></i>
         </button>
     </div>
@@ -33,7 +33,7 @@
     {{-- Search to start a chat --}}
     <button type="button" @click="openSearch()"
             class="w-full flex items-center gap-2 px-4 py-2.5 mb-4 rounded-2xl bg-muted/70 text-muted-foreground text-sm m-press m-in">
-        <i class="bi bi-search"></i> Search people to message…
+        <i class="bi bi-search"></i> {{ __('messenger.search_people') }}
     </button>
 
     {{-- Conversation list --}}
@@ -60,7 +60,7 @@
                         <span class="font-semibold text-[15px] text-foreground truncate">{{ $p['name'] }}</span>
                         <span class="text-[11px] text-muted-foreground shrink-0 m-conv-time">{{ $c->last_at_human }}</span>
                     </span>
-                    <span class="block text-[13px] text-muted-foreground truncate mt-0.5 m-conv-preview {{ $c->unread_count > 0 ? 'font-semibold text-foreground' : '' }}">{{ $c->last_mine ? 'You: ' : '' }}{{ $c->last_body }}</span>
+                    <span class="block text-[13px] text-muted-foreground truncate mt-0.5 m-conv-preview {{ $c->unread_count > 0 ? 'font-semibold text-foreground' : '' }}">{{ $c->last_mine ? __('messenger.you_prefix') : '' }}{{ $c->last_body }}</span>
                 </span>
             </button>
         @endforeach
@@ -68,13 +68,13 @@
 
     <div id="m-conv-empty" class="text-center py-20 {{ count($conversations) ? 'hidden' : '' }}">
         <i class="bi bi-chat-heart text-5xl text-gray-200 m-float inline-block"></i>
-        <p class="text-sm text-muted-foreground mt-3">No chats yet.<br>Tap search to message anyone.</p>
+        <p class="text-sm text-muted-foreground mt-3">{{ __('messenger.no_chats_title') }}<br>{{ __('messenger.no_chats_sub') }}</p>
     </div>
 
     {{-- Compose FAB --}}
     <button type="button" @click="openSearch()"
             class="fixed right-4 bottom-5 z-40 w-14 h-14 rounded-full bg-primary text-white shadow-lg shadow-primary/30 flex items-center justify-center m-press"
-            aria-label="New message">
+            aria-label="{{ __('messenger.new_message') }}">
         <i class="bi bi-pencil-square text-xl"></i>
     </button>
 
@@ -87,12 +87,12 @@
             <div class="relative flex-1">
                 <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                 <input x-ref="searchInput" type="text" x-model="searchTerm" @input.debounce.300ms="searchUsers()"
-                       placeholder="Search by name…" autocomplete="off"
+                       placeholder="{{ __('messenger.search_by_name') }}" autocomplete="off"
                        class="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm">
             </div>
         </div>
         <div class="flex-1 overflow-y-auto p-3">
-            <template x-if="searching"><div class="text-center text-muted-foreground text-sm py-8"><i class="bi bi-arrow-repeat"></i> Searching…</div></template>
+            <template x-if="searching"><div class="text-center text-muted-foreground text-sm py-8"><i class="bi bi-arrow-repeat"></i> {{ __('messenger.searching') }}</div></template>
             <div class="space-y-1">
                 <template x-for="u in searchResults" :key="u.id">
                     <button type="button" @click="startWith(u)" class="w-full flex items-center gap-3 p-2.5 rounded-xl m-press hover:bg-muted/50 text-left">
@@ -103,7 +103,7 @@
                 </template>
             </div>
             <template x-if="!searching && searchTerm && searchResults.length === 0">
-                <p class="text-center text-sm text-muted-foreground py-8">No one found.</p>
+                <p class="text-center text-sm text-muted-foreground py-8">{{ __('messenger.no_one_found') }}</p>
             </template>
         </div>
     </div>
@@ -124,15 +124,15 @@
                 <p class="text-[15px] font-semibold text-foreground truncate mb-0" x-text="partner.name"></p>
                 <p class="text-[11px] text-muted-foreground mb-0 flex items-center gap-1">
                     <span class="w-1.5 h-1.5 rounded-full" :class="connected ? 'bg-green-500' : 'bg-gray-300'"></span>
-                    <span x-text="connected ? 'Active now' : 'Encrypted chat'"></span>
+                    <span x-text="connected ? @js(__('messenger.active_now')) : @js(__('messenger.encrypted_chat'))"></span>
                 </p>
             </div>
             <div class="relative" x-data="{ o: false }">
-                <button type="button" @click="o = !o" class="w-9 h-9 rounded-lg flex items-center justify-center m-press text-muted-foreground" aria-label="Chat options"><i class="bi bi-three-dots-vertical text-lg"></i></button>
+                <button type="button" @click="o = !o" class="w-9 h-9 rounded-lg flex items-center justify-center m-press text-muted-foreground" aria-label="{{ __('messenger.chat_options') }}"><i class="bi bi-three-dots-vertical text-lg"></i></button>
                 <div x-show="o" x-cloak @click.outside="o = false"
                      x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
                      class="absolute right-0 top-11 z-30 w-44 bg-white rounded-xl shadow-lg ring-1 ring-black/5 border border-border py-1">
-                    <button type="button" @click="o = false; deleteChat(activeId)" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-red-600 m-press text-left"><i class="bi bi-trash"></i> Delete chat</button>
+                    <button type="button" @click="o = false; deleteChat(activeId)" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-red-600 m-press text-left"><i class="bi bi-trash"></i> {{ __('messenger.delete_chat') }}</button>
                 </div>
             </div>
         </div>
@@ -147,7 +147,14 @@
                 </div>
             </template>
             <template x-for="m in messages" :key="m.id">
-                <div class="flex" :class="m.mine ? 'justify-end' : 'justify-start'">
+                <div class="flex gap-2 items-end" :class="m.mine ? 'justify-end' : 'justify-start'">
+                    {{-- Small avatar of the person texting (incoming only) --}}
+                    <template x-if="!m.mine">
+                        <span class="w-7 h-7 rounded-full overflow-hidden shrink-0 self-end mb-0.5">
+                            <template x-if="partner.avatar"><img :src="partner.avatar" class="w-7 h-7 rounded-full object-cover" alt=""></template>
+                            <template x-if="!partner.avatar"><span class="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-purple-400 text-white flex items-center justify-center text-[11px] font-bold" x-text="partner.initial"></span></template>
+                        </span>
+                    </template>
                     <div class="max-w-[80%] rounded-2xl shadow-sm select-none overflow-hidden"
                          @click="!m.deleted && !m.kind && openActions(m)"
                          :style="(m.kind === 'audio' && m.attachment && !m.deleted) ? 'width:min(78vw,360px)' : ''"
@@ -156,7 +163,7 @@
                                     : (m.mine ? 'bg-primary text-white rounded-br-md' : 'bg-white text-foreground border border-border rounded-bl-md'))
                                  + ((m.kind === 'image' || m.kind === 'video') && m.attachment && !m.deleted ? ' p-1' : ' px-3.5 py-2 text-[15px]')
                                  + (m.id === lastAddedId ? ' m-in-pop' : '') + (m.pending ? ' opacity-70' : '')">
-                        <p x-show="m.deleted" class="mb-0 italic flex items-center gap-1.5"><i class="bi bi-slash-circle"></i> This message was deleted</p>
+                        <p x-show="m.deleted" class="mb-0 italic flex items-center gap-1.5"><i class="bi bi-slash-circle"></i> {{ __('messenger.message_deleted') }}</p>
                         <template x-if="!m.deleted && m.kind === 'image' && m.attachment">
                             <a :href="m.attachment.url" target="_blank" rel="noopener" class="block"><img :src="m.attachment.url" :alt="m.attachment.name" loading="lazy" class="rounded-xl block" style="max-height:300px; max-width:100%;"></a>
                         </template>
@@ -183,7 +190,7 @@
                                     </div>
                                     <div class="flex items-center justify-between mt-0.5">
                                         <span class="text-[10px] tabular-nums opacity-80" x-text="timeLabel"></span>
-                                        <a :href="m.attachment.url" :download="m.attachment.name" class="flex items-center gap-1 text-[10px] opacity-70" title="Download">
+                                        <a :href="m.attachment.url" :download="m.attachment.name" class="flex items-center gap-1 text-[10px] opacity-70" title="{{ __('messenger.download') }}">
                                             <i class="bi bi-download"></i><span x-text="window.ChatAttach.humanSize(m.attachment.size)"></span>
                                         </a>
                                     </div>
@@ -199,7 +206,7 @@
                                 </span>
                             </a>
                         </template>
-                        <p x-show="!m.deleted && m.kind && !m.attachment" class="mb-0 italic flex items-center gap-1.5"><i class="bi bi-clock-history"></i> Attachment expired</p>
+                        <p x-show="!m.deleted && m.kind && !m.attachment" class="mb-0 italic flex items-center gap-1.5"><i class="bi bi-clock-history"></i> {{ __('messenger.attachment_expired') }}</p>
                         <template x-if="!m.deleted && !m.kind">
                             <div>
                                 <p class="mb-0 whitespace-pre-wrap break-words" x-html="window.LinkPreview.linkifyHtml(m.body)"></p>
@@ -223,10 +230,20 @@
                             </div>
                         </template>
                         <span class="block text-[10px] opacity-70 text-right" :class="((m.kind === 'image' || m.kind === 'video') && m.attachment && !m.deleted) ? 'px-1.5 pt-0.5 pb-1' : 'mt-0.5'">
-                            <span x-show="m.edited">edited · </span><span x-text="m.time"></span>
+                            <span x-show="m.edited">{{ __('messenger.edited') }}</span><span x-text="m.time"></span>
                             <i x-show="m.pending" class="bi bi-clock ml-0.5"></i>
                         </span>
                     </div>
+                    {{-- My own avatar (outgoing) --}}
+                    <template x-if="m.mine">
+                        <span class="w-7 h-7 rounded-full overflow-hidden shrink-0 self-end mb-0.5">
+                            @if(Auth::user()->profile_picture)
+                                <img src="{{ asset('storage/'.Auth::user()->profile_picture) }}?v={{ optional(Auth::user()->updated_at)->timestamp }}" class="w-7 h-7 rounded-full object-cover" alt="">
+                            @else
+                                <span class="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-purple-400 text-white flex items-center justify-center text-[11px] font-bold">{{ strtoupper(mb_substr(Auth::user()->full_name ?? 'U', 0, 1)) }}</span>
+                            @endif
+                        </span>
+                    </template>
                 </div>
             </template>
         </div>
@@ -234,7 +251,7 @@
         {{-- Editing banner --}}
         <div x-show="editing" x-cloak class="flex items-center gap-2 px-3 pt-2 bg-white text-xs text-primary">
             <i class="bi bi-pencil-square"></i>
-            <span class="font-medium">Editing message</span>
+            <span class="font-medium">{{ __('messenger.editing_message') }}</span>
             <button type="button" @click="cancelEdit()" class="ml-auto text-muted-foreground"><i class="bi bi-x-lg"></i></button>
         </div>
 
@@ -243,7 +260,7 @@
               style="padding-bottom: calc(0.625rem + env(safe-area-inset-bottom));">
             <input type="file" x-ref="fileInput" class="hidden" @change="attachFile($event)">
             <button type="button" @click="$refs.fileInput.click()" :disabled="editing"
-                    class="w-11 h-11 shrink-0 rounded-full text-muted-foreground flex items-center justify-center m-press disabled:opacity-40" aria-label="Attach file">
+                    class="w-11 h-11 shrink-0 rounded-full text-muted-foreground flex items-center justify-center m-press disabled:opacity-40" aria-label="{{ __('messenger.attach_file') }}">
                 <i class="bi bi-paperclip text-lg"></i>
             </button>
             <textarea x-ref="composer" x-model="draft" rows="1" placeholder="Aa" @keydown.enter.prevent="editing ? saveEdit() : send()"
@@ -263,15 +280,15 @@
              x-transition:enter="transition ease-out duration-250" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
              x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
             <div class="w-11 h-1.5 rounded-full bg-gray-200 mx-auto my-2.5"></div>
-            <button type="button" @click="copyMsg(actionMsg)" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl m-press text-left text-[15px] text-foreground"><i class="bi bi-clipboard text-lg"></i> Copy</button>
+            <button type="button" @click="copyMsg(actionMsg)" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl m-press text-left text-[15px] text-foreground"><i class="bi bi-clipboard text-lg"></i> {{ __('messenger.copy') }}</button>
             <template x-if="actionMsg && actionMsg.can_edit">
-                <button type="button" @click="startEdit(actionMsg)" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl m-press text-left text-[15px] text-foreground"><i class="bi bi-pencil text-lg"></i> Edit</button>
+                <button type="button" @click="startEdit(actionMsg)" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl m-press text-left text-[15px] text-foreground"><i class="bi bi-pencil text-lg"></i> {{ __('messenger.edit') }}</button>
             </template>
-            <button type="button" @click="deleteForMe(actionMsg)" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl m-press text-left text-[15px] text-foreground"><i class="bi bi-eye-slash text-lg"></i> Delete for me</button>
+            <button type="button" @click="deleteForMe(actionMsg)" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl m-press text-left text-[15px] text-foreground"><i class="bi bi-eye-slash text-lg"></i> {{ __('messenger.delete_for_me') }}</button>
             <template x-if="actionMsg && actionMsg.mine && !actionMsg.deleted">
-                <button type="button" @click="deleteMsg(actionMsg)" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl m-press text-left text-[15px] text-red-600"><i class="bi bi-trash text-lg"></i> Delete for everyone</button>
+                <button type="button" @click="deleteMsg(actionMsg)" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl m-press text-left text-[15px] text-red-600"><i class="bi bi-trash text-lg"></i> {{ __('messenger.delete_for_everyone') }}</button>
             </template>
-            <button type="button" @click="actionMsg = null" class="w-full mt-1 px-4 py-3.5 rounded-2xl bg-muted/60 m-press text-[15px] font-medium text-foreground">Cancel</button>
+            <button type="button" @click="actionMsg = null" class="w-full mt-1 px-4 py-3.5 rounded-2xl bg-muted/60 m-press text-[15px] font-medium text-foreground">{{ __('shared.cancel') }}</button>
         </div>
     </div>
 </div>
@@ -325,7 +342,7 @@ function mobileMessenger() {
                     this.closeSearch();
                     this.openThread(d.conversation_id, user);
                 }
-            } catch (e) { window.showToast('error', 'Could not start chat.'); }
+            } catch (e) { window.showToast('error', @js(__('messenger.could_not_start'))); }
         },
 
         async openThread(id, user = null) {
@@ -337,7 +354,7 @@ function mobileMessenger() {
             const row = document.querySelector(`.m-conv[data-conv-id="${id}"]`);
             this.partner = user
                 ? { name: user.name, avatar: user.avatar, initial: user.initial || (user.name||'U').charAt(0).toUpperCase() }
-                : { name: row?.dataset.name || 'User', avatar: row?.dataset.avatar || null, initial: row?.dataset.initial || 'U' };
+                : { name: row?.dataset.name || @js(__('messenger.default_user')), avatar: row?.dataset.avatar || null, initial: row?.dataset.initial || 'U' };
 
             const dot = row?.querySelector('.m-conv-dot');
             const wasUnread = dot && !dot.classList.contains('hidden');
@@ -348,23 +365,23 @@ function mobileMessenger() {
                 const r = await fetch(`${this.urls.base}/${id}/thread`, { headers: { 'Accept': 'application/json' } });
                 const d = await r.json();
                 if (d.success) { this.partner = d.partner; this.messages = d.messages; this.scrollDown(); }
-            } catch (e) { window.showToast('error', 'Could not load conversation.'); }
+            } catch (e) { window.showToast('error', @js(__('messenger.could_not_load'))); }
             finally { this.loadingThread = false; }
         },
 
         closeThread() { this.threadOpen = false; this.activeId = null; },
 
         async deleteChat(id) {
-            const ok = await window.confirmAction({ title: 'Delete chat?', message: 'This chat and its history will be removed from your list. It reappears if a new message arrives.', type: 'danger', confirmText: 'Delete' });
+            const ok = await window.confirmAction({ title: @js(__('messenger.confirm_delete_chat_title')), message: @js(__('messenger.confirm_delete_chat_message')), type: 'danger', confirmText: @js(__('messenger.confirm_delete')) });
             if (!ok) return;
             try {
                 const r = await fetch(`${this.urls.base}/${id}`, { method: 'DELETE', headers: this.headers() });
                 const d = await r.json();
-                if (!d.success) { window.showToast('error', 'Could not delete chat.'); return; }
+                if (!d.success) { window.showToast('error', @js(__('messenger.could_not_delete_chat'))); return; }
                 document.querySelector(`.m-conv[data-conv-id="${id}"]`)?.remove();
                 this.closeThread();
-                window.showToast('success', 'Chat deleted');
-            } catch (e) { window.showToast('error', 'Could not delete chat.'); }
+                window.showToast('success', @js(__('messenger.chat_deleted')));
+            } catch (e) { window.showToast('error', @js(__('messenger.could_not_delete_chat'))); }
         },
 
         async send() {
@@ -375,7 +392,7 @@ function mobileMessenger() {
                 const r = await fetch(`${this.urls.base}/${this.activeId}/send`, { method: 'POST', headers: this.headers(), body: JSON.stringify({ body }) });
                 const d = await r.json();
                 if (d.success) { this.lastAddedId = d.data.id; this.messages.push(d.data); this.draft = ''; this.scrollDown(); this.updateRow(this.activeId, body, true); }
-            } catch (e) { window.showToast('error', 'Could not send.'); }
+            } catch (e) { window.showToast('error', @js(__('messenger.could_not_send'))); }
             finally { this.sending = false; }
         },
 
@@ -386,7 +403,7 @@ function mobileMessenger() {
             // Edit / delete patch an open thread silently.
             if (detail.action === 'edit' || detail.action === 'delete') {
                 if (this.threadOpen && this.activeId === id) this.applyRemoteChange(detail);
-                if (detail.is_latest) this.updateRow(id, detail.action === 'delete' ? 'This message was deleted' : (detail.body || ''), false);
+                if (detail.is_latest) this.updateRow(id, detail.action === 'delete' ? @js(__('messenger.message_deleted')) : (detail.body || ''), false);
                 return;
             }
 
@@ -399,7 +416,7 @@ function mobileMessenger() {
                     this.messages.push({ id: detail.id, mine: false, time: detail.time || '', kind: detail.kind, attachment: detail.attachment });
                     this.scrollDown(); this.markRead(id);
                 } else { this.bumpUnread(id); if (window.updateChatBadge) window.updateChatBadge(1); }
-                this.updateRow(id, detail.body || (detail.kind === 'image' ? '📷 Photo' : '📎 ' + (detail.attachment && detail.attachment.name || '')), false);
+                this.updateRow(id, detail.body || (detail.kind === 'image' ? @js(__('messenger.photo')) : '📎 ' + (detail.attachment && detail.attachment.name || '')), false);
                 if (window.playMessageSound) window.playMessageSound();
                 return;
             }
@@ -436,7 +453,7 @@ function mobileMessenger() {
             if (i > -1) this.messages.splice(i, 1, att); else this.messages.push(att);
             if (previewUrl) URL.revokeObjectURL(previewUrl);
             this.scrollDown();
-            this.updateRow(convId, att.kind === 'image' ? '📷 Photo' : '📎 ' + (att.attachment && att.attachment.name || ''), true);
+            this.updateRow(convId, att.kind === 'image' ? @js(__('messenger.photo')) : '📎 ' + (att.attachment && att.attachment.name || ''), true);
         },
 
         applyRemoteChange(detail) {
@@ -452,8 +469,8 @@ function mobileMessenger() {
         copyMsg(m) {
             this.actionMsg = null;
             navigator.clipboard?.writeText(m.body || '').then(
-                () => window.showToast('success', 'Message copied'),
-                () => window.showToast('error', 'Could not copy'),
+                () => window.showToast('success', @js(__('messenger.message_copied'))),
+                () => window.showToast('error', @js(__('messenger.could_not_copy'))),
             );
         },
 
@@ -471,48 +488,48 @@ function mobileMessenger() {
             try {
                 const r = await fetch(`${this.urls.base}/${this.activeId}/messages/${this.editingId}`, { method: 'PATCH', headers: this.headers(), body: JSON.stringify({ body }) });
                 const d = await r.json();
-                if (!d.success) { window.showToast('error', d.message || 'Could not edit.'); return; }
+                if (!d.success) { window.showToast('error', d.message || @js(__('messenger.could_not_edit'))); return; }
                 const m = this.messages.find((x) => x.id === this.editingId);
                 if (m) { m.body = body; m.edited = true; }
                 if (d.is_latest) this.updateRow(this.activeId, body, true);
                 this.cancelEdit();
-            } catch (e) { window.showToast('error', 'Could not edit.'); }
+            } catch (e) { window.showToast('error', @js(__('messenger.could_not_edit'))); }
             finally { this.sending = false; }
         },
 
         async deleteMsg(m) {
             this.actionMsg = null;
-            const ok = await window.confirmAction({ title: 'Delete for everyone?', message: 'This message will be deleted for everyone in the chat.', type: 'danger', confirmText: 'Delete' });
+            const ok = await window.confirmAction({ title: @js(__('messenger.confirm_delete_everyone_title')), message: @js(__('messenger.confirm_delete_everyone_message')), type: 'danger', confirmText: @js(__('messenger.confirm_delete')) });
             if (!ok) return;
             try {
                 const r = await fetch(`${this.urls.base}/${this.activeId}/messages/${m.id}`, { method: 'DELETE', headers: this.headers() });
                 const d = await r.json();
-                if (!d.success) { window.showToast('error', 'Could not delete.'); return; }
+                if (!d.success) { window.showToast('error', @js(__('messenger.could_not_delete'))); return; }
                 m.deleted = true; m.body = null; m.can_edit = false;
                 if (this.editingId === m.id) this.cancelEdit();
-                if (d.is_latest) this.updateRow(this.activeId, 'This message was deleted', true);
-            } catch (e) { window.showToast('error', 'Could not delete.'); }
+                if (d.is_latest) this.updateRow(this.activeId, @js(__('messenger.message_deleted')), true);
+            } catch (e) { window.showToast('error', @js(__('messenger.could_not_delete'))); }
         },
 
         async deleteForMe(m) {
             this.actionMsg = null;
-            const ok = await window.confirmAction({ title: 'Delete for me?', message: 'This message will be removed from your view only.', type: 'danger', confirmText: 'Delete' });
+            const ok = await window.confirmAction({ title: @js(__('messenger.confirm_delete_me_title')), message: @js(__('messenger.confirm_delete_me_message')), type: 'danger', confirmText: @js(__('messenger.confirm_delete')) });
             if (!ok) return;
             try {
                 const r = await fetch(`${this.urls.base}/${this.activeId}/messages/${m.id}/hide`, { method: 'POST', headers: this.headers() });
                 const d = await r.json();
-                if (!d.success) { window.showToast('error', 'Could not delete.'); return; }
+                if (!d.success) { window.showToast('error', @js(__('messenger.could_not_delete'))); return; }
                 const i = this.messages.findIndex((x) => x.id === m.id);
                 if (i > -1) this.messages.splice(i, 1);
                 if (this.editingId === m.id) this.cancelEdit();
-            } catch (e) { window.showToast('error', 'Could not delete.'); }
+            } catch (e) { window.showToast('error', @js(__('messenger.could_not_delete'))); }
         },
 
         ensureRow(id, user) {
             if (document.querySelector(`.m-conv[data-conv-id="${id}"]`)) return;
             document.getElementById('m-conv-empty')?.classList.add('hidden');
             const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-            const name = user.name || 'User';
+            const name = user.name || @js(__('messenger.default_user'));
             const initial = esc((name).charAt(0).toUpperCase());
             const list = document.getElementById('m-conv-list');
             const b = document.createElement('button');
@@ -525,7 +542,7 @@ function mobileMessenger() {
                              : `<span class="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-purple-400 text-white flex items-center justify-center text-lg font-bold">${initial}</span>`) +
                 '<span class="m-conv-dot absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-primary ring-2 ring-white hidden"></span></span>' +
                 '<span class="flex-1 min-w-0"><span class="flex items-center justify-between gap-2">' +
-                `<span class="font-semibold text-[15px] text-foreground truncate">${esc(name)}</span><span class="text-[11px] text-muted-foreground shrink-0 m-conv-time">now</span></span>` +
+                `<span class="font-semibold text-[15px] text-foreground truncate">${esc(name)}</span><span class="text-[11px] text-muted-foreground shrink-0 m-conv-time">${@js(__('messenger.now'))}</span></span>` +
                 '<span class="block text-[13px] text-muted-foreground truncate mt-0.5 m-conv-preview"></span></span>';
             b.addEventListener('click', () => this.openThread(id));
             list.insertBefore(b, list.firstChild);
@@ -534,8 +551,8 @@ function mobileMessenger() {
         updateRow(id, text, mine) {
             const row = document.querySelector(`.m-conv[data-conv-id="${id}"]`);
             if (!row) return;
-            const p = row.querySelector('.m-conv-preview'); if (p) { p.textContent = (mine ? 'You: ' : '') + text; }
-            const t = row.querySelector('.m-conv-time'); if (t) t.textContent = 'now';
+            const p = row.querySelector('.m-conv-preview'); if (p) { p.textContent = (mine ? @js(__('messenger.you_prefix')) : '') + text; }
+            const t = row.querySelector('.m-conv-time'); if (t) t.textContent = @js(__('messenger.now'));
             document.getElementById('m-conv-list')?.prepend(row);
         },
 

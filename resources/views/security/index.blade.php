@@ -12,8 +12,8 @@
         </div>
     </div>
 
-    {{-- Two-Factor Authentication Card --}}
-    <div class="card border-0 shadow-sm mb-6">
+    {{-- Two-Factor Authentication Card (full-bleed on mobile, inset on desktop) --}}
+    <div class="card border-0 shadow-sm mb-6 -mx-4 sm:mx-0 rounded-none sm:rounded-xl">
         <div class="card-body p-6">
             <div class="flex items-start gap-4">
                 <div class="flex-shrink-0">
@@ -68,8 +68,8 @@
         </div>
     </div>
 
-    {{-- Change Password Card --}}
-    <div class="card border-0 shadow-sm">
+    {{-- Change Password Card (full-bleed on mobile, inset on desktop) --}}
+    <div class="card border-0 shadow-sm -mx-4 sm:mx-0 rounded-none sm:rounded-xl">
         <div class="card-body p-6">
             <div class="flex items-start gap-4">
                 <div class="flex-shrink-0">

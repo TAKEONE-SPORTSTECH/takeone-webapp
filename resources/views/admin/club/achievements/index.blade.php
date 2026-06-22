@@ -35,6 +35,7 @@ $achievementsJson = $achievements->map(function($a) {
         'sort_order'       => $a->sort_order,
         'images'           => $combinedUrls,
         'images_paths'     => $combined,
+        'translations'     => $a->translations ?? [],
     ];
 });
 @endphp
@@ -439,6 +440,16 @@ function achievementsAdmin() {
             this.showDetail = true;
         },
 
+        setAchievementTranslations(t) {
+            t = t || {};
+            const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+            this.$nextTick(() => {
+                set('ach_tr_title_ar',       t.title?.ar);
+                set('ach_tr_location_ar',    t.location?.ar);
+                set('ach_tr_description_ar', t.description?.ar);
+            });
+        },
+
         openAdd() {
             this.isEdit         = false;
             this.formAction     = storeUrl;
@@ -447,6 +458,7 @@ function achievementsAdmin() {
             this.showModal      = true;
             resetAchievementImages();
             renderAchievementExistingThumbnails([]);
+            this.setAchievementTranslations({});
         },
 
         openEdit(id) {
@@ -459,6 +471,7 @@ function achievementsAdmin() {
             this.showModal      = true;
             resetAchievementImages();
             renderAchievementExistingThumbnails(a.images_paths || []);
+            this.setAchievementTranslations(a.translations);
         },
 
         deleteAchievement(id) {

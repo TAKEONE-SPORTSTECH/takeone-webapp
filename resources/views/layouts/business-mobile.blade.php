@@ -13,15 +13,15 @@
 <div x-data="{ drawer:false, switcher:false }" @shell:navigated.window="drawer=false; switcher=false">
 
     {{-- ===== Header (shared, identical to Personal & Club) ===== --}}
-    @include('partials.mobile-header', ['switcherCurrent' => 'business', 'shellTitle' => 'Dashboard'])
+    @include('partials.mobile-header', ['switcherCurrent' => 'business', 'shellTitle' => __('business.dashboard')])
 
     {{-- ===== Left drawer ===== --}}
     <div x-show="drawer" x-cloak class="fixed inset-0 z-50" style="display:none;">
         <div class="absolute inset-0 bg-black/40" @click="drawer=false"
              x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"></div>
-        <aside class="absolute top-0 left-0 h-full w-[280px] max-w-[85vw] bg-white shadow-2xl flex flex-col overflow-y-auto"
-               x-transition:enter="transition ease-out duration-250" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
-               x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full">
+        <aside class="absolute top-0 start-0 h-full w-[280px] max-w-[85vw] bg-white shadow-2xl flex flex-col overflow-y-auto"
+               x-transition:enter="transition ease-out duration-250" x-transition:enter-start="ltr:-translate-x-full rtl:translate-x-full" x-transition:enter-end="translate-x-0"
+               x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-x-0" x-transition:leave-end="ltr:-translate-x-full rtl:translate-x-full">
             <div class="flex items-center justify-between p-4 border-b border-border">
                 <div class="flex items-center gap-2 min-w-0">
                     <span class="w-10 h-10 rounded-lg bg-accent flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -29,19 +29,19 @@
                     </span>
                     <div class="min-w-0">
                         <p class="font-bold text-foreground truncate text-sm">{{ $business->name }}</p>
-                        <p class="text-[10px] text-muted-foreground">Chain</p>
+                        <p class="text-[10px] text-muted-foreground">{{ __('business.chain') }}</p>
                     </div>
                 </div>
                 <button @click="drawer=false" class="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground"><i class="bi bi-x-lg"></i></button>
             </div>
             <nav class="p-3 flex-1">
-                <p class="px-2 mt-1 mb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Chain</p>
+                <p class="px-2 mt-1 mb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{{ __('business.chain') }}</p>
                 <a href="{{ route('business.dashboard') }}" data-shell-link data-route="business.dashboard"
                    class="shell-nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors {{ $currentRoute === 'business.dashboard' ? 'is-active' : '' }}">
-                    <i class="bi bi-speedometer2 text-lg w-5 text-center"></i>Dashboard
+                    <i class="bi bi-speedometer2 text-lg w-5 text-center"></i>{{ __('business.dashboard') }}
                 </a>
 
-                <p class="px-2 mt-3 mb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Clubs</p>
+                <p class="px-2 mt-3 mb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{{ __('business.clubs') }}</p>
                 @forelse($chainClubs as $c)
                     <a href="{{ route('admin.club.dashboard', $c['slug']) }}"
                        class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
@@ -51,12 +51,12 @@
                         <span class="truncate">{{ $c['name'] }}</span>
                     </a>
                 @empty
-                    <p class="px-3 py-2 text-xs text-muted-foreground">No clubs linked yet.</p>
+                    <p class="px-3 py-2 text-xs text-muted-foreground">{{ __('business.no_clubs_linked') }}</p>
                 @endforelse
 
                 <div class="border-t border-border mt-3 pt-3">
                     <a href="{{ route('clubs.explore') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-accent">
-                        <i class="bi bi-compass text-lg w-5 text-center"></i>Explore clubs
+                        <i class="bi bi-compass text-lg w-5 text-center"></i>{{ __('business.explore_clubs') }}
                     </a>
                     @include('partials.mobile-account-links')
                 </div>
@@ -65,7 +65,7 @@
     </div>
 
     {{-- ===== Content ===== --}}
-    <main id="shell-content" data-route="{{ $currentRoute }}" data-title="Dashboard" class="mobile-stagger px-4 py-4 pb-24 min-h-[60vh]">
+    <main id="shell-content" data-route="{{ $currentRoute }}" data-title="{{ __('business.dashboard') }}" class="mobile-stagger px-4 py-4 pb-24 min-h-[60vh]">
         @yield('chain-content')
     </main>
 
@@ -75,15 +75,15 @@
             <a href="{{ route('business.dashboard') }}" data-shell-link data-route="business.dashboard"
                class="shell-tab flex flex-col items-center justify-center gap-0.5 py-2.5 {{ $currentRoute === 'business.dashboard' ? 'is-active' : '' }}">
                 <i class="bi bi-speedometer2 text-lg"></i>
-                <span class="text-[10px] font-medium">Dashboard</span>
+                <span class="text-[10px] font-medium">{{ __('business.dashboard') }}</span>
             </a>
             <a href="#clubs" class="shell-tab flex flex-col items-center justify-center gap-0.5 py-2.5 text-muted-foreground">
                 <i class="bi bi-diagram-3 text-lg"></i>
-                <span class="text-[10px] font-medium">Clubs</span>
+                <span class="text-[10px] font-medium">{{ __('business.clubs') }}</span>
             </a>
             <button @click="drawer = true" class="shell-tab flex flex-col items-center justify-center gap-0.5 py-2.5 text-muted-foreground">
                 <i class="bi bi-grid text-lg"></i>
-                <span class="text-[10px] font-medium">Menu</span>
+                <span class="text-[10px] font-medium">{{ __('business.menu') }}</span>
             </button>
         </div>
     </nav>

@@ -18,7 +18,17 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
         $middleware->append(\App\Http\Middleware\StructuredLogging::class);
-        $middleware->web(append: [\App\Http\Middleware\DetectDevice::class]);
+        $middleware->web(append: [
+            \App\Http\Middleware\DetectDevice::class,
+            \App\Http\Middleware\SetLocale::class,
+        ]);
+        // Exiting impersonation is a safe escape hatch — it only restores the
+        // original admin from the session. Exempt it from CSRF so a stale token
+        // in a long-lived page never traps an admin inside an impersonated session
+        // with a "419 Page Expired". Applies to desktop + mobile alike.
+        $middleware->validateCsrfTokens(except: [
+            'impersonate/leave',
+        ]);
         $middleware->alias([
             'no-store'   => \App\Http\Middleware\NoStoreCache::class,
             'role'       => \App\Http\Middleware\CheckRole::class,

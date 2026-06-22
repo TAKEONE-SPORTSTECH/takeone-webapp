@@ -1,5 +1,7 @@
 @extends($layout)
 
+@section('admin-mobile-title', 'Realtime / MQTT')
+
 @section('admin-content')
 @php
     $stateColors = [

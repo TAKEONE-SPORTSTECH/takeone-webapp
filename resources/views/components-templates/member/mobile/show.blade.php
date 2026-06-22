@@ -1,4 +1,5 @@
-@extends('layouts.app')
+@php $inShell = $inShell ?? false; @endphp
+@extends($inShell ? 'layouts.personal-mobile' : 'layouts.app')
 
 @section('hide-navbar', true)
 @section('title', $user->full_name)
@@ -10,6 +11,11 @@
     $medalsTotal = array_sum($awardCounts);
     $latest = $latestHealthRecord;
     $prev = $comparisonRecords->count() > 1 ? $comparisonRecords[1] : null;
+    $weightRows = ($weightHistory ?? collect())->map(fn ($w) => [
+        'weight' => (float) $w->weight,
+        'label'  => optional($w->recorded_at)->format('d M Y'),
+        'date'   => optional($w->recorded_at)->format('Y-m-d'),
+    ])->values();
     $memberSince = $clubAffiliations->min('start_date');
     $phone = $user->mobile_formatted ?? null;
 
@@ -70,10 +76,11 @@
 </style>
 @endpush
 
-@section('content')
-<div class="bg-background min-h-screen pb-10" x-data="{ tab: 'overview' }">
+@section($inShell ? 'personal-content' : 'content')
+<div class="{{ $inShell ? '-mx-4 -mt-4' : 'bg-background min-h-screen pb-10' }}" x-data="{ tab: ['#affiliations','#clubs'].includes(window.location.hash) ? 'clubs' : 'overview' }">
 
-    {{-- ===== Sticky glass top bar ===== --}}
+    @unless($inShell)
+    {{-- ===== Sticky glass top bar (standalone only; the shell provides its own) ===== --}}
     <div class="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-4 h-14 backdrop-blur-md bg-white/10">
         <button type="button" onclick="history.length>1 ? history.back() : window.location.href='{{ url('/') }}'"
                 class="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white border border-white/30">
@@ -81,49 +88,94 @@
         </button>
         <div class="flex items-center gap-2">
             @if(Auth::user()->isSuperAdmin())
-                <a href="{{ route('admin.platform.index') }}" title="Admin Panel"
+                <a href="{{ route('admin.platform.index') }}" title="{{ __('member.admin_panel') }}"
                    class="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white border border-white/30">
                     <i class="bi bi-shield-check text-base"></i>
                 </a>
             @endif
-            <button type="button" onclick="navigator.share ? navigator.share({title:'{{ addslashes($user->full_name) }}', url:location.href}) : (window.showToast && window.showToast('info','Link: '+location.href))"
+            <button type="button" onclick="navigator.share ? navigator.share({title:'{{ addslashes($user->full_name) }}', url:location.href}) : (window.showToast && window.showToast('info',@js(__('member.share_link'))+location.href))"
                     class="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white border border-white/30">
                 <i class="bi bi-share text-base"></i>
             </button>
         </div>
     </div>
+    @endunless
 
     {{-- ===== Hero ===== --}}
-    <header class="mp-hero pt-20 pb-8 px-5 text-white text-center">
+    <header class="mp-hero {{ $inShell ? 'pt-6' : 'pt-20' }} pb-8 px-5 text-white text-center">
         <div class="mp-hero-glow" style="background:#fff; top:-60px; left:-40px;"></div>
         <div class="mp-hero-glow" style="background:hsl(280 80% 70%); bottom:-80px; right:-40px;"></div>
 
-        <div class="relative inline-block mp-reveal" style="animation-delay:.05s">
-            <div class="mp-avatar-ring inline-block">
-                @if($user->profile_picture)
-                    <img src="{{ asset('storage/'.$user->profile_picture) }}?v={{ optional($user->updated_at)->timestamp }}"
-                         alt="{{ $user->full_name }}" class="w-28 h-28 rounded-[25px] object-cover block">
-                @else
-                    <div class="w-28 h-28 rounded-[25px] bg-white/20 grid place-items-center text-4xl font-black">{{ $initials }}</div>
-                @endif
+        @php
+            $viewer = auth()->user();
+            $isSelf = $viewer && (int) $viewer->id === (int) $user->id;
+            $isFollowing = (!$isSelf && $viewer) ? $viewer->isFollowing($user->id) : false;
+        @endphp
+        <div x-data="memberFollow({{ $isFollowing ? 'true' : 'false' }}, @js(route('wall.follow', $user)), @js($user->full_name))"
+             class="flex items-center justify-center gap-4 mp-reveal" style="animation-delay:.05s">
+
+            {{-- Follow (left of the profile picture) --}}
+            @if(!$isSelf)
+                <button type="button" @click="toggleFollow()" :disabled="busy"
+                        class="m-press w-12 h-12 rounded-full backdrop-blur flex items-center justify-center text-white border border-white/30 transition-colors disabled:opacity-60"
+                        :class="following ? 'bg-white/35' : 'bg-white/20'"
+                        :aria-label="following ? @js(__('member.unfollow')) : @js(__('member.follow'))">
+                    <i class="bi text-xl" :class="busy ? 'bi-arrow-repeat animate-spin' : (following ? 'bi-person-check-fill' : 'bi-person-plus')"></i>
+                </button>
+            @else
+                <span class="w-12 h-12 flex-shrink-0" aria-hidden="true"></span>
+            @endif
+
+            {{-- Profile picture --}}
+            <div class="relative inline-block flex-shrink-0">
+                <div class="mp-avatar-ring inline-block">
+                    @if($user->profile_picture)
+                        <img id="mpAvatarImg" src="{{ asset('storage/'.$user->profile_picture) }}?v={{ optional($user->updated_at)->timestamp }}"
+                             alt="{{ $user->full_name }}" class="w-28 h-28 rounded-[25px] object-cover block">
+                    @else
+                        <div id="mpAvatarFallback" class="w-28 h-28 rounded-[25px] bg-white/20 grid place-items-center text-4xl font-black">{{ $initials }}</div>
+                    @endif
+                </div>
+                <span class="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-green-400 border-[3px] border-white"></span>
             </div>
-            <span class="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-green-400 border-[3px] border-white"></span>
+
+            {{-- Share profile (right of the profile picture) --}}
+            <button type="button" @click="shareProfile()"
+                    class="m-press w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white border border-white/30"
+                    aria-label="{{ __('member.share_profile') }}">
+                <i class="bi bi-share text-xl"></i>
+            </button>
         </div>
 
-        <h1 class="text-2xl font-black mt-4 mp-reveal" style="animation-delay:.12s">{{ $user->full_name }}</h1>
-        @if($user->motto || $user->bio)
-            <p class="text-sm text-white/85 mt-1 max-w-xs mx-auto mp-reveal" style="animation-delay:.16s">“{{ \Illuminate\Support\Str::limit($user->motto ?: $user->bio, 80) }}”</p>
+        <h1 id="mpName" class="text-2xl font-black mt-4 mp-reveal" style="animation-delay:.12s">{{ $user->full_name }}</h1>
+        <p id="mpMotto" class="text-sm text-white/85 mt-1 max-w-xs mx-auto mp-reveal {{ ($user->motto || $user->bio) ? '' : 'hidden' }}" style="animation-delay:.16s">{{ ($user->motto || $user->bio) ? '“'.\Illuminate\Support\Str::limit($user->motto ?: $user->bio, 80).'”' : '' }}</p>
+
+        {{-- Identity meta — subtle inline line that blends into the gradient
+             (medals live in the showcase grid below, not here). --}}
+        @php
+            $meta = [];
+            if ($age) {
+                $meta[] = ['icon' => 'bi-calendar3', 'text' => $age . ' ' . __('member.years')];
+            }
+            if ($user->gender) {
+                $g = strtolower($user->gender);
+                $gIcon = $g === 'male' ? 'bi-gender-male' : ($g === 'female' ? 'bi-gender-female' : 'bi-gender-ambiguous');
+                $meta[] = ['icon' => $gIcon, 'text' => ucfirst($user->gender)];
+            }
+            if ($natDisplay) {
+                $meta[] = ['icon' => null, 'text' => $natDisplay];
+            }
+        @endphp
+        @if(count($meta))
+            <div class="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 mt-3 text-[13px] font-medium text-white/85 mp-reveal" style="animation-delay:.2s">
+                @foreach($meta as $i => $m)
+                    @if($i > 0)<span class="w-1 h-1 rounded-full bg-white/40"></span>@endif
+                    <span class="inline-flex items-center gap-1.5">
+                        @if($m['icon'])<i class="bi {{ $m['icon'] }} text-white/55 text-xs"></i>@endif{{ $m['text'] }}
+                    </span>
+                @endforeach
+            </div>
         @endif
-
-        {{-- chips --}}
-        <div class="flex flex-wrap items-center justify-center gap-2 mt-4 mp-reveal" style="animation-delay:.2s">
-            @if($age)<span class="px-3 py-1 rounded-full bg-white/15 border border-white/25 text-xs font-semibold backdrop-blur">{{ $age }} yrs</span>@endif
-            @if($user->gender)<span class="px-3 py-1 rounded-full bg-white/15 border border-white/25 text-xs font-semibold capitalize backdrop-blur">{{ $user->gender }}</span>@endif
-            <span class="px-3 py-1 rounded-full bg-white/15 border border-white/25 text-xs font-semibold backdrop-blur">🥇 {{ $awardCounts['1st'] ?? 0 }}</span>
-            <span class="px-3 py-1 rounded-full bg-white/15 border border-white/25 text-xs font-semibold backdrop-blur">🥈 {{ $awardCounts['2nd'] ?? 0 }}</span>
-            <span class="px-3 py-1 rounded-full bg-white/15 border border-white/25 text-xs font-semibold backdrop-blur">🥉 {{ $awardCounts['3rd'] ?? 0 }}</span>
-            <span class="px-3 py-1 rounded-full bg-white/15 border border-white/25 text-xs font-semibold backdrop-blur">🏆 {{ $awardCounts['special'] ?? 0 }}</span>
-        </div>
     </header>
 
     {{-- ===== Metric rail (overlaps hero) ===== --}}
@@ -132,27 +184,27 @@
             {{-- attendance ring --}}
             <div class="flex-shrink-0 w-32 bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col items-center mp-reveal" style="animation-delay:.24s">
                 <div class="mp-ring" style="--p:{{ (int) $attendanceRate }}"><b>{{ (int) $attendanceRate }}%</b></div>
-                <p class="text-[11px] text-muted-foreground mt-2 font-medium">Attendance</p>
+                <p class="text-[11px] text-muted-foreground mt-2 font-medium">{{ __('member.attendance') }}</p>
             </div>
             {{-- goals ring --}}
             <div class="flex-shrink-0 w-32 bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col items-center mp-reveal" style="animation-delay:.28s">
                 <div class="mp-ring" style="--p:{{ (int) $successRate }}"><b>{{ (int) $successRate }}%</b></div>
-                <p class="text-[11px] text-muted-foreground mt-2 font-medium">Goal success</p>
+                <p class="text-[11px] text-muted-foreground mt-2 font-medium">{{ __('member.goal_success') }}</p>
             </div>
             {{-- sessions --}}
             <div class="flex-shrink-0 w-28 bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col items-center justify-center mp-reveal" style="animation-delay:.32s">
                 <p class="text-2xl font-black text-primary" data-count="{{ $sessionsCompleted }}">0</p>
-                <p class="text-[11px] text-muted-foreground mt-1 font-medium">Sessions</p>
+                <p class="text-[11px] text-muted-foreground mt-1 font-medium">{{ __('member.sessions') }}</p>
             </div>
             {{-- medals --}}
             <div class="flex-shrink-0 w-28 bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col items-center justify-center mp-reveal" style="animation-delay:.36s">
                 <p class="text-2xl font-black text-amber-500" data-count="{{ $medalsTotal }}">0</p>
-                <p class="text-[11px] text-muted-foreground mt-1 font-medium">Medals</p>
+                <p class="text-[11px] text-muted-foreground mt-1 font-medium">{{ __('member.medals') }}</p>
             </div>
             {{-- clubs --}}
             <div class="flex-shrink-0 w-28 bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col items-center justify-center mp-reveal" style="animation-delay:.4s">
                 <p class="text-2xl font-black text-primary" data-count="{{ $totalAffiliations }}">0</p>
-                <p class="text-[11px] text-muted-foreground mt-1 font-medium">Clubs</p>
+                <p class="text-[11px] text-muted-foreground mt-1 font-medium">{{ __('member.clubs') }}</p>
             </div>
         </div>
     </div>
@@ -163,10 +215,10 @@
         <div class="grid grid-cols-4 gap-2">
             @php
                 $medals = [
-                    ['Special', $awardCounts['special'] ?? 0, 'bi-gem', 'hsl(250 70% 70%)', 'hsl(280 70% 60%)'],
-                    ['Gold', $awardCounts['1st'] ?? 0, 'bi-trophy-fill', '#fbbf24', '#f59e0b'],
-                    ['Silver', $awardCounts['2nd'] ?? 0, 'bi-award-fill', '#cbd5e1', '#94a3b8'],
-                    ['Bronze', $awardCounts['3rd'] ?? 0, 'bi-award', '#d6a06a', '#b45309'],
+                    [__('member.medal_special'), $awardCounts['special'] ?? 0, 'bi-trophy-fill', 'hsl(250 70% 70%)', 'hsl(280 70% 60%)'],
+                    [__('member.medal_gold'), $awardCounts['1st'] ?? 0, 'bi-award-fill', '#fbbf24', '#f59e0b'],
+                    [__('member.medal_silver'), $awardCounts['2nd'] ?? 0, 'bi-award-fill', '#cbd5e1', '#94a3b8'],
+                    [__('member.medal_bronze'), $awardCounts['3rd'] ?? 0, 'bi-award-fill', '#d6a06a', '#b45309'],
                 ];
             @endphp
             @foreach($medals as [$label,$cnt,$icon,$c1,$c2])
@@ -184,8 +236,8 @@
     <div class="sticky top-14 z-30 bg-background/95 backdrop-blur mt-5 py-2">
         <div class="mp-tabbar flex gap-2 overflow-x-auto px-4">
             @foreach([
-                'overview'=>'Overview','health'=>'Health','goals'=>'Goals',
-                'tournaments'=>'Tournaments','clubs'=>'Clubs','attendance'=>'Attendance','billing'=>'Billing'
+                'overview'=>__('member.tab_overview'),'health'=>__('member.tab_health'),'goals'=>__('member.tab_goals'),
+                'tournaments'=>__('member.tab_tournaments'),'clubs'=>__('member.tab_clubs'),'attendance'=>__('member.tab_attendance'),'billing'=>__('member.tab_billing')
             ] as $key=>$label)
                 <button @click="tab='{{ $key }}'"
                         class="mp-tab flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold text-muted-foreground bg-white border border-gray-100 transition-all"
@@ -198,26 +250,121 @@
 
         {{-- ===== Overview ===== --}}
         <div x-show="tab==='overview'" x-transition.opacity class="space-y-3">
+
+            @if($canRegeneratePassword ?? false)
+            {{-- ===== Super-admin password controls — reset (any account) or
+                 auto-generate a new one (shown + emailed to the member). ===== --}}
+            <div x-data="memberPwdAdmin('{{ route('member.reset-password', $user->id) }}', '{{ route('member.regenerate-password', $user->id) }}', @js($user->full_name))"
+                 class="bg-white rounded-2xl shadow-sm border border-amber-200 p-4 mp-reveal" style="animation-delay:.2s">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="w-9 h-9 rounded-xl bg-amber-50 text-amber-500 grid place-items-center flex-shrink-0">
+                        <i class="bi bi-shield-lock-fill text-lg"></i>
+                    </span>
+                    <div class="min-w-0">
+                        <h3 class="font-bold text-foreground leading-tight">{{ __('member.account_security') }}</h3>
+                        <p class="text-[11px] text-muted-foreground">{{ __('member.super_admin_only') }}</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mt-3">
+                    <button type="button" @click="openSet()"
+                            class="m-press flex items-center justify-center gap-2 py-2.5 rounded-xl bg-muted text-foreground text-sm font-semibold active:bg-muted/70 transition-colors">
+                        <i class="bi bi-key"></i> {{ __('member.set_password') }}
+                    </button>
+                    <button type="button" @click="generate()" :disabled="busy"
+                            class="m-press flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 transition-colors disabled:opacity-60">
+                        <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-magic'"></i> {{ __('member.generate_password') }}
+                    </button>
+                </div>
+
+                {{-- Manual "set password" bottom sheet — teleported to body so it isn't trapped by the card's transform/animation --}}
+                <template x-teleport="body">
+                <div x-show="setOpen" x-cloak class="fixed inset-0 z-[70] flex items-end justify-center" @keydown.escape.window="setOpen=false">
+                    <div class="absolute inset-0 bg-black/50" @click="setOpen=false"
+                         x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"></div>
+                    <div class="relative w-full max-w-lg bg-white rounded-t-3xl p-5 pb-8"
+                         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
+                        <div class="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-4"></div>
+                        <h3 class="font-bold text-lg text-foreground flex items-center gap-2"><i class="bi bi-key-fill text-amber-500"></i> {{ __('member.set_password') }}</h3>
+                        <p class="text-sm text-muted-foreground mt-1 mb-4" x-text="@js(__('member.set_password_for')).replace(':name', name)"></p>
+                        <div class="space-y-3">
+                            <input type="password" x-model="pw1" placeholder="{{ __('member.new_password') }}" minlength="8"
+                                   class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                            <input type="password" x-model="pw2" placeholder="{{ __('member.confirm_password') }}" minlength="8"
+                                   class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                        </div>
+                        <div class="flex gap-2 mt-5">
+                            <button type="button" @click="setOpen=false" class="m-press flex-1 py-3 rounded-xl bg-muted text-foreground text-sm font-semibold">{{ __('shared.cancel') }}</button>
+                            <button type="button" @click="submitSet()" :disabled="busy" class="m-press flex-1 py-3 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 disabled:opacity-60">
+                                <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-check-lg'"></i> {{ __('member.set_password') }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                </template>
+
+                {{-- Generated-password result sheet (shows the new password once) — teleported to body --}}
+                <template x-teleport="body">
+                <div x-show="resultOpen" x-cloak class="fixed inset-0 z-[70] flex items-end justify-center" @keydown.escape.window="resultOpen=false">
+                    <div class="absolute inset-0 bg-black/50" @click="resultOpen=false"
+                         x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"></div>
+                    <div class="relative w-full max-w-lg bg-white rounded-t-3xl p-5 pb-8 text-center"
+                         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
+                        <div class="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-4"></div>
+                        <div class="w-14 h-14 rounded-2xl bg-green-50 text-green-600 grid place-items-center mx-auto"><i class="bi bi-check-circle-fill text-2xl"></i></div>
+                        <h3 class="font-bold text-lg text-foreground mt-3">{{ __('member.password_generated') }}</h3>
+                        <p class="text-sm text-muted-foreground mt-1" x-show="emailed">{{ __('member.password_emailed') }}</p>
+                        <p class="text-sm text-amber-600 mt-1" x-show="!emailed">{{ __('member.password_not_emailed') }}</p>
+                        <button type="button" @click="copy()"
+                                class="m-press w-full mt-4 flex items-center justify-between gap-2 px-4 py-3 rounded-xl bg-muted border border-dashed border-primary/40">
+                            <span class="font-mono font-bold text-base text-foreground tracking-wider select-all" x-text="newPw"></span>
+                            <i class="bi" :class="copied ? 'bi-clipboard-check text-green-600' : 'bi-clipboard text-primary'"></i>
+                        </button>
+                        <button type="button" @click="resultOpen=false" class="m-press w-full mt-4 py-3 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90">{{ __('shared.done') }}</button>
+                    </div>
+                </div>
+                </template>
+            </div>
+            @endif
+
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                <h3 class="font-bold text-foreground mb-3 flex items-center gap-2"><i class="bi bi-person-vcard text-primary"></i> Personal</h3>
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-person-vcard text-primary"></i> {{ __('member.personal') }}</h3>
+                    @if($canEditBasic ?? false)
+                        <button type="button" @click="$dispatch('open-profile-modal')"
+                                class="m-press inline-flex items-center gap-1.5 text-primary text-sm font-semibold">
+                            <i class="bi bi-pencil-square"></i> {{ __('member.edit') }}
+                        </button>
+                    @endif
+                </div>
+                {{-- Age, gender & nationality live in the hero meta — not repeated here. --}}
                 <div class="grid grid-cols-2 gap-3 text-sm">
-                    <div><p class="text-[11px] text-muted-foreground">Blood type</p><p class="font-semibold">{{ $user->blood_type ?: '—' }}</p></div>
-                    <div><p class="text-[11px] text-muted-foreground">Nationality</p><p class="font-semibold">{{ $natDisplay ?: '—' }}</p></div>
-                    <div><p class="text-[11px] text-muted-foreground">Gender</p><p class="font-semibold capitalize">{{ $user->gender ?: '—' }}</p></div>
-                    <div><p class="text-[11px] text-muted-foreground">Marital status</p><p class="font-semibold capitalize">{{ $user->marital_status ?: '—' }}</p></div>
+                    <div><p class="text-[11px] text-muted-foreground">{{ __('member.blood_type') }}</p><p class="font-semibold">{{ $user->blood_type ?: '—' }}</p></div>
+                    <div><p class="text-[11px] text-muted-foreground">{{ __('member.marital_status') }}</p><p class="font-semibold capitalize">{{ $user->marital_status ?: '—' }}</p></div>
                     @if($user->horoscope)
                         @php $zodiac = ['Aries'=>'♈','Taurus'=>'♉','Gemini'=>'♊','Cancer'=>'♋','Leo'=>'♌','Virgo'=>'♍','Libra'=>'♎','Scorpio'=>'♏','Sagittarius'=>'♐','Capricorn'=>'♑','Aquarius'=>'♒','Pisces'=>'♓']; @endphp
-                        <div><p class="text-[11px] text-muted-foreground">Horoscope</p><p class="font-semibold">{{ $zodiac[$user->horoscope] ?? '' }} {{ $user->horoscope }}</p></div>
+                        <div><p class="text-[11px] text-muted-foreground">{{ __('member.horoscope') }}</p><p class="font-semibold">{{ $zodiac[$user->horoscope] ?? '' }} {{ $user->horoscope }}</p></div>
                     @endif
-                    @if($memberSince)<div><p class="text-[11px] text-muted-foreground">Member since</p><p class="font-semibold">{{ Carbon::parse($memberSince)->format('M Y') }}</p></div>@endif
-                    <div><p class="text-[11px] text-muted-foreground">Skills learned</p><p class="font-semibold">{{ $distinctSkills }}</p></div>
+                    @if($memberSince)<div><p class="text-[11px] text-muted-foreground">{{ __('member.member_since') }}</p><p class="font-semibold">{{ Carbon::parse($memberSince)->format('M Y') }}</p></div>@endif
+                    <div class="col-span-2">
+                        <p class="text-[11px] text-muted-foreground">{{ __('member.skills_learned') }}</p>
+                        @if(($allSkills ?? collect())->count())
+                            <div class="flex flex-wrap gap-1.5 mt-1">
+                                @foreach($allSkills as $skillName)
+                                    <span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-accent text-primary">{{ $skillName }}</span>
+                                @endforeach
+                            </div>
+                        @else
+                            <p class="font-semibold">—</p>
+                        @endif
+                    </div>
                 </div>
             </div>
             @if($user->email || $phone)
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-2.5">
-                <h3 class="font-bold text-foreground mb-1 flex items-center gap-2"><i class="bi bi-telephone text-primary"></i> Contact</h3>
+                <h3 class="font-bold text-foreground mb-1 flex items-center gap-2"><i class="bi bi-telephone text-primary"></i> {{ __('member.contact') }}</h3>
                 @if($user->email)<a href="mailto:{{ $user->email }}" class="flex items-center gap-3 text-sm"><span class="w-8 h-8 rounded-lg bg-accent grid place-items-center text-primary"><i class="bi bi-envelope"></i></span><span class="truncate">{{ $user->email }}</span></a>@endif
-                @if($phone)<a href="tel:{{ $phone }}" class="flex items-center gap-3 text-sm"><span class="w-8 h-8 rounded-lg bg-accent grid place-items-center text-primary"><i class="bi bi-phone"></i></span><span>{{ $phone }}</span></a>@endif
+                @if($phone)<a href="tel:{{ $phone }}" class="flex items-center gap-3 text-sm"><span class="w-8 h-8 rounded-lg bg-accent grid place-items-center text-primary"><i class="bi bi-phone"></i></span><span dir="ltr">{{ $phone }}</span></a>@endif
             </div>
             @endif
 
@@ -234,7 +381,7 @@
             @endphp
             @if($socials->count())
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                <h3 class="font-bold text-foreground mb-3 flex items-center gap-2"><i class="bi bi-share text-primary"></i> Social</h3>
+                <h3 class="font-bold text-foreground mb-3 flex items-center gap-2"><i class="bi bi-share text-primary"></i> {{ __('member.social') }}</h3>
                 <div class="flex flex-wrap gap-2">
                     @foreach($socials as $platform => $url)
                         <a href="{{ $safeUrl($url) }}" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-xl bg-accent grid place-items-center text-primary text-lg"><i class="bi {{ $socialIcons[strtolower($platform)] ?? 'bi-link-45deg' }}"></i></a>
@@ -246,7 +393,7 @@
             {{-- Emergency contacts --}}
             @if(!empty($user->emergency_contacts))
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
-                <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-telephone-plus text-primary"></i> Emergency contacts</h3>
+                <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-telephone-plus text-primary"></i> {{ __('member.emergency_contacts') }}</h3>
                 @foreach($user->emergency_contacts as $contact)
                     <div class="flex items-center gap-3">
                         <span class="w-9 h-9 rounded-lg bg-accent grid place-items-center text-primary flex-shrink-0"><i class="bi bi-person"></i></span>
@@ -255,7 +402,7 @@
                             <p class="text-[11px] text-muted-foreground capitalize">{{ $contact['relationship'] ?? '' }}</p>
                         </div>
                         @php $cp = trim(($contact['phone_code'] ?? '').' '.($contact['phone'] ?? '')); @endphp
-                        @if($cp)<a href="tel:{{ str_replace(' ', '', $cp) }}" class="text-primary text-sm font-semibold whitespace-nowrap">{{ $cp }}</a>@endif
+                        @if($cp)<a href="tel:{{ str_replace(' ', '', $cp) }}" dir="ltr" class="text-primary text-sm font-semibold whitespace-nowrap inline-block">{{ $cp }}</a>@endif
                     </div>
                 @endforeach
             </div>
@@ -264,12 +411,12 @@
             {{-- Identity documents --}}
             @if(!empty($user->documents))
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-2">
-                <h3 class="font-bold text-foreground mb-1 flex items-center gap-2"><i class="bi bi-file-earmark-text text-primary"></i> Documents</h3>
+                <h3 class="font-bold text-foreground mb-1 flex items-center gap-2"><i class="bi bi-file-earmark-text text-primary"></i> {{ __('member.documents') }}</h3>
                 @foreach($user->documents as $doc)
                     <a href="{{ !empty($doc['file_path']) ? asset('storage/'.$doc['file_path']) : '#' }}" target="_blank" rel="noopener" class="flex items-center gap-3 text-sm">
                         <span class="w-9 h-9 rounded-lg bg-accent grid place-items-center text-primary flex-shrink-0"><i class="bi bi-file-earmark-arrow-down"></i></span>
                         <div class="min-w-0 flex-1">
-                            <p class="font-semibold truncate">{{ $doc['type'] ?? 'Document' }}</p>
+                            <p class="font-semibold truncate">{{ $doc['type'] ?? __('member.document') }}</p>
                             @if(!empty($doc['number']))<p class="text-[11px] text-muted-foreground truncate">{{ $doc['number'] }}</p>@endif
                         </div>
                     </a>
@@ -279,10 +426,11 @@
         </div>
 
         {{-- ===== Health ===== --}}
-        <div x-show="tab==='health'" x-transition.opacity x-cloak class="space-y-3">
+        <div x-show="tab==='health'" x-transition.opacity x-cloak class="space-y-3"
+             x-data="weightLogger({ url: '{{ route('member.store-health', $user->id) }}', csrf: '{{ csrf_token() }}', today: '{{ now()->format('Y-m-d') }}', rows: @json($weightRows) })">
             @if(!empty($user->health_conditions))
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-2.5">
-                <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-clipboard2-pulse text-primary"></i> Chronic conditions</h3>
+                <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-clipboard2-pulse text-primary"></i> {{ __('member.chronic_conditions') }}</h3>
                 @foreach($user->health_conditions as $cond)
                     <div class="flex items-start gap-3">
                         <span class="w-2 h-2 rounded-full bg-red-400 mt-1.5 flex-shrink-0"></span>
@@ -296,41 +444,131 @@
             @endif
             @if($latest)
                 @php
-                    $metrics = [
-                        ['Weight', $latest->weight, 'kg', 'bi-speedometer', $prev->weight ?? null],
-                        ['Height', $latest->height, 'cm', 'bi-rulers', $prev->height ?? null],
-                        ['BMI', $latest->bmi, '', 'bi-heart-pulse', $prev->bmi ?? null],
-                        ['Body fat', $latest->body_fat_percentage, '%', 'bi-droplet-half', $prev->body_fat_percentage ?? null],
-                        ['Muscle', $latest->muscle_mass, 'kg', 'bi-activity', $prev->muscle_mass ?? null],
-                        ['Body age', $latest->body_age, 'yrs', 'bi-hourglass', $prev->body_age ?? null],
+                    // Primary trio shown in one row, then any extra metrics below.
+                    $primary = [
+                        [__('member.metric_weight'), $latest->weight, 'kg', 'bi-speedometer', $prev->weight ?? null],
+                        [__('member.metric_height'), $latest->height, 'cm', 'bi-rulers', $prev->height ?? null],
+                        [__('member.metric_bmi'), $latest->bmi, '', 'bi-heart-pulse', $prev->bmi ?? null],
+                    ];
+                    $secondary = [
+                        [__('member.metric_body_fat'), $latest->body_fat_percentage, '%', 'bi-droplet-half', $prev->body_fat_percentage ?? null],
+                        [__('member.metric_muscle'), $latest->muscle_mass, 'kg', 'bi-activity', $prev->muscle_mass ?? null],
+                        [__('member.metric_body_age'), $latest->body_age, 'yrs', 'bi-hourglass', $prev->body_age ?? null],
                     ];
                 @endphp
-                <div class="grid grid-cols-2 gap-3">
-                    @foreach($metrics as [$label,$val,$unit,$icon,$old])
-                        @if(!is_null($val))
-                            @php $delta = (!is_null($old) && $old != 0) ? round($val - $old, 1) : null; @endphp
-                            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                                <div class="flex items-center justify-between"><span class="text-[11px] text-muted-foreground font-medium">{{ $label }}</span><i class="bi {{ $icon }} text-primary"></i></div>
-                                <p class="text-2xl font-black mt-1">{{ $val }}<span class="text-xs font-medium text-muted-foreground ml-0.5">{{ $unit }}</span></p>
-                                @if(!is_null($delta) && $delta != 0)
-                                    <p class="text-[11px] font-semibold mt-0.5 {{ $delta > 0 ? 'text-green-600' : 'text-red-500' }}"><i class="bi bi-arrow-{{ $delta>0?'up':'down' }}-short"></i>{{ abs($delta) }} {{ $unit }}</p>
-                                @endif
-                            </div>
-                        @endif
+
+                {{-- Primary trio — one tidy row of three --}}
+                <div class="grid grid-cols-3 gap-2">
+                    @foreach($primary as [$label,$val,$unit,$icon,$old])
+                        @php $delta = (!is_null($val) && !is_null($old) && $old != 0) ? round($val - $old, 1) : null; @endphp
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 text-center flex flex-col items-center">
+                            <span class="w-9 h-9 rounded-xl bg-accent grid place-items-center text-primary mb-1.5"><i class="bi {{ $icon }} text-base"></i></span>
+                            <p class="text-xl font-black leading-none truncate max-w-full">{{ !is_null($val) ? number_format((float) $val, 1) : '—' }}</p>
+                            @if($unit)<p class="text-[10px] font-semibold text-muted-foreground leading-none mt-0.5">{{ $unit }}</p>@endif
+                            <p class="text-[10px] text-muted-foreground mt-1 leading-tight">{{ $label }}</p>
+                            @if(!is_null($delta) && $delta != 0)
+                                <span class="mt-1 inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded-full {{ $delta > 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500' }}"><i class="bi bi-arrow-{{ $delta>0?'up':'down' }}-short"></i>{{ number_format(abs($delta), 1) }}</span>
+                            @endif
+                        </div>
                     @endforeach
                 </div>
-                <p class="text-[11px] text-muted-foreground text-center">Last recorded {{ optional($latest->recorded_at)->format('d M Y') }}</p>
+
+                {{-- Extra metrics (only the ones that exist) --}}
+                @php $secondaryShown = collect($secondary)->filter(fn($m) => !is_null($m[1])); @endphp
+                @if($secondaryShown->isNotEmpty())
+                    <div class="grid grid-cols-3 gap-2">
+                        @foreach($secondaryShown as [$label,$val,$unit,$icon,$old])
+                            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 text-center">
+                                <i class="bi {{ $icon }} text-primary"></i>
+                                <p class="text-base font-black mt-0.5 leading-none truncate max-w-full">{{ number_format((float) $val, 1) }}</p>
+                                @if($unit)<p class="text-[9px] font-semibold text-muted-foreground leading-none mt-0.5">{{ $unit }}</p>@endif
+                                <p class="text-[10px] text-muted-foreground mt-1">{{ $label }}</p>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+                <p class="text-[11px] text-muted-foreground text-center">{{ __('member.last_recorded') }} {{ optional($latest->recorded_at)->format('d M Y') }}</p>
             @else
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center"><i class="bi bi-heart-pulse text-3xl text-gray-300"></i><p class="text-sm text-muted-foreground mt-2">No health records yet.</p></div>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center"><i class="bi bi-heart-pulse text-3xl text-gray-300"></i><p class="text-sm text-muted-foreground mt-2">{{ __('member.no_health_records') }}</p></div>
             @endif
+
+            {{-- ===== Weight tracking ===== --}}
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-graph-up-arrow text-primary"></i> {{ __('member.weight_history') }}</h3>
+                    @if($canEditBasic)
+                        <button type="button" @click="openAdd()" class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold active:bg-primary/90">
+                            <i class="bi bi-plus-lg"></i>{{ __('member.add_weight') }}
+                        </button>
+                    @endif
+                </div>
+
+                <template x-if="rows.length">
+                    <div class="space-y-1.5">
+                        <template x-for="(row,i) in rows" :key="row.date + '-' + i">
+                            <div class="flex items-center gap-3 rounded-xl bg-muted/40 px-3 py-2.5">
+                                <span class="w-9 h-9 rounded-lg bg-white grid place-items-center text-primary shadow-sm flex-shrink-0"><i class="bi bi-speedometer2"></i></span>
+                                <div class="min-w-0 flex-1">
+                                    <p class="font-bold text-foreground leading-none"><span x-text="row.weight"></span><span class="text-[10px] font-semibold text-muted-foreground ml-0.5">kg</span></p>
+                                    <p class="text-[10px] text-muted-foreground mt-1" x-text="row.label"></p>
+                                </div>
+                                {{-- Δ vs the previous (older) reading --}}
+                                <template x-if="delta(i) !== null">
+                                    <span class="inline-flex items-center text-[11px] font-bold px-2 py-0.5 rounded-full"
+                                          :class="delta(i) === 0 ? 'bg-gray-100 text-gray-500' : (delta(i) < 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500')">
+                                        <i class="bi" :class="delta(i) === 0 ? 'bi-dash' : (delta(i) < 0 ? 'bi-arrow-down-short' : 'bi-arrow-up-short')"></i><span x-text="Math.abs(delta(i)) + ' kg'"></span>
+                                    </span>
+                                </template>
+                                <template x-if="delta(i) === null">
+                                    <span class="text-[9px] text-muted-foreground/70 px-2">{{ __('member.first_reading') }}</span>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+                <template x-if="!rows.length">
+                    <p class="text-sm text-muted-foreground text-center py-4">{{ __('member.no_weight_records') }}</p>
+                </template>
+            </div>
+
+            {{-- Add-weight bottom sheet (teleported to body) --}}
+            <template x-teleport="body">
+                <div x-show="addOpen" x-cloak class="fixed inset-0 z-[70] flex items-end justify-center" @keydown.escape.window="addOpen=false">
+                    <div class="absolute inset-0 bg-black/50" @click="addOpen=false" x-transition.opacity></div>
+                    <div class="relative w-full max-w-lg bg-white rounded-t-3xl p-5 pb-8"
+                         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
+                        <div class="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-4"></div>
+                        <h3 class="font-bold text-lg text-foreground flex items-center gap-2"><i class="bi bi-speedometer text-primary"></i> {{ __('member.log_weight') }}</h3>
+                        <div class="space-y-3 mt-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.weight_label') }}</label>
+                                <input type="number" x-model="weight" step="0.1" min="0" max="999.9" inputmode="decimal" dir="ltr"
+                                       class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="70.5">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.reading_date') }}</label>
+                                <input type="date" x-model="date" :max="today" dir="ltr"
+                                       class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                            </div>
+                        </div>
+                        <div class="flex gap-2 mt-5">
+                            <button type="button" @click="addOpen=false" class="m-press flex-1 py-3 rounded-xl bg-muted text-foreground text-sm font-semibold">{{ __('shared.cancel') }}</button>
+                            <button type="button" @click="save()" :disabled="busy || !weight" class="m-press flex-1 py-3 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 disabled:opacity-60">
+                                <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-check-lg'"></i> {{ __('member.save') }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
         </div>
 
         {{-- ===== Goals ===== --}}
         <div x-show="tab==='goals'" x-transition.opacity x-cloak class="space-y-3">
             <div class="grid grid-cols-3 gap-2">
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 text-center"><p class="text-xl font-black text-primary">{{ $activeGoalsCount }}</p><p class="text-[10px] text-muted-foreground">Active</p></div>
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 text-center"><p class="text-xl font-black text-green-600">{{ $completedGoalsCount }}</p><p class="text-[10px] text-muted-foreground">Done</p></div>
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 text-center"><p class="text-xl font-black text-amber-500">{{ $successRate }}%</p><p class="text-[10px] text-muted-foreground">Success</p></div>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 text-center"><p class="text-xl font-black text-primary">{{ $activeGoalsCount }}</p><p class="text-[10px] text-muted-foreground">{{ __('member.goals_active') }}</p></div>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 text-center"><p class="text-xl font-black text-green-600">{{ $completedGoalsCount }}</p><p class="text-[10px] text-muted-foreground">{{ __('member.goals_done') }}</p></div>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 text-center"><p class="text-xl font-black text-amber-500">{{ $successRate }}%</p><p class="text-[10px] text-muted-foreground">{{ __('member.goals_success') }}</p></div>
             </div>
             @forelse($goals as $g)
                 @php
@@ -346,12 +584,143 @@
                     <p class="text-[11px] text-muted-foreground mt-1">{{ $cv }} / {{ $tv ?: '—' }} {{ $g->unit }} · {{ $pct }}%</p>
                 </div>
             @empty
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center"><i class="bi bi-bullseye text-3xl text-gray-300"></i><p class="text-sm text-muted-foreground mt-2">No goals set.</p></div>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center"><i class="bi bi-bullseye text-3xl text-gray-300"></i><p class="text-sm text-muted-foreground mt-2">{{ __('member.no_goals') }}</p></div>
             @endforelse
         </div>
 
         {{-- ===== Tournaments ===== --}}
         <div x-show="tab==='tournaments'" x-transition.opacity x-cloak class="space-y-3">
+            @if(($awardedAchievements ?? collect())->isNotEmpty())
+                <div x-data="{ showAch:false, ach:null, idx:0,
+                               openAch(a){ this.ach=a; this.idx=0; this.showAch=true; },
+                               medalEmoji(r){ r=(r||'').toLowerCase(); var m='';
+                                   if(r.includes('gold'))m+='🥇'; if(r.includes('silver'))m+='🥈'; if(r.includes('bronze'))m+='🥉';
+                                   return m||'🏅'; } }">
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-2 flex items-center gap-1"><i class="bi bi-award-fill text-amber-400"></i>{{ __('member.medals_awards') }}</p>
+                    <div class="space-y-2.5">
+                        @foreach($awardedAchievements as $a)
+                            @php
+                                $r = mb_strtolower($a->member_award ?? '');
+                                $emoji = (str_contains($r, 'gold') ? '🥇' : '') . (str_contains($r, 'silver') ? '🥈' : '') . (str_contains($r, 'bronze') ? '🥉' : '');
+                                $emoji = $emoji ?: '🏅';
+                                $dateLabel = $a->date_label ?: ($a->achievement_date ? $a->achievement_date->format('M Y') : '');
+                                $achLocation = $a->tr('location');
+                                $metaLine = implode(' · ', array_filter([$achLocation, $dateLabel]));
+                                $achImages = collect(array_filter(array_merge($a->image_path ? [$a->image_path] : [], $a->images ?? [])))
+                                    ->map(fn ($p) => asset('storage/' . $p))->values()->toArray();
+                                $achData = [
+                                    'member_award' => $a->member_award,
+                                    'emoji'        => $emoji,
+                                    'title'        => $a->tr('title'),
+                                    'short_title'  => $a->tr('short_title') ?: $a->tr('title'),
+                                    'location'     => $achLocation,
+                                    'date_label'   => $dateLabel,
+                                    'description'  => $a->tr('description'),
+                                    'club'         => $a->tenant?->tr('club_name'),
+                                    'type_icon'    => $a->type_icon ?: '🏆',
+                                    'bg_from'      => $a->bg_from ?: '#f59e0b',
+                                    'bg_to'        => $a->bg_to ?: '#f97316',
+                                    'images'       => $achImages,
+                                    'athletes'     => collect($a->athletes ?? [])->map(fn ($x) => is_array($x)
+                                                        ? ['name' => $x['name'] ?? '', 'role' => $x['role'] ?? '']
+                                                        : ['name' => (string) $x, 'role' => ''])
+                                                      ->filter(fn ($x) => $x['name'] !== '')->values()->toArray(),
+                                ];
+                            @endphp
+                            <button type="button" @click='openAch(@json($achData))' class="m-card m-press p-3 flex items-start gap-3 w-full text-start">
+                                <span class="w-12 h-12 rounded-full bg-amber-50 grid place-items-center text-2xl flex-shrink-0">{{ $emoji }}</span>
+                                <div class="min-w-0 flex-1">
+                                    {{-- Member-first: the medal they won is the headline --}}
+                                    <p class="font-bold text-foreground text-sm leading-tight">{{ $a->member_award ?: __('member.award_default') }}</p>
+                                    <p class="text-[11px] text-muted-foreground truncate mt-0.5"><i class="bi bi-trophy text-amber-400 mr-0.5"></i>{{ $a->tr('short_title') ?: $a->tr('title') }}</p>
+                                    @if($metaLine)
+                                        <p class="text-[10px] text-muted-foreground/80 truncate mt-0.5">@if($achLocation)<i class="bi bi-geo-alt mr-0.5"></i>@endif{{ $metaLine }}</p>
+                                    @endif
+                                    <p class="text-[10px] text-muted-foreground/80 truncate">{{ __('member.award_via', ['club' => $a->tenant?->tr('club_name') ?? '']) }}</p>
+                                </div>
+                                <i class="bi bi-chevron-right rtl:rotate-180 text-muted-foreground/40 text-sm flex-shrink-0 self-center"></i>
+                            </button>
+                        @endforeach
+                    </div>
+
+                    {{-- Achievement detail sheet (teleported to body) --}}
+                    <template x-teleport="body">
+                        <div x-show="showAch" x-cloak class="fixed inset-0 z-[70] overflow-y-auto" @keydown.escape.window="showAch=false">
+                            <div x-show="showAch" x-transition.opacity class="fixed inset-0 bg-black/60" @click="showAch=false"></div>
+                            <div class="flex min-h-full items-end justify-center sm:items-center sm:p-4">
+                                <div x-show="showAch"
+                                     x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-full sm:translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+                                     x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-full"
+                                     class="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg flex flex-col" style="max-height:92vh" @click.stop>
+                                    <template x-if="ach">
+                                        <div class="flex flex-col overflow-hidden">
+                                            {{-- Media --}}
+                                            <div class="relative flex-shrink-0">
+                                                <div class="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide rounded-t-3xl sm:rounded-t-2xl" x-ref="strip" @scroll.debounce.50ms="idx = Math.round($refs.strip.scrollLeft / $refs.strip.offsetWidth)">
+                                                    <template x-if="ach.images && ach.images.length">
+                                                        <template x-for="img in ach.images" :key="img">
+                                                            <img :src="img" class="snap-start flex-shrink-0 w-full h-56 object-cover">
+                                                        </template>
+                                                    </template>
+                                                    <template x-if="!ach.images || !ach.images.length">
+                                                        <div class="w-full h-56 flex items-center justify-center" :style="'background:linear-gradient(135deg,'+ach.bg_from+','+ach.bg_to+')'">
+                                                            <span class="text-6xl opacity-40" x-text="ach.type_icon"></span>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                                <button type="button" @click="showAch=false" class="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/40 backdrop-blur text-white grid place-items-center"><i class="bi bi-x-lg"></i></button>
+                                                <div class="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/60 to-transparent pointer-events-none"></div>
+                                                <div x-show="ach.images && ach.images.length > 1" class="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1.5">
+                                                    <template x-for="(img,i) in ach.images" :key="i">
+                                                        <span class="h-1.5 rounded-full transition-all" :class="idx===i ? 'bg-white w-4' : 'bg-white/50 w-1.5'"></span>
+                                                    </template>
+                                                </div>
+                                                {{-- The member's own award, front and centre --}}
+                                                <span class="absolute top-3 left-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold text-white bg-black/45 backdrop-blur">
+                                                    <span class="text-[13px] leading-none" x-text="ach.emoji"></span><span x-text="ach.member_award"></span>
+                                                </span>
+                                            </div>
+
+                                            {{-- Body --}}
+                                            <div class="overflow-y-auto p-4 space-y-3" style="max-height:calc(92vh - 14rem)">
+                                                <div>
+                                                    <h3 class="text-lg font-extrabold text-foreground leading-tight" x-text="ach.title"></h3>
+                                                    <p class="mt-1 text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5">
+                                                        <span x-show="ach.location"><i class="bi bi-geo-alt mr-0.5"></i><span x-text="ach.location"></span></span>
+                                                        <span x-show="ach.date_label"><i class="bi bi-calendar-event mr-0.5"></i><span x-text="ach.date_label"></span></span>
+                                                        <span x-show="ach.club"><i class="bi bi-buildings mr-0.5"></i><span x-text="ach.club"></span></span>
+                                                    </p>
+                                                </div>
+                                                <p x-show="ach.description" class="text-[13px] text-foreground/90 whitespace-pre-line" x-text="ach.description"></p>
+                                                <div x-show="ach.athletes && ach.athletes.length">
+                                                    <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-1.5">{{ __('club.ach_athletes') }}</p>
+                                                    <div class="space-y-1.5">
+                                                        <template x-for="athl in ach.athletes" :key="athl.name">
+                                                            <div class="flex items-center gap-2.5 rounded-xl bg-muted/50 px-2.5 py-2">
+                                                                <span class="w-7 h-7 rounded-full bg-primary text-white text-[11px] font-bold grid place-items-center flex-shrink-0" x-text="athl.name.charAt(0).toUpperCase()"></span>
+                                                                <div class="min-w-0 flex-1">
+                                                                    <p class="text-[13px] font-semibold text-foreground truncate" x-text="athl.name"></p>
+                                                                    <p x-show="athl.role" class="text-[11px] text-muted-foreground flex items-center gap-1">
+                                                                        <span class="text-[13px] leading-none" x-text="medalEmoji(athl.role)"></span><span x-text="athl.role"></span>
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </template>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                @if($tournamentEvents->isNotEmpty())
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-1 mt-2">{{ __('member.tab_tournaments') }}</p>
+                @endif
+            @endif
+
             @forelse($tournamentEvents as $t)
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                     <div class="flex items-start gap-3">
@@ -374,34 +743,90 @@
                     </div>
                 </div>
             @empty
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center"><i class="bi bi-trophy text-3xl text-gray-300"></i><p class="text-sm text-muted-foreground mt-2">No tournaments yet.</p></div>
+                @if(($awardedAchievements ?? collect())->isEmpty())
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center"><i class="bi bi-trophy text-3xl text-gray-300"></i><p class="text-sm text-muted-foreground mt-2">{{ __('member.no_tournaments') }}</p></div>
+                @endif
             @endforelse
         </div>
 
         {{-- ===== Clubs / affiliations ===== --}}
-        <div x-show="tab==='clubs'" x-transition.opacity x-cloak class="space-y-3">
-            @forelse($clubAffiliations as $a)
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                    <div class="flex items-center gap-3">
-                        <span class="w-11 h-11 rounded-xl bg-muted grid place-items-center overflow-hidden flex-shrink-0">
-                            @if($a->logo)<img src="{{ asset('storage/'.$a->logo) }}" alt="" class="w-11 h-11 object-cover">@else<i class="bi bi-buildings text-muted-foreground"></i>@endif
-                        </span>
-                        <div class="min-w-0 flex-1">
-                            <p class="font-semibold text-foreground truncate">{{ $a->club_name }}</p>
-                            <p class="text-xs text-muted-foreground">{{ optional($a->start_date)->format('M Y') }} — {{ $a->end_date ? optional($a->end_date)->format('M Y') : 'Present' }}</p>
-                        </div>
-                    </div>
-                    @if($a->skillAcquisitions->count())
-                        <div class="flex flex-wrap gap-1.5 mt-3">
-                            @foreach($a->skillAcquisitions->take(6) as $s)
-                                <span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-accent text-primary">{{ $s->skill_name }}</span>
-                            @endforeach
-                        </div>
-                    @endif
+        <div x-show="tab==='clubs'" x-transition.opacity x-cloak class="space-y-4">
+            @php
+                $activeAffil = $clubAffiliations->whereNull('end_date')->sortByDesc('start_date')->values();
+                $leftAffil   = $clubAffiliations->whereNotNull('end_date')->sortByDesc('end_date')->values();
+            @endphp
+
+            {{-- Active --}}
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{{ __('member.active_clubs') }}</p>
+                    @if($activeAffil->count())<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">{{ $activeAffil->count() }}</span>@endif
                 </div>
-            @empty
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center"><i class="bi bi-diagram-3 text-3xl text-gray-300"></i><p class="text-sm text-muted-foreground mt-2">No club affiliations.</p></div>
-            @endforelse
+                @forelse($activeAffil as $a)
+                    @php $clubUrl = ($a->tenant && $a->tenant->slug && $a->tenant->country) ? route('clubs.show', ['country' => strtolower($a->tenant->country), 'slug' => $a->tenant->slug]) : null; $tag = $clubUrl ? 'a' : 'div'; @endphp
+                    <{{ $tag }} @if($clubUrl) href="{{ $clubUrl }}" @endif class="block bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-2.5 {{ $clubUrl ? 'm-press' : '' }}">
+                        <div class="flex items-center gap-3">
+                            <span class="w-11 h-11 rounded-xl bg-muted grid place-items-center overflow-hidden flex-shrink-0">
+                                @if($a->logo)<img src="{{ asset('storage/'.$a->logo) }}" alt="" class="w-11 h-11 object-cover">@else<i class="bi bi-buildings text-muted-foreground"></i>@endif
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <p class="font-semibold text-foreground truncate">{{ $a->club_name }}</p>
+                                <p class="text-xs text-muted-foreground">{{ __('member.since') }} {{ optional($a->start_date)->format('M Y') ?: '—' }}@if($a->location) · {{ $a->location }}@endif</p>
+                            </div>
+                            <span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">
+                                <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> {{ __('member.active') }}
+                            </span>
+                            @if($clubUrl)<i class="bi bi-chevron-right rtl:rotate-180 text-muted-foreground/40 text-sm flex-shrink-0"></i>@endif
+                        </div>
+                        @if($a->skillAcquisitions->count())
+                            <div class="flex flex-wrap gap-1.5 mt-3">
+                                @foreach($a->skillAcquisitions->take(6) as $s)
+                                    <span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-accent text-primary">{{ $s->skill_name }}</span>
+                                @endforeach
+                            </div>
+                        @endif
+                    </{{ $tag }}>
+                @empty
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+                        <i class="bi bi-diagram-3 text-2xl text-gray-300"></i>
+                        <p class="text-sm text-muted-foreground mt-2">{{ __('member.not_active_in_club') }}</p>
+                    </div>
+                @endforelse
+            </div>
+
+            {{-- History — clubs left --}}
+            @if($leftAffil->count())
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{{ __('member.clubs_you_left') }}</p>
+                        <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{{ $leftAffil->count() }}</span>
+                    </div>
+                    @foreach($leftAffil as $a)
+                        @php
+                            $span = ($a->start_date && $a->end_date) ? $a->start_date->diffInMonths($a->end_date) : null;
+                            $clubUrl = ($a->tenant && $a->tenant->slug && $a->tenant->country) ? route('clubs.show', ['country' => strtolower($a->tenant->country), 'slug' => $a->tenant->slug]) : null;
+                            $tag = $clubUrl ? 'a' : 'div';
+                        @endphp
+                        <{{ $tag }} @if($clubUrl) href="{{ $clubUrl }}" @endif class="block bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-2.5 opacity-75 {{ $clubUrl ? 'm-press' : '' }}">
+                            <div class="flex items-center gap-3">
+                                <span class="w-11 h-11 rounded-xl bg-muted grid place-items-center overflow-hidden flex-shrink-0 grayscale">
+                                    @if($a->logo)<img src="{{ asset('storage/'.$a->logo) }}" alt="" class="w-11 h-11 object-cover">@else<i class="bi bi-buildings text-muted-foreground"></i>@endif
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    <p class="font-semibold text-foreground truncate">{{ $a->club_name }}</p>
+                                    <p class="text-xs text-muted-foreground">{{ optional($a->start_date)->format('M Y') ?: '—' }} – {{ optional($a->end_date)->format('M Y') }}@if($span !== null) · {{ $span }} {{ \Illuminate\Support\Str::plural('month', max(1,$span)) }}@endif</p>
+                                </div>
+                                <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-500">{{ __('member.left') }}</span>
+                                @if($clubUrl)<i class="bi bi-chevron-right rtl:rotate-180 text-muted-foreground/40 text-sm flex-shrink-0"></i>@endif
+                            </div>
+                        </{{ $tag }}>
+                    @endforeach
+                </div>
+            @endif
+
+            @if($clubAffiliations->isEmpty())
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center"><i class="bi bi-diagram-3 text-3xl text-gray-300"></i><p class="text-sm text-muted-foreground mt-2">{{ __('member.no_affiliations') }}</p></div>
+            @endif
         </div>
 
         {{-- ===== Attendance ===== --}}
@@ -409,9 +834,9 @@
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-5">
                 <div class="mp-ring" style="--p:{{ (int) $attendanceRate }}; width:84px; height:84px;"><b style="font-size:18px">{{ (int) $attendanceRate }}%</b></div>
                 <div class="flex-1 space-y-2">
-                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">Completed</span><span class="font-bold text-green-600">{{ $sessionsCompleted }}</span></div>
-                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">No-shows</span><span class="font-bold text-red-500">{{ $noShows }}</span></div>
-                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">Total sessions</span><span class="font-bold">{{ $attendanceRecords->count() }}</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('member.completed') }}</span><span class="font-bold text-green-600">{{ $sessionsCompleted }}</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('member.no_shows') }}</span><span class="font-bold text-red-500">{{ $noShows }}</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('member.total_sessions') }}</span><span class="font-bold">{{ $attendanceRecords->count() }}</span></div>
                 </div>
             </div>
             @foreach($attendanceRecords->take(8) as $rec)
@@ -429,7 +854,7 @@
                 <a href="{{ route('bills.receipt', $invoice->id) }}" class="block bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                     <div class="flex items-center justify-between gap-2">
                         <div class="min-w-0">
-                            <p class="font-semibold text-foreground truncate">{{ $invoice->tenant->club_name ?? 'Invoice' }}</p>
+                            <p class="font-semibold text-foreground truncate">{{ $invoice->tenant->club_name ?? __('member.invoice') }}</p>
                             <p class="text-[11px] text-muted-foreground">{{ optional($invoice->created_at)->format('d M Y') }}</p>
                         </div>
                         <div class="text-right flex-shrink-0">
@@ -439,16 +864,72 @@
                     </div>
                 </a>
             @empty
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center"><i class="bi bi-receipt text-3xl text-gray-300"></i><p class="text-sm text-muted-foreground mt-2">No invoices yet.</p></div>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center"><i class="bi bi-receipt text-3xl text-gray-300"></i><p class="text-sm text-muted-foreground mt-2">{{ __('member.no_invoices') }}</p></div>
             @endforelse
         </div>
 
     </div>
 </div>
+
+{{-- Basic-info edit — self / guardian / super-admin only. Reuses the shared
+     profile modal; on success it dispatches `member-profile-updated`. --}}
+@if($canEditBasic ?? false)
+    <x-profile-modal
+        :user="$relationship->dependent"
+        :formAction="$relationship->relationship_type === 'admin_view' ? route('admin.platform.members.update', $relationship->dependent->id) : route('member.update', $relationship->dependent->id)"
+        formMethod="PUT"
+        :cancelUrl="null"
+        :uploadUrl="$relationship->relationship_type === 'admin_view' ? route('admin.platform.members.upload-picture', $relationship->dependent->id) : route('member.upload-picture', $relationship->dependent->id)"
+        :showRelationshipFields="$relationship->relationship_type !== 'admin_view' && $relationship->relationship_type !== 'self'"
+        :relationship="$relationship"
+    />
+@endif
 @endsection
 
 @push('scripts')
 <script>
+// Weight-tracking: reactive history list + AJAX add (no page reload).
+window.weightLogger = function (opts) {
+    return {
+        rows: opts.rows || [],
+        addOpen: false, busy: false,
+        weight: '', date: opts.today, today: opts.today,
+        openAdd() { this.weight = ''; this.date = this.today; this.addOpen = true; },
+        // Difference vs the previous (chronologically older) reading.
+        delta(i) {
+            var older = this.rows[i + 1];
+            if (!older) return null;
+            return Math.round((this.rows[i].weight - older.weight) * 10) / 10;
+        },
+        save() {
+            if (!this.weight || this.busy) return;
+            this.busy = true;
+            var self = this;
+            fetch(opts.url, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': opts.csrf, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                body: JSON.stringify({ weight: this.weight, recorded_at: this.date })
+            }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+              .then(function (res) {
+                  self.busy = false;
+                  if (!res.d || !res.d.success) {
+                      window.showToast && window.showToast('error', (res.d && res.d.message) || 'Error');
+                      return;
+                  }
+                  var rec = res.d.record;
+                  self.rows.push({ weight: rec.weight, label: rec.recorded_label, date: rec.recorded_at });
+                  // Newest first.
+                  self.rows.sort(function (a, b) { return b.date.localeCompare(a.date); });
+                  self.addOpen = false;
+                  window.showToast && window.showToast('success', res.d.message || 'Added');
+              }).catch(function () {
+                  self.busy = false;
+                  window.showToast && window.showToast('error', 'Something went wrong.');
+              });
+        }
+    };
+};
+
 (function () {
     // Count-up for the metric rail numbers.
     var els = document.querySelectorAll('[data-count]');
@@ -465,5 +946,138 @@
         requestAnimationFrame(step);
     });
 })();
+
+// Super-admin password controls (reset / regenerate). Defined globally so
+// Alpine resolves it whether the view loads standalone or in the mobile shell.
+window.memberPwdAdmin = function (resetUrl, regenerateUrl, name) {
+    return {
+        name: name,
+        busy: false,
+        setOpen: false, resultOpen: false,
+        pw1: '', pw2: '',
+        newPw: '', emailed: false, copied: false,
+        _csrf() { return document.querySelector('meta[name=csrf-token]')?.content || ''; },
+        async _post(url, body) {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': this._csrf() },
+                credentials: 'same-origin',
+                body: body ? JSON.stringify(body) : null,
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.success === false) {
+                throw new Error(data.message || (data.errors?.password?.[0]) || @js(__('shared.error')));
+            }
+            return data;
+        },
+        openSet() { this.pw1 = ''; this.pw2 = ''; this.setOpen = true; },
+        async submitSet() {
+            if (this.busy) return;
+            if (this.pw1.length < 8) { window.showToast && window.showToast('error', @js(__('member.password_min'))); return; }
+            if (this.pw1 !== this.pw2) { window.showToast && window.showToast('error', @js(__('member.passwords_no_match'))); return; }
+            this.busy = true;
+            try {
+                const data = await this._post(resetUrl, { password: this.pw1, password_confirmation: this.pw2 });
+                this.setOpen = false;
+                window.showToast && window.showToast('success', data.message || @js(__('member.password_reset_ok')));
+            } catch (e) {
+                window.showToast && window.showToast('error', e.message);
+            } finally { this.busy = false; }
+        },
+        async generate() {
+            if (this.busy) return;
+            const ok = await window.confirmAction({
+                title: @js(__('member.generate_password')),
+                message: @js(__('member.generate_confirm')).replace(':name', this.name),
+                type: 'warning', confirmText: @js(__('member.generate_password')),
+            });
+            if (!ok) return;
+            this.busy = true;
+            try {
+                const data = await this._post(regenerateUrl, {});
+                this.newPw = data.password;
+                this.emailed = !!data.emailed;
+                this.copied = false;
+                this.resultOpen = true;
+            } catch (e) {
+                window.showToast && window.showToast('error', e.message);
+            } finally { this.busy = false; }
+        },
+        copy() {
+            const done = () => { this.copied = true; window.showToast && window.showToast('success', @js(__('member.password_copied'))); };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(this.newPw).then(done).catch(() => {});
+            } else { done(); }
+        },
+    };
+};
+
+// Follow / share controls flanking the profile picture in the hero.
+window.memberFollow = function (initial, followUrl, name) {
+    return {
+        following: initial,
+        busy: false,
+
+        async toggleFollow() {
+            if (this.busy) return;
+            const turningOn = !this.following;
+            this.busy = true;
+            this.following = turningOn; // optimistic
+            try {
+                const res = await fetch(followUrl, {
+                    method: turningOn ? 'POST' : 'DELETE',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '',
+                    },
+                    credentials: 'same-origin',
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || data.success === false) throw new Error();
+                if (data.relationship && typeof data.relationship.following === 'boolean') {
+                    this.following = data.relationship.following;
+                }
+            } catch (e) {
+                this.following = !turningOn; // revert
+                window.showToast && window.showToast('error', @js(__('member.follow_error')));
+            } finally {
+                this.busy = false;
+            }
+        },
+
+        shareProfile() {
+            const url = window.location.href;
+            if (navigator.share) {
+                navigator.share({ title: name, url }).catch(() => {});
+            } else if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url)
+                    .then(() => window.showToast && window.showToast('success', @js(__('member.profile_link_copied'))))
+                    .catch(() => {});
+            } else {
+                window.showToast && window.showToast('info', @js(__('member.share_unsupported')));
+            }
+        },
+    };
+};
+
+// Patch the hero in place after a basic-info edit (no reload). The shared
+// profile modal dispatches `member-profile-updated` with the saved member.
+window.addEventListener('member-profile-updated', (e) => {
+    const m = e.detail || {};
+    const nameEl = document.getElementById('mpName');
+    if (nameEl && m.full_name) nameEl.textContent = m.full_name;
+
+    const mottoEl = document.getElementById('mpMotto');
+    if (mottoEl) {
+        const motto = m.motto || m.bio || '';
+        if (motto) { mottoEl.textContent = '“' + motto + '”'; mottoEl.classList.remove('hidden'); }
+        else { mottoEl.textContent = ''; mottoEl.classList.add('hidden'); }
+    }
+
+    const img = document.getElementById('mpAvatarImg');
+    if (img && m.profile_picture) {
+        img.src = '/storage/' + m.profile_picture + '?v=' + Date.now();
+    }
+});
 </script>
 @endpush

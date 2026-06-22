@@ -7,11 +7,13 @@ use App\Http\Requests\Admin\PerkRequest;
 use App\Models\ClubPerk;
 use App\Models\Tenant;
 use App\Traits\HandlesClubAuthorization;
+use App\Traits\PersistsTranslations;
 use Illuminate\Support\Facades\Storage;
 
 class ClubPerkController extends Controller
 {
     use HandlesClubAuthorization;
+    use PersistsTranslations;
 
     public function perks(Tenant $club)
     {
@@ -35,7 +37,7 @@ class ClubPerkController extends Controller
             Storage::disk('public')->put($imagePath, $imageBinary);
         }
 
-        ClubPerk::create([
+        $perk = ClubPerk::create([
             'tenant_id'   => $club->id,
             'title'       => $request->title,
             'description' => $request->description,
@@ -49,6 +51,8 @@ class ClubPerkController extends Controller
             'status'      => $request->status,
             'sort_order'  => $request->sort_order ?? 0,
         ]);
+
+        $this->applyTranslations($perk, $request);
 
         return back()->with('success', 'Perk created successfully.');
     }
@@ -79,6 +83,8 @@ class ClubPerkController extends Controller
         }
 
         $perk->update($data);
+
+        $this->applyTranslations($perk, $request);
 
         return back()->with('success', 'Perk updated successfully.');
     }

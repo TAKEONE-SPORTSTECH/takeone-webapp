@@ -1,6 +1,6 @@
 @extends('layouts.admin-club-mobile')
 
-@section('title', ($club->club_name ?? 'Club') . ' · Analytics')
+@section('title', ($club->club_name ?? __('admin.club')) . ' · ' . __('admin.nav_analytics'))
 
 @section('club-admin-content')
 @php
@@ -18,10 +18,10 @@
     <div class="grid grid-cols-2 gap-3 mobile-stagger">
         @php
             $tiles = [
-                ['New members', $analytics['new_members'] ?? 0, $analytics['new_members_change'] ?? 0, 'bi-person-plus'],
-                ['Retention', ($analytics['retention_rate'] ?? 0).'%', $analytics['retention_change'] ?? 0, 'bi-arrow-repeat'],
-                ['Check-ins', $analytics['total_checkins'] ?? 0, $analytics['checkins_change'] ?? 0, 'bi-door-open'],
-                ['Avg revenue', $cur.' '.number_format((float)($analytics['avg_revenue'] ?? 0), 0), null, 'bi-cash-stack'],
+                [__('admin.ana_new_members'), $analytics['new_members'] ?? 0, $analytics['new_members_change'] ?? 0, 'bi-person-plus'],
+                [__('admin.ana_retention'), ($analytics['retention_rate'] ?? 0).'%', $analytics['retention_change'] ?? 0, 'bi-arrow-repeat'],
+                [__('admin.ana_checkins'), $analytics['total_checkins'] ?? 0, $analytics['checkins_change'] ?? 0, 'bi-door-open'],
+                [__('admin.ana_avg_revenue'), $cur.' '.number_format((float)($analytics['avg_revenue'] ?? 0), 0), null, 'bi-cash-stack'],
             ];
         @endphp
         @foreach($tiles as [$label, $value, $delta, $icon])
@@ -39,7 +39,7 @@
     {{-- Activity breakdown --}}
     @if(!empty($analytics['activity_labels']) && !empty($analytics['activity_data']))
     <div class="m-card p-4">
-        <h3 class="font-semibold text-foreground mb-3">Activity breakdown</h3>
+        <h3 class="font-semibold text-foreground mb-3">{{ __('admin.ana_activity_breakdown') }}</h3>
         @php $maxAct = max(1, max($analytics['activity_data'])); @endphp
         <div class="space-y-2.5 mobile-stagger">
             @foreach($analytics['activity_labels'] as $i => $label)
@@ -56,7 +56,7 @@
     {{-- Popular packages --}}
     @if($popularPackages->isNotEmpty())
     <div class="m-card p-4">
-        <h3 class="font-semibold text-foreground mb-3">Popular packages</h3>
+        <h3 class="font-semibold text-foreground mb-3">{{ __('admin.ana_popular_packages') }}</h3>
         @php $maxSub = max(1, $popularPackages->max('subscriptions_count') ?: 1); @endphp
         <div class="space-y-2.5 mobile-stagger">
             @foreach($popularPackages as $pkg)

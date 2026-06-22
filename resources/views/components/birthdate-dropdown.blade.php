@@ -101,31 +101,14 @@
         </div>
 
         {{-- Year --}}
-        <div class="relative" x-ref="yearWrapper">
-            <button type="button" @click="toggleYear()" @click.away="yearOpen = false" x-ref="yearTrigger"
-                class="tf-dropdown-trigger {{ $error ? 'border-red-500' : 'border-primary/20 focus:border-primary' }}">
-                <span class="flex items-center gap-2">
-                    <i class="bi bi-calendar-event text-primary/40" :class="{ 'text-primary': selectedYear }"></i>
-                    <span class="text-sm" :class="selectedYear ? 'text-gray-800' : 'text-gray-400'" x-text="selectedYear || 'Year'"></span>
-                </span>
-                <i class="bi bi-chevron-down text-xs text-gray-400 transition-transform duration-200" :class="{ 'rotate-180': yearOpen }"></i>
-            </button>
-            <div x-show="yearOpen" x-cloak
-                 x-transition:enter="transition ease-out duration-200"
-                 x-transition:enter-start="opacity-0 scale-95"
-                 x-transition:enter-end="opacity-100 scale-100"
-                 x-transition:leave="transition ease-in duration-150"
-                 x-transition:leave-start="opacity-100 scale-100"
-                 x-transition:leave-end="opacity-0 scale-95"
-                 :class="yearDropUp ? 'bottom-full mb-1' : 'top-full mt-1'"
-                 class="tf-dropdown-menu max-h-52">
-                <template x-for="y in years" :key="y">
-                    <div @click="selectYear(y)"
-                         class="tf-dropdown-item"
-                         :class="selectedYear == y ? 'bg-primary/5 font-semibold text-primary' : 'text-gray-700'"
-                         x-text="y"></div>
-                </template>
-            </div>
+        <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                <i class="bi bi-calendar-event text-primary/40" :class="{ 'text-primary': selectedYear }"></i>
+            </span>
+            <input type="text" inputmode="numeric" maxlength="4" placeholder="Year"
+                   x-model="selectedYear"
+                   @input="onYearInput($event)"
+                   class="tf-dropdown-trigger pl-9 text-sm text-gray-800 placeholder:text-gray-400 {{ $error ? 'border-red-500' : 'border-primary/20 focus:border-primary' }}">
         </div>
     </div>
 
@@ -173,8 +156,8 @@
 <script>
     function birthdateDropdown_{{ $id }}() {
         return {
-            dayOpen: false, monthOpen: false, yearOpen: false,
-            dayDropUp: false, monthDropUp: false, yearDropUp: false,
+            dayOpen: false, monthOpen: false,
+            dayDropUp: false, monthDropUp: false,
             selectedDay: '{{ $selectedDay }}',
             selectedMonth: '{{ $selectedMonth }}',
             selectedMonthLabel: '',
@@ -198,7 +181,8 @@
                 { value: '11', label: 'November', short: 'Nov' },
                 { value: '12', label: 'December', short: 'Dec' }
             ],
-            years: Array.from({ length: {{ $startYear }} - {{ $endYear }} + 1 }, (_, i) => {{ $startYear }} - i),
+            minYear: {{ $endYear }},
+            maxYear: {{ $startYear }},
 
             init() {
                 if (this.selectedMonth) {
@@ -224,21 +208,19 @@
                 }
                 this.monthOpen = !this.monthOpen;
             },
-            toggleYear() {
-                this.dayOpen = false; this.monthOpen = false;
-                if (!this.yearOpen) {
-                    const rect = this.$refs.yearTrigger.getBoundingClientRect();
-                    this.yearDropUp = (window.innerHeight - rect.bottom) < 220;
-                }
-                this.yearOpen = !this.yearOpen;
-            },
-
             selectDay(day) { this.selectedDay = day; this.dayOpen = false; this.updateValue(); },
             selectMonth(m) { this.selectedMonth = m.value; this.selectedMonthLabel = m.short; this.monthOpen = false; this.updateValue(); },
-            selectYear(y) { this.selectedYear = String(y); this.yearOpen = false; this.updateValue(); },
+            onYearInput(e) {
+                const cleaned = e.target.value.replace(/\D/g, '').slice(0, 4);
+                this.selectedYear = cleaned;
+                this.updateValue();
+            },
 
             updateValue() {
-                if (this.selectedDay && this.selectedMonth && this.selectedYear) {
+                const yearValid = /^\d{4}$/.test(this.selectedYear) &&
+                    parseInt(this.selectedYear) >= this.minYear &&
+                    parseInt(this.selectedYear) <= this.maxYear;
+                if (this.selectedDay && this.selectedMonth && yearValid) {
                     this.hiddenValue = `${this.selectedYear}-${this.selectedMonth}-${this.selectedDay}`;
                     const today = new Date();
                     const birth = new Date(parseInt(this.selectedYear), parseInt(this.selectedMonth) - 1, parseInt(this.selectedDay));

@@ -14,11 +14,20 @@ class ClubEvent extends Model
 {
     use HasFactory, BelongsToTenant, LogsActivity;
 
+    protected static function booted(): void
+    {
+        static::creating(function (self $event) {
+            if (empty($event->uuid)) {
+                $event->uuid = (string) \Illuminate\Support\Str::uuid();
+            }
+        });
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
             ->useLogName('club')
-            ->logOnly(['title', 'date', 'end_date', 'status', 'is_archived', 'max_capacity'])
+            ->logOnly(['title', 'date', 'end_date', 'status', 'scope', 'is_archived', 'max_capacity'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
     }
@@ -33,7 +42,19 @@ class ClubEvent extends Model
         'end_date',
         'start_time',
         'end_time',
+        'weigh_in_at',
+        'enrollment_starts_at',
+        'enrollment_ends_at',
+        'minutes_per_match',
+        'courts',
+        'break_minutes',
+        'day_courts',
         'location',
+        'gps_lat',
+        'gps_long',
+        'location_url',
+        'break_start',
+        'break_end',
         'level',
         'max_capacity',
         'cancel_within_days',
@@ -45,18 +66,47 @@ class ClubEvent extends Model
         'color',
         'cta_text',
         'status',
+        'scope',
+        'uuid',
         'is_archived',
+        // mobile Events extensions
+        'event_type',
+        'sport',
+        'league',
+        'icon',
+        'participant_fee',
+        'spectator_enabled',
+        'spectator_fee',
+        'prize',
+        'results',
+        'requirements',
+        'phases',
+        'agenda',
+        'created_by',
     ];
 
     protected $casts = [
         'date'         => 'date',
         'end_date'     => 'date',
+        'weigh_in_at'  => 'datetime',
+        'enrollment_starts_at' => 'date',
+        'enrollment_ends_at'   => 'date',
         'tags'         => 'array',
         'images'       => 'array',
         'max_capacity'       => 'integer',
         'cancel_within_days' => 'integer',
         'spots_taken'        => 'integer',
+        'minutes_per_match'  => 'integer',
+        'courts'             => 'integer',
+        'break_minutes'      => 'integer',
+        'day_courts'         => 'array',
         'is_archived'  => 'boolean',
+        'spectator_enabled' => 'boolean',
+        'requirements' => 'array',
+        'phases'       => 'array',
+        'agenda'       => 'array',
+        'results'      => 'array',
+        'league'       => 'array',
     ];
 
     /**
@@ -88,13 +138,48 @@ class ClubEvent extends Model
         return $this->date->copy()->setTimeFromTimeString($this->start_time)->isPast();
     }
 
+    /** True once the event's start moment has passed. */
+    public function hasStarted(): bool
+    {
+        if (! $this->date) return false;
+
+        return $this->date->copy()->setTimeFromTimeString($this->start_time ?: '00:00')->isPast();
+    }
+
+    /** True when this event's sport is a registered combat sport (config/combat.php). */
+    public function isCombat(): bool
+    {
+        return $this->sport && array_key_exists($this->sport, config('combat.sports', []));
+    }
+
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
     }
 
+    public function categories(): HasMany
+    {
+        return $this->hasMany(EventCategory::class, 'event_id')->orderBy('sort_order');
+    }
+
+    public function matches(): HasMany
+    {
+        return $this->hasMany(EventMatch::class, 'event_id');
+    }
+
+    /** Participant registrations (not spectators). */
+    public function participantRegistrations(): HasMany
+    {
+        return $this->hasMany(ClubEventRegistration::class, 'event_id')->where('role', 'participant');
+    }
+
     public function registrations(): HasMany
     {
         return $this->hasMany(ClubEventRegistration::class, 'event_id');
+    }
+
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(EventExpense::class, 'event_id');
     }
 }

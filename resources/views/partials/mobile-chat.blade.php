@@ -65,7 +65,7 @@
                                 <span class="text-[14px] font-semibold truncate" :class="c.unread_count > 0 ? 'text-primary' : 'text-foreground'" x-text="c.partner.name"></span>
                                 <span class="text-[10px] text-muted-foreground shrink-0" x-text="c.last_at_human"></span>
                             </span>
-                            <span class="block text-[12px] truncate mt-0.5" :class="c.unread_count > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground'">
+                            <span class="block text-[12px] truncate mt-0.5" dir="auto" :class="c.unread_count > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground'">
                                 <span x-show="c.last_mine">You: </span><span x-text="c.last_body || 'New message'"></span>
                             </span>
                         </span>
@@ -120,8 +120,30 @@
                         <span x-text="connected ? 'Active now' : 'Encrypted chat'"></span>
                     </p>
                 </div>
-                <button type="button" @click="deleteChat(h)" class="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-muted-foreground m-press" aria-label="Delete chat"><i class="bi bi-trash text-lg"></i></button>
-                <button type="button" @click="closeHead(h)" class="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-muted-foreground m-press" aria-label="Close"><i class="bi bi-x-lg text-lg"></i></button>
+                {{-- Options menu --}}
+                <div class="relative shrink-0" x-data="{ menu:false }" @click.outside="menu=false">
+                    <button type="button" @click="menu=!menu" class="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground m-press" aria-label="Options"><i class="bi bi-three-dots-vertical text-lg"></i></button>
+                    <div x-show="menu" x-cloak
+                         x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                         class="absolute right-0 top-11 z-20 w-52 bg-white rounded-xl shadow-lg border border-gray-100 py-1">
+                        <a :href="'{{ url('u') }}/' + (h.partner.slug || '')" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
+                            <i class="bi bi-person"></i> View profile
+                        </a>
+                        <button type="button" @click="menu=false; clearHistory(h)" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
+                            <i class="bi bi-eraser"></i> Clear chat history
+                        </button>
+                        <button type="button" @click="menu=false; deleteChat(h)" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
+                            <i class="bi bi-trash"></i> Delete chat
+                        </button>
+                        <div class="border-t border-gray-100 my-1"></div>
+                        <button type="button" x-show="!h.partner.blocked" @click="menu=false; blockPartner(h)" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                            <i class="bi bi-slash-circle"></i> Block <span x-text="(h.partner.name||'').split(' ')[0]"></span>
+                        </button>
+                        <button type="button" x-show="h.partner.blocked" @click="menu=false; unblockPartner(h)" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
+                            <i class="bi bi-arrow-counterclockwise"></i> Unblock <span x-text="(h.partner.name||'').split(' ')[0]"></span>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {{-- Messages --}}
@@ -137,7 +159,14 @@
                     <p class="text-center text-[12px] text-muted-foreground py-8">Say hello 👋</p>
                 </template>
                 <template x-for="m in h.messages" :key="m.id">
-                    <div class="flex" :class="m.mine ? 'justify-end' : 'justify-start'">
+                    <div class="flex gap-1.5 items-end" :class="m.mine ? 'justify-end' : 'justify-start'">
+                        {{-- Small avatar of the person texting (incoming only) --}}
+                        <template x-if="!m.mine">
+                            <span class="w-6 h-6 rounded-full overflow-hidden shrink-0 self-end mb-0.5">
+                                <template x-if="h.partner.avatar"><img :src="h.partner.avatar" class="w-6 h-6 rounded-full object-cover" alt=""></template>
+                                <template x-if="!h.partner.avatar"><span class="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-purple-400 text-white flex items-center justify-center text-[10px] font-bold" x-text="h.partner.initial"></span></template>
+                            </span>
+                        </template>
                         <div class="max-w-[80%] rounded-2xl shadow-sm select-none overflow-hidden"
                              @click="!m.deleted && !m.pending && !m.kind && openActions(h, m)"
                              :style="(m.kind === 'audio' && m.attachment && !m.deleted) ? 'width:min(78vw,360px)' : ''"
@@ -192,7 +221,7 @@
                             <p x-show="!m.deleted && m.kind && !m.attachment" class="mb-0 italic flex items-center gap-1.5"><i class="bi bi-clock-history"></i> Attachment expired</p>
                             <template x-if="!m.deleted && !m.kind">
                                 <div>
-                                    <p class="mb-0 whitespace-pre-wrap break-words" x-html="window.LinkPreview.linkifyHtml(m.body)"></p>
+                                    <p class="mb-0 whitespace-pre-wrap break-words" dir="auto" x-html="window.LinkPreview.linkifyHtml(m.body)"></p>
                                     <div x-data="linkCard()" x-init="load(m.body)" x-show="preview" x-cloak>
                                         <template x-if="preview && preview.type === 'video_embed'">
                                             <div class="mt-1.5 rounded-lg overflow-hidden bg-black/20" style="aspect-ratio:16/9; width:min(72vw,300px); max-width:100%">
@@ -217,6 +246,16 @@
                                 <i x-show="m.pending" class="bi bi-clock ml-0.5"></i>
                             </span>
                         </div>
+                        {{-- My own avatar (outgoing) --}}
+                        <template x-if="m.mine">
+                            <span class="w-6 h-6 rounded-full overflow-hidden shrink-0 self-end mb-0.5">
+                                @if(Auth::user()->profile_picture)
+                                    <img src="{{ asset('storage/'.Auth::user()->profile_picture) }}?v={{ optional(Auth::user()->updated_at)->timestamp }}" class="w-6 h-6 rounded-full object-cover" alt="">
+                                @else
+                                    <span class="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-purple-400 text-white flex items-center justify-center text-[10px] font-bold">{{ strtoupper(mb_substr(Auth::user()->full_name ?? 'U', 0, 1)) }}</span>
+                                @endif
+                            </span>
+                        </template>
                     </div>
                 </template>
             </div>
@@ -234,7 +273,7 @@
                     <i class="bi bi-paperclip text-lg"></i>
                     <input type="file" class="hidden" @change="attachFile($event, h)">
                 </label>
-                <textarea x-model="h.draft" rows="1" placeholder="Aa" @keydown.enter.prevent="h.editing ? saveEdit(h) : send(h)"
+                <textarea x-model="h.draft" rows="1" placeholder="Aa" dir="auto" @keydown.enter.prevent="h.editing ? saveEdit(h) : send(h)"
                           class="flex-1 resize-none px-4 py-2.5 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-purple-500 focus:border-transparent text-[15px]" style="max-height:120px;"></textarea>
                 <button type="submit" class="w-11 h-11 shrink-0 rounded-full bg-primary text-white flex items-center justify-center m-press disabled:opacity-40" :disabled="h.sending || !(h.draft || '').trim()">
                     <i class="bi" :class="h.editing ? 'bi-check-lg' : 'bi-send-fill'"></i>
@@ -264,6 +303,21 @@
         </div>
     </div>
 
+    {{-- ─────────── In-chat confirmation (renders above the chat overlay) ─────────── --}}
+    <div x-show="chatConfirm.open" x-cloak class="flex items-center justify-center px-6" style="position:fixed; inset:0; z-index:140;" @click="resolveConfirm(false)">
+        <div class="absolute inset-0 bg-black/50"
+             x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"></div>
+        <div class="relative w-full max-w-sm bg-white rounded-2xl p-5 shadow-2xl" @click.stop
+             x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+            <p class="text-base font-semibold text-foreground" x-text="chatConfirm.title"></p>
+            <p class="text-sm text-muted-foreground mt-1.5" x-text="chatConfirm.message"></p>
+            <div class="flex gap-2 mt-5">
+                <button type="button" @click="resolveConfirm(false)" class="m-press flex-1 py-2.5 rounded-lg bg-muted text-foreground text-sm font-semibold">Cancel</button>
+                <button type="button" @click="resolveConfirm(true)" class="m-press flex-1 py-2.5 rounded-lg bg-destructive text-white text-sm font-semibold" x-text="chatConfirm.confirmText"></button>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 @once
@@ -278,16 +332,20 @@ function mobileChatHeads() {
         connected: false,
         _tmp: 0,
         actionMsg: null, actionHead: null,
+        chatConfirm: { open: false, title: '', message: '', confirmText: 'Confirm', _resolve: null },
 
         urls: {
             conversations: '{{ route('messages.conversations') }}',
             base: '{{ url('messages') }}',
+            wall: '{{ url('u') }}',
         },
 
         init() {
             window.addEventListener('mobile-chat:toggle', () => this.toggleDropdown());
             window.addEventListener('realtime:status', (e) => this.connected = !!(e.detail && e.detail.connected));
             window.addEventListener('realtime:message', (e) => this.onIncoming(e.detail || {}));
+            // Preload the conversation list so the first open is instant.
+            this.load();
             // Lets the global realtime handler skip its toast/badge/sound for a
             // conversation the user is actively reading in an expanded chat head.
             window.__chatHeadActive = (cid) => !document.hidden && this.heads.some(h => h.id === cid && h.expanded);
@@ -295,17 +353,39 @@ function mobileChatHeads() {
 
         anyExpanded() { return this.heads.some(h => h.expanded); },
 
+        // In-chat confirmation (renders inside the chat overlay so it can never
+        // be hidden behind it). Returns a Promise<boolean>.
+        askConfirm(opts) {
+            return new Promise((resolve) => {
+                this.chatConfirm = {
+                    open: true,
+                    title: opts.title || 'Are you sure?',
+                    message: opts.message || '',
+                    confirmText: opts.confirmText || 'Confirm',
+                    _resolve: resolve,
+                };
+            });
+        },
+        resolveConfirm(val) {
+            const r = this.chatConfirm._resolve;
+            this.chatConfirm.open = false;
+            this.chatConfirm._resolve = null;
+            if (r) r(val);
+        },
+
         toggleDropdown() {
             this.open = !this.open;
             if (this.open) this.load();
         },
 
         load() {
-            this.loading = true;
+            // Skeleton only when we have nothing to show yet; otherwise refresh
+            // silently in the background so reopening is instant (no flash).
+            if (this.chats.length === 0) this.loading = true;
             fetch(this.urls.conversations, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
                 .then((r) => r.json())
                 .then((d) => { this.chats = (d && d.conversations) || []; })
-                .catch(() => { this.chats = []; })
+                .catch(() => {})
                 .finally(() => { this.loading = false; });
         },
 
@@ -336,7 +416,7 @@ function mobileChatHeads() {
         closeHead(h) { this.heads = this.heads.filter((x) => x.id !== h.id); },
 
         async deleteChat(h) {
-            const ok = await window.confirmAction({ title: 'Delete chat?', message: 'This chat and its history will be removed from your list. It reappears if a new message arrives.', type: 'danger', confirmText: 'Delete' });
+            const ok = await this.askConfirm({ title: 'Delete chat?', message: 'This chat and its history will be removed from your list. It reappears if a new message arrives.', type: 'danger', confirmText: 'Delete' });
             if (!ok) return;
             try {
                 const r = await fetch(`${this.urls.base}/${h.id}`, { method: 'DELETE', headers: this.headers() });
@@ -346,6 +426,47 @@ function mobileChatHeads() {
                 this.closeHead(h);
                 window.showToast && window.showToast('success', 'Chat deleted');
             } catch (e) { window.showToast && window.showToast('error', 'Could not delete chat.'); }
+        },
+
+        async clearHistory(h) {
+            const ok = await this.askConfirm({ title: 'Clear chat history?', message: 'All earlier messages will be permanently removed from your chat. This cannot be undone.', type: 'danger', confirmText: 'Clear' });
+            if (!ok) return;
+            try {
+                const r = await fetch(`${this.urls.base}/${h.id}`, { method: 'DELETE', headers: this.headers() });
+                const d = await r.json();
+                if (!d.success) { window.showToast && window.showToast('error', 'Could not clear history.'); return; }
+                h.messages.splice(0, h.messages.length);   // empty the screen instantly (reactive)
+                h.loaded = true;                           // don't refetch the cleared thread
+                const c = this.chats.find((x) => x.id === h.id);
+                if (c) { c.last_body = null; c.last_at_human = null; }
+                window.showToast && window.showToast('success', 'Chat history cleared');
+            } catch (e) { window.showToast && window.showToast('error', 'Could not clear history.'); }
+        },
+
+        async blockPartner(h) {
+            const name = (h.partner.name || '').split(' ')[0] || 'this person';
+            if (!h.partner.slug) { window.showToast && window.showToast('error', 'Cannot block this user.'); return; }
+            const ok = await this.askConfirm({ title: 'Block ' + name + '?', message: 'They will not be able to see your wall or interact with you, and you will not see their posts. You can unblock them from their profile.', type: 'danger', confirmText: 'Block' });
+            if (!ok) return;
+            try {
+                const r = await fetch(`${this.urls.wall}/${h.partner.slug}/block`, { method: 'POST', headers: this.headers() });
+                const d = await r.json();
+                if (d.success === false) { window.showToast && window.showToast('error', d.message || 'Could not block.'); return; }
+                h.partner.blocked = true;
+                window.showToast && window.showToast('success', name + ' blocked');
+            } catch (e) { window.showToast && window.showToast('error', 'Could not block.'); }
+        },
+
+        async unblockPartner(h) {
+            const name = (h.partner.name || '').split(' ')[0] || 'this person';
+            if (!h.partner.slug) return;
+            try {
+                const r = await fetch(`${this.urls.wall}/${h.partner.slug}/block`, { method: 'DELETE', headers: this.headers() });
+                const d = await r.json();
+                if (d.success === false) { window.showToast && window.showToast('error', d.message || 'Could not unblock.'); return; }
+                h.partner.blocked = false;
+                window.showToast && window.showToast('success', name + ' unblocked');
+            } catch (e) { window.showToast && window.showToast('error', 'Could not unblock.'); }
         },
 
         async loadThread(h) {
@@ -377,6 +498,7 @@ function mobileChatHeads() {
                 const msg = h.messages.find((m) => m.id === tempId);
                 if (msg) { Object.assign(msg, d.data); msg.pending = false; }
                 h.lastAddedId = d.data.id;
+                this.touchChat({ id: h.id, partner: h.partner, last_body: body, last_mine: true });
             } catch (e) {
                 const idx = h.messages.findIndex((m) => m.id === tempId);
                 if (idx > -1) h.messages.splice(idx, 1);
@@ -384,33 +506,66 @@ function mobileChatHeads() {
             } finally { h.sending = false; }
         },
 
+        // Upsert a conversation into the dropdown list and move it to the top —
+        // keeps the top-bar chat live without a refetch.
+        touchChat(conv) {
+            let c = this.chats.find((x) => x.id === conv.id);
+            if (c) {
+                c.last_body = conv.last_body;
+                c.last_mine = conv.last_mine;
+                c.last_at_human = 'now';
+                if (conv.unreadDelta) c.unread_count = Math.max(0, (c.unread_count || 0) + conv.unreadDelta);
+                this.chats = [c, ...this.chats.filter((x) => x.id !== conv.id)];
+            } else {
+                this.chats = [{
+                    id: conv.id, partner: conv.partner,
+                    last_body: conv.last_body, last_mine: conv.last_mine,
+                    last_at_human: 'now', unread_count: Math.max(0, conv.unreadDelta || 0),
+                }, ...this.chats];
+            }
+        },
+
         onIncoming(detail) {
             if (!detail.conversation_id) return;
             const h = this.heads.find((x) => x.id === detail.conversation_id);
-            if (!h) return; // not an open head — global handler toasts + bumps the header badge
+            const active = h && h.expanded && !document.hidden;
 
             // Edit / delete patch the message in place, silently.
             if (detail.action === 'edit' || detail.action === 'delete') {
-                const m = h.messages.find((x) => x.id === detail.id);
-                if (!m) return;
-                if (detail.action === 'delete') { m.deleted = true; m.body = null; m.can_edit = false; }
-                else { m.body = detail.body; m.edited = true; }
+                if (h) {
+                    const m = h.messages.find((x) => x.id === detail.id);
+                    if (m) {
+                        if (detail.action === 'delete') { m.deleted = true; m.body = null; m.can_edit = false; }
+                        else { m.body = detail.body; m.edited = true; }
+                    }
+                }
+                const c = this.chats.find((x) => x.id === detail.conversation_id);
+                if (c && detail.is_latest) c.last_body = detail.action === 'delete' ? 'This message was deleted' : detail.body;
                 return;
             }
 
-            // Incoming ephemeral attachment (picture / file).
-            if (detail.action === 'file') {
+            // New message or attachment.
+            if (h) {
                 h.lastAddedId = detail.id;
-                h.messages.push({ id: detail.id, mine: false, time: detail.time || '', kind: detail.kind, attachment: detail.attachment });
-                if (h.expanded && !document.hidden) { this.scrollDown(h); this.markRead(h.id); }
+                if (detail.action === 'file') {
+                    h.messages.push({ id: detail.id, mine: false, time: detail.time || '', kind: detail.kind, attachment: detail.attachment });
+                } else {
+                    h.messages.push({ id: detail.id, body: detail.body, mine: false, time: detail.time || '' });
+                }
+                if (active) { this.scrollDown(h); this.markRead(h.id); }
                 else { h.unread = (h.unread || 0) + 1; }
-                return;
             }
 
-            h.lastAddedId = detail.id;
-            h.messages.push({ id: detail.id, body: detail.body, mine: false, time: detail.time || '' });
-            if (h.expanded && !document.hidden) { this.scrollDown(h); this.markRead(h.id); }
-            else { h.unread = (h.unread || 0) + 1; }
+            // Always refresh the dropdown list preview (even when no head is open).
+            const label = detail.action === 'file'
+                ? (detail.kind === 'image' ? '📷 Photo' : '📎 ' + ((detail.attachment && detail.attachment.name) || 'file'))
+                : detail.body;
+            this.touchChat({
+                id: detail.conversation_id,
+                partner: { id: detail.from_id, name: detail.from_name, avatar: detail.from_avatar, initial: (detail.from_name || 'U').charAt(0).toUpperCase() },
+                last_body: label, last_mine: false,
+                unreadDelta: active ? 0 : 1,
+            });
         },
 
         async attachFile(e, h) {
@@ -431,6 +586,7 @@ function mobileChatHeads() {
             if (i > -1) h.messages.splice(i, 1, att); else h.messages.push(att);
             if (previewUrl) URL.revokeObjectURL(previewUrl);
             this.scrollDown(h);
+            this.touchChat({ id: h.id, partner: h.partner, last_body: att.kind === 'image' ? '📷 Photo' : '📎 ' + ((att.attachment && att.attachment.name) || 'file'), last_mine: true });
         },
 
         /* ── message actions (copy / edit / delete) ── */
@@ -468,7 +624,7 @@ function mobileChatHeads() {
 
         async deleteMsg(h, m) {
             this.actionMsg = null;
-            const ok = await window.confirmAction({ title: 'Delete for everyone?', message: 'This message will be deleted for everyone in the chat.', type: 'danger', confirmText: 'Delete' });
+            const ok = await this.askConfirm({ title: 'Delete for everyone?', message: 'This message will be deleted for everyone in the chat.', type: 'danger', confirmText: 'Delete' });
             if (!ok) return;
             try {
                 const r = await fetch(`${this.urls.base}/${h.id}/messages/${m.id}`, { method: 'DELETE', headers: this.headers() });
@@ -482,7 +638,7 @@ function mobileChatHeads() {
         async deleteForMe(h, m) {
             this.actionMsg = null;
             if (!h) return;
-            const ok = await window.confirmAction({ title: 'Delete for me?', message: 'This message will be removed from your view only.', type: 'danger', confirmText: 'Delete' });
+            const ok = await this.askConfirm({ title: 'Delete for me?', message: 'This message will be removed from your view only.', type: 'danger', confirmText: 'Delete' });
             if (!ok) return;
             try {
                 const r = await fetch(`${this.urls.base}/${h.id}/messages/${m.id}/hide`, { method: 'POST', headers: this.headers() });

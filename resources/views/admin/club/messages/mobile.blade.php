@@ -1,6 +1,6 @@
 @extends('layouts.admin-club-mobile')
 
-@section('title', ($club->club_name ?? 'Club') . ' · Messages')
+@section('title', ($club->club_name ?? __('admin.club')) . ' · ' . __('admin.nav_messages'))
 
 @section('club-admin-content')
 <div class="space-y-4" x-data="mobileMessages()" x-init="init()">
@@ -30,15 +30,15 @@
     @else
         <div class="m-card p-8 text-center" id="m-conv-empty">
             <i class="bi bi-chat-dots text-3xl text-gray-300 m-float"></i>
-            <p class="text-sm text-muted-foreground mt-2">No conversations yet.</p>
+            <p class="text-sm text-muted-foreground mt-2">{{ __('admin.no_conversations_yet') }}</p>
         </div>
     @endif
 
     {{-- Members directory — tap to start a chat --}}
     <div class="m-card p-4">
-        <h3 class="font-semibold text-foreground mb-3">Members</h3>
+        <h3 class="font-semibold text-foreground mb-3">{{ __('admin.nav_members') }}</h3>
         @if($members->isEmpty())
-            <p class="text-sm text-muted-foreground">No members.</p>
+            <p class="text-sm text-muted-foreground">{{ __('admin.no_members') }}</p>
         @else
             <div class="space-y-1 mobile-stagger">
                 @foreach($members->take(50) as $m)
@@ -78,14 +78,14 @@
             </span>
             <div class="min-w-0">
                 <p class="text-sm font-semibold text-foreground truncate mb-0" x-text="activeUser.name"></p>
-                <p class="text-[11px] text-muted-foreground mb-0" x-text="connected ? 'Online · realtime' : 'Delivers instantly'"></p>
+                <p class="text-[11px] text-muted-foreground mb-0" x-text="connected ? @js(__('admin.msg_online_realtime')) : @js(__('admin.msg_delivers_instantly'))"></p>
             </div>
         </div>
 
         {{-- Messages --}}
         <div class="flex-1 overflow-y-auto px-3 py-4 space-y-2 bg-muted/20" id="m-thread-scroll">
             <template x-if="loadingThread">
-                <div class="text-center text-muted-foreground text-sm py-10"><i class="bi bi-arrow-repeat"></i> Loading…</div>
+                <div class="text-center text-muted-foreground text-sm py-10"><i class="bi bi-arrow-repeat"></i> {{ __('shared.loading') }}</div>
             </template>
             <template x-for="m in messages" :key="m.id">
                 <div class="flex m-in" :class="m.mine ? 'justify-end' : 'justify-start'">
@@ -101,7 +101,7 @@
         {{-- Composer --}}
         <form class="flex items-end gap-2 px-3 py-2.5 border-t border-border bg-white" @submit.prevent="send()"
               style="padding-bottom: calc(0.625rem + env(safe-area-inset-bottom));">
-            <textarea x-model="draft" rows="1" placeholder="Message…"
+            <textarea x-model="draft" rows="1" placeholder="{{ __('admin.msg_placeholder') }}"
                       class="flex-1 resize-none px-3 py-2.5 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
                       style="max-height:120px;"></textarea>
             <button type="submit" class="w-10 h-10 shrink-0 rounded-full bg-primary text-white flex items-center justify-center m-press disabled:opacity-50"
@@ -150,7 +150,7 @@ function mobileMessages() {
                 const data = await res.json();
                 if (data.success) { this.activeUser = data.user; this.messages = data.messages; this.scrollDown(); }
             } catch (e) {
-                window.showToast('error', 'Could not load conversation.');
+                window.showToast('error', @js(__('admin.msg_load_failed')));
             } finally {
                 this.loadingThread = false;
             }
@@ -174,7 +174,7 @@ function mobileMessages() {
                 const data = await res.json();
                 if (data.success) { this.messages.push(data.data); this.draft = ''; this.scrollDown(); }
             } catch (e) {
-                window.showToast('error', 'Could not send message.');
+                window.showToast('error', @js(__('admin.msg_send_failed')));
             } finally {
                 this.sending = false;
             }

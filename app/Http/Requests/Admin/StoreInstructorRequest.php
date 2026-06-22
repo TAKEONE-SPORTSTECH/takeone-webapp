@@ -13,8 +13,18 @@ class StoreInstructorRequest extends FormRequest
 
     public function rules(): array
     {
+        $compensation = [
+            'compensation_type' => 'nullable|in:volunteer,paid',
+            'wage_amount'       => 'nullable|numeric|min:0|required_if:compensation_type,paid',
+            'wage_period'       => 'nullable|in:monthly,session,hourly|required_if:compensation_type,paid',
+            'package_slots'     => 'nullable|array',
+            'package_slots.*'   => 'integer',
+            'translations'      => ['nullable', 'array'],
+            'translations.*.*'  => ['nullable', 'string', 'max:2000'],
+        ];
+
         if ($this->input('creation_type') === 'new') {
-            return [
+            return $compensation + [
                 'email'       => 'required|email|unique:users,email',
                 'password'    => 'required|string|min:6',
                 'name'        => 'required|string|max:255',
@@ -29,7 +39,7 @@ class StoreInstructorRequest extends FormRequest
             ];
         }
 
-        return [
+        return $compensation + [
             'selected_member_id'  => 'required|exists:users,id',
             'specialty_existing'  => 'nullable|string|max:255',
             'experience_existing' => 'nullable|integer|min:0',

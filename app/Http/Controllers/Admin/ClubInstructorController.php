@@ -6,22 +6,56 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreInstructorRequest;
 use App\Http\Requests\Admin\UpdateInstructorRequest;
 use App\Http\Requests\UploadImageRequest;
+use App\Models\ClubActivity;
 use App\Models\ClubInstructor;
+use App\Models\ClubTransaction;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Traits\HandlesClubAuthorization;
+use App\Traits\PersistsTranslations;
 use App\Traits\StoresBase64Images;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class ClubInstructorController extends Controller
 {
-    use HandlesClubAuthorization, StoresBase64Images;
+    use HandlesClubAuthorization, PersistsTranslations, StoresBase64Images;
 
     public function instructors(Tenant $club)
     {
         $this->authorizeClub($club);
-        $instructors = ClubInstructor::where('tenant_id', $club->id)->with('user')->get();
-        return view(\App\Support\ClubView::pick('instructors'), compact('club', 'instructors'));
+        $instructors = ClubInstructor::where('tenant_id', $club->id)
+            ->orderBy('sort_order')->orderBy('id')
+            ->with('user')->get();
+
+        // Every package class+schedule slot in this club, with its current assignee.
+        $packageSlots = $this->clubPackageSlots($club->id);
+        $slotCountByInstructor = $packageSlots->whereNotNull('instructor_id')
+            ->groupBy('instructor_id')->map->count();
+
+        return view(\App\Support\ClubView::pick('instructors'),
+            compact('club', 'instructors', 'packageSlots', 'slotCountByInstructor'));
+    }
+
+    /**
+     * Persist a new rank order. `order` is an array of instructor ids, top (rank 1) first.
+     */
+    public function reorderInstructors(Request $request, Tenant $club)
+    {
+        $this->authorizeClub($club);
+
+        $validated = $request->validate([
+            'order'   => 'required|array',
+            'order.*' => 'integer',
+        ]);
+
+        foreach (array_values($validated['order']) as $position => $instructorId) {
+            ClubInstructor::where('tenant_id', $club->id)->where('id', $instructorId)
+                ->update(['sort_order' => $position]);
+        }
+
+        return response()->json(['success' => true]);
     }
 
     public function storeInstructor(StoreInstructorRequest $request, Tenant $club)
@@ -80,11 +114,17 @@ class ClubInstructorController extends Controller
             'experience_years' => $experienceYears ?: null,
         ]);
 
-        ClubInstructor::create([
-            'tenant_id' => $clubId,
-            'user_id'   => $userId,
-            'role'      => $role,
-        ]);
+        $instructor = ClubInstructor::create([
+            'tenant_id'  => $clubId,
+            'user_id'    => $userId,
+            'role'       => $role,
+            'sort_order' => (int) ClubInstructor::where('tenant_id', $clubId)->max('sort_order') + 1,
+        ] + $this->compensationData($request));
+
+        $this->applyTranslations($instructor, $request);
+
+        $this->assignPackageSlots($instructor, $request, $clubId);
+        $this->syncInstructorWageExpense($instructor);
 
         return back()->with('success', 'Instructor added successfully.');
     }
@@ -97,7 +137,10 @@ class ClubInstructorController extends Controller
             abort(403);
         }
 
-        $instructor->update(['role' => $request->role]);
+        $instructor->update(['role' => $request->role] + $this->compensationData($request));
+        $this->applyTranslations($instructor, $request);
+        $this->assignPackageSlots($instructor, $request, $club->id);
+        $this->syncInstructorWageExpense($instructor);
 
         try {
             $skills = $request->skills ? json_decode($request->skills, true, 512, JSON_THROW_ON_ERROR) : null;
@@ -175,5 +218,139 @@ class ClubInstructorController extends Controller
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Normalise the volunteer/paid compensation fields from the request.
+     */
+    private function compensationData(Request $request): array
+    {
+        $paid = $request->input('compensation_type') === ClubInstructor::COMPENSATION_PAID;
+
+        return [
+            'compensation_type' => $paid ? ClubInstructor::COMPENSATION_PAID : ClubInstructor::COMPENSATION_VOLUNTEER,
+            'wage_amount'       => $paid ? $request->input('wage_amount') : null,
+            'wage_period'       => $paid ? $request->input('wage_period') : null,
+        ];
+    }
+
+    /**
+     * Every package class+schedule slot (a row in club_package_activities) for the club,
+     * with package/activity names, a human schedule label, and the current assignee.
+     */
+    private function clubPackageSlots(int $clubId)
+    {
+        return DB::table('club_package_activities as pa')
+            ->join('club_packages as p', 'p.id', '=', 'pa.package_id')
+            ->join('club_activities as a', 'a.id', '=', 'pa.activity_id')
+            ->leftJoin('club_instructors as ci', 'ci.id', '=', 'pa.instructor_id')
+            ->leftJoin('users as u', 'u.id', '=', 'ci.user_id')
+            ->where('p.tenant_id', $clubId)
+            ->orderBy('p.name')->orderBy('a.name')
+            ->get([
+                'pa.id', 'pa.instructor_id', 'pa.schedule',
+                'p.id as package_id', 'p.name as package_name',
+                'a.id as activity_id', 'a.name as activity_name',
+                'u.full_name as instructor_name',
+            ])
+            ->map(function ($row) {
+                $row->schedule_label = $this->formatSlotSchedule($row->schedule);
+                return $row;
+            });
+    }
+
+    private function formatSlotSchedule(?string $json): ?string
+    {
+        try {
+            $entries = json_decode($json ?? '[]', true, 512, JSON_THROW_ON_ERROR) ?: [];
+        } catch (\JsonException) {
+            $entries = [];
+        }
+
+        $parts = [];
+        foreach ($entries as $e) {
+            $day   = ucfirst((string) ($e['day'] ?? ''));
+            $start = substr((string) ($e['start_time'] ?? ''), 0, 5);
+            $end   = substr((string) ($e['end_time'] ?? ''), 0, 5);
+            $label = trim($day . ' ' . (($start && $end) ? "{$start}–{$end}" : ''));
+            if ($label !== '') {
+                $parts[$label] = true;
+            }
+        }
+
+        return $parts ? implode(', ', array_keys($parts)) : null;
+    }
+
+    /**
+     * Assign this instructor to the selected package class/schedule slots. Selected slots get
+     * instructor_id = this instructor (reassigning if needed); slots that were this instructor's
+     * but are no longer selected get cleared. Mirrors the taught activities for consistency.
+     * Only runs when the form actually submitted the package_slots field.
+     */
+    private function assignPackageSlots(ClubInstructor $instructor, Request $request, int $clubId): void
+    {
+        if (! $request->has('package_slots')) {
+            return;
+        }
+
+        $clubSlotIds = DB::table('club_package_activities as pa')
+            ->join('club_packages as p', 'p.id', '=', 'pa.package_id')
+            ->where('p.tenant_id', $clubId)
+            ->pluck('pa.id');
+
+        $selected = collect($request->input('package_slots', []))
+            ->filter()->map(fn ($i) => (int) $i)
+            ->intersect($clubSlotIds)->values();
+
+        if ($selected->isNotEmpty()) {
+            DB::table('club_package_activities')->whereIn('id', $selected)
+                ->update(['instructor_id' => $instructor->id, 'updated_at' => now()]);
+
+            $activityIds = DB::table('club_package_activities')->whereIn('id', $selected)
+                ->pluck('activity_id')->unique()->all();
+            $instructor->activities()->syncWithoutDetaching($activityIds);
+        }
+
+        // Clear slots that used to be this instructor's but were deselected.
+        DB::table('club_package_activities')
+            ->whereIn('id', $clubSlotIds)
+            ->whereNotIn('id', $selected->isNotEmpty() ? $selected : [0])
+            ->where('instructor_id', $instructor->id)
+            ->update(['instructor_id' => null, 'updated_at' => now()]);
+    }
+
+    /**
+     * Reflect a paid instructor's wage into the club's Financials as a monthly expense.
+     * Keyed per instructor + month so re-saving updates rather than duplicates. Only a
+     * monthly wage maps to a concrete recurring figure; session/hourly rates depend on
+     * usage and are not auto-posted here. Future months would be created by a scheduled job.
+     */
+    private function syncInstructorWageExpense(ClubInstructor $instructor): void
+    {
+        $month = now()->format('Y-m');
+        $ref   = "wage:instructor:{$instructor->id}:{$month}";
+        $monthly = $instructor->monthlyWageCost();
+
+        if ($monthly === null) {
+            ClubTransaction::where('tenant_id', $instructor->tenant_id)
+                ->where('reference_number', $ref)
+                ->delete();
+            return;
+        }
+
+        $name = $instructor->user->full_name ?? $instructor->user->name ?? 'Instructor';
+
+        ClubTransaction::updateOrCreate(
+            ['tenant_id' => $instructor->tenant_id, 'reference_number' => $ref],
+            [
+                'user_id'          => $instructor->user_id,
+                'type'             => 'expense',
+                'category'         => 'Instructor Wage',
+                'amount'           => $monthly,
+                'payment_method'   => 'cash',
+                'description'      => 'Monthly instructor wage — ' . $name,
+                'transaction_date' => now()->startOfMonth()->toDateString(),
+            ]
+        );
     }
 }

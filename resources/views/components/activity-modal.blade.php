@@ -50,6 +50,7 @@
             <!-- Body -->
             <div class="modal-body px-6 py-6 max-h-[70vh] overflow-y-auto">
                 <form id="{{ $formId }}"
+                      x-data="{ lang: 'en' }"
                       @if($isEdit)
                       method="POST"
                       @else
@@ -114,6 +115,8 @@
                             </div>
                         </div>
 
+                        <x-lang-toggle class="mb-4" />
+
                         <!-- Activity Title -->
                         <div class="space-y-2">
                             <label for="{{ $prefix }}ActivityName" class="block text-sm font-medium text-foreground">
@@ -123,9 +126,19 @@
                                    id="{{ $prefix }}ActivityName"
                                    name="name"
                                    required
+                                   x-show="lang==='en'"
                                    placeholder="e.g., Morning Yoga Class"
                                    class="form-control"
                                    oninput="clearActivityFieldError('{{ $prefix }}', 'name')">
+                            <input type="text"
+                                   id="{{ $prefix }}ActivityNameAr"
+                                   name="translations[name][ar]"
+                                   dir="rtl"
+                                   x-show="lang==='ar'"
+                                   x-cloak
+                                   class="form-control"
+                                   placeholder="الاسم بالعربية"
+                                   value="{{ old('translations.name.ar', data_get($activity ?? null, 'translations.name.ar')) }}">
                             <span id="{{ $prefix }}ActivityError_name" class="text-destructive text-xs hidden block"></span>
                         </div>
 
@@ -137,9 +150,18 @@
                             <textarea id="{{ $prefix }}ActivityDescription"
                                       name="description"
                                       rows="3"
+                                      x-show="lang==='en'"
                                       placeholder="Detailed description of the activity..."
                                       class="form-control resize-none"
                                       oninput="clearActivityFieldError('{{ $prefix }}', 'description')"></textarea>
+                            <textarea id="{{ $prefix }}ActivityDescriptionAr"
+                                      name="translations[description][ar]"
+                                      rows="3"
+                                      dir="rtl"
+                                      x-show="lang==='ar'"
+                                      x-cloak
+                                      class="form-control resize-none"
+                                      placeholder="الوصف بالعربية">{{ old('translations.description.ar', data_get($activity ?? null, 'translations.description.ar')) }}</textarea>
                             <span id="{{ $prefix }}ActivityError_description" class="text-destructive text-xs hidden block"></span>
                         </div>
 
@@ -212,6 +234,8 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('editActivityName').value = data.name || '';
             document.getElementById('editActivityDescription').value = data.description || '';
             document.getElementById('editActivityNotes').value = data.notes || '';
+            document.getElementById('editActivityNameAr').value = data.translations?.name?.ar || '';
+            document.getElementById('editActivityDescriptionAr').value = data.translations?.description?.ar || '';
             updateCropperPreview(data.pictureUrl);
             clearAllActivityErrors('edit');
         }

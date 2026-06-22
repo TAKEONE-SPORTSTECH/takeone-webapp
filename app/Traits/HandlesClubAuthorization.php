@@ -19,6 +19,18 @@ trait HandlesClubAuthorization
         abort(403, 'Unauthorized access to this club.');
     }
 
+    /** Non-throwing variant of authorizeClub() — true if the current user may manage the club. */
+    private function canManageClub(Tenant $club): bool
+    {
+        $user = Auth::user();
+        if (! $user) return false;
+        if ($user->isSuperAdmin()) return true;
+        if ($club->owner_user_id === $user->id) return true;
+        if ($user->isClubAdmin($club->id)) return true;
+        if ($club->business_id && $this->ownsClubBusiness($user->id, $club->business_id)) return true;
+        return false;
+    }
+
     private function ownsClubBusiness(int $userId, int $businessId): bool
     {
         return Business::where('id', $businessId)

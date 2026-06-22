@@ -361,10 +361,14 @@ class PlatformController extends Controller
                 ->toArray();
         }
 
-        $achievements = $club->achievements
-            ->where('status', 'active')
-            ->take(3)
-            ->values();
+        $activeAchievements = $club->achievements->where('status', 'active')->values();
+
+        // Desktop "Latest Achievements" keeps its 3-up grid.
+        $achievements = $activeAchievements->take(3)->values();
+
+        // Mobile shows a swipeable slider of the latest 5 with a "view more" to reveal the
+        // rest (capped to keep the inline payload reasonable).
+        $achievementsAll = $activeAchievements->take(24)->values();
 
         // Build family members array (same as explore page)
         $familyMembers = collect();
@@ -412,12 +416,45 @@ class PlatformController extends Controller
             return $m;
         });
 
-        return view('platform.show', compact(
+        // Per-package applicability: a package is "applicable" if at least one of
+        // me / my family members fits its age + gender rules. Used to disable the
+        // non-applicable ones and sort the applicable ones first.
+        $eligibleFor = function ($pkg, array $m): bool {
+            $age = $m['age'] ?? null;
+            if ($pkg->age_min !== null && $age !== null && $age < $pkg->age_min) return false;
+            if ($pkg->age_max !== null && $age !== null && $age > $pkg->age_max) return false;
+            $g = $pkg->gender;
+            if ($g && $g !== 'mixed' && ! empty($m['gender'])) {
+                if ($g === 'male'   && $m['gender'] !== 'Male')   return false;
+                if ($g === 'female' && $m['gender'] !== 'Female') return false;
+            }
+            return true;
+        };
+
+        // Only gate when we actually know the viewer's family (logged-in). Guests
+        // keep every package enabled (they'll be routed to register on join).
+        $gateApplicability = Auth::check() && $familyMembers->isNotEmpty();
+
+        foreach ($club->packages as $pkg) {
+            $eligible = $gateApplicability
+                ? $familyMembers->filter(fn ($m) => $eligibleFor($pkg, $m))
+                : $familyMembers;
+            $pkg->setAttribute('is_applicable', ! $gateApplicability || $eligible->isNotEmpty());
+            $pkg->setAttribute('eligible_names', $eligible->pluck('name')->values()->all());
+        }
+
+        // Applicable packages first (stable within each group).
+        $club->setRelation('packages', $club->packages->sortByDesc('is_applicable')->values());
+
+        $isMobile = request()->attributes->get('is_mobile', false);
+        $showView = $isMobile && view()->exists('platform.mobile.show') ? 'platform.mobile.show' : 'platform.show';
+
+        return view($showView, compact(
             'club', 'activeMembersCount', 'reviews', 'averageRating',
             'nationalityStats', 'ageGroups', 'genderStats', 'horoscopeGroups',
             'bloodTypeStats', 'monthlyTrend', 'totalMembers', 'accessStat', 'distinctClassCount',
             'goalStats', 'joinedEventIds', 'joinedEventRegistrations', 'likedPostIds', 'achievements',
-            'familyMembers'
+            'achievementsAll', 'familyMembers'
         ));
     }
 
@@ -731,7 +768,7 @@ class PlatformController extends Controller
             'success'    => true,
             'perk_type'  => $perk->perk_type,
             'perk_value' => $perk->perk_value,
-            'title'      => $perk->title,
+            'title'      => $perk->tr('title'),
         ]);
     }
 

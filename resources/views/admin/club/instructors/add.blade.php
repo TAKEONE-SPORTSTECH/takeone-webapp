@@ -219,10 +219,12 @@
                             </div>
                         </div>
 
-                        <div class="space-y-4">
+                        <div class="space-y-4" x-data="{ lang: 'en' }">
                             <div class="space-y-2">
                                 <label class="block text-base font-medium text-gray-700">What's your role? <span class="text-red-500">*</span></label>
-                                <input type="text" name="specialty_existing" placeholder="e.g., Martial Arts Instructor" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <x-lang-toggle class="mb-4" />
+                                <input type="text" name="specialty_existing" placeholder="e.g., Martial Arts Instructor" x-show="lang==='en'" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <input type="text" name="translations[role][ar]" dir="rtl" x-show="lang==='ar'" x-cloak placeholder="المسمى بالعربية" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" value="{{ old('translations.role.ar') }}">
                             </div>
 
                             <div class="space-y-2">
@@ -243,10 +245,12 @@
                             </div>
                         </div>
 
-                        <div class="space-y-4">
+                        <div class="space-y-4" x-data="{ lang: 'en' }">
                             <div class="space-y-2">
                                 <label class="block text-base font-medium text-gray-700">What's your role? <span class="text-red-500">*</span></label>
-                                <input type="text" name="specialty" placeholder="e.g., Martial Arts Instructor" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <x-lang-toggle class="mb-4" />
+                                <input type="text" name="specialty" placeholder="e.g., Martial Arts Instructor" x-show="lang==='en'" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <input type="text" name="translations[role][ar]" dir="rtl" x-show="lang==='ar'" x-cloak placeholder="المسمى بالعربية" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" value="{{ old('translations.role.ar') }}">
                             </div>
 
                             <div class="space-y-2">
@@ -383,6 +387,61 @@
                                 <p class="text-sm text-gray-500 mb-2">Professional qualifications and training</p>
                                 <textarea name="certifications" rows="3" placeholder="e.g., Black Belt 3rd Dan, Certified Personal Trainer..." class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
                             </div>
+                        </div>
+                    </div>
+
+                    {{-- Persistent section (not part of the step wizard): compensation & classes --}}
+                    <div class="mt-6 pt-5 border-t border-gray-100 space-y-5">
+                        <div>
+                            <label class="block text-base font-medium text-gray-700 mb-2"><i class="bi bi-cash-coin mr-1 text-primary"></i>Compensation</label>
+                            <div class="flex flex-wrap items-end gap-3">
+                                <div>
+                                    <select name="compensation_type" id="addCompType" class="px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                            onchange="document.getElementById('addWageFields').style.display = this.value === 'paid' ? 'flex' : 'none'">
+                                        <option value="volunteer">Volunteer</option>
+                                        <option value="paid">Paid</option>
+                                    </select>
+                                </div>
+                                <div id="addWageFields" class="flex items-end gap-3" style="display:none;">
+                                    <div>
+                                        <label class="block text-xs text-gray-500 mb-1">Amount</label>
+                                        <input type="number" min="0" step="0.01" name="wage_amount" placeholder="0.00" class="w-32 px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-gray-500 mb-1">Period</label>
+                                        <select name="wage_period" class="px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                                            <option value="monthly">Per month</option>
+                                            <option value="session">Per session</option>
+                                            <option value="hourly">Per hour</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-base font-medium text-gray-700 mb-2"><i class="bi bi-calendar2-week mr-1 text-primary"></i>Package classes &amp; schedules</label>
+                            @if($packageSlots->isEmpty())
+                                <p class="text-sm text-gray-400">No package schedules yet. Create a package with classes first.</p>
+                            @else
+                                <div class="space-y-3">
+                                    @foreach($packageSlots->groupBy('package_id') as $slots)
+                                        <div class="border border-gray-100 rounded-lg overflow-hidden">
+                                            <p class="px-3 py-2 bg-gray-50 text-xs font-bold text-gray-700"><i class="bi bi-box text-primary mr-1"></i>{{ $slots->first()->package_name }}</p>
+                                            <div class="divide-y divide-gray-50">
+                                                @foreach($slots as $slot)
+                                                    <label class="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50">
+                                                        <input type="checkbox" name="package_slots[]" value="{{ $slot->id }}" class="rounded text-primary focus:ring-primary">
+                                                        <span class="min-w-0">
+                                                            <span class="block text-sm font-medium text-gray-800 truncate">{{ $slot->activity_name }}</span>
+                                                            <span class="block text-xs text-gray-400 truncate">{{ $slot->schedule_label ?: 'No schedule set' }}@if($slot->instructor_name) · {{ $slot->instructor_name }}@endif</span>
+                                                        </span>
+                                                    </label>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </form>

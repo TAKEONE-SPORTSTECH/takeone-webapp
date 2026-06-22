@@ -49,9 +49,11 @@
         </nav>
     </div>
 
-    <form id="clubDetailsForm" action="{{ route('admin.club.update', $club->slug) }}" method="POST" enctype="multipart/form-data">
+    <form id="clubDetailsForm" action="{{ route('admin.club.update', $club->slug) }}" method="POST" enctype="multipart/form-data" x-data="{ lang: 'en' }">
         @csrf
         @method('PUT')
+
+        <x-lang-toggle class="mb-4" />
 
         <!-- Basic Tab -->
         <div class="tab-content" id="tab-basic" x-show="activeTab === 'basic'">
@@ -66,15 +68,18 @@
                     <div class="card-body space-y-4">
                         <div>
                             <label class="form-label">Club Name <span class="text-danger">*</span></label>
-                            <input type="text" name="club_name" class="form-control" value="{{ old('club_name', $club->club_name) }}" required>
+                            <input type="text" name="club_name" class="form-control" value="{{ old('club_name', $club->club_name) }}" x-show="lang==='en'" required>
+                            <input type="text" name="translations[club_name][ar]" dir="rtl" x-show="lang==='ar'" x-cloak class="form-control" placeholder="اسم النادي بالعربية" value="{{ old('translations.club_name.ar', data_get($club ?? null, 'translations.club_name.ar')) }}">
                         </div>
                         <div>
                             <label class="form-label">Slogan</label>
-                            <input type="text" name="slogan" class="form-control" value="{{ old('slogan', $club->slogan) }}" placeholder="A catchy tagline for your club">
+                            <input type="text" name="slogan" class="form-control" value="{{ old('slogan', $club->slogan) }}" x-show="lang==='en'" placeholder="A catchy tagline for your club">
+                            <input type="text" name="translations[slogan][ar]" dir="rtl" x-show="lang==='ar'" x-cloak class="form-control" placeholder="شعار النادي بالعربية" value="{{ old('translations.slogan.ar', data_get($club ?? null, 'translations.slogan.ar')) }}">
                         </div>
                         <div>
                             <label class="form-label">Description</label>
-                            <textarea name="description" class="form-control" rows="3" placeholder="Describe your club...">{{ old('description', $club->description) }}</textarea>
+                            <textarea name="description" class="form-control" rows="3" x-show="lang==='en'" placeholder="Describe your club...">{{ old('description', $club->description) }}</textarea>
+                            <textarea name="translations[description][ar]" dir="rtl" x-show="lang==='ar'" x-cloak class="form-control" rows="3" placeholder="وصف النادي بالعربية">{{ old('translations.description.ar', data_get($club ?? null, 'translations.description.ar')) }}</textarea>
                         </div>
                         <div>
                             <label class="form-label">First-Time Enrollment Fee ({{ $club->currency ?? 'USD' }})</label>
@@ -238,6 +243,10 @@
                         :defaultLng="50.5860"
                         height="400px"
                     />
+                    <div x-show="lang==='ar'" x-cloak>
+                        <label class="form-label">العنوان بالعربية</label>
+                        <input type="text" name="translations[address][ar]" dir="rtl" class="form-control" placeholder="عنوان النادي بالعربية" value="{{ old('translations.address.ar', data_get($club ?? null, 'translations.address.ar')) }}">
+                    </div>
                     <div class="flex gap-2 flex-wrap">
                         <button type="button" class="btn btn-outline-primary btn-sm" id="useMyLocationBtn">
                             <i class="bi bi-crosshair mr-1"></i>Use My Location

@@ -1,6 +1,6 @@
 @once
 <div id="confirmDialog"
-     class="fixed inset-0 z-[60] hidden"
+     class="fixed inset-0 z-[1000] hidden"
      role="dialog">
     <!-- Backdrop -->
     <div class="fixed inset-0 bg-black/50 transition-opacity" id="confirmDialogBackdrop"></div>

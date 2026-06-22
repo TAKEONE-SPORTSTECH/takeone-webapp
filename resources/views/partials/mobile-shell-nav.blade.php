@@ -51,8 +51,10 @@
             if (titleEl && nc.getAttribute('data-title')) titleEl.textContent = nc.getAttribute('data-title');
             if (doc.title) document.title = doc.title;
             updateActive(route);
-            runScripts(c);
+            // Update the URL BEFORE running inline scripts so they can read the
+            // destination's query string (e.g. the schedule list reading ?day=).
             if (push !== false) history.pushState({ shell: true }, '', url);
+            runScripts(c);
             window.scrollTo(0, 0);
             window.dispatchEvent(new CustomEvent('shell:navigated'));
         } catch (e) {

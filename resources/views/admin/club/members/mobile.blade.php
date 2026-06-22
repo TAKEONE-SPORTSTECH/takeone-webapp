@@ -1,17 +1,26 @@
 @extends('layouts.admin-club-mobile')
 
-@section('title', ($club->club_name ?? 'Club') . ' · Members')
+@section('title', ($club->club_name ?? __('admin.club')) . ' · ' . __('admin.nav_members'))
 
 @section('club-admin-content')
-<div class="space-y-4">
+@php
+    $memberNames = $mobileMembers->map(fn($m) => mb_strtolower(optional($m->user)->full_name ?? ''))->filter()->values();
+@endphp
+<div class="space-y-4"
+     x-data="{
+        q: '',
+        names: @js($memberNames),
+        show(n) { return this.q.trim() === '' || n.includes(this.q.trim().toLowerCase()); },
+        get hasResults() { return this.q.trim() === '' || this.names.some(n => n.includes(this.q.trim().toLowerCase())); }
+     }">
 
     {{-- Filter tabs (reload with ?filter=) --}}
     <div class="grid grid-cols-3 gap-2">
         @php
             $tabs = [
-                ['active', 'Active', $activeCount ?? 0, 'text-green-600'],
-                ['not_active', 'Not active', $notActiveCount ?? 0, 'text-amber-600'],
-                ['all', 'All', $allCount ?? 0, 'text-foreground'],
+                ['active', __('admin.active'), $activeCount ?? 0, 'text-green-600'],
+                ['not_active', __('admin.not_active'), $notActiveCount ?? 0, 'text-amber-600'],
+                ['all', __('admin.all'), $allCount ?? 0, 'text-foreground'],
             ];
         @endphp
         @foreach($tabs as [$key, $label, $count, $color])
@@ -27,9 +36,15 @@
     @if($mobileMembers->isEmpty())
         <div class="m-card p-8 text-center">
             <i class="bi bi-people text-3xl text-gray-300 m-float"></i>
-            <p class="text-sm text-muted-foreground mt-2">No members in this filter.</p>
+            <p class="text-sm text-muted-foreground mt-2">{{ __('admin.no_members_in_filter') }}</p>
         </div>
     @else
+        {{-- Search --}}
+        <div class="relative">
+            <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></i>
+            <input type="search" x-model="q" placeholder="{{ __('admin.search_members') }}"
+                   class="w-full pl-10 pr-3 py-2.5 bg-muted rounded-xl text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+        </div>
         <div class="space-y-2.5 mobile-stagger">
             @foreach($mobileMembers as $m)
                 @php
@@ -41,6 +56,7 @@
                     $pkgName = $sub && $sub->package ? $sub->package->name : null;
                 @endphp
                 <a href="{{ route('member.show', $u->uuid) }}"
+                   x-show="show(@js(mb_strtolower($u->full_name)))" x-cloak
                    class="m-press flex items-center gap-3 m-card p-3 active:bg-muted/40 transition-colors">
                     <span class="w-11 h-11 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
                         @if($u->profile_picture)
@@ -52,27 +68,28 @@
                     <div class="min-w-0 flex-1">
                         <p class="text-sm font-medium text-foreground truncate">{{ $u->full_name }}</p>
                         <p class="text-xs text-muted-foreground truncate">
-                            @if($age){{ $age }} yrs @endif
+                            @if($age){{ $age }} {{ __('admin.yrs') }} @endif
                             @if($u->gender) · {{ ucfirst($u->gender) }}@endif
                             @if($pkgName) · {{ $pkgName }}@endif
                         </p>
                     </div>
                     @if($pkgName)
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-700 flex-shrink-0">Active</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-700 flex-shrink-0">{{ __('admin.active') }}</span>
                     @else
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700 flex-shrink-0">No sub</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700 flex-shrink-0">{{ __('admin.no_sub') }}</span>
                     @endif
                     <i class="bi bi-chevron-right text-muted-foreground flex-shrink-0"></i>
                 </a>
             @endforeach
         </div>
-        <p class="text-[11px] text-muted-foreground text-center">{{ $mobileMembers->count() }} shown</p>
+        <p x-show="!hasResults" x-cloak class="text-sm text-muted-foreground text-center py-6">{{ __('admin.no_search_results') }}</p>
+        <p x-show="hasResults" class="text-[11px] text-muted-foreground text-center">{{ __('admin.count_shown', ['count' => $mobileMembers->count()]) }}</p>
     @endif
 
     {{-- Demographics --}}
     @if(!empty($ageGroupCounts) && array_sum($ageGroupCounts) > 0)
     <div class="m-card p-4">
-        <h3 class="font-semibold text-foreground mb-3">Age groups</h3>
+        <h3 class="font-semibold text-foreground mb-3">{{ __('admin.age_groups') }}</h3>
         @php $maxAg = max(1, collect($ageGroupCounts)->max() ?: 1); @endphp
         <div class="space-y-2.5 mobile-stagger">
             @foreach($ageGroupCounts as $label => $count)
@@ -85,6 +102,6 @@
     </div>
     @endif
 
-    <p class="text-xs text-muted-foreground text-center px-4">Enrolment &amp; payment approvals are on the desktop view.</p>
+    <p class="text-xs text-muted-foreground text-center px-4">{!! __('admin.enrolment_desktop_note') !!}</p>
 </div>
 @endsection

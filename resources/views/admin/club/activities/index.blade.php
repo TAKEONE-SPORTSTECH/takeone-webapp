@@ -54,6 +54,7 @@
                                     name: '{{ addslashes($activity->name) }}',
                                     description: '{{ addslashes($activity->description) }}',
                                     notes: '{{ addslashes($activity->notes) }}',
+                                    translations: {{ Illuminate\Support\Js::from($activity->translations ?? []) }},
                                     pictureUrl: '{{ $activity->picture_url ? asset('storage/' . $activity->picture_url) : '' }}',
                                     action: '{{ route('admin.club.activities.update', [$club->slug, $activity->id]) }}'
                                 }; showEditModal = true">
@@ -226,6 +227,7 @@
                 name: a.name || '',
                 description: a.description || '',
                 notes: a.notes || '',
+                translations: a.translations || {},
                 pictureUrl: picUrl,
                 action: UPDATE_TPL.replace('__ID__', a.id)
             };

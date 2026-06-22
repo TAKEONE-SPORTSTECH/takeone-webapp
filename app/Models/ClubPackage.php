@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\BelongsToTenant;
+use App\Traits\HasTranslations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,7 +14,10 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class ClubPackage extends Model
 {
-    use HasFactory, BelongsToTenant, LogsActivity;
+    use HasFactory, BelongsToTenant, LogsActivity, HasTranslations;
+
+    /** Fields a club admin can provide an Arabic (or other-locale) version of. */
+    protected array $translatable = ['name', 'description'];
 
     public function getActivitylogOptions(): LogOptions
     {

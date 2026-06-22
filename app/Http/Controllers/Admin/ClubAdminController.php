@@ -19,6 +19,7 @@ use App\Models\UserRelationship;
 use App\Services\FinancialService;
 use App\Support\ClubCache;
 use App\Traits\HandlesClubAuthorization;
+use App\Traits\PersistsTranslations;
 use App\Traits\StoresBase64Images;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -28,7 +29,7 @@ use Illuminate\Support\Str;
 
 class ClubAdminController extends Controller
 {
-    use HandlesClubAuthorization, StoresBase64Images;
+    use HandlesClubAuthorization, PersistsTranslations, StoresBase64Images;
 
     /**
      * Dashboard overview
@@ -212,6 +213,7 @@ class ClubAdminController extends Controller
         return view(\App\Support\ClubView::pick('details'), compact('club', 'activeMembersCount', 'reviews', 'averageRating'));
     }
 
+
     /**
      * Update club details
      */
@@ -250,6 +252,8 @@ class ClubAdminController extends Controller
         }
 
         $club->update($data);
+
+        $this->applyTranslations($club, $request);
 
         if ($request->has('social_links')) {
             $club->socialLinks()->delete();
