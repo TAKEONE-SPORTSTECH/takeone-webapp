@@ -118,16 +118,18 @@ class QrController extends Controller
     /** Bare member QR as an inline SVG image (used by the member popup's QR view). */
     public function memberSvg(Request $request, User $user)
     {
-        abort_unless(auth()->check(), 403);
+        // Same self / super-admin / club-manager rule the poster endpoint enforces.
+        abort_unless($this->canViewMember($request, $user), 403);
         return response(Qr::svg($this->memberQrTarget($request, $user), 256, 1), 200, [
             'Content-Type'  => 'image/svg+xml',
             'Cache-Control' => 'private, max-age=600',
         ]);
     }
 
-    public function eventPoster(ClubEvent $event): View
+    public function eventPoster(Request $request, ClubEvent $event): View
     {
-        abort_unless(auth()->check(), 403);
+        $me = auth()->user();
+        abort_unless($me && $this->canViewEvent($me, $event), 403);
         $club = $event->tenant;
         return $this->poster([
             'title'    => $event->title,
@@ -168,5 +170,25 @@ class QrController extends Controller
             }
         }
         return false;
+    }
+
+    /**
+     * Whether $me may see this event's poster — mirrors PersonalEventController::isEligible
+     * (the source of truth for event visibility): host-club members, the creator,
+     * super-admin, or anyone the event's scope reaches.
+     */
+    private function canViewEvent(User $me, ClubEvent $event): bool
+    {
+        if ($event->is_archived) return false;
+        if ($me->isSuperAdmin() || $event->created_by === $me->id) return true;
+        if ($me->memberClubs()->whereKey($event->tenant_id)->exists()) return true;
+
+        return match ($event->scope ?? 'internal') {
+            'inter_club', 'worldwide' => true,
+            // regional currently mirrors nationwide until a region taxonomy exists.
+            'nationwide', 'regional'  => (bool) ($event->tenant?->country
+                && $me->memberClubs()->where('tenants.country', $event->tenant->country)->exists()),
+            default                   => false, // internal
+        };
     }
 }
