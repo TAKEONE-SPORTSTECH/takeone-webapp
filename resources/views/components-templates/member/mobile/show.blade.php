@@ -11,6 +11,14 @@
     $medalsTotal = array_sum($awardCounts);
     $latest = $latestHealthRecord;
     $prev = $comparisonRecords->count() > 1 ? $comparisonRecords[1] : null;
+    // Reactive snapshots for the live-updating health summary (weight/height/BMI).
+    $healthMetrics = fn ($r) => [
+        'weight' => $r && !is_null($r->weight) ? (float) $r->weight : null,
+        'height' => $r && !is_null($r->height) ? (float) $r->height : null,
+        'bmi'    => $r && !is_null($r->bmi) ? (float) $r->bmi : null,
+    ];
+    $latestMetrics = $healthMetrics($latest) + ['label' => $latest ? optional($latest->recorded_at)->format('d M Y') : null];
+    $prevMetrics = $healthMetrics($prev);
     $weightRows = ($weightHistory ?? collect())->map(fn ($w) => [
         'weight' => (float) $w->weight,
         'label'  => optional($w->recorded_at)->format('d M Y'),
@@ -167,7 +175,7 @@
             }
         @endphp
         @if(count($meta))
-            <div class="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 mt-3 text-[13px] font-medium text-white/85 mp-reveal" style="animation-delay:.2s">
+            <div class="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 mt-1.5 mb-3 text-[13px] font-medium text-white/85 mp-reveal" style="animation-delay:.2s">
                 @foreach($meta as $i => $m)
                     @if($i > 0)<span class="w-1 h-1 rounded-full bg-white/40"></span>@endif
                     <span class="inline-flex items-center gap-1.5">
@@ -209,21 +217,82 @@
         </div>
     </div>
 
+    @php
+        // Pre-build the awarded-achievement view models ONCE. Reused by the medal
+        // showcase filter sheet (here) and the Tournaments tab list below, so the two
+        // never drift. Each entry carries the rich detail payload + the medal "buckets"
+        // (gold/silver/bronze/special) it belongs to for client-side filtering.
+        $medalBuckets = function ($award) {
+            $r = mb_strtolower($award ?? '');
+            $b = [];
+            if (str_contains($r, 'gold'))   $b[] = 'gold';
+            if (str_contains($r, 'silver')) $b[] = 'silver';
+            if (str_contains($r, 'bronze')) $b[] = 'bronze';
+            if (str_contains($r, 'special') || empty($b)) $b[] = 'special';
+            return $b;
+        };
+        $achList = ($awardedAchievements ?? collect())->map(function ($a) use ($medalBuckets) {
+            $r = mb_strtolower($a->member_award ?? '');
+            $emoji = (str_contains($r, 'gold') ? '🥇' : '') . (str_contains($r, 'silver') ? '🥈' : '') . (str_contains($r, 'bronze') ? '🥉' : '');
+            $emoji = $emoji ?: '🏅';
+            $dateLabel = $a->date_label ?: ($a->achievement_date ? $a->achievement_date->format('M Y') : '');
+            $achLocation = $a->tr('location');
+            $achImages = collect(array_filter(array_merge($a->image_path ? [$a->image_path] : [], $a->images ?? [])))
+                ->map(fn ($p) => asset('storage/' . $p))->values()->toArray();
+            return [
+                'a'        => $a,
+                'emoji'    => $emoji,
+                'location' => $achLocation,
+                'metaLine' => implode(' · ', array_filter([$achLocation, $dateLabel])),
+                'buckets'  => $medalBuckets($a->member_award),
+                'data'     => [
+                    'member_award' => $a->member_award ?: __('member.award_default'),
+                    'emoji'        => $emoji,
+                    'title'        => $a->tr('title'),
+                    'short_title'  => $a->tr('short_title') ?: $a->tr('title'),
+                    'location'     => $achLocation,
+                    'date_label'   => $dateLabel,
+                    'description'  => $a->tr('description'),
+                    'club'         => $a->tenant?->tr('club_name'),
+                    'type_icon'    => $a->type_icon ?: '🏆',
+                    'bg_from'      => $a->bg_from ?: '#f59e0b',
+                    'bg_to'        => $a->bg_to ?: '#f97316',
+                    'images'       => $achImages,
+                    'athletes'     => collect($a->athletes ?? [])->map(fn ($x) => is_array($x)
+                                        ? ['name' => $x['name'] ?? '', 'role' => $x['role'] ?? '']
+                                        : ['name' => (string) $x, 'role' => ''])
+                                      ->filter(fn ($x) => $x['name'] !== '')->values()->toArray(),
+                ],
+            ];
+        })->values();
+        // Flat payload for the Alpine filter sheet: detail data + buckets.
+        $medalSheetItems = $achList->map(fn ($x) => $x['data'] + ['buckets' => $x['buckets']])->all();
+    @endphp
+
     {{-- ===== Medal showcase ===== --}}
     @if($medalsTotal > 0)
-    <div class="px-4 mt-4">
+    <div class="px-4 mt-4"
+         x-data="{
+            items: @js($medalSheetItems),
+            sheetOpen: false, filterType: '', filterLabel: '', filterEmoji: '',
+            showAch: false, ach: null, idx: 0,
+            openMedal(type, label, emoji) { this.filterType = type; this.filterLabel = label; this.filterEmoji = emoji; this.sheetOpen = true; },
+            get filtered() { return this.items.filter(i => (i.buckets || []).includes(this.filterType)); },
+            openAch(a) { this.ach = a; this.idx = 0; this.showAch = true; },
+            medalEmoji(r) { r = (r||'').toLowerCase(); var m=''; if(r.includes('gold'))m+='🥇'; if(r.includes('silver'))m+='🥈'; if(r.includes('bronze'))m+='🥉'; return m||'🏅'; }
+         }">
         <div class="grid grid-cols-4 gap-2">
             @php
                 $medals = [
-                    [__('member.medal_special'), $awardCounts['special'] ?? 0, 'bi-trophy-fill', 'hsl(250 70% 70%)', 'hsl(280 70% 60%)'],
-                    [__('member.medal_gold'), $awardCounts['1st'] ?? 0, 'bi-award-fill', '#fbbf24', '#f59e0b'],
-                    [__('member.medal_silver'), $awardCounts['2nd'] ?? 0, 'bi-award-fill', '#cbd5e1', '#94a3b8'],
-                    [__('member.medal_bronze'), $awardCounts['3rd'] ?? 0, 'bi-award-fill', '#d6a06a', '#b45309'],
+                    [__('member.medal_special'), $awardCounts['special'] ?? 0, 'bi-trophy-fill', 'hsl(250 70% 70%)', 'hsl(280 70% 60%)', 'special', '🏅'],
+                    [__('member.medal_gold'), $awardCounts['1st'] ?? 0, 'bi-award-fill', '#fbbf24', '#f59e0b', 'gold', '🥇'],
+                    [__('member.medal_silver'), $awardCounts['2nd'] ?? 0, 'bi-award-fill', '#cbd5e1', '#94a3b8', 'silver', '🥈'],
+                    [__('member.medal_bronze'), $awardCounts['3rd'] ?? 0, 'bi-award-fill', '#d6a06a', '#b45309', 'bronze', '🥉'],
                 ];
             @endphp
-            @foreach($medals as [$label,$cnt,$icon,$c1,$c2])
+            @foreach($medals as [$label,$cnt,$icon,$c1,$c2,$bucket,$bemoji])
                 <button type="button"
-                        @click="tab='tournaments'; $nextTick(() => document.getElementById('mpTabs')?.scrollIntoView({ behavior:'smooth', block:'start' }))"
+                        @click="openMedal('{{ $bucket }}', @js($label), '{{ $bemoji }}')"
                         class="mp-medal m-press rounded-2xl p-3 text-center text-white shadow-sm w-full"
                         style="--c1:{{ $c1 }};--c2:{{ $c2 }}"
                         aria-label="{{ $label }} — {{ __('member.medals_awards') }}">
@@ -233,6 +302,53 @@
                 </button>
             @endforeach
         </div>
+
+        {{-- Filtered medal list — opens as a mobile bottom-sheet when a medal is tapped --}}
+        <template x-teleport="body">
+            <div x-show="sheetOpen" x-cloak class="fixed inset-0 z-[65] overflow-y-auto" @keydown.escape.window="sheetOpen=false">
+                <div x-show="sheetOpen" x-transition.opacity class="fixed inset-0 bg-black/60" @click="sheetOpen=false"></div>
+                <div class="flex min-h-full items-end justify-center sm:items-center sm:p-4">
+                    <div x-show="sheetOpen"
+                         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-full sm:translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+                         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-full"
+                         class="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg flex flex-col" style="max-height:88vh" @click.stop>
+                        {{-- Header --}}
+                        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
+                            <h5 class="text-base font-bold text-foreground flex items-center gap-2 min-w-0">
+                                <span class="text-xl leading-none" x-text="filterEmoji"></span>
+                                <span class="truncate" x-text="filterLabel"></span>
+                                <span class="text-[11px] font-semibold text-muted-foreground bg-muted rounded-full px-2 py-0.5 flex-shrink-0" x-text="filtered.length"></span>
+                            </h5>
+                            <button type="button" @click="sheetOpen=false" class="w-9 h-9 rounded-full bg-muted text-gray-500 grid place-items-center flex-shrink-0"><i class="bi bi-x-lg"></i></button>
+                        </div>
+                        {{-- List --}}
+                        <div class="overflow-y-auto p-3 space-y-2.5" style="max-height:calc(88vh - 4rem)">
+                            <template x-for="(item, i) in filtered" :key="i">
+                                <button type="button" @click="openAch(item)" class="m-card m-press p-3 flex items-start gap-3 w-full text-start">
+                                    <span class="w-12 h-12 rounded-full bg-amber-50 grid place-items-center text-2xl flex-shrink-0" x-text="item.emoji"></span>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="font-bold text-foreground text-sm leading-tight" x-text="item.member_award"></p>
+                                        <p class="text-[11px] text-muted-foreground truncate mt-0.5"><i class="bi bi-trophy text-amber-400 mr-0.5"></i><span x-text="item.short_title"></span></p>
+                                        <p x-show="item.location || item.date_label" class="text-[10px] text-muted-foreground/80 truncate mt-0.5">
+                                            <i class="bi bi-geo-alt mr-0.5" x-show="item.location"></i><span x-text="[item.location, item.date_label].filter(Boolean).join(' · ')"></span>
+                                        </p>
+                                        <p x-show="item.club" class="text-[10px] text-muted-foreground/80 truncate" x-text="@js(__('member.award_via', ['club' => '%CLUB%'])).replace('%CLUB%', item.club || '')"></p>
+                                    </div>
+                                    <i class="bi bi-chevron-right rtl:rotate-180 text-muted-foreground/40 text-sm flex-shrink-0 self-center"></i>
+                                </button>
+                            </template>
+                            <div x-show="!filtered.length" class="p-10 text-center">
+                                <i class="bi bi-award text-3xl text-gray-300"></i>
+                                <p class="text-sm text-muted-foreground mt-2">{{ __('member.medal_none') }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        {{-- Shared achievement detail sheet (opened from a list row) --}}
+        @include('components-templates.member.mobile.partials.achievement-detail-sheet')
     </div>
     @endif
 
@@ -241,7 +357,7 @@
         <div class="mp-tabbar flex gap-2 overflow-x-auto px-4">
             @foreach([
                 'overview'=>__('member.tab_overview'),'health'=>__('member.tab_health'),'goals'=>__('member.tab_goals'),
-                'tournaments'=>__('member.tab_tournaments'),'clubs'=>__('member.tab_clubs'),'attendance'=>__('member.tab_attendance'),'billing'=>__('member.tab_billing')
+                'clubs'=>__('member.tab_clubs'),'attendance'=>__('member.tab_attendance'),'billing'=>__('member.tab_billing')
             ] as $key=>$label)
                 <button @click="tab='{{ $key }}'"
                         class="mp-tab flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold text-muted-foreground bg-white border border-gray-100 transition-all"
@@ -342,14 +458,24 @@
                     @endif
                 </div>
                 {{-- Age, gender & nationality live in the hero meta — not repeated here. --}}
+                @php
+                    // Marital status → icon + colour (matches the profile modal's dropdown).
+                    $maritalIcons = [
+                        'single'   => ['bi-person',     'text-blue-500'],
+                        'married'  => ['bi-heart-fill', 'text-pink-500'],
+                        'divorced' => ['bi-heart-half', 'text-orange-500'],
+                        'widowed'  => ['bi-flower1',    'text-purple-500'],
+                    ];
+                    $mi = $maritalIcons[strtolower($user->marital_status ?? '')] ?? null;
+                @endphp
                 <div class="grid grid-cols-2 gap-3 text-sm">
-                    <div><p class="text-[11px] text-muted-foreground">{{ __('member.blood_type') }}</p><p class="font-semibold">{{ $user->blood_type ?: '—' }}</p></div>
-                    <div><p class="text-[11px] text-muted-foreground">{{ __('member.marital_status') }}</p><p class="font-semibold capitalize">{{ $user->marital_status ?: '—' }}</p></div>
+                    <div><p class="text-[11px] text-muted-foreground">{{ __('member.blood_type') }}</p><p class="font-semibold flex items-center gap-1.5">@if($user->blood_type)<i class="bi bi-droplet-fill text-red-500 text-xs"></i>@endif{{ $user->blood_type ?: '—' }}</p></div>
+                    <div><p class="text-[11px] text-muted-foreground">{{ __('member.marital_status') }}</p><p class="font-semibold capitalize flex items-center gap-1.5">@if($mi)<i class="bi {{ $mi[0] }} {{ $mi[1] }} text-xs"></i>@endif{{ $user->marital_status ?: '—' }}</p></div>
                     @if($user->horoscope)
                         @php $zodiac = ['Aries'=>'♈','Taurus'=>'♉','Gemini'=>'♊','Cancer'=>'♋','Leo'=>'♌','Virgo'=>'♍','Libra'=>'♎','Scorpio'=>'♏','Sagittarius'=>'♐','Capricorn'=>'♑','Aquarius'=>'♒','Pisces'=>'♓']; @endphp
                         <div><p class="text-[11px] text-muted-foreground">{{ __('member.horoscope') }}</p><p class="font-semibold">{{ $zodiac[$user->horoscope] ?? '' }} {{ $user->horoscope }}</p></div>
                     @endif
-                    @if($memberSince)<div><p class="text-[11px] text-muted-foreground">{{ __('member.member_since') }}</p><p class="font-semibold">{{ Carbon::parse($memberSince)->format('M Y') }}</p></div>@endif
+                    @if($memberSince)<div><p class="text-[11px] text-muted-foreground">{{ __('member.member_since') }}</p><p class="font-semibold flex items-center gap-1.5"><i class="bi bi-calendar3 text-primary text-xs"></i>{{ Carbon::parse($memberSince)->format('M Y') }}</p></div>@endif
                     <div class="col-span-2">
                         <p class="text-[11px] text-muted-foreground">{{ __('member.skills_learned') }}</p>
                         @if(($allSkills ?? collect())->count())
@@ -431,7 +557,7 @@
 
         {{-- ===== Health ===== --}}
         <div x-show="tab==='health'" x-transition.opacity x-cloak class="space-y-3"
-             x-data="weightLogger({ url: '{{ route('member.store-health', $user->id) }}', csrf: '{{ csrf_token() }}', today: '{{ now()->format('Y-m-d') }}', rows: @json($weightRows) })">
+             x-data="weightLogger({ url: '{{ route('member.store-health', $user->id) }}', csrf: '{{ csrf_token() }}', today: '{{ now()->format('Y-m-d') }}', rows: @js($weightRows), latest: @js($latestMetrics), prev: @js($prevMetrics), gender: @js(strtolower($user->gender ?? '')), age: {{ (int) ($age ?? 0) }}, divisions: @js(config('taekwondo_divisions', [])), i18n: { upTo: @js(__('member.wc_up_to')), over: @js(__('member.wc_over')), range: @js(__('member.wc_range')), headroom: @js(__('member.wc_headroom')) } })">
             @if(!empty($user->health_conditions))
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-2.5">
                 <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-clipboard2-pulse text-primary"></i> {{ __('member.chronic_conditions') }}</h3>
@@ -450,9 +576,11 @@
                 @php
                     // Primary trio shown in one row, then any extra metrics below.
                     $primary = [
-                        [__('member.metric_weight'), $latest->weight, 'kg', 'bi-speedometer', $prev->weight ?? null],
-                        [__('member.metric_height'), $latest->height, 'cm', 'bi-rulers', $prev->height ?? null],
-                        [__('member.metric_bmi'), $latest->bmi, '', 'bi-heart-pulse', $prev->bmi ?? null],
+                        // All three are "live": they re-read from the reactive `latest` snapshot
+                        // so a freshly logged reading updates them in place without a reload.
+                        [__('member.metric_weight'), $latest->weight, 'kg', 'bi-speedometer', $prev->weight ?? null, 'weight'],
+                        [__('member.metric_height'), $latest->height, 'cm', 'bi-rulers', $prev->height ?? null, 'height'],
+                        [__('member.metric_bmi'), $latest->bmi, '', 'bi-heart-pulse', $prev->bmi ?? null, 'bmi'],
                     ];
                     $secondary = [
                         [__('member.metric_body_fat'), $latest->body_fat_percentage, '%', 'bi-droplet-half', $prev->body_fat_percentage ?? null],
@@ -463,16 +591,23 @@
 
                 {{-- Primary trio — one tidy row of three --}}
                 <div class="grid grid-cols-3 gap-2">
-                    @foreach($primary as [$label,$val,$unit,$icon,$old])
-                        @php $delta = (!is_null($val) && !is_null($old) && $old != 0) ? round($val - $old, 1) : null; @endphp
-                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 text-center flex flex-col items-center">
-                            <span class="w-9 h-9 rounded-xl bg-accent grid place-items-center text-primary mb-1.5"><i class="bi {{ $icon }} text-base"></i></span>
-                            <p class="text-xl font-black leading-none truncate max-w-full">{{ !is_null($val) ? number_format((float) $val, 1) : '—' }}</p>
-                            @if($unit)<p class="text-[10px] font-semibold text-muted-foreground leading-none mt-0.5">{{ $unit }}</p>@endif
-                            <p class="text-[10px] text-muted-foreground mt-1 leading-tight">{{ $label }}</p>
-                            @if(!is_null($delta) && $delta != 0)
-                                <span class="mt-1 inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded-full {{ $delta > 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500' }}"><i class="bi bi-arrow-{{ $delta>0?'up':'down' }}-short"></i>{{ number_format(abs($delta), 1) }}</span>
-                            @endif
+                    @foreach($primary as [$label,$val,$unit,$icon,$old,$key])
+                        <div class="relative bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col overflow-hidden">
+                            <span class="absolute -top-4 -right-4 rtl:right-auto rtl:-left-4 w-16 h-16 rounded-full bg-accent/40 pointer-events-none"></span>
+                            <div class="relative flex items-start justify-between">
+                                <span class="w-9 h-9 rounded-xl bg-accent grid place-items-center text-primary flex-shrink-0"><i class="bi {{ $icon }} text-base"></i></span>
+                                {{-- Live trend vs the previous reading --}}
+                                <template x-if="trendOf('{{ $key }}') !== null && trendOf('{{ $key }}') !== 0">
+                                    <span class="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full" :class="trendOf('{{ $key }}') > 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'">
+                                        <i class="bi text-xs leading-none" :class="trendOf('{{ $key }}') > 0 ? 'bi-arrow-up-short' : 'bi-arrow-down-short'"></i><span x-text="Math.abs(trendOf('{{ $key }}')).toFixed(1)"></span>
+                                    </span>
+                                </template>
+                            </div>
+                            <p class="relative mt-2.5 flex items-baseline gap-0.5 min-w-0">
+                                <span class="text-xl font-black text-foreground leading-none tabular-nums truncate" x-text="fmt(latest.{{ $key }})">{{ !is_null($val) ? number_format((float) $val, 1) : '—' }}</span>
+                                @if($unit)<span class="text-[11px] font-semibold text-muted-foreground flex-shrink-0">{{ $unit }}</span>@endif
+                            </p>
+                            <p class="relative text-[11px] text-muted-foreground mt-1 font-medium leading-tight">{{ $label }}</p>
                         </div>
                     @endforeach
                 </div>
@@ -491,7 +626,7 @@
                         @endforeach
                     </div>
                 @endif
-                <p class="text-[11px] text-muted-foreground text-center">{{ __('member.last_recorded') }} {{ optional($latest->recorded_at)->format('d M Y') }}</p>
+                <p class="text-[11px] text-muted-foreground text-center">{{ __('member.last_recorded') }} <span x-text="latest.label || @js(optional($latest->recorded_at)->format('d M Y'))">{{ optional($latest->recorded_at)->format('d M Y') }}</span></p>
             @else
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center"><i class="bi bi-heart-pulse text-3xl text-gray-300"></i><p class="text-sm text-muted-foreground mt-2">{{ __('member.no_health_records') }}</p></div>
             @endif
@@ -507,24 +642,57 @@
                     @endif
                 </div>
 
+                {{-- Taekwondo weight-class card — reflects the latest weight, updates live --}}
+                <template x-if="classify(latest.weight)">
+                    <div class="mb-3 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-accent/40 p-3.5 overflow-hidden relative">
+                        <span class="absolute -top-5 -right-5 rtl:right-auto rtl:-left-5 w-20 h-20 rounded-full bg-primary/10 pointer-events-none"></span>
+                        <div class="relative flex items-center gap-3">
+                            <span class="w-11 h-11 rounded-xl bg-primary/15 text-primary grid place-items-center flex-shrink-0"><i class="bi bi-trophy-fill text-lg"></i></span>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-primary/70">{{ __('member.weight_class_title') }}</p>
+                                <p class="font-black text-foreground text-lg leading-tight flex items-center gap-1.5">
+                                    <span x-text="classify(latest.weight).label + ' kg'"></span>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary" x-text="classify(latest.weight).age_group"></span>
+                                </p>
+                                <p class="text-[11px] text-muted-foreground mt-0.5">
+                                    <span x-text="classRange(classify(latest.weight))"></span><span x-show="gender"> · </span><span class="capitalize" x-text="gender"></span>
+                                </p>
+                            </div>
+                        </div>
+                        <template x-if="classHeadroom(latest.weight, classify(latest.weight)) !== null && classHeadroom(latest.weight, classify(latest.weight)) >= 0">
+                            <p class="relative mt-2.5 pt-2.5 border-t border-primary/10 text-[11px] text-foreground/80 flex items-center gap-1.5">
+                                <i class="bi bi-rulers text-primary/60"></i>
+                                <span x-text="i18n.headroom.replace(':kg', classHeadroom(latest.weight, classify(latest.weight)).toFixed(1)).replace(':label', classify(latest.weight).label)"></span>
+                            </p>
+                        </template>
+                    </div>
+                </template>
+
                 <template x-if="rows.length">
                     <div class="space-y-1.5">
                         <template x-for="(row,i) in rows" :key="row.date + '-' + i">
-                            <div class="flex items-center gap-3 rounded-xl bg-muted/40 px-3 py-2.5">
-                                <span class="w-9 h-9 rounded-lg bg-white grid place-items-center text-primary shadow-sm flex-shrink-0"><i class="bi bi-speedometer2"></i></span>
+                            <div class="flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-3 py-2.5">
+                                <span class="w-10 h-10 rounded-xl bg-accent grid place-items-center text-primary flex-shrink-0"><i class="bi bi-speedometer2"></i></span>
                                 <div class="min-w-0 flex-1">
-                                    <p class="font-bold text-foreground leading-none"><span x-text="row.weight"></span><span class="text-[10px] font-semibold text-muted-foreground ml-0.5">kg</span></p>
+                                    <p class="flex items-center gap-1.5 flex-wrap leading-none">
+                                        <span class="text-base font-black text-foreground tabular-nums" x-text="Number(row.weight).toFixed(1)"></span>
+                                        <span class="text-[10px] font-semibold text-muted-foreground">kg</span>
+                                        {{-- Taekwondo division at that weight --}}
+                                        <template x-if="classify(row.weight)">
+                                            <span class="inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary" x-text="classify(row.weight).label"></span>
+                                        </template>
+                                    </p>
                                     <p class="text-[10px] text-muted-foreground mt-1" x-text="row.label"></p>
                                 </div>
                                 {{-- Δ vs the previous (older) reading --}}
                                 <template x-if="delta(i) !== null">
-                                    <span class="inline-flex items-center text-[11px] font-bold px-2 py-0.5 rounded-full"
+                                    <span class="inline-flex items-center gap-0.5 text-[11px] font-bold px-2 py-0.5 rounded-full"
                                           :class="delta(i) === 0 ? 'bg-gray-100 text-gray-500' : (delta(i) < 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500')">
-                                        <i class="bi" :class="delta(i) === 0 ? 'bi-dash' : (delta(i) < 0 ? 'bi-arrow-down-short' : 'bi-arrow-up-short')"></i><span x-text="Math.abs(delta(i)) + ' kg'"></span>
+                                        <i class="bi" :class="delta(i) === 0 ? 'bi-dash' : (delta(i) < 0 ? 'bi-arrow-down-short' : 'bi-arrow-up-short')"></i><span x-text="Math.abs(delta(i)).toFixed(1) + ' kg'"></span>
                                     </span>
                                 </template>
                                 <template x-if="delta(i) === null">
-                                    <span class="text-[9px] text-muted-foreground/70 px-2">{{ __('member.first_reading') }}</span>
+                                    <span class="text-[9px] font-semibold text-muted-foreground/70 px-2">{{ __('member.first_reading') }}</span>
                                 </template>
                             </div>
                         </template>
@@ -545,11 +713,25 @@
                         <div class="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-4"></div>
                         <h3 class="font-bold text-lg text-foreground flex items-center gap-2"><i class="bi bi-speedometer text-primary"></i> {{ __('member.log_weight') }}</h3>
                         <div class="space-y-3 mt-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.weight_label') }}</label>
-                                <input type="number" x-model="weight" step="0.1" min="0" max="999.9" inputmode="decimal" dir="ltr"
-                                       class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="70.5">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.metric_weight') }}</label>
+                                    <div class="relative">
+                                        <input type="number" x-model="weight" step="0.1" min="0" max="999.9" inputmode="decimal" dir="ltr"
+                                               class="w-full px-3 py-2.5 pr-10 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="70.5">
+                                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground pointer-events-none">kg</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.metric_height') }}</label>
+                                    <div class="relative">
+                                        <input type="number" x-model="height" step="0.1" min="50" max="250" inputmode="decimal" dir="ltr"
+                                               class="w-full px-3 py-2.5 pr-10 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="175">
+                                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground pointer-events-none">cm</span>
+                                    </div>
+                                </div>
                             </div>
+                            <p class="text-[11px] text-muted-foreground flex items-center gap-1"><i class="bi bi-info-circle"></i> {{ __('member.bmi_auto_note') }}</p>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.reading_date') }}</label>
                                 <input type="date" x-model="date" :max="today" dir="ltr"
@@ -602,36 +784,9 @@
                                    return m||'🏅'; } }">
                     <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-2 flex items-center gap-1"><i class="bi bi-award-fill text-amber-400"></i>{{ __('member.medals_awards') }}</p>
                     <div class="space-y-2.5">
-                        @foreach($awardedAchievements as $a)
-                            @php
-                                $r = mb_strtolower($a->member_award ?? '');
-                                $emoji = (str_contains($r, 'gold') ? '🥇' : '') . (str_contains($r, 'silver') ? '🥈' : '') . (str_contains($r, 'bronze') ? '🥉' : '');
-                                $emoji = $emoji ?: '🏅';
-                                $dateLabel = $a->date_label ?: ($a->achievement_date ? $a->achievement_date->format('M Y') : '');
-                                $achLocation = $a->tr('location');
-                                $metaLine = implode(' · ', array_filter([$achLocation, $dateLabel]));
-                                $achImages = collect(array_filter(array_merge($a->image_path ? [$a->image_path] : [], $a->images ?? [])))
-                                    ->map(fn ($p) => asset('storage/' . $p))->values()->toArray();
-                                $achData = [
-                                    'member_award' => $a->member_award,
-                                    'emoji'        => $emoji,
-                                    'title'        => $a->tr('title'),
-                                    'short_title'  => $a->tr('short_title') ?: $a->tr('title'),
-                                    'location'     => $achLocation,
-                                    'date_label'   => $dateLabel,
-                                    'description'  => $a->tr('description'),
-                                    'club'         => $a->tenant?->tr('club_name'),
-                                    'type_icon'    => $a->type_icon ?: '🏆',
-                                    'bg_from'      => $a->bg_from ?: '#f59e0b',
-                                    'bg_to'        => $a->bg_to ?: '#f97316',
-                                    'images'       => $achImages,
-                                    'athletes'     => collect($a->athletes ?? [])->map(fn ($x) => is_array($x)
-                                                        ? ['name' => $x['name'] ?? '', 'role' => $x['role'] ?? '']
-                                                        : ['name' => (string) $x, 'role' => ''])
-                                                      ->filter(fn ($x) => $x['name'] !== '')->values()->toArray(),
-                                ];
-                            @endphp
-                            <button type="button" @click='openAch(@json($achData))' class="m-card m-press p-3 flex items-start gap-3 w-full text-start">
+                        @foreach($achList as $item)
+                            @php $a = $item['a']; $emoji = $item['emoji']; $achLocation = $item['location']; $metaLine = $item['metaLine']; @endphp
+                            <button type="button" @click='openAch(@json($item['data']))' class="m-card m-press p-3 flex items-start gap-3 w-full text-start">
                                 <span class="w-12 h-12 rounded-full bg-amber-50 grid place-items-center text-2xl flex-shrink-0">{{ $emoji }}</span>
                                 <div class="min-w-0 flex-1">
                                     {{-- Member-first: the medal they won is the headline --}}
@@ -647,78 +802,8 @@
                         @endforeach
                     </div>
 
-                    {{-- Achievement detail sheet (teleported to body) --}}
-                    <template x-teleport="body">
-                        <div x-show="showAch" x-cloak class="fixed inset-0 z-[70] overflow-y-auto" @keydown.escape.window="showAch=false">
-                            <div x-show="showAch" x-transition.opacity class="fixed inset-0 bg-black/60" @click="showAch=false"></div>
-                            <div class="flex min-h-full items-end justify-center sm:items-center sm:p-4">
-                                <div x-show="showAch"
-                                     x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-full sm:translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
-                                     x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-full"
-                                     class="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg flex flex-col" style="max-height:92vh" @click.stop>
-                                    <template x-if="ach">
-                                        <div class="flex flex-col overflow-hidden">
-                                            {{-- Media --}}
-                                            <div class="relative flex-shrink-0">
-                                                <div class="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide rounded-t-3xl sm:rounded-t-2xl" x-ref="strip" @scroll.debounce.50ms="idx = Math.round($refs.strip.scrollLeft / $refs.strip.offsetWidth)">
-                                                    <template x-if="ach.images && ach.images.length">
-                                                        <template x-for="img in ach.images" :key="img">
-                                                            <img :src="img" class="snap-start flex-shrink-0 w-full h-56 object-cover">
-                                                        </template>
-                                                    </template>
-                                                    <template x-if="!ach.images || !ach.images.length">
-                                                        <div class="w-full h-56 flex items-center justify-center" :style="'background:linear-gradient(135deg,'+ach.bg_from+','+ach.bg_to+')'">
-                                                            <span class="text-6xl opacity-40" x-text="ach.type_icon"></span>
-                                                        </div>
-                                                    </template>
-                                                </div>
-                                                <button type="button" @click="showAch=false" class="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/40 backdrop-blur text-white grid place-items-center"><i class="bi bi-x-lg"></i></button>
-                                                <div class="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/60 to-transparent pointer-events-none"></div>
-                                                <div x-show="ach.images && ach.images.length > 1" class="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1.5">
-                                                    <template x-for="(img,i) in ach.images" :key="i">
-                                                        <span class="h-1.5 rounded-full transition-all" :class="idx===i ? 'bg-white w-4' : 'bg-white/50 w-1.5'"></span>
-                                                    </template>
-                                                </div>
-                                                {{-- The member's own award, front and centre --}}
-                                                <span class="absolute top-3 left-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold text-white bg-black/45 backdrop-blur">
-                                                    <span class="text-[13px] leading-none" x-text="ach.emoji"></span><span x-text="ach.member_award"></span>
-                                                </span>
-                                            </div>
-
-                                            {{-- Body --}}
-                                            <div class="overflow-y-auto p-4 space-y-3" style="max-height:calc(92vh - 14rem)">
-                                                <div>
-                                                    <h3 class="text-lg font-extrabold text-foreground leading-tight" x-text="ach.title"></h3>
-                                                    <p class="mt-1 text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5">
-                                                        <span x-show="ach.location"><i class="bi bi-geo-alt mr-0.5"></i><span x-text="ach.location"></span></span>
-                                                        <span x-show="ach.date_label"><i class="bi bi-calendar-event mr-0.5"></i><span x-text="ach.date_label"></span></span>
-                                                        <span x-show="ach.club"><i class="bi bi-buildings mr-0.5"></i><span x-text="ach.club"></span></span>
-                                                    </p>
-                                                </div>
-                                                <p x-show="ach.description" class="text-[13px] text-foreground/90 whitespace-pre-line" x-text="ach.description"></p>
-                                                <div x-show="ach.athletes && ach.athletes.length">
-                                                    <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-1.5">{{ __('club.ach_athletes') }}</p>
-                                                    <div class="space-y-1.5">
-                                                        <template x-for="athl in ach.athletes" :key="athl.name">
-                                                            <div class="flex items-center gap-2.5 rounded-xl bg-muted/50 px-2.5 py-2">
-                                                                <span class="w-7 h-7 rounded-full bg-primary text-white text-[11px] font-bold grid place-items-center flex-shrink-0" x-text="athl.name.charAt(0).toUpperCase()"></span>
-                                                                <div class="min-w-0 flex-1">
-                                                                    <p class="text-[13px] font-semibold text-foreground truncate" x-text="athl.name"></p>
-                                                                    <p x-show="athl.role" class="text-[11px] text-muted-foreground flex items-center gap-1">
-                                                                        <span class="text-[13px] leading-none" x-text="medalEmoji(athl.role)"></span><span x-text="athl.role"></span>
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        </template>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </template>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
+                    {{-- Shared achievement detail sheet (teleported to body) --}}
+                    @include('components-templates.member.mobile.partials.achievement-detail-sheet')
                 </div>
                 @if($tournamentEvents->isNotEmpty())
                     <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-1 mt-2">{{ __('member.tab_tournaments') }}</p>
@@ -768,24 +853,32 @@
                 </div>
                 @forelse($activeAffil as $a)
                     @php $clubUrl = ($a->tenant && $a->tenant->slug && $a->tenant->country) ? route('clubs.show', ['country' => strtolower($a->tenant->country), 'slug' => $a->tenant->slug]) : null; $tag = $clubUrl ? 'a' : 'div'; @endphp
-                    <{{ $tag }} @if($clubUrl) href="{{ $clubUrl }}" @endif class="block bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-2.5 {{ $clubUrl ? 'm-press' : '' }}">
-                        <div class="flex items-center gap-3">
-                            <span class="w-11 h-11 rounded-xl bg-muted grid place-items-center overflow-hidden flex-shrink-0">
-                                @if($a->logo)<img src="{{ asset('storage/'.$a->logo) }}" alt="" class="w-11 h-11 object-cover">@else<i class="bi bi-buildings text-muted-foreground"></i>@endif
+                    <{{ $tag }} @if($clubUrl) href="{{ $clubUrl }}" @endif class="group relative block bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-2.5 overflow-hidden {{ $clubUrl ? 'm-press' : '' }}">
+                        {{-- subtle accent rail --}}
+                        <span class="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 w-1 bg-green-400/80"></span>
+                        <div class="flex items-start gap-3">
+                            <span class="w-12 h-12 rounded-xl bg-muted grid place-items-center overflow-hidden flex-shrink-0 ring-1 ring-gray-100">
+                                @if($a->logo)<img src="{{ asset('storage/'.$a->logo) }}" alt="" class="w-12 h-12 object-cover">@else<i class="bi bi-buildings text-lg text-muted-foreground"></i>@endif
                             </span>
                             <div class="min-w-0 flex-1">
-                                <p class="font-semibold text-foreground truncate">{{ $a->club_name }}</p>
-                                <p class="text-xs text-muted-foreground">{{ __('member.since') }} {{ optional($a->start_date)->format('M Y') ?: '—' }}@if($a->location) · {{ $a->location }}@endif</p>
+                                <div class="flex items-start justify-between gap-2">
+                                    <p class="font-bold text-foreground text-[15px] leading-snug truncate">{{ $a->club_name }}</p>
+                                    <span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>{{ __('member.active') }}
+                                    </span>
+                                </div>
+                                <div class="mt-1.5 flex flex-col gap-1 text-[11px] text-muted-foreground">
+                                    <span class="inline-flex items-center gap-1.5"><i class="bi bi-calendar3 text-muted-foreground/70"></i>{{ __('member.since') }} {{ optional($a->start_date)->format('M Y') ?: '—' }}</span>
+                                    @if($a->location)
+                                        <span class="inline-flex items-center gap-1.5 min-w-0"><i class="bi bi-geo-alt text-muted-foreground/70 flex-shrink-0"></i><span class="truncate">{{ $a->location }}</span></span>
+                                    @endif
+                                </div>
                             </div>
-                            <span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">
-                                <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> {{ __('member.active') }}
-                            </span>
-                            @if($clubUrl)<i class="bi bi-chevron-right rtl:rotate-180 text-muted-foreground/40 text-sm flex-shrink-0"></i>@endif
                         </div>
                         @if($a->skillAcquisitions->count())
-                            <div class="flex flex-wrap gap-1.5 mt-3">
+                            <div class="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-gray-50">
                                 @foreach($a->skillAcquisitions->take(6) as $s)
-                                    <span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-accent text-primary">{{ $s->skill_name }}</span>
+                                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-accent text-primary">{{ $s->skill_name }}</span>
                                 @endforeach
                             </div>
                         @endif
@@ -811,17 +904,25 @@
                             $clubUrl = ($a->tenant && $a->tenant->slug && $a->tenant->country) ? route('clubs.show', ['country' => strtolower($a->tenant->country), 'slug' => $a->tenant->slug]) : null;
                             $tag = $clubUrl ? 'a' : 'div';
                         @endphp
-                        <{{ $tag }} @if($clubUrl) href="{{ $clubUrl }}" @endif class="block bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-2.5 opacity-75 {{ $clubUrl ? 'm-press' : '' }}">
-                            <div class="flex items-center gap-3">
-                                <span class="w-11 h-11 rounded-xl bg-muted grid place-items-center overflow-hidden flex-shrink-0 grayscale">
-                                    @if($a->logo)<img src="{{ asset('storage/'.$a->logo) }}" alt="" class="w-11 h-11 object-cover">@else<i class="bi bi-buildings text-muted-foreground"></i>@endif
+                        <{{ $tag }} @if($clubUrl) href="{{ $clubUrl }}" @endif class="group relative block bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-2.5 overflow-hidden {{ $clubUrl ? 'm-press' : '' }}">
+                            {{-- subtle muted rail --}}
+                            <span class="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 w-1 bg-gray-300"></span>
+                            <div class="flex items-start gap-3">
+                                <span class="w-12 h-12 rounded-xl bg-muted grid place-items-center overflow-hidden flex-shrink-0 ring-1 ring-gray-100 grayscale">
+                                    @if($a->logo)<img src="{{ asset('storage/'.$a->logo) }}" alt="" class="w-12 h-12 object-cover">@else<i class="bi bi-buildings text-lg text-muted-foreground"></i>@endif
                                 </span>
                                 <div class="min-w-0 flex-1">
-                                    <p class="font-semibold text-foreground truncate">{{ $a->club_name }}</p>
-                                    <p class="text-xs text-muted-foreground">{{ optional($a->start_date)->format('M Y') ?: '—' }} – {{ optional($a->end_date)->format('M Y') }}@if($span !== null) · {{ $span }} {{ \Illuminate\Support\Str::plural('month', max(1,$span)) }}@endif</p>
+                                    <div class="flex items-start justify-between gap-2">
+                                        <p class="font-bold text-foreground/80 text-[15px] leading-snug truncate">{{ $a->club_name }}</p>
+                                        <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-500">{{ __('member.left') }}</span>
+                                    </div>
+                                    <div class="mt-1.5 flex flex-col gap-1 text-[11px] text-muted-foreground">
+                                        <span class="inline-flex items-center gap-1.5"><i class="bi bi-calendar-range text-muted-foreground/70"></i>{{ optional($a->start_date)->format('M Y') ?: '—' }} – {{ optional($a->end_date)->format('M Y') }}</span>
+                                        @if($span !== null)
+                                            <span class="inline-flex items-center gap-1.5"><i class="bi bi-hourglass-split text-muted-foreground/70"></i>{{ $span }} {{ \Illuminate\Support\Str::plural('month', max(1,$span)) }}</span>
+                                        @endif
+                                    </div>
                                 </div>
-                                <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-500">{{ __('member.left') }}</span>
-                                @if($clubUrl)<i class="bi bi-chevron-right rtl:rotate-180 text-muted-foreground/40 text-sm flex-shrink-0"></i>@endif
                             </div>
                         </{{ $tag }}>
                     @endforeach
@@ -888,22 +989,83 @@
         :relationship="$relationship"
     />
 @endif
-@endsection
 
-@push('scripts')
+{{-- Scripts live INSIDE the content section (not @push) so they ship with #shell-content --}}
+{{-- and re-run on the mobile shell's AJAX swaps — @push('scripts') would be dropped there. --}}
 <script>
 // Weight-tracking: reactive history list + AJAX add (no page reload).
 window.weightLogger = function (opts) {
     return {
         rows: opts.rows || [],
+        // Live summary the primary cards bind to. `latest` is the newest reading,
+        // `prev` the one before it (so trends recompute after each save).
+        latest: opts.latest || { weight: null, height: null, bmi: null, label: null },
+        prev: opts.prev || { weight: null, height: null, bmi: null },
         addOpen: false, busy: false,
-        weight: '', date: opts.today, today: opts.today,
-        openAdd() { this.weight = ''; this.date = this.today; this.addOpen = true; },
-        // Difference vs the previous (chronologically older) reading.
+        weight: '', height: '', date: opts.today, today: opts.today,
+        // Pre-fill height with the last known value — it rarely changes, and keeping it
+        // present lets the server derive BMI for the new reading.
+        openAdd() {
+            this.weight = '';
+            this.height = (this.latest && this.latest.height != null) ? String(this.latest.height) : '';
+            this.date = this.today;
+            this.addOpen = true;
+        },
+        fmt(v) { return (v === null || v === undefined || v === '') ? '—' : Number(v).toFixed(1); },
+        // Trend of a metric vs the previous reading (null when not comparable).
+        trendOf(key) {
+            var a = this.latest ? this.latest[key] : null;
+            var b = this.prev ? this.prev[key] : null;
+            if (a === null || a === undefined || b === null || b === undefined || b == 0) return null;
+            return Math.round((a - b) * 10) / 10;
+        },
+        // Difference vs the previous (chronologically older) reading in the history list.
         delta(i) {
             var older = this.rows[i + 1];
             if (!older) return null;
             return Math.round((this.rows[i].weight - older.weight) * 10) / 10;
+        },
+
+        // ── Taekwondo weight-class classification (mirrors app/Helpers/classifyTaekwondo) ──
+        gender: opts.gender || '',
+        age: opts.age || 0,
+        divisions: opts.divisions || {},
+        i18n: opts.i18n || { upTo: 'Up to :max kg', over: 'Over :min kg', range: ':min–:max kg', headroom: ':kg kg below the :label limit' },
+        ageGroup() {
+            var a = this.age;
+            if (a >= 6 && a <= 11) return 'Kids';
+            if (a >= 12 && a <= 14) return 'Cadet';
+            if (a >= 15 && a <= 17) return 'Junior';
+            if (a >= 18 && a <= 30) return 'Senior';
+            if (a >= 31) return 'Masters';
+            return null;
+        },
+        // → { age_group, label, min, max } | null  (the lightest division the weight fits).
+        classify(weight) {
+            var w = Number(weight);
+            if (!w || !this.gender) return null;
+            var g = this.ageGroup();
+            if (!g) return null;
+            var list = (this.divisions[g] || {})[this.gender];
+            if (!list) return null;
+            for (var i = 0; i < list.length; i++) {
+                if (w >= list[i].min && w <= list[i].max) {
+                    return { age_group: g, label: list[i].label, min: list[i].min, max: list[i].max };
+                }
+            }
+            return null;
+        },
+        // Human-readable range for a division (e.g. "Up to 58 kg" / "Over 80 kg" / "58–68 kg").
+        classRange(c) {
+            if (!c) return '';
+            if (String(c.label).charAt(0) === '-') return this.i18n.upTo.replace(':max', c.max);
+            if (String(c.label).charAt(0) === '+') return this.i18n.over.replace(':min', c.min);
+            return this.i18n.range.replace(':min', c.min).replace(':max', c.max);
+        },
+        // kg the member is from the upper bound of their current division (null for +X / open class).
+        classHeadroom(weight, c) {
+            if (!c || String(c.label).charAt(0) === '+') return null;
+            return Math.round((c.max - Number(weight)) * 10) / 10;
         },
         save() {
             if (!this.weight || this.busy) return;
@@ -912,7 +1074,7 @@ window.weightLogger = function (opts) {
             fetch(opts.url, {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': opts.csrf, 'Accept': 'application/json', 'Content-Type': 'application/json' },
-                body: JSON.stringify({ weight: this.weight, recorded_at: this.date })
+                body: JSON.stringify({ weight: this.weight, height: this.height || null, recorded_at: this.date })
             }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
               .then(function (res) {
                   self.busy = false;
@@ -921,9 +1083,14 @@ window.weightLogger = function (opts) {
                       return;
                   }
                   var rec = res.d.record;
-                  self.rows.push({ weight: rec.weight, label: rec.recorded_label, date: rec.recorded_at });
-                  // Newest first.
-                  self.rows.sort(function (a, b) { return b.date.localeCompare(a.date); });
+                  // History list tracks weight readings.
+                  if (rec.weight !== null && rec.weight !== undefined) {
+                      self.rows.push({ weight: rec.weight, label: rec.recorded_label, date: rec.recorded_at });
+                      self.rows.sort(function (a, b) { return b.date.localeCompare(a.date); }); // newest first
+                  }
+                  // Shift the live summary: the old latest becomes prev, this reading is latest.
+                  self.prev = { weight: self.latest.weight, height: self.latest.height, bmi: self.latest.bmi };
+                  self.latest = { weight: rec.weight, height: rec.height, bmi: rec.bmi, label: rec.recorded_label };
                   self.addOpen = false;
                   window.showToast && window.showToast('success', res.d.message || 'Added');
               }).catch(function () {
@@ -1066,7 +1233,10 @@ window.memberFollow = function (initial, followUrl, name) {
 
 // Patch the hero in place after a basic-info edit (no reload). The shared
 // profile modal dispatches `member-profile-updated` with the saved member.
-window.addEventListener('member-profile-updated', (e) => {
+// Dedup across shell swaps: drop the previous handler before re-binding so the
+// listener doesn't stack each time this content is re-injected.
+window.__mpProfileUpdated && window.removeEventListener('member-profile-updated', window.__mpProfileUpdated);
+window.__mpProfileUpdated = (e) => {
     const m = e.detail || {};
     const nameEl = document.getElementById('mpName');
     if (nameEl && m.full_name) nameEl.textContent = m.full_name;
@@ -1082,6 +1252,7 @@ window.addEventListener('member-profile-updated', (e) => {
     if (img && m.profile_picture) {
         img.src = '/storage/' + m.profile_picture + '?v=' + Date.now();
     }
-});
+};
+window.addEventListener('member-profile-updated', window.__mpProfileUpdated);
 </script>
-@endpush
+@endsection

@@ -63,6 +63,12 @@ return [
     'log_weight'         => 'تسجيل قراءة وزن',
     'weight_label'       => 'الوزن (كجم)',
     'reading_date'       => 'التاريخ',
+    'bmi_auto_note'      => 'يُحسب مؤشر كتلة الجسم تلقائيًا من الوزن والطول.',
+    'weight_class_title' => 'فئة الوزن — تايكوندو',
+    'wc_up_to'           => 'حتى :max كجم',
+    'wc_over'            => 'أكثر من :min كجم',
+    'wc_range'           => ':min–:max كجم',
+    'wc_headroom'        => ':kg كجم تحت حد :label',
     'save'               => 'حفظ',
     'weight_history'     => 'سجل الوزن',
     'no_weight_records'  => 'لا توجد قراءات وزن بعد. أضف أول قراءة.',
@@ -82,6 +88,7 @@ return [
     'medals_awards' => 'الميداليات والجوائز',
     'award_via' => 'عبر :club',
     'award_default' => 'جائزة',
+    'medal_none' => 'لا توجد جوائز في هذه الفئة بعد.',
 
     // Clubs / affiliations
     'active_clubs'        => 'الأندية النشطة',

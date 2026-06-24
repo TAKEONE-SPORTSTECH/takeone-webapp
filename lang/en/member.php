@@ -63,6 +63,12 @@ return [
     'log_weight'         => 'Log a weight reading',
     'weight_label'       => 'Weight (kg)',
     'reading_date'       => 'Date',
+    'bmi_auto_note'      => 'BMI is calculated automatically from weight & height.',
+    'weight_class_title' => 'Taekwondo Weight Class',
+    'wc_up_to'           => 'Up to :max kg',
+    'wc_over'            => 'Over :min kg',
+    'wc_range'           => ':min–:max kg',
+    'wc_headroom'        => ':kg kg below the :label limit',
     'save'               => 'Save',
     'weight_history'     => 'Weight history',
     'no_weight_records'  => 'No weight readings yet. Add your first one.',
@@ -82,6 +88,7 @@ return [
     'medals_awards' => 'Medals & Awards',
     'award_via' => 'via :club',
     'award_default' => 'Award',
+    'medal_none' => 'No awards in this category yet.',
 
     // Clubs / affiliations
     'active_clubs'        => 'Active clubs',

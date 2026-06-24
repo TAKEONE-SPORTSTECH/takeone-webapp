@@ -337,6 +337,14 @@ class MemberController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
+        // An admin (or the member themselves) setting a password is an authoritative
+        // provisioning act. Without a verified email the login flow logs the user
+        // straight back out ("email not verified"), so the new password would appear
+        // not to work. Mark the email verified so the credentials are usable.
+        if ($member->email && ! $member->hasVerifiedEmail()) {
+            $member->markEmailAsVerified();
+        }
+
         return response()->json(['message' => 'Password has been reset successfully.']);
     }
 
@@ -356,6 +364,13 @@ class MemberController extends Controller
         $newPassword = \Illuminate\Support\Str::password(16);
 
         $member->update(['password' => Hash::make($newPassword)]);
+
+        // Provisioning a password implies the account should be usable immediately;
+        // without a verified email the login flow bounces the member back out, making
+        // the generated password look broken. Mark it verified.
+        if ($member->email && ! $member->hasVerifiedEmail()) {
+            $member->markEmailAsVerified();
+        }
 
         // Email the new password to the member (best-effort — the admin still
         // sees it on screen, so a mail failure must not fail the request).
@@ -721,6 +736,14 @@ class MemberController extends Controller
     {
         $validated = $request->validated();
 
+        // Auto-derive BMI when both weight & height are present and BMI wasn't supplied.
+        if (empty($validated['bmi']) && !empty($validated['weight']) && !empty($validated['height'])) {
+            $heightM = (float) $validated['height'] / 100;
+            if ($heightM > 0) {
+                $validated['bmi'] = round((float) $validated['weight'] / ($heightM * $heightM), 1);
+            }
+        }
+
         $user = Auth::user();
 
         // Check if user is super-admin or adding health for themselves
@@ -754,7 +777,9 @@ class MemberController extends Controller
                 'message' => __('member.weight_added'),
                 'record'  => [
                     'id'             => $record->id,
-                    'weight'         => (float) $record->weight,
+                    'weight'         => is_null($record->weight) ? null : (float) $record->weight,
+                    'height'         => is_null($record->height) ? null : (float) $record->height,
+                    'bmi'            => is_null($record->bmi) ? null : (float) $record->bmi,
                     'recorded_at'    => optional($record->recorded_at)->format('Y-m-d'),
                     'recorded_label' => optional($record->recorded_at)->format('d M Y'),
                 ],
