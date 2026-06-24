@@ -136,6 +136,7 @@ html, body { overflow: hidden !important; height: 100% !important; }
 @php
     $clubId = $club->slug ?? $club->id ?? null;
     $currentRoute = request()->route()->getName();
+    $clubPublicUrl = \App\Http\Controllers\QrController::clubPageUrl($club);
     $navItems = [
         ['route'=>'admin.club.dashboard',    'icon'=>'bi-speedometer2',   'label'=>'Dashboard'],
         ['route'=>'admin.club.members',      'icon'=>'bi-person-plus',    'label'=>'Members'],
@@ -155,6 +156,7 @@ html, body { overflow: hidden !important; height: 100% !important; }
         ['route'=>'admin.club.roles',        'icon'=>'bi-shield-check',   'label'=>'Roles'],
         ['route'=>'admin.club.messages',     'icon'=>'bi-chat-dots',      'label'=>'Messages'],
         ['route'=>'admin.club.notifications','icon'=>'bi-bell',           'label'=>'Notifications'],
+        ['url'=>$clubPublicUrl, 'icon'=>'bi-eye',  'label'=>'View Club Page', 'external'=>true],
         ['route'=>'admin.club.analytics',    'icon'=>'bi-bar-chart',      'label'=>'Analytics'],
     ];
 @endphp
@@ -222,8 +224,13 @@ html, body { overflow: hidden !important; height: 100% !important; }
         <!-- Navigation -->
         <nav id="emp-sidebar-nav" class="flex flex-col gap-0.5 px-2 py-2" style="overflow-y:auto;flex:1">
             @foreach($navItems as $item)
-                @php $active = $currentRoute === $item['route']; @endphp
-                @if($item['route'] === 'admin.club.financials')
+                @php $active = isset($item['route']) && $currentRoute === $item['route']; @endphp
+                @if(!empty($item['external']))
+                    <a href="{{ $item['url'] }}" class="nav-item">
+                        <span class="ni"><i class="bi {{ $item['icon'] }}"></i></span>
+                        <span>{{ $item['label'] }}</span>
+                    </a>
+                @elseif($item['route'] === 'admin.club.financials')
                     <a href="{{ route($item['route'], $clubId) }}" class="nav-item emp-has-tip {{ $active ? 'active' : '' }}">
                         <span class="ni"><i class="bi {{ $item['icon'] }}"></i></span>
                         <span>{{ $item['label'] }}</span>

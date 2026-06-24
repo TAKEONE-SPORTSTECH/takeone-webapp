@@ -205,6 +205,10 @@ class PlatformController extends Controller
             'age'           => $user->age ? $user->age . ' years' : 'N/A',
             'since'         => $membership ? $membership->created_at->format('d/m/Y') : $user->created_at->format('d/m/Y'),
             'profile_url'     => route('member.show', $user->uuid),
+            // Admin popup QR points to the member's management profile, not the public wall.
+            'qr_url'          => route('member.show', $user->uuid),
+            'qr_svg_url'      => route('qr.member.svg', ['user' => $user->id, 'target' => 'manage']),
+            'qr_poster_url'   => route('qr.member', ['user' => $user->id, 'target' => 'manage']),
             'subscriptions'   => $subscriptions,
             'context'         => 'platform',
             'enroll_data_url' => route('admin.platform.members.enroll-data', $user->id),

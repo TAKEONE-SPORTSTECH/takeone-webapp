@@ -256,6 +256,15 @@
                 <i class="bi bi-arrow-left text-lg"></i>
             </a>
             <div class="flex items-center gap-2">
+                <x-qr-code
+                    :url="route('me.events.show', ['event' => $e['key']])"
+                    :title="$e['title'] . ' — Event'"
+                    caption="Scan to open and take part"
+                    :filename="'qr-event-' . $e['key']"
+                    label=""
+                    icon="bi-qr-code"
+                    :poster-url="route('qr.event', ['event' => $e['key']])"
+                    button-class="w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center text-white" />
                 <button type="button" @click="$dispatch('share-event')"
                         class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="Share">
                     <i class="bi bi-share text-base"></i>

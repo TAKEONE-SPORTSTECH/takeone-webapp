@@ -155,9 +155,6 @@
                             <label class="form-label">Club Slug (Unique URL)</label>
                             <div class="input-group">
                                 <input type="text" name="slug" class="form-control" value="{{ old('slug', $club->slug) }}" placeholder="e.g., emperor-tkd-academy">
-                                <button type="button" class="btn btn-outline-secondary" id="generateQRBtn" title="Generate QR Code">
-                                    <i class="bi bi-qr-code"></i>
-                                </button>
                             </div>
                             <small class="text-muted">URL-friendly identifier (lowercase, hyphens, no spaces)</small>
                             @if($club->slug && $club->country)
@@ -171,6 +168,24 @@
                                     <a href="{{ route('clubs.show', [strtolower($club->country), $club->slug]) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
                                         <i class="bi bi-box-arrow-up-right"></i>
                                     </a>
+                                </div>
+                                <div class="flex flex-wrap items-center gap-2 mt-3">
+                                    <x-qr-code
+                                        :url="\App\Http\Controllers\QrController::clubPageUrl($club)"
+                                        :title="($club->club_name ?? 'Club') . ' — Club page'"
+                                        caption="Scan to view the club page"
+                                        :filename="'qr-' . $club->slug . '-page'"
+                                        label="Club page QR"
+                                        icon="bi-qr-code"
+                                        :poster-url="route('qr.club.page', $club)" />
+                                    <x-qr-code
+                                        :url="\App\Http\Controllers\QrController::clubRegisterUrl($club)"
+                                        :title="($club->club_name ?? 'Club') . ' — Registration'"
+                                        caption="Scan to register and join"
+                                        :filename="'qr-' . $club->slug . '-register'"
+                                        label="Registration QR"
+                                        icon="bi-person-plus"
+                                        :poster-url="route('qr.club.register', $club)" />
                                 </div>
                             </div>
                             @endif
@@ -571,29 +586,6 @@
 </div>
 </div>
 
-{{-- QR Code Modal --}}
-<div class="modal fade" id="qrModal" tabindex="-1" aria-labelledby="qrModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content text-center">
-            <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title w-100" id="qrModalLabel"><i class="bi bi-qr-code mr-2"></i>Club QR Code</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body py-4">
-                <img id="qrCodeImage" src="" alt="QR Code" class="mx-auto d-block mb-3" style="width:250px;height:250px;">
-                <p class="text-muted text-sm mb-1">Scan to open the club page (no navigation bar)</p>
-                <a id="qrCodeLink" href="#" target="_blank" class="text-primary text-xs break-all"></a>
-            </div>
-            <div class="modal-footer border-0 justify-content-center pt-0">
-                <a id="qrDownloadBtn" href="#" download="qr-code.png" class="btn btn-primary">
-                    <i class="bi bi-download mr-2"></i>Download QR
-                </a>
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 {{-- Create Owner Modal --}}
 <x-profile-modal
     mode="create"
@@ -658,26 +650,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Generate QR Code
-    const qrBtn = document.getElementById('generateQRBtn');
-    if (qrBtn) {
-        qrBtn.addEventListener('click', function() {
-            const slug = document.querySelector('input[name="slug"]').value;
-            if (slug) {
-                const country = document.getElementById('countrySelect').value.toLowerCase();
-                const url = window.location.origin + '/mobile/' + country + '/' + slug;
-                const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(url);
-                document.getElementById('qrCodeImage').src = qrUrl;
-                document.getElementById('qrCodeLink').href = url;
-                document.getElementById('qrCodeLink').textContent = url;
-                document.getElementById('qrDownloadBtn').href = qrUrl + '&download=1';
-                const modal = new bootstrap.Modal(document.getElementById('qrModal'));
-                modal.show();
-            } else {
-                window.showToast('error', 'Please set a slug first.');
-            }
-        });
-    }
+    // (Club QR codes are now rendered offline via the <x-qr-code> component above.)
 });
 
 // ===== Owner Transfer =====

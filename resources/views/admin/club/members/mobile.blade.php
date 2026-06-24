@@ -37,13 +37,24 @@
         <div class="m-card p-8 text-center">
             <i class="bi bi-people text-3xl text-gray-300 m-float"></i>
             <p class="text-sm text-muted-foreground mt-2">{{ __('admin.no_members_in_filter') }}</p>
+            <button type="button" @click="$dispatch('open-add-member')"
+                    class="m-press mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors">
+                <i class="bi bi-person-plus-fill"></i>{{ __('admin.add_member') }}
+            </button>
         </div>
     @else
-        {{-- Search --}}
-        <div class="relative">
-            <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></i>
-            <input type="search" x-model="q" placeholder="{{ __('admin.search_members') }}"
-                   class="w-full pl-10 pr-3 py-2.5 bg-muted rounded-xl text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+        {{-- Search + Add member --}}
+        <div class="flex items-stretch gap-2">
+            <div class="relative flex-1">
+                <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></i>
+                <input type="search" x-model="q" placeholder="{{ __('admin.search_members') }}"
+                       class="w-full pl-10 pr-3 py-2.5 bg-muted rounded-xl text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+            </div>
+            <button type="button" @click="$dispatch('open-add-member')"
+                    class="m-press flex-shrink-0 px-4 rounded-xl bg-primary text-white flex items-center justify-center hover:bg-primary/90 transition-colors"
+                    aria-label="{{ __('admin.add_member') }}">
+                <i class="bi bi-person-plus-fill text-lg"></i>
+            </button>
         </div>
         <div class="space-y-2.5 mobile-stagger">
             @foreach($mobileMembers as $m)
@@ -104,4 +115,10 @@
 
     <p class="text-xs text-muted-foreground text-center px-4">{!! __('admin.enrolment_desktop_note') !!}</p>
 </div>
+
+{{-- Add-member flow: FAB → bottom-sheet (Scan QR · Register new · Find one) --}}
+@include('admin.club.members.partials.mobile-add-member')
+
+{{-- Register-new path reuses the existing walk-in registration wizard --}}
+<x-registration-walkin :club="$club" :packages="$packages ?? []" />
 @endsection

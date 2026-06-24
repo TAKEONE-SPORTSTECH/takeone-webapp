@@ -53,10 +53,14 @@
                 @empty
                     <p class="px-3 py-2 text-xs text-muted-foreground">{{ __('business.no_clubs_linked') }}</p>
                 @endforelse
+                <a href="{{ route('clubs.explore') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-accent transition-colors">
+                    <i class="bi bi-compass text-lg w-5 text-center"></i>{{ __('business.explore_clubs') }}
+                </a>
 
+                {{-- Switch context + account actions --}}
                 <div class="border-t border-border mt-3 pt-3">
-                    <a href="{{ route('clubs.explore') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-accent">
-                        <i class="bi bi-compass text-lg w-5 text-center"></i>{{ __('business.explore_clubs') }}
+                    <a href="{{ route('me.home') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent">
+                        <i class="bi bi-person-circle text-lg w-5 text-center"></i>{{ __('business.personal_view') }}
                     </a>
                     @include('partials.mobile-account-links')
                 </div>

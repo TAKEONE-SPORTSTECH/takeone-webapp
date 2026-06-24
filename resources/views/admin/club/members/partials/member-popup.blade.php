@@ -119,159 +119,145 @@
         <div class="mp-panel relative bg-white w-full sm:max-w-[700px] max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl shadow-2xl">
 
             {{-- Grab handle (mobile only) --}}
-            <div class="sm:hidden sticky top-0 z-20 bg-white/95 backdrop-blur pt-2.5 pb-1 flex justify-center">
+            <div class="sm:hidden sticky top-0 z-30 bg-white/95 backdrop-blur pt-2.5 pb-1 flex justify-center">
                 <span class="w-10 h-1.5 rounded-full bg-gray-300"></span>
             </div>
 
-            <div class="p-5 pt-3 sm:p-6 sm:pt-8">
+            {{-- Top bar: back (in sub-views) · title · QR + close --}}
+            <div class="flex items-center justify-between gap-2 px-4 pt-3 pb-1">
+                <div class="flex items-center gap-1.5 min-w-0">
+                    <button type="button" id="mpHeaderBack" onclick="mpBack()" aria-label="Back"
+                            class="hidden w-9 h-9 -ml-1 rounded-full bg-muted text-gray-600 grid place-items-center hover:bg-gray-200 transition-colors flex-shrink-0"><i class="bi bi-chevron-left text-lg"></i></button>
+                    <span id="mpHeaderTitle" class="text-sm font-bold text-gray-900 truncate"></span>
+                </div>
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                    <button type="button" onclick="openMpQr()" aria-label="Member QR" title="Member QR"
+                            class="m-press w-9 h-9 rounded-full bg-accent text-primary grid place-items-center hover:bg-primary hover:text-white transition-colors"><i class="bi bi-qr-code"></i></button>
+                    <button type="button" onclick="closeMemberPopup()" aria-label="Close"
+                            class="m-press w-9 h-9 rounded-full bg-muted text-gray-500 grid place-items-center hover:bg-gray-200 transition-colors"><i class="bi bi-x-lg"></i></button>
+                </div>
+            </div>
 
-                {{-- Avatar + Info labels --}}
-                <div class="flex flex-col sm:flex-row gap-6 mb-6">
-
-                    {{-- Avatar column --}}
-                    <div class="flex flex-col items-center text-center sm:min-w-[160px]">
-                        <div id="mpAvatar"
-                             class="w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-3xl shadow mb-3 overflow-hidden flex-shrink-0">
-                        </div>
-                        <h4 id="mpName" class="font-bold text-gray-900 mb-2 text-base leading-snug"></h4>
-                        <span id="mpMemberId"
-                              class="text-xs text-gray-500 bg-gray-100 border border-gray-200 rounded-full px-3 py-1 font-medium"></span>
+            {{-- Identity (profile view only) --}}
+            <div id="mpIdentity" class="px-6 pt-1 pb-1">
+                <div class="flex items-center gap-4">
+                    <div id="mpAvatar"
+                         class="w-20 h-20 rounded-2xl grid place-items-center text-white font-bold text-3xl shadow ring-1 ring-gray-100 overflow-hidden flex-shrink-0 bg-muted"></div>
+                    <div class="min-w-0">
+                        <h4 id="mpName" class="font-extrabold text-gray-900 text-lg leading-tight truncate"></h4>
+                        <span id="mpMemberId" class="inline-block mt-1.5 text-[11px] text-primary bg-accent rounded-full px-2.5 py-0.5 font-semibold"></span>
                     </div>
+                </div>
+            </div>
 
-                    {{-- Stacked info --}}
-                    <div class="flex-1 flex flex-col gap-2">
-                        <div class="popup-info-row">
-                            <span class="popup-info-key"><i class="bi bi-telephone mr-1"></i>Phone</span>
-                            <span id="mpPhone" class="popup-info-val"></span>
-                        </div>
-                        <div class="popup-info-row">
-                            <span class="popup-info-key"><i class="bi bi-envelope mr-1"></i>Email</span>
-                            <span id="mpEmail" class="popup-info-val"></span>
-                        </div>
-                        <div class="popup-info-row">
-                            <span class="popup-info-key"><i class="bi bi-person mr-1"></i>Age / Gender</span>
-                            <span id="mpAgeGender" class="popup-info-val"></span>
-                        </div>
-                        <div class="popup-info-row">
-                            <span class="popup-info-key"><i class="bi bi-calendar3 mr-1"></i>Member Since</span>
-                            <span id="mpSince" class="popup-info-val"></span>
-                        </div>
+            {{-- ===== View: profile ===== --}}
+            <div id="mpProfileView" class="px-6 pt-5 pb-6 space-y-6">
+
+                {{-- Info tiles --}}
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div class="rounded-2xl border border-gray-100 bg-gray-50/70 p-3 min-w-0">
+                        <p class="text-[11px] text-muted-foreground flex items-center gap-1.5"><i class="bi bi-telephone text-primary"></i> Phone</p>
+                        <p id="mpPhone" class="text-sm font-semibold text-gray-900 mt-1 truncate"></p>
+                    </div>
+                    <div class="rounded-2xl border border-gray-100 bg-gray-50/70 p-3 min-w-0">
+                        <p class="text-[11px] text-muted-foreground flex items-center gap-1.5"><i class="bi bi-envelope text-primary"></i> Email</p>
+                        <p id="mpEmail" class="text-sm font-semibold text-gray-900 mt-1 truncate"></p>
+                    </div>
+                    <div class="rounded-2xl border border-gray-100 bg-gray-50/70 p-3 min-w-0">
+                        <p class="text-[11px] text-muted-foreground flex items-center gap-1.5"><i class="bi bi-person text-primary"></i> Age / Gender</p>
+                        <p id="mpAgeGender" class="text-sm font-semibold text-gray-900 mt-1 truncate"></p>
+                    </div>
+                    <div class="rounded-2xl border border-gray-100 bg-gray-50/70 p-3 min-w-0">
+                        <p class="text-[11px] text-muted-foreground flex items-center gap-1.5"><i class="bi bi-calendar3 text-primary"></i> Member since</p>
+                        <p id="mpSince" class="text-sm font-semibold text-gray-900 mt-1 truncate"></p>
                     </div>
                 </div>
 
-                {{-- Payment History --}}
-                <div class="mb-5">
-                    <h6 class="font-bold text-gray-900 mb-3 flex items-center gap-2 text-sm">
-                        <i class="bi bi-receipt text-primary text-base"></i>
-                        Payment History
-                    </h6>
-                    <div class="popup-payment-scroll">
-                        <table class="w-full min-w-[520px] text-sm">
-                            <thead>
-                                <tr>
-                                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Period</th>
-                                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Package</th>
-                                    <th class="px-2 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Amount</th>
-                                    <th class="px-2 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">End Date</th>
-                                    <th class="px-2 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Status</th>
-                                    <th class="px-3 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="mpPaymentTbody">
-                                <tr>
-                                    <td colspan="6" class="px-3 py-8 text-center text-gray-400 text-sm">No payment records</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                {{-- Single Actions menu --}}
+                <div class="relative">
+                    <button type="button" onclick="mpToggleActions()"
+                            class="m-press w-full inline-flex items-center justify-center gap-2 bg-primary text-white rounded-xl py-3 px-4 font-semibold text-sm hover:bg-primary/90 transition-colors">
+                        <i class="bi bi-sliders2"></i> Actions <i class="bi bi-chevron-down text-xs opacity-80"></i>
+                    </button>
+                    <div id="mpActionsMenu" class="hidden mt-2 rounded-2xl border border-gray-100 shadow-lg bg-white overflow-hidden divide-y divide-gray-50">
+                        <a id="mpProfileLink" href="#" onclick="mpHideActions()"
+                           class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:bg-muted transition-colors no-underline">
+                            <i class="bi bi-person-circle text-primary w-4"></i> View full profile
+                        </a>
+                        <button type="button" onclick="mpHideActions(); openMpPayments()"
+                                class="w-full text-left flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:bg-muted transition-colors">
+                            <i class="bi bi-receipt text-primary w-4"></i> Payments
+                        </button>
+                        <button id="mpEnrollBtn" type="button" onclick="mpHideActions(); openMemberEnroll()"
+                                class="w-full text-left flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:bg-muted transition-colors">
+                            <i class="bi bi-plus-circle text-green-600 w-4"></i> Enroll in a package
+                        </button>
+                        @if(auth()->user()?->isSuperAdmin())
+                        <button id="mpImpersonateBtn" type="button" onclick="mpHideActions(); impersonateMember()"
+                                class="w-full text-left flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:bg-muted transition-colors">
+                            <i class="bi bi-incognito text-amber-500 w-4"></i> Login as member
+                        </button>
+                        @endif
+                        <button id="mpRemoveBtn" type="button" onclick="mpHideActions(); removeMemberFromClub()"
+                                class="w-full text-left flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
+                            <i class="bi bi-person-dash w-4"></i> Remove from club
+                        </button>
                     </div>
-                </div>
-
-                {{-- Actions — compact icon buttons in one row on mobile, full labelled pills on desktop --}}
-                <div class="flex items-center justify-center gap-2">
-                    <a id="mpProfileLink" href="#" aria-label="Profile" title="Profile"
-                       class="shrink-0 w-12 h-12 sm:w-auto sm:h-auto sm:flex-1 flex items-center justify-center gap-2 bg-primary text-white rounded-full sm:py-2.5 sm:px-5 font-semibold text-sm hover:bg-primary/90 transition-colors no-underline">
-                        <i class="bi bi-person-circle text-lg sm:text-base"></i><span class="hidden sm:inline">Profile</span>
-                    </a>
-                    @if(auth()->user()?->isSuperAdmin())
-                    <button id="mpImpersonateBtn" type="button" onclick="impersonateMember()" aria-label="Login as" title="Login as"
-                            class="shrink-0 w-12 h-12 sm:w-auto sm:h-auto sm:flex-1 flex items-center justify-center gap-2 bg-amber-500 text-white rounded-full sm:py-2.5 sm:px-5 font-semibold text-sm hover:bg-amber-600 transition-colors">
-                        <i class="bi bi-incognito text-lg sm:text-base"></i><span class="hidden sm:inline">Login as</span>
-                    </button>
-                    @endif
-                    <button id="mpEnrollBtn" onclick="openMemberEnroll()" aria-label="Enroll" title="Enroll"
-                            class="shrink-0 w-12 h-12 sm:w-auto sm:h-auto sm:flex-1 flex items-center justify-center gap-2 bg-green-500 text-white rounded-full sm:py-2.5 sm:px-5 font-semibold text-sm hover:bg-green-600 transition-colors">
-                        <i class="bi bi-plus-circle text-lg sm:text-base"></i><span class="hidden sm:inline">Enroll</span>
-                    </button>
-                    <button onclick="closeMemberPopup()" aria-label="Close" title="Close"
-                            class="shrink-0 w-12 h-12 sm:w-auto sm:h-auto sm:flex-1 flex items-center justify-center gap-2 bg-gray-100 text-gray-700 border border-gray-200 rounded-full sm:py-2.5 sm:px-5 font-semibold text-sm hover:bg-gray-200 transition-colors">
-                        <i class="bi bi-x-lg text-lg sm:text-base"></i><span class="hidden sm:inline">Close</span>
-                    </button>
-                    <button id="mpRemoveBtn" onclick="removeMemberFromClub()" aria-label="Remove" title="Remove"
-                            class="shrink-0 w-12 h-12 sm:w-auto sm:h-auto sm:flex-1 flex items-center justify-center gap-2 bg-red-500 text-white rounded-full sm:py-2.5 sm:px-5 font-semibold text-sm hover:bg-red-600 transition-colors">
-                        <i class="bi bi-person-dash text-lg sm:text-base"></i><span class="hidden sm:inline">Remove</span>
-                    </button>
                 </div>
 
             </div>
-        </div>
-    </div>
-</div>
 
-<!-- Transaction Detail / Approve Payment Modal -->
-<div id="mpTxDetailModal" class="fixed inset-0 z-[60] hidden overflow-y-auto">
-    <div class="fixed inset-0 bg-black/60" onclick="closeMpTxDetail()"></div>
-    <div class="relative flex min-h-full items-center justify-center p-4 z-10">
-        <div class="bg-white rounded-xl shadow-lg w-full max-w-lg" onclick="event.stopPropagation()">
-
-            {{-- Header --}}
-            <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-                <h5 class="font-bold flex items-center gap-2 mb-0">
-                    <i class="bi bi-receipt text-primary"></i> Transaction Detail
-                </h5>
-                <button onclick="closeMpTxDetail()" class="text-gray-400 hover:text-gray-600">
-                    <i class="bi bi-x-lg"></i>
-                </button>
+            {{-- ===== View: payments list ===== --}}
+            <div id="mpPaymentsView" class="hidden px-6 pt-5 pb-6">
+                <div class="flex gap-1 p-1 rounded-xl bg-muted mb-3">
+                    <button type="button" data-tab="all" onclick="setMpPayTab('all')" class="mp-pay-tab flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors bg-white shadow text-foreground">All</button>
+                    <button type="button" data-tab="pending" onclick="setMpPayTab('pending')" class="mp-pay-tab flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors text-muted-foreground">Pending</button>
+                    <button type="button" data-tab="paid" onclick="setMpPayTab('paid')" class="mp-pay-tab flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors text-muted-foreground">Paid</button>
+                </div>
+                <div id="mpPaymentList" class="space-y-2 pr-0.5">
+                    <div class="text-center text-gray-400 text-sm py-10">No payment records</div>
+                </div>
             </div>
 
-            {{-- Body --}}
-            <div class="px-6 py-5 space-y-5">
+            {{-- ===== View: record detail ===== --}}
+            <div id="mpDetailView" class="hidden px-6 pt-5 pb-6 space-y-5">
 
                 {{-- Transaction info --}}
-                <div class="grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                        <p class="text-muted-foreground text-xs uppercase font-medium mb-0.5">Package</p>
-                        <p class="font-semibold" id="mpTxPackage">—</p>
+                <div class="grid grid-cols-2 gap-2.5 text-sm">
+                    <div class="rounded-2xl border border-gray-100 bg-gray-50/70 p-3 col-span-2">
+                        <p class="text-muted-foreground text-[11px] uppercase font-medium mb-0.5">Package</p>
+                        <p class="font-semibold text-gray-900" id="mpTxPackage">—</p>
                     </div>
-                    <div>
-                        <p class="text-muted-foreground text-xs uppercase font-medium mb-0.5">Amount</p>
+                    <div class="rounded-2xl border border-gray-100 bg-gray-50/70 p-3">
+                        <p class="text-muted-foreground text-[11px] uppercase font-medium mb-0.5">Amount</p>
                         <p class="font-bold text-green-600" id="mpTxAmount">—</p>
                     </div>
-                    <div>
-                        <p class="text-muted-foreground text-xs uppercase font-medium mb-0.5">Start Date</p>
-                        <p class="font-semibold" id="mpTxStart">—</p>
-                    </div>
-                    <div>
-                        <p class="text-muted-foreground text-xs uppercase font-medium mb-0.5">End Date</p>
-                        <p class="font-semibold" id="mpTxEnd">—</p>
-                    </div>
-                    <div class="col-span-2">
-                        <p class="text-muted-foreground text-xs uppercase font-medium mb-0.5">Payment Status</p>
+                    <div class="rounded-2xl border border-gray-100 bg-gray-50/70 p-3">
+                        <p class="text-muted-foreground text-[11px] uppercase font-medium mb-0.5">Status</p>
                         <span id="mpTxStatus"></span>
+                    </div>
+                    <div class="rounded-2xl border border-gray-100 bg-gray-50/70 p-3">
+                        <p class="text-muted-foreground text-[11px] uppercase font-medium mb-0.5">Start Date</p>
+                        <p class="font-semibold text-gray-900" id="mpTxStart">—</p>
+                    </div>
+                    <div class="rounded-2xl border border-gray-100 bg-gray-50/70 p-3">
+                        <p class="text-muted-foreground text-[11px] uppercase font-medium mb-0.5">End Date</p>
+                        <p class="font-semibold text-gray-900" id="mpTxEnd">—</p>
                     </div>
                 </div>
 
                 {{-- Member's uploaded proof --}}
                 <div id="mpTxProofWrap" class="hidden">
-                    <p class="text-sm font-semibold mb-2">Member's Payment Proof</p>
+                    <p class="text-sm font-semibold mb-2">Member's payment proof</p>
                     <img id="mpTxProofImg" src="" alt="Payment proof"
                          class="w-full rounded-lg border border-gray-200 cursor-pointer"
                          onclick="window.open(this.src,'_blank')">
-                    <p class="text-xs text-muted-foreground mt-1">Click image to view full size</p>
+                    <p class="text-xs text-muted-foreground mt-1">Tap image to view full size</p>
                 </div>
 
                 {{-- Approve section (unpaid/pending) --}}
-                <div id="mpTxApproveSection" class="border-t pt-4 space-y-4">
-                    <p class="text-sm font-semibold">Approve Payment</p>
+                <div id="mpTxApproveSection" class="border-t border-gray-100 pt-4 space-y-4">
+                    <p class="text-sm font-semibold text-gray-900">Approve payment</p>
                     <div>
                         <p class="text-xs text-muted-foreground mb-2">Optionally upload your own proof of receipt (admin copy)</p>
                         <x-takeone-cropper
@@ -291,27 +277,43 @@
                         />
                     </div>
                     <button type="button" id="mpConfirmApproveBtn"
-                            class="w-full btn btn-success flex items-center justify-center gap-2"
+                            class="m-press w-full inline-flex items-center justify-center gap-2 bg-green-500 text-white rounded-xl py-2.5 px-4 font-semibold text-sm hover:bg-green-600 transition-colors"
                             onclick="confirmMpApprove()">
-                        <i class="bi bi-check-circle mr-1"></i> Confirm & Approve Payment
+                        <i class="bi bi-check-circle"></i> Confirm &amp; approve payment
                     </button>
                 </div>
 
                 {{-- Already paid --}}
-                <div id="mpTxPaidSection" class="hidden border-t pt-4">
-                    <div class="flex items-center gap-2 text-green-600">
+                <div id="mpTxPaidSection" class="hidden rounded-xl bg-green-50 border border-green-200 p-3">
+                    <div class="flex items-center gap-2 text-green-700">
                         <i class="bi bi-check-circle-fill"></i>
                         <span class="font-semibold text-sm">Payment has been approved</span>
                     </div>
                 </div>
 
-                {{-- Cancel --}}
-                <button onclick="closeMpTxDetail()"
-                        class="w-full px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors text-sm">
-                    Cancel
+                {{-- Back to payments --}}
+                <button type="button" onclick="mpPayShowList()"
+                        class="m-press w-full px-4 py-2.5 border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors text-sm inline-flex items-center justify-center gap-2">
+                    <i class="bi bi-chevron-left"></i> Back to payments
                 </button>
-
             </div>
+
+            {{-- ===== View: member QR ===== --}}
+            <div id="mpQrView" class="hidden px-6 pt-5 pb-6">
+                <div class="mx-auto bg-white rounded-2xl border border-gray-100 p-4 grid place-items-center" style="width: 100%; max-width: 252px;">
+                    <div id="mpQrBox" class="grid place-items-center" style="width: 220px; height: 220px; max-width: 100%;"></div>
+                </div>
+                <a id="mpQrUrlLink" href="#" target="_blank" rel="noopener" class="block text-center text-[11px] text-primary break-all mt-3 hover:underline"></a>
+                <div class="grid grid-cols-2 gap-2 mt-4">
+                    <button type="button" onclick="mpCopyQr()" class="m-press inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-gray-200 text-foreground text-sm font-medium hover:bg-muted transition-colors">
+                        <i class="bi bi-link-45deg"></i> Copy link
+                    </button>
+                    <a id="mpQrPosterLink" href="#" target="_blank" rel="noopener" class="m-press inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors no-underline">
+                        <i class="bi bi-printer"></i> Poster
+                    </a>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
@@ -387,6 +389,7 @@
     window.openMemberPopup = function (userId, fetchUrl) {
         const modal = document.getElementById('memberPopupModal');
         modal.classList.remove('hidden');
+        if (window.mpShowProfile) mpShowProfile();   // always open on the profile view
 
         fetch(fetchUrl, {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
@@ -405,6 +408,63 @@
 
     window.closeMemberPopup = function () {
         document.getElementById('memberPopupModal').classList.add('hidden');
+    };
+
+    // The member popup is a single panel with three views: profile · payments · detail.
+    const MP_TITLES = { profile: '', payments: 'Payment history', detail: 'Transaction detail', qr: 'Member QR' };
+    function mpSetView(view) {
+        window._mpView = view;
+        const isProfile = view === 'profile';
+        document.getElementById('mpProfileView')?.classList.toggle('hidden', view !== 'profile');
+        document.getElementById('mpPaymentsView')?.classList.toggle('hidden', view !== 'payments');
+        document.getElementById('mpDetailView')?.classList.toggle('hidden', view !== 'detail');
+        document.getElementById('mpQrView')?.classList.toggle('hidden', view !== 'qr');
+        document.getElementById('mpIdentity')?.classList.toggle('hidden', !isProfile);
+        document.getElementById('mpHeaderBack')?.classList.toggle('hidden', isProfile);
+
+        const title = document.getElementById('mpHeaderTitle'); if (title) title.textContent = MP_TITLES[view] || '';
+        mpHideActions();
+        const panel = document.querySelector('#memberPopupModal .mp-panel'); if (panel) panel.scrollTop = 0;
+    }
+
+    // Single Actions menu (profile view).
+    window.mpToggleActions = function () { document.getElementById('mpActionsMenu')?.classList.toggle('hidden'); };
+    window.mpHideActions = function () { document.getElementById('mpActionsMenu')?.classList.add('hidden'); };
+    document.addEventListener('click', function (e) {
+        const menu = document.getElementById('mpActionsMenu');
+        if (!menu || menu.classList.contains('hidden')) return;
+        if (e.target.closest('#mpActionsMenu') || e.target.closest('[onclick*="mpToggleActions"]')) return;
+        menu.classList.add('hidden');
+    });
+
+    window.mpShowProfile  = function () { mpSetView('profile'); };
+    window.openMpPayments = function () { mpSetView('payments'); };   // "Payments" button
+    window.mpPayShowList  = function () { mpSetView('payments'); };   // back from a record
+    function mpShowDetail() { mpSetView('detail'); }
+    // Header back arrow: detail → payments, payments/qr → profile.
+    window.mpBack = function () { mpSetView(window._mpView === 'detail' ? 'payments' : 'profile'); };
+
+    // Member QR — rendered client-side (offline qrcodejs) inside this same popup.
+    window.openMpQr = function () {
+        const d = window._mpData || {};
+        const url = d.qr_url || d.profile_url || '';
+        const link = document.getElementById('mpQrUrlLink');
+        if (link) { link.textContent = url; link.href = url || '#'; }
+        const poster = document.getElementById('mpQrPosterLink'); if (poster) poster.href = d.qr_poster_url || '#';
+        mpSetView('qr');
+        const box = document.getElementById('mpQrBox');
+        if (!box) return;
+        // Offline, server-rendered QR (bacon) served as an SVG image — no external libs.
+        box.innerHTML = (d.qr_svg_url && url)
+            ? '<img src="' + mpEsc(d.qr_svg_url) + '" alt="Member QR" class="w-full h-full object-contain">'
+            : '<p class="text-xs text-gray-400">No link available</p>';
+    };
+    window.mpCopyQr = function () {
+        const url = (window._mpData || {}).qr_url || '';
+        if (!url) return;
+        navigator.clipboard.writeText(url)
+            .then(() => window.showToast && window.showToast('success', 'Link copied'))
+            .catch(() => window.showToast && window.showToast('error', 'Could not copy link'));
     };
 
     // Start impersonating the member shown in the popup (super-admin only).
@@ -449,54 +509,70 @@
         document.getElementById('mpRemoveBtn').dataset.memberName = d.name;
         window._mpCurrentUserId = d.id;
 
-        // Payment table
-        const tbody = document.getElementById('mpPaymentTbody');
-        if (!d.subscriptions || !d.subscriptions.length) {
-            tbody.innerHTML = `<tr><td colspan="6" class="px-3 py-8 text-center text-gray-400 text-sm">No payment records</td></tr>`;
+        // Payment records → stored; shown as a tabbed, tappable list in its own modal.
+        (d.subscriptions || []).forEach(sub => { window._mpSubStore[sub.id] = sub; });
+        window._mpPayTab = 'all';
+        renderMpPayments();
+        setMpPayTabActive('all');
+    }
+
+    // ── Payments list (tabbed) ───────────────────────────────────────
+    function mpPayBadge(sub) {
+        return sub.payment_status === 'paid'
+            ? `<span class="inline-flex items-center px-2 py-0.5 text-[10px] font-semibold rounded-full bg-green-50 text-green-700 border border-green-200">PAID</span>`
+            : `<span class="inline-flex items-center px-2 py-0.5 text-[10px] font-semibold rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200">PENDING</span>`;
+    }
+
+    function setMpPayTabActive(tab) {
+        document.querySelectorAll('.mp-pay-tab').forEach(b => {
+            const on = b.dataset.tab === tab;
+            b.classList.toggle('bg-white', on);
+            b.classList.toggle('shadow', on);
+            b.classList.toggle('text-foreground', on);
+            b.classList.toggle('text-muted-foreground', !on);
+        });
+    }
+
+    window.setMpPayTab = function (tab) {
+        window._mpPayTab = tab;
+        setMpPayTabActive(tab);
+        renderMpPayments();
+    };
+
+    window.renderMpPayments = function () {
+        const list = document.getElementById('mpPaymentList');
+        if (!list) return;
+        const tab  = window._mpPayTab || 'all';
+        const subs = Object.values(window._mpSubStore || {});
+        const filtered = subs.filter(s => tab === 'all'
+            ? true
+            : (tab === 'paid' ? s.payment_status === 'paid' : s.payment_status !== 'paid'));
+
+        if (!filtered.length) {
+            list.innerHTML = `<div class="text-center text-gray-400 text-sm py-10"><i class="bi bi-inbox text-2xl text-gray-300 block mb-1"></i>No ${tab === 'all' ? '' : mpEsc(tab) + ' '}records</div>`;
             return;
         }
 
-        tbody.innerHTML = d.subscriptions.map(sub => {
-            window._mpSubStore[sub.id] = sub;
-
-            const isPaid = sub.payment_status === 'paid';
-
-            const statusBadge = isPaid
-                ? `<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-green-50 text-green-700 border border-green-200">PAID</span>`
-                : `<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200">PENDING</span>`;
-
-            let actionHtml = `<span class="text-xs text-gray-300">—</span>`;
-            if (!isPaid && sub.approve_url) {
-                actionHtml = `<button onclick="openMpTxDetail(${sub.id})"
-                                       class="text-xs font-semibold text-primary hover:underline cursor-pointer bg-transparent border-0 p-0">
-                                Upload
-                              </button>`;
-            } else if (sub.has_proof && sub.proof_url) {
-                actionHtml = `<a href="${sub.proof_url}" target="_blank"
-                                 class="text-xs font-semibold text-gray-400 hover:text-gray-600 no-underline">
-                                View Proof
-                              </a>`;
-            }
-
-            const periodNote = sub.is_active
-                ? `<span class="block text-xs text-green-600"><i class="bi bi-play-circle-fill"></i> Active</span>`
-                : `<span class="block text-xs text-gray-400"><i class="bi bi-clock-history"></i> Ended</span>`;
-
-            return `<tr class="border-t border-gray-100 hover:bg-gray-50 transition-colors" id="mp-sub-row-${sub.id}">
-                <td class="px-3 py-2.5">
-                    <span class="text-xs font-medium text-gray-800 block">${mpEsc(sub.start_date)}</span>
-                    ${periodNote}
-                </td>
-                <td class="px-3 py-2.5 text-xs text-gray-600 max-w-[110px]">
-                    <span class="block truncate" title="${mpEsc(sub.package)}">${mpEsc(sub.package)}</span>
-                </td>
-                <td class="px-2 py-2.5 font-bold text-xs text-gray-800 whitespace-nowrap">${mpEsc(sub.currency)} ${mpEsc(sub.amount_due)}</td>
-                <td class="px-2 py-2.5 text-xs text-gray-500 whitespace-nowrap">${mpEsc(sub.end_date)}</td>
-                <td class="px-2 py-2.5 text-center">${statusBadge}</td>
-                <td class="px-3 py-2.5 text-right">${actionHtml}</td>
-            </tr>`;
+        list.innerHTML = filtered.map(sub => {
+            const period = sub.is_active
+                ? `<span class="text-green-600"><i class="bi bi-play-circle-fill"></i> Active</span>`
+                : `<span class="text-gray-400"><i class="bi bi-clock-history"></i> Ended</span>`;
+            return `<button type="button" onclick="openMpTxDetail(${sub.id})" id="mp-sub-row-${sub.id}"
+                        class="w-full text-left rounded-2xl border border-gray-100 hover:border-primary hover:bg-accent/40 transition-all p-3 flex items-center gap-3">
+                <span class="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0 bg-accent text-primary"><i class="bi bi-receipt"></i></span>
+                <span class="min-w-0 flex-1">
+                    <span class="block text-sm font-semibold text-gray-900 truncate">${mpEsc(sub.package)}</span>
+                    <span class="block text-[11px] text-gray-500 mt-0.5">${mpEsc(sub.start_date)} → ${mpEsc(sub.end_date)}</span>
+                    <span class="block text-[11px] mt-0.5">${period}</span>
+                </span>
+                <span class="text-right flex-shrink-0">
+                    <span class="block text-sm font-bold text-gray-900 whitespace-nowrap">${mpEsc(sub.currency)} ${mpEsc(sub.amount_due)}</span>
+                    <span class="block mt-1">${mpPayBadge(sub)}</span>
+                </span>
+                <i class="bi bi-chevron-right text-gray-300 flex-shrink-0"></i>
+            </button>`;
         }).join('');
-    }
+    };
 
     // ── Transaction Detail Modal ─────────────────────────────────────
     window._mpCurrentSubId      = null;
@@ -543,11 +619,12 @@
         const hiddenInput = document.getElementById('hiddenInput_mpAdminProofCropper');
         if (hiddenInput) hiddenInput.value = '';
 
-        document.getElementById('mpTxDetailModal').classList.remove('hidden');
+        mpShowDetail();   // swap the popup to the record-detail view
     };
 
+    // Back from the record detail → the payments list (same popup).
     window.closeMpTxDetail = function () {
-        document.getElementById('mpTxDetailModal').classList.add('hidden');
+        mpPayShowList();
     };
 
     window.confirmMpApprove = async function () {
@@ -568,14 +645,11 @@
 
             if (data.success) {
                 closeMpTxDetail();
-                // Update row in popup table
-                const row = document.getElementById(`mp-sub-row-${window._mpCurrentSubId}`);
-                if (row) {
-                    row.querySelector('td:nth-child(5)').innerHTML =
-                        `<span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-green-50 text-green-700 border border-green-200">PAID</span>`;
-                    row.querySelector('td:nth-child(6)').innerHTML =
-                        `<span class="text-xs text-gray-300">—</span>`;
+                // Mark the stored record paid and re-render the list.
+                if (window._mpSubStore && window._mpSubStore[window._mpCurrentSubId]) {
+                    window._mpSubStore[window._mpCurrentSubId].payment_status = 'paid';
                 }
+                if (window.renderMpPayments) window.renderMpPayments();
                 if (window.showToast) window.showToast('success', 'Payment approved successfully.');
             } else {
                 btn.disabled = false;

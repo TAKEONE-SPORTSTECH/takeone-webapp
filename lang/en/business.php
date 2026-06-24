@@ -8,6 +8,7 @@ return [
     'menu'              => 'Menu',
     'no_clubs_linked'   => 'No clubs linked yet.',
     'explore_clubs'     => 'Explore clubs',
+    'personal_view'     => 'Personal view',
 
     // ===== Dashboard =====
     'chain_revenue'     => 'Chain revenue',

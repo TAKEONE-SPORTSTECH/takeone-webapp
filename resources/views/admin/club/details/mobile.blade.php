@@ -40,6 +40,30 @@
         @if($club->currency)<div class="flex items-center gap-3 text-sm"><i class="bi bi-cash text-muted-foreground w-5"></i><span class="text-foreground">{{ $club->currency }}</span></div>@endif
     </div>
 
+    {{-- QR codes (share / print) --}}
+    <div class="m-card p-4">
+        <h3 class="font-semibold text-foreground mb-1">QR codes</h3>
+        <p class="text-xs text-muted-foreground mb-3">Share or print these so people can reach the club instantly.</p>
+        <div class="flex flex-wrap gap-2">
+            <x-qr-code
+                :url="\App\Http\Controllers\QrController::clubPageUrl($club)"
+                :title="($club->club_name ?? 'Club') . ' — Club page'"
+                caption="Scan to view the club page"
+                :filename="'qr-' . $club->slug . '-page'"
+                label="Club page"
+                icon="bi-qr-code"
+                :poster-url="route('qr.club.page', $club)" />
+            <x-qr-code
+                :url="\App\Http\Controllers\QrController::clubRegisterUrl($club)"
+                :title="($club->club_name ?? 'Club') . ' — Registration'"
+                caption="Scan to register and join"
+                :filename="'qr-' . $club->slug . '-register'"
+                label="Registration"
+                icon="bi-person-plus"
+                :poster-url="route('qr.club.register', $club)" />
+        </div>
+    </div>
+
     {{-- Owner --}}
     @if($club->owner)
     <div class="m-card p-4">

@@ -293,6 +293,10 @@ class ClubMemberAdminController extends Controller
             'age'           => $user->age ? $user->age . ' years' : 'N/A',
             'since'         => $membership->created_at->format('d/m/Y'),
             'profile_url'         => route('member.show', $user->uuid),
+            // Admin popup QR points to the member's management profile, not the public wall.
+            'qr_url'              => route('member.show', $user->uuid),
+            'qr_svg_url'         => route('qr.member.svg', ['user' => $user->id, 'target' => 'manage']),
+            'qr_poster_url'       => route('qr.member', ['user' => $user->id, 'club' => $club->id, 'target' => 'manage']),
             'remove_url'          => route('admin.club.members.remove', [$club->slug, $user->id]),
             'subscriptions'       => $subscriptions,
             'context'             => 'club',
@@ -403,6 +407,12 @@ class ClubMemberAdminController extends Controller
     {
         $this->authorizeClub($club);
 
+        // Child registration: a single standalone member with no account (no email/password) —
+        // just name, phone, DOB, gender, nationality. Optional package enrolment + enrollment fee.
+        if ($request->input('registrant_type') === 'child') {
+            return $this->registerStandaloneChild($request, $club);
+        }
+
         DB::beginTransaction();
         try {
             $g = $request->guardian;
@@ -431,12 +441,17 @@ class ClubMemberAdminController extends Controller
             $childUsers = [];
             foreach ($request->people as $person) {
                 if ($person['type'] === 'child') {
+                    // A child has no email/password of their own — just a contact phone.
+                    $childPhone = trim($person['phone'] ?? '');
                     $childUser = User::create([
                         'full_name'   => $person['name'],
                         'name'        => $person['name'],
                         'gender'      => $person['gender'],
                         'birthdate'   => $person['dob'],
                         'nationality' => $person['nationality'] ?? null,
+                        'mobile'      => $childPhone !== ''
+                            ? ['code' => $person['countryCode'] ?? '+973', 'number' => $childPhone]
+                            : null,
                         'password'    => Hash::make(Str::random(16)),
                     ]);
                     UserRelationship::create([
@@ -508,6 +523,78 @@ class ClubMemberAdminController extends Controller
         }
     }
 
+    /**
+     * Register a single Child as a standalone club member — no guardian, no account
+     * (no email/password), just a contact phone. Mirrors the walk-in enrolment-fee +
+     * package flow for that one person.
+     */
+    private function registerStandaloneChild(WalkInRegistrationRequest $request, Tenant $club)
+    {
+        $g      = $request->guardian;          // the child's own details
+        $person = $request->people[0] ?? [];   // single person carrying the package selection
+        $phone  = trim($g['phone'] ?? '');
+
+        DB::beginTransaction();
+        try {
+            $childUser = User::create([
+                'full_name'   => $g['name'],
+                'name'        => $g['name'],
+                'gender'      => $g['gender'],
+                'birthdate'   => $g['dob'],
+                'nationality' => $g['nationality'] ?? null,
+                'mobile'      => $phone !== ''
+                    ? ['code' => $g['countryCode'] ?? '+973', 'number' => $phone]
+                    : null,
+                'password'    => Hash::make(Str::random(16)),
+            ]);
+
+            Membership::firstOrCreate(
+                ['tenant_id' => $club->id, 'user_id' => $childUser->id],
+                ['status' => 'active']
+            );
+
+            if ($club->enrollment_fee > 0) {
+                ClubTransaction::create([
+                    'tenant_id'        => $club->id,
+                    'user_id'          => $childUser->id,
+                    'type'             => 'income',
+                    'category'         => 'enrollment',
+                    'amount'           => $club->enrollment_fee,
+                    'description'      => "Walk-in enrollment: {$childUser->full_name}",
+                    'transaction_date' => now(),
+                ]);
+            }
+
+            $validPkgIds = ClubPackage::where('tenant_id', $club->id)->pluck('id')->flip();
+            foreach (($person['selectedPackageIds'] ?? []) as $pkgId) {
+                if (!isset($validPkgIds[$pkgId])) continue;
+                $package = ClubPackage::find($pkgId);
+                if (!$package) continue;
+                if (app(SubscriptionService::class)->isDuplicate($club->id, $childUser->id, $pkgId)) continue;
+
+                app(SubscriptionService::class)->createActive(
+                    $club,
+                    $childUser->id,
+                    $package,
+                    "Walk-in (child): {$childUser->full_name} — {$package->name}"
+                );
+            }
+
+            DB::commit();
+
+            activity('membership')
+                ->causedBy(auth()->user())
+                ->performedOn($club)
+                ->withProperties(['child_name' => $childUser->full_name])
+                ->log('Walk-in child registration completed');
+
+            return response()->json(['success' => true, 'message' => 'Child registered successfully!']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Registration failed. Please try again.'], 500);
+        }
+    }
+
     public function searchUsers(Request $request, Tenant $club)
     {
         $this->authorizeClub($club);
@@ -569,6 +656,54 @@ class ClubMemberAdminController extends Controller
         });
 
         return response()->json(['users' => $users]);
+    }
+
+    /**
+     * Resolve a scanned member QR (a profile/wall URL `/u/{slug}` or legacy
+     * `/u/{id}`) to a single user so the mobile "Scan QR" add-member flow can
+     * show a confirm card before adding them to the club.
+     */
+    public function resolveQr(Request $request, Tenant $club)
+    {
+        $this->authorizeClub($club);
+
+        $value = trim((string) $request->input('value'));
+        if ($value === '') {
+            return response()->json(['success' => false, 'message' => 'Nothing scanned.'], 422);
+        }
+
+        // Pull the identifier out of the URL path: the segment right after "/u/".
+        $path = parse_url($value, PHP_URL_PATH) ?: $value;
+        $segments = array_values(array_filter(explode('/', $path), fn ($s) => $s !== ''));
+        $idx = array_search('u', $segments, true);
+        $identifier = $idx !== false ? ($segments[$idx + 1] ?? null) : end($segments);
+
+        if (!$identifier) {
+            return response()->json(['success' => false, 'message' => "That QR code isn't a member profile."], 404);
+        }
+
+        $user = ctype_digit((string) $identifier)
+            ? User::find((int) $identifier)
+            : User::where('slug', $identifier)->first();
+
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => "Couldn't find a member for that QR code."], 404);
+        }
+
+        $isMember = Membership::where('tenant_id', $club->id)->where('user_id', $user->id)->exists();
+
+        return response()->json([
+            'success' => true,
+            'user'    => [
+                'id'              => $user->id,
+                'name'            => $user->full_name ?? $user->name,
+                'email'           => $user->email,
+                'profile_picture' => $user->profile_picture ? asset('storage/' . $user->profile_picture) : null,
+                'gender'          => $user->gender,
+                'age'             => $user->birthdate ? \Carbon\Carbon::parse($user->birthdate)->age : null,
+                'is_member'       => $isMember,
+            ],
+        ]);
     }
 
     public function approvePayment(Request $request, Tenant $club, ClubMemberSubscription $subscription, SubscriptionService $subscriptions, FinancialService $financials)

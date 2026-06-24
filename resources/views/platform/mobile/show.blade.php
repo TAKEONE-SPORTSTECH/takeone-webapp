@@ -50,6 +50,32 @@
             <i class="bi bi-arrow-left text-lg"></i>
         </button>
 
+        {{-- One QR button → modal with a Register / Club page tab switcher --}}
+        <div class="absolute top-3 right-3 z-10">
+            <x-qr-code
+                label=""
+                icon="bi-qr-code"
+                button-class="w-10 h-10 rounded-full bg-black/35 backdrop-blur text-white flex items-center justify-center"
+                :targets="[
+                    [
+                        'url'     => \App\Http\Controllers\QrController::clubRegisterUrl($club),
+                        'tab'     => 'Register',
+                        'title'   => $club->tr('club_name') . ' — Registration',
+                        'caption' => 'Scan to register & join this club',
+                        'filename'=> 'qr-' . $club->slug . '-register',
+                        'poster'  => auth()->check() ? route('qr.club.register', $club) : null,
+                    ],
+                    [
+                        'url'     => \App\Http\Controllers\QrController::clubPageUrl($club),
+                        'tab'     => 'Club page',
+                        'title'   => $club->tr('club_name') . ' — Club page',
+                        'caption' => 'Scan to view this club',
+                        'filename'=> 'qr-' . $club->slug . '-page',
+                        'poster'  => auth()->check() ? route('qr.club.page', $club) : null,
+                    ],
+                ]" />
+        </div>
+
         {{-- Club identity --}}
         <div class="absolute bottom-0 inset-x-0 p-4 text-white">
             <div class="flex items-end gap-3">

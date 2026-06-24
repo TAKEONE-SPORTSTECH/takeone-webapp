@@ -8,10 +8,11 @@
 @php
     $clubId = $club->slug ?? $club->id ?? null;
     $currentRoute = request()->route()?->getName();
+    $clubPublicUrl = \App\Http\Controllers\QrController::clubPageUrl($club);
 
     // Grouped navigation for the drawer (matches the liked mockup structure).
     $navGroups = [
-        __('admin.nav_group_analytics') => [
+        __('admin.nav_group_overview') => [
             ['route'=>'admin.club.dashboard',   'icon'=>'bi-speedometer2', 'label'=>__('admin.nav_dashboard')],
             ['route'=>'admin.club.analytics',   'icon'=>'bi-bar-chart',    'label'=>__('admin.nav_analytics')],
         ],
@@ -20,14 +21,19 @@
             ['route'=>'admin.club.instructors', 'icon'=>'bi-person-badge',  'label'=>__('admin.nav_instructors')],
             ['route'=>'admin.club.roles',       'icon'=>'bi-shield-check',  'label'=>__('admin.nav_roles')],
             ['route'=>'admin.club.messages',    'icon'=>'bi-chat-dots',     'label'=>__('admin.nav_messages')],
+            ['route'=>'admin.club.notifications','icon'=>'bi-bell',         'label'=>__('admin.nav_notifications')],
         ],
-        __('admin.nav_group_operations') => [
-            ['route'=>'admin.club.shop',        'icon'=>'bi-shop',          'label'=>__('admin.nav_shop')],
-            ['route'=>'admin.club.orders',      'icon'=>'bi-bag-check',     'label'=>__('admin.nav_orders')],
+        __('admin.nav_group_offerings') => [
             ['route'=>'admin.club.packages',    'icon'=>'bi-box',           'label'=>__('admin.nav_packages')],
             ['route'=>'admin.club.activities',  'icon'=>'bi-activity',      'label'=>__('admin.nav_activities')],
             ['route'=>'admin.club.events',      'icon'=>'bi-calendar-event','label'=>__('admin.nav_events')],
             ['route'=>'admin.club.facilities',  'icon'=>'bi-geo-alt',       'label'=>__('admin.nav_facilities')],
+        ],
+        __('admin.nav_group_store') => [
+            ['route'=>'admin.club.shop',        'icon'=>'bi-shop',          'label'=>__('admin.nav_shop')],
+            ['route'=>'admin.club.orders',      'icon'=>'bi-bag-check',     'label'=>__('admin.nav_orders')],
+        ],
+        __('admin.nav_group_content') => [
             ['route'=>'admin.club.gallery',     'icon'=>'bi-images',        'label'=>__('admin.nav_gallery')],
             ['route'=>'admin.club.timeline',    'icon'=>'bi-newspaper',     'label'=>__('admin.nav_timeline')],
             ['route'=>'admin.club.perks',       'icon'=>'bi-gift',          'label'=>__('admin.nav_perks')],
@@ -36,9 +42,8 @@
         __('admin.nav_group_finance') => [
             ['route'=>'admin.club.financials',  'icon'=>'bi-currency-dollar','label'=>__('admin.nav_financials')],
         ],
-        __('admin.nav_group_system') => [
+        __('admin.nav_group_settings') => [
             ['route'=>'admin.club.details',     'icon'=>'bi-building',      'label'=>__('admin.nav_details')],
-            ['route'=>'admin.club.notifications','icon'=>'bi-bell',         'label'=>__('admin.nav_notifications')],
         ],
     ];
 
@@ -85,21 +90,30 @@
             </div>
             {{-- Drawer nav --}}
             <nav class="p-3 flex-1">
+                {{-- Preview club page (mobile view) — pinned above the first group --}}
+                <a href="{{ $clubPublicUrl }}"
+                   class="shell-nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors">
+                    <i class="bi bi-eye text-lg w-5 text-center"></i>{{ __('admin.preview_club_page') }}
+                </a>
                 @foreach($navGroups as $groupLabel => $items)
                     <p class="px-2 mt-3 mb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{{ $groupLabel }}</p>
                     @foreach($items as $item)
-                        @php $active = $currentRoute === $item['route']; @endphp
-                        <a href="{{ route($item['route'], $clubId) }}" data-shell-link data-route="{{ $item['route'] }}"
-                           class="shell-nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors {{ $active ? 'is-active' : '' }}">
-                            <i class="bi {{ $item['icon'] }} text-lg w-5 text-center"></i>{{ $item['label'] }}
-                        </a>
+                        @if(!empty($item['external']))
+                            <a href="{{ $item['url'] }}"
+                               class="shell-nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors">
+                                <i class="bi {{ $item['icon'] }} text-lg w-5 text-center"></i>{{ $item['label'] }}
+                            </a>
+                        @else
+                            @php $active = $currentRoute === $item['route']; @endphp
+                            <a href="{{ route($item['route'], $clubId) }}" data-shell-link data-route="{{ $item['route'] }}"
+                               class="shell-nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors {{ $active ? 'is-active' : '' }}">
+                                <i class="bi {{ $item['icon'] }} text-lg w-5 text-center"></i>{{ $item['label'] }}
+                            </a>
+                        @endif
                     @endforeach
                 @endforeach
                 {{-- Back out --}}
                 <div class="border-t border-border mt-3 pt-3">
-                    <a href="{{ $club->url ?? '#' }}" target="_blank" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent">
-                        <i class="bi bi-eye text-lg w-5 text-center"></i>{{ __('admin.preview_club_page') }}
-                    </a>
                     <button type="button" @click="showNotificationModal = true; drawer = false" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent">
                         <i class="bi bi-send text-lg w-5 text-center"></i>{{ __('admin.send_notification') }}
                     </button>

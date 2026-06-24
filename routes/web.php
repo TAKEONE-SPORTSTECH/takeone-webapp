@@ -253,6 +253,15 @@ Route::get('/mobile/{country}/{slug}', [PlatformController::class, 'showPublic']
 // Public trainer page - no login required (used for QR code)
 Route::get('/t/{user}', [TrainerController::class, 'showPublic'])->name('trainer.show.public');
 
+// Printable QR posters (club page, club registration, member profile, event).
+Route::middleware(['auth', 'verified', 'two-factor'])->prefix('qr')->name('qr.')->group(function () {
+    Route::get('/club/{club}/page',     [App\Http\Controllers\QrController::class, 'clubPoster'])->name('club.page');
+    Route::get('/club/{club}/register', [App\Http\Controllers\QrController::class, 'clubRegisterPoster'])->name('club.register');
+    Route::get('/member/{user}',        [App\Http\Controllers\QrController::class, 'memberPoster'])->name('member');
+    Route::get('/member/{user}/svg',    [App\Http\Controllers\QrController::class, 'memberSvg'])->name('member.svg');
+    Route::get('/event/{event:uuid}',   [App\Http\Controllers\QrController::class, 'eventPoster'])->name('event');
+});
+
 // Explore routes (accessible to authenticated users)
 Route::middleware(['auth', 'two-factor'])->group(function () {
     Route::get('/explore', [PlatformController::class, 'index'])->name('clubs.explore');
@@ -421,6 +430,7 @@ Route::middleware(['auth', 'verified', 'two-factor', 'tenant', 'throttle:admin-w
     Route::post('/members', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'storeMember'])->name('members.store');
     Route::post('/members/walk-in', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'walkInRegistration'])->name('members.walk-in')->middleware('throttle:walk-in');
     Route::get('/members/search', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'searchUsers'])->name('members.search');
+    Route::post('/members/resolve-qr', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'resolveQr'])->name('members.resolve-qr');
     Route::get('/members/cards', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'membersCards'])->name('members.cards');
     Route::get('/members/{user}/popup', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'memberPopup'])->name('members.popup');
     Route::get('/members/popup-demo', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'memberPopupDemo'])->name('members.popup-demo');

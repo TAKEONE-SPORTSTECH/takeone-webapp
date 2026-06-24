@@ -33,7 +33,7 @@
 
         <!-- Right Side - Information & Controls -->
         <div class="md:w-7/12">
-            <div class="profile-photo-info md:max-h-[400px] md:overflow-hidden">
+            <div class="profile-photo-info">
                 <!-- Motivational Header -->
                 <div class="mb-3">
                     <h6 class="text-primary mb-2">
@@ -85,47 +85,46 @@
                     </div>
                 </div>
 
-                <!-- Photo Guidelines & Action Buttons -->
-                <div class="flex gap-3">
-                    <div style="flex: 1; min-width: 0;">
-                        <h6 class="text-muted mb-2 small">
-                            <i class="bi bi-check-circle-fill mr-1"></i>Quick Tips
-                        </h6>
-                        <ul class="text-muted mb-0 small" style="list-style: none; padding-left: 0;">
-                            <li class="mb-1"><i class="bi bi-check text-success mr-1"></i>Recent, high-quality</li>
-                            <li class="mb-1"><i class="bi bi-check text-success mr-1"></i>Face clearly visible</li>
-                            <li class="mb-1"><i class="bi bi-check text-success mr-1"></i>Professional look</li>
-                            <li class="mb-0"><i class="bi bi-check text-success mr-1"></i>Good lighting</li>
-                        </ul>
-                    </div>
-                    <div style="min-width: 120px;">
-                        <h6 class="text-muted mb-2 small">
-                            <i class="bi bi-gear-fill mr-1"></i>Actions
-                        </h6>
-                        @if(view()->exists('takeone::components.widget') && $user)
-                            <x-takeone-cropper
-                                id="profile_picture"
-                                width="300"
-                                height="400"
-                                shape="rectangle"
-                                folder="images/profiles"
-                                filename="profile_{{ $user->id }}"
-                                uploadUrl="{{ $uploadUrl }}"
-                                currentImage="{{ $currentProfileImage }}"
-                                buttonText="Change Photo"
-                                buttonClass="btn btn-success btn-sm w-full"
-                                :canvasHeight="500"
-                            />
-                        @else
-                            <button type="button" class="btn btn-success btn-sm w-full" onclick="document.getElementById('profile_picture_input').click()">
-                                <i class="bi bi-camera mr-1"></i>Change Photo
-                            </button>
-                            <input type="file" id="profile_picture_input" name="profile_picture" accept="image/*" class="hidden" style="display: none;">
-                        @endif
-                        <button type="button" class="btn btn-outline-danger btn-sm w-full mt-2" id="removeProfilePicture" @if(!$currentProfileImage) style="display: none;" @endif>
-                            <i class="bi bi-trash mr-1"></i>Remove
+                <!-- Photo Guidelines -->
+                <div class="mb-3">
+                    <h6 class="text-muted mb-2 small">
+                        <i class="bi bi-check-circle-fill mr-1"></i>Quick Tips
+                    </h6>
+                    <ul class="text-muted mb-0 small grid grid-cols-2 gap-x-3" style="list-style: none; padding-left: 0;">
+                        <li class="mb-1"><i class="bi bi-check text-success mr-1"></i>Recent, high-quality</li>
+                        <li class="mb-1"><i class="bi bi-check text-success mr-1"></i>Face clearly visible</li>
+                        <li class="mb-1"><i class="bi bi-check text-success mr-1"></i>Professional look</li>
+                        <li class="mb-0"><i class="bi bi-check text-success mr-1"></i>Good lighting</li>
+                    </ul>
+                </div>
+
+                <!-- Inline Photo Editor (embedded in the form, no popup) -->
+                <div>
+                    <h6 class="text-muted mb-2 small">
+                        <i class="bi bi-pencil-square mr-1"></i>Edit / Replace Photo
+                    </h6>
+                    @if(view()->exists('takeone::components.widget') && $user)
+                        <x-takeone-cropper
+                            id="profile_picture"
+                            width="300"
+                            height="400"
+                            shape="rectangle"
+                            folder="images/profiles"
+                            filename="profile_{{ $user->id }}"
+                            uploadUrl="{{ $uploadUrl }}"
+                            currentImage="{{ $currentProfileImage }}"
+                            :canvasHeight="500"
+                            :inline="true"
+                        />
+                    @else
+                        <button type="button" class="btn btn-success btn-sm w-full" onclick="document.getElementById('profile_picture_input').click()">
+                            <i class="bi bi-camera mr-1"></i>Change Photo
                         </button>
-                    </div>
+                        <input type="file" id="profile_picture_input" name="profile_picture" accept="image/*" class="hidden" style="display: none;">
+                    @endif
+                    <button type="button" class="btn btn-outline-danger btn-sm w-full mt-2" id="removeProfilePicture" @if(!$currentProfileImage) style="display: none;" @endif>
+                        <i class="bi bi-trash mr-1"></i>Remove
+                    </button>
                 </div>
             </div>
         </div>

@@ -14,7 +14,7 @@
 <!-- Walk-In Registration Modal -->
 <div x-data="walkInRegistration()" x-init="init()" x-show="open" x-cloak
      class="fixed inset-0 z-50 overflow-y-auto"
-     x-on:{{ $eventName }}.window="openModal()"
+     x-on:{{ $eventName }}.window="openModal($event.detail)"
      @keydown.escape.window="open && closeWalkIn()">
 
     <!-- Backdrop -->
@@ -22,42 +22,44 @@
          x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
          class="fixed inset-0 bg-black/50" @click="closeWalkIn()"></div>
 
-    <div class="flex min-h-screen items-center justify-center p-4">
+    {{-- Mobile: full-height sheet (items-stretch, p-0). Desktop (sm+): centered card. --}}
+    <div class="flex min-h-[100dvh] items-stretch sm:items-center justify-center p-0 sm:p-4">
         <div x-show="open" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
              x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-             class="relative bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden" @click.stop>
+             class="relative bg-white shadow-xl w-full max-w-3xl flex flex-col overflow-hidden rounded-none sm:rounded-2xl max-h-[100dvh] sm:max-h-[90vh]" @click.stop>
 
             <!-- Header -->
-            <div class="px-6 py-4 border-b border-gray-100">
-                <h3 class="text-xl font-bold text-gray-900">Walk-In Registration</h3>
-                <p class="text-sm text-gray-500 mt-1">Step <span x-text="step"></span> of 4: <span x-text="stepNames[step - 1]"></span></p>
+            <div class="flex-shrink-0 px-5 sm:px-6 py-4 border-b border-gray-100">
+                <h3 class="text-lg sm:text-xl font-bold text-gray-900" x-text="registrantType === 'child' ? 'Register Child' : 'Walk-In Registration'"></h3>
+                <p class="text-sm text-gray-500 mt-1">Step <span x-text="currentStepIndex"></span> of <span x-text="visibleSteps.length"></span>: <span x-text="currentStepLabel"></span></p>
             </div>
 
-            <!-- Step Indicator -->
-            <div class="flex items-center justify-center gap-2 py-4 px-6 bg-gray-50">
-                <template x-for="i in 4" :key="i">
-                    <div class="flex items-center gap-2">
-                        <div class="w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors"
-                             :class="i < step ? 'bg-purple-500 text-white' : (i === step ? 'bg-purple-500 text-white' : 'bg-gray-200 text-gray-500')">
-                            <template x-if="i < step">
+            <!-- Step Indicator (driven by visibleSteps so the Child flow skips the children step) -->
+            <div class="flex-shrink-0 flex items-center justify-center gap-1.5 sm:gap-2 py-3 sm:py-4 px-4 sm:px-6 bg-gray-50">
+                <template x-for="(vs, idx) in visibleSteps" :key="vs.step">
+                    <div class="flex items-center gap-1.5 sm:gap-2">
+                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-semibold transition-colors"
+                             :class="vs.step <= step ? 'bg-purple-500 text-white' : 'bg-gray-200 text-gray-500'">
+                            <template x-if="vs.step < step">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                             </template>
-                            <template x-if="i >= step">
-                                <span x-text="i"></span>
+                            <template x-if="vs.step >= step">
+                                <span x-text="idx + 1"></span>
                             </template>
                         </div>
-                        <div x-show="i < 4" class="h-0.5 w-12 transition-colors" :class="i < step ? 'bg-purple-500' : 'bg-gray-200'"></div>
+                        <div x-show="idx < visibleSteps.length - 1" class="h-0.5 w-6 sm:w-12 transition-colors" :class="vs.step < step ? 'bg-purple-500' : 'bg-gray-200'"></div>
                     </div>
                 </template>
             </div>
 
-            <div class="overflow-y-auto max-h-[60vh]">
+            {{-- Mobile: body flexes to fill the sheet & scrolls. Desktop: capped at 60vh. --}}
+            <div class="flex-1 min-h-0 overflow-y-auto sm:flex-none sm:max-h-[60vh]">
                 <!-- Step 1: Personal Information -->
-                <div x-show="step === 1" class="p-6 space-y-6">
+                <div x-show="step === 1" class="p-4 sm:p-6 space-y-5 sm:space-y-6">
                     <div class="bg-gray-50 rounded-xl p-4">
                         <h4 class="flex items-center gap-2 font-semibold text-gray-900 mb-4">
-                            <i class="bi bi-person text-purple-500 text-lg"></i>
-                            Personal Information
+                            <i class="bi text-purple-500 text-lg" :class="registrantType === 'child' ? 'bi-balloon' : 'bi-person'"></i>
+                            <span x-text="registrantType === 'child' ? 'Child Details' : 'Personal Information'"></span>
                         </h4>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div class="sm:col-span-2">
@@ -67,7 +69,7 @@
                                        class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="John Doe">
                                 <span x-show="errors.name" x-text="errors.name" class="text-red-500 text-xs mt-1 block"></span>
                             </div>
-                            <div>
+                            <div x-show="registrantType === 'guardian'">
                                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Email <span class="text-red-500">*</span></label>
                                 <input type="email" x-model="data.guardian.email" @input="errors.email = ''"
                                        :class="errors.email ? 'border-red-400 ring-2 ring-red-100' : 'border-gray-200'"
@@ -83,7 +85,7 @@
                                 </x-country-code-dropdown>
                                 <span x-show="errors.phone" x-text="errors.phone" class="text-red-500 text-xs mt-1 block"></span>
                             </div>
-                            <div>
+                            <div x-show="registrantType === 'guardian'">
                                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Password <span class="text-red-500">*</span></label>
                                 <div class="relative">
                                     <input :type="showPassword ? 'text' : 'password'" x-model="data.guardian.password" @input="errors.password = ''"
@@ -95,7 +97,7 @@
                                 </div>
                                 <span x-show="errors.password" x-text="errors.password" class="text-red-500 text-xs mt-1 block"></span>
                             </div>
-                            <div>
+                            <div x-show="registrantType === 'guardian'">
                                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Confirm Password <span class="text-red-500">*</span></label>
                                 <div class="relative">
                                     <input :type="showConfirmPassword ? 'text' : 'password'" x-model="passwordConfirmation" @input="errors.confirmPassword = ''"
@@ -128,7 +130,7 @@
                 </div>
 
                 <!-- Step 2: Guardian & Children -->
-                <div x-show="step === 2" class="p-6 space-y-6">
+                <div x-show="step === 2" class="p-4 sm:p-6 space-y-5 sm:space-y-6">
                     <div>
                         <h4 class="text-lg font-semibold text-gray-900 mb-4">Are you registering children?</h4>
                         <div class="grid grid-cols-2 gap-4">
@@ -195,6 +197,26 @@
                                             <option value="Pakistan">Pakistan</option>
                                         </select>
                                     </div>
+                                    {{-- A child needs no email/password — just a phone number for contact. --}}
+                                    <div class="col-span-2">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number <span class="text-red-500">*</span></label>
+                                        <div class="flex">
+                                            <select x-model="child.countryCode" class="px-2 py-2 border border-r-0 border-gray-200 rounded-l-lg text-sm bg-gray-50 focus:ring-2 focus:ring-purple-500">
+                                                <option value="+973">🇧🇭 +973</option>
+                                                <option value="+966">🇸🇦 +966</option>
+                                                <option value="+971">🇦🇪 +971</option>
+                                                <option value="+965">🇰🇼 +965</option>
+                                                <option value="+974">🇶🇦 +974</option>
+                                                <option value="+968">🇴🇲 +968</option>
+                                                <option value="+1">+1</option>
+                                                <option value="+44">+44</option>
+                                                <option value="+91">+91</option>
+                                                <option value="+92">+92</option>
+                                            </select>
+                                            <input type="tel" x-model="child.phone" inputmode="tel"
+                                                   class="flex-1 px-3 py-2 border border-gray-200 rounded-r-lg text-sm focus:ring-2 focus:ring-purple-500" placeholder="Phone number">
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </template>
@@ -202,7 +224,7 @@
                 </div>
 
                 <!-- Step 3: Package Selection -->
-                <div x-show="step === 3" class="p-6 space-y-6">
+                <div x-show="step === 3" class="p-4 sm:p-6 space-y-5 sm:space-y-6">
                     <div>
                         <h4 class="text-lg font-semibold text-gray-900 mb-2">Select Packages for Each Person</h4>
                         <p class="text-sm text-gray-500">Package selection is optional. You can register members without selecting packages.</p>
@@ -295,7 +317,7 @@
                 </div>
 
                 <!-- Step 4: Payment Confirmation -->
-                <div x-show="step === 4" class="p-6 space-y-6">
+                <div x-show="step === 4" class="p-4 sm:p-6 space-y-5 sm:space-y-6">
                     <div>
                         <h4 class="text-lg font-semibold text-gray-900 mb-2">Payment Confirmation</h4>
                         <p class="text-sm text-gray-500">Please collect the payment and confirm to complete registration.</p>
@@ -340,8 +362,9 @@
                 </div>
             </div>
 
-            <!-- Footer with Navigation -->
-            <div class="px-6 py-4 border-t border-gray-100 flex justify-between">
+            <!-- Footer with Navigation (sticky, safe-area aware on mobile) -->
+            <div class="flex-shrink-0 px-5 sm:px-6 py-4 border-t border-gray-100 flex justify-between gap-3 bg-white"
+                 style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
                 <button type="button" @click="prevStep()" x-show="step > 1" class="px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">
                     <i class="bi bi-arrow-left mr-2"></i>Back
                 </button>
@@ -358,12 +381,15 @@
     </div>
 </div>
 
-@push('scripts')
+{{-- Inline (not @push) so the factory is re-defined when this component is
+     swapped into the mobile shell's #shell-content via in-place navigation.
+     On desktop the inline script runs identically on full page load. --}}
 <script>
 function walkInRegistration() {
     return {
         open: false,
         step: 1,
+        registrantType: 'guardian',   // 'guardian' (account) | 'child' (standalone, phone only)
         isSubmitting: false,
         showPassword: false,
         showConfirmPassword: false,
@@ -373,7 +399,22 @@ function walkInRegistration() {
         vatPercentageAmount: {{ $vatPercentage }},
         clubId: '{{ $clubId }}',
         availablePackages: @json($packages),
-        stepNames: ['Personal Information', 'Guardian & Children', 'Package Selection', 'Payment Confirmation'],
+
+        // The visible step sequence differs by type — Child skips the "children" step.
+        // `step` stays tied to the markup numbers (1 details · 2 children · 3 packages · 4 payment).
+        get visibleSteps() {
+            return this.registrantType === 'child'
+                ? [{ step: 1, label: 'Child Details' }, { step: 3, label: 'Package Selection' }, { step: 4, label: 'Payment Confirmation' }]
+                : [{ step: 1, label: 'Personal Information' }, { step: 2, label: 'Guardian & Children' }, { step: 3, label: 'Package Selection' }, { step: 4, label: 'Payment Confirmation' }];
+        },
+        get currentStepLabel() {
+            const s = this.visibleSteps.find(v => v.step === this.step);
+            return s ? s.label : '';
+        },
+        get currentStepIndex() {
+            const i = this.visibleSteps.findIndex(v => v.step === this.step);
+            return i < 0 ? 1 : i + 1;
+        },
 
         data: {
             guardian: { name: '', email: '', password: '', phone: '', countryCode: '+973', dob: '', gender: '', nationality: '', address: '' },
@@ -408,8 +449,9 @@ function walkInRegistration() {
             this.$watch('data.discountValue', () => this.calculateTotals());
         },
 
-        openModal() {
+        openModal(detail) {
             this.resetForm();
+            this.registrantType = (detail && detail.type === 'child') ? 'child' : 'guardian';
             this.open = true;
         },
 
@@ -419,6 +461,7 @@ function walkInRegistration() {
 
         resetForm() {
             this.step = 1;
+            this.registrantType = 'guardian';
             this.isSubmitting = false;
             this.showPassword = false;
             this.showConfirmPassword = false;
@@ -446,10 +489,10 @@ function walkInRegistration() {
                 if (dobYear) dobYear.value = '';
                 const genderEl = document.getElementById('walkIn_gender');
                 if (genderEl) genderEl.value = '';
-                const nationalityEl = document.getElementById('walkIn_nationality');
-                if (nationalityEl) nationalityEl.value = '';
-                const countryCodeEl = document.getElementById('walkIn_countryCode');
-                if (countryCodeEl) countryCodeEl.value = '+973';
+                // NOTE: do NOT clear walkIn_nationality here. The country dropdown
+                // geo-detects a default and keeps it in its own Alpine state; wiping
+                // only the DOM value desyncs them — the field shows a country but
+                // submits empty, triggering a false "select a nationality" error.
             });
         },
 
@@ -467,7 +510,9 @@ function walkInRegistration() {
                 name: '',
                 dob: '',
                 gender: 'Male',
-                nationality: this.data.guardian.nationality || ''
+                nationality: this.data.guardian.nationality || '',
+                phone: '',
+                countryCode: this.data.guardian.countryCode || '+973'
             });
         },
 
@@ -478,6 +523,25 @@ function walkInRegistration() {
         // --- Step 3: People & Packages ---
         buildPeopleList() {
             this.data.people = [];
+
+            // Child mode: the single registrant IS the child (standalone, no guardian).
+            if (this.registrantType === 'child') {
+                const g = this.data.guardian;
+                this.data.people.push({
+                    id: 'child_primary',
+                    name: g.name,
+                    dob: g.dob,
+                    gender: g.gender,
+                    nationality: g.nationality,
+                    phone: g.phone,
+                    countryCode: g.countryCode || '+973',
+                    type: 'child',
+                    isJoining: true,   // single person — auto-selected for packages/payment
+                    selectedPackageIds: []
+                });
+                return;
+            }
+
             if (this.data.guardian.dob && this.data.guardian.gender) {
                 this.data.people.push({
                     id: 'guardian',
@@ -498,6 +562,8 @@ function walkInRegistration() {
                         dob: child.dob,
                         gender: child.gender,
                         nationality: child.nationality,
+                        phone: child.phone,
+                        countryCode: child.countryCode || '+973',
                         type: 'child',
                         isJoining: false,
                         selectedPackageIds: []
@@ -599,26 +665,29 @@ function walkInRegistration() {
                 this.errors.name = 'Full name is required.'; valid = false;
             }
 
-            if (!g.email.trim()) {
-                this.errors.email = 'Email address is required.'; valid = false;
-            } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(g.email.trim())) {
-                this.errors.email = 'Please enter a valid email address.'; valid = false;
+            // Email + password only apply to a Guardian/Adult account. A Child needs just a phone.
+            if (this.registrantType === 'guardian') {
+                if (!g.email.trim()) {
+                    this.errors.email = 'Email address is required.'; valid = false;
+                } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(g.email.trim())) {
+                    this.errors.email = 'Please enter a valid email address.'; valid = false;
+                }
+
+                if (!g.password) {
+                    this.errors.password = 'Password is required.'; valid = false;
+                } else if (g.password.length < 8) {
+                    this.errors.password = 'Password must be at least 8 characters.'; valid = false;
+                }
+
+                if (!this.passwordConfirmation) {
+                    this.errors.confirmPassword = 'Please confirm your password.'; valid = false;
+                } else if (g.password !== this.passwordConfirmation) {
+                    this.errors.confirmPassword = 'Passwords do not match.'; valid = false;
+                }
             }
 
             if (!g.phone.trim()) {
                 this.errors.phone = 'Phone number is required.'; valid = false;
-            }
-
-            if (!g.password) {
-                this.errors.password = 'Password is required.'; valid = false;
-            } else if (g.password.length < 8) {
-                this.errors.password = 'Password must be at least 8 characters.'; valid = false;
-            }
-
-            if (!this.passwordConfirmation) {
-                this.errors.confirmPassword = 'Please confirm your password.'; valid = false;
-            } else if (g.password !== this.passwordConfirmation) {
-                this.errors.confirmPassword = 'Passwords do not match.'; valid = false;
             }
 
             if (!g.dob) {
@@ -652,10 +721,11 @@ function walkInRegistration() {
             for (let i = 0; i < this.data.children.length; i++) {
                 const child = this.data.children[i];
                 const n = i + 1;
-                if (!child.name.trim()) { this.toast(`Child ${n}: Name is required.`, 'warning'); return false; }
-                if (!child.dob)         { this.toast(`Child ${n}: Date of birth is required.`, 'warning'); return false; }
-                if (!child.gender)      { this.toast(`Child ${n}: Please select a gender.`, 'warning'); return false; }
-                if (!child.nationality) { this.toast(`Child ${n}: Please select a nationality.`, 'warning'); return false; }
+                if (!child.name.trim())            { this.toast(`Child ${n}: Name is required.`, 'warning'); return false; }
+                if (!child.dob)                    { this.toast(`Child ${n}: Date of birth is required.`, 'warning'); return false; }
+                if (!child.gender)                 { this.toast(`Child ${n}: Please select a gender.`, 'warning'); return false; }
+                if (!child.nationality)            { this.toast(`Child ${n}: Please select a nationality.`, 'warning'); return false; }
+                if (!child.phone || !child.phone.trim()) { this.toast(`Child ${n}: Phone number is required.`, 'warning'); return false; }
             }
             return true;
         },
@@ -674,6 +744,14 @@ function walkInRegistration() {
             if (this.step === 2 && !this.validateStep2()) return;
             if (this.step === 3 && !this.validateStep3()) return;
 
+            // Child mode skips the "children" step: 1 → 3 (packages).
+            if (this.step === 1 && this.registrantType === 'child') {
+                this.buildPeopleList();
+                this.calculateTotals();
+                this.step = 3;
+                return;
+            }
+
             if (this.step === 2) this.buildPeopleList();
             if (this.step === 3) this.calculateTotals();
 
@@ -681,6 +759,8 @@ function walkInRegistration() {
         },
 
         prevStep() {
+            // Child mode: from packages (3) go straight back to the details step (1).
+            if (this.registrantType === 'child' && this.step === 3) { this.step = 1; return; }
             if (this.step > 1) this.step--;
         },
 
@@ -690,10 +770,11 @@ function walkInRegistration() {
             try {
                 const joiningPeople = this.data.people.filter(p => p.isJoining);
                 const formData = {
-                    guardian:       this.data.guardian,
-                    people:         joiningPeople,
-                    discount_type:  this.data.discountType,
-                    discount_value: this.data.discountValue
+                    registrant_type: this.registrantType,
+                    guardian:        this.data.guardian,
+                    people:          joiningPeople,
+                    discount_type:   this.data.discountType,
+                    discount_value:  this.data.discountValue
                 };
 
                 const res = await fetch(`/admin/club/${this.clubId}/members/walk-in`, {
@@ -752,4 +833,3 @@ function walkInRegistration() {
     };
 }
 </script>
-@endpush

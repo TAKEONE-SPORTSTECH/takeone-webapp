@@ -2891,6 +2891,25 @@
     justify-content: center;
 }
 
+/* Mobile: the cropper modal-dialog carries a LOCKED inline width (1000px / max-width:75%)
+   that leaves the dialog too narrow on phones. Override width here (scoped to cropper modals
+   via :has) without touching the locked Blade markup, so desktop stays exactly as configured. */
+@media (max-width: 640px) {
+    .modal-dialog:has(.modal-content-clean) {
+        width: auto !important;
+        max-width: calc(100vw - 1rem) !important;
+        margin-left: 0.5rem !important;
+        margin-right: 0.5rem !important;
+    }
+    .modal-content-clean .modal-body {
+        padding: 1rem !important;
+    }
+    /* Keep the canvas usable on small screens; height stays per the locked canvasHeight. */
+    .modal-content-clean .takeone-canvas {
+        max-width: 100%;
+    }
+}
+
 /* ---- Auth: Register (3rd-party library overrides) ---- */
 .select2-container--default .select2-selection--single {
     border: 2px solid rgba(139, 92, 246, 0.2) !important;

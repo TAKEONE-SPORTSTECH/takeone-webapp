@@ -23,6 +23,7 @@
     $maxScale = $attributes->get('maxScale', 3);                  // Max scale multiplier for auto-sizing
     $uploadAsIs = $attributes->get('uploadAsIs', false);          // Show "Upload As Is" button alongside crop
     $uploadAsIsText = $attributes->get('uploadAsIsText', 'Upload As Is'); // Label for the as-is button
+    $inline = filter_var($attributes->get('inline', false), FILTER_VALIDATE_BOOLEAN); // Render crop UI inline (no modal popup)
 @endphp
 
 <x-toast-notification />
@@ -34,7 +35,12 @@
     {{-- Styles moved to app.css (Phase 6) --}}
 @endonce
 
-@if($mode === 'form')
+@if($inline)
+{{-- Inline mode: render the crop UI directly in the page (no modal popup), like a form section. --}}
+<div class="cropper-inline-wrapper bg-white rounded-xl border border-border p-4 text-left" id="cropperInline_{{ $id }}">
+    @include('takeone::components.widget-crop-body', ['showClose' => false])
+</div>
+@elseif($mode === 'form')
 {{-- Form mode: Show preview and hidden input --}}
 <div class="cropper-form-wrapper text-center" id="wrapper_{{ $id }}">
     <div class="cropper-preview-container mb-2" id="previewContainer_{{ $id }}">
@@ -68,50 +74,21 @@
 </button>
 @endif
 
+@if(!$inline)
 @push('modals')
 <div class="modal fade" id="cropperModal_{{ $id }}" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: {{ $modalMaxWidth }}; width: {{ $modalWidth }}px;">
         <div class="modal-content modal-content-clean shadow-lg">
             <div class="modal-body p-4 text-left" style="max-height: 85vh; overflow-y: auto;">
-                <div class="mb-3 flex items-center">
-                    <input type="file" id="input_{{ $id }}" class="form-control form-control-sm" accept="image/*">
-                    <button type="button" class="btn-close ml-2" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-
-                <div id="box_{{ $id }}" class="takeone-canvas" style="height: {{ $canvasHeight }}px;"></div>
-
-                <div class="grid grid-cols-12 gap-4 mt-4">
-                    <div class="col-span-12 md:col-span-6 mb-3">
-                        <label class="custom-slider-label block mb-2">Zoom Level</label>
-                        <input type="range" class="form-range" id="zoom_{{ $id }}" min="0" max="100" step="1" value="0">
-                    </div>
-                    <div class="col-span-12 md:col-span-6 mb-3">
-                        <label class="custom-slider-label block mb-2">Rotation</label>
-                        <input type="range" class="form-range" id="rot_{{ $id }}" min="-180" max="180" step="1" value="0">
-                    </div>
-                </div>
-
-                <div class="grid gap-2 mt-2">
-                    @if($uploadAsIs)
-                    <div class="grid grid-cols-2 gap-2">
-                        <button type="button" class="btn btn-outline-secondary btn-lg font-bold py-3" id="saveAsIs_{{ $id }}">
-                            {{ $uploadAsIsText }}
-                        </button>
-                        <button type="button" class="btn btn-success btn-lg font-bold py-3" id="save_{{ $id }}">
-                            @if($mode === 'form') Crop & Apply @else Crop & Save Image @endif
-                        </button>
-                    </div>
-                    @else
-                    <button type="button" class="btn btn-success btn-lg font-bold py-3" id="save_{{ $id }}">
-                        @if($mode === 'form') Crop & Apply @else Crop & Save Image @endif
-                    </button>
-                    @endif
-                </div>
+                @include('takeone::components.widget-crop-body', ['showClose' => true])
             </div>
         </div>
     </div>
 </div>
+@endpush
+@endif
 
+@push('scripts')
 <script>
 $(function() {
     let cropper_{{ $id }} = null;
@@ -150,20 +127,82 @@ $(function() {
         });
     }
 
+@if($inline)
+    // Inline mode: the crop editor is its own overlay surface, hidden until the user picks a
+    // file or takes a photo. It's moved onto <body> so `position: fixed` resolves against the
+    // viewport even when an ancestor (the mobile shell) carries a CSS transform.
+    let editorMoved_{{ $id }} = false;
+    function showEditor_{{ $id }}() {
+        const ed = document.getElementById('editor_{{ $id }}');
+        if (!ed) return;
+        if (!editorMoved_{{ $id }}) {
+            document.body.appendChild(ed);
+            editorMoved_{{ $id }} = true;
+        }
+        ed.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+    function hideEditor_{{ $id }}() {
+        const ed = document.getElementById('editor_{{ $id }}');
+        if (ed) ed.style.display = 'none';
+        document.body.style.overflow = '';
+        // Destroy the cropper and reset the pickers so the next open starts clean.
+        if (cropper_{{ $id }}) { cropper_{{ $id }}.destroy(); cropper_{{ $id }} = null; }
+        const fi = document.getElementById('input_{{ $id }}');
+        const ci = document.getElementById('cameraInput_{{ $id }}');
+        if (fi) fi.value = '';
+        if (ci) ci.value = '';
+    }
+    document.getElementById('cancel_{{ $id }}')?.addEventListener('click', hideEditor_{{ $id }});
+    document.getElementById('cancelBtn_{{ $id }}')?.addEventListener('click', hideEditor_{{ $id }});
+    document.getElementById('editorBackdrop_{{ $id }}')?.addEventListener('click', hideEditor_{{ $id }});
+@else
     // Load current image when modal opens
     $('#cropperModal_{{ $id }}').on('shown.bs.modal', function() {
         if (currentImage_{{ $id }} && !cropper_{{ $id }}) {
             initCropper_{{ $id }}(currentImage_{{ $id }});
         }
     });
+@endif
 
-    $('#input_{{ $id }}').on('change', function() {
-        if (this.files && this.files[0]) {
+    function handleFileSelect_{{ $id }}(input) {
+        if (input.files && input.files[0]) {
+@if($inline)
+            // Reveal the editor synchronously so the canvas is on-screen before Cropme measures it.
+            showEditor_{{ $id }}();
+@endif
             const reader = new FileReader();
             reader.onload = function(event) {
                 initCropper_{{ $id }}(event.target.result);
             };
-            reader.readAsDataURL(this.files[0]);
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    $('#input_{{ $id }}').on('change', function() {
+        handleFileSelect_{{ $id }}(this);
+    });
+
+    // "Take Photo" → open the device camera (capture input), then feed the same cropper flow.
+    // On desktop (no camera capture support) this falls back to the normal file picker.
+    $('#camera_{{ $id }}').on('click', function() {
+        const camInput = document.getElementById('cameraInput_{{ $id }}');
+        if (camInput && 'capture' in document.createElement('input')) {
+            camInput.click();
+        } else {
+            document.getElementById('input_{{ $id }}').click();
+        }
+    });
+
+    $('#cameraInput_{{ $id }}').on('change', function() {
+        handleFileSelect_{{ $id }}(this);
+        // mirror the chosen file into the visible input's label by syncing the as-is path
+        if (this.files && this.files[0]) {
+            try {
+                const dt = new DataTransfer();
+                dt.items.add(this.files[0]);
+                document.getElementById('input_{{ $id }}').files = dt.files;
+            } catch (e) { /* DataTransfer unsupported — cropper still works */ }
         }
     });
 
@@ -210,6 +249,9 @@ $(function() {
 
                 // Close modal
                 $('#cropperModal_{{ $id }}').modal('hide');
+@if($inline)
+                hideEditor_{{ $id }}();
+@endif
                 btn.prop('disabled', false).text('Crop & Apply');
             });
         } else {
@@ -233,6 +275,9 @@ $(function() {
                         filename: '{{ $filename }}'
                     }).done((res) => {
                     $('#cropperModal_{{ $id }}').modal('hide');
+@if($inline)
+                    hideEditor_{{ $id }}();
+@endif
                     Toast.success('Photo Updated!', 'Your image has been saved successfully.');
 
                     // Update the image on the page without reload
@@ -328,6 +373,9 @@ $(function() {
                     `);
                     previewContainer.addClass('has-image');
                     $('#cropperModal_{{ $id }}').modal('hide');
+@if($inline)
+                    hideEditor_{{ $id }}();
+@endif
                     btn.prop('disabled', false).text('{{ $uploadAsIsText }}');
                 } else {
                     $.post("{{ $uploadUrl }}", {
@@ -337,6 +385,9 @@ $(function() {
                         filename: '{{ $filename }}'
                     }).done((res) => {
                         $('#cropperModal_{{ $id }}').modal('hide');
+@if($inline)
+                        hideEditor_{{ $id }}();
+@endif
                         Toast.success('Photo Updated!', 'Your image has been saved successfully.');
 
                         if (res.url) {

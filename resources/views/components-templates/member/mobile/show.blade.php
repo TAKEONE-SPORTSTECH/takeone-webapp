@@ -222,18 +222,22 @@
                 ];
             @endphp
             @foreach($medals as [$label,$cnt,$icon,$c1,$c2])
-                <div class="mp-medal rounded-2xl p-3 text-center text-white shadow-sm" style="--c1:{{ $c1 }};--c2:{{ $c2 }}">
+                <button type="button"
+                        @click="tab='tournaments'; $nextTick(() => document.getElementById('mpTabs')?.scrollIntoView({ behavior:'smooth', block:'start' }))"
+                        class="mp-medal m-press rounded-2xl p-3 text-center text-white shadow-sm w-full"
+                        style="--c1:{{ $c1 }};--c2:{{ $c2 }}"
+                        aria-label="{{ $label }} — {{ __('member.medals_awards') }}">
                     <i class="bi {{ $icon }} text-lg"></i>
                     <p class="text-lg font-black leading-none mt-1">{{ $cnt }}</p>
                     <p class="text-[10px] opacity-90">{{ $label }}</p>
-                </div>
+                </button>
             @endforeach
         </div>
     </div>
     @endif
 
     {{-- ===== Sticky tabs ===== --}}
-    <div class="sticky top-14 z-30 bg-background/95 backdrop-blur mt-5 py-2">
+    <div id="mpTabs" class="sticky top-14 z-30 bg-background/95 backdrop-blur mt-5 py-2">
         <div class="mp-tabbar flex gap-2 overflow-x-auto px-4">
             @foreach([
                 'overview'=>__('member.tab_overview'),'health'=>__('member.tab_health'),'goals'=>__('member.tab_goals'),
