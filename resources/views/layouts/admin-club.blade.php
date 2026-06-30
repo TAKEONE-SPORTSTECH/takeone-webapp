@@ -76,14 +76,57 @@ html, body { overflow: hidden !important; height: 100% !important; }
     display:block; font-size:8px; font-weight:600;
     color:#7c3aed; letter-spacing:1px; text-align:center; text-transform:uppercase;
 }
-.emp-sb-btn {
-    width:30px; height:30px; border-radius:7px; cursor:pointer;
-    background:#f3f4f6; border:1px solid #e5e7eb;
+/* Club brand header */
+.emp-brand {
+    flex-shrink:0; padding:18px 16px 12px;
+    display:flex; flex-direction:column; align-items:center; gap:9px;
+    background:linear-gradient(180deg,#faf8ff 0%,#ffffff 100%);
+    border-bottom:1px solid #f3f0fb;
+}
+.emp-brand-logo {
+    width:82px; height:82px; border-radius:18px;
+    background:#fff; padding:7px;
     display:flex; align-items:center; justify-content:center;
-    font-size:12px; color:#6b7280; transition:all 0.15s;
+    box-shadow:0 6px 18px rgba(124,58,237,0.14), 0 0 0 1px rgba(124,58,237,0.10);
+}
+.emp-brand-logo img { width:100%; height:100%; object-fit:contain; border-radius:12px; }
+.emp-brand-logo .ph {
+    width:100%; height:100%; border-radius:12px;
+    background:linear-gradient(135deg,#ede9fe,#ddd6fe);
+    display:flex; align-items:center; justify-content:center;
+    font-size:26px; font-weight:800; color:#7c3aed; letter-spacing:-1px; line-height:1;
+}
+.emp-brand-eyebrow {
+    font-size:8px; font-weight:700; letter-spacing:2px; text-transform:uppercase;
+    color:#a78bfa; line-height:1;
+}
+.emp-brand-name {
+    font-size:12.5px; font-weight:700; color:#3b0764;
+    text-align:center; line-height:1.3; letter-spacing:0.02em; margin:0;
+}
+
+/* Action segmented bar */
+.emp-actions {
+    flex-shrink:0; display:flex; justify-content:center; gap:6px;
+    padding:12px 16px 14px;
+}
+.emp-sb-btn {
+    width:34px; height:34px; border-radius:10px; cursor:pointer;
+    background:#f4f3f8; border:1px solid #eceaf3;
+    display:flex; align-items:center; justify-content:center;
+    font-size:14px; color:#6b7280; transition:all 0.16s ease;
     text-decoration:none;
 }
-.emp-sb-btn:hover { background:#ede9fe; border-color:#8b5cf6; color:#7c3aed; }
+.emp-sb-btn:hover {
+    background:#ede9fe; border-color:#c4b5fd; color:#7c3aed;
+    transform:translateY(-1px);
+    box-shadow:0 4px 10px rgba(124,58,237,0.16);
+}
+.emp-sb-btn.active {
+    background:#7c3aed; border-color:#7c3aed; color:#fff;
+    box-shadow:0 4px 12px rgba(124,58,237,0.30);
+}
+.emp-sb-btn.active:hover { background:#6d28d9; color:#fff; transform:translateY(-1px); }
 
 #emp-sidebar .nav-item {
     display:flex; align-items:center; gap:8px;
@@ -104,6 +147,14 @@ html, body { overflow: hidden !important; height: 100% !important; }
     width:3px; height:60%; background:#7c3aed; border-radius:0 2px 2px 0;
 }
 #emp-sidebar .nav-item .ni { font-size:13px; width:15px; text-align:center; flex-shrink:0; }
+
+/* Nav groups */
+.emp-nav-grp { display:flex; flex-direction:column; gap:2px; }
+.emp-nav-grp + .emp-nav-grp { margin-top:10px; padding-top:10px; border-top:1px solid #f5f3fb; }
+.emp-nav-grp-ttl {
+    font-size:8px; font-weight:700; letter-spacing:1.6px; text-transform:uppercase;
+    color:#b3a3d6; margin:0 0 4px; padding:0 10px;
+}
 
 #emp-sidebar-nav::-webkit-scrollbar { width:3px; }
 #emp-sidebar-nav::-webkit-scrollbar-track { background:transparent; }
@@ -137,27 +188,40 @@ html, body { overflow: hidden !important; height: 100% !important; }
     $clubId = $club->slug ?? $club->id ?? null;
     $currentRoute = request()->route()->getName();
     $clubPublicUrl = \App\Http\Controllers\QrController::clubPageUrl($club);
-    $navItems = [
-        ['route'=>'admin.club.dashboard',    'icon'=>'bi-speedometer2',   'label'=>'Dashboard'],
-        ['route'=>'admin.club.members',      'icon'=>'bi-person-plus',    'label'=>'Members'],
-        ['route'=>'admin.club.financials',   'icon'=>'bi-currency-dollar','label'=>'Financials'],
-        ['route'=>'admin.club.details',      'icon'=>'bi-building',       'label'=>'Club Details'],
-        ['route'=>'admin.club.facilities',   'icon'=>'bi-geo-alt',        'label'=>'Facilities'],
-        ['route'=>'admin.club.instructors',  'icon'=>'bi-people',         'label'=>'Instructors'],
-        ['route'=>'admin.club.activities',   'icon'=>'bi-activity',       'label'=>'Activities'],
-        ['route'=>'admin.club.events',       'icon'=>'bi-calendar-event', 'label'=>'Events'],
-        ['route'=>'admin.club.timeline',     'icon'=>'bi-newspaper',      'label'=>'Timeline'],
-        ['route'=>'admin.club.perks',        'icon'=>'bi-gift',           'label'=>'Perks'],
-        ['route'=>'admin.club.achievements', 'icon'=>'bi-trophy',         'label'=>'Achievements'],
-        ['route'=>'admin.club.packages',     'icon'=>'bi-box',            'label'=>'Packages'],
-        ['route'=>'admin.club.shop',         'icon'=>'bi-shop',           'label'=>'Shop'],
-        ['route'=>'admin.club.orders',       'icon'=>'bi-bag-check',      'label'=>'Orders'],
-        ['route'=>'admin.club.gallery',      'icon'=>'bi-images',         'label'=>'Gallery'],
-        ['route'=>'admin.club.roles',        'icon'=>'bi-shield-check',   'label'=>'Roles'],
-        ['route'=>'admin.club.messages',     'icon'=>'bi-chat-dots',      'label'=>'Messages'],
-        ['route'=>'admin.club.notifications','icon'=>'bi-bell',           'label'=>'Notifications'],
-        ['url'=>$clubPublicUrl, 'icon'=>'bi-eye',  'label'=>'View Club Page', 'external'=>true],
-        ['route'=>'admin.club.analytics',    'icon'=>'bi-bar-chart',      'label'=>'Analytics'],
+    $navGroups = [
+        ['label'=>'Overview', 'items'=>[
+            ['route'=>'admin.club.dashboard',    'icon'=>'bi-speedometer2',   'label'=>'Dashboard'],
+            ['route'=>'admin.club.analytics',    'icon'=>'bi-bar-chart',      'label'=>'Analytics'],
+            ['route'=>'admin.club.financials',   'icon'=>'bi-currency-dollar','label'=>'Financials'],
+        ]],
+        ['label'=>'People', 'items'=>[
+            ['route'=>'admin.club.members',      'icon'=>'bi-person-plus',    'label'=>'Members'],
+            ['route'=>'admin.club.instructors',  'icon'=>'bi-people',         'label'=>'Instructors'],
+            ['route'=>'admin.club.roles',        'icon'=>'bi-shield-check',   'label'=>'Roles'],
+        ]],
+        ['label'=>'Programs', 'items'=>[
+            ['route'=>'admin.club.activities',   'icon'=>'bi-activity',       'label'=>'Activities'],
+            ['route'=>'admin.club.packages',     'icon'=>'bi-box',            'label'=>'Packages'],
+            ['route'=>'admin.club.events',       'icon'=>'bi-calendar-event', 'label'=>'Events'],
+            ['route'=>'admin.club.facilities',   'icon'=>'bi-geo-alt',        'label'=>'Facilities'],
+        ]],
+        ['label'=>'Storefront', 'items'=>[
+            ['route'=>'admin.club.shop',         'icon'=>'bi-shop',           'label'=>'Shop'],
+            ['route'=>'admin.club.orders',       'icon'=>'bi-bag-check',      'label'=>'Orders'],
+            ['route'=>'admin.club.perks',        'icon'=>'bi-gift',           'label'=>'Perks'],
+        ]],
+        ['label'=>'Content', 'items'=>[
+            ['route'=>'admin.club.timeline',     'icon'=>'bi-newspaper',      'label'=>'Timeline'],
+            ['route'=>'admin.club.gallery',      'icon'=>'bi-images',         'label'=>'Gallery'],
+            ['route'=>'admin.club.achievements', 'icon'=>'bi-trophy',         'label'=>'Achievements'],
+        ]],
+        ['label'=>'Communication', 'items'=>[
+            ['route'=>'admin.club.messages',     'icon'=>'bi-chat-dots',      'label'=>'Messages'],
+            ['route'=>'admin.club.notifications','icon'=>'bi-bell',           'label'=>'Notifications'],
+        ]],
+        ['label'=>null, 'items'=>[
+            ['url'=>$clubPublicUrl, 'icon'=>'bi-eye',  'label'=>'View Club Page', 'external'=>true],
+        ]],
     ];
 @endphp
 
@@ -175,30 +239,27 @@ html, body { overflow: hidden !important; height: 100% !important; }
     <!-- ── SIDEBAR ── -->
     <aside id="emp-sidebar" class="flex flex-col">
 
-        <!-- Club Logo + Name -->
-        <div class="flex flex-col items-center px-4 pb-2 gap-2" style="flex-shrink:0;padding-top:16px;">
-            @if($club->logo)
-                <img src="{{ asset('storage/'.$club->logo) }}"
-                     alt="{{ $club->club_name }}"
-                     style="width:90px;height:90px;object-fit:contain;border-radius:12px;">
-            @else
-                <div style="width:90px;height:90px;border-radius:12px;background:linear-gradient(135deg,#ede9fe,#ddd6fe);border:1.5px solid rgba(124,58,237,0.2);display:flex;align-items:center;justify-content:center;">
-                    <span style="font-size:28px;font-weight:800;color:#7c3aed;letter-spacing:-1px;line-height:1;">
-                        {{ strtoupper(substr($club->club_name, 0, 2)) }}
-                    </span>
-                </div>
-            @endif
-
-            <p style="font-size:12px;font-weight:700;color:#3b0764;text-align:center;line-height:1.3;letter-spacing:0.03em;margin:0;">{{ $club->club_name }}</p>
+        <!-- Club brand header -->
+        <div class="emp-brand">
+            <div class="emp-brand-logo">
+                @if($club->logo)
+                    <img src="{{ asset('storage/'.$club->logo) }}" alt="{{ $club->club_name }}">
+                @else
+                    <div class="ph">{{ strtoupper(substr($club->club_name, 0, 2)) }}</div>
+                @endif
+            </div>
+            <span class="emp-brand-eyebrow">Club Workspace</span>
+            <p class="emp-brand-name">{{ $club->club_name }}</p>
         </div>
 
         <!-- Action buttons -->
-        <div class="flex justify-center gap-2 px-4 pb-3" style="flex-shrink:0">
+        <div class="emp-actions">
             @unless(Auth::user()->isSuperAdmin())
-                <a href="{{ route('clubs.explore') }}" class="emp-sb-btn" title="Back to Explore">←</a>
+                <a href="{{ route('clubs.explore') }}" class="emp-sb-btn" title="Back to Explore"><i class="bi bi-arrow-left"></i></a>
             @endunless
-            <a href="{{ $club->url }}" class="emp-sb-btn" title="Preview Club" target="_blank">👁</a>
-            <button @click="showNotificationModal = true" class="emp-sb-btn" title="Send Notification">✈</button>
+            <a href="{{ $club->url }}" class="emp-sb-btn" title="Preview Club" target="_blank"><i class="bi bi-eye"></i></a>
+            <button @click="showNotificationModal = true" class="emp-sb-btn" title="Send Notification"><i class="bi bi-send"></i></button>
+            <a href="{{ route('admin.club.details', $clubId) }}" class="emp-sb-btn {{ $currentRoute === 'admin.club.details' ? 'active' : '' }}" title="Club Details"><i class="bi bi-gear"></i></a>
         </div>
 
         @if(Auth::user()->isSuperAdmin())
@@ -222,31 +283,38 @@ html, body { overflow: hidden !important; height: 100% !important; }
         <div class="emp-sb-div"></div>
 
         <!-- Navigation -->
-        <nav id="emp-sidebar-nav" class="flex flex-col gap-0.5 px-2 py-2" style="overflow-y:auto;flex:1">
-            @foreach($navItems as $item)
-                @php $active = isset($item['route']) && $currentRoute === $item['route']; @endphp
-                @if(!empty($item['external']))
-                    <a href="{{ $item['url'] }}" class="nav-item">
-                        <span class="ni"><i class="bi {{ $item['icon'] }}"></i></span>
-                        <span>{{ $item['label'] }}</span>
-                    </a>
-                @elseif($item['route'] === 'admin.club.financials')
-                    <a href="{{ route($item['route'], $clubId) }}" class="nav-item emp-has-tip {{ $active ? 'active' : '' }}">
-                        <span class="ni"><i class="bi {{ $item['icon'] }}"></i></span>
-                        <span>{{ $item['label'] }}</span>
-                        <div class="emp-tip-box">
-                            <div class="emp-tip-ttl">Cash Flow</div>
-                            <div class="emp-tip-row"><span>Income</span><span class="v vp">BHD 250</span></div>
-                            <div class="emp-tip-row"><span>Expenses</span><span class="v vn">BHD -200</span></div>
-                            <div class="emp-tip-tot"><span>Total</span><span class="v">BHD 50</span></div>
-                        </div>
-                    </a>
-                @else
-                    <a href="{{ route($item['route'], $clubId) }}" class="nav-item {{ $active ? 'active' : '' }}">
-                        <span class="ni"><i class="bi {{ $item['icon'] }}"></i></span>
-                        <span>{{ $item['label'] }}</span>
-                    </a>
-                @endif
+        <nav id="emp-sidebar-nav" class="flex flex-col px-2 py-2" style="overflow-y:auto;flex:1">
+            @foreach($navGroups as $group)
+                <div class="emp-nav-grp">
+                    @if(!empty($group['label']))
+                        <p class="emp-nav-grp-ttl">{{ $group['label'] }}</p>
+                    @endif
+                    @foreach($group['items'] as $item)
+                        @php $active = isset($item['route']) && $currentRoute === $item['route']; @endphp
+                        @if(!empty($item['external']))
+                            <a href="{{ $item['url'] }}" class="nav-item">
+                                <span class="ni"><i class="bi {{ $item['icon'] }}"></i></span>
+                                <span>{{ $item['label'] }}</span>
+                            </a>
+                        @elseif($item['route'] === 'admin.club.financials')
+                            <a href="{{ route($item['route'], $clubId) }}" class="nav-item emp-has-tip {{ $active ? 'active' : '' }}">
+                                <span class="ni"><i class="bi {{ $item['icon'] }}"></i></span>
+                                <span>{{ $item['label'] }}</span>
+                                <div class="emp-tip-box">
+                                    <div class="emp-tip-ttl">Cash Flow</div>
+                                    <div class="emp-tip-row"><span>Income</span><span class="v vp">BHD 250</span></div>
+                                    <div class="emp-tip-row"><span>Expenses</span><span class="v vn">BHD -200</span></div>
+                                    <div class="emp-tip-tot"><span>Total</span><span class="v">BHD 50</span></div>
+                                </div>
+                            </a>
+                        @else
+                            <a href="{{ route($item['route'], $clubId) }}" class="nav-item {{ $active ? 'active' : '' }}">
+                                <span class="ni"><i class="bi {{ $item['icon'] }}"></i></span>
+                                <span>{{ $item['label'] }}</span>
+                            </a>
+                        @endif
+                    @endforeach
+                </div>
             @endforeach
         </nav>
     </aside>

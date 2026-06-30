@@ -18,6 +18,7 @@ use App\Models\Goal;
 use App\Models\Attendance;
 use App\Models\ClubAffiliation;
 use App\Models\ClubEventRegistration;
+use App\Models\ClubMemberSubscription;
 use App\Models\Membership;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -26,6 +27,8 @@ use Illuminate\Support\Facades\Storage;
 
 class MemberController extends Controller
 {
+    use \App\Traits\BuildsMemberPayments;
+
     /**
      * Display a listing of members (family dashboard).
      *
@@ -118,6 +121,21 @@ class MemberController extends Controller
         $canEditBasic    = $isOwnProfile || $isGuardian || $isSuperAdmin;
         $canManageMember = $isClubAdminOfMember || $isSuperAdmin;
 
+        // Sensitive sections (emergency contacts, billing) are private: visible to the
+        // member's own people (self, guardian, super-admin) and to a club admin ONLY
+        // where this member holds an ACTIVE subscription (active/pending, not expired).
+        // Hidden from everyone else, incl. admins of clubs with no active package.
+        $canViewSensitive = $isOwnProfile || $isGuardian || $isSuperAdmin;
+        if (! $canViewSensitive && $user->isClubAdmin()) {
+            $activeSubTenantIds = ClubMemberSubscription::where('user_id', $member->id)
+                ->whereIn('status', ['active', 'pending'])
+                ->where(function ($q) {
+                    $q->whereNull('end_date')->orWhereDate('end_date', '>=', now());
+                })
+                ->pluck('tenant_id')->unique();
+            $canViewSensitive = $activeSubTenantIds->contains(fn ($tid) => $user->isClubAdmin($tid));
+        }
+
         // For super-admin, own profile, or club admin of this member — create a mock relationship
         // For regular users, verify family relationship exists
         if ($isSuperAdmin || $isOwnProfile || $isClubAdminOfMember) {
@@ -158,6 +176,9 @@ class MemberController extends Controller
             ->orWhere('payer_user_id', $relationship->dependent->id)
             ->with(['student', 'tenant'])
             ->get();
+
+        // Unified payment history (invoices + club-package subscriptions).
+        $payments = $this->buildMemberPayments($relationship->dependent, $invoices);
 
         // Fetch tournament data for the member
         $tournamentEvents = $relationship->dependent->tournamentEvents()
@@ -219,6 +240,14 @@ class MemberController extends Controller
         $totalSessions = $attendanceRecords->count();
         $attendanceRate = $totalSessions > 0 ? round(($sessionsCompleted / $totalSessions) * 100, 1) : 0;
 
+        // Challenge (duel) record — win rate across completed challenges.
+        $memberId = $relationship->dependent->id;
+        $challengesTotal = \App\Models\Duel::where('status', 'completed')
+            ->where(fn ($q) => $q->where('challenger_id', $memberId)->orWhere('opponent_id', $memberId))
+            ->count();
+        $challengeWins = \App\Models\Duel::where('status', 'completed')->where('winner_id', $memberId)->count();
+        $challengeWinRate = $challengesTotal > 0 ? round(($challengeWins / $challengesTotal) * 100) : 0;
+
         // Fetch affiliations data for the member with enhanced relationships
         $clubAffiliations = $relationship->dependent->clubAffiliations()
             ->with([
@@ -279,6 +308,7 @@ class MemberController extends Controller
             'comparisonRecords' => $comparisonRecords,
             'weightHistory' => $weightHistory,
             'invoices' => $invoices,
+            'payments' => $payments,
             'tournamentEvents' => $tournamentEvents,
             'awardCounts' => $awardCounts,
             'sports' => $sports,
@@ -291,6 +321,9 @@ class MemberController extends Controller
             'sessionsCompleted' => $sessionsCompleted,
             'noShows' => $noShows,
             'attendanceRate' => $attendanceRate,
+            'challengeWinRate' => $challengeWinRate,
+            'challengesTotal' => $challengesTotal,
+            'challengeWins' => $challengeWins,
             'clubAffiliations' => $clubAffiliations,
             'totalAffiliations' => $totalAffiliations,
             'distinctSkills' => $distinctSkills,
@@ -304,6 +337,7 @@ class MemberController extends Controller
             'canRegeneratePassword' => $canRegeneratePassword,
             'canEditBasic' => $canEditBasic,
             'canManageMember' => $canManageMember,
+            'canViewSensitive' => $canViewSensitive,
         ]);
     }
 

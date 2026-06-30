@@ -22,6 +22,8 @@ return [
     'active_now'        => 'نشط الآن',
     'encrypted_chat'    => 'محادثة مشفّرة',
     'chat_options'      => 'خيارات المحادثة',
+    'enable_sounds'     => 'تفعيل الأصوات',
+    'view_profile'      => 'عرض الملف الشخصي',
     'delete_chat'       => 'حذف المحادثة',
 
     // Messages

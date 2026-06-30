@@ -96,4 +96,12 @@ class ClubActivity extends Model
         return $this->belongsToMany(ClubInstructor::class, 'club_activity_instructor', 'activity_id', 'instructor_id')
                     ->withTimestamps();
     }
+
+    /**
+     * Equipment catalog for this activity (gear members need to practice it).
+     */
+    public function equipment(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ClubActivityEquipment::class, 'activity_id');
+    }
 }

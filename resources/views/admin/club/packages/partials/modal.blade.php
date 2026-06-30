@@ -349,6 +349,15 @@
                                     <span class="input-group-text bg-muted/30"><i class="bi bi-currency-dollar text-muted-foreground"></i></span>
                                     <input type="number" id="packagePrice" name="price" required step="0.01" min="0" placeholder="199.99" class="form-control text-xl" x-model.number="basePrice">
                                 </div>
+
+                                <label for="packageRegFee" class="form-label font-medium mt-4">
+                                    First-Time Registration Fee ({{ $club->currency ?? 'BHD' }})
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-muted/30"><i class="bi bi-person-plus text-muted-foreground"></i></span>
+                                    <input type="number" id="packageRegFee" name="registration_fee" step="0.01" min="0" placeholder="Leave blank to use the club default" class="form-control">
+                                </div>
+                                <p class="text-muted-foreground text-sm mt-1">One-time joining fee charged only the first time a member joins. Leave blank to use the club's default enrollment fee.</p>
                             </div>
                         </div>
                         <div class="card border-0 shadow-sm mb-4">
@@ -635,6 +644,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('packagePopular').checked   = false;
         document.getElementById('packagePrice').value       = '';
         document.getElementById('packagePrice').dispatchEvent(new Event('input'));
+        document.getElementById('packageRegFee').value      = '';
         document.getElementById('discountCode').value       = '';
         document.getElementById('discountPercent').value    = '';
 
@@ -673,6 +683,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('packagePopular').checked   = !!pkg.is_popular;
         document.getElementById('packagePrice').value       = pkg.price || '';
         document.getElementById('packagePrice').dispatchEvent(new Event('input'));
+        document.getElementById('packageRegFee').value      = (pkg.registration_fee ?? '') === null ? '' : (pkg.registration_fee ?? '');
 
         // Cropper preview
         const preview = $('#previewContainer_packageImageCropper');

@@ -6,6 +6,7 @@ use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -43,15 +44,58 @@ class ClubProduct extends Model
         return $this->belongsTo(Tenant::class);
     }
 
+    /** All variants (size/colour/brand combinations) of this product. */
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ClubProductVariant::class, 'club_product_id')->orderBy('sort');
+    }
+
+    /** Active variants only — what a buyer can actually choose. */
+    public function activeVariants(): HasMany
+    {
+        return $this->variants()->where('is_active', true);
+    }
+
+    /** True when this product is sold as variants rather than a single SKU. */
+    public function hasVariants(): bool
+    {
+        return $this->relationLoaded('variants')
+            ? $this->variants->isNotEmpty()
+            : $this->variants()->exists();
+    }
+
+    /** Lowest active-variant price, for the "from X" display on variant products. */
+    public function fromPrice(): float
+    {
+        $variants = $this->relationLoaded('variants')
+            ? $this->variants->where('is_active', true)
+            : $this->activeVariants()->get();
+
+        return $variants->isNotEmpty()
+            ? (float) $variants->min('price')
+            : (float) $this->price;
+    }
+
     /** Shape for the shop grid / market card (matches the JS product object). */
     public function toCardArray(): array
     {
+        $variants = $this->relationLoaded('variants')
+            ? $this->variants
+            : $this->variants()->get();
+        $activeVariants = $variants->where('is_active', true);
+        $hasVariants = $variants->isNotEmpty();
+        $displayPrice = $activeVariants->isNotEmpty()
+            ? (float) $activeVariants->min('price')
+            : (float) $this->price;
+
         return [
             'id'          => $this->id,
             'name'        => $this->name,
             'brand'       => $this->brand,
             'cat'         => $this->category,
-            'price'       => (float) $this->price,
+            'price'       => $displayPrice,
+            'hasVariants' => $hasVariants,
+            'variants'    => $variants->map->toCardArray()->values()->all(),
             'old'         => $this->old_price !== null ? (float) $this->old_price : null,
             'cost'        => $this->cost !== null ? (float) $this->cost : null,
             'marginType'  => $this->margin_type ?? 'fixed',

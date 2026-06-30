@@ -139,6 +139,15 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     Route::post('/challenge/duel/{duel}/report',   [App\Http\Controllers\ChallengeController::class, 'report'])->name('challenge.duel.report')->middleware('throttle:member-write');
     Route::post('/challenge/duel/{duel}/confirm',  [App\Http\Controllers\ChallengeController::class, 'confirm'])->name('challenge.duel.confirm')->middleware('throttle:member-write');
     Route::post('/challenge/duel/{duel}/dispute',  [App\Http\Controllers\ChallengeController::class, 'dispute'])->name('challenge.duel.dispute')->middleware('throttle:member-write');
+    Route::put('/challenge/duel/{duel}',           [App\Http\Controllers\ChallengeController::class, 'updateDuel'])->name('challenge.duel.update')->middleware('throttle:member-write');
+    Route::delete('/challenge/duel/{duel}',        [App\Http\Controllers\ChallengeController::class, 'destroyDuel'])->name('challenge.duel.destroy')->middleware('throttle:member-write');
+    Route::post('/challenge/duel/{duel}/media',    [App\Http\Controllers\ChallengeController::class, 'addMedia'])->name('challenge.duel.media.add')->middleware('throttle:uploads');
+    Route::delete('/challenge/duel/{duel}/media/{media}', [App\Http\Controllers\ChallengeController::class, 'deleteMedia'])->name('challenge.duel.media.delete')->whereNumber('media')->middleware('throttle:member-write');
+    Route::get('/challenge/duel/{duel}/witness-search', [App\Http\Controllers\ChallengeController::class, 'searchWitnesses'])->name('challenge.duel.witness.search')->middleware('throttle:60,1');
+    Route::post('/challenge/duel/{duel}/witnesses', [App\Http\Controllers\ChallengeController::class, 'addWitness'])->name('challenge.duel.witness.add')->middleware('throttle:member-write');
+    Route::patch('/challenge/duel/{duel}/witnesses/{witness}/respond', [App\Http\Controllers\ChallengeController::class, 'respondWitness'])->name('challenge.duel.witness.respond')->whereNumber('witness')->middleware('throttle:member-write');
+    Route::patch('/challenge/duel/{duel}/witnesses/{witness}/feedback', [App\Http\Controllers\ChallengeController::class, 'witnessFeedback'])->name('challenge.duel.witness.feedback')->whereNumber('witness')->middleware('throttle:member-write');
+    Route::delete('/challenge/duel/{duel}/witnesses/{witness}', [App\Http\Controllers\ChallengeController::class, 'deleteWitness'])->name('challenge.duel.witness.delete')->whereNumber('witness')->middleware('throttle:member-write');
     Route::get('/challenge/{challenge}',           [App\Http\Controllers\ChallengeController::class, 'show'])->name('challenge.show')->whereNumber('challenge');
     Route::post('/challenge/{challenge}/join',     [App\Http\Controllers\ChallengeController::class, 'join'])->name('challenge.join')->middleware('throttle:member-write');
     Route::post('/challenge/{challenge}/leave',    [App\Http\Controllers\ChallengeController::class, 'leave'])->name('challenge.leave')->middleware('throttle:member-write');
@@ -177,11 +186,28 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('u')->name('wall.'
 Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login')->middleware('no-store');
 Route::post('/login', [AuthenticatedSessionController::class, 'store'])->middleware('throttle:login');
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+
+// Passwordless "magic link" login — request a one-time signed link by email,
+// then click it to sign in. The verify route is signature-protected.
+Route::post('/login/link', [App\Http\Controllers\Auth\MagicLinkController::class, 'send'])
+    ->name('login.magic')->middleware('throttle:login');
+Route::get('/login/link/{user}', [App\Http\Controllers\Auth\MagicLinkController::class, 'login'])
+    ->name('login.magic.verify')->middleware('signed', 'throttle:6,1');
+// Public form renderer (surveys/intake via link or QR).
+Route::get('/f/{form:uuid}', [App\Http\Controllers\FormController::class, 'show'])->name('forms.show');
+Route::post('/f/{form:uuid}', [App\Http\Controllers\FormController::class, 'submit'])->name('forms.submit')->middleware('throttle:20,1');
+
 Route::get('/register', [RegisteredUserController::class, 'create'])->name('register')->middleware('no-store');
 Route::post('/register', [RegisteredUserController::class, 'store'])->middleware('throttle:register');
 Route::get('/register/wizard/packages', [App\Http\Controllers\Auth\WizardRegistrationController::class, 'packages'])->name('register.wizard.packages')->middleware('throttle:60,1');
 Route::post('/register/wizard/upload-temp', [App\Http\Controllers\Auth\WizardRegistrationController::class, 'uploadTemp'])->name('register.wizard.upload')->middleware('throttle:uploads');
+Route::post('/register/wizard/lookup', [App\Http\Controllers\Auth\WizardRegistrationController::class, 'lookup'])->name('register.wizard.lookup')->middleware('throttle:10,1');
+Route::post('/register/wizard/verify-otp', [App\Http\Controllers\Auth\WizardRegistrationController::class, 'verifyOtp'])->name('register.wizard.verify')->middleware('throttle:15,1');
 Route::post('/register/wizard/submit', [App\Http\Controllers\Auth\WizardRegistrationController::class, 'submit'])->name('register.wizard.submit')->middleware('throttle:register');
+// Dedicated club-registration URL (distinct from platform /register). The 2-3
+// letter country constraint keeps it from clashing with /register/wizard/*.
+Route::get('/register/{country}/{slug}', [RegisteredUserController::class, 'createForClub'])
+    ->name('register.club')->where('country', '[a-z]{2,3}')->middleware('no-store');
 
 // Password reset routes
 Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request')->middleware('no-store');
@@ -393,6 +419,12 @@ Route::middleware(['auth', 'verified', 'two-factor', 'tenant', 'throttle:admin-w
     Route::post('/activities', [App\Http\Controllers\Admin\ClubActivityController::class, 'storeActivity'])->name('activities.store');
     Route::put('/activities/{activity}', [App\Http\Controllers\Admin\ClubActivityController::class, 'updateActivity'])->name('activities.update');
     Route::delete('/activities/{activity}', [App\Http\Controllers\Admin\ClubActivityController::class, 'destroyActivity'])->name('activities.destroy');
+
+    // Activity equipment catalog (gear required to practice the activity)
+    Route::get('/activities/{activity}/equipment', [App\Http\Controllers\Admin\ClubActivityController::class, 'equipment'])->name('activities.equipment');
+    Route::post('/activities/{activity}/equipment', [App\Http\Controllers\Admin\ClubActivityController::class, 'storeEquipment'])->name('activities.equipment.store')->middleware('throttle:admin-write');
+    Route::put('/activities/{activity}/equipment/{equipment}', [App\Http\Controllers\Admin\ClubActivityController::class, 'updateEquipment'])->name('activities.equipment.update')->middleware('throttle:admin-write');
+    Route::delete('/activities/{activity}/equipment/{equipment}', [App\Http\Controllers\Admin\ClubActivityController::class, 'destroyEquipment'])->name('activities.equipment.destroy')->middleware('throttle:admin-write');
 
     // Events
     Route::get('/events', [App\Http\Controllers\Admin\ClubEventController::class, 'events'])->name('events');

@@ -40,6 +40,9 @@
             <button type="button" class="tab-btn" :class="{ 'active': activeTab === 'branding' }" @click="activeTab = 'branding'" role="tab">
                 <i class="bi bi-palette mr-2"></i>Branding
             </button>
+            <button type="button" class="tab-btn" :class="{ 'active': activeTab === 'registration' }" @click="activeTab = 'registration'" role="tab">
+                <i class="bi bi-clipboard-check mr-2"></i>Registration
+            </button>
             <button type="button" class="tab-btn" :class="{ 'active': activeTab === 'social' }" @click="activeTab = 'social'" role="tab">
                 <i class="bi bi-share mr-2"></i>Social Media
             </button>
@@ -372,6 +375,119 @@
             </div>
         </div>
 
+        <!-- Registration Page Tab -->
+        <div class="tab-content" id="tab-registration" x-show="activeTab === 'registration'" style="display: none;">
+            @php
+                $reqAr   = data_get($club->translations, 'registration_requirements.ar', '');
+                $termsAr = data_get($club->translations, 'registration_terms.ar', '');
+            @endphp
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0"><i class="bi bi-clipboard-check text-primary mr-2"></i>Self-registration page</h5>
+                </div>
+                <div class="card-body space-y-5">
+                    <p class="text-muted small mb-0">Customise what members see on this club's registration page (<code>/register/{{ strtolower($club->country) }}/{{ $club->slug }}</code>). Fill in <strong>both languages</strong> using the language toggle at the top of this form.</p>
+
+                    <!-- Registration background image — full-resolution upload + live phone preview -->
+                    @once
+                    <style>
+                        .reg-phone { width: 188px; aspect-ratio: 9 / 19; border-radius: 26px; padding: 7px; background: #111; box-shadow: 0 12px 32px rgba(0,0,0,.28); position: relative; flex-shrink: 0; }
+                        .reg-phone-notch { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 52px; height: 5px; background: #000; border-radius: 4px; z-index: 3; }
+                        .reg-phone-screen { position: relative; width: 100%; height: 100%; border-radius: 20px; overflow: hidden; background: #0a0a14 center/cover no-repeat; }
+                        .reg-phone-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(5,5,20,.12) 0%, rgba(5,5,20,.45) 52%, rgba(5,5,20,.96) 100%); }
+                        .reg-phone-content { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 0 14px 18px; text-align: center; }
+                        .reg-phone-logo { width: 46px; height: 46px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); background: rgba(0,0,0,.4) center/contain no-repeat; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; margin-bottom: 9px; }
+                        .reg-phone-name { color: #fff; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; text-shadow: 0 2px 10px rgba(0,0,0,.7); line-height: 1.15; }
+                        .reg-phone-tag { color: rgba(255,255,255,.6); font-size: 8px; margin: 4px 0 11px; }
+                        .reg-phone-langs { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; width: 100%; }
+                        .reg-phone-lang { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); border-radius: 10px; padding: 7px 4px; display: flex; flex-direction: column; align-items: center; gap: 3px; color: #fff; font-size: 9px; font-weight: 600; }
+                        .reg-phone-lang .fi { font-size: 15px; border-radius: 3px; }
+                    </style>
+                    <script>
+                        function splashFilePreview(opts) {
+                            return {
+                                splash: opts.current || '', logo: opts.logo || '', name: opts.name || '', fileName: '',
+                                init() {
+                                    const nameInput = document.getElementById('club_name');
+                                    if (nameInput) { this.name = nameInput.value || this.name; nameInput.addEventListener('input', () => { this.name = nameInput.value; }); }
+                                },
+                                onFile(e) {
+                                    const f = e.target.files && e.target.files[0];
+                                    if (!f) return;
+                                    this.fileName = f.name;
+                                    const r = new FileReader();
+                                    r.onload = (ev) => { this.splash = ev.target.result; };
+                                    r.readAsDataURL(f);
+                                },
+                            };
+                        }
+                    </script>
+                    @endonce
+                    <div x-data="splashFilePreview({ logo: @js($club->logo ? asset('storage/' . $club->logo) : ''), name: @js($club->club_name), current: @js($club->registration_splash_image ? asset('storage/' . $club->registration_splash_image) : '') })" x-init="init()">
+                        <label class="form-label font-medium">Registration background image</label>
+                        <small class="text-muted block mb-3">A tall portrait image (9:16, e.g. 1080×1920px) shown behind the language picker. Uploaded at <strong>full quality</strong> (no cropping/downscaling). This is <strong>not</strong> the cover banner.</small>
+                        <div class="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
+                            <div>
+                                <label class="btn btn-outline-secondary btn-sm" style="cursor:pointer">
+                                    <i class="bi bi-upload mr-2"></i>Choose image
+                                    <input type="file" name="registration_splash_image" accept="image/jpeg,image/png,image/webp"
+                                           style="display:none" @change="onFile($event)">
+                                </label>
+                                <p class="text-muted small mt-2 mb-0" x-text="fileName || 'No file chosen'"></p>
+                                <small class="text-muted block mt-2">Tip: a 1080×1920 (or larger) portrait JPG/PNG looks crisp on every phone.</small>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <small class="text-muted mb-2"><i class="bi bi-eye mr-1"></i>Live preview</small>
+                                <div class="reg-phone">
+                                    <div class="reg-phone-notch"></div>
+                                    <div class="reg-phone-screen" :style="splash ? ('background-image:url(' + splash + ')') : ''">
+                                        <div class="reg-phone-overlay"></div>
+                                        <div class="reg-phone-content">
+                                            <div class="reg-phone-logo" :style="logo ? ('background-image:url(' + logo + ')') : ''">
+                                                <i class="bi bi-shield-fill-check" x-show="!logo"></i>
+                                            </div>
+                                            <div class="reg-phone-name" x-text="name || 'TAKEONE'"></div>
+                                            <div class="reg-phone-tag">Choose your language / اختر لغتك</div>
+                                            <div class="reg-phone-langs">
+                                                <div class="reg-phone-lang"><span class="fi fi-gb"></span><span>English</span></div>
+                                                <div class="reg-phone-lang"><span class="fi fi-bh"></span><span>العربية</span></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Registration requirements (both languages shown together) -->
+                    <div>
+                        <label class="form-label font-medium">Registration requirements</label>
+                        <small class="text-muted block mb-3">A checklist shown on the Terms step (e.g. valid CPR/ID, recent photo, proof of payment). Fill in both languages — leave both blank to hide.</small>
+                        <p class="small font-semibold mb-1"><span class="fi fi-gb mr-1"></span> English</p>
+                        <x-rich-text-editor name="registration_requirements" :value="$club->registration_requirements ?? ''"
+                            placeholder="What members need to register…" />
+                        <p class="small font-semibold mb-1 mt-3"><span class="fi fi-bh mr-1"></span> العربية</p>
+                        <x-rich-text-editor name="translations[registration_requirements][ar]" :value="$reqAr" dir="rtl"
+                            placeholder="ما يحتاجه الأعضاء للتسجيل…" />
+                    </div>
+
+                    <!-- Terms & conditions (both languages shown together) -->
+                    <div>
+                        <label class="form-label font-medium">Terms &amp; conditions</label>
+                        <small class="text-muted block mb-3">Your club's terms for joining. Fill in both languages — leave both blank to use the platform default terms.</small>
+                        <p class="small font-semibold mb-1"><span class="fi fi-gb mr-1"></span> English</p>
+                        <x-rich-text-editor name="registration_terms" :value="$club->registration_terms ?? ''" min-height="200px"
+                            placeholder="Your club's terms &amp; conditions for joining…" />
+                        <p class="small font-semibold mb-1 mt-3"><span class="fi fi-bh mr-1"></span> العربية</p>
+                        <x-rich-text-editor name="translations[registration_terms][ar]" :value="$termsAr" dir="rtl" min-height="200px"
+                            placeholder="شروط وأحكام النادي للانضمام…" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Social Media Tab -->
         <div class="tab-content" id="tab-social" x-show="activeTab === 'social'" style="display: none;">
             <div class="card">
@@ -650,7 +766,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // (Club QR codes are now rendered offline via the <x-qr-code> component above.)
+    // (Club QR codes are now rendered offline via the x-qr-code component above.)
 });
 
 // ===== Owner Transfer =====

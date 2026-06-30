@@ -41,6 +41,35 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Gracefully handle "forbidden" (403) responses instead of showing the raw
+        // "Unauthorized action" page. This happens most often when a long-open page
+        // belongs to a previous, higher-privilege session (e.g. super-admin) while
+        // the live session is now a different, lower-privilege user — navigating
+        // then hits an authorization gate. Send the user somewhere they can access.
+        $exceptions->render(function (Throwable $e, \Illuminate\Http\Request $request) {
+            $isForbidden = $e instanceof \Illuminate\Auth\Access\AuthorizationException
+                || ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface
+                    && $e->getStatusCode() === 403);
+
+            if (! $isForbidden) {
+                return null; // not a 403 → let Laravel handle it normally
+            }
+
+            // AJAX / API callers get JSON so their code can react (no HTML error page).
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'You are not authorized to perform this action.',
+                ], 403);
+            }
+
+            // Web navigation: reroute rather than dead-end on a 403 page.
+            if ($request->user()) {
+                return redirect()->to('/')->with('error', "You don't have access to that page.");
+            }
+
+            return redirect()->guest(route('login'))->with('error', 'Please sign in to continue.');
+        });
+
         $exceptions->reportable(function (Throwable $e): void {
             if (! app()->bound('sentry')) {
                 return;

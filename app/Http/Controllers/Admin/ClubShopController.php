@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ClubProduct;
 use App\Models\ClubProductCategory;
+use App\Models\ClubProductVariant;
 use App\Models\Tenant;
 use App\Services\FinancialService;
 use App\Support\ClubView;
@@ -60,10 +61,15 @@ class ClubShopController extends Controller
         $this->fill($product, $data, $club);
         $product->save();
 
+        $this->syncVariants($product, $data, $club);
+
         // Initial stock is a purchase — record it as an expense in the ledger.
-        if ($product->fulfillment === 'stock') {
+        // For variant products the stock lives on the variants, not the product.
+        if ($product->fulfillment === 'stock' && empty($data['variants'])) {
             $this->recordStockCost($club, $product, (int) ($product->quantity ?? 0));
         }
+
+        $product->load('variants');
 
         return response()->json([
             'success' => true,
@@ -87,12 +93,16 @@ class ClubShopController extends Controller
         $this->fill($product, $data, $club);
         $product->save();
 
-        if ($product->fulfillment === 'stock') {
+        $this->syncVariants($product, $data, $club);
+
+        if ($product->fulfillment === 'stock' && empty($data['variants'])) {
             $added = (int) ($product->quantity ?? 0) - ($wasStock ? $previousQty : 0);
             if ($added > 0) {
                 $this->recordStockCost($club, $product, $added);
             }
         }
+
+        $product->load('variants');
 
         return response()->json([
             'success' => true,
@@ -185,7 +195,62 @@ class ClubShopController extends Controller
             'supplier'    => ['nullable', 'string', 'max:120'],
             'supplierUrl' => ['nullable', 'string', 'max:255'],
             'shipsIn'     => ['nullable', 'string', 'max:60'],
+            // Variants (size / colour / brand — each its own price + stock)
+            'useVariants'           => ['nullable', 'boolean'],
+            'variants'              => ['nullable', 'array', 'max:100'],
+            'variants.*.id'         => ['nullable', 'integer'],
+            'variants.*.brand'      => ['nullable', 'string', 'max:80'],
+            'variants.*.size'       => ['nullable', 'string', 'max:40'],
+            'variants.*.color'      => ['nullable', 'string', 'max:60'],
+            'variants.*.color_hex'  => ['nullable', 'string', 'max:16'],
+            'variants.*.price'      => ['required_with:variants.*.id', 'numeric', 'min:0', 'max:1000000'],
+            'variants.*.old_price'  => ['nullable', 'numeric', 'min:0', 'max:1000000'],
+            'variants.*.quantity'   => ['nullable', 'integer', 'min:0'],
+            'variants.*.is_active'  => ['nullable', 'boolean'],
         ]);
+    }
+
+    /**
+     * Upsert the product's variants from the form and remove any that were
+     * deleted. Variants are matched by id (scoped to this product); rows without
+     * an id are created. The variant is the source of truth for price + stock
+     * when present — the product's own price acts only as the "from X" display.
+     */
+    private function syncVariants(ClubProduct $product, array $data, Tenant $club): void
+    {
+        $incoming = $data['variants'] ?? [];
+
+        $keptIds = [];
+        foreach ($incoming as $sort => $row) {
+            $attrs = [
+                'tenant_id'  => $club->id,
+                'brand'      => $row['brand'] ?? null,
+                'size'       => $row['size'] ?? null,
+                'color'      => $row['color'] ?? null,
+                'color_hex'  => $row['color_hex'] ?? null,
+                'price'      => (float) ($row['price'] ?? 0),
+                'old_price'  => isset($row['old_price']) && $row['old_price'] !== null ? (float) $row['old_price'] : null,
+                'quantity'   => array_key_exists('quantity', $row) && $row['quantity'] !== null ? (int) $row['quantity'] : null,
+                'is_active'  => (bool) ($row['is_active'] ?? true),
+                'sort'       => $sort,
+            ];
+
+            // Update an existing variant (only if it belongs to this product)…
+            $variant = null;
+            if (! empty($row['id'])) {
+                $variant = $product->variants()->whereKey($row['id'])->first();
+            }
+            if ($variant) {
+                $variant->fill($attrs)->save();
+            } else {
+                $variant = $product->variants()->create($attrs);
+            }
+            $keptIds[] = $variant->id;
+        }
+
+        // Anything not resubmitted was removed by the admin.
+        $product->variants()->whereNotIn('id', $keptIds ?: [0])->get()
+            ->each(fn (ClubProductVariant $v) => $v->delete());
     }
 
     private function fill(ClubProduct $product, array $data, Tenant $club): void

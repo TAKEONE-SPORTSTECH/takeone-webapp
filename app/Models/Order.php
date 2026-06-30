@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\DeletesUploadedFiles;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,7 +15,15 @@ use Illuminate\Support\Str;
  */
 class Order extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, DeletesUploadedFiles;
+
+    /**
+     * Uploaded payment proof removed automatically on force-delete (not on
+     * soft-delete). Lives on the public disk. See DeletesUploadedFiles trait.
+     */
+    protected array $fileUploads = [
+        'payment_proof_path' => 'public',
+    ];
 
     protected $fillable = [
         'reference', 'tenant_id', 'user_id', 'status', 'subtotal', 'total',

@@ -47,7 +47,11 @@
             <div class="flex items-center justify-between">
                 {{-- me --}}
                 <div class="flex flex-col items-center w-1/3">
-                    <div class="w-14 h-14 rounded-full grid place-items-center text-white font-black border-2 border-white shadow" style="background: hsl(250 55% 60%);">{{ $d['me']['initials'] }}</div>
+                    @if(!empty($d['me']['avatar']))
+                        <img src="{{ $d['me']['avatar'] }}" alt="You" class="w-14 h-14 rounded-full object-cover border-2 border-white shadow">
+                    @else
+                        <x-gender-avatar :gender="$d['me']['gender'] ?? null" bg="hsl(250 55% 60%)" class="w-14 h-14 rounded-full border-2 border-white shadow" />
+                    @endif
                     <p class="text-xs font-bold text-foreground mt-1.5">You</p>
                     @if(isset($d['me']['score']))
                         <p class="text-sm font-black" style="color: {{ $d['color'] }};">{{ $d['me']['score'] }}</p>
@@ -66,7 +70,11 @@
 
                 {{-- opponent --}}
                 <div class="flex flex-col items-center w-1/3">
-                    <div class="w-14 h-14 rounded-full grid place-items-center text-white font-black border-2 border-white shadow" style="background: hsl(8 60% 58%);">{{ $d['opponent']['initials'] }}</div>
+                    @if(!empty($d['opponent']['avatar']))
+                        <img src="{{ $d['opponent']['avatar'] }}" alt="{{ $d['opponent']['name'] }}" class="w-14 h-14 rounded-full object-cover border-2 border-white shadow">
+                    @else
+                        <x-gender-avatar :gender="$d['opponent']['gender'] ?? null" bg="hsl(8 60% 58%)" class="w-14 h-14 rounded-full border-2 border-white shadow" />
+                    @endif
                     <p class="text-xs font-bold text-foreground mt-1.5 truncate max-w-full">{{ $d['opponent']['name'] }}</p>
                     @if(isset($d['opponent']['score']))
                         <p class="text-sm font-black text-muted-foreground">{{ $d['opponent']['score'] }}</p>

@@ -972,18 +972,42 @@
             $isTeaching = ($s['source'] ?? '') === 'teaching';
             $clubName   = $s['club'] ?? 'this club';
         @endphp
-        <div class="px-4 mt-4" x-data="{ menuOpen: false }">
+        <div class="px-4 mt-4" x-data="{
+                menuOpen: false,
+                nowTs: Date.now(),
+                endedServer: {{ !empty($classEnded) ? 'true' : 'false' }},
+                date: {{ Illuminate\Support\Js::from($occurrenceDate ?? '') }},
+                startTime: {{ Illuminate\Support\Js::from($slotStart ?? '') }},
+                endTime: {{ Illuminate\Support\Js::from($slotEnd ?? '') }},
+                _mk(hhmm) {
+                    if (!hhmm || !this.date) return null;
+                    var p = String(hhmm).split(':');
+                    var d = new Date(this.date + 'T00:00:00');
+                    d.setHours(parseInt(p[0], 10) || 0, parseInt(p[1], 10) || 0, 0, 0);
+                    return d.getTime();
+                },
+                get endTs() {
+                    var end = this._mk(this.endTime) || this._mk(this.startTime);
+                    var s = this._mk(this.startTime), e = this._mk(this.endTime);
+                    if (end != null && e != null && s != null && e <= s) end += 86400000;  // crosses midnight
+                    return end;
+                },
+                get isOver() { return this.endedServer === true || (this.endTs != null && this.nowTs >= this.endTs); },
+                init() { setInterval(() => { this.nowTs = Date.now(); }, 30000); }
+             }">
             {{-- Single entry point --}}
-            <div class="rounded-2xl p-4 bg-white border border-border">
+            <div class="rounded-2xl p-4 bg-white border border-border transition-opacity" :class="isOver ? 'opacity-60' : ''">
                 <p class="text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
                     <i class="bi {{ $isTeaching ? 'bi-person-video3' : 'bi-shield-lock' }} text-primary"></i> {{ $isTeaching ? 'Coach tools' : 'Club management' }}
                 </p>
                 <p class="text-sm text-muted-foreground mt-1">{{ $isTeaching ? 'You coach' : 'You manage' }} <span class="font-semibold text-foreground">{{ $clubName }}</span>. Edit the class, assign a substitute or cancel it — all in one place.</p>
-                <button type="button" @click="menuOpen = true"
+                <button type="button" @click="if (!isOver) menuOpen = true" :disabled="isOver"
                         class="m-press w-full mt-3 py-3 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2"
+                        :class="isOver ? 'cursor-not-allowed' : ''"
                         style="background: {{ $s['color'] }};">
                     <i class="bi bi-sliders2"></i> Manage class
                 </button>
+                <p x-show="isOver" x-cloak class="text-[11px] text-amber-600 mt-2 inline-flex items-center gap-1"><i class="bi bi-lock-fill"></i> This class is over — managing is closed.</p>
             </div>
 
             {{-- Combined action menu (teleported bottom-sheet) --}}

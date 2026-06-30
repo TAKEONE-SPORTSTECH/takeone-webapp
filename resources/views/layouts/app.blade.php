@@ -1054,15 +1054,78 @@
     @stack('modals')
 
     <script>
+        // ── Shared AudioContext ──────────────────────────────────────────────
+        // Sounds (notification chime, message tone) all run through ONE context
+        // that is unlocked on the first user gesture. A context created from a
+        // network/realtime event starts "suspended" under the browser autoplay
+        // policy (so the sound is silent), and browsers cap the number of
+        // contexts per page — creating a fresh one per message eventually throws.
+        // One reused, gesture-unlocked context fixes both.
+        window.__audioCtx = null;
+        window.__audioUnlocked = false;
+        function getAudioCtx() {
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) return null;
+            if (!window.__audioCtx) {
+                try { window.__audioCtx = new Ctx(); } catch (e) { return null; }
+            }
+            return window.__audioCtx;
+        }
+        // Unlock on the first real user gesture: resume + play one silent buffer
+        // (the canonical iOS/Chrome trick). After this, network-triggered sounds
+        // are allowed to play. Before it, attempts stay silent (see the guard in
+        // the play functions) so the console isn't spammed with autoplay warnings.
+        function unlockAudio() {
+            const ctx = getAudioCtx();
+            if (!ctx) return;
+            if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+            if (!window.__audioUnlocked) {
+                try {
+                    const src = ctx.createBufferSource();
+                    src.buffer = ctx.createBuffer(1, 1, 22050);
+                    src.connect(ctx.destination);
+                    src.start(0);
+                    window.__audioUnlocked = true;
+                } catch (e) { /* ignore */ }
+            }
+            if (ctx.state === 'running') hideSoundPrompt();
+        }
+        ['pointerdown', 'touchend', 'click', 'keydown'].forEach((evt) =>
+            window.addEventListener(evt, unlockAudio, { passive: true }));
+
+        // One-time "Enable sounds" nudge — shown only when a sound was actually
+        // blocked (a message/notification arrived before any user gesture). Tapping
+        // it counts as the gesture that unlocks audio for the rest of the session.
+        function showSoundPrompt() {
+            if (window.__audioUnlocked || document.getElementById('sound-unlock-pill')) return;
+            const pill = document.createElement('button');
+            pill.id = 'sound-unlock-pill';
+            pill.type = 'button';
+            pill.className = 'fixed left-1/2 -translate-x-1/2 bottom-24 z-[2000] inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-white text-sm font-semibold shadow-lg animate-bounce';
+            pill.innerHTML = '<i class="bi bi-bell-fill"></i> ' + @js(__('messenger.enable_sounds'));
+            pill.addEventListener('click', () => {
+                unlockAudio();
+                try { window.playMessageSound && window.playMessageSound(); } catch (e) {}
+                hideSoundPrompt();
+            });
+            document.body.appendChild(pill);
+            // Don't linger forever — any tap elsewhere also unlocks + hides it.
+            setTimeout(hideSoundPrompt, 20000);
+        }
+        function hideSoundPrompt() {
+            document.getElementById('sound-unlock-pill')?.remove();
+        }
+
         // Clear, attention-grabbing two-tone chime synthesized on the fly — no
         // audio asset needed. Brighter waveform + louder peak so it's easy to
         // hear (a master gain keeps the two oscillators from clipping).
         function playNotificationChime() {
             try {
-                const Ctx = window.AudioContext || window.webkitAudioContext;
-                if (!Ctx) return;
-                const ctx = new Ctx();
-                if (ctx.state === 'suspended') ctx.resume();
+                const ctx = getAudioCtx();
+                if (!ctx) return;
+                // Not unlocked yet (no user gesture) — try to resume for next time,
+                // but stay silent now to avoid the browser autoplay warning.
+                if (ctx.state !== 'running') { ctx.resume().catch(() => {}); showSoundPrompt(); return; }
                 const now = ctx.currentTime;
                 const master = ctx.createGain();
                 master.gain.value = 0.9;
@@ -1080,7 +1143,6 @@
                     osc.start(start);
                     osc.stop(start + 0.65);
                 });
-                setTimeout(() => ctx.close(), 1600);
             } catch (e) { /* audio unavailable — fail silently */ }
         }
 
@@ -1230,10 +1292,10 @@
         // Soft "message" sound — gentler/shorter than the notification chime.
         window.playMessageSound = function () {
             try {
-                const Ctx = window.AudioContext || window.webkitAudioContext;
-                if (!Ctx) return;
-                const ctx = new Ctx();
-                if (ctx.state === 'suspended') ctx.resume();
+                const ctx = getAudioCtx();
+                if (!ctx) return;
+                // Stay silent until a user gesture has unlocked audio (no warning).
+                if (ctx.state !== 'running') { ctx.resume().catch(() => {}); showSoundPrompt(); return; }
                 const now = ctx.currentTime;
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
@@ -1245,7 +1307,6 @@
                 gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
                 osc.connect(gain).connect(ctx.destination);
                 osc.start(now); osc.stop(now + 0.34);
-                setTimeout(() => ctx.close(), 800);
             } catch (e) { /* audio unavailable — ignore */ }
         };
 

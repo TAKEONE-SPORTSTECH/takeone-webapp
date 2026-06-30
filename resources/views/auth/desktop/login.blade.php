@@ -10,7 +10,7 @@
 
     <!-- Login box -->
     <div class="tf-auth-box">
-        <div class="tf-auth-card">
+        <div class="tf-auth-card" x-data="{ tab: @js(session('magic_sent') ? 'link' : 'password') }">
             <!-- Logo -->
             <div class="text-center mb-4">
                 <a href="{{ url('/') }}">
@@ -18,9 +18,23 @@
                 </a>
             </div>
 
-            <p class="text-center text-gray-500 text-lg mb-8 tracking-tight">Sign in to start your session</p>
+            <p class="text-center text-gray-500 text-lg mb-6 tracking-tight">Sign in to start your session</p>
 
-            <form method="POST" action="{{ route('login') }}">
+            <!-- Tabs: password vs passwordless login link -->
+            <div class="flex gap-1.5 bg-gray-100 p-1.5 rounded-xl mb-6">
+                <button type="button" @click="tab='password'"
+                        :class="tab==='password' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                        class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all">
+                    <i class="bi bi-shield-lock mr-1.5"></i>Password
+                </button>
+                <button type="button" @click="tab='link'"
+                        :class="tab==='link' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                        class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all">
+                    <i class="bi bi-envelope-paper mr-1.5"></i>Login link
+                </button>
+            </div>
+
+            <form method="POST" action="{{ route('login') }}" x-show="tab==='password'" x-cloak>
                 @csrf
 
                 <!-- Email -->
@@ -69,12 +83,38 @@
                 <button type="submit" class="tf-auth-btn mt-2 mb-2">
                     SIGN IN
                 </button>
-
-                <!-- Register Button -->
-                <a href="{{ route('register') }}" class="tf-auth-btn-outline mt-2 mb-6">
-                    REGISTER
-                </a>
             </form>
+
+            <!-- Passwordless magic-link login tab -->
+            <div x-show="tab==='link'" x-cloak>
+                @if(session('magic_sent'))
+                <div class="flex items-start gap-3 bg-green-50 border border-green-200 text-green-800 rounded-xl px-4 py-3 mb-4 text-sm">
+                    <i class="bi bi-envelope-check mt-0.5 shrink-0"></i>
+                    <div class="flex-1">
+                        <p class="font-medium mb-1">Check your inbox</p>
+                        <p class="text-green-700">If an account exists for <strong>{{ session('magic_sent') }}</strong>, we've emailed a login link. Tap the button in that email to sign in — no password needed.</p>
+                    </div>
+                </div>
+                @endif
+
+                <form method="POST" action="{{ route('login.magic') }}">
+                    @csrf
+                    <p class="text-center text-sm text-gray-500 mb-3">No password? We'll email you a one-time login link.</p>
+                    <div class="mb-3">
+                        <input type="email" name="email" value="{{ old('email') }}"
+                               class="tf-input"
+                               placeholder="Your email" required autocomplete="email">
+                    </div>
+                    <button type="submit" class="tf-auth-btn-outline">
+                        <i class="bi bi-envelope-paper mr-2"></i>EMAIL ME A LOGIN LINK
+                    </button>
+                </form>
+            </div>
+
+            <!-- Register (always visible) -->
+            <a href="{{ route('register') }}" class="tf-auth-btn-outline mt-4 mb-2">
+                REGISTER
+            </a>
 
             <!-- Unverified email notice -->
             @if(session('unverified_email'))

@@ -99,6 +99,7 @@
                             <div x-show="o" x-cloak @click.outside="o = false"
                                  x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
                                  class="absolute right-0 top-11 z-30 w-44 bg-white rounded-xl shadow-lg ring-1 ring-black/5 border border-border py-1">
+                                <a x-show="partner.uuid" :href="partner.uuid ? ('/member/' + partner.uuid) : '#'" @click="o = false" class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-muted text-left no-underline"><i class="bi bi-person-circle"></i> View profile</a>
                                 <button type="button" @click="o = false; deleteChat(activeId)" class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 text-left"><i class="bi bi-trash"></i> Delete chat</button>
                             </div>
                         </div>

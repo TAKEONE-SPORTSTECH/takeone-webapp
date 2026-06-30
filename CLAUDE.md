@@ -68,6 +68,9 @@ When adding new UI, match the exact patterns already used in the same view — s
 ### 3. No unsolicited refactors
 Do not clean up surrounding code, add docstrings, rename variables, or reorganize logic unless specifically asked.
 
+### 4. No native OS-rendered form popups (`<select>`, `<input type="date|time">`) for styled UI
+Never use a native `<select>`/`<option>`, or a native `<input type="date">` / `type="time"` / `type="datetime-local"`, when the control is part of the styled UI. The OS renders these popups (the option list, the calendar/clock) with sharp corners and its own colors — they cannot be themed and look inconsistent with the design system. Build a custom **Alpine** control instead: a `rounded-xl` bordered trigger button (chevron that rotates on open, purple focus ring) plus an absolutely-positioned `rounded-xl` panel (`bg-white border border-gray-100 shadow-lg overflow-hidden`) with a fade/slide `x-transition`, `hover:bg-muted/60` rows, and a `text-primary` highlight (check / selected state). Close on `@click.outside` and `@keydown.escape`. Keep the panel as smooth/rounded as the trigger. Reuse an existing `<x-*-dropdown>` component when one fits (see the Blade Component Library); otherwise match the reference implementations in `resources/views/personal/challenge-create.blade.php` — the **Win condition / Stake** dropdowns and the **Deadline** calendar popover (stores an ISO `YYYY-MM-DD` string, disables past days, has Clear / Today actions).
+
 ---
 
 ## No Page Reload Rule — STRICT
@@ -147,12 +150,50 @@ Intentionally **deferred indefinitely** — additional cost not wanted at this s
 
 ---
 
+## Delete Files Before Records — STRICT
+
+**Rule:** Whenever a record owns uploaded files (proof images, photos, documents, attachments, media), the **files MUST be deleted FIRST, then the record**. Never delete a row and leave its uploaded files orphaned in storage. This applies to every delete path — admin actions, cleanup scripts, manual DB maintenance, and bulk wipes.
+
+### How it's enforced in code
+
+- Trait **`App\Traits\DeletesUploadedFiles`** hooks the model's `deleting` event and purges the declared files *before* the row is removed (while the paths are still available). Best-effort: a missing file never blocks the deletion.
+- Each file-bearing model declares its uploads + disk:
+  ```php
+  use App\Traits\DeletesUploadedFiles;
+
+  protected array $fileUploads = [
+      'proof_of_payment' => 'local',   // attribute => disk
+      'refund_proof'     => 'local',
+      'cover_image',                    // bare entry → 'public' disk
+  ];
+  ```
+- On `SoftDeletes` models the trait only purges on a real **force-delete** (a soft-deleted row may be restored).
+- Already applied to: `ClubMemberSubscription` (`proof_of_payment`, `refund_proof` on `local`), `Order` (`payment_proof_path` on `public`). **Apply this trait to any new model that stores file paths.**
+
+### Caveats
+
+- **Eloquent events do NOT fire on mass/bulk deletes** (`Model::query()->delete()` / `->forceDelete()`). For bulk cleanups, either iterate (`->cursor()->each(fn ($m) => $m->forceDelete())`) so the trait runs, or delete the files explicitly alongside the rows.
+- When clearing financial records by hand, also wipe the proof folders: `storage/app/private/payment-proofs/`, `storage/app/public/order-proofs/`, `storage/app/public/payment-screenshots/` (keep the dirs + `.gitignore`).
+
+---
+
 ## Financials Feature Status
 
 - Step 1 ✅ `PlatformController@joinClub` auto-creates a `ClubTransaction` on package registration
 - Step 2 ✅ `getMonthlyFinancials()` uses real DB query — dashboard chart works
 - Step 3 ✅ "Cash to Collect" sums `amount_due` from unpaid subscriptions
 - Step 4 🔜 Mark subscription as paid from members admin page — **not started**
+
+---
+
+## Demo Data — Super-Admin Showcase (REMOVABLE before go-live)
+
+A large, cohesive demo dataset wired to the super admin (`superadmin@takeone.bh`) so every surface looks full for demos. **It is fully removable** — built specifically so it can be wiped before going live.
+
+- **Seed:** `php artisan demo:seed` (options: `--clubs=6 --members=40 --admin=<email> --fresh`). Creates a business/chain, N mixed-sport clubs (Taekwondo/Boxing/Fitness/Swimming/Padel/Yoga), trainers, packages+activities with weekly class schedules, members + active subscriptions, club feeds, challenges, events, and shop products. Wires the super admin as owner of every club + business, enrolled in 2 (synced `/me/schedule` classes), coaching 1 (teaching classes), plus personal sessions, feed posts/stories/follows, challenge participations, event registrations and a duel.
+- **Purge:** `php artisan demo:purge` (`--force` to skip prompt). Removes **exactly** what was seeded.
+- **How removal stays exact & safe:** `demo:seed` records every created row id (and any uploaded file) to a **manifest** at `storage/app/private/demo/manifest.json` (`App\Support\DemoManifest`). `demo:purge` reads it, deletes files first (defensively scanning file-bearing columns in case images were uploaded to demo records via the UI), then deletes rows in reverse-FK order inside a transaction. It can never touch real imported members or the super-admin account. Second safety net: demo clubs use slug `demo-*` and demo users `@demo.takeone.bh`.
+- Commands: `app/Console/Commands/DemoSeed.php`, `app/Console/Commands/DemoPurge.php`. Only one manifest at a time (re-seed requires purge or `--fresh`).
 
 ---
 
@@ -287,6 +328,7 @@ All components live in `resources/views/components/` and are called as `<x-{name
 | `<x-country-dropdown>` | Searchable country name picker (Alpine) | `name`, `id`, `value`, `label`, `required`, `error` |
 | `<x-currency-dropdown>` | Searchable currency picker (Alpine) | `name`, `id`, `value`, `label`, `required`, `error` |
 | `<x-gender-dropdown>` | Gender selector | `name`, `id`, `value`, `label`, `required`, `error` |
+| `<x-gender-toggle>` | Two-button Male/Female selector (Alpine-bound) — Male shades blue, Female shades pink when selected | `model` (Alpine state path, e.g. `self.gender`), `maleLabel`/`femaleLabel` (Alpine label expressions), `maleValue`/`femaleValue` |
 | `<x-marital-status-dropdown>` | Marital status selector | `name`, `id`, `value`, `label`, `required`, `error` |
 | `<x-relationship-dropdown>` | Family relationship type selector | `name`, `id`, `value`, `label`, `required`, `error` |
 | `<x-timezone-dropdown>` | Searchable timezone picker (Alpine) | `name`, `id`, `value`, `label`, `required`, `error` |
@@ -312,6 +354,7 @@ All components live in `resources/views/components/` and are called as `<x-{name
 |-----|---------|-----------|
 | `<x-member-card>` | Member summary card — age group badge, guardian, member-since | `member`, `href`, `footerLabel`, `footerStyle`, `guardian`, `memberSince`, `cardClass` |
 | `<x-package-card>` | Club package card — cover image, pricing, schedule, activities, capacity | `package`, `club`, `instructorsMap`; slots: `actions`, `footer` |
+| `<x-gender-avatar>` | Portrait fallback avatar — gendered head-and-shoulders silhouette on a colored tile, for users with no profile picture. Pass sizing/rounding/border via `class`. | `gender` (`m`/`f`/…), `bg` (default `hsl(250 55% 60%)`) |
 
 ### UI / Display
 
@@ -334,6 +377,7 @@ All components live in `resources/views/components/` and are called as `<x-{name
 
 | Tag | Purpose | Key props |
 |-----|---------|-----------|
+| `<x-rich-text-editor>` | WYSIWYG rich-text editor (Alpine + `contenteditable`). Toolbar: bold/italic/underline/strikethrough, text color, H1/H2/H3/paragraph/quote, bullet+numbered lists, indent, align, link (inline URL bar, no native prompt)/unlink, horizontal rule, undo/redo, clear. Submits HTML via a hidden `<textarea name="{name}">`. Supports `dir="rtl"`. | `name`, `id`, `value`, `dir`, `placeholder`, `minHeight` |
 | `<x-image-upload>` | Inline image upload with crop preview (uses takeone-cropper) | `id`, `name`, `width`, `height`, `shape`, `folder`, `filename`, `uploadUrl`, `currentImage`, `placeholder`, `placeholderIcon`, `buttonText`, `rounded`, `showPreview` |
 | `<x-takeone-cropper>` | Raw cropper widget (used inside `image-upload`). Pass `:uploadAsIs="true"` to show a second "Upload As Is" button alongside "Crop & Apply". Customize its label with `uploadAsIsText`. | `id`, `width`, `height`, `shape`, `folder`, `filename`, `uploadUrl`, `currentImage`, `buttonText`, `buttonClass`, `mode` (ajax\|form), `inputName`, `canvasHeight`, `uploadAsIs`, `uploadAsIsText` |
 | `<x-schedule-time-picker>` | Days-of-week multi-select + start/end time inputs | `id`, `daysName`, `startTimeName`, `endTimeName`, `selectedDays`, `startTime`, `endTime`, `required`, `showLabels` |

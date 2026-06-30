@@ -99,12 +99,13 @@ class OrderController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'items'         => ['required', 'array', 'min:1', 'max:50'],
-            'items.*.id'    => ['required', 'integer'],
-            'items.*.qty'   => ['required', 'integer', 'min:1', 'max:99'],
-            'items.*.color' => ['nullable', 'string', 'max:16'],
-            'note'          => ['nullable', 'string', 'max:1000'],
-            'proof'         => ['required', 'string', 'starts_with:data:image'],
+            'items'              => ['required', 'array', 'min:1', 'max:50'],
+            'items.*.id'         => ['required', 'integer'],
+            'items.*.qty'        => ['required', 'integer', 'min:1', 'max:99'],
+            'items.*.color'      => ['nullable', 'string', 'max:16'],
+            'items.*.variant_id' => ['nullable', 'integer'],
+            'note'               => ['nullable', 'string', 'max:1000'],
+            'proof'              => ['required', 'string', 'starts_with:data:image'],
         ], [
             'proof.required'    => __('market.proof_required'),
             'proof.starts_with' => __('market.proof_required'),
@@ -123,6 +124,12 @@ class OrderController extends Controller
         $ids = collect($data['items'])->pluck('id')->unique()->all();
         $products = ClubProduct::whereIn('id', $ids)->where('status', 'published')->get()->keyBy('id');
 
+        // Resolve chosen variants (price + stock come from the variant, not the product).
+        $variantIds = collect($data['items'])->pluck('variant_id')->filter()->unique()->all();
+        $variants = $variantIds
+            ? \App\Models\ClubProductVariant::whereIn('id', $variantIds)->get()->keyBy('id')
+            : collect();
+
         // Group requested lines by club.
         $byTenant = [];
         foreach ($data['items'] as $line) {
@@ -130,7 +137,22 @@ class OrderController extends Controller
             if (! $p) {
                 continue;
             }
-            $byTenant[$p->tenant_id][] = ['p' => $p, 'qty' => (int) $line['qty'], 'color' => $line['color'] ?? null];
+
+            // A variant must belong to this product and be active to be honoured.
+            $variant = null;
+            if (! empty($line['variant_id'])) {
+                $v = $variants->get($line['variant_id']);
+                if ($v && $v->club_product_id === $p->id && $v->is_active) {
+                    $variant = $v;
+                }
+            }
+
+            $byTenant[$p->tenant_id][] = [
+                'p'       => $p,
+                'variant' => $variant,
+                'qty'     => (int) $line['qty'],
+                'color'   => $line['color'] ?? null,
+            ];
         }
 
         if (empty($byTenant)) {
@@ -153,24 +175,34 @@ class OrderController extends Controller
                 $subtotal = 0.0;
                 $hasDrop  = false;
                 foreach ($lines as $l) {
-                    $lineTotal = (float) $l['p']->price * $l['qty'];
+                    $variant   = $l['variant'];
+                    $unitPrice = (float) ($variant ? $variant->price : $l['p']->price);
+                    $lineTotal = $unitPrice * $l['qty'];
                     $subtotal += $lineTotal;
                     $hasDrop = $hasDrop || $l['p']->fulfillment === 'dropship';
 
                     $order->items()->create([
-                        'club_product_id' => $l['p']->id,
-                        'name'            => $l['p']->name,
-                        'brand'           => $l['p']->brand,
-                        'image_path'      => $l['p']->image_path,
-                        'color'           => $l['color'],
-                        'fulfillment'     => $l['p']->fulfillment,
-                        'price'           => $l['p']->price,
-                        'qty'             => $l['qty'],
-                        'line_total'      => $lineTotal,
+                        'club_product_id'         => $l['p']->id,
+                        'club_product_variant_id' => $variant?->id,
+                        'name'                    => $l['p']->name,
+                        'brand'                   => $variant?->brand ?: $l['p']->brand,
+                        'image_path'              => $variant?->image_path ?: $l['p']->image_path,
+                        'color'                   => $variant?->color_hex ?: $l['color'],
+                        'size'                    => $variant?->size,
+                        'variant_label'           => $variant?->label,
+                        'fulfillment'             => $l['p']->fulfillment,
+                        'price'                   => $unitPrice,
+                        'qty'                     => $l['qty'],
+                        'line_total'              => $lineTotal,
                     ]);
 
-                    // Decrement stock for held inventory (never below zero).
-                    if ($l['p']->fulfillment === 'stock' && $l['p']->quantity !== null) {
+                    // Decrement stock for held inventory (never below zero). For a
+                    // variant product the stock lives on the variant.
+                    if ($variant) {
+                        if ($variant->quantity !== null) {
+                            $variant->decrement('quantity', min($l['qty'], $variant->quantity));
+                        }
+                    } elseif ($l['p']->fulfillment === 'stock' && $l['p']->quantity !== null) {
                         $l['p']->decrement('quantity', min($l['qty'], $l['p']->quantity));
                     }
                 }

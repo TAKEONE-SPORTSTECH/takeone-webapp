@@ -387,6 +387,8 @@
                 </div>
             </div>
 
+            {{-- Payment history is sensitive — only for the member's own circle or an active-package club. --}}
+            @if($canViewSensitive ?? false)
             <!-- Complete Payment & Revenue History -->
             <div class="bg-white rounded-xl shadow-sm mb-4">
                 <div class="p-4">
@@ -408,45 +410,57 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">
-                                @forelse($invoices as $invoice)
+                                @forelse(($payments ?? collect()) as $payment)
                                 <tr class="hover:bg-gray-50 transition-colors">
                                     <td class="px-4 py-3 whitespace-nowrap">
-                                        <span class="text-sm text-gray-700">{{ $invoice->created_at->format('M j, Y') }}</span>
-                                        <div class="text-xs text-gray-400">{{ $invoice->created_at->format('g:i A') }}</div>
+                                        <span class="text-sm text-gray-700">{{ optional($payment->date)->format('M j, Y') }}</span>
+                                        <div class="text-xs text-gray-400">{{ optional($payment->date)->format('g:i A') }}</div>
                                     </td>
                                     <td class="px-4 py-3">
-                                        <span class="text-sm font-medium text-gray-800">{{ $invoice->tenant->club_name ?? 'N/A' }}</span>
-                                        <div class="text-xs text-primary">Invoice</div>
+                                        <span class="text-sm font-medium text-gray-800">{{ $payment->club }}</span>
+                                        <div class="text-xs text-primary">{{ $payment->item }}</div>
                                     </td>
                                     <td class="px-4 py-3 text-right whitespace-nowrap">
-                                        <span class="text-sm font-semibold {{ $invoice->status == 'paid' ? 'text-green-600' : 'text-amber-600' }}">
-                                            {{ $invoice->amount }} BHD
+                                        <span class="text-sm font-semibold {{ $payment->status_key === 'paid' ? 'text-green-600' : 'text-amber-600' }}">
+                                            {{ $payment->amount }} BHD
                                         </span>
                                     </td>
                                     <td class="px-4 py-3 text-center">
-                                        @if($invoice->status == 'paid')
+                                        @if($payment->status_key === 'paid')
                                             <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
                                                 <i class="bi bi-check-circle-fill"></i> Paid
                                             </span>
-                                        @elseif($invoice->status == 'due')
+                                        @elseif($payment->status_key === 'pending')
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                                                <i class="bi bi-hourglass-split"></i> {{ $payment->status_label }}
+                                            </span>
+                                        @elseif($payment->status_key === 'due')
                                             <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
                                                 <i class="bi bi-clock"></i> Due
                                             </span>
                                         @else
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                                                {{ ucfirst($invoice->status) }}
+                                                {{ $payment->status_label }}
                                             </span>
                                         @endif
                                     </td>
                                     <td class="px-4 py-3 text-center whitespace-nowrap">
-                                        <a href="{{ route('bills.receipt', $invoice->id) }}" target="_blank"
-                                           class="inline-flex items-center justify-center w-7 h-7 rounded-lg text-primary hover:bg-primary/10 transition-colors" title="View Receipt">
-                                            <i class="bi bi-file-earmark-text"></i>
-                                        </a>
-                                        <a href="{{ route('bills.receipt', $invoice->id) }}?download=1" download
-                                           class="inline-flex items-center justify-center w-7 h-7 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors ml-1" title="Download">
-                                            <i class="bi bi-download"></i>
-                                        </a>
+                                        @if($payment->type === 'invoice' && $payment->receipt_id)
+                                            <a href="{{ route('bills.receipt', $payment->receipt_id) }}" target="_blank"
+                                               class="inline-flex items-center justify-center w-7 h-7 rounded-lg text-primary hover:bg-primary/10 transition-colors" title="View Receipt">
+                                                <i class="bi bi-file-earmark-text"></i>
+                                            </a>
+                                            <a href="{{ route('bills.receipt', $payment->receipt_id) }}?download=1" download
+                                               class="inline-flex items-center justify-center w-7 h-7 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors ml-1" title="Download">
+                                                <i class="bi bi-download"></i>
+                                            </a>
+                                        @elseif($payment->has_proof)
+                                            <span class="inline-flex items-center gap-1 text-xs text-gray-400" title="Proof of payment submitted">
+                                                <i class="bi bi-paperclip"></i> Proof sent
+                                            </span>
+                                        @else
+                                            <span class="text-gray-300">—</span>
+                                        @endif
                                     </td>
                                 </tr>
                                 @empty
@@ -462,8 +476,9 @@
                     </div>
                 </div>
             </div>
+            @endif
 
-            @if($relationship->relationship_type == 'self' || Auth::id() == $relationship->guardian_user_id || in_array($relationship->relationship_type, ['admin_view']))
+            @if($canViewSensitive ?? false)
             <!-- Emergency Contacts & Documents row -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
 
@@ -2990,7 +3005,7 @@ function submitResetPassword(e) {
 <!-- Generate Password (super-admin) — result modal showing the new password -->
 @if($canRegeneratePassword ?? false)
 <div x-data="{ open: false, password: '', emailed: false, copied: false }"
-     @show-generated-password.window="open = true; password = $event.detail.password; emailed = $event.detail.emailed; copied = false"
+     x-on:show-generated-password.window="open = true; password = $event.detail.password; emailed = $event.detail.emailed; copied = false"
      x-cloak>
     <div x-show="open" class="fixed inset-0 z-50 overflow-y-auto" @keydown.escape.window="open = false">
         <div x-show="open" x-transition.opacity class="fixed inset-0 bg-black/50" @click="open = false"></div>

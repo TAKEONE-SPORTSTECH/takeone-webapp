@@ -1,5 +1,15 @@
 @props(['name' => 'country_code', 'id' => 'country_code', 'value' => '+1', 'required' => false, 'error' => null])
 
+{{-- Keep the mobile-number group left-to-right even on RTL pages: the flag/code
+     button stays on the LEFT and the phone field on the right (phone numbers read
+     LTR anyway), so the physical divider, rounding and dropdown anchor all stay
+     correct. @once keeps it to a single <style> no matter how many times this renders. --}}
+@once
+<style>
+    [dir="rtl"] .tf-input-group { direction: ltr; }
+</style>
+@endonce
+
 <div class="tf-input-group"
      x-data="countryCodeDropdown_{{ $id }}()"
      x-init="init()">
@@ -7,7 +17,6 @@
     <div class="relative">
         <button type="button"
                 @click="toggle()"
-                @click.away="open = false"
                 x-ref="trigger"
                 class="h-full px-3 py-3 flex items-center gap-2 border-r border-primary/20 bg-transparent hover:bg-gray-50 transition-colors cursor-pointer rounded-l-xl"
                 id="{{ $id }}Dropdown">
@@ -18,6 +27,7 @@
 
         <!-- Dropdown Menu -->
         <div x-show="open" x-cloak
+             @click.outside="open = false"
              x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0"
              x-transition:enter-end="opacity-100"

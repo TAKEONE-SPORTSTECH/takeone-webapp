@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\BelongsToTenant;
+use App\Traits\DeletesUploadedFiles;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,7 +14,16 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class ClubMemberSubscription extends Model
 {
-    use HasFactory, BelongsToTenant, LogsActivity;
+    use HasFactory, BelongsToTenant, LogsActivity, DeletesUploadedFiles;
+
+    /**
+     * Uploaded proof files removed automatically before the record is deleted.
+     * Both live on the private `local` disk. See DeletesUploadedFiles trait.
+     */
+    protected array $fileUploads = [
+        'proof_of_payment' => 'local',
+        'refund_proof'     => 'local',
+    ];
 
     public function getActivitylogOptions(): LogOptions
     {
@@ -48,6 +58,8 @@ class ClubMemberSubscription extends Model
         'payment_status',
         'amount_paid',
         'amount_due',
+        'registration_fee',
+        'registration_group_id',
         'notes',
         'proof_of_payment',
         'refund_proof',
@@ -87,6 +99,7 @@ class ClubMemberSubscription extends Model
         'end_date' => 'date',
         'amount_paid' => 'decimal:2',
         'amount_due' => 'decimal:2',
+        'registration_fee' => 'decimal:2',
     ];
 
     /**
@@ -127,6 +140,14 @@ class ClubMemberSubscription extends Model
     public function transactions(): HasMany
     {
         return $this->hasMany(ClubTransaction::class, 'subscription_id');
+    }
+
+    /**
+     * Equipment lines purchased with this enrollment.
+     */
+    public function equipment(): HasMany
+    {
+        return $this->hasMany(MemberEquipment::class, 'subscription_id');
     }
 
     /**

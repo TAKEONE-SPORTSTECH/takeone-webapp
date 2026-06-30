@@ -41,6 +41,13 @@ class WalkInRegistrationRequest extends FormRequest
             'people.*.countryCode'          => 'nullable|string|max:10',
             'people.*.selectedPackageIds'   => 'nullable|array',
             'people.*.selectedPackageIds.*' => 'integer|exists:club_packages,id',
+            'people.*.selectedEquipmentIds' => 'nullable|array',
+            'people.*.selectedEquipmentIds.*' => 'integer|exists:club_activity_equipment,id',
+            'people.*.selectedVariants'     => 'nullable|array',
+            'people.*.selectedVariants.*'   => 'nullable|integer|exists:club_product_variants,id',
+            'people.*.ownedEquipmentIds'    => 'nullable|array',
+            'people.*.ownedEquipmentIds.*'  => 'integer|exists:club_activity_equipment,id',
+            'people.*.relationship'         => 'nullable|in:son,daughter,spouse,sponsor,other,child',
             'discount_type'                 => 'nullable|in:percentage,fixed',
             'discount_value'                => 'nullable|numeric|min:0',
         ];

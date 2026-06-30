@@ -45,6 +45,7 @@
                                     <span x-show="ach.location"><i class="bi bi-geo-alt mr-0.5"></i><span x-text="ach.location"></span></span>
                                     <span x-show="ach.date_label"><i class="bi bi-calendar-event mr-0.5"></i><span x-text="ach.date_label"></span></span>
                                     <span x-show="ach.club"><i class="bi bi-buildings mr-0.5"></i><span x-text="ach.club"></span></span>
+                                    <span x-show="window.memberTimeAgo && window.memberTimeAgo(ach.event_date)" class="text-primary/70"><i class="bi bi-clock-history mr-0.5"></i><span x-text="window.memberTimeAgo ? window.memberTimeAgo(ach.event_date) : ''"></span></span>
                                 </p>
                             </div>
                             <p x-show="ach.description" class="text-[13px] text-foreground/90 whitespace-pre-line" x-text="ach.description"></p>

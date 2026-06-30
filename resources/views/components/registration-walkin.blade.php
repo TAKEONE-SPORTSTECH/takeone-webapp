@@ -132,7 +132,7 @@
                 <!-- Step 2: Guardian & Children -->
                 <div x-show="step === 2" class="p-4 sm:p-6 space-y-5 sm:space-y-6">
                     <div>
-                        <h4 class="text-lg font-semibold text-gray-900 mb-4">Are you registering children?</h4>
+                        <h4 class="text-lg font-semibold text-gray-900 mb-4">Are you registering family members?</h4>
                         <div class="grid grid-cols-2 gap-4">
                             <button type="button" @click="setIsGuardian(true)"
                                     class="px-4 py-3 border-2 rounded-lg font-medium text-gray-700 hover:border-purple-400 transition-colors flex items-center justify-center gap-2"
@@ -152,23 +152,35 @@
                     <!-- Children Section -->
                     <div x-show="data.isGuardian === true" class="space-y-4">
                         <div class="flex items-center justify-between">
-                            <h4 class="font-semibold text-gray-900">Children</h4>
+                            <h4 class="font-semibold text-gray-900">Family Members</h4>
                             <button type="button" @click="addChild()" class="inline-flex items-center px-3 py-1.5 bg-purple-500 text-white text-sm font-medium rounded-lg hover:bg-purple-600 transition-colors">
-                                <i class="bi bi-plus mr-1"></i> Add Child
+                                <i class="bi bi-plus mr-1"></i> Add Member
                             </button>
                         </div>
                         <template x-for="(child, index) in data.children" :key="child.id">
                             <div class="bg-white border border-gray-200 rounded-xl p-4">
                                 <div class="flex justify-between items-start mb-4">
-                                    <h5 class="font-medium text-gray-900">Child <span x-text="index + 1"></span></h5>
+                                    <h5 class="font-medium text-gray-900" x-text="relationshipLabel(child.relationship) + ' ' + (index + 1)"></h5>
                                     <button type="button" @click="removeChild(child.id)" class="text-gray-400 hover:text-red-500 transition-colors">
                                         <i class="bi bi-x-lg"></i>
                                     </button>
                                 </div>
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Relationship <span class="text-red-500">*</span></label>
+                                    <div class="flex flex-wrap gap-2">
+                                        <template x-for="rel in relationshipOptions" :key="rel.value">
+                                            <button type="button" @click="setChildRelationship(child, rel.value)"
+                                                    class="px-3 py-1.5 rounded-full text-sm font-medium border transition-colors flex items-center gap-1.5"
+                                                    :class="child.relationship === rel.value ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-gray-200 text-gray-600 hover:border-purple-300'">
+                                                <i class="bi" :class="rel.icon"></i><span x-text="rel.label"></span>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
-                                        <input type="text" x-model="child.name" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500" placeholder="Child's name">
+                                        <input type="text" x-model="child.name" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500" placeholder="Family member's name">
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Date of Birth <span class="text-red-500">*</span></label>
@@ -176,14 +188,7 @@
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Gender <span class="text-red-500">*</span></label>
-                                        <div class="grid grid-cols-2 gap-2">
-                                            <button type="button" @click="child.gender = 'Male'"
-                                                    class="px-3 py-2 border-2 rounded-lg text-sm font-medium transition-colors"
-                                                    :class="child.gender === 'Male' ? 'border-purple-500 bg-purple-50' : 'border-gray-200'">Male</button>
-                                            <button type="button" @click="child.gender = 'Female'"
-                                                    class="px-3 py-2 border-2 rounded-lg text-sm font-medium transition-colors"
-                                                    :class="child.gender === 'Female' ? 'border-purple-500 bg-purple-50' : 'border-gray-200'">Female</button>
-                                        </div>
+                                        <x-gender-toggle model="child.gender" />
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Nationality <span class="text-red-500">*</span></label>
@@ -252,16 +257,78 @@
                                         <p class="text-sm text-gray-500 italic">No packages available for this age/gender</p>
                                     </template>
                                     <template x-for="pkg in getEligiblePackages(person)" :key="pkg.id">
-                                        <div @click="togglePackageForPerson(person.id, pkg.id)"
-                                             class="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:border-purple-400 transition-colors"
-                                             :class="person.selectedPackageIds.includes(pkg.id) ? 'border-purple-500 bg-purple-50' : 'border-gray-200'">
-                                            <input type="checkbox" :checked="person.selectedPackageIds.includes(pkg.id)" class="mt-1 w-4 h-4 text-purple-500 rounded" @click.stop>
-                                            <div class="flex-1">
-                                                <div class="flex items-center justify-between">
-                                                    <span class="font-medium text-gray-900" x-text="pkg.name"></span>
-                                                    <span class="text-sm font-semibold text-purple-600" x-text="currencySymbol + ' ' + parseFloat(pkg.price).toFixed(2)"></span>
+                                        <div>
+                                            <div @click="togglePackageForPerson(person.id, pkg.id)"
+                                                 class="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:border-purple-400 transition-colors"
+                                                 :class="person.selectedPackageIds.includes(pkg.id) ? 'border-purple-500 bg-purple-50' : 'border-gray-200'">
+                                                <input type="checkbox" :checked="person.selectedPackageIds.includes(pkg.id)" class="mt-1 w-4 h-4 text-purple-500 rounded" @click.stop>
+                                                <div class="flex-1">
+                                                    <div class="flex items-center justify-between">
+                                                        <span class="font-medium text-gray-900" x-text="pkg.name"></span>
+                                                        <span class="text-sm font-semibold text-purple-600" x-text="currencySymbol + ' ' + parseFloat(pkg.price).toFixed(2)"></span>
+                                                    </div>
+                                                    <p x-show="pkg.description" class="text-sm text-gray-500 mt-1" x-text="pkg.description"></p>
                                                 </div>
-                                                <p x-show="pkg.description" class="text-sm text-gray-500 mt-1" x-text="pkg.description"></p>
+                                            </div>
+
+                                            {{-- Equipment chips for this package (shown when the package is selected). --}}
+                                            <div x-show="person.selectedPackageIds.includes(pkg.id) && (pkg.equipment || []).length > 0"
+                                                 class="mt-2 ml-7 p-3 rounded-lg bg-gray-50 border border-gray-100">
+                                                <p class="text-xs font-medium text-gray-500 mb-2 flex items-center gap-1.5">
+                                                    <i class="bi bi-box-seam text-purple-500"></i> Equipment for this activity
+                                                </p>
+                                                <div class="space-y-2.5">
+                                                    <template x-for="eq in (pkg.equipment || [])" :key="eq.id">
+                                                        <div :class="isEquipmentOwned(person, eq.id) ? 'opacity-60' : ''">
+                                                            {{-- Plain gear: checkbox --}}
+                                                            <label x-show="!eq.has_variants" class="flex items-center gap-2.5 cursor-pointer select-none py-1" :class="isEquipmentOwned(person, eq.id) ? 'pointer-events-none' : ''">
+                                                                <input type="checkbox" :checked="person.selectedEquipmentIds.includes(eq.id)"
+                                                                       :disabled="isEquipmentOwned(person, eq.id)"
+                                                                       @change="toggleEquipmentForPerson(person.id, eq.id)"
+                                                                       class="w-4 h-4 text-purple-500 rounded border-gray-300 focus:ring-purple-500">
+                                                                <span class="flex-1 text-sm text-gray-700" :class="isEquipmentOwned(person, eq.id) ? 'line-through' : ''" x-text="eq.name"></span>
+                                                                <span x-show="eq.is_required && !isEquipmentOwned(person, eq.id)" class="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">Required</span>
+                                                                <span class="text-sm font-medium text-gray-600" x-text="currencySymbol + ' ' + parseFloat(eq.price).toFixed(2)"></span>
+                                                            </label>
+
+                                                            {{-- Variant gear: name + selectable chips --}}
+                                                            <div x-show="eq.has_variants">
+                                                                <div class="flex items-center gap-2 mb-1.5">
+                                                                    <span class="flex-1 text-sm font-medium text-gray-700" :class="isEquipmentOwned(person, eq.id) ? 'line-through' : ''" x-text="eq.name"></span>
+                                                                    <span x-show="eq.is_required && !isEquipmentOwned(person, eq.id)" class="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">Required</span>
+                                                                </div>
+                                                                <div class="flex flex-wrap gap-1.5" x-show="!isEquipmentOwned(person, eq.id)">
+                                                                    <template x-for="v in (eq.variants || [])" :key="v.id">
+                                                                        <button type="button" @click="selectVariantForPerson(person.id, eq, v.id)"
+                                                                                :disabled="!v.in_stock || v.owned"
+                                                                                class="px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors inline-flex items-center gap-1.5"
+                                                                                :class="equipmentVariantId(person, eq.id) === v.id
+                                                                                            ? 'border-purple-500 bg-purple-50 text-purple-700'
+                                                                                            : 'border-gray-200 bg-white text-gray-700 hover:border-purple-300'"
+                                                                                :style="(!v.in_stock || v.owned) ? 'opacity:.45;cursor:not-allowed;text-decoration:line-through' : ''">
+                                                                            <span x-show="v.color_hex" class="w-2.5 h-2.5 rounded-full border border-gray-200" :style="`background:${v.color_hex}`"></span>
+                                                                            <span x-text="v.label"></span>
+                                                                            <span class="text-gray-400 font-normal" x-text="'· ' + parseFloat(v.price).toFixed(2)"></span>
+                                                                            <span x-show="v.owned" class="text-[9px] px-1 py-0.5 rounded-full bg-green-100 text-green-700">Owned</span>
+                                                                        </button>
+                                                                    </template>
+                                                                </div>
+                                                            </div>
+
+                                                            {{-- "I already have it" — removes the item from the bill --}}
+                                                            <label class="flex items-center gap-2 cursor-pointer select-none mt-1.5 pl-0.5">
+                                                                <input type="checkbox" :checked="isEquipmentOwned(person, eq.id)"
+                                                                       @change="toggleOwnedForPerson(person.id, eq)"
+                                                                       class="w-3.5 h-3.5 text-green-600 rounded border-gray-300 focus:ring-green-500">
+                                                                <span class="text-[11px] font-medium" :class="isEquipmentOwned(person, eq.id) ? 'text-green-700' : 'text-gray-500'">I already have it</span>
+                                                            </label>
+                                                        </div>
+                                                    </template>
+                                                    <p class="text-[11px] text-gray-500 mt-2.5 flex items-start gap-1.5">
+                                                        <i class="bi bi-info-circle text-purple-500 mt-0.5"></i>
+                                                        <span>Trains elsewhere already? Tick anything they already own to remove it from the bill.</span>
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
                                     </template>
@@ -275,12 +342,16 @@
                         <h4 class="font-semibold text-gray-900 mb-3">Cost Summary</h4>
                         <div class="space-y-2 text-sm">
                             <div class="flex justify-between">
-                                <span class="text-gray-600">Enrollment Fee (<span x-text="totals.memberCount"></span> members)</span>
+                                <span class="text-gray-600">Registration Fee (<span x-text="totals.memberCount"></span> members)</span>
                                 <span x-text="currencySymbol + ' ' + totals.enrollmentTotal.toFixed(2)"></span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-gray-600">Packages Total</span>
                                 <span x-text="currencySymbol + ' ' + totals.packagesTotal.toFixed(2)"></span>
+                            </div>
+                            <div class="flex justify-between" x-show="totals.equipmentTotal > 0">
+                                <span class="text-gray-600">Equipment Total</span>
+                                <span x-text="currencySymbol + ' ' + totals.equipmentTotal.toFixed(2)"></span>
                             </div>
                             <div class="flex justify-between font-medium pt-2 border-t border-gray-200">
                                 <span>Subtotal</span>
@@ -341,9 +412,9 @@
                                         <p class="font-semibold text-gray-900" x-text="currencySymbol + ' ' + getPersonTotal(person).toFixed(2)"></p>
                                     </div>
                                     <div class="pl-4 space-y-1 text-sm">
-                                        <div class="flex justify-between text-gray-500">
-                                            <span>Enrollment Fee</span>
-                                            <span x-text="currencySymbol + ' ' + enrollmentFeeAmount.toFixed(2)"></span>
+                                        <div class="flex justify-between text-gray-500" x-show="getPersonRegFee(person) > 0">
+                                            <span>Registration Fee</span>
+                                            <span x-text="currencySymbol + ' ' + getPersonRegFee(person).toFixed(2)"></span>
                                         </div>
                                         <template x-if="getPersonPackages(person).length === 0">
                                             <p class="text-gray-400 italic">No packages selected</p>
@@ -352,6 +423,12 @@
                                             <div class="flex justify-between text-gray-500">
                                                 <span x-text="pkg.name"></span>
                                                 <span x-text="currencySymbol + ' ' + parseFloat(pkg.price).toFixed(2)"></span>
+                                            </div>
+                                        </template>
+                                        <template x-for="eq in getPersonEquipment(person)" :key="eq.id">
+                                            <div class="flex justify-between text-gray-500">
+                                                <span class="flex items-center gap-1"><i class="bi bi-box-seam text-xs"></i><span x-text="eq.name + (eq.variantLabel ? (' — ' + eq.variantLabel) : '')"></span></span>
+                                                <span x-text="currencySymbol + ' ' + parseFloat(eq.price).toFixed(2)"></span>
                                             </div>
                                         </template>
                                     </div>
@@ -400,6 +477,22 @@ function walkInRegistration() {
         clubId: '{{ $clubId }}',
         availablePackages: @json($packages),
 
+        relationshipOptions: [
+            { value: 'son',      label: 'Son',      icon: 'bi-person',        gender: 'Male'   },
+            { value: 'daughter', label: 'Daughter', icon: 'bi-person-heart',  gender: 'Female' },
+            { value: 'spouse',   label: 'Spouse',   icon: 'bi-heart',         gender: ''       },
+            { value: 'other',    label: 'Other',    icon: 'bi-people',        gender: ''       },
+        ],
+        relationshipLabel(val) {
+            const r = this.relationshipOptions.find(o => o.value === val);
+            return r ? r.label : 'Member';
+        },
+        setChildRelationship(child, val) {
+            child.relationship = val;
+            const r = this.relationshipOptions.find(o => o.value === val);
+            if (r && r.gender) child.gender = r.gender;   // pre-fill gender from relationship
+        },
+
         // The visible step sequence differs by type — Child skips the "children" step.
         // `step` stays tied to the markup numbers (1 details · 2 children · 3 packages · 4 payment).
         get visibleSteps() {
@@ -433,6 +526,7 @@ function walkInRegistration() {
             memberCount: 0,
             enrollmentTotal: 0,
             packagesTotal: 0,
+            equipmentTotal: 0,
             subtotal: 0,
             discount: 0,
             vat: 0,
@@ -475,7 +569,7 @@ function walkInRegistration() {
                 discountType: 'percentage',
                 discountValue: 0
             };
-            this.totals = { memberCount: 0, enrollmentTotal: 0, packagesTotal: 0, subtotal: 0, discount: 0, vat: 0, grandTotal: 0 };
+            this.totals = { memberCount: 0, enrollmentTotal: 0, packagesTotal: 0, equipmentTotal: 0, subtotal: 0, discount: 0, vat: 0, grandTotal: 0 };
 
             // Reset the hidden inputs from Blade components
             this.$nextTick(() => {
@@ -510,6 +604,7 @@ function walkInRegistration() {
                 name: '',
                 dob: '',
                 gender: 'Male',
+                relationship: 'son',
                 nationality: this.data.guardian.nationality || '',
                 phone: '',
                 countryCode: this.data.guardian.countryCode || '+973'
@@ -536,8 +631,12 @@ function walkInRegistration() {
                     phone: g.phone,
                     countryCode: g.countryCode || '+973',
                     type: 'child',
+                    relationship: 'other',
                     isJoining: true,   // single person — auto-selected for packages/payment
-                    selectedPackageIds: []
+                    selectedPackageIds: [],
+                    selectedEquipmentIds: [],
+                    selectedVariants: {},
+                    ownedEquipmentIds: []
                 });
                 return;
             }
@@ -551,7 +650,10 @@ function walkInRegistration() {
                     nationality: this.data.guardian.nationality,
                     type: 'guardian',
                     isJoining: false,
-                    selectedPackageIds: []
+                    selectedPackageIds: [],
+                    selectedEquipmentIds: [],
+                    selectedVariants: {},
+                    ownedEquipmentIds: []
                 });
             }
             this.data.children.forEach(child => {
@@ -565,8 +667,12 @@ function walkInRegistration() {
                         phone: child.phone,
                         countryCode: child.countryCode || '+973',
                         type: 'child',
+                        relationship: child.relationship || 'son',
                         isJoining: false,
-                        selectedPackageIds: []
+                        selectedPackageIds: [],
+                        selectedEquipmentIds: [],
+                    selectedVariants: {},
+                    ownedEquipmentIds: []
                     });
                 }
             });
@@ -597,7 +703,7 @@ function walkInRegistration() {
             const person = this.data.people.find(p => p.id === personId);
             if (person) {
                 person.isJoining = !person.isJoining;
-                if (!person.isJoining) person.selectedPackageIds = [];
+                if (!person.isJoining) { person.selectedPackageIds = []; person.selectedEquipmentIds = []; }
             }
         },
 
@@ -607,21 +713,159 @@ function walkInRegistration() {
                 const idx = person.selectedPackageIds.indexOf(packageId);
                 if (idx > -1) person.selectedPackageIds.splice(idx, 1);
                 else person.selectedPackageIds.push(packageId);
+                this.syncEquipmentDefaults(person);
             }
+        },
+
+        // Equipment offered to a person = unique gear across their selected packages.
+        availableEquipmentFor(person) {
+            const map = {};
+            person.selectedPackageIds.forEach(pkgId => {
+                const pkg = this.availablePackages.find(p => p.id == pkgId);
+                (pkg && pkg.equipment || []).forEach(eq => { map[eq.id] = eq; });
+            });
+            return Object.values(map);
+        },
+
+        // Re-apply smart defaults after a package toggle: pre-tick required gear the
+        // member doesn't already own; drop selections no longer offered.
+        syncEquipmentDefaults(person) {
+            if (!person.selectedVariants) person.selectedVariants = {};
+            if (!person.ownedEquipmentIds) person.ownedEquipmentIds = [];
+            const available = this.availableEquipmentFor(person);
+            const availableIds = available.map(e => e.id);
+            person.selectedEquipmentIds = person.selectedEquipmentIds.filter(id => availableIds.includes(id));
+            person.ownedEquipmentIds = person.ownedEquipmentIds.filter(id => availableIds.includes(id));
+            Object.keys(person.selectedVariants).forEach(id => {
+                if (!availableIds.includes(parseInt(id))) delete person.selectedVariants[id];
+            });
+            available.forEach(eq => {
+                // Members who already own an item: default it to "I already have".
+                if (eq.already_owned && !person.ownedEquipmentIds.includes(eq.id)) {
+                    person.ownedEquipmentIds.push(eq.id);
+                }
+                const owned = person.ownedEquipmentIds.includes(eq.id);
+                if (eq.is_required && !owned && !person.selectedEquipmentIds.includes(eq.id)) {
+                    person.selectedEquipmentIds.push(eq.id);
+                }
+                // Owned gear is never billed — keep it off the charged list.
+                if (owned) {
+                    const j = person.selectedEquipmentIds.indexOf(eq.id);
+                    if (j > -1) person.selectedEquipmentIds.splice(j, 1);
+                    delete person.selectedVariants[eq.id];
+                }
+                if (eq.has_variants && person.selectedEquipmentIds.includes(eq.id) && !person.selectedVariants[eq.id]) {
+                    const dv = this.defaultVariantFor(eq);
+                    if (dv) person.selectedVariants[eq.id] = dv.id;
+                }
+            });
+        },
+
+        defaultVariantFor(eq) {
+            const vs = (eq.variants || []).filter(v => v.in_stock);
+            const pool = vs.length ? vs : (eq.variants || []);
+            if (!pool.length) return null;
+            return pool.reduce((a, b) => (b.price < a.price ? b : a), pool[0]);
+        },
+
+        equipmentVariantId(person, equipmentId) {
+            return (person.selectedVariants || {})[equipmentId] || null;
+        },
+
+        toggleEquipmentForPerson(personId, equipmentId) {
+            const person = this.data.people.find(p => p.id === personId);
+            if (!person) return;
+            if ((person.ownedEquipmentIds || []).includes(equipmentId)) return;
+            const idx = person.selectedEquipmentIds.indexOf(equipmentId);
+            if (idx > -1) person.selectedEquipmentIds.splice(idx, 1);
+            else person.selectedEquipmentIds.push(equipmentId);
+        },
+
+        isEquipmentOwned(person, equipmentId) {
+            return (person.ownedEquipmentIds || []).includes(equipmentId);
+        },
+
+        // "I already have it" — exclude an item from the bill (overrides required),
+        // or fold it back in when un-checked.
+        toggleOwnedForPerson(personId, eq) {
+            const person = this.data.people.find(p => p.id === personId);
+            if (!person) return;
+            if (!person.ownedEquipmentIds) person.ownedEquipmentIds = [];
+            if (!person.selectedVariants) person.selectedVariants = {};
+            const oi = person.ownedEquipmentIds.indexOf(eq.id);
+            if (oi === -1) {
+                person.ownedEquipmentIds.push(eq.id);
+                const j = person.selectedEquipmentIds.indexOf(eq.id);
+                if (j > -1) person.selectedEquipmentIds.splice(j, 1);
+                delete person.selectedVariants[eq.id];
+            } else {
+                person.ownedEquipmentIds.splice(oi, 1);
+                if (eq.is_required && !person.selectedEquipmentIds.includes(eq.id)) person.selectedEquipmentIds.push(eq.id);
+                if (eq.has_variants && person.selectedEquipmentIds.includes(eq.id) && !person.selectedVariants[eq.id]) {
+                    const dv = this.defaultVariantFor(eq);
+                    if (dv) person.selectedVariants[eq.id] = dv.id;
+                }
+            }
+        },
+
+        // Variant gear: picking a variant ticks the item; tapping the chosen one
+        // again unticks it (unless required).
+        selectVariantForPerson(personId, eq, variantId) {
+            const person = this.data.people.find(p => p.id === personId);
+            if (!person) return;
+            if (!person.selectedVariants) person.selectedVariants = {};
+            const current = person.selectedVariants[eq.id] || null;
+            if (current === variantId && !eq.is_required) {
+                delete person.selectedVariants[eq.id];
+                const i = person.selectedEquipmentIds.indexOf(eq.id);
+                if (i > -1) person.selectedEquipmentIds.splice(i, 1);
+                return;
+            }
+            person.selectedVariants[eq.id] = variantId;
+            if (!person.selectedEquipmentIds.includes(eq.id)) person.selectedEquipmentIds.push(eq.id);
+        },
+
+        // Effective per-person registration fee: the first selected package's
+        // override, else the club default. Mirrors the server-side resolver.
+        getPersonRegFee(person) {
+            const ids = person.selectedPackageIds || [];
+            if (ids.length > 0) {
+                const pkg = this.availablePackages.find(p => p.id == ids[0]);
+                if (pkg && pkg.registration_fee !== null && pkg.registration_fee !== undefined && pkg.registration_fee !== '') {
+                    return parseFloat(pkg.registration_fee);
+                }
+            }
+            return parseFloat(this.enrollmentFeeAmount) || 0;
+        },
+
+        getPersonEquipment(person) {
+            return this.availableEquipmentFor(person)
+                .filter(eq => person.selectedEquipmentIds.includes(eq.id))
+                .map(eq => {
+                    if (!eq.has_variants) return eq;
+                    const vid = this.equipmentVariantId(person, eq.id);
+                    const v = (eq.variants || []).find(x => x.id === vid);
+                    if (!v) return null;
+                    return { ...eq, price: v.price, variantLabel: v.label };
+                })
+                .filter(Boolean);
         },
 
         calculateTotals() {
             const joining = this.data.people.filter(p => p.isJoining);
             const memberCount = joining.length;
-            const enrollmentTotal = this.enrollmentFeeAmount * memberCount;
+            let enrollmentTotal = 0;
             let packagesTotal = 0;
+            let equipmentTotal = 0;
             joining.forEach(person => {
+                enrollmentTotal += this.getPersonRegFee(person);
                 person.selectedPackageIds.forEach(pkgId => {
                     const pkg = this.availablePackages.find(p => p.id == pkgId);
                     if (pkg) packagesTotal += parseFloat(pkg.price);
                 });
+                this.getPersonEquipment(person).forEach(eq => { equipmentTotal += parseFloat(eq.price); });
             });
-            const subtotal = enrollmentTotal + packagesTotal;
+            const subtotal = enrollmentTotal + packagesTotal + equipmentTotal;
             let discount = 0;
             if (this.data.discountValue > 0) {
                 discount = this.data.discountType === 'percentage' ? (subtotal * this.data.discountValue / 100) : this.data.discountValue;
@@ -630,7 +874,7 @@ function walkInRegistration() {
             const vat = afterDiscount * (this.vatPercentageAmount / 100);
             const grandTotal = afterDiscount + vat;
 
-            this.totals = { memberCount, enrollmentTotal, packagesTotal, subtotal, discount, vat, grandTotal };
+            this.totals = { memberCount, enrollmentTotal, packagesTotal, equipmentTotal, subtotal, discount, vat, grandTotal };
         },
 
         // --- Step 4: Summary helpers ---
@@ -644,7 +888,10 @@ function walkInRegistration() {
 
         getPersonTotal(person) {
             const pkgs = this.getPersonPackages(person);
-            return this.enrollmentFeeAmount + pkgs.reduce((s, pkg) => s + parseFloat(pkg.price), 0);
+            const equip = this.getPersonEquipment(person);
+            return this.getPersonRegFee(person)
+                + pkgs.reduce((s, pkg) => s + parseFloat(pkg.price), 0)
+                + equip.reduce((s, eq) => s + parseFloat(eq.price), 0);
         },
 
         // --- Validation ---

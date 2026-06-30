@@ -83,7 +83,8 @@ class ClubMemberAdminController extends Controller
             elseif  ($age >= 31)              $ageGroupCounts['Masters']++;
         }
 
-        $packages = ClubPackage::where('tenant_id', $clubId)->get();
+        $packages = ClubPackage::where('tenant_id', $clubId)->with('activities.equipment')->get();
+        app(\App\Services\RegistrationCostService::class)->attachEquipmentToPackages($packages, $clubId);
 
         // Monthly new-member registrations + demographic breakdown — last 12 months (sparkline data)
         $recentMembers = DB::table('memberships as m')
@@ -426,7 +427,8 @@ class ClubMemberAdminController extends Controller
                 'birthdate'         => $g['dob'],
                 'nationality'       => $g['nationality'],
                 'mobile'            => ['code' => $g['countryCode'] ?? '+973', 'number' => $g['phone']],
-                'email_verified_at' => null,
+                // Admin-created accounts are trusted — mark verified, no email step.
+                'email_verified_at' => now(),
             ];
 
             $softDeletedGuardian = User::withTrashed()->where('email', $g['email'])->whereNotNull('deleted_at')->first();
@@ -453,11 +455,12 @@ class ClubMemberAdminController extends Controller
                             ? ['code' => $person['countryCode'] ?? '+973', 'number' => $childPhone]
                             : null,
                         'password'    => Hash::make(Str::random(16)),
+                        'email_verified_at' => now(),
                     ]);
                     UserRelationship::create([
                         'guardian_user_id'  => $guardianUser->id,
                         'dependent_user_id' => $childUser->id,
-                        'relationship_type' => 'child',
+                        'relationship_type' => $person['relationship'] ?? 'child',
                     ]);
                     $childUsers[] = $childUser;
                 }
@@ -465,6 +468,9 @@ class ClubMemberAdminController extends Controller
 
             $validPkgIds = ClubPackage::where('tenant_id', $club->id)->pluck('id')->flip();
             $childIdx    = 0;
+            $groupId     = (string) Str::uuid();
+            $costSvc     = app(\App\Services\RegistrationCostService::class);
+            $subSvc      = app(SubscriptionService::class);
 
             foreach ($request->people as $person) {
                 $user = $person['type'] === 'guardian'
@@ -472,43 +478,68 @@ class ClubMemberAdminController extends Controller
                     : ($childUsers[$childIdx++] ?? null);
                 if (!$user) continue;
 
+                // Capture first-time status BEFORE creating the membership row.
+                $isFirstTime = !$costSvc->isReturningMember($club->id, $user->id);
+
                 Membership::firstOrCreate(
                     ['tenant_id' => $club->id, 'user_id' => $user->id],
                     ['status' => 'active']
                 );
 
-                if ($club->enrollment_fee > 0) {
-                    ClubTransaction::create([
-                        'tenant_id'        => $club->id,
-                        'user_id'          => $user->id,
-                        'type'             => 'income',
-                        'category'         => 'enrollment',
-                        'amount'           => $club->enrollment_fee,
-                        'description'      => "Walk-in enrollment: {$user->full_name}",
-                        'transaction_date' => now(),
-                    ]);
-                }
+                // Create package subscriptions; remember the first to carry the
+                // person's snapshotted registration fee + equipment lines.
+                $selectedPkgIds = $person['selectedPackageIds'] ?? [];
+                $firstSub = null;
 
-                foreach (($person['selectedPackageIds'] ?? []) as $pkgId) {
+                foreach ($selectedPkgIds as $pkgId) {
                     if (!isset($validPkgIds[$pkgId])) continue;
                     $package = ClubPackage::find($pkgId);
                     if (!$package) continue;
 
-                    if (app(SubscriptionService::class)->isDuplicate($club->id, $user->id, $pkgId)) continue;
+                    if ($subSvc->isDuplicate($club->id, $user->id, $pkgId)) continue;
 
-                    app(SubscriptionService::class)->createActive(
+                    $sub = $subSvc->createActive(
                         $club,
                         $user->id,
                         $package,
                         "Walk-in: {$user->full_name} — {$package->name}"
                     );
+                    $sub->update(['registration_group_id' => $groupId]);
+                    $firstSub ??= $sub;
                 }
+
+                // Registration (joining) fee — only the first time this member joins.
+                if ($isFirstTime) {
+                    $fee = (float) ($club->enrollment_fee ?? 0);
+                    if (!empty($selectedPkgIds) && ($firstPkg = ClubPackage::find($selectedPkgIds[0]))) {
+                        $fee = $costSvc->effectiveRegistrationFee($firstPkg, $club);
+                    }
+                    if ($fee > 0) {
+                        $firstSub?->update(['registration_fee' => $fee]);
+                        $costSvc->recordRegistrationFee($club, $user->id, $firstSub, $fee, $user->full_name);
+                    }
+                }
+
+                // Equipment — frozen lines + ownership memory (walk-in is paid → owned).
+                $charged = array_map('intval', $person['selectedEquipmentIds'] ?? []);
+                $costSvc->snapshotEquipment(
+                    $club,
+                    $user->id,
+                    $firstSub,
+                    $charged,
+                    'owned',
+                    variantMap: $person['selectedVariants'] ?? []
+                );
+
+                // Gear marked "I already have it" — recorded as owned, never billed.
+                $ownedGear = array_values(array_diff(
+                    array_map('intval', $person['ownedEquipmentIds'] ?? []),
+                    $charged
+                ));
+                $costSvc->recordOwnedEquipment($club, $user->id, $firstSub, $ownedGear);
             }
 
             DB::commit();
-
-            // Send verification email so the user can activate their account and log in.
-            $guardianUser->sendEmailVerificationNotification();
 
             activity('membership')
                 ->causedBy(auth()->user())
@@ -546,6 +577,7 @@ class ClubMemberAdminController extends Controller
                     ? ['code' => $g['countryCode'] ?? '+973', 'number' => $phone]
                     : null,
                 'password'    => Hash::make(Str::random(16)),
+                'email_verified_at' => now(),
             ]);
 
             Membership::firstOrCreate(
@@ -553,32 +585,57 @@ class ClubMemberAdminController extends Controller
                 ['status' => 'active']
             );
 
-            if ($club->enrollment_fee > 0) {
-                ClubTransaction::create([
-                    'tenant_id'        => $club->id,
-                    'user_id'          => $childUser->id,
-                    'type'             => 'income',
-                    'category'         => 'enrollment',
-                    'amount'           => $club->enrollment_fee,
-                    'description'      => "Walk-in enrollment: {$childUser->full_name}",
-                    'transaction_date' => now(),
-                ]);
-            }
-
+            $costSvc     = app(\App\Services\RegistrationCostService::class);
+            $subSvc      = app(SubscriptionService::class);
+            $groupId     = (string) Str::uuid();
             $validPkgIds = ClubPackage::where('tenant_id', $club->id)->pluck('id')->flip();
-            foreach (($person['selectedPackageIds'] ?? []) as $pkgId) {
+
+            $selectedPkgIds = $person['selectedPackageIds'] ?? [];
+            $firstSub = null;
+
+            foreach ($selectedPkgIds as $pkgId) {
                 if (!isset($validPkgIds[$pkgId])) continue;
                 $package = ClubPackage::find($pkgId);
                 if (!$package) continue;
-                if (app(SubscriptionService::class)->isDuplicate($club->id, $childUser->id, $pkgId)) continue;
+                if ($subSvc->isDuplicate($club->id, $childUser->id, $pkgId)) continue;
 
-                app(SubscriptionService::class)->createActive(
+                $sub = $subSvc->createActive(
                     $club,
                     $childUser->id,
                     $package,
                     "Walk-in (child): {$childUser->full_name} — {$package->name}"
                 );
+                $sub->update(['registration_group_id' => $groupId]);
+                $firstSub ??= $sub;
             }
+
+            // Registration (joining) fee — standalone child is always first-time here.
+            $fee = (float) ($club->enrollment_fee ?? 0);
+            if (!empty($selectedPkgIds) && ($firstPkg = ClubPackage::find($selectedPkgIds[0]))) {
+                $fee = $costSvc->effectiveRegistrationFee($firstPkg, $club);
+            }
+            if ($fee > 0) {
+                $firstSub?->update(['registration_fee' => $fee]);
+                $costSvc->recordRegistrationFee($club, $childUser->id, $firstSub, $fee, $childUser->full_name);
+            }
+
+            // Equipment snapshot.
+            $charged = array_map('intval', $person['selectedEquipmentIds'] ?? []);
+            $costSvc->snapshotEquipment(
+                $club,
+                $childUser->id,
+                $firstSub,
+                $charged,
+                'owned',
+                variantMap: $person['selectedVariants'] ?? []
+            );
+
+            // Gear marked "I already have it" — recorded as owned, never billed.
+            $ownedGear = array_values(array_diff(
+                array_map('intval', $person['ownedEquipmentIds'] ?? []),
+                $charged
+            ));
+            $costSvc->recordOwnedEquipment($club, $childUser->id, $firstSub, $ownedGear);
 
             DB::commit();
 
@@ -1030,6 +1087,7 @@ class ClubMemberAdminController extends Controller
                     'birthdate' => $dob,
                     'mobile'    => ['code' => $phoneCode, 'number' => $phoneNumber],
                     'password'  => Hash::make(Str::random(16)),
+                    'email_verified_at' => now(),
                 ];
 
                 if (!empty($data['cpr_id'])) {

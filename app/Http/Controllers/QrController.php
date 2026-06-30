@@ -34,7 +34,7 @@ class QrController extends Controller
     /** Registration link that drops the new member straight into this club's flow. */
     public static function clubRegisterUrl(Tenant $club): string
     {
-        return route('register', ['intended' => self::clubPageUrl($club)]);
+        return route('register.club', ['country' => $club->country_code, 'slug' => $club->slug]);
     }
 
     /** A member's public profile (wall) URL. */

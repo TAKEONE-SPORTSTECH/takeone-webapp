@@ -691,6 +691,7 @@ class MessengerController extends Controller
 
         return [
             'id'      => $user->id,
+            'uuid'    => $user->uuid,
             'slug'    => $user->slug,
             'name'    => $name,
             'avatar'  => $user->profile_picture ? asset('storage/' . $user->profile_picture) : null,

@@ -22,22 +22,87 @@
         proof: null,
         pid: {{ (int) $p['id'] }},
         pname: @js($p['name']),
+        basePrice: {{ $p['price'] }},
+        hasVariants: {{ !empty($p['hasVariants']) ? 'true' : 'false' }},
+        variants: @js(collect($p['variants'] ?? [])->where('is_active', true)->values()->all()),
+        optBrand: null, optColor: null, optSize: null,
         placeRoute: @js(route('me.orders.store')),
         ordersRoute: @js(route('me.orders')),
         csrf: document.querySelector('meta[name=csrf-token]')?.content || '',
+        init() {},
+        // Distinct option values across the variants (the AliExpress selectors).
+        brands() { return [...new Set(this.variants.map(v => v.brand).filter(Boolean))]; },
+        sizes()  { return [...new Set(this.variants.map(v => v.size).filter(Boolean))]; },
+        colors() {
+            const seen = {}, out = [];
+            this.variants.forEach(v => { if (v.color && !seen[v.color]) { seen[v.color] = 1; out.push({ name: v.color, hex: v.color_hex }); } });
+            return out;
+        },
+        // Price range across variants — shown until a full combination is picked.
+        priceMin() { return this.variants.length ? Math.min(...this.variants.map(v => v.price)) : this.basePrice; },
+        priceMax() { return this.variants.length ? Math.max(...this.variants.map(v => v.price)) : this.basePrice; },
+        priceVaries() { return this.hasVariants && this.priceMin() !== this.priceMax(); },
+        // The variant matching every selected dimension that the product uses.
+        get sel() {
+            if (!this.hasVariants) return null;
+            return this.variants.find(v =>
+                (this.brands().length === 0 || v.brand === this.optBrand) &&
+                (this.colors().length === 0 || v.color === this.optColor) &&
+                (this.sizes().length  === 0 || v.size  === this.optSize)
+            ) || null;
+        },
+        get unitPrice() { return this.sel ? this.sel.price : this.basePrice; },
+        pickOpt(dim, val) {
+            if (dim === "brand") this.optBrand = val;
+            else if (dim === "color") this.optColor = val;
+            else if (dim === "size") this.optSize = val;
+        },
+        optSelected(dim, val) {
+            return (dim === "brand" && this.optBrand === val) || (dim === "color" && this.optColor === val) || (dim === "size" && this.optSize === val);
+        },
+        // Cheapest price reachable for an option value given the other choices —
+        // lets each tile show its own price, AliExpress style.
+        optPrice(dim, val) {
+            const m = this.variants.filter(v => {
+                if (v[dim] !== val) return false;
+                if (dim !== "brand" && this.brands().length && this.optBrand != null && v.brand !== this.optBrand) return false;
+                if (dim !== "color" && this.colors().length && this.optColor != null && v.color !== this.optColor) return false;
+                if (dim !== "size"  && this.sizes().length  && this.optSize  != null && v.size  !== this.optSize)  return false;
+                return true;
+            });
+            return m.length ? Math.min(...m.map(v => v.price)) : null;
+        },
+        // A value is available if some in-stock variant has it together with the
+        // other dimensions already chosen.
+        optAvailable(dim, val) {
+            return this.variants.some(v => {
+                if (!v.in_stock || v[dim] !== val) return false;
+                if (dim !== "brand" && this.brands().length && this.optBrand != null && v.brand !== this.optBrand) return false;
+                if (dim !== "color" && this.colors().length && this.optColor != null && v.color !== this.optColor) return false;
+                if (dim !== "size"  && this.sizes().length  && this.optSize  != null && v.size  !== this.optSize)  return false;
+                return true;
+            });
+        },
         inc() { this.qty++; },
         dec() { if (this.qty > 1) this.qty--; },
-        get line() { return ({{ $p['price'] }} * this.qty); },
+        get line() { return (this.unitPrice * this.qty); },
         addToCart() {
+            if (this.hasVariants && !this.sel) { window.showToast('error', @js(__('market.select_variant'))); return; }
+            if (this.sel && !this.sel.in_stock) { window.showToast('error', @js(__('market.out_of_stock'))); return; }
             let cart = [];
             try { cart = JSON.parse(localStorage.getItem('takeone_cart') || '[]'); } catch (e) {}
-            const ex = cart.find(i => i.id === this.pid && (i.color || null) === (this.color || null));
+            const vId = this.sel ? this.sel.id : null;
+            const ex = cart.find(i => i.id === this.pid && (i.variantId || null) === (vId || null) && (i.color || null) === (this.color || null));
             if (ex) ex.qty += this.qty;
-            else cart.push({ id: this.pid, name: this.pname, price: {{ $p['price'] }}, color: this.color, icon: @js($p['icon']), qty: this.qty });
+            else cart.push({ id: this.pid, name: this.pname, price: this.unitPrice, color: this.sel ? this.sel.color_hex : this.color, icon: @js($p['icon']), qty: this.qty, variantId: vId, variantLabel: this.sel ? this.sel.label : null });
             try { localStorage.setItem('takeone_cart', JSON.stringify(cart)); } catch (e) {}
             window.showToast('success', @js(__('market.added_to_cart')).replace(':name', this.pname));
         },
-        buyNow() { this.proof = null; this.paySheet = true; },
+        buyNow() {
+            if (this.hasVariants && !this.sel) { window.showToast('error', @js(__('market.select_variant'))); return; }
+            if (this.sel && !this.sel.in_stock) { window.showToast('error', @js(__('market.out_of_stock'))); return; }
+            this.proof = null; this.paySheet = true;
+        },
         async pickProof(e) {
             const f = (e.target.files || [])[0]; e.target.value = '';
             if (!f || !f.type.startsWith('image/')) return;
@@ -60,7 +125,7 @@
                     method: 'POST',
                     headers: { 'X-CSRF-TOKEN': this.csrf, 'Content-Type': 'application/json', 'Accept': 'application/json' },
                     credentials: 'same-origin',
-                    body: JSON.stringify({ items: [{ id: this.pid, qty: this.qty, color: this.color }], proof: this.proof }),
+                    body: JSON.stringify({ items: [{ id: this.pid, qty: this.qty, color: this.sel ? this.sel.color_hex : this.color, variant_id: this.sel ? this.sel.id : null }], proof: this.proof }),
                 });
                 const d = await res.json().catch(() => ({}));
                 if (!res.ok || d.success === false) throw new Error(d.message || @js(__('shared.error')));
@@ -112,15 +177,70 @@
             </div>
 
             <div class="flex items-end gap-2 mt-4">
-                <span class="text-2xl font-black text-foreground">BHD {{ number_format($p['price'], 2) }}</span>
+                {{-- Exact price once the combination is picked (or no variants) --}}
+                <span class="text-2xl font-black text-foreground" x-show="!hasVariants || sel">BHD <span x-text="unitPrice.toFixed(2)">{{ number_format($p['price'], 2) }}</span></span>
+                {{-- Price range until the buyer has chosen every option --}}
+                <span class="text-2xl font-black text-foreground" x-show="hasVariants && !sel" x-cloak>BHD <span x-text="priceMin().toFixed(2)"></span><template x-if="priceVaries()"><span> – <span x-text="priceMax().toFixed(2)"></span></span></template></span>
                 @if($p['old'])
                     <span class="text-sm text-muted-foreground line-through mb-0.5">BHD {{ number_format($p['old'], 2) }}</span>
                     <span class="mb-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-500">-{{ $off }}%</span>
                 @endif
             </div>
 
-            {{-- colours --}}
-            @if(count($p['colors']) > 1)
+            {{-- variants (per-dimension option selectors, AliExpress style) --}}
+            @if(!empty($p['hasVariants']))
+                {{-- Brand --}}
+                <div class="mt-4" x-show="brands().length">
+                    <p class="text-xs font-semibold text-foreground mb-2">{{ __('market.opt_brands') }}</p>
+                    <div class="flex flex-wrap gap-2">
+                        <template x-for="b in brands()" :key="b">
+                            <button type="button" @click="pickOpt('brand', b)" :disabled="!optAvailable('brand', b)"
+                                    class="m-press px-3.5 py-2 rounded-xl border-2 text-xs font-semibold transition-colors flex flex-col items-center leading-tight"
+                                    :class="optSelected('brand', b) ? 'border-primary bg-accent/40 text-primary' : 'border-gray-200 text-foreground'"
+                                    :style="!optAvailable('brand', b) ? 'opacity:.4;text-decoration:line-through;cursor:not-allowed' : ''">
+                                <span x-text="b"></span>
+                                <span x-show="priceVaries() && optPrice('brand', b) !== null" class="text-[10px] font-normal text-muted-foreground" x-text="'BHD ' + (optPrice('brand', b) || 0).toFixed(2)"></span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+                {{-- Colour --}}
+                <div class="mt-4" x-show="colors().length">
+                    <p class="text-xs font-semibold text-foreground mb-2">{{ __('market.opt_colors') }}</p>
+                    <div class="flex flex-wrap gap-2">
+                        <template x-for="c in colors()" :key="c.name">
+                            <button type="button" @click="pickOpt('color', c.name)" :disabled="!optAvailable('color', c.name)"
+                                    class="m-press px-3 py-2 rounded-xl border-2 text-xs font-semibold transition-colors inline-flex items-center gap-1.5"
+                                    :class="optSelected('color', c.name) ? 'border-primary bg-accent/40 text-primary' : 'border-gray-200 text-foreground'"
+                                    :style="!optAvailable('color', c.name) ? 'opacity:.4;text-decoration:line-through;cursor:not-allowed' : ''">
+                                <span class="w-3.5 h-3.5 rounded-full border border-gray-200" :style="`background:${c.hex}`"></span>
+                                <span class="flex flex-col items-start leading-tight">
+                                    <span x-text="c.name"></span>
+                                    <span x-show="priceVaries() && optPrice('color', c.name) !== null" class="text-[10px] font-normal text-muted-foreground" x-text="'BHD ' + (optPrice('color', c.name) || 0).toFixed(2)"></span>
+                                </span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+                {{-- Size --}}
+                <div class="mt-4" x-show="sizes().length">
+                    <p class="text-xs font-semibold text-foreground mb-2">{{ __('market.opt_sizes') }}</p>
+                    <div class="flex flex-wrap gap-2">
+                        <template x-for="s in sizes()" :key="s">
+                            <button type="button" @click="pickOpt('size', s)" :disabled="!optAvailable('size', s)"
+                                    class="m-press min-w-[2.75rem] px-3.5 py-2 rounded-xl border-2 text-xs font-semibold transition-colors flex flex-col items-center leading-tight"
+                                    :class="optSelected('size', s) ? 'border-primary bg-accent/40 text-primary' : 'border-gray-200 text-foreground'"
+                                    :style="!optAvailable('size', s) ? 'opacity:.4;text-decoration:line-through;cursor:not-allowed' : ''">
+                                <span x-text="s"></span>
+                                <span x-show="priceVaries() && optPrice('size', s) !== null" class="text-[10px] font-normal text-muted-foreground" x-text="'BHD ' + (optPrice('size', s) || 0).toFixed(2)"></span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+                <p x-show="!sel" class="text-[11px] text-red-500 mt-2">{{ __('market.select_variant') }}</p>
+                <p x-show="sel && !sel.in_stock" class="text-[11px] text-red-500 mt-2">{{ __('market.out_of_stock') }}</p>
+            @elseif(count($p['colors']) > 1)
+                {{-- colours --}}
                 <div class="mt-4">
                     <p class="text-xs font-semibold text-foreground mb-2">Colour</p>
                     <div class="flex gap-2.5">
@@ -289,7 +409,7 @@
                         <i class="bi bi-info-circle mt-0.5 text-primary"></i><span>{{ __('market.pay_instructions') }}</span>
                     </div>
                     <div class="flex items-center justify-between text-sm">
-                        <span class="text-muted-foreground"><span x-text="qty"></span> × {{ $p['name'] }}</span>
+                        <span class="text-muted-foreground"><span x-text="qty"></span> × {{ $p['name'] }}<span x-show="sel" x-text="sel ? (' — ' + sel.label) : ''"></span></span>
                         <span class="font-black text-foreground">BHD <span x-text="line.toFixed(2)"></span></span>
                     </div>
                     <div>

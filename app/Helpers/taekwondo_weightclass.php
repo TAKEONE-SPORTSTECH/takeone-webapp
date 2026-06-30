@@ -40,6 +40,7 @@ if (! function_exists('classifyTaekwondo')) {
                 return [
                     'age_group' => $group,
                     'category'  => $class['label'],
+                    'name'      => $class['name'] ?? null,
                     'min'       => $class['min'],
                     'max'       => $class['max'],
                 ];

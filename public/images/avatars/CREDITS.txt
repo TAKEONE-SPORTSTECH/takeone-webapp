@@ -1,0 +1,8 @@
+Gendered silhouette placeholder avatars (public domain).
+
+male.svg   — based on "Replace this image male.svg" by Waldir, Wikimedia Commons.
+             Released into the public domain. Background rect removed.
+female.svg — "Blank woman placeholder.svg", Wikimedia Commons. Public domain.
+
+Both are public domain (no attribution legally required); recorded here for provenance.
+Rendered white-on-tint via CSS by <x-gender-avatar>.

@@ -73,6 +73,7 @@
             'name' => $p->name,
             'description' => $p->description,
             'price' => $p->price,
+            'registration_fee' => $p->registration_fee,
             'duration_months' => $p->duration_months,
             'gender' => $p->gender ?? 'mixed',
             'age_min' => $p->age_min,

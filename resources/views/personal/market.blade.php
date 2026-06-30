@@ -162,14 +162,22 @@
                         </div>
                         <div class="flex items-end justify-between mt-auto pt-2">
                             <div>
-                                <p class="text-sm font-black text-foreground">BHD {{ number_format($p['price'], 2) }}</p>
+                                <p class="text-sm font-black text-foreground">@if(!empty($p['hasVariants']))<span class="text-[9px] font-semibold text-muted-foreground">{{ __('market.from_price') }} </span>@endif BHD {{ number_format($p['price'], 2) }}</p>
                                 @if($p['old'])<p class="text-[10px] text-muted-foreground line-through">BHD {{ number_format($p['old'], 2) }}</p>@endif
                             </div>
-                            <button type="button"
-                                    @click="add({{ Illuminate\Support\Js::from(['id'=>$p['id'],'name'=>$p['name'],'price'=>$p['price'],'color'=>$p['color'],'icon'=>$p['icon']]) }})"
-                                    class="m-press w-9 h-9 rounded-xl grid place-items-center text-white" style="background: {{ $p['color'] }};">
-                                <i class="bi bi-plus-lg"></i>
-                            </button>
+                            @if(!empty($p['hasVariants']))
+                                {{-- Variants need a choice — send the buyer to the detail page to pick. --}}
+                                <a href="{{ route('me.market.show', $p['id']) }}" data-shell-link data-route="me.market"
+                                   class="m-press w-9 h-9 rounded-xl grid place-items-center text-white" style="background: {{ $p['color'] }};" title="{{ __('market.choose_options') }}">
+                                    <i class="bi bi-sliders"></i>
+                                </a>
+                            @else
+                                <button type="button"
+                                        @click="add({{ Illuminate\Support\Js::from(['id'=>$p['id'],'name'=>$p['name'],'price'=>$p['price'],'color'=>$p['color'],'icon'=>$p['icon']]) }})"
+                                        class="m-press w-9 h-9 rounded-xl grid place-items-center text-white" style="background: {{ $p['color'] }};">
+                                    <i class="bi bi-plus-lg"></i>
+                                </button>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -209,13 +217,14 @@
                         <p class="text-sm text-muted-foreground mt-2">{{ __('market.cart_empty') }}</p>
                     </div>
                 </template>
-                <template x-for="it in items" :key="it.id">
+                <template x-for="it in items" :key="(it.id) + ':' + (it.variantId || '')">
                     <div class="flex items-center gap-3">
                         <div class="w-12 h-12 rounded-xl grid place-items-center flex-shrink-0" :style="`background:${it.color}18`">
                             <i class="bi text-xl" :class="it.icon" :style="`color:${it.color}`"></i>
                         </div>
                         <div class="min-w-0 flex-1">
                             <p class="text-sm font-bold text-foreground truncate" x-text="it.name"></p>
+                            <p x-show="it.variantLabel" class="text-[11px] text-muted-foreground truncate" x-text="it.variantLabel"></p>
                             <p class="text-xs text-muted-foreground">BHD <span x-text="it.price.toFixed(2)"></span></p>
                         </div>
                         <div class="flex items-center gap-2">
@@ -289,8 +298,9 @@ function marketHub(meta) {
         get total() { return this.items.reduce((s, i) => s + i.price * i.qty, 0); },
         loadCart() { try { this.items = JSON.parse(localStorage.getItem('takeone_cart') || '[]'); } catch (e) { this.items = []; } },
         saveCart() { try { localStorage.setItem('takeone_cart', JSON.stringify(this.items)); } catch (e) {} },
+        sameLine(a, b) { return a.id === b.id && (a.variantId || null) === (b.variantId || null); },
         add(p) {
-            const ex = this.items.find(i => i.id === p.id);
+            const ex = this.items.find(i => this.sameLine(i, p));
             if (ex) ex.qty++; else this.items.push({ ...p, qty: 1 });
             this.saveCart();
             // Satisfying feedback: bag bumps, badge pops, a soft "pop" sound.
@@ -319,7 +329,7 @@ function marketHub(meta) {
             } catch (e) {}
         },
         inc(it) { it.qty++; this.saveCart(); },
-        dec(it) { it.qty--; if (it.qty <= 0) this.items = this.items.filter(i => i.id !== it.id); this.saveCart(); },
+        dec(it) { it.qty--; if (it.qty <= 0) this.items = this.items.filter(i => !this.sameLine(i, it)); this.saveCart(); },
         async pickProof(e) {
             const f = (e.target.files || [])[0]; e.target.value = '';
             if (!f || !f.type.startsWith('image/')) return;
@@ -343,7 +353,7 @@ function marketHub(meta) {
                     headers: { 'X-CSRF-TOKEN': this.csrf, 'Content-Type': 'application/json', 'Accept': 'application/json' },
                     credentials: 'same-origin',
                     body: JSON.stringify({
-                        items: this.items.map(i => ({ id: i.id, qty: i.qty, color: i.color || null })),
+                        items: this.items.map(i => ({ id: i.id, qty: i.qty, color: i.color || null, variant_id: i.variantId || null })),
                         proof: this.proof,
                     }),
                 });

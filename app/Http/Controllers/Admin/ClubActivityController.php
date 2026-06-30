@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreActivityRequest;
 use App\Http\Requests\Admin\UpdateActivityRequest;
 use App\Models\ClubActivity;
+use App\Models\ClubActivityEquipment;
 use App\Models\ClubFacility;
 use App\Models\Tenant;
 use App\Traits\HandlesClubAuthorization;
@@ -131,5 +132,132 @@ class ClubActivityController extends Controller
         $activity->delete();
 
         return back()->with('success', 'Activity deleted successfully.');
+    }
+
+    /* -----------------------------------------------------------------
+     |  Equipment catalog (gear required to practice the activity)
+     | ----------------------------------------------------------------- */
+
+    public function equipment(Tenant $club, $activityId)
+    {
+        $this->authorizeClub($club);
+        $activity = ClubActivity::where('tenant_id', $club->id)->findOrFail($activityId);
+
+        $items = ClubActivityEquipment::where('activity_id', $activity->id)
+            ->with('product')
+            ->orderBy('sort_order')->orderBy('id')
+            ->get()
+            ->map(fn ($e) => $this->equipmentPayload($e));
+
+        // Shop products the admin can link as gear (published items).
+        $products = \App\Models\ClubProduct::where('tenant_id', $club->id)
+            ->where('status', 'published')
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($p) => [
+                'id'    => $p->id,
+                'name'  => $p->name,
+                'price' => (float) $p->price,
+                'image' => $p->image_path ? asset('storage/' . $p->image_path) : null,
+            ]);
+
+        return response()->json([
+            'success'   => true,
+            'equipment' => $items,
+            'products'  => $products,
+        ]);
+    }
+
+    public function storeEquipment(\Illuminate\Http\Request $request, Tenant $club, $activityId)
+    {
+        $this->authorizeClub($club);
+        $activity = ClubActivity::where('tenant_id', $club->id)->findOrFail($activityId);
+
+        $data = $this->validateEquipment($request, $club);
+
+        // One activity links a given product once.
+        $equipment = ClubActivityEquipment::firstOrNew([
+            'activity_id'     => $activity->id,
+            'club_product_id' => $data['club_product_id'],
+        ]);
+        $equipment->fill([
+            'tenant_id'   => $club->id,
+            'is_required' => $data['is_required'],
+            'is_active'   => $data['is_active'],
+        ]);
+        if (!$equipment->exists) {
+            $equipment->sort_order = ClubActivityEquipment::where('activity_id', $activity->id)->max('sort_order') + 1;
+        }
+        $equipment->save();
+
+        return response()->json([
+            'success'   => true,
+            'message'   => 'Equipment added.',
+            'equipment' => $this->equipmentPayload($equipment->load('product')),
+        ]);
+    }
+
+    public function updateEquipment(\Illuminate\Http\Request $request, Tenant $club, $activityId, $equipmentId)
+    {
+        $this->authorizeClub($club);
+        $equipment = ClubActivityEquipment::where('tenant_id', $club->id)
+            ->where('activity_id', $activityId)
+            ->findOrFail($equipmentId);
+
+        // Editing only toggles the registration-specific flags; the product
+        // (name/price/image) is managed in the shop.
+        $equipment->update([
+            'is_required' => $request->boolean('is_required'),
+            'is_active'   => $request->boolean('is_active', true),
+        ]);
+
+        return response()->json([
+            'success'   => true,
+            'message'   => 'Equipment updated.',
+            'equipment' => $this->equipmentPayload($equipment->load('product')),
+        ]);
+    }
+
+    public function destroyEquipment(Tenant $club, $activityId, $equipmentId)
+    {
+        $this->authorizeClub($club);
+        $equipment = ClubActivityEquipment::where('tenant_id', $club->id)
+            ->where('activity_id', $activityId)
+            ->findOrFail($equipmentId);
+
+        $equipment->delete();
+
+        return response()->json(['success' => true, 'message' => 'Equipment removed.']);
+    }
+
+    private function validateEquipment(\Illuminate\Http\Request $request, Tenant $club): array
+    {
+        $request->validate([
+            'club_product_id' => [
+                'required', 'integer',
+                \Illuminate\Validation\Rule::exists('club_products', 'id')->where('tenant_id', $club->id),
+            ],
+            'is_required' => ['nullable', 'boolean'],
+            'is_active'   => ['nullable', 'boolean'],
+        ]);
+
+        return [
+            'club_product_id' => (int) $request->input('club_product_id'),
+            'is_required'     => $request->boolean('is_required'),
+            'is_active'       => $request->boolean('is_active', true),
+        ];
+    }
+
+    private function equipmentPayload(ClubActivityEquipment $e): array
+    {
+        return [
+            'id'          => $e->id,
+            'product_id'  => $e->club_product_id,
+            'name'        => $e->product?->name,
+            'price'       => (float) ($e->product?->price ?? 0),
+            'image'       => $e->product?->image_path ? asset('storage/' . $e->product->image_path) : null,
+            'is_required' => (bool) $e->is_required,
+            'is_active'   => (bool) $e->is_active,
+        ];
     }
 }

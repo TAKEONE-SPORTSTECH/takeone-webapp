@@ -17,7 +17,7 @@ window.packageFormSheet = function () {
         lang: 'en',                  // en | ar (translatable field toggle)
 
         // ── basic fields ──
-        name: '', description: '', price: '', duration_months: 1,
+        name: '', description: '', price: '', registration_fee: '', duration_months: 1,
         name_ar: '', description_ar: '',
         gender: 'mixed', age_min: '', age_max: '',
         imagePreview: '', existingImage: '',
@@ -115,7 +115,7 @@ window.packageFormSheet = function () {
         resetAll() {
             this.tab = 'basic';
             this.lang = 'en';
-            this.name = ''; this.description = ''; this.price = ''; this.duration_months = 1;
+            this.name = ''; this.description = ''; this.price = ''; this.registration_fee = ''; this.duration_months = 1;
             this.name_ar = ''; this.description_ar = '';
             this.gender = 'mixed'; this.age_min = ''; this.age_max = '';
             this.imagePreview = ''; this.existingImage = '';
@@ -130,7 +130,7 @@ window.packageFormSheet = function () {
             this.name = p.name || ''; this.description = p.description || '';
             this.name_ar = (p.translations && p.translations.name && p.translations.name.ar) || '';
             this.description_ar = (p.translations && p.translations.description && p.translations.description.ar) || '';
-            this.price = p.price ?? ''; this.duration_months = p.duration_months || 1;
+            this.price = p.price ?? ''; this.registration_fee = p.registration_fee ?? ''; this.duration_months = p.duration_months || 1;
             this.gender = p.gender || 'mixed';
             this.age_min = p.age_min ?? ''; this.age_max = p.age_max ?? '';
             this.existingImage = p.cover_image ? ('/storage/' + p.cover_image) : '';
@@ -256,6 +256,11 @@ window.packageFormSheet = function () {
                             <label class="form-label">{{ __('admin.pkg_duration') }} <span class="text-red-500">*</span></label>
                             <input type="number" name="duration_months" x-model="duration_months" min="1" required class="form-control">
                         </div>
+                    </div>
+                    <div>
+                        <label class="form-label">{{ __('admin.pkg_reg_fee') }} ({{ $club->currency ?: '' }})</label>
+                        <input type="number" name="registration_fee" x-model="registration_fee" step="0.01" min="0" placeholder="{{ __('admin.pkg_reg_fee_ph') }}" class="form-control">
+                        <p class="text-xs text-muted-foreground mt-1">{{ __('admin.pkg_reg_fee_hint') }}</p>
                     </div>
                     <div>
                         <label class="form-label">{{ __('admin.pkg_gender') }}</label>

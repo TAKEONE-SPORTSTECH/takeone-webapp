@@ -14,6 +14,29 @@
 | "-X" = up to X (min 0). "+X" = over X (max 200).
 */
 
+// Standard World Taekwondo adult weight divisions (named classes). Used for
+// BOTH Senior (18–30) and Masters (31+) — masters compete in the same classes.
+$wtAdultMale = [
+    ['label' => '-54', 'name' => 'Finweight',     'min' => 0,  'max' => 54],
+    ['label' => '-58', 'name' => 'Flyweight',     'min' => 0,  'max' => 58],
+    ['label' => '-63', 'name' => 'Bantamweight',  'min' => 0,  'max' => 63],
+    ['label' => '-68', 'name' => 'Featherweight', 'min' => 0,  'max' => 68],
+    ['label' => '-74', 'name' => 'Lightweight',   'min' => 0,  'max' => 74],
+    ['label' => '-80', 'name' => 'Welterweight',  'min' => 0,  'max' => 80],
+    ['label' => '-87', 'name' => 'Middleweight',  'min' => 0,  'max' => 87],
+    ['label' => '+87', 'name' => 'Heavyweight',   'min' => 87, 'max' => 200],
+];
+$wtAdultFemale = [
+    ['label' => '-46', 'name' => 'Finweight',     'min' => 0,  'max' => 46],
+    ['label' => '-49', 'name' => 'Flyweight',     'min' => 0,  'max' => 49],
+    ['label' => '-53', 'name' => 'Bantamweight',  'min' => 0,  'max' => 53],
+    ['label' => '-57', 'name' => 'Featherweight', 'min' => 0,  'max' => 57],
+    ['label' => '-62', 'name' => 'Lightweight',   'min' => 0,  'max' => 62],
+    ['label' => '-67', 'name' => 'Welterweight',  'min' => 0,  'max' => 67],
+    ['label' => '-73', 'name' => 'Middleweight',  'min' => 0,  'max' => 73],
+    ['label' => '+73', 'name' => 'Heavyweight',   'min' => 73, 'max' => 200],
+];
+
 return [
     'Kids' => [
         'male' => [
@@ -89,40 +112,13 @@ return [
             ['label' => '+68', 'min' => 68, 'max' => 200],
         ],
     ],
+    // Senior (18–30) and Masters (31+) both use the standard adult divisions.
     'Senior' => [
-        'male' => [
-            ['label' => '-54', 'min' => 0,  'max' => 54],
-            ['label' => '-58', 'min' => 0,  'max' => 58],
-            ['label' => '-63', 'min' => 0,  'max' => 63],
-            ['label' => '-68', 'min' => 0,  'max' => 68],
-            ['label' => '-74', 'min' => 0,  'max' => 74],
-            ['label' => '-80', 'min' => 0,  'max' => 80],
-            ['label' => '-87', 'min' => 0,  'max' => 87],
-            ['label' => '+87', 'min' => 87, 'max' => 200],
-        ],
-        'female' => [
-            ['label' => '-46', 'min' => 0,  'max' => 46],
-            ['label' => '-49', 'min' => 0,  'max' => 49],
-            ['label' => '-53', 'min' => 0,  'max' => 53],
-            ['label' => '-57', 'min' => 0,  'max' => 57],
-            ['label' => '-62', 'min' => 0,  'max' => 62],
-            ['label' => '-67', 'min' => 0,  'max' => 67],
-            ['label' => '-73', 'min' => 0,  'max' => 73],
-            ['label' => '+73', 'min' => 73, 'max' => 200],
-        ],
+        'male'   => $wtAdultMale,
+        'female' => $wtAdultFemale,
     ],
     'Masters' => [
-        'male' => [
-            ['label' => '-60', 'min' => 0,  'max' => 60],
-            ['label' => '-70', 'min' => 0,  'max' => 70],
-            ['label' => '-80', 'min' => 0,  'max' => 80],
-            ['label' => '+80', 'min' => 80, 'max' => 200],
-        ],
-        'female' => [
-            ['label' => '-55', 'min' => 0,  'max' => 55],
-            ['label' => '-63', 'min' => 0,  'max' => 63],
-            ['label' => '-72', 'min' => 0,  'max' => 72],
-            ['label' => '+72', 'min' => 72, 'max' => 200],
-        ],
+        'male'   => $wtAdultMale,
+        'female' => $wtAdultFemale,
     ],
 ];

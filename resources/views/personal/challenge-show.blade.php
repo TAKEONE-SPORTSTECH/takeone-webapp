@@ -207,8 +207,12 @@
                             <span class="w-6 text-center text-sm font-black {{ $i < 3 ? '' : 'text-muted-foreground' }}"
                                   style="{{ $i < 3 ? 'color: '.$c['color'].';' : '' }}">{{ $i + 1 }}</span>
                             @php $initials = collect(explode(' ', $l['name']))->map(fn($p)=>mb_substr($p,0,1))->take(2)->implode(''); @endphp
-                            <div class="w-8 h-8 rounded-full grid place-items-center text-white text-[10px] font-bold flex-shrink-0"
-                                 style="background: hsl({{ ($i * 67) % 360 }} 55% 60%);">{{ $initials }}</div>
+                            @if(!empty($l['avatar']))
+                                <img src="{{ $l['avatar'] }}" alt="{{ $l['name'] }}" class="w-8 h-8 rounded-full object-cover flex-shrink-0">
+                            @else
+                                <div class="w-8 h-8 rounded-full grid place-items-center text-white text-[10px] font-bold flex-shrink-0"
+                                     style="background: hsl({{ ($i * 67) % 360 }} 55% 60%);">{{ $initials }}</div>
+                            @endif
                             <p class="flex-1 text-sm font-semibold text-foreground truncate">{{ $l['name'] }}@if($l['me'] ?? false)<span class="text-[10px] font-bold ml-1" style="color: {{ $c['color'] }};">YOU</span>@endif</p>
                             <div class="text-right">
                                 <p class="text-xs font-bold text-foreground">{{ $l['val'] }}</p>

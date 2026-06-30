@@ -165,6 +165,7 @@
                 'name'            => $pkg->name,
                 'description'     => $pkg->description,
                 'price'           => $pkg->price,
+                'registration_fee' => $pkg->registration_fee,
                 'duration_months' => $pkg->duration_months,
                 'gender'          => $pkg->gender ?? 'mixed',
                 'age_min'         => $pkg->age_min,

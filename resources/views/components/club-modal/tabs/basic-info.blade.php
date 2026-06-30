@@ -157,6 +157,47 @@
         </small>
     </div>
 
+    <!-- Registration requirements & terms — bilingual (EN/AR) rich text -->
+    @php
+        $reqAr   = data_get($club?->translations, 'registration_requirements.ar', '');
+        $termsAr = data_get($club?->translations, 'registration_terms.ar', '');
+    @endphp
+    <div class="mb-4" x-data="{ lang: 'en' }">
+        <div class="flex items-center justify-between mb-3">
+            <h6 class="font-semibold mb-0">Self-registration content</h6>
+            <x-lang-toggle />
+        </div>
+        <p class="text-muted-foreground text-sm mb-4">Shown on the Terms step of the self-registration wizard. Provide each language — registrants see the version matching their chosen language. Format with the toolbar (headings, bold, lists).</p>
+
+        {{-- Registration requirements --}}
+        <div class="mb-4">
+            <label class="form-label">Registration requirements</label>
+            <div x-show="lang==='en'">
+                <x-rich-text-editor name="registration_requirements" :value="$club->registration_requirements ?? ''"
+                    placeholder="What members need to register — e.g. valid CPR/ID, recent photo, proof of payment, minimum age…" />
+            </div>
+            <div x-show="lang==='ar'" x-cloak>
+                <x-rich-text-editor name="translations[registration_requirements][ar]" :value="$reqAr" dir="rtl"
+                    placeholder="ما يحتاجه الأعضاء للتسجيل — مثل بطاقة هوية سارية، صورة حديثة، إثبات دفع، الحد الأدنى للعمر…" />
+            </div>
+            <small class="text-muted-foreground">Leave blank to hide this section.</small>
+        </div>
+
+        {{-- Registration terms & conditions --}}
+        <div class="mb-2">
+            <label class="form-label">Registration terms &amp; conditions</label>
+            <div x-show="lang==='en'">
+                <x-rich-text-editor name="registration_terms" :value="$club->registration_terms ?? ''" min-height="200px"
+                    placeholder="Your club's terms &amp; conditions for joining. Leave blank to use the platform default." />
+            </div>
+            <div x-show="lang==='ar'" x-cloak>
+                <x-rich-text-editor name="translations[registration_terms][ar]" :value="$termsAr" dir="rtl" min-height="200px"
+                    placeholder="شروط وأحكام النادي للانضمام. اتركه فارغًا لاستخدام الشروط الافتراضية." />
+            </div>
+            <small class="text-muted-foreground">Leave blank to use the default terms.</small>
+        </div>
+    </div>
+
     <!-- Commercial Registration -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>

@@ -19,33 +19,65 @@ class RegisteredUserController extends Controller
      *
      * @return \Illuminate\View\View
      */
+    /**
+     * Platform registration page — its own URL, never a club flow.
+     *   GET /register
+     *
+     * Old club QR/links used /register?intended=<club page>; those are redirected
+     * to the dedicated club URL so existing printed codes keep working.
+     */
     public function create(Request $request)
     {
-        if ($request->input('intended')) {
-            session(['url.intended' => $request->input('intended')]);
-            $this->storeClubContext($request->input('intended'));
+        if ($request->filled('intended')
+            && preg_match('~/mobile/([a-z]{2,3})/([^/?#]+)~i', (string) $request->input('intended'), $m)) {
+            return redirect()->route('register.club', ['country' => strtolower($m[1]), 'slug' => $m[2]]);
         }
 
-        if (session('club.context')) {
-            return view('auth.register-wizard');
-        }
+        // Platform registration never inherits a club context.
+        $request->session()->forget(['club.context', 'url.intended']);
 
         return view('auth.register');
     }
 
-    private function storeClubContext(string $intendedUrl): void
+    /**
+     * Club registration wizard — its own URL, distinct from platform signup.
+     *   GET /register/{country}/{slug}
+     */
+    public function createForClub(Request $request, string $country, string $slug)
     {
-        if (preg_match('#/mobile/[^/?]+/([^/?]+)#', $intendedUrl, $matches)) {
-            $club = \App\Models\Tenant::where('slug', $matches[1])->first(['club_name', 'slug', 'logo', 'cover_image']);
-            if ($club) {
-                session(['club.context' => [
-                    'name'        => $club->club_name,
-                    'logo'        => $club->logo,
-                    'slug'        => $club->slug,
-                    'cover_image' => $club->cover_image,
-                ]]);
-            }
+        $club = \App\Models\Tenant::where('slug', $slug)->first([
+            'club_name', 'slug', 'country_code', 'logo', 'cover_image',
+            'registration_splash_image', 'registration_terms', 'registration_requirements', 'translations',
+        ]);
+
+        // Unknown club → fall back to the platform registration page.
+        if (! $club) {
+            return redirect()->route('register');
         }
+
+        $request->session()->forget(['club.context', 'url.intended']);
+        // Send the verified member back to the club page afterwards.
+        session(['url.intended' => \App\Http\Controllers\QrController::clubPageUrl($club)]);
+        $this->setClubContext($club);
+
+        return view('auth.register-wizard');
+    }
+
+    private function setClubContext(\App\Models\Tenant $club): void
+    {
+        session(['club.context' => [
+            'name'            => $club->club_name,
+            'logo'            => $club->logo,
+            'slug'            => $club->slug,
+            'cover_image'     => $club->cover_image,
+            'currency'        => $club->currency,
+            'enrollment_fee'  => $club->enrollment_fee,
+            'splash'          => $club->registration_splash_image,
+            'terms'           => $club->registration_terms,
+            'terms_ar'        => data_get($club->translations, 'registration_terms.ar'),
+            'requirements'    => $club->registration_requirements,
+            'requirements_ar' => data_get($club->translations, 'registration_requirements.ar'),
+        ]]);
     }
 
     /**
@@ -60,7 +92,7 @@ class RegisteredUserController extends Controller
     {
         $request->validate([
             'full_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'email' => ['required', 'string', 'email', 'max:255', \Illuminate\Validation\Rule::unique('users', 'email')->whereNull('deleted_at')],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'mobile_number' => ['required', 'string', 'max:20'],
             'gender' => ['required', 'in:Male,Female'],
@@ -97,15 +129,9 @@ class RegisteredUserController extends Controller
             // Log the user in
             Auth::login($user);
 
-            // Preserve the intended URL and club context across email verification
-            if ($request->input('intended')) {
-                session(['url.intended' => $request->input('intended')]);
-                $this->storeClubContext($request->input('intended'));
-            }
-
             // Send welcome email with verification link
             try {
-                $intended = session('url.intended') ?: $request->input('intended');
+                $intended = session('url.intended');
             Mail::to($user->email)->queue(new WelcomeEmail($user, $user, null, $intended));
             } catch (\Exception $e) {
                 // Log the error but don't stop the registration process

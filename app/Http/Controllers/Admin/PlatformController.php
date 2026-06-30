@@ -24,9 +24,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use App\Traits\StoresBase64Images;
 
 class PlatformController extends Controller
 {
+    use StoresBase64Images;
+
     /**
      * Display the platform admin dashboard.
      */
@@ -259,7 +263,8 @@ class PlatformController extends Controller
             'mobile'            => $mobile,
             'marital_status'    => $request->marital_status,
             'motto'             => $request->motto,
-            'email_verified_at' => null,
+            // Admin-created accounts are trusted — mark verified, no email step.
+            'email_verified_at' => now(),
         ];
 
         $softDeleted = User::withTrashed()->where('email', $request->email)->whereNotNull('deleted_at')->first();
@@ -270,8 +275,6 @@ class PlatformController extends Controller
         } else {
             $user = User::create($data);
         }
-
-        $user->sendEmailVerificationNotification();
 
         return response()->json([
             'success'  => true,
@@ -315,10 +318,15 @@ class PlatformController extends Controller
             'timezone' => 'nullable|string',
             'country' => 'nullable|string',
             'address' => 'nullable|string',
+            'registration_terms' => 'nullable|string|max:50000',
+            'registration_requirements' => 'nullable|string|max:50000',
+            'translations' => 'nullable|array',
+            'translations.*.*' => 'nullable|string|max:50000',
             'gps_lat' => 'nullable|numeric|between:-90,90',
             'gps_long' => 'nullable|numeric|between:-180,180',
             'logo' => 'nullable',
             'cover_image' => 'nullable',
+            'registration_splash_image' => 'nullable',
         ]);
 
         // Handle phone as JSON
@@ -329,51 +337,31 @@ class PlatformController extends Controller
             ];
         }
 
-        // Handle logo - base64 from cropper (form mode)
-        if ($request->filled('logo') && str_starts_with($request->logo, 'data:image')) {
-            $imageData = $request->logo;
-            $imageParts = explode(";base64,", $imageData);
-            $imageTypeAux = explode("image/", $imageParts[0]);
-            $extension = $imageTypeAux[1];
-            $imageBinary = base64_decode($imageParts[1]);
-
-            $folder = $request->input('logo_folder', 'clubs/logos');
-            $filename = $request->input('logo_filename', 'logo_' . time());
-            $fullPath = $folder . '/' . $filename . '.' . $extension;
-
-            Storage::disk('public')->put($fullPath, $imageBinary);
-            $validated['logo'] = $fullPath;
-        }
-        // Handle logo - traditional file upload
-        elseif ($request->hasFile('logo')) {
-            $validated['logo'] = $request->file('logo')->store('clubs/logos', 'public');
-        } else {
-            unset($validated['logo']);
-        }
-
-        // Handle cover image - base64 from cropper (form mode)
-        if ($request->filled('cover_image') && str_starts_with($request->cover_image, 'data:image')) {
-            $imageData = $request->cover_image;
-            $imageParts = explode(";base64,", $imageData);
-            $imageTypeAux = explode("image/", $imageParts[0]);
-            $extension = $imageTypeAux[1];
-            $imageBinary = base64_decode($imageParts[1]);
-
-            $folder = $request->input('cover_image_folder', 'clubs/covers');
-            $filename = $request->input('cover_image_filename', 'cover_' . time());
-            $fullPath = $folder . '/' . $filename . '.' . $extension;
-
-            Storage::disk('public')->put($fullPath, $imageBinary);
-            $validated['cover_image'] = $fullPath;
-        }
-        // Handle cover image - traditional file upload
-        elseif ($request->hasFile('cover_image')) {
-            $validated['cover_image'] = $request->file('cover_image')->store('clubs/covers', 'public');
-        } else {
-            unset($validated['cover_image']);
+        // Branding images. Each is either a base64 data-URI from the in-modal
+        // cropper or a traditional file upload. Client-supplied folder/filename
+        // fields are IGNORED — storeBase64Image() inspects the real bytes (finfo),
+        // allowlists the MIME, and builds a server-controlled path. Path traversal
+        // and disguised-payload uploads are not possible here.
+        foreach (['logo' => 'clubs/logos', 'cover_image' => 'clubs/covers', 'registration_splash_image' => 'clubs/splash'] as $field => $folder) {
+            if ($request->filled($field) && str_starts_with((string) $request->input($field), 'data:image')
+                && ($stored = $this->storeBase64Image($request->input($field), $folder, $field . '_' . Str::uuid()))) {
+                $validated[$field] = $stored;
+            } elseif ($request->hasFile($field)) {
+                $request->validate([$field => 'image|mimes:jpg,jpeg,png,webp,gif|max:4096']);
+                $validated[$field] = $request->file($field)->store($folder, 'public');
+            } else {
+                unset($validated[$field]);
+            }
         }
 
         $club = Tenant::create($validated);
+
+        // Persist non-default-locale content (e.g. Arabic terms) through the
+        // model so rich-HTML fields are sanitised. 'translations' is not fillable,
+        // so it was safely ignored by create() above.
+        if (is_array($request->input('translations'))) {
+            $club->setTranslations($request->input('translations'))->save();
+        }
 
         // Assign club-admin role to owner
         $owner = User::find($validated['owner_user_id']);

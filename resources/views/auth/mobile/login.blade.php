@@ -127,6 +127,12 @@
     }
     @keyframes ml-sheen { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
     .ml-cta:active { transform: scale(.98); box-shadow: 0 8px 18px -8px hsl(250 65% 50% / .6); }
+
+    /* Login method tabs */
+    .ml-tab { flex: 1; padding: 11px; border-radius: 10px; border: none; cursor: pointer;
+              font-size: 13.5px; font-weight: 700; transition: all .15s;
+              background: transparent; color: #6b6480; }
+    .ml-tab.is-active { background: #fff; color: hsl(250 65% 55%); box-shadow: 0 1px 4px rgba(80,60,160,.14); }
     .ml-cta::after {
         content: ''; position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
         background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent);
@@ -173,10 +179,20 @@
     </div>
 
     {{-- ── Form sheet ── --}}
-    <div class="ml-sheet" x-data="{ reveal: false }">
+    <div class="ml-sheet" x-data="{ reveal: false, tab: @js(session('magic_sent') ? 'link' : 'password') }">
         <div class="ml-grab"></div>
 
-        <form method="POST" action="{{ route('login') }}">
+        {{-- Tabs: password vs passwordless login link --}}
+        <div style="display:flex; gap:6px; background:#f3f1fb; padding:5px; border-radius:14px; margin-bottom:22px">
+            <button type="button" @click="tab='password'" class="ml-tab" :class="{ 'is-active': tab==='password' }">
+                <i class="bi bi-shield-lock" style="margin-inline-end:5px"></i>{{ __('auth.tab_password') }}
+            </button>
+            <button type="button" @click="tab='link'" class="ml-tab" :class="{ 'is-active': tab==='link' }">
+                <i class="bi bi-envelope-paper" style="margin-inline-end:5px"></i>{{ __('auth.tab_magic') }}
+            </button>
+        </div>
+
+        <form method="POST" action="{{ route('login') }}" x-show="tab==='password'" x-cloak>
             @csrf
 
             {{-- Email / Phone --}}
@@ -226,6 +242,34 @@
                 <span>{{ __('auth.sign_in') }}</span><i class="bi bi-arrow-right-short" style="font-size:22px"></i>
             </button>
         </form>
+
+        {{-- Passwordless magic-link login tab --}}
+        <div x-show="tab==='link'" x-cloak>
+            {{-- Confirmation after a link is sent --}}
+            @if(session('magic_sent'))
+            <div style="display:flex; gap:12px; align-items:flex-start; margin-bottom:18px; padding:13px 15px;
+                        background:#ecfdf5; border:1px solid #a7f3d0; border-radius:14px; font-size:13px; color:#065f46">
+                <i class="bi bi-envelope-check" style="margin-top:2px"></i>
+                <div style="flex:1">
+                    <p style="font-weight:600; margin-bottom:4px">{{ __('auth.magic_sent_title') }}</p>
+                    <p style="color:#047857">{{ __('auth.magic_sent_body') }}</p>
+                </div>
+            </div>
+            @endif
+
+            <form method="POST" action="{{ route('login.magic') }}">
+                @csrf
+                <p style="text-align:center; font-size:13px; color:#6b6480; margin-bottom:12px">{{ __('auth.magic_prompt') }}</p>
+                <div class="ml-field">
+                    <input id="magic_email" type="email" name="email" value="{{ old('email') }}" placeholder=" " required autocomplete="email">
+                    <label for="magic_email">{{ __('auth.email') }}</label>
+                    <i class="bi bi-envelope ml-ico"></i>
+                </div>
+                <button type="submit" class="ml-cta">
+                    <i class="bi bi-envelope-paper" style="font-size:18px"></i><span>{{ __('auth.magic_cta') }}</span>
+                </button>
+            </form>
+        </div>
 
         {{-- Unverified email notice --}}
         @if(session('unverified_email'))

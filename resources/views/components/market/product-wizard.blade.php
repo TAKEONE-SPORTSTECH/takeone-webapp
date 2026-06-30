@@ -75,7 +75,7 @@
                     <p class="text-[9px] text-gray-400 uppercase tracking-wide truncate" x-text="brand || @js(__('market.brand'))"></p>
                     <p class="font-bold text-[13px] leading-tight truncate" x-text="name || @js(__('market.product_name'))"></p>
                     <div class="flex items-end gap-1.5 mt-1">
-                        <p class="text-sm font-black">BHD <span x-text="(parseFloat(price)||0).toFixed(2)"></span></p>
+                        <p class="text-sm font-black"><span x-show="useVariants && totalRows()" class="text-[8px] font-semibold text-gray-400">{{ __('market.from_price') }} </span>BHD <span x-text="displayPrice().toFixed(2)"></span></p>
                         <template x-if="old"><p class="text-[10px] text-gray-400 line-through mb-0.5">BHD <span x-text="(parseFloat(old)||0).toFixed(2)"></span></p></template>
                     </div>
                 </div>
@@ -161,6 +161,22 @@
 
                 {{-- STEP 3 · Price --}}
                 <div x-show="step===3" x-cloak class="space-y-4">
+                    {{-- Variants toggle: sell in different sizes/colours/brands --}}
+                    <label class="flex items-center gap-3 rounded-2xl border-2 p-3"
+                           :style="useVariants ? `border-color:${color}; background:${color}0d` : 'border-color:#e5e7eb'">
+                        <span class="relative inline-flex items-center">
+                            <input type="checkbox" x-model="useVariants" class="sr-only peer">
+                            <span class="w-11 h-6 rounded-full bg-gray-200 transition-colors" :style="useVariants ? `background:${color}` : ''"></span>
+                            <span class="absolute left-0.5 top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform" :class="useVariants ? 'translate-x-5' : ''"></span>
+                        </span>
+                        <span class="text-sm">
+                            <span class="font-semibold text-gray-800">{{ __('market.has_variants') }}</span>
+                            <span class="block text-[11px] text-gray-500">{{ __('market.variants_hint') }}</span>
+                        </span>
+                    </label>
+
+                    {{-- Single price (only when there are no variants) --}}
+                    <div x-show="!useVariants" class="space-y-4">
                     {{-- Cost + margin → price is derived & locked --}}
                     <div class="grid grid-cols-2 gap-3">
                         <div>
@@ -207,6 +223,88 @@
                     </p>
                     <p class="text-[12px] font-semibold text-red-500 -mt-1" x-show="(parseFloat(old)||0) > (parseFloat(price)||0)"
                        x-text="'−' + Math.round(((old-price)/old)*100) + '% ' + @js(__('market.discount_shown'))"></p>
+                    </div>{{-- /!useVariants single price --}}
+
+                    {{-- Named variants: each variant (e.g. Adidas) has its OWN
+                         colours + sizes + price + stock, independent of the others --}}
+                    <div x-show="useVariants" x-cloak class="space-y-3">
+                        {{-- Add a named variant --}}
+                        <div class="flex items-center gap-2">
+                            <input type="text" x-model="newGroup" @keydown.enter.prevent="addGroup()" maxlength="80" placeholder="{{ __('market.variant_name_ph') }}"
+                                   class="flex-1 min-w-0 px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm bg-white">
+                            <button type="button" @click="addGroup()" class="px-3 py-2.5 rounded-xl text-xs font-bold text-white flex items-center gap-1 whitespace-nowrap" :style="`background:${color}`"><i class="bi bi-plus-lg"></i> {{ __('market.variant_add') }}</button>
+                        </div>
+
+                        <p x-show="groups.length === 0" class="text-sm text-gray-400 italic">{{ __('market.variant_group_empty') }}</p>
+
+                        {{-- Bulk price across every variant row --}}
+                        <div x-show="totalRows() > 0" class="flex items-center justify-end gap-1.5">
+                            <input type="number" x-model="bulk.price" min="0" step="0.01" inputmode="decimal" placeholder="{{ __('market.opt_bulk_price') }}"
+                                   class="w-20 px-2 py-1.5 border border-gray-200 rounded-lg text-xs">
+                            <button type="button" @click="applyBulkPrice()" class="px-2.5 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs font-semibold">{{ __('market.opt_apply_all') }}</button>
+                        </div>
+
+                        {{-- One card per named variant --}}
+                        <template x-for="(g, gi) in groups" :key="gi">
+                            <div class="rounded-2xl border border-gray-200 overflow-hidden">
+                                <div class="flex items-center justify-between gap-2 bg-gray-50 px-3 py-2.5 border-b border-gray-200">
+                                    <span class="font-bold text-sm text-gray-800 flex items-center gap-1.5 min-w-0"><i class="bi bi-tag flex-shrink-0" :style="`color:${color}`"></i> <span class="truncate" x-text="g.name"></span></span>
+                                    <button type="button" @click="removeGroup(gi)" class="w-7 h-7 rounded-lg grid place-items-center text-gray-400 flex-shrink-0"><i class="bi bi-trash"></i></button>
+                                </div>
+                                <div class="p-3 space-y-3">
+                                    {{-- Colours (free text — not a colour picker) --}}
+                                    <div class="rounded-2xl bg-gray-50 p-3">
+                                        <p class="text-xs font-semibold text-gray-600 mb-2">{{ __('market.opt_colors') }}</p>
+                                        <div class="flex flex-wrap items-center gap-1.5">
+                                            <template x-for="(c, ci) in g.colors" :key="ci">
+                                                <span class="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-full bg-white border border-gray-200 text-xs font-medium text-gray-700">
+                                                    <span x-text="c"></span>
+                                                    <button type="button" @click="gRemoveColor(g, ci)" class="w-4 h-4 rounded-full grid place-items-center text-gray-400"><i class="bi bi-x text-[11px]"></i></button>
+                                                </span>
+                                            </template>
+                                            <input type="text" x-model="g.newColor" @keydown.enter.prevent="gAddColor(g)" maxlength="60" placeholder="{{ __('market.variant_color_ph') }}"
+                                                   class="flex-1 min-w-[90px] px-2.5 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm bg-white">
+                                            <button type="button" @click="gAddColor(g)" class="px-3 py-2 rounded-xl text-xs font-bold text-white" :style="`background:${color}`">{{ __('market.opt_add') }}</button>
+                                        </div>
+                                    </div>
+                                    {{-- Sizes --}}
+                                    <div class="rounded-2xl bg-gray-50 p-3">
+                                        <p class="text-xs font-semibold text-gray-600 mb-2">{{ __('market.opt_sizes') }}</p>
+                                        <div class="flex flex-wrap items-center gap-1.5">
+                                            <template x-for="(s, si) in g.sizes" :key="si">
+                                                <span class="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-full bg-white border border-gray-200 text-xs font-medium text-gray-700">
+                                                    <span x-text="s"></span>
+                                                    <button type="button" @click="gRemoveSize(g, si)" class="w-4 h-4 rounded-full grid place-items-center text-gray-400"><i class="bi bi-x text-[11px]"></i></button>
+                                                </span>
+                                            </template>
+                                            <input type="text" x-model="g.newSize" @keydown.enter.prevent="gAddSize(g)" maxlength="40" placeholder="{{ __('market.variant_size_ph') }}"
+                                                   class="flex-1 min-w-[100px] px-2.5 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm bg-white">
+                                            <button type="button" @click="gAddSize(g)" class="px-3 py-2 rounded-xl text-xs font-bold text-white" :style="`background:${color}`">{{ __('market.opt_add') }}</button>
+                                        </div>
+                                    </div>
+
+                                    {{-- This variant's price/stock rows (colour × size) --}}
+                                    <div class="space-y-2">
+                                        <template x-for="(r, ri) in g.rows" :key="ri">
+                                            <div class="rounded-xl border border-gray-200 p-2.5 flex items-center gap-2" :class="r.is_active ? '' : 'opacity-50'">
+                                                <span class="text-xs font-medium text-gray-700 truncate flex-1 min-w-0" x-text="rowLabel(g, r)"></span>
+                                                <input type="number" x-model="r.price" min="0" step="0.01" inputmode="decimal" placeholder="0.00"
+                                                       class="w-20 px-2 py-1.5 border rounded-lg text-sm font-bold"
+                                                       :class="(parseFloat(r.price)||0) > 0 ? 'border-gray-200' : 'border-red-300'">
+                                                <input type="number" x-model="r.quantity" min="0" inputmode="numeric" placeholder="{{ __('market.variant_qty_ph') }}"
+                                                       class="w-14 px-2 py-1.5 border border-gray-200 rounded-lg text-sm">
+                                                <button type="button" @click="r.is_active = !r.is_active"
+                                                        class="w-7 h-7 flex-shrink-0 rounded-lg grid place-items-center"
+                                                        :class="r.is_active ? 'text-green-600' : 'text-gray-400'">
+                                                    <i class="bi" :class="r.is_active ? 'bi-check-circle-fill' : 'bi-slash-circle'"></i>
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('market.badge') }}</label>
@@ -245,6 +343,12 @@
 
                 {{-- STEP 4 · Stock / fulfilment --}}
                 <div x-show="step===4" x-cloak class="space-y-4">
+                    {{-- Variant products track stock per variant, set on the Price step. --}}
+                    <div x-show="useVariants" class="flex gap-2 text-[13px] text-gray-600 bg-gray-50 rounded-2xl p-3.5">
+                        <i class="bi bi-info-circle mt-0.5" :style="`color:${color}`"></i>
+                        <span>{{ __('market.variants_stock_note') }}</span>
+                    </div>
+                  <div x-show="!useVariants" class="space-y-4">
                     <button type="button" @click="fulfillment='stock'"
                             class="m-press w-full text-left rounded-2xl border-2 p-4 transition-all"
                             :style="fulfillment==='stock' ? `border-color:${color}; background:${color}0d` : 'border-color:#e5e7eb'">
@@ -287,6 +391,7 @@
                         <input type="url" x-model="supplierUrl" placeholder="https://…"
                                class="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm">
                     </div>
+                  </div>{{-- /!useVariants fulfilment --}}
                 </div>
             </div>
         </div>
@@ -357,6 +462,8 @@ window.marketProductWizard = function (cfg) {
         price:'', old:'', cost:'', marginType:'fixed', marginValue:'', badge:'', stock:'In stock', featured:false,
         color:'#7c3aed', icon:'bi-bag', image:null,
         fulfillment:'stock', quantity:'', lowStock:'', supplier:'', supplierUrl:'', shipsIn:'',
+        useVariants:true, groups:[], newGroup:'',
+        bulk:{ price:'' },
 
         open() { this.reset(); this.isOpen = true; document.documentElement.style.overflow = 'hidden'; },
         close() { this.isOpen = false; document.documentElement.style.overflow = ''; },
@@ -366,8 +473,80 @@ window.marketProductWizard = function (cfg) {
             this.price=''; this.old=''; this.cost=''; this.marginType='fixed'; this.marginValue=''; this.badge=''; this.stock='In stock'; this.featured=false;
             this.color='#7c3aed'; this.icon='bi-bag'; this.image=null;
             this.fulfillment='stock'; this.quantity=''; this.lowStock=''; this.supplier=''; this.supplierUrl=''; this.shipsIn='';
+            this.useVariants=true; this.groups=[]; this.newGroup='';
+            this.bulk={ price:'' };
         },
         pulse() { this.bump=true; setTimeout(()=>this.bump=false, 360); },
+
+        // ===== Named variants: groups → per-variant colour×size price/stock =====
+        addGroup() {
+            const name = (this.newGroup||'').trim();
+            if (!name) return;
+            if (this.groups.some(g => g.name.toLowerCase() === name.toLowerCase())) { this.newGroup=''; return; }
+            const g = { name, colors:[], sizes:[], newColor:'', newSize:'', rows:[] };
+            this.groups.push(g);
+            this.newGroup = '';
+            this.rebuildGroup(g);   // seed a single row so the variant is sellable with no colour/size
+        },
+        removeGroup(i) { this.groups.splice(i,1); },
+        gAddColor(g) {
+            const v = (g.newColor||'').trim();
+            if (!v) return;
+            if (!g.colors.some(c => c.toLowerCase() === v.toLowerCase())) g.colors.push(v);
+            g.newColor = '';
+            this.rebuildGroup(g);
+        },
+        gRemoveColor(g, i) { g.colors.splice(i,1); this.rebuildGroup(g); },
+        gAddSize(g) {
+            const v = (g.newSize||'').trim();
+            if (!v) return;
+            if (!g.sizes.some(s => s.toLowerCase() === v.toLowerCase())) g.sizes.push(v);
+            g.newSize = '';
+            this.rebuildGroup(g);
+        },
+        gRemoveSize(g, i) { g.sizes.splice(i,1); this.rebuildGroup(g); },
+        // This variant's colour×size grid; preserve price/stock by colour|size.
+        rebuildGroup(g) {
+            const prev = {}; (g.rows||[]).forEach(r => { prev[`${r.color||''}|${r.size||''}`] = r; });
+            const colors = g.colors.length ? g.colors : [''];
+            const sizes  = g.sizes.length  ? g.sizes  : [''];
+            const rows = [];
+            colors.forEach(c => sizes.forEach(s => {
+                const old = prev[`${c}|${s}`];
+                rows.push({ id: old?.id||null, color:c, size:s,
+                            price: old?.price ?? '', old_price: old?.old_price ?? '', quantity: old?.quantity ?? '',
+                            is_active: old ? (old.is_active!==false) : true });
+            }));
+            g.rows = rows;
+        },
+        rowLabel(g, r) { return [g.name, r.color, r.size].filter(Boolean).join(" · "); },
+        applyBulkPrice() { const p = parseFloat(this.bulk.price); if (!(p > 0)) return; this.groups.forEach(g => g.rows.forEach(r => { r.price = p; })); },
+        totalRows() { return this.groups.reduce((n,g) => n + g.rows.length, 0); },
+        // Flatten groups → variant rows to save (variant name → `brand` column).
+        flatVariants() {
+            const out = [];
+            this.groups.forEach(g => {
+                const name = (g.name||'').trim();
+                if (!name) return;
+                g.rows.forEach(r => out.push({
+                    id: r.id||null, brand: name,
+                    color: (r.color||'').trim()||null, size: (r.size||'').trim()||null, color_hex: null,
+                    price: parseFloat(r.price)||0,
+                    old_price: (r.old_price!==''&&r.old_price!=null)?parseFloat(r.old_price):null,
+                    quantity: (r.quantity!==''&&r.quantity!=null)?(parseInt(r.quantity)||0):null,
+                    is_active: r.is_active!==false,
+                }));
+            });
+            return out;
+        },
+        cleanVariants() { return this.flatVariants(); },
+        displayPrice() {
+            if (this.useVariants) {
+                const ps = this.flatVariants().filter(v=>v.is_active).map(v=>v.price).filter(p=>p>0);
+                if (ps.length) return Math.min(...ps);
+            }
+            return parseFloat(this.price)||0;
+        },
         pickPhoto(e) {
             const f=(e.target.files||[])[0]; e.target.value='';
             if(!f||!f.type.startsWith('image/')) return;
@@ -375,7 +554,13 @@ window.marketProductWizard = function (cfg) {
         },
         canNext() {
             if (this.step===2) return this.name.trim().length>0;
-            if (this.step===3) return (parseFloat(this.price)||0)>0;
+            if (this.step===3) {
+                if (this.useVariants) {
+                    const vs = this.cleanVariants();
+                    return vs.length > 0 && vs.every(v => v.price > 0);
+                }
+                return (parseFloat(this.price)||0) > 0;
+            }
             return true;
         },
         next() { if (this.canNext() && this.step<this.steps.length) this.step++; },
@@ -390,21 +575,28 @@ window.marketProductWizard = function (cfg) {
         profitAmount() { return Math.max(0, (parseFloat(this.price)||0) - (parseFloat(this.cost)||0)).toFixed(2); },
         profitPct() { const c=parseFloat(this.cost)||0; return c>0 ? Math.round((((parseFloat(this.price)||0)-c)/c)*100) : 0; },
         payload() {
+            const variants = this.useVariants ? this.cleanVariants() : [];
+            const useVariants = variants.length > 0;
+            const basePrice = useVariants
+                ? Math.min(...variants.map(v=>v.price).filter(p=>p>0))
+                : (parseFloat(this.price)||0);
+            const fulfillment = useVariants ? 'stock' : this.fulfillment;
             return {
                 name:this.name.trim(), brand:this.brand.trim(), cat:this.cat,
-                price:parseFloat(this.price)||0, old:this.old?parseFloat(this.old):null,
+                price:basePrice, old:this.old?parseFloat(this.old):null,
                 cost:this.cost!==''&&this.cost!==null?parseFloat(this.cost):null,
                 marginType:this.marginType||'fixed',
                 marginValue:this.marginValue!==''&&this.marginValue!==null?parseFloat(this.marginValue):null,
                 badge:this.badge||null, stock:this.stock, featured:!!this.featured,
                 color:this.color, icon:this.icon, image:this.image, desc:this.desc.trim(),
                 colors:[], specs:[],
-                fulfillment:this.fulfillment,
-                quantity:this.fulfillment==='stock'?(parseInt(this.quantity)||0):null,
-                lowStock:this.fulfillment==='stock'&&this.lowStock!==''?parseInt(this.lowStock):null,
-                supplier:this.fulfillment==='dropship'?this.supplier.trim():null,
-                supplierUrl:this.fulfillment==='dropship'?this.supplierUrl.trim():null,
-                shipsIn:this.fulfillment==='dropship'?this.shipsIn.trim():null,
+                useVariants:useVariants, variants:variants,
+                fulfillment:fulfillment,
+                quantity:(!useVariants && fulfillment==='stock')?(parseInt(this.quantity)||0):null,
+                lowStock:(!useVariants && fulfillment==='stock'&&this.lowStock!=='')?parseInt(this.lowStock):null,
+                supplier:fulfillment==='dropship'?this.supplier.trim():null,
+                supplierUrl:fulfillment==='dropship'?this.supplierUrl.trim():null,
+                shipsIn:fulfillment==='dropship'?this.shipsIn.trim():null,
             };
         },
         async publish() {

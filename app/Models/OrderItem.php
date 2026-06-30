@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class OrderItem extends Model
 {
     protected $fillable = [
-        'order_id', 'club_product_id', 'name', 'brand', 'image_path', 'color',
+        'order_id', 'club_product_id', 'club_product_variant_id',
+        'name', 'brand', 'image_path', 'color', 'size', 'variant_label',
         'fulfillment', 'price', 'qty', 'line_total',
     ];
 
@@ -26,6 +27,11 @@ class OrderItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(ClubProduct::class, 'club_product_id');
+    }
+
+    public function variant(): BelongsTo
+    {
+        return $this->belongsTo(ClubProductVariant::class, 'club_product_variant_id');
     }
 
     public function imageUrl(): ?string

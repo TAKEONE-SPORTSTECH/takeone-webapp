@@ -22,6 +22,8 @@ return [
     'active_now'        => 'Active now',
     'encrypted_chat'    => 'Encrypted chat',
     'chat_options'      => 'Chat options',
+    'enable_sounds'     => 'Enable sounds',
+    'view_profile'      => 'View profile',
     'delete_chat'       => 'Delete chat',
 
     // Messages

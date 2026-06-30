@@ -23,6 +23,7 @@ use Illuminate\View\View;
 class PersonalMobileController extends Controller
 {
     use \App\Traits\HandlesClubAuthorization;
+    use \App\Traits\BuildsMemberPayments;
 
     private function clubIds()
     {
@@ -2386,6 +2387,11 @@ class PersonalMobileController extends Controller
             ->orWhere('payer_user_id', $user->id)
             ->with(['student', 'tenant'])->get();
 
+        // Unified payment history: explicit invoices PLUS club-package subscriptions
+        // (what self-registration / "join club" creates). Same normalised shape the
+        // desktop profile uses so the billing tab renders both in one list.
+        $payments = $this->buildMemberPayments($user, $invoices);
+
         $tournamentEvents = $user->tournamentEvents()
             ->with(['performanceResults', 'notesMedia', 'clubAffiliation'])
             ->orderBy('date', 'desc')->get();
@@ -2453,10 +2459,13 @@ class PersonalMobileController extends Controller
             // Own profile: may edit basic info; not club staff over themselves.
             'canEditBasic'             => true,
             'canManageMember'          => false,
+            // Own profile — the member can always see their own sensitive sections.
+            'canViewSensitive'         => true,
             'latestHealthRecord'       => $latestHealthRecord,
             'healthRecords'            => $healthRecords,
             'comparisonRecords'        => $comparisonRecords,
             'invoices'                 => $invoices,
+            'payments'                 => $payments,
             'tournamentEvents'         => $tournamentEvents,
             'awardCounts'              => $awardCounts,
             'sports'                   => $sports,

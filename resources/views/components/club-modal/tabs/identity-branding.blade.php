@@ -123,6 +123,103 @@
         </div>
     </div>
 
+    <!-- Registration Splash Image (background of the self-registration wizard) -->
+    @once
+    <style>
+        .reg-phone { width: 188px; aspect-ratio: 9 / 19; border-radius: 26px; padding: 7px; background: #111; box-shadow: 0 12px 32px rgba(0,0,0,.28); position: relative; flex-shrink: 0; }
+        .reg-phone-notch { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 52px; height: 5px; background: #000; border-radius: 4px; z-index: 3; }
+        .reg-phone-screen { position: relative; width: 100%; height: 100%; border-radius: 20px; overflow: hidden; background: #0a0a14 center/cover no-repeat; }
+        .reg-phone-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(5,5,20,.12) 0%, rgba(5,5,20,.45) 52%, rgba(5,5,20,.96) 100%); }
+        .reg-phone-content { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 0 14px 18px; text-align: center; }
+        .reg-phone-logo { width: 46px; height: 46px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); background: rgba(0,0,0,.4) center/contain no-repeat; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; margin-bottom: 9px; }
+        .reg-phone-name { color: #fff; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; text-shadow: 0 2px 10px rgba(0,0,0,.7); line-height: 1.15; }
+        .reg-phone-tag { color: rgba(255,255,255,.6); font-size: 8px; margin: 4px 0 11px; }
+        .reg-phone-langs { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; width: 100%; }
+        .reg-phone-lang { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); border-radius: 10px; padding: 7px 4px; display: flex; flex-direction: column; align-items: center; gap: 3px; color: #fff; font-size: 9px; font-weight: 600; }
+        .reg-phone-lang .fi { font-size: 15px; border-radius: 3px; }
+    </style>
+    <script>
+        function splashPhonePreview() {
+            return {
+                splash: '', logo: '', name: '',
+                init() {
+                    this.refresh();
+                    window.addEventListener('splash-image-updated', (e) => { this.splash = this.resolve(e.detail); });
+                    window.addEventListener('logo-image-updated',   (e) => { this.logo   = this.resolve(e.detail); });
+                    const nameInput = document.getElementById('club_name');
+                    if (nameInput) nameInput.addEventListener('input', () => { this.name = nameInput.value; });
+                    // Re-read after the edit modal finishes populating its fields (AJAX).
+                    window.addEventListener('open-club-modal', () => { [150, 600, 1200].forEach(d => setTimeout(() => this.refresh(), d)); });
+                },
+                refresh() {
+                    this.splash = this.resolve(document.getElementById('splashInput')?.value);
+                    this.logo   = this.resolve(document.getElementById('logoInput')?.value);
+                    this.name   = document.getElementById('club_name')?.value || '';
+                },
+                resolve(v) {
+                    if (!v) return '';
+                    if (v.startsWith('data:') || v.startsWith('http') || v.startsWith('/')) return v;
+                    return '/storage/' + v; // stored relative path
+                },
+            };
+        }
+    </script>
+    @endonce
+
+    <div class="mb-4">
+        <label class="form-label block">Registration Splash Image</label>
+        <p class="text-muted-foreground text-sm mb-3">A dedicated portrait image shown as the background of this club's self-registration page. This is <strong>not</strong> the cover banner — upload a tall phone-shaped image. The live preview shows exactly how it will look behind the logo, club name and language picker.</p>
+
+        <div class="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
+            {{-- Uploader --}}
+            <div class="text-center">
+                <div class="cropper-preview-container mb-2" id="splashPreviewContainer">
+                    @if($isEdit && $club->registration_splash_image)
+                    <img src="{{ asset('storage/' . $club->registration_splash_image) }}"
+                         id="splashPreview"
+                         class="cropper-preview-image"
+                         style="width: 110px; height: 195px; border-radius: 12px; border: 2px solid #dee2e6; object-fit: cover; margin: 0 auto;">
+                    @else
+                    <div id="splashPreview"
+                         class="cropper-preview-placeholder"
+                         style="width: 110px; height: 195px; border-radius: 12px; border: 2px dashed #dee2e6; display: flex; align-items: center; justify-content: center; background-color: #f0f0f0; color: #6c757d; margin: 0 auto;">
+                        <i class="bi bi-phone text-2xl"></i>
+                    </div>
+                    @endif
+                </div>
+                <input type="hidden" name="registration_splash_image" id="splashInput" value="{{ $isEdit && $club->registration_splash_image ? $club->registration_splash_image : '' }}">
+                <input type="hidden" name="registration_splash_image_folder" value="clubs/splash">
+                <input type="hidden" name="registration_splash_image_filename" value="splash_{{ time() }}">
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="openSplashCropper()">
+                    <i class="bi bi-camera mr-2"></i>Upload Splash
+                </button>
+                <small class="text-muted-foreground block mt-2">Portrait phone image<br>(1080×1920px, 9:16)</small>
+            </div>
+
+            {{-- Live phone preview --}}
+            <div x-data="splashPhonePreview()" x-init="init()" class="flex flex-col items-center">
+                <small class="text-muted-foreground mb-2 flex items-center gap-1"><i class="bi bi-eye"></i> Live preview</small>
+                <div class="reg-phone">
+                    <div class="reg-phone-notch"></div>
+                    <div class="reg-phone-screen" :style="splash ? ('background-image:url(' + splash + ')') : ''">
+                        <div class="reg-phone-overlay"></div>
+                        <div class="reg-phone-content">
+                            <div class="reg-phone-logo" :style="logo ? ('background-image:url(' + logo + ')') : ''">
+                                <i class="bi bi-shield-fill-check" x-show="!logo"></i>
+                            </div>
+                            <div class="reg-phone-name" x-text="name || 'TAKEONE'"></div>
+                            <div class="reg-phone-tag">Choose your language / اختر لغتك</div>
+                            <div class="reg-phone-langs">
+                                <div class="reg-phone-lang"><span class="fi fi-gb"></span><span>English</span></div>
+                                <div class="reg-phone-lang"><span class="fi fi-bh"></span><span>العربية</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- PART 2: Internal Cropper Overlays (NOT separate modals) -->
     <!-- Logo Cropper Overlay -->
     <div id="logoCropperOverlay" class="cropper-overlay" style="display: none;">
@@ -180,6 +277,36 @@
             <div class="flex gap-2 mt-3">
                 <button type="button" class="btn btn-secondary flex-1" onclick="closeCoverCropper()">Cancel</button>
                 <button type="button" class="btn btn-primary flex-1" onclick="saveCoverCrop()">Save & Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Splash Cropper Overlay -->
+    <div id="splashCropperOverlay" class="cropper-overlay" style="display: none;">
+        <div class="cropper-panel">
+            <div class="flex justify-between items-center mb-3">
+                <h5 class="mb-0 font-semibold">Crop Splash Image</h5>
+                <button type="button" class="btn-close" onclick="closeSplashCropper()"></button>
+            </div>
+
+            <input type="file" id="splashFileInput" class="form-control form-control-sm mb-3" accept="image/*">
+
+            <div id="splashBox" class="takeone-canvas" style="height: 400px; background: #111; border-radius: 8px;"></div>
+
+            <div class="grid grid-cols-2 gap-4 mt-3">
+                <div>
+                    <label class="form-label text-sm">Zoom</label>
+                    <input type="range" class="w-full" id="splashZoom" min="0" max="100" step="1" value="0">
+                </div>
+                <div>
+                    <label class="form-label text-sm">Rotation</label>
+                    <input type="range" class="w-full" id="splashRotation" min="-180" max="180" step="1" value="0">
+                </div>
+            </div>
+
+            <div class="flex gap-2 mt-3">
+                <button type="button" class="btn btn-secondary flex-1" onclick="closeSplashCropper()">Cancel</button>
+                <button type="button" class="btn btn-primary flex-1" onclick="saveSplashCrop()">Save & Apply</button>
             </div>
         </div>
     </div>
@@ -258,6 +385,7 @@
     // PART 2: Cropper instances
     let logoCropper = null;
     let coverCropper = null;
+    let splashCropper = null;
     const zoomMin = 0.01;
     const zoomMax = 3;
 
@@ -512,6 +640,7 @@
         if (!logoCropper) return;
         logoCropper.crop({ type: 'base64', width: 400, height: 400 }).then(base64 => {
             document.getElementById('logoInput').value = base64;
+            window.dispatchEvent(new CustomEvent('logo-image-updated', { detail: base64 }));
             const preview = document.getElementById('logoPreview');
             if (preview && preview.tagName === 'IMG') {
                 preview.src = base64;
@@ -640,6 +769,86 @@
         if (coverRotation) {
             coverRotation.addEventListener('input', function() {
                 if (coverCropper) coverCropper.rotate(parseInt(this.value, 10));
+            });
+        }
+    });
+
+    // ===== SPLASH CROPPER (portrait 9:16) =====
+    function openSplashCropper() {
+        const overlay = document.getElementById('splashCropperOverlay');
+        overlay.style.display = 'flex';
+        const modalBody = document.querySelector('#clubModal .modal-body');
+        if (modalBody) modalBody.style.overflow = 'hidden';
+    }
+
+    function closeSplashCropper() {
+        const overlay = document.getElementById('splashCropperOverlay');
+        overlay.style.display = 'none';
+        const modalBody = document.querySelector('#clubModal .modal-body');
+        if (modalBody) modalBody.style.overflow = 'auto';
+        if (splashCropper) {
+            splashCropper.destroy();
+            splashCropper = null;
+        }
+        document.getElementById('splashFileInput').value = '';
+    }
+
+    function saveSplashCrop() {
+        if (!splashCropper) return;
+        splashCropper.crop({ type: 'base64', width: 1080, height: 1920 }).then(base64 => {
+            document.getElementById('splashInput').value = base64;
+            window.dispatchEvent(new CustomEvent('splash-image-updated', { detail: base64 }));
+            const preview = document.getElementById('splashPreview');
+            if (preview && preview.tagName === 'IMG') {
+                preview.src = base64;
+            } else {
+                const container = document.getElementById('splashPreviewContainer');
+                if (container) {
+                    container.innerHTML = `<img src="${base64}" id="splashPreview" class="cropper-preview-image" style="width: 120px; height: 213px; border-radius: 12px; border: 2px solid #dee2e6; object-fit: cover; margin: 0 auto;">`;
+                }
+            }
+            closeSplashCropper();
+        });
+    }
+
+    // Splash file input handler
+    document.addEventListener('DOMContentLoaded', function() {
+        const splashFileInput = document.getElementById('splashFileInput');
+        if (splashFileInput) {
+            splashFileInput.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        if (splashCropper) splashCropper.destroy();
+                        // Portrait viewport (9:16) inside the 400px-tall cropper box.
+                        splashCropper = initCropper('splashBox', 202, 360, 'square', 0.5625);
+                        if (splashCropper) {
+                            splashCropper.bind({ url: event.target.result }).then(() => {
+                                document.getElementById('splashZoom').value = 0;
+                                document.getElementById('splashRotation').value = 0;
+                            });
+                        }
+                    };
+                    reader.readAsDataURL(this.files[0]);
+                }
+            });
+        }
+
+        const splashZoom = document.getElementById('splashZoom');
+        if (splashZoom) {
+            splashZoom.addEventListener('input', function() {
+                if (!splashCropper || !splashCropper.properties.image) return;
+                const p = parseFloat(this.value);
+                const scale = zoomMin + (zoomMax - zoomMin) * (p / 100);
+                splashCropper.properties.scale = Math.min(Math.max(scale, zoomMin), zoomMax);
+                applyTransform(splashCropper);
+            });
+        }
+
+        const splashRotation = document.getElementById('splashRotation');
+        if (splashRotation) {
+            splashRotation.addEventListener('input', function() {
+                if (splashCropper) splashCropper.rotate(parseInt(this.value, 10));
             });
         }
     });

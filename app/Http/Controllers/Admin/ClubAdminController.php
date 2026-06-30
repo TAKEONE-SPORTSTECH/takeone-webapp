@@ -224,6 +224,7 @@ class ClubAdminController extends Controller
 
         $data = $request->only([
             'club_name', 'slogan', 'description', 'enrollment_fee',
+            'registration_terms', 'registration_requirements',
             'commercial_reg_number', 'vat_reg_number', 'vat_percentage',
             'email', 'country', 'currency', 'timezone', 'slug', 'address',
             'gps_lat', 'gps_long', 'maps_url', 'owner_name', 'owner_email',
@@ -237,13 +238,15 @@ class ClubAdminController extends Controller
             $data['settings'] = array_merge($club->settings ?? [], $request->settings);
         }
 
-        foreach (['logo', 'favicon', 'cover_image'] as $field) {
+        foreach (['logo', 'favicon', 'cover_image', 'registration_splash_image'] as $field) {
             if ($request->filled($field) && str_starts_with($request->input($field), 'data:image')) {
                 if ($club->$field && Storage::disk('public')->exists($club->$field)) {
                     Storage::disk('public')->delete($club->$field);
                 }
                 $data[$field] = $this->storeBase64Image($request->input($field), 'clubs/' . $clubId . '/branding', $field . '_' . time());
             } elseif ($request->hasFile($field)) {
+                // Stored at original resolution (no downscaling) — but must be a real image.
+                $request->validate([$field => 'image|mimes:jpg,jpeg,png,webp,gif|max:8192']);
                 if ($club->$field && Storage::disk('public')->exists($club->$field)) {
                     Storage::disk('public')->delete($club->$field);
                 }

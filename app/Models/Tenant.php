@@ -39,10 +39,39 @@ use App\Traits\HasTranslations;
 
 class Tenant extends Model
 {
-    use HasFactory, SoftDeletes, LogsActivity, HasTranslations;
+    use HasFactory, SoftDeletes, LogsActivity, HasTranslations {
+        HasTranslations::setTranslation as protected baseSetTranslation;
+    }
 
     /** Fields a club admin can provide an Arabic (or other-locale) version of. */
-    protected array $translatable = ['club_name', 'slogan', 'description', 'address'];
+    protected array $translatable = ['club_name', 'slogan', 'description', 'address', 'registration_terms', 'registration_requirements'];
+
+    /** Translatable fields that hold rich HTML and must be sanitised on write. */
+    protected array $richHtmlFields = ['registration_terms', 'registration_requirements'];
+
+    // ── Rich-text sanitisation ─────────────────────────────────────────────
+    // The registration terms/requirements accept admin-authored HTML and are
+    // later rendered to registrants, so every write path is sanitised here:
+    // English base columns via mutators, other locales via setTranslation().
+
+    public function setRegistrationTermsAttribute($value): void
+    {
+        $this->attributes['registration_terms'] = \App\Support\HtmlSanitizer::clean($value);
+    }
+
+    public function setRegistrationRequirementsAttribute($value): void
+    {
+        $this->attributes['registration_requirements'] = \App\Support\HtmlSanitizer::clean($value);
+    }
+
+    public function setTranslation(string $field, string $locale, ?string $value): static
+    {
+        if (in_array($field, $this->richHtmlFields, true)) {
+            $value = \App\Support\HtmlSanitizer::clean($value);
+        }
+
+        return $this->baseSetTranslation($field, $locale, $value);
+    }
 
     /**
      * Clean up all orphan-prone records when a tenant is soft-deleted.
@@ -158,6 +187,8 @@ class Tenant extends Model
         'logo',
         'slogan',
         'description',
+        'registration_terms',
+        'registration_requirements',
         'enrollment_fee',
         'commercial_reg_number',
         'vat_reg_number',
@@ -170,6 +201,7 @@ class Tenant extends Model
         'address',
         'favicon',
         'cover_image',
+        'registration_splash_image',
         'youtube_url',
         'owner_name',
         'owner_email',

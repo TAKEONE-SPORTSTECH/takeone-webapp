@@ -48,6 +48,10 @@
                                 }; showAddModal = true">
                             <i class="bi bi-copy"></i>
                         </button>
+                        <button class="btn btn-sm btn-outline-secondary" title="Equipment"
+                                @click="window.dispatchEvent(new CustomEvent('open-equipment-manager', { detail: { id: {{ $activity->id }}, name: '{{ addslashes($activity->name) }}' } }))">
+                            <i class="bi bi-box-seam"></i>
+                        </button>
                         <button class="btn btn-sm btn-outline-primary" title="Edit Activity"
                                 @click="editData = {
                                     id: {{ $activity->id }},
@@ -113,6 +117,7 @@
 
     <x-activity-modal :club="$club" mode="create" />
     <x-activity-modal :club="$club" mode="edit" />
+    <x-activity-equipment-modal :club="$club" />
 
     {{-- Hidden template for building a new activity card client-side (mirrors the loop markup above exactly). --}}
     <template id="activityCardTemplate">
@@ -127,6 +132,9 @@
                     <div class="flex gap-1">
                         <button type="button" class="btn btn-sm btn-outline-secondary" data-act="duplicate" title="Duplicate Activity">
                             <i class="bi bi-copy"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-act="equipment" title="Equipment">
+                            <i class="bi bi-box-seam"></i>
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-primary" data-act="edit" title="Edit Activity">
                             <i class="bi bi-pencil"></i>
@@ -232,6 +240,11 @@
                 action: UPDATE_TPL.replace('__ID__', a.id)
             };
             cmp.showEditModal = true;
+        };
+
+        const equip = card.querySelector('[data-act="equipment"]');
+        if (equip) equip.onclick = function () {
+            window.dispatchEvent(new CustomEvent('open-equipment-manager', { detail: { id: a.id, name: a.name || '' } }));
         };
 
         const form = card.querySelector('form[data-act="destroy"]');

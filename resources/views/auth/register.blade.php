@@ -102,7 +102,7 @@
                     <x-country-code-dropdown
                         name="country_code"
                         id="country_code"
-                        :value="old('country_code', '+1')"
+                        :value="old('country_code', '+973')"
                         :required="true"
                         :error="$errors->first('country_code')">
                         <input id="mobile_number" type="tel"
@@ -143,7 +143,7 @@
                         name="nationality"
                         id="nationality"
                         label="Nationality"
-                        :value="old('nationality')"
+                        :value="old('nationality', 'BH')"
                         :required="true"
                         :error="$errors->first('nationality')" />
                 </div>
