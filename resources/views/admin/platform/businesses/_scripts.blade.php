@@ -30,6 +30,28 @@
 
     searchInput.addEventListener('input', applyFilters);
 
+    // Client-side sort (all records are loaded in the DOM). Reorders #bizGrid then re-applies filters.
+    const statusRank = { pending: 0, approved: 1, rejected: 2 };
+    function sortCards(key) {
+        const cards = Array.from(grid.querySelectorAll('.biz-card'));
+        cards.sort((a, b) => {
+            switch (key) {
+                case 'newest':    return (b.dataset.created || 0) - (a.dataset.created || 0);
+                case 'oldest':    return (a.dataset.created || 0) - (b.dataset.created || 0);
+                case 'name_asc':  return (a.dataset.name || '').localeCompare(b.dataset.name || '');
+                case 'name_desc': return (b.dataset.name || '').localeCompare(a.dataset.name || '');
+                case 'clubs':     return (b.dataset.clubs || 0) - (a.dataset.clubs || 0);
+                case 'priority':
+                default: {
+                    const r = (statusRank[a.dataset.status] ?? 3) - (statusRank[b.dataset.status] ?? 3);
+                    return r !== 0 ? r : (b.dataset.created || 0) - (a.dataset.created || 0);
+                }
+            }
+        });
+        cards.forEach(c => grid.appendChild(c));
+    }
+    window.bizSetSort = function (key) { sortCards(key); applyFilters(); };
+
     filterBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             activeStatus = btn.dataset.status;

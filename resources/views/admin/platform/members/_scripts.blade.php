@@ -10,7 +10,16 @@
         let countriesCache = null;
         let searchDebounce = null;
         let currentSearch  = @json($search ?? '');
+        let currentSort    = @json($sort ?? 'newest');
         let activeFetch    = 0;
+
+        function buildUrl() {
+            const params = new URLSearchParams();
+            if (currentSearch) params.set('search', currentSearch);
+            if (currentSort)   params.set('sort', currentSort);
+            const qs = params.toString();
+            return baseUrl + (qs ? ('?' + qs) : '');
+        }
 
         function convertNationalities(root) {
             if (!countriesCache) return;
@@ -49,10 +58,18 @@
 
         function runSearch(term) {
             currentSearch = term;
-            const url = baseUrl + (term ? ('?search=' + encodeURIComponent(term)) : '');
+            const url = buildUrl();
             history.replaceState(null, '', url);
             loadResults(url);
         }
+
+        // Called by the sort dropdown (Alpine) — re-fetch with the new sort, preserving the search.
+        window.memberSetSort = function(sort) {
+            currentSort = sort;
+            const url = buildUrl();
+            history.replaceState(null, '', url);
+            loadResults(url);
+        };
 
         searchEl.addEventListener('input', function(e) {
             clearTimeout(searchDebounce);

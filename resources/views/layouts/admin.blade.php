@@ -26,11 +26,11 @@
 
 /* ── SIDEBAR ── */
 #pa-sidebar {
-    width: 256px;
-    min-width: 256px;
-    background: #fff;
-    border-right: 1px solid #e5e7eb;
-    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    width: 268px;
+    min-width: 268px;
+    background: linear-gradient(180deg, #ffffff 0%, hsl(250 40% 99%) 100%);
+    border-right: 1px solid hsl(250 30% 92%);
+    box-shadow: 2px 0 14px rgba(76, 60, 140, 0.05);
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -40,14 +40,15 @@
 }
 /* Collapsed = slim icon-only rail (icons stay clickable). */
 #pa-sidebar.collapsed {
-    width: 64px !important;
-    min-width: 64px !important;
+    width: 76px !important;
+    min-width: 76px !important;
 }
 #pa-sidebar.collapsed .pa-collapse-hide { display: none !important; }
-#pa-sidebar.collapsed #pa-sidebar-nav { padding-left: 8px; padding-right: 8px; }
-#pa-sidebar.collapsed .nav-item { justify-content: center; padding-left: 0; padding-right: 0; }
+#pa-sidebar.collapsed #pa-sidebar-nav { padding-left: 10px; padding-right: 10px; }
+#pa-sidebar.collapsed .nav-item { justify-content: center; padding-left: 0; padding-right: 0; gap: 0; }
 #pa-sidebar.collapsed .nav-item > span:not(.ni) { display: none; }
-#pa-sidebar.collapsed .nav-item.active::before { left: -8px; }
+#pa-sidebar.collapsed .pa-brand { justify-content: center; padding-left: 0; padding-right: 0; }
+#pa-sidebar.collapsed .pa-foot { padding-left: 10px; padding-right: 10px; }
 
 /* ── MAIN CONTENT ── */
 #pa-main-area {
@@ -78,7 +79,7 @@
     font-size: 16px;
     transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
-#pa-sidebar-toggle:hover { background: #ede9fe; border-color: #ddd6fe; color: #7c3aed; }
+#pa-sidebar-toggle:hover { background: hsl(250 60% 95%); border-color: hsl(250 60% 88%); color: hsl(250 55% 55%); }
 @media (min-width: 1024px) { #pa-sidebar-toggle { display: flex; } }
 
 /* ── SIDEBAR INTERNALS ── */
@@ -89,33 +90,92 @@
     font-size:12px; color:#6b7280; transition:all 0.15s;
     text-decoration:none;
 }
-.pa-sb-btn:hover { background:#ede9fe; border-color:#8b5cf6; color:#7c3aed; }
+.pa-sb-btn:hover { background:hsl(250 60% 95%); border-color:hsl(250 65% 65%); color:hsl(250 55% 55%); }
 
+/* Brand / identity header */
+.pa-brand {
+    display:flex; align-items:center; gap:11px;
+    padding:16px 16px 14px;
+    flex-shrink:0;
+}
+.pa-brand-mark {
+    width:40px; height:40px; border-radius:12px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(135deg, hsl(250 65% 66%), hsl(262 60% 56%));
+    color:#fff; font-size:19px;
+    box-shadow:0 6px 16px -4px hsl(250 65% 60% / 0.6);
+}
+.pa-brand-title { font-size:14.5px; font-weight:800; color:#1f2937; line-height:1.15; display:block; }
+.pa-brand-sub   { font-size:11px; font-weight:600; color:hsl(250 12% 62%); display:block; margin-top:1px; }
+
+/* Group eyebrow labels */
+.pa-group {
+    font-size:10.5px; font-weight:800; letter-spacing:0.9px;
+    text-transform:uppercase; color:hsl(250 10% 66%);
+    padding:0 12px; margin:16px 0 7px;
+}
+.pa-group:first-child { margin-top:2px; }
+
+/* Nav items */
 #pa-sidebar .nav-item {
-    display:flex; align-items:center; gap:8px;
-    padding:7px 10px; border-radius:8px;
-    font-size:12px; font-weight:600; letter-spacing:0.3px;
-    color:#6b7280; text-transform:uppercase;
-    transition:all 0.15s; border:1px solid transparent;
+    display:flex; align-items:center; gap:11px;
+    padding:7px 9px; border-radius:12px;
+    font-size:13px; font-weight:600; letter-spacing:0.1px;
+    color:#475569; text-transform:none;
+    transition:all 0.16s ease; border:1px solid transparent;
     position:relative; text-decoration:none !important;
     white-space:nowrap; overflow:hidden;
 }
-#pa-sidebar .nav-item:hover { background:#f3f4f6; color:#374151; }
+#pa-sidebar .nav-item:hover { background:hsl(220 18% 96%); color:#1f2937; }
+#pa-sidebar .nav-item:hover .ni { background:hsl(250 60% 93%); color:hsl(250 55% 55%); }
 #pa-sidebar .nav-item.active {
-    background:#ede9fe; color:#7c3aed;
-    border-color:#ddd6fe;
+    background:hsl(250 65% 96%);
+    color:hsl(250 48% 42%);
+    border-color:hsl(250 60% 90%);
+    font-weight:700;
 }
-#pa-sidebar .nav-item.active::before {
-    content:''; position:absolute; left:-8px; top:50%; transform:translateY(-50%);
-    width:3px; height:60%; background:#7c3aed; border-radius:0 2px 2px 0;
+/* Icon tile */
+#pa-sidebar .nav-item .ni {
+    width:32px; height:32px; border-radius:9px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    background:hsl(220 16% 95%); color:#64748b;
+    font-size:14px; transition:all 0.16s ease;
 }
-#pa-sidebar .nav-item .ni { font-size:13px; width:15px; text-align:center; flex-shrink:0; }
+#pa-sidebar .nav-item.active .ni {
+    background:linear-gradient(135deg, hsl(250 65% 66%), hsl(262 60% 56%));
+    color:#fff; box-shadow:0 5px 12px -3px hsl(250 65% 60% / 0.55);
+}
+/* Active dot indicator (right) */
+.nav-dot {
+    margin-left:auto; width:7px; height:7px; border-radius:50%;
+    background:hsl(250 65% 62%); opacity:0; transform:scale(0.4);
+    transition:all 0.2s ease;
+}
+#pa-sidebar .nav-item.active .nav-dot { opacity:1; transform:scale(1); }
 
-#pa-sidebar-nav::-webkit-scrollbar { width:3px; }
+#pa-sidebar-nav::-webkit-scrollbar { width:4px; }
 #pa-sidebar-nav::-webkit-scrollbar-track { background:transparent; }
-#pa-sidebar-nav::-webkit-scrollbar-thumb { background:#ddd6fe; border-radius:2px; }
+#pa-sidebar-nav::-webkit-scrollbar-thumb { background:hsl(250 50% 88%); border-radius:2px; }
 
-.pa-sb-div { height:1px; margin:0 16px; background:#f3f4f6; flex-shrink:0; }
+/* Footer */
+.pa-foot { padding:10px 12px 14px; flex-shrink:0; }
+.pa-sb-div { height:1px; margin:0 14px; background:hsl(250 30% 92%); flex-shrink:0; }
+.pa-user {
+    display:flex; align-items:center; gap:10px;
+    padding:9px 10px; margin-bottom:8px; border-radius:12px;
+    background:hsl(250 40% 97%); border:1px solid hsl(250 35% 93%);
+}
+.pa-user-av {
+    width:32px; height:32px; border-radius:9px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(135deg, hsl(250 65% 66%), hsl(262 60% 56%));
+    color:#fff; font-size:12px; font-weight:800; letter-spacing:0.3px;
+}
+.pa-user-name { font-size:12.5px; font-weight:700; color:#374151; line-height:1.15; }
+.pa-user-role { font-size:10.5px; font-weight:600; color:hsl(250 10% 64%); display:flex; align-items:center; gap:4px; }
+.pa-user-role::before { content:''; width:6px; height:6px; border-radius:50%; background:#22c55e; box-shadow:0 0 0 2px #dcfce7; }
+.pa-explore { border:1px solid hsl(250 35% 90%) !important; }
+.pa-explore:hover { background:hsl(250 65% 96%) !important; color:hsl(250 48% 42%) !important; border-color:hsl(250 60% 82%) !important; }
 
 /* Mobile top bar */
 .mobile-nav-bar { background:#fff; border-bottom:1px solid #e5e7eb; }
@@ -144,18 +204,27 @@
 
 @section('content')
 @php
-    $currentRoute = request()->route()->getName();
-    $navItems = [
-        ['route'=>'admin.platform.clubs',      'pattern'=>['admin.platform.clubs*','admin.platform.index'], 'icon'=>'bi-building',      'label'=>'All Clubs'],
-        ['route'=>'admin.platform.members',    'pattern'=>['admin.platform.members*'],                       'icon'=>'bi-people',        'label'=>'All Members'],
-        ['route'=>'admin.platform.businesses', 'pattern'=>['admin.platform.businesses*'],                    'icon'=>'bi-buildings',     'label'=>'Businesses'],
-        ['route'=>'admin.platform.backup',     'pattern'=>['admin.platform.backup*'],                        'icon'=>'bi-database',      'label'=>'Backup & Restore'],
-        ['route'=>'admin.platform.audit-log',  'pattern'=>['admin.platform.audit-log*'],                     'icon'=>'bi-journal-text',  'label'=>'Audit Log'],
-        ['route'=>'admin.plugins.realtime.index', 'pattern'=>['admin.plugins.realtime*'],                    'icon'=>'bi-broadcast-pin', 'label'=>'Realtime / MQTT'],
+    $admin     = auth()->user();
+    $adminName = $admin?->name ?: 'Super Admin';
+    $initials  = collect(explode(' ', trim($adminName)))
+        ->filter()
+        ->take(2)
+        ->map(fn ($p) => mb_strtoupper(mb_substr($p, 0, 1)))
+        ->implode('') ?: 'SA';
+
+    $navGroups = [
+        'Management' => [
+            ['route'=>'admin.platform.clubs',      'pattern'=>['admin.platform.clubs*','admin.platform.index'], 'icon'=>'bi-building',  'label'=>'All Clubs'],
+            ['route'=>'admin.platform.members',    'pattern'=>['admin.platform.members*'],                       'icon'=>'bi-people',    'label'=>'All Members'],
+            ['route'=>'admin.platform.businesses', 'pattern'=>['admin.platform.businesses*'],                    'icon'=>'bi-buildings', 'label'=>'Businesses'],
+        ],
+        'System' => [
+            ['route'=>'admin.platform.backup',        'pattern'=>['admin.platform.backup*'],    'icon'=>'bi-database',      'label'=>'Backup & Restore'],
+            ['route'=>'admin.platform.audit-log',     'pattern'=>['admin.platform.audit-log*'], 'icon'=>'bi-journal-text',  'label'=>'Audit Log'],
+            ['route'=>'admin.plugins.realtime.index', 'pattern'=>['admin.plugins.realtime*'],   'icon'=>'bi-broadcast-pin', 'label'=>'Realtime / MQTT'],
+        ],
     ];
-    $isActive = function ($item) {
-        return request()->routeIs(...$item['pattern']);
-    };
+    $isActive = fn ($item) => request()->routeIs(...$item['pattern']);
 @endphp
 
 <div x-data="{ drawerOpen: false }" @keydown.escape.window="drawerOpen = false">
@@ -192,26 +261,49 @@
 
         <!-- Mobile close button -->
         <button type="button" @click="drawerOpen = false" title="Close menu"
-                class="lg:hidden pa-sb-btn" style="position:absolute;top:12px;right:12px;width:32px;height:32px;z-index:2;">
+                class="lg:hidden pa-sb-btn" style="position:absolute;top:14px;right:14px;width:32px;height:32px;z-index:2;">
             <i class="bi bi-x-lg"></i>
         </button>
 
+        <!-- Brand / identity -->
+        <div class="pa-brand">
+            <span class="pa-brand-mark"><i class="bi bi-shield-lock-fill"></i></span>
+            <span class="pa-collapse-hide">
+                <span class="pa-brand-title">Platform Admin</span>
+                <span class="pa-brand-sub">Super Admin Console</span>
+            </span>
+        </div>
+
         <!-- Navigation -->
-        <nav id="pa-sidebar-nav" class="flex flex-col gap-0.5 px-2 py-2" style="overflow-y:auto;flex:1">
-            @foreach($navItems as $item)
-                @php $active = $isActive($item); @endphp
-                <a href="{{ route($item['route']) }}" @click="drawerOpen = false" class="nav-item {{ $active ? 'active' : '' }}">
-                    <span class="ni"><i class="bi {{ $item['icon'] }}"></i></span>
-                    <span>{{ $item['label'] }}</span>
-                </a>
+        <nav id="pa-sidebar-nav" class="flex flex-col px-3 py-1" style="overflow-y:auto;flex:1">
+            @foreach($navGroups as $groupLabel => $items)
+                <p class="pa-group pa-collapse-hide">{{ $groupLabel }}</p>
+                @foreach($items as $item)
+                    @php $active = $isActive($item); @endphp
+                    <a href="{{ route($item['route']) }}" @click="drawerOpen = false"
+                       title="{{ $item['label'] }}"
+                       class="nav-item {{ $active ? 'active' : '' }}" style="margin-bottom:2px">
+                        <span class="ni"><i class="bi {{ $item['icon'] }}"></i></span>
+                        <span>{{ $item['label'] }}</span>
+                        <span class="nav-dot"></span>
+                    </a>
+                @endforeach
             @endforeach
         </nav>
 
-        <!-- Footer: Back to Explore -->
+        <!-- Footer: identity + Back to Explore -->
         <div class="pa-sb-div"></div>
-        <div class="px-2 py-2" style="flex-shrink:0">
-            <a href="{{ route('clubs.explore') }}" @click="drawerOpen = false" class="nav-item">
-                <span class="ni"><i class="bi bi-eye"></i></span>
+        <div class="pa-foot">
+            <div class="pa-user pa-collapse-hide">
+                <span class="pa-user-av">{{ $initials }}</span>
+                <span style="min-width:0;flex:1">
+                    <span class="pa-user-name truncate" style="display:block">{{ $adminName }}</span>
+                    <span class="pa-user-role">Super Admin</span>
+                </span>
+            </div>
+            <a href="{{ route('clubs.explore') }}" @click="drawerOpen = false"
+               title="Back to Explore" class="nav-item pa-explore">
+                <span class="ni"><i class="bi bi-box-arrow-left"></i></span>
                 <span>Back to Explore</span>
             </a>
         </div>

@@ -273,7 +273,7 @@
                                                                      data-bs-target="#instructorModal_{{ $instructor->id }}">
                                                                     <div class="flex items-center gap-2 p-2 bg-muted rounded">
                                                                         <div class="rounded-full bg-success text-white flex items-center justify-center" style="width: 32px; height: 32px; font-size: 0.8rem;">
-                                                                            {{ strtoupper(substr($instructor->user->full_name ?? 'I', 0, 1)) }}
+                                                                            {{ mb_strtoupper(mb_substr($instructor->user->full_name ?? 'I', 0, 1, 'UTF-8'), 'UTF-8') }}
                                                                         </div>
                                                                         <div>
                                                                             <div class="font-semibold text-sm">{{ $instructor->user->full_name ?? 'Unknown' }}</div>
@@ -358,7 +358,7 @@
                                                         @else
                                                             <div class="rounded-full mx-auto flex items-center justify-center text-white"
                                                                  style="width: 100px; height: 100px; font-size: 2.5rem; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
-                                                                {{ strtoupper(substr($instructor->user->full_name ?? 'I', 0, 1)) }}
+                                                                {{ mb_strtoupper(mb_substr($instructor->user->full_name ?? 'I', 0, 1, 'UTF-8'), 'UTF-8') }}
                                                             </div>
                                                         @endif
                                                     </div>

@@ -20,6 +20,14 @@
 
             <p class="text-center text-gray-500 text-lg mb-6 tracking-tight">Sign in to start your session</p>
 
+            <!-- Flash error (e.g. expired session / page expired) -->
+            @if(session('error'))
+            <div class="flex items-start gap-3 bg-red-50 border border-red-200 text-red-800 rounded-xl px-4 py-3 mb-4 text-sm">
+                <i class="bi bi-exclamation-circle mt-0.5 shrink-0"></i>
+                <p class="flex-1">{{ session('error') }}</p>
+            </div>
+            @endif
+
             <!-- Tabs: password vs passwordless login link -->
             <div class="flex gap-1.5 bg-gray-100 p-1.5 rounded-xl mb-6">
                 <button type="button" @click="tab='password'"

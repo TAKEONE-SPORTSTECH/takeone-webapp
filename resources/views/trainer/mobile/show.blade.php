@@ -25,7 +25,7 @@
     use Illuminate\Support\Carbon;
     $instructor = $user->clubInstructors->first();
     $role = $instructor?->role;
-    $initial = strtoupper(mb_substr($user->full_name ?? 'T', 0, 1));
+    $initial = mb_strtoupper(mb_substr($user->full_name ?? 'T', 0, 1, 'UTF-8'), 'UTF-8');
     $dayShort = ['saturday'=>'Sat','sunday'=>'Sun','monday'=>'Mon','tuesday'=>'Tue','wednesday'=>'Wed','thursday'=>'Thu','friday'=>'Fri'];
     $dayOrder = ['saturday'=>0,'sunday'=>1,'monday'=>2,'tuesday'=>3,'wednesday'=>4,'thursday'=>5,'friday'=>6];
     // Group schedule slots by weekday.
@@ -219,7 +219,7 @@
             @forelse($reviews as $review)
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                     <div class="flex items-center gap-2.5">
-                        <span class="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-purple-400 text-white flex items-center justify-center font-bold flex-shrink-0">{{ strtoupper(substr($review->reviewer->full_name ?? 'A', 0, 1)) }}</span>
+                        <span class="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-purple-400 text-white flex items-center justify-center font-bold flex-shrink-0">{{ mb_strtoupper(mb_substr($review->reviewer->full_name ?? 'A', 0, 1, 'UTF-8'), 'UTF-8') }}</span>
                         <div class="min-w-0 flex-1">
                             <p class="text-sm font-semibold text-foreground truncate">{{ $review->reviewer->full_name ?? __('trainer.anonymous') }}</p>
                             <div class="flex gap-0.5 text-amber-400 text-[10px]">@for($i=1;$i<=5;$i++)<i class="bi {{ $i <= $review->rating ? 'bi-star-fill' : 'bi-star' }}"></i>@endfor</div>

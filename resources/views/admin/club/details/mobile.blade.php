@@ -13,7 +13,7 @@
         @if($club->logo)
             <img src="{{ asset('storage/'.$club->logo) }}" alt="" class="w-20 h-20 rounded-2xl object-cover mx-auto">
         @else
-            <span class="w-20 h-20 rounded-2xl bg-accent flex items-center justify-center mx-auto text-primary font-bold text-2xl">{{ strtoupper(substr($club->club_name ?? 'CL',0,2)) }}</span>
+            <span class="w-20 h-20 rounded-2xl bg-accent flex items-center justify-center mx-auto text-primary font-bold text-2xl">{{ mb_strtoupper(mb_substr($club->club_name ?? 'CL', 0, 2, 'UTF-8'), 'UTF-8') }}</span>
         @endif
         <h2 class="font-bold text-foreground mt-3">{{ $club->club_name }}</h2>
         @if($club->slogan)<p class="text-sm text-muted-foreground">{{ $club->slogan }}</p>@endif

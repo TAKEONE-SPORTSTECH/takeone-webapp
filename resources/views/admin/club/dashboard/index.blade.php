@@ -325,7 +325,7 @@
                     @if($u?->profile_picture)
                         <img src="{{ asset('storage/'.$u->profile_picture) }}" alt="{{ $u->full_name }}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">
                     @else
-                        {{ strtoupper(substr($u?->first_name ?? 'T', 0, 1)) }}
+                        {{ mb_strtoupper(mb_substr($u?->first_name ?? 'T', 0, 1, 'UTF-8'), 'UTF-8') }}
                     @endif
                 </div>
                 <div style="flex:1;min-width:0">
@@ -360,7 +360,7 @@
                     @if($member->profile_picture)
                         <img src="{{ asset('storage/'.$member->profile_picture) }}" alt="{{ $member->full_name }}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">
                     @else
-                        {{ strtoupper(substr($member->first_name ?? 'M', 0, 1)) }}
+                        {{ mb_strtoupper(mb_substr($member->first_name ?? 'M', 0, 1, 'UTF-8'), 'UTF-8') }}
                     @endif
                 </div>
                 <div style="flex:1;min-width:0">
@@ -373,7 +373,7 @@
             @empty
             @foreach(['Liam O\'Connor','Aisha Khan','Carlos Reyes','Nadia Soni','Alex Tanner'] as $i => $nm)
             <div class="hof-item">
-                <div class="hof-photo" style="font-size:11px">{{ strtoupper(substr($nm,0,1)) }}</div>
+                <div class="hof-photo" style="font-size:11px">{{ mb_strtoupper(mb_substr($nm, 0, 1, 'UTF-8'), 'UTF-8') }}</div>
                 <div style="flex:1;min-width:0">
                     <div class="hof-name">{{ $nm }}</div>
                     <div class="hof-rank">{{ ['Red Belt','Blue Belt','Blue Belt','Instructor','Instructor'][$i] }}</div>

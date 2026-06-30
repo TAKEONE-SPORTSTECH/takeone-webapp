@@ -113,7 +113,7 @@
                                         <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}?v={{ Auth::user()->updated_at->timestamp }}" alt="{{ Auth::user()->full_name }}" class="w-10 h-10 rounded-full object-cover">
                                     @else
                                         <span class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-semibold">
-                                            {{ strtoupper(substr(Auth::user()->full_name, 0, 1)) }}
+                                            {{ mb_strtoupper(mb_substr(Auth::user()->full_name, 0, 1, 'UTF-8'), 'UTF-8') }}
                                         </span>
                                     @endif
                                     <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>

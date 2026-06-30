@@ -45,7 +45,7 @@
                     @else
                         <div class="w-32 h-32 md:w-48 md:h-48 rounded-full border-4 {{ $isMale ? 'border-blue-400/40 bg-blue-100' : 'border-purple-400/20 bg-purple-100' }} flex items-center justify-center">
                             <span class="text-4xl md:text-6xl font-bold {{ $isMale ? 'text-blue-600' : 'text-purple-600' }}">
-                                {{ strtoupper(substr($user->full_name, 0, 1)) }}
+                                {{ mb_strtoupper(mb_substr($user->full_name, 0, 1, 'UTF-8'), 'UTF-8') }}
                             </span>
                         </div>
                     @endif
@@ -481,7 +481,7 @@
                                     <div class="flex items-center gap-3">
                                         <div class="w-12 h-12 rounded-full bg-gradient-to-br {{ $isMale ? 'from-blue-500 to-sky-500' : 'from-purple-500 to-teal-500' }} flex items-center justify-center shadow-sm">
                                             <span class="text-lg font-bold text-white">
-                                                {{ strtoupper(substr($review->reviewer->full_name ?? 'A', 0, 1)) }}
+                                                {{ mb_strtoupper(mb_substr($review->reviewer->full_name ?? 'A', 0, 1, 'UTF-8'), 'UTF-8') }}
                                             </span>
                                         </div>
                                         <div>

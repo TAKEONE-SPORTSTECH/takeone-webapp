@@ -182,7 +182,7 @@
                                                 <img src="{{ asset('storage/' . $instructor['image']) }}" alt="{{ $instructor['name'] }}" class="w-5 h-5 rounded-full border border-primary/20 object-cover">
                                             @else
                                                 <div class="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-medium text-primary border border-primary/20">
-                                                    {{ strtoupper(substr($instructor['name'], 0, 1)) }}
+                                                    {{ mb_strtoupper(mb_substr($instructor['name'], 0, 1, 'UTF-8'), 'UTF-8') }}
                                                 </div>
                                             @endif
                                             <span class="text-[10px] font-medium text-primary">{{ $instructor['name'] }}</span>

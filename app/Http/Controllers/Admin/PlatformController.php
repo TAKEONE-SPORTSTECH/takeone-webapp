@@ -108,19 +108,38 @@ class PlatformController extends Controller
     {
         $search = $request->input('search');
 
-        $clubs = Tenant::with(['owner', 'members'])
+        // Whitelisted sort options (key => closure). Anything else falls back to default.
+        $sortOptions = [
+            'newest'    => fn ($q) => $q->latest(),
+            'oldest'    => fn ($q) => $q->oldest(),
+            'name_asc'  => fn ($q) => $q->orderBy('club_name'),
+            'name_desc' => fn ($q) => $q->orderByDesc('club_name'),
+            'members'   => fn ($q) => $q->orderByDesc('members_count')->latest(),
+            'packages'  => fn ($q) => $q->orderByDesc('packages_count')->latest(),
+        ];
+        $sort = array_key_exists($request->input('sort'), $sortOptions) ? $request->input('sort') : 'newest';
+
+        $query = Tenant::with(['owner', 'members'])
             ->withCount(['members', 'packages', 'instructors'])
             ->when($search, function ($query, $search) {
                 $query->where('club_name', 'like', "%{$search}%")
                     ->orWhere('address', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
-            })
-            ->latest()
-            ->paginate(12);
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhereHas('owner', fn ($q) => $q->where('full_name', 'like', "%{$search}%"));
+            });
+
+        $sortOptions[$sort]($query);
+
+        $clubs = $query->paginate(12)->withQueryString();
+
+        // AJAX search / sort / pagination returns just the results region for in-place swap.
+        if ($request->ajax()) {
+            return view('admin.platform.clubs._results', compact('clubs', 'search'));
+        }
 
         $mobile = $request->attributes->get('is_mobile') && view()->exists('admin.platform.mobile.clubs');
 
-        return view($mobile ? 'admin.platform.mobile.clubs' : 'admin.platform.clubs.index', compact('clubs', 'search'));
+        return view($mobile ? 'admin.platform.mobile.clubs' : 'admin.platform.clubs.index', compact('clubs', 'search', 'sort'));
     }
 
     /**
@@ -130,17 +149,34 @@ class PlatformController extends Controller
     {
         $search = $request->input('search');
 
-        $members = User::with(['memberClubs', 'dependents', 'guardians.guardian', 'latestHealthRecord'])
+        // Whitelisted sort options (key => closure). Anything else falls back to default.
+        $sortOptions = [
+            'gender'    => fn ($q) => $q->orderBy('gender')->latest(),
+            'newest'    => fn ($q) => $q->latest(),
+            'oldest'    => fn ($q) => $q->oldest(),
+            'name_asc'  => fn ($q) => $q->orderBy('full_name'),
+            'name_desc' => fn ($q) => $q->orderByDesc('full_name'),
+            'clubs'     => fn ($q) => $q->orderByDesc('member_clubs_count')->latest(),
+            'age_young' => fn ($q) => $q->orderByDesc('birthdate'),
+            'age_old'   => fn ($q) => $q->orderBy('birthdate'),
+        ];
+        $sort = array_key_exists($request->input('sort'), $sortOptions) ? $request->input('sort') : 'newest';
+
+        $query = User::with(['memberClubs', 'dependents', 'guardians.guardian', 'latestHealthRecord'])
             ->withCount('memberClubs')
             ->when($search, function ($query, $search) {
                 $query->where('full_name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
                     ->orWhere('nationality', 'like', "%{$search}%")
                     ->orWhere('gender', 'like', "%{$search}%")
-                    ->orWhereRaw("JSON_EXTRACT(mobile, '$.number') LIKE ?", ["%{$search}%"]);
-            })
-            ->latest()
-            ->paginate(20);
+                    ->orWhereRaw("JSON_EXTRACT(mobile, '$.number') LIKE ?", ["%{$search}%"])
+                    ->orWhereHas('memberClubs', fn ($q) => $q->where('club_name', 'like', "%{$search}%"));
+            });
+
+        // Apply the chosen sort closure to the query.
+        $sortOptions[$sort]($query);
+
+        $members = $query->paginate(20)->withQueryString();
 
         $isMobile = (bool) $request->attributes->get('is_mobile');
 
@@ -151,12 +187,12 @@ class PlatformController extends Controller
                 ? 'admin.platform.members._results-mobile'
                 : 'admin.platform.members._results';
 
-            return view($resultsView, compact('members', 'search'));
+            return view($resultsView, compact('members', 'search', 'sort'));
         }
 
         $mobile = $isMobile && view()->exists('admin.platform.mobile.members');
 
-        return view($mobile ? 'admin.platform.mobile.members' : 'admin.platform.members.index', compact('members', 'search'));
+        return view($mobile ? 'admin.platform.mobile.members' : 'admin.platform.members.index', compact('members', 'search', 'sort'));
     }
 
     public function memberPopup(User $user)

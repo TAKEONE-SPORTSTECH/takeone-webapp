@@ -151,7 +151,7 @@ class ClubMessageController extends Controller
             'id'     => $user->id,
             'name'   => $user->full_name ?? $user->name ?? 'Member',
             'avatar' => $user->profile_picture ? asset('storage/' . $user->profile_picture) : null,
-            'initial'=> strtoupper(substr($user->full_name ?? $user->name ?? 'M', 0, 1)),
+            'initial'=> mb_strtoupper(mb_substr($user->full_name ?? $user->name ?? 'M', 0, 1, 'UTF-8'), 'UTF-8'),
         ];
     }
 

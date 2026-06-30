@@ -58,7 +58,7 @@
                             @if($member->profile_picture)
                                 <img src="{{ asset('storage/'.$member->profile_picture) }}?v={{ optional($member->updated_at)->timestamp }}" alt="" class="w-14 h-14 object-cover">
                             @else
-                                <span class="w-14 h-14 flex items-center justify-center text-white font-bold text-xl {{ $isMale ? 'bg-gradient-to-br from-purple-500 to-primary' : 'bg-gradient-to-br from-pink-500 to-pink-700' }}">{{ strtoupper(substr($member->full_name ?? 'M', 0, 1)) }}</span>
+                                <span class="w-14 h-14 flex items-center justify-center text-white font-bold text-xl {{ $isMale ? 'bg-gradient-to-br from-purple-500 to-primary' : 'bg-gradient-to-br from-pink-500 to-pink-700' }}">{{ mb_strtoupper(mb_substr($member->full_name ?? 'M', 0, 1, 'UTF-8'), 'UTF-8') }}</span>
                             @endif
                         </span>
                         @if($clubs > 0)

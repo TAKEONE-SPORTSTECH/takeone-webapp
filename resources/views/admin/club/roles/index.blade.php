@@ -55,7 +55,7 @@
                                     @else
                                         <div class="rounded-full bg-primary flex items-center justify-center shrink-0 w-12 h-12">
                                             <span class="text-white font-bold text-xl">
-                                                {{ strtoupper(substr($member->user->full_name ?? 'U', 0, 1)) }}
+                                                {{ mb_strtoupper(mb_substr($member->user->full_name ?? 'U', 0, 1, 'UTF-8'), 'UTF-8') }}
                                             </span>
                                         </div>
                                     @endif

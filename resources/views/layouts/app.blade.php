@@ -466,11 +466,11 @@
                                              class="user-avatar"
                                              onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';">
                                         <span class="user-avatar-placeholder" style="display:none;">
-                                            {{ strtoupper(substr(Auth::user()->full_name, 0, 1)) }}
+                                            {{ mb_strtoupper(mb_substr(Auth::user()->full_name, 0, 1, 'UTF-8'), 'UTF-8') }}
                                         </span>
                                     @else
                                         <span class="user-avatar-placeholder">
-                                            {{ strtoupper(substr(Auth::user()->full_name, 0, 1)) }}
+                                            {{ mb_strtoupper(mb_substr(Auth::user()->full_name, 0, 1, 'UTF-8'), 'UTF-8') }}
                                         </span>
                                     @endif
                                     <span class="online-indicator"></span>
@@ -603,11 +603,11 @@
                                  class="user-avatar"
                                  onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';">
                             <span class="user-avatar-placeholder" style="display:none;">
-                                {{ strtoupper(substr(Auth::user()->full_name, 0, 1)) }}
+                                {{ mb_strtoupper(mb_substr(Auth::user()->full_name, 0, 1, 'UTF-8'), 'UTF-8') }}
                             </span>
                         @else
                             <span class="user-avatar-placeholder">
-                                {{ strtoupper(substr(Auth::user()->full_name, 0, 1)) }}
+                                {{ mb_strtoupper(mb_substr(Auth::user()->full_name, 0, 1, 'UTF-8'), 'UTF-8') }}
                             </span>
                         @endif
                         <span class="online-indicator"></span>

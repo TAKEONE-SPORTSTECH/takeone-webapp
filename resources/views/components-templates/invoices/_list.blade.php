@@ -52,7 +52,7 @@
                                              class="w-12 h-12 rounded-xl object-cover border border-gray-100 bg-white">
                                     @else
                                         <div class="w-12 h-12 rounded-xl bg-accent text-primary flex items-center justify-center font-bold text-lg">
-                                            {{ strtoupper(substr($club->club_name ?? 'C', 0, 1)) }}
+                                            {{ mb_strtoupper(mb_substr($club->club_name ?? 'C', 0, 1, 'UTF-8'), 'UTF-8') }}
                                         </div>
                                     @endif
                                 </div>

@@ -182,6 +182,15 @@
     <div class="ml-sheet" x-data="{ reveal: false, tab: @js(session('magic_sent') ? 'link' : 'password') }">
         <div class="ml-grab"></div>
 
+        {{-- Flash error (e.g. expired session / page expired) --}}
+        @if(session('error'))
+        <div style="display:flex; gap:10px; align-items:flex-start; margin-bottom:18px; padding:13px 15px;
+                    background:#fef2f2; border:1px solid #fecaca; border-radius:14px; font-size:13px; color:#991b1b">
+            <i class="bi bi-exclamation-circle" style="margin-top:2px"></i>
+            <p style="flex:1; margin:0">{{ session('error') }}</p>
+        </div>
+        @endif
+
         {{-- Tabs: password vs passwordless login link --}}
         <div style="display:flex; gap:6px; background:#f3f1fb; padding:5px; border-radius:14px; margin-bottom:22px">
             <button type="button" @click="tab='password'" class="ml-tab" :class="{ 'is-active': tab==='password' }">

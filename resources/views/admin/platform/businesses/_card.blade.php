@@ -11,7 +11,9 @@
      data-name="{{ $business->name }}"
      data-owner="{{ $business->owner?->full_name }}"
      data-email="{{ $business->owner?->email }}"
-     data-status="{{ $business->status }}">
+     data-status="{{ $business->status }}"
+     data-created="{{ $business->created_at?->timestamp }}"
+     data-clubs="{{ $business->clubs_count }}">
     <div class="flex items-start justify-between gap-3">
         <div class="flex items-start gap-3 min-w-0">
             <div class="biz-logo w-11 h-11 rounded-lg bg-accent flex items-center justify-center flex-shrink-0">

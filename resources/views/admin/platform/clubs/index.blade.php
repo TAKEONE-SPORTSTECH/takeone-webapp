@@ -9,189 +9,135 @@
     </div>
 
     <!-- Search and Actions Bar -->
-    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-        <div class="grow">
-            <input type="text" id="clubSearch" class="form-control w-full" placeholder="Search clubs by name, location, or description..." value="{{ $search ?? '' }}">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+        <div class="grow min-w-[16rem] relative" x-data="{ q: @js($search ?? '') }">
+            <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center text-gray-400 pointer-events-none"></i>
+            <input type="text" id="clubSearch" x-ref="clubSearch" x-model="q"
+                   class="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                   placeholder="Search clubs by name, location, owner, or description..."
+                   value="{{ $search ?? '' }}">
+            <button type="button" x-show="q.length" x-cloak
+                    @click="q=''; $nextTick(() => $refs.clubSearch.dispatchEvent(new Event('input')))"
+                    title="Clear search"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="bi bi-x-circle-fill"></i>
+            </button>
         </div>
-        <button type="button" class="btn btn-primary w-full sm:w-auto shrink-0" onclick="window.dispatchEvent(new CustomEvent('open-club-modal', { detail: { mode: 'create' } }));">
+
+        {{-- Sort dropdown (custom Alpine — no native select) --}}
+        <div class="relative shrink-0"
+             x-data="{
+                open: false,
+                sort: @js($sort ?? 'newest'),
+                labels: {
+                    newest: 'Newest first',
+                    oldest: 'Oldest first',
+                    name_asc: 'Name (A–Z)',
+                    name_desc: 'Name (Z–A)',
+                    members: 'Most members',
+                    packages: 'Most packages'
+                },
+                pick(key) { this.sort = key; this.open = false; window.clubSetSort?.(key); }
+             }"
+             @click.outside="open = false" @keydown.escape="open = false">
+            <button type="button" @click="open = !open"
+                    class="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors whitespace-nowrap">
+                <i class="bi bi-sort-down text-gray-400"></i>
+                <span class="hidden sm:inline text-muted-foreground">Sort:</span>
+                <span x-text="labels[sort]"></span>
+                <i class="bi bi-chevron-down text-xs text-gray-400 transition-transform" :class="open && 'rotate-180'"></i>
+            </button>
+            <div x-show="open" x-cloak
+                 x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-75" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                 class="absolute right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden z-50 py-1">
+                <template x-for="(label, key) in labels" :key="key">
+                    <button type="button" @click="pick(key)"
+                            class="w-full flex items-center justify-between px-4 py-2.5 text-sm hover:bg-muted/60 transition-colors"
+                            :class="sort === key ? 'text-primary font-semibold' : 'text-gray-700'">
+                        <span x-text="label"></span>
+                        <i class="bi bi-check-lg" x-show="sort === key"></i>
+                    </button>
+                </template>
+            </div>
+        </div>
+
+        <button type="button" class="btn btn-primary shrink-0" onclick="window.dispatchEvent(new CustomEvent('open-club-modal', { detail: { mode: 'create' } }));">
             <i class="bi bi-plus-circle mr-2"></i>Add New Club
         </button>
     </div>
 
-    <!-- Clubs Grid -->
-    @if($clubs->count() > 0)
-        @php
-            $countryNames = collect(json_decode(@file_get_contents(public_path('data/countries.json')) ?: '[]', true))
-                ->pluck('name', 'iso2');
-        @endphp
-        <div class="flex flex-wrap gap-4 mb-4" id="clubsGrid">
-            @foreach($clubs as $club)
-                @php
-                    $cc = strtoupper($club->country ?? '');
-                    $flag = (strlen($cc) === 2 && ctype_alpha($cc))
-                        ? mb_chr(127397 + ord($cc[0])) . mb_chr(127397 + ord($cc[1]))
-                        : '';
-                    $countryName = $countryNames[$cc] ?? $cc;
-                @endphp
-                <div class="club-card-wrapper w-80 max-w-full"
-                     data-club-country="{{ $cc }}"
-                     data-club-id="{{ $club->id }}"
-                     data-club-name="{{ $club->club_name }}"
-                     data-club-address="{{ $club->address ?? '' }}"
-                     data-club-owner="{{ $club->owner->full_name ?? '' }}">
-                    <a href="{{ route('admin.club.dashboard', $club->slug) }}" class="no-underline">
-                        <div class="card border shadow-sm overflow-hidden club-card cursor-pointer transition-all duration-300">
-                            <!-- Cover Image -->
-                            <div class="relative overflow-hidden h-48">
-                                @if($club->cover_image)
-                                    <img src="{{ asset('storage/' . $club->cover_image) }}" alt="{{ $club->club_name }}" loading="lazy" class="w-full h-full object-cover club-cover-img transition-transform duration-300">
-                                @else
-                                    <div class="w-full h-full flex items-center justify-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                                        <i class="bi bi-image text-white text-5xl opacity-30"></i>
-                                    </div>
-                                @endif
-
-                                <!-- Club Logo - Bottom Left -->
-                                <div class="absolute bottom-2 left-2">
-                                    <div class="bg-white shadow border p-0.5 w-20 h-20 rounded-full" style="border-color: rgba(0,0,0,0.1) !important;">
-                                        @if($club->logo)
-                                            <img src="{{ asset('storage/' . $club->logo) }}" alt="{{ $club->club_name }} logo" loading="lazy" class="w-full h-full rounded-full object-contain">
-                                        @else
-                                            <div class="w-full h-full rounded-full bg-primary flex items-center justify-center">
-                                                <span class="text-white font-bold text-xl">{{ substr($club->club_name, 0, 1) }}</span>
-                                            </div>
-                                        @endif
-                                    </div>
-                                </div>
-
-                            <!-- Admin Badge - Top Left -->
-                            <div class="absolute top-2 left-2">
-                                <span class="badge text-white px-3 py-1 rounded-full text-xs font-semibold" style="background-color: rgba(147, 51, 234, 0.9);">Admin</span>
-                            </div>
-
-                            <!-- Country Flag - Bottom Right -->
-                            @if($flag)
-                                <div class="absolute bottom-2 right-2">
-                                    <span class="club-flag inline-flex items-center gap-1 bg-white/90 shadow-sm rounded-full pl-2 pr-2.5 py-1 text-xs font-semibold text-foreground whitespace-nowrap">
-                                        <span class="club-flag-emoji text-base leading-none">{{ $flag }}</span><span class="club-flag-code">{{ $countryName }}</span>
-                                    </span>
-                                </div>
-                            @endif
-
-                            <!-- Edit Button - Top Right -->
-                            <div class="absolute top-2 right-2">
-                                <button type="button"
-                                        class="btn btn-sm btn-light shadow-sm"
-                                        onclick="event.preventDefault(); event.stopPropagation(); window.dispatchEvent(new CustomEvent('open-club-modal', { detail: { mode: 'edit', clubId: {{ $club->id }} } }));"
-                                        title="Edit Club">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                            <!-- Card Body -->
-                            <div class="p-4 bg-white">
-                                <div class="mb-3">
-                                    <!-- Club Name -->
-                                    <h3 class="font-semibold mb-2 club-title text-lg text-foreground transition-colors duration-300">{{ $club->club_name }}</h3>
-
-                                    <!-- Address -->
-                                    @if($club->address)
-                                        <div class="flex items-center text-muted-foreground text-sm">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1 shrink-0">
-                                                <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path>
-                                                <circle cx="12" cy="10" r="3"></circle>
-                                            </svg>
-                                            <span class="truncate">{{ $club->address }}</span>
-                                        </div>
-                                    @endif
-                                </div>
-
-                                <!-- Stats Grid -->
-                                <div class="grid grid-cols-3 gap-2 text-center text-xs">
-                                    <div class="p-2 rounded bg-primary/5">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-1 text-primary">
-                                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                                            <circle cx="9" cy="7" r="4"></circle>
-                                            <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-                                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                                        </svg>
-                                        <p class="font-semibold mb-0 text-foreground">{{ $club->members_count }}</p>
-                                        <p class="text-muted-foreground mb-0">Members</p>
-                                    </div>
-                                    <div class="p-2 rounded bg-primary/5">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-1 text-primary">
-                                            <path d="M14.4 14.4 9.6 9.6"></path>
-                                            <path d="M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"></path>
-                                            <path d="m21.5 21.5-1.4-1.4"></path>
-                                            <path d="M3.9 3.9 2.5 2.5"></path>
-                                            <path d="M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"></path>
-                                        </svg>
-                                        <p class="font-semibold mb-0 text-foreground">{{ $club->packages_count }}</p>
-                                        <p class="text-muted-foreground mb-0">Packages</p>
-                                    </div>
-                                    <div class="p-2 rounded bg-primary/5">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-1 text-primary">
-                                            <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path>
-                                        </svg>
-                                        <p class="font-semibold mb-0 text-foreground">{{ $club->instructors_count }}</p>
-                                        <p class="text-muted-foreground mb-0">Trainers</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-            @endforeach
-        </div>
-
-        <!-- Pagination -->
-        <div class="flex justify-center mb-4">
-            {{ $clubs->links() }}
-        </div>
-    @else
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-body text-center py-12">
-                <i class="bi bi-building text-muted-foreground text-6xl"></i>
-                <h5 class="mt-3 mb-2">No Clubs Found</h5>
-                <p class="text-muted-foreground mb-4">
-                    @if($search)
-                        No clubs match your search criteria.
-                    @else
-                        Get started by creating your first club.
-                    @endif
-                </p>
-                @if(!$search)
-                    <button type="button" class="btn btn-primary" onclick="window.dispatchEvent(new CustomEvent('open-club-modal', { detail: { mode: 'create' } }));">
-                        <i class="bi bi-plus-circle mr-2"></i>Add New Club
-                    </button>
-                @endif
-            </div>
-        </div>
-    @endif
+    <!-- Clubs Grid + Pagination (swapped in place on search/sort) -->
+    <div id="clubsResults">
+        @include('admin.platform.clubs._results')
+    </div>
 </div>
 
 <!-- Include Club Modal -->
 <x-club-modal mode="create" />
 
-{{-- Styles moved to app.css (Phase 6) --}}
-
 @push('scripts')
 <script>
-    // Real-time search filtering
-    document.getElementById('clubSearch').addEventListener('input', function(e) {
-        const searchTerm = e.target.value.toLowerCase();
-        const clubCards = document.querySelectorAll('.club-card-wrapper');
+    document.addEventListener('DOMContentLoaded', function () {
+        const baseUrl   = @json(route('admin.platform.clubs'));
+        const resultsEl = document.getElementById('clubsResults');
+        const searchEl  = document.getElementById('clubSearch');
+        if (!resultsEl || !searchEl) return;
 
-        clubCards.forEach(function(card) {
-            const clubName = card.getAttribute('data-club-name').toLowerCase();
-            const clubAddress = card.getAttribute('data-club-address').toLowerCase();
-            const clubOwner = card.getAttribute('data-club-owner').toLowerCase();
+        let searchDebounce = null;
+        let currentSearch  = @json($search ?? '');
+        let currentSort    = @json($sort ?? 'newest');
+        let activeFetch    = 0;
 
-            if (clubName.includes(searchTerm) || clubAddress.includes(searchTerm) || clubOwner.includes(searchTerm)) {
-                card.classList.remove('hidden');
-            } else {
-                card.classList.add('hidden');
+        function buildUrl() {
+            const params = new URLSearchParams();
+            if (currentSearch) params.set('search', currentSearch);
+            if (currentSort)   params.set('sort', currentSort);
+            const qs = params.toString();
+            return baseUrl + (qs ? ('?' + qs) : '');
+        }
+
+        function loadResults(url) {
+            const requestId = ++activeFetch;
+            resultsEl.classList.add('opacity-50', 'pointer-events-none');
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' } })
+                .then(r => r.text())
+                .then(html => {
+                    if (requestId !== activeFetch) return;
+                    resultsEl.innerHTML = html;
+                })
+                .catch(() => window.showToast?.('error', 'Could not load clubs. Please try again.'))
+                .finally(() => {
+                    if (requestId === activeFetch) resultsEl.classList.remove('opacity-50', 'pointer-events-none');
+                });
+        }
+
+        function reload() {
+            const url = buildUrl();
+            history.replaceState(null, '', url);
+            loadResults(url);
+        }
+
+        searchEl.addEventListener('input', function (e) {
+            clearTimeout(searchDebounce);
+            currentSearch = e.target.value.trim();
+            searchDebounce = setTimeout(reload, 300);
+        });
+
+        // Called by the sort dropdown (Alpine) — re-fetch with the new sort, preserving the search.
+        window.clubSetSort = function (sort) {
+            currentSort = sort;
+            reload();
+        };
+
+        // AJAX pagination (delegated — links are re-rendered on each swap).
+        resultsEl.addEventListener('click', function (e) {
+            const pageLink = e.target.closest('.pagination a, nav[role="navigation"] a, [aria-label="Pagination Navigation"] a');
+            if (pageLink && pageLink.getAttribute('href')) {
+                e.preventDefault();
+                history.replaceState(null, '', pageLink.href);
+                loadResults(pageLink.href);
+                resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         });
     });

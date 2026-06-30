@@ -41,6 +41,24 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Gracefully handle "page expired" (419 CSRF token mismatch) instead of
+        // dead-ending on the raw "Page Expired" screen. This happens when a form
+        // is submitted from a page whose CSRF token has gone stale (left open, a
+        // cached/bookmarked login page, or a session cookie that wasn't present).
+        // Bounce the user back so the fresh GET mints a new token and they can
+        // simply try again — same philosophy as the 403 handler below.
+        $exceptions->render(function (\Illuminate\Session\TokenMismatchException $e, \Illuminate\Http\Request $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Your session expired. Please refresh the page and try again.',
+                ], 419);
+            }
+
+            return redirect()->back(fallback: route('login'))
+                ->withInput($request->except(['password', 'password_confirmation', '_token']))
+                ->with('error', 'Your session expired — please try again.');
+        });
+
         // Gracefully handle "forbidden" (403) responses instead of showing the raw
         // "Unauthorized action" page. This happens most often when a long-open page
         // belongs to a previous, higher-privilege session (e.g. super-admin) while

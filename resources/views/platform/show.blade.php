@@ -212,7 +212,7 @@
                             @if($trainerUser && $trainerUser->profile_picture)
                             <img src="{{ asset('storage/' . $trainerUser->profile_picture) }}" class="mini-pfp" alt="{{ $trainerUser->full_name ?? $trainerUser->name }}">
                             @else
-                            <div class="mini-pfp-placeholder">{{ strtoupper(substr($trainerUser->name ?? 'T', 0, 1)) }}</div>
+                            <div class="mini-pfp-placeholder">{{ mb_strtoupper(mb_substr($trainerUser->name ?? 'T', 0, 1, 'UTF-8'), 'UTF-8') }}</div>
                             @endif
                             <div>
                                 <h6 class="font-bold mb-1">{{ $trainerUser->full_name ?? $trainerUser->name ?? 'Trainer' }}</h6>
@@ -400,7 +400,7 @@
                                     <div style="display:flex;">
                                         @if(count($athletes))
                                             @foreach($athletes as $ath)
-                                            <div style="width:24px;height:24px;border-radius:999px;border:2px solid #1e293b;background:var(--color-primary);color:#fff;font-size:.75rem;font-weight:700;display:flex;align-items:center;justify-content:center;{{ $loop->first ? '' : 'margin-left:-8px;' }}">{{ strtoupper(substr($ath['name'] ?? '?', 0, 1)) }}</div>
+                                            <div style="width:24px;height:24px;border-radius:999px;border:2px solid #1e293b;background:var(--color-primary);color:#fff;font-size:.75rem;font-weight:700;display:flex;align-items:center;justify-content:center;{{ $loop->first ? '' : 'margin-left:-8px;' }}">{{ mb_strtoupper(mb_substr($ath['name'] ?? '?', 0, 1, 'UTF-8'), 'UTF-8') }}</div>
                                             @endforeach
                                         @else
                                             @foreach(array_slice(array_filter(str_split(strtoupper(preg_replace('/[^A-Za-z]/', '', $achievement->short_title ?: $achievement->title)))), 0, 3) as $idx => $l)
@@ -1363,7 +1363,7 @@
                             <img class="news-avatar" src="{{ asset('storage/' . $club->logo) }}" alt="{{ $club->club_name }}">
                             @else
                             <div class="w-[42px] h-[42px] rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">
-                                {{ strtoupper(substr($club->club_name, 0, 1)) }}
+                                {{ mb_strtoupper(mb_substr($club->club_name, 0, 1, 'UTF-8'), 'UTF-8') }}
                             </div>
                             @endif
                             <div>
@@ -1423,7 +1423,7 @@
                                         @if($comment->user->profile_picture)
                                         <img src="{{ asset('storage/' . $comment->user->profile_picture) }}" alt="">
                                         @else
-                                        <div class="comment-avatar-placeholder">{{ strtoupper(substr($comment->user->full_name ?? $comment->user->name, 0, 1)) }}</div>
+                                        <div class="comment-avatar-placeholder">{{ mb_strtoupper(mb_substr($comment->user->full_name ?? $comment->user->name, 0, 1, 'UTF-8'), 'UTF-8') }}</div>
                                         @endif
                                     </div>
                                     <div class="comment-body">
@@ -1447,7 +1447,7 @@
                                     @if(Auth::user()->profile_picture)
                                     <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}" alt="">
                                     @else
-                                    <div class="comment-avatar-placeholder">{{ strtoupper(substr(Auth::user()->full_name ?? Auth::user()->name, 0, 1)) }}</div>
+                                    <div class="comment-avatar-placeholder">{{ mb_strtoupper(mb_substr(Auth::user()->full_name ?? Auth::user()->name, 0, 1, 'UTF-8'), 'UTF-8') }}</div>
                                     @endif
                                 </div>
                                 <form class="comment-form flex-1" data-post-id="{{ $post->id }}"

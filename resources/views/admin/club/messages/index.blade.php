@@ -34,7 +34,7 @@
                                 <img src="{{ asset('storage/'.$cu->profile_picture) }}" alt="" class="rounded-full w-11 h-11 object-cover shrink-0">
                             @else
                                 <div class="rounded-full bg-primary flex items-center justify-center w-11 h-11 shrink-0">
-                                    <span class="text-white font-bold">{{ strtoupper(substr($cu->full_name ?? 'U', 0, 1)) }}</span>
+                                    <span class="text-white font-bold">{{ mb_strtoupper(mb_substr($cu->full_name ?? 'U', 0, 1, 'UTF-8'), 'UTF-8') }}</span>
                                 </div>
                             @endif
                             <div class="flex-1 min-w-0">

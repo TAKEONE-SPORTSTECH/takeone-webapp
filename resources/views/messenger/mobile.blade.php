@@ -241,7 +241,7 @@
                             @if(Auth::user()->profile_picture)
                                 <img src="{{ asset('storage/'.Auth::user()->profile_picture) }}?v={{ optional(Auth::user()->updated_at)->timestamp }}" class="w-7 h-7 rounded-full object-cover" alt="">
                             @else
-                                <span class="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-purple-400 text-white flex items-center justify-center text-[11px] font-bold">{{ strtoupper(mb_substr(Auth::user()->full_name ?? 'U', 0, 1)) }}</span>
+                                <span class="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-purple-400 text-white flex items-center justify-center text-[11px] font-bold">{{ mb_strtoupper(mb_substr(Auth::user()->full_name ?? 'U', 0, 1, 'UTF-8'), 'UTF-8') }}</span>
                             @endif
                         </span>
                     </template>

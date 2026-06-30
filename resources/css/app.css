@@ -3276,6 +3276,11 @@
 .member-card-wrapper { transition: opacity 0.3s ease; }
 .member-card-wrapper.hidden { display: none; }
 
+/* Members page: Cards / Table view toggle — driven by `.show-table` on #membersResults */
+#membersResults .members-table-view { display: none; }
+#membersResults.show-table .members-cards-view { display: none; }
+#membersResults.show-table .members-table-view { display: block; }
+
 a.text-decoration-none:hover .family-card { text-decoration: none; }
 
 .rounded-circle img {

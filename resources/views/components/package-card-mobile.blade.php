@@ -151,7 +151,7 @@
                                         @if($instructor['image'])
                                             <img src="{{ asset('storage/' . $instructor['image']) }}" alt="" class="w-4 h-4 rounded-full object-cover">
                                         @else
-                                            <span class="w-4 h-4 rounded-full bg-primary/15 grid place-items-center text-[8px] font-bold text-primary">{{ strtoupper(substr($instructor['name'], 0, 1)) }}</span>
+                                            <span class="w-4 h-4 rounded-full bg-primary/15 grid place-items-center text-[8px] font-bold text-primary">{{ mb_strtoupper(mb_substr($instructor['name'], 0, 1, 'UTF-8'), 'UTF-8') }}</span>
                                         @endif
                                         <span class="text-[10px] text-primary font-medium max-w-[5rem] truncate">{{ $instructor['name'] }}</span>
                                     </a>

@@ -79,7 +79,7 @@
                     @if(!empty($club->logo))
                         <img src="{{ asset('storage/'.$club->logo) }}" alt="" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">
                     @else
-                        <span class="w-10 h-10 rounded-lg bg-accent flex items-center justify-center text-primary font-bold text-xs flex-shrink-0">{{ strtoupper(substr($club->club_name ?? 'CL',0,2)) }}</span>
+                        <span class="w-10 h-10 rounded-lg bg-accent flex items-center justify-center text-primary font-bold text-xs flex-shrink-0">{{ mb_strtoupper(mb_substr($club->club_name ?? 'CL', 0, 2, 'UTF-8'), 'UTF-8') }}</span>
                     @endif
                     <div class="min-w-0">
                         <p class="font-bold text-foreground truncate text-sm">{{ $club->club_name }}</p>
