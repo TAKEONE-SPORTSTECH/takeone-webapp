@@ -24,7 +24,7 @@
                         <p class="text-sm font-bold text-foreground" x-text="kind === 'likes' ? @js(__('personal.likers_title')) : @js(__('personal.viewers_title'))"></p>
                         <span x-show="!loading" x-cloak class="text-[12px] text-muted-foreground" x-text="'· ' + people.length"></span>
                     </div>
-                    <button type="button" @click="close()" class="m-press w-9 h-9 -mr-1.5 rounded-full grid place-items-center text-gray-500 hover:bg-muted transition-colors" aria-label="{{ __('personal.close') }}">
+                    <button type="button" @click="close()" class="m-press w-9 h-9 -me-1.5 rounded-full grid place-items-center text-gray-500 hover:bg-muted transition-colors" aria-label="{{ __('personal.close') }}">
                         <i class="bi bi-x-lg"></i>
                     </button>
                 </div>

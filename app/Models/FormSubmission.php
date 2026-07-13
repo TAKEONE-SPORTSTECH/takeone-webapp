@@ -11,7 +11,7 @@ class FormSubmission extends Model
     protected $fillable = ['form_id', 'user_id', 'data', 'files', 'ip'];
 
     protected $casts = [
-        'data'  => 'array',
+        'data' => 'array',
         'files' => 'array',
     ];
 

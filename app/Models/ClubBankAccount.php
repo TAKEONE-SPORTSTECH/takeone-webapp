@@ -3,15 +3,15 @@
 namespace App\Models;
 
 use App\Traits\BelongsToTenant;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Support\Facades\Crypt;
 
 class ClubBankAccount extends Model
 {
-    use HasFactory, BelongsToTenant;
+    use BelongsToTenant, HasFactory;
 
     /**
      * The table associated with the model.
@@ -92,7 +92,7 @@ class ClubBankAccount extends Model
     public function getMaskedAccountNumber(): string
     {
         $accountNumber = $this->account_number;
-        if (!$accountNumber) {
+        if (! $accountNumber) {
             return 'N/A';
         }
 
@@ -101,6 +101,6 @@ class ClubBankAccount extends Model
             return str_repeat('*', $length);
         }
 
-        return str_repeat('*', $length - 4) . substr($accountNumber, -4);
+        return str_repeat('*', $length - 4).substr($accountNumber, -4);
     }
 }

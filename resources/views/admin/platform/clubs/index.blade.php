@@ -3,10 +3,8 @@
 @section('admin-content')
 <div>
     <!-- Page Header -->
-    <div class="mb-4">
-        <h1 class="text-2xl font-bold mb-2">All Clubs</h1>
-        <p class="text-muted-foreground">Manage all clubs on the platform</p>
-    </div>
+    <x-admin-hero eyebrow="Clubs" title="All Clubs" subtitle="Manage every club on the platform"
+                  icon="bi-building-fill" :count="number_format($clubs->total())" countLabel="Clubs" />
 
     <!-- Search and Actions Bar -->
     <div class="flex flex-wrap items-center gap-3 mb-4">

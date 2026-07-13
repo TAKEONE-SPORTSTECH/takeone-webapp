@@ -15,8 +15,8 @@ class ProcessRecurringExpenses extends Command
 
     public function handle(): int
     {
-        $today       = Carbon::today();
-        $dayOfMonth  = (int) $today->format('j'); // day without leading zero
+        $today = Carbon::today();
+        $dayOfMonth = (int) $today->format('j'); // day without leading zero
 
         $recurring = ClubRecurringExpense::with('tenant')
             ->where('is_active', true)
@@ -25,6 +25,7 @@ class ProcessRecurringExpenses extends Command
 
         if ($recurring->isEmpty()) {
             $this->info('No recurring expenses due today.');
+
             return 0;
         }
 
@@ -37,12 +38,12 @@ class ProcessRecurringExpenses extends Command
             }
 
             ClubTransaction::create([
-                'tenant_id'        => $expense->tenant_id,
-                'type'             => 'expense',
-                'description'      => $expense->description,
-                'amount'           => $expense->amount,
-                'category'         => $expense->category,
-                'payment_method'   => $expense->payment_method,
+                'tenant_id' => $expense->tenant_id,
+                'type' => 'expense',
+                'description' => $expense->description,
+                'amount' => $expense->amount,
+                'category' => $expense->category,
+                'payment_method' => $expense->payment_method,
                 'reference_number' => $expense->notes,
                 'transaction_date' => $today->toDateString(),
             ]);

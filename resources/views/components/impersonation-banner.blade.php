@@ -12,4 +12,14 @@
         <i class="bi bi-box-arrow-left"></i>
     </button>
 </form>
+{{-- Safari can keep a `no-store` page in bfcache anyway. `persisted` is only true
+     on a bfcache restore, so a normal load never pays for this. --}}
+<script>
+    if (! window.__impersonationBfcacheGuard) {
+        window.__impersonationBfcacheGuard = true;
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) window.location.reload();
+        });
+    }
+</script>
 @endif

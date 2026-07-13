@@ -221,12 +221,12 @@
                 <div class="mp-ring" style="--p:{{ (int) $successRate }}"><b>{{ (int) $successRate }}%</b></div>
                 <p class="text-[11px] text-muted-foreground mt-2 font-medium">{{ __('member.goal_success') }}</p>
             </div>
-            {{-- challenge win rate — links to the challenge hub --}}
-            <a href="{{ route('me.challenge') }}"
-               class="mp-card m-press cursor-pointer bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col items-center mp-reveal" style="animation-delay:.3s">
+            {{-- challenge win rate — opens this member's Challenges list in-page --}}
+            <div role="button" tabindex="0" @click="goTab('challenges')" @keydown.enter.space.prevent="goTab('challenges')"
+                 class="mp-card m-press cursor-pointer bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col items-center mp-reveal" style="animation-delay:.3s">
                 <div class="mp-ring" style="--p:{{ (int) $challengeWinRate }}"><b>{{ (int) $challengeWinRate }}%</b></div>
                 <p class="text-[11px] text-muted-foreground mt-2 font-medium">{{ __('member.challenge') }}</p>
-            </a>
+            </div>
             {{-- sessions --}}
             <div role="button" tabindex="0" @click="goTab('attendance')" @keydown.enter.space.prevent="goTab('attendance')"
                  class="mp-card m-press cursor-pointer bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col items-center justify-center mp-reveal" style="animation-delay:.32s">
@@ -389,18 +389,18 @@
 
     {{-- ===== Sticky tabs ===== --}}
     <div id="mpTabs" class="sticky top-14 z-30 bg-background/95 backdrop-blur mt-5 py-2">
-        <div class="mp-tabbar flex gap-2 overflow-x-auto px-4">
+        <div class="mp-tabbar flex gap-1.5 px-4">
             @php
                 $mpTabs = [
                     'overview'=>__('member.tab_overview'),'health'=>__('member.tab_health'),'goals'=>__('member.tab_goals'),
                     'clubs'=>__('member.tab_clubs'),
                 ];
-                // Billing is sensitive — only for the member's own people / active-package club.
+                // Billing is sensitive — only for the member's own people / affiliated club staff.
                 if ($canViewSensitive ?? false) $mpTabs['billing'] = __('member.tab_billing');
             @endphp
             @foreach($mpTabs as $key=>$label)
                 <button @click="tab='{{ $key }}'"
-                        class="mp-tab flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold text-muted-foreground bg-white border border-gray-100 transition-all"
+                        class="mp-tab flex-1 min-w-0 px-2 py-2 rounded-full text-[13px] font-semibold text-center text-muted-foreground bg-white border border-gray-100 transition-all truncate"
                         :class="tab==='{{ $key }}' && 'is-on'">{{ $label }}</button>
             @endforeach
         </div>
@@ -931,20 +931,27 @@
                 @endforelse
             </div>
 
-            {{-- History — clubs left --}}
-            @if($leftAffil->count())
-                <div>
-                    <div class="flex items-center justify-between mb-2">
-                        <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{{ __('member.clubs_you_left') }}</p>
-                        <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{{ $leftAffil->count() }}</span>
-                    </div>
-                    @foreach($leftAffil as $a)
+            {{-- Previous clubs — collapsible history link (tap to reveal clubs left) --}}
+            <div x-data="{ showHistory: false }">
+                <button type="button" @click="showHistory = !showHistory"
+                        class="w-full flex items-center justify-between bg-white rounded-2xl shadow-sm border border-gray-100 p-4 m-press"
+                        :aria-expanded="showHistory">
+                    <span class="flex items-center gap-2.5 min-w-0">
+                        <span class="w-9 h-9 rounded-xl bg-muted grid place-items-center flex-shrink-0"><i class="bi bi-clock-history text-muted-foreground"></i></span>
+                        <span class="text-sm font-semibold text-foreground truncate">{{ __('member.previous_clubs') }}</span>
+                        @if($leftAffil->count())<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 flex-shrink-0">{{ $leftAffil->count() }}</span>@endif
+                    </span>
+                    <i class="bi bi-chevron-down text-muted-foreground transition-transform flex-shrink-0" :class="showHistory && 'rotate-180'"></i>
+                </button>
+
+                <div x-show="showHistory" x-collapse x-cloak class="mt-2.5 space-y-2.5">
+                    @forelse($leftAffil as $a)
                         @php
                             $span = ($a->start_date && $a->end_date) ? $a->start_date->diffInMonths($a->end_date) : null;
                             $clubUrl = ($a->tenant && $a->tenant->slug && $a->tenant->country) ? route('clubs.show', ['country' => strtolower($a->tenant->country), 'slug' => $a->tenant->slug]) : null;
                             $tag = $clubUrl ? 'a' : 'div';
                         @endphp
-                        <{{ $tag }} @if($clubUrl) href="{{ $clubUrl }}" @endif class="group relative block bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-2.5 overflow-hidden {{ $clubUrl ? 'm-press' : '' }}">
+                        <{{ $tag }} @if($clubUrl) href="{{ $clubUrl }}" @endif class="group relative block bg-white rounded-2xl shadow-sm border border-gray-100 p-4 overflow-hidden {{ $clubUrl ? 'm-press' : '' }}">
                             {{-- subtle muted rail --}}
                             <span class="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 w-1 bg-gray-300"></span>
                             <div class="flex items-start gap-3">
@@ -965,13 +972,14 @@
                                 </div>
                             </div>
                         </{{ $tag }}>
-                    @endforeach
+                    @empty
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
+                            <i class="bi bi-diagram-3 text-2xl text-gray-300"></i>
+                            <p class="text-sm text-muted-foreground mt-2">{{ __('member.no_previous_clubs') }}</p>
+                        </div>
+                    @endforelse
                 </div>
-            @endif
-
-            @if($clubAffiliations->isEmpty())
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center"><i class="bi bi-diagram-3 text-3xl text-gray-300"></i><p class="text-sm text-muted-foreground mt-2">{{ __('member.no_affiliations') }}</p></div>
-            @endif
+            </div>
         </div>
 
         {{-- ===== Attendance ===== --}}
@@ -993,32 +1001,253 @@
             @endforeach
         </div>
 
+        {{-- ===== Challenges — this member's head-to-head history (reached via the Challenge stat card) ===== --}}
+        <div x-show="tab==='challenges'" x-transition.opacity x-cloak class="space-y-3">
+            {{-- Win-rate summary --}}
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-5">
+                <div class="mp-ring" style="--p:{{ (int) $challengeWinRate }}; width:84px; height:84px;"><b style="font-size:18px">{{ (int) $challengeWinRate }}%</b></div>
+                <div class="flex-1 space-y-2">
+                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('member.ch_won') }}</span><span class="font-bold text-green-600">{{ $challengeWins }}</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('member.ch_completed') }}</span><span class="font-bold">{{ $challengesTotal }}</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('member.ch_total') }}</span><span class="font-bold">{{ $memberChallenges->count() }}</span></div>
+                </div>
+            </div>
+
+            @forelse($memberChallenges as $ch)
+                @php
+                    // Status / result badge tokens.
+                    if ($ch->result === 'won')       [$bTone,$bText] = ['bg-green-100 text-green-700', __('member.ch_won')];
+                    elseif ($ch->result === 'lost')  [$bTone,$bText] = ['bg-red-100 text-red-600',      __('member.ch_lost')];
+                    elseif ($ch->result === 'draw')  [$bTone,$bText] = ['bg-gray-100 text-gray-600',     __('member.ch_draw')];
+                    elseif ($ch->status === 'active')   [$bTone,$bText] = ['bg-blue-100 text-blue-700',  __('member.ch_active')];
+                    elseif ($ch->status === 'pending')  [$bTone,$bText] = ['bg-amber-100 text-amber-700',__('member.ch_pending')];
+                    elseif ($ch->status === 'reported') [$bTone,$bText] = ['bg-purple-100 text-purple-700', __('member.ch_reported')];
+                    else [$bTone,$bText] = ['bg-gray-100 text-gray-500', ucfirst($ch->status)];
+                    $hasScore = filled($ch->my_score) || filled($ch->rival_score);
+                @endphp
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3.5 flex items-center gap-3">
+                    {{-- rival avatar --}}
+                    @if($ch->rival_uuid)
+                        <a href="{{ route('member.show', $ch->rival_uuid) }}" class="flex-shrink-0">
+                    @else
+                        <span class="flex-shrink-0">
+                    @endif
+                        @if($ch->rival_avatar)
+                            <img src="{{ $ch->rival_avatar }}" alt="" class="w-11 h-11 rounded-full object-cover border border-gray-100">
+                        @else
+                            <x-gender-avatar :gender="$ch->rival_gender" class="w-11 h-11 rounded-full border border-gray-100" />
+                        @endif
+                    @if($ch->rival_uuid)</a>@else</span>@endif
+
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-semibold text-foreground truncate">
+                            <i class="bi {{ $ch->type === 'fight' ? 'bi-shield-shaded' : 'bi-lightning-charge-fill' }} text-primary mr-0.5"></i>
+                            {{ $ch->discipline }}
+                        </p>
+                        <p class="text-[11px] text-muted-foreground truncate">{{ __('member.ch_vs') }} {{ $ch->rival_name }} · {{ optional($ch->date)->format('d M Y') }}</p>
+                        @if($hasScore)
+                            <p class="text-[11px] text-muted-foreground mt-0.5">{{ __('member.ch_score') }}: <span class="font-semibold text-foreground">{{ $ch->my_score ?? '—' }}</span> – <span class="font-semibold text-foreground">{{ $ch->rival_score ?? '—' }}</span></p>
+                        @endif
+                    </div>
+
+                    <div class="text-right flex-shrink-0">
+                        <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $bTone }}">{{ $bText }}</span>
+                        <p class="text-[10px] text-muted-foreground mt-1"><i class="bi bi-star-fill text-amber-400"></i> {{ $ch->stake }}</p>
+                    </div>
+                </div>
+            @empty
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
+                    <i class="bi bi-lightning-charge text-3xl text-gray-300"></i>
+                    <p class="text-sm text-muted-foreground mt-2">{{ __('member.ch_empty') }}</p>
+                </div>
+            @endforelse
+        </div>
+
         {{-- ===== Billing — sensitive; only rendered for authorised viewers ===== --}}
         @if($canViewSensitive ?? false)
-        <div x-show="tab==='billing'" x-transition.opacity x-cloak class="space-y-3">
+        <div x-show="tab==='billing'" x-transition.opacity x-cloak>
+            <div class="space-y-3"
+                 x-data="memberBilling({ settleBase: '{{ url('me/payments') }}', csrf: '{{ csrf_token() }}', canSettle: {{ ($canSettleBills ?? false) ? 'true' : 'false' }} })">
             @forelse(($payments ?? collect()) as $payment)
                 @php
                     $isLink   = $payment->type === 'invoice' && $payment->receipt_id;
                     $badgeCls = $payment->status_key === 'paid' ? 'bg-green-100 text-green-700'
                               : ($payment->status_key === 'pending' ? 'bg-blue-100 text-blue-700'
                               : ($payment->status_key === 'due' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'));
+                    $isBill = $payment->type === 'subscription';
                 @endphp
-                <{{ $isLink ? 'a' : 'div' }} @if($isLink) href="{{ route('bills.receipt', $payment->receipt_id) }}" @endif
-                    class="block bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                    <div class="flex items-center justify-between gap-2">
-                        <div class="min-w-0">
-                            <p class="font-semibold text-foreground truncate">{{ $payment->club }}</p>
-                            <p class="text-[11px] text-muted-foreground">{{ $payment->item }} · {{ optional($payment->date)->format('d M Y') }}</p>
-                        </div>
-                        <div class="text-right flex-shrink-0">
-                            <p class="font-black text-foreground leading-none">{{ $payment->amount }}</p>
-                            <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $badgeCls }}">{{ $payment->status_label }}</span>
+                @if($isBill)
+                    {{-- Subscription bill: tap to view details + settle --}}
+                    <div id="pay-card-{{ $payment->subscription_id }}"
+                         role="button"
+                         class="m-press cursor-pointer block bg-white rounded-2xl shadow-sm border border-gray-100 p-4"
+                         data-id="{{ $payment->subscription_id }}"
+                         data-club="{{ $payment->club }}"
+                         data-item="{{ $payment->item }}"
+                         data-amount="{{ $payment->amount }}"
+                         data-cur="{{ $payment->currency }}"
+                         data-period="{{ $payment->period }}"
+                         data-date="{{ optional($payment->date)->format('d M Y') }}"
+                         data-status="{{ $payment->status_key }}"
+                         data-label="{{ $payment->status_label }}"
+                         data-settleable="{{ $payment->settleable ? '1' : '0' }}"
+                         data-hasproof="{{ $payment->has_proof ? '1' : '0' }}"
+                         data-logo="{{ $payment->club_logo }}"
+                         @click="openBill($el)">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                @if($payment->club_logo)
+                                    <span class="w-9 h-9 flex-shrink-0"><img src="{{ $payment->club_logo }}" alt="" class="w-full h-full object-contain"></span>
+                                @else
+                                    <span class="w-9 h-9 flex-shrink-0 grid place-items-center text-muted-foreground"><i class="bi bi-buildings text-lg"></i></span>
+                                @endif
+                                <div class="min-w-0">
+                                    <p class="font-semibold text-foreground truncate">{{ $payment->club }}</p>
+                                    <p class="text-[11px] text-muted-foreground truncate">{{ $payment->item }} · {{ optional($payment->date)->format('d M Y') }}</p>
+                                </div>
+                            </div>
+                            <div class="text-right flex-shrink-0 flex items-center gap-2">
+                                <div>
+                                    <p data-role="amount" class="font-black text-foreground leading-none">{{ $payment->amount }}</p>
+                                    <span data-role="badge" class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $badgeCls }}">{{ $payment->status_label }}</span>
+                                </div>
+                                <i class="bi bi-chevron-right text-muted-foreground/40"></i>
+                            </div>
                         </div>
                     </div>
-                </{{ $isLink ? 'a' : 'div' }}>
+                @else
+                    {{-- Invoice: links straight to the receipt page --}}
+                    <{{ $isLink ? 'a' : 'div' }} @if($isLink) href="{{ route('bills.receipt', $payment->receipt_id) }}" @endif
+                        class="block bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                @if($payment->club_logo)
+                                    <span class="w-9 h-9 flex-shrink-0"><img src="{{ $payment->club_logo }}" alt="" class="w-full h-full object-contain"></span>
+                                @else
+                                    <span class="w-9 h-9 flex-shrink-0 grid place-items-center text-muted-foreground"><i class="bi bi-buildings text-lg"></i></span>
+                                @endif
+                                <div class="min-w-0">
+                                    <p class="font-semibold text-foreground truncate">{{ $payment->club }}</p>
+                                    <p class="text-[11px] text-muted-foreground truncate">{{ $payment->item }} · {{ optional($payment->date)->format('d M Y') }}</p>
+                                </div>
+                            </div>
+                            <div class="text-right flex-shrink-0">
+                                <p class="font-black text-foreground leading-none">{{ $payment->amount }}</p>
+                                <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $badgeCls }}">{{ $payment->status_label }}</span>
+                            </div>
+                        </div>
+                    </{{ $isLink ? 'a' : 'div' }}>
+                @endif
             @empty
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center"><i class="bi bi-receipt text-3xl text-gray-300"></i><p class="text-sm text-muted-foreground mt-2">{{ __('member.no_invoices') }}</p></div>
             @endforelse
+
+            {{-- ===== Bill details + settle bottom sheet (teleported so nothing clips it) ===== --}}
+            <template x-teleport="body">
+                <div x-show="open" x-cloak class="fixed inset-0 z-[60]" @keydown.escape.window="close()">
+                    <div x-show="open" x-transition.opacity class="absolute inset-0 bg-black/40" @click="close()"></div>
+
+                    <div x-show="open"
+                         x-transition:enter="transition ease-out duration-300"
+                         x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                         x-transition:leave="transition ease-in duration-200"
+                         x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                         class="absolute inset-x-0 bottom-0 max-h-[92vh] flex flex-col bg-white rounded-t-3xl shadow-2xl">
+
+                        {{-- Header --}}
+                        <div class="flex-shrink-0 px-5 pt-3 pb-4 border-b border-gray-100">
+                            <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
+                            <div class="flex items-center gap-3">
+                                <span class="w-11 h-11 flex-shrink-0 grid place-items-center">
+                                    <template x-if="current.logo"><img :src="current.logo" alt="" class="w-full h-full object-contain"></template>
+                                    <template x-if="!current.logo"><i class="bi bi-buildings text-2xl text-muted-foreground"></i></template>
+                                </span>
+                                <div class="min-w-0">
+                                    <h3 class="text-lg font-bold text-gray-900 truncate" x-text="current.item"></h3>
+                                    <p class="text-sm text-muted-foreground truncate" x-text="current.club"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Scrollable body --}}
+                        <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                            {{-- Amount --}}
+                            <div class="rounded-2xl bg-muted/40 p-4 flex items-center justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground" x-text="current.status === 'paid' ? '{{ __('personal.paid') }}' : '{{ __('personal.due') }}'"></p>
+                                    <p class="text-2xl font-extrabold text-primary mt-0.5 truncate">
+                                        <span x-text="current.cur"></span> <span x-text="current.amount"></span>
+                                    </p>
+                                </div>
+                                <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0"
+                                      :class="badgeClass" x-text="current.label"></span>
+                            </div>
+
+                            {{-- Details --}}
+                            <div class="rounded-2xl border border-gray-100 divide-y divide-gray-100">
+                                <div class="flex items-center justify-between gap-3 px-4 py-3">
+                                    <span class="text-[13px] text-muted-foreground">{{ __('Club') }}</span>
+                                    <span class="text-[13px] font-medium text-foreground text-right truncate" x-text="current.club"></span>
+                                </div>
+                                <div class="flex items-center justify-between gap-3 px-4 py-3">
+                                    <span class="text-[13px] text-muted-foreground">{{ __('Package') }}</span>
+                                    <span class="text-[13px] font-medium text-foreground text-right truncate" x-text="current.item"></span>
+                                </div>
+                                <div class="flex items-center justify-between gap-3 px-4 py-3" x-show="current.period">
+                                    <span class="text-[13px] text-muted-foreground">{{ __('Period') }}</span>
+                                    <span class="text-[13px] font-medium text-foreground text-right" x-text="current.period"></span>
+                                </div>
+                                <div class="flex items-center justify-between gap-3 px-4 py-3">
+                                    <span class="text-[13px] text-muted-foreground">{{ __('Date') }}</span>
+                                    <span class="text-[13px] font-medium text-foreground text-right" x-text="current.date"></span>
+                                </div>
+                            </div>
+
+                            {{-- Proof upload (only when settleable + viewer may settle) --}}
+                            <div x-show="canSettle && current.settleable">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Payment proof') }}</label>
+                                <label class="relative flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl p-6 cursor-pointer hover:border-primary/50 transition-colors overflow-hidden">
+                                    <template x-if="!preview">
+                                        <div class="text-center">
+                                            <i class="bi bi-camera text-3xl text-gray-300"></i>
+                                            <p class="text-sm text-muted-foreground mt-2">{{ __('Tap to add a photo of your receipt') }}</p>
+                                        </div>
+                                    </template>
+                                    <template x-if="preview">
+                                        <img :src="preview" class="max-h-56 rounded-xl object-contain" alt="">
+                                    </template>
+                                    <input type="file" accept="image/*" class="hidden" @change="pickFile($event)">
+                                </label>
+                                <p class="text-[11px] text-muted-foreground mt-2">
+                                    <i class="bi bi-info-circle mr-1"></i>
+                                    <span x-show="current.hasproof && current.status === 'pending'">{{ __('A proof was already sent — uploading a new one replaces it.') }}</span>
+                                    <span x-show="!(current.hasproof && current.status === 'pending')">{{ __('The club will review and approve the payment.') }}</span>
+                                </p>
+                            </div>
+
+                            {{-- Awaiting-approval note when the viewer cannot settle --}}
+                            <p x-show="!canSettle && current.status === 'pending'" class="text-[13px] text-amber-600 flex items-center gap-2">
+                                <i class="bi bi-hourglass-split"></i> {{ __('Awaiting club approval.') }}
+                            </p>
+                        </div>
+
+                        {{-- Sticky footer --}}
+                        <div class="flex-shrink-0 px-5 pt-3 border-t border-gray-100 flex gap-3"
+                             style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
+                            <button type="button" @click="close()"
+                                class="flex-1 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium active:scale-[.98] transition">
+                                {{ __('Close') }}
+                            </button>
+                            <button type="button" x-show="canSettle && current.settleable" @click="submit()" :disabled="submitting || !proof"
+                                class="flex-1 py-3 rounded-xl bg-primary text-white font-semibold active:scale-[.98] transition disabled:opacity-60 flex items-center justify-center gap-2">
+                                <span x-show="!submitting"><i class="bi bi-send mr-1"></i>{{ __('Send for review') }}</span>
+                                <span x-show="submitting" class="flex items-center gap-2"><i class="bi bi-arrow-repeat animate-spin"></i>{{ __('Sending…') }}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+            </div>
         </div>
         @endif
 
@@ -1362,5 +1591,96 @@ window.__mpProfileUpdated = (e) => {
     }
 };
 window.addEventListener('member-profile-updated', window.__mpProfileUpdated);
+
+// ===== Billing tab: view a bill's details + settle it (upload proof) =====
+window.memberBilling = function (cfg) {
+    return {
+        open: false,
+        submitting: false,
+        proof: null,
+        preview: null,
+        canSettle: !!cfg.canSettle,
+        current: { id: null, club: '', item: '', amount: '', cur: '', period: '', date: '', status: '', label: '', settleable: false, hasproof: false, logo: '' },
+
+        get badgeClass() {
+            const s = this.current.status;
+            if (s === 'paid')    return 'bg-green-100 text-green-700';
+            if (s === 'pending') return 'bg-blue-100 text-blue-700';
+            if (s === 'due')     return 'bg-amber-100 text-amber-700';
+            return 'bg-gray-100 text-gray-600';
+        },
+
+        openBill(el) {
+            const d = el.dataset;
+            this.current = {
+                id: d.id, club: d.club, item: d.item, amount: d.amount, cur: d.cur,
+                period: d.period, date: d.date, status: d.status, label: d.label,
+                settleable: d.settleable === '1', hasproof: d.hasproof === '1', logo: d.logo || '',
+            };
+            this.proof = null; this.preview = null; this.open = true;
+        },
+        close() { this.open = false; },
+
+        pickFile(e) {
+            const f = e.target.files && e.target.files[0];
+            if (!f) return;
+            if (!f.type.startsWith('image/')) { window.showToast && window.showToast('error', @js(__('Please choose an image.'))); return; }
+            const r = new FileReader();
+            r.onload = () => { this.proof = r.result; this.preview = r.result; };
+            r.readAsDataURL(f);
+        },
+
+        async submit() {
+            if (!this.proof) { window.showToast && window.showToast('error', @js(__('Add a payment proof image.'))); return; }
+            this.submitting = true;
+            try {
+                const res = await fetch(cfg.settleBase + '/' + this.current.id + '/settle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ payment_proof_base64: this.proof }),
+                });
+                const j = await res.json();
+                window.showToast && window.showToast(j.success ? 'success' : 'error', j.message || '');
+                if (j.success) { this.patchCard(this.current.id, 'pending'); this.close(); }
+            } catch (e) {
+                window.showToast && window.showToast('error', @js(__('Something went wrong.')));
+            } finally {
+                this.submitting = false;
+            }
+        },
+
+        // Patch a bill card in place — no reload.
+        patchCard(id, state, dateText) {
+            const card = document.getElementById('pay-card-' + id);
+            if (!card) return;
+            const badge = card.querySelector('[data-role=badge]');
+            if (state === 'pending') {
+                card.dataset.status = 'pending'; card.dataset.settleable = '0'; card.dataset.hasproof = '1';
+                card.dataset.label = @js(__('Pending review'));
+                if (badge) { badge.textContent = @js(__('Pending review')); badge.className = 'inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700'; }
+            } else if (state === 'paid') {
+                card.dataset.status = 'paid'; card.dataset.settleable = '0';
+                card.dataset.label = @js(__('Paid'));
+                if (badge) { badge.textContent = @js(__('Paid')); badge.className = 'inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700'; }
+            }
+        },
+    };
+};
+
+// Live-update a bill when the club approves it (MQTT 'payments' channel).
+// Deduped across shell swaps so the handler never stacks.
+window.__mpBillingRealtime && window.removeEventListener('realtime:payments', window.__mpBillingRealtime);
+window.__mpBillingRealtime = (e) => {
+    const d = (e && e.detail) || {};
+    if (d.action === 'settled' && d.subscription_id) {
+        const card = document.getElementById('pay-card-' + d.subscription_id);
+        if (!card) return;
+        const badge = card.querySelector('[data-role=badge]');
+        card.dataset.status = 'paid'; card.dataset.settleable = '0';
+        card.dataset.label = @js(__('Paid'));
+        if (badge) { badge.textContent = @js(__('Paid')); badge.className = 'inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700'; }
+    }
+};
+window.addEventListener('realtime:payments', window.__mpBillingRealtime);
 </script>
 @endsection

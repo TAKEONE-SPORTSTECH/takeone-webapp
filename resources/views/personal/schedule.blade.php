@@ -1,6 +1,6 @@
 @extends('layouts.personal-mobile')
 
-@section('title', 'Schedule')
+@section('title', __('personal.personal_schedule_page_title'))
 
 {{--
     Schedule — mobile training schedule (DB-backed). Merges the member's own
@@ -19,17 +19,17 @@
 
     {{-- ===== Hero ===== --}}
     <header class="m-hero px-5 pt-7 pb-12 text-white relative overflow-hidden">
-        <div class="absolute -right-8 -top-8 w-36 h-36 rounded-full bg-white/10"></div>
+        <div class="absolute -end-8 -top-8 w-36 h-36 rounded-full bg-white/10"></div>
         <div class="flex items-center justify-between relative z-10">
             <div>
-                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">This week</p>
-                <h1 class="text-2xl font-black mt-0.5">Training Plan</h1>
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">{{ __('personal.personal_schedule_this_week') }}</p>
+                <h1 class="text-2xl font-black mt-0.5">{{ __('personal.personal_schedule_heading') }}</h1>
             </div>
             <div class="flex items-center gap-2">
                 <button type="button"
                         onclick="window.dispatchEvent(new CustomEvent('open-schedule-form'))"
                         class="m-press w-12 h-12 rounded-2xl bg-white/20 border border-white/30 backdrop-blur grid place-items-center active:scale-95 transition-transform"
-                        aria-label="Add personal session">
+                        aria-label="{{ __('personal.personal_schedule_add_session') }}">
                     <i class="bi bi-plus-lg text-xl"></i>
                 </button>
                 <div class="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center">
@@ -41,15 +41,15 @@
         <div class="flex gap-2 mt-5 relative z-10">
             <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
                 <p class="text-lg font-black leading-none" id="sched-stat-count">0</p>
-                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">Sessions</p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('personal.personal_schedule_stat_sessions') }}</p>
             </div>
             <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
                 <p class="text-lg font-black leading-none" id="sched-stat-done">0</p>
-                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">Done</p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('shared.done') }}</p>
             </div>
             <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
                 <p class="text-lg font-black leading-none" id="sched-stat-vol">0h</p>
-                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">Volume</p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('personal.personal_schedule_stat_volume') }}</p>
             </div>
         </div>
     </header>
@@ -59,18 +59,13 @@
         <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-1 flex" id="sched-who-toggle">
             <button type="button" data-who="all"
                     class="m-press flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2 bg-primary text-white">
-                <i class="bi bi-people-fill"></i> Family
+                <i class="bi bi-people-fill"></i> {{ __('personal.personal_schedule_family') }}
             </button>
             <button type="button" data-who="me"
                     class="m-press flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2 text-muted-foreground">
-                <i class="bi bi-person-fill"></i> Just me
+                <i class="bi bi-person-fill"></i> {{ __('personal.personal_schedule_just_me') }}
             </button>
         </div>
-    </div>
-
-    {{-- ===== Family avatars (JS-rendered) ===== --}}
-    <div class="px-4 mt-4 overflow-x-auto scrollbar-hide" id="sched-avatars-wrap">
-        <div class="flex gap-2 w-max" id="sched-avatars"></div>
     </div>
 
     {{-- ===== Week-day strip (JS-rendered) ===== --}}
@@ -100,7 +95,7 @@
     var DATA_URL = "{{ route('me.schedule.data') }}";
     var ORDER = { sunday:0, monday:1, tuesday:2, wednesday:3, thursday:4, friday:5, saturday:6 };
     var WEEKDAY_KEYS  = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-    var WEEKDAY_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    var WEEKDAY_SHORT = ['{{ __("personal.personal_schedule_day_sun") }}','{{ __("personal.personal_schedule_day_mon") }}','{{ __("personal.personal_schedule_day_tue") }}','{{ __("personal.personal_schedule_day_wed") }}','{{ __("personal.personal_schedule_day_thu") }}','{{ __("personal.personal_schedule_day_fri") }}','{{ __("personal.personal_schedule_day_sat") }}'];
 
     // ===== Browser-LOCAL time helpers =====
     // The server runs in UTC, so deriving "today"/status from it rolls over hours late
@@ -198,23 +193,6 @@
         document.getElementById('sched-stat-vol').textContent = (Math.round(mins / 6) / 10) + 'h';
     }
 
-    // ---- Family avatars ----
-    function renderAvatars() {
-        var wrap = document.getElementById('sched-avatars-wrap');
-        wrap.style.display = state.who === 'all' ? '' : 'none';
-        var keys = Object.keys(MEMBERS);
-        var html = keys.map(function (k) {
-            var m = MEMBERS[k];
-            var count = SESSIONS.filter(function (s) { return s.who === k; }).length;
-            return '<div class="flex items-center gap-2 rounded-full bg-white border border-gray-100 pl-1.5 pr-3 py-1.5 shadow-sm">'
-                + avatarHTML(m, 'w-7 h-7', 'text-[10px]')
-                + '<span class="text-xs font-semibold text-foreground">' + esc(m.name) + '</span>'
-                + '<span class="text-[10px] text-muted-foreground">' + count + '</span>'
-                + '</div>';
-        }).join('');
-        document.getElementById('sched-avatars').innerHTML = html;
-    }
-
     // ---- Week-day strip ----
     function renderStrip() {
         var html = WEEKDAYS.map(function (wd) {
@@ -224,7 +202,7 @@
             for (var i = 0; i < Math.min(count, 3); i++) {
                 dots += '<span class="w-1 h-1 rounded-full ' + (active ? 'bg-white' : 'bg-primary') + '"></span>';
             }
-            var todayLine = wd.isToday ? '<span class="' + (active ? 'text-white' : 'text-primary') + '">TODAY</span>' : '';
+            var todayLine = wd.isToday ? '<span class="' + (active ? 'text-white' : 'text-primary') + '">{{ __("personal.personal_schedule_today") }}</span>' : '';
             return '<button type="button" data-day="' + wd.key + '" '
                 + 'class="m-press flex-1 min-w-0 flex flex-col items-center justify-start pt-2 pb-1.5 rounded-xl border transition-colors '
                 + (active ? 'bg-primary border-primary text-white' : 'bg-white border-gray-100 text-foreground') + '">'
@@ -245,19 +223,19 @@
         if (s.is_cancelled) {
             statusBadge = '';                                   // the "Cancelled" pill says it all
         } else if (status === 'done') {
-            statusBadge = '<span class="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-50 text-green-600"><i class="bi bi-check2"></i> Done</span>';
+            statusBadge = '<span class="ms-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-50 text-green-600"><i class="bi bi-check2"></i> {{ __("shared.done") }}</span>';
         } else if (status === 'live') {
-            statusBadge = '<span class="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white inline-flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span> Live now</span>';
+            statusBadge = '<span class="ms-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white inline-flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span> {{ __("personal.personal_schedule_live_now") }}</span>';
         } else {
             // today (later) or upcoming → live countdown to the start time
             var startMs = occurrenceDate(s.day, s.start_raw || s.start || '00:00').getTime();
-            statusBadge = '<span class="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent text-primary inline-flex items-center gap-1 js-cd" data-cd="' + startMs + '">'
+            statusBadge = '<span class="ms-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent text-primary inline-flex items-center gap-1 js-cd" data-cd="' + startMs + '">'
                 + '<i class="bi bi-hourglass-split"></i> <span class="cd-val">' + fmtCountdown(startMs - Date.now()) + '</span></span>';
         }
 
         // Package name line (club classes carry the package as `discipline`).
         var pkgLine = s.discipline
-            ? '<p class="text-[11px] font-semibold mt-0.5 truncate" style="color:' + esc(s.color) + ';"><i class="bi bi-box-seam text-[10px] mr-1"></i>' + esc(s.discipline) + '</p>'
+            ? '<p class="text-[11px] font-semibold mt-0.5 truncate" style="color:' + esc(s.color) + ';"><i class="bi bi-box-seam text-[10px] me-1"></i>' + esc(s.discipline) + '</p>'
             : '';
 
         // meta line: location · coach (kept short — no club name)
@@ -276,17 +254,17 @@
         // right-hand pill: short tag only (no club name — keeps the card compact)
         var pill;
         if (s.is_cancelled) {
-            pill = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 inline-flex items-center gap-1"><i class="bi bi-calendar-x"></i> Cancelled</span>';
+            pill = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 inline-flex items-center gap-1"><i class="bi bi-calendar-x"></i> {{ __("personal.personal_schedule_cancelled") }}</span>';
         } else if (s.source === 'substituting') {
-            pill = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-50 text-green-600 inline-flex items-center gap-1"><i class="bi bi-person-check-fill"></i> Covering</span>';
+            pill = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-50 text-green-600 inline-flex items-center gap-1"><i class="bi bi-person-check-fill"></i> {{ __("personal.personal_schedule_covering") }}</span>';
         } else if (s.source === 'teaching') {
-            pill = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 inline-flex items-center gap-1"><i class="bi bi-person-video3"></i> Teaching</span>';
+            pill = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 inline-flex items-center gap-1"><i class="bi bi-person-video3"></i> {{ __("personal.personal_schedule_teaching") }}</span>';
         } else if (s.source === 'synced') {
-            pill = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-50 text-sky-600 inline-flex items-center gap-1"><i class="bi bi-arrow-repeat"></i> Synced</span>';
+            pill = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-50 text-sky-600 inline-flex items-center gap-1"><i class="bi bi-arrow-repeat"></i> {{ __("personal.personal_schedule_synced") }}</span>';
         } else if (s.intensity) {
             pill = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background:' + esc(s.color) + '1a; color:' + esc(s.color) + ';">' + esc(s.intensity) + '</span>';
         } else {
-            pill = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background:' + esc(s.color) + '1a; color:' + esc(s.color) + ';">Personal</span>';
+            pill = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background:' + esc(s.color) + '1a; color:' + esc(s.color) + ';">{{ __("personal.personal_schedule_personal") }}</span>';
         }
 
         var inner =
@@ -338,12 +316,12 @@
         if (!dayAll.length) {
             html = '<div class="bg-white rounded-2xl border border-gray-100 px-5 py-12 text-center">'
                 + '<div class="w-16 h-16 mx-auto rounded-3xl bg-accent text-primary grid place-items-center"><i class="bi bi-cup-hot text-2xl m-float"></i></div>'
-                + '<p class="text-sm font-bold text-foreground mt-3">Rest day</p>'
-                + '<p class="text-xs text-muted-foreground mt-1">No training scheduled. Recover well.</p></div>';
+                + '<p class="text-sm font-bold text-foreground mt-3">{{ __("personal.personal_schedule_rest_day") }}</p>'
+                + '<p class="text-xs text-muted-foreground mt-1">{{ __("personal.personal_schedule_no_training") }}</p></div>';
         } else if (!dayVis.length) {
             html = '<div class="bg-white rounded-2xl border border-gray-100 px-5 py-10 text-center">'
                 + '<i class="bi bi-cup-hot text-2xl text-gray-300 m-float"></i>'
-                + '<p class="text-sm text-muted-foreground mt-2">No personal training this day.</p></div>';
+                + '<p class="text-sm text-muted-foreground mt-2">{{ __("personal.personal_schedule_no_personal") }}</p></div>';
         } else {
             html = dayVis.map(cardHTML).join('');
         }
@@ -352,7 +330,6 @@
 
     function renderAll() {
         renderStats();
-        renderAvatars();
         renderStrip();
         renderSessions();
     }

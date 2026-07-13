@@ -18,48 +18,49 @@
     <!-- Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-            <h2 class="text-xl font-bold text-gray-900">Instructors</h2>
-            <p class="text-gray-500 mt-1">Manage your club instructors and trainers</p>
+            <h2 class="text-xl font-bold text-gray-900">{{ __('admin.club_instructors_index_title') }}</h2>
+            <p class="text-gray-500 mt-1">{{ __('admin.club_instructors_index_subtitle') }}</p>
         </div>
         <button class="btn btn-primary" @click="showAddInstructorModal = true">
-            <i class="bi bi-plus-lg mr-2"></i>Add Instructor
+            <i class="bi bi-plus-lg me-2"></i>{{ __('admin.club_instructors_index_add_instructor') }}
         </button>
     </div>
 
     @if(isset($instructors) && count($instructors) > 0)
     @if(count($instructors) > 1)
-    <p class="text-sm text-gray-400 -mt-2 flex items-center gap-1"><i class="bi bi-grip-vertical"></i>Drag the handle to set rank — the top trainer ranks highest.</p>
+    <p class="text-sm text-gray-400 -mt-2 flex items-center gap-1"><i class="bi bi-grip-vertical"></i>{{ __('admin.club_instructors_index_drag_hint') }}</p>
     @endif
     <div id="instructor-sortable" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         @foreach($instructors as $instructor)
         @php $user = $instructor->user; @endphp
         @if(!$user) @continue @endif
         <div class="relative h-full" id="instructor-{{ $instructor->id }}" data-instructor-id="{{ $instructor->id }}" x-data="{ openMenu: false }">
-        <div class="drag-handle absolute top-3 left-3 z-10 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm shadow-md border border-white/60 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-white cursor-grab active:cursor-grabbing transition-all" title="Drag to rank">
+        <div class="drag-handle absolute top-3 start-3 z-10 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm shadow-md border border-white/60 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-white cursor-grab active:cursor-grabbing transition-all" title="{{ __('admin.club_instructors_index_drag_to_rank') }}">
             <i class="bi bi-grip-vertical"></i>
         </div>
         <x-member-card
             class="h-full instructor-item"
             :member="$user"
             :href="route('trainer.show', $instructor->user_id)"
+            variant="instructor"
             footerLabel="INSTRUCTOR"
             footerStyle="translucent"
             cardClass="instructor-card"
         >
             <x-slot:badges>
-                <span class="badge bg-primary">{{ $instructor->role ?? 'Trainer' }}</span>
+                <span class="badge bg-primary">{{ $instructor->role ?? __('admin.club_instructors_index_trainer') }}</span>
                 @if($instructor->user?->experience_years)
-                    <span class="badge bg-info">{{ $instructor->user->experience_years }} yrs exp</span>
+                    <span class="badge bg-info">{{ $instructor->user->experience_years }} {{ __('admin.club_instructors_index_yrs_exp') }}</span>
                 @endif
                 @if($instructor->compensation_type === 'paid' && $instructor->wage_amount)
                     @php $perLabels = ['monthly' => '/mo', 'session' => '/session', 'hourly' => '/hr']; @endphp
                     <span class="badge bg-success">{{ rtrim(rtrim(number_format((float) $instructor->wage_amount, 2), '0'), '.') }}{{ $perLabels[$instructor->wage_period] ?? '' }}</span>
                 @else
-                    <span class="badge bg-secondary">Volunteer</span>
+                    <span class="badge bg-secondary">{{ __('admin.club_instructors_index_volunteer') }}</span>
                 @endif
                 @php $slotCount = $slotCountByInstructor[$instructor->id] ?? 0; @endphp
                 @if($slotCount)
-                    <span class="badge bg-accent text-primary"><i class="bi bi-calendar2-week mr-1"></i>{{ $slotCount }}</span>
+                    <span class="badge bg-accent text-primary"><i class="bi bi-calendar2-week me-1"></i>{{ $slotCount }}</span>
                 @endif
             </x-slot:badges>
             <x-slot:headerExtra>
@@ -75,7 +76,7 @@
             <x-slot:extraDetails>
                 @if($instructor->user?->skills && count($instructor->user->skills) > 0)
                 <div class="pt-2 border-t">
-                    <div class="text-xs text-muted-foreground uppercase font-medium mb-2 tracking-wide">Skills</div>
+                    <div class="text-xs text-muted-foreground uppercase font-medium mb-2 tracking-wide">{{ __('admin.club_instructors_index_skills') }}</div>
                     <div class="flex flex-wrap gap-1">
                         @foreach(array_slice($instructor->user->skills, 0, 4) as $skill)
                             <span class="badge bg-secondary">{{ $skill }}</span>
@@ -95,11 +96,11 @@
         </x-member-card>
 
         {{-- Action dropdown overlay --}}
-        <div class="absolute top-3 right-3 z-10" @click.stop>
+        <div class="absolute top-3 end-3 z-10" @click.stop>
             <button type="button"
                     @click="openMenu = !openMenu"
                     class="w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm shadow-md border border-white/60 flex items-center justify-center text-gray-600 hover:bg-white hover:text-gray-900 hover:shadow-lg transition-all duration-200"
-                    title="Actions">
+                    title="{{ __('admin.club_instructors_index_actions') }}">
                 <i class="bi bi-three-dots-vertical text-sm"></i>
             </button>
             <div x-show="openMenu"
@@ -111,26 +112,26 @@
                  x-transition:leave-start="opacity-100 scale-100"
                  x-transition:leave-end="opacity-0 scale-95"
                  @click.outside="openMenu = false"
-                 class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-20">
+                 class="absolute end-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-20">
                 <div class="px-3 py-2 border-b border-gray-50">
-                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</p>
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">{{ __('admin.club_instructors_index_actions') }}</p>
                 </div>
                 <div class="py-1">
                     <button type="button"
-                            class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors duration-150"
+                            class="w-full text-start px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors duration-150"
                             @click="openMenu = false; showEditInstructorModal = true; $nextTick(() => openEditModal({{ $instructor->id }}))">
                         <span class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
                             <i class="bi bi-pencil text-blue-600 text-xs"></i>
                         </span>
-                        <span class="font-medium">Edit Instructor</span>
+                        <span class="font-medium">{{ __('admin.club_instructors_index_edit_instructor') }}</span>
                     </button>
                     <button type="button"
-                            class="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors duration-150"
+                            class="w-full text-start px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors duration-150"
                             @click="openMenu = false; removeInstructorId = {{ $instructor->id }}; removeInstructorName = '{{ addslashes($user->full_name ?? $user->name) }}'">
                         <span class="w-7 h-7 rounded-lg bg-red-100 flex items-center justify-center shrink-0">
                             <i class="bi bi-person-dash text-red-600 text-xs"></i>
                         </span>
-                        <span class="font-medium">Remove from Club</span>
+                        <span class="font-medium">{{ __('admin.club_instructors_index_remove_from_club') }}</span>
                     </button>
                 </div>
             </div>
@@ -143,10 +144,10 @@
         <div class="tf-empty-icon">
             <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
         </div>
-        <h5 class="text-lg font-semibold text-gray-900 mb-2">No instructors yet</h5>
-        <p class="text-gray-500 mb-4">Add instructors to your club</p>
+        <h5 class="text-lg font-semibold text-gray-900 mb-2">{{ __('admin.club_instructors_index_no_instructors') }}</h5>
+        <p class="text-gray-500 mb-4">{{ __('admin.club_instructors_index_add_instructors_hint') }}</p>
         <button class="btn btn-primary" @click="showAddInstructorModal = true">
-            <i class="bi bi-plus-lg mr-2"></i>Add Instructor
+            <i class="bi bi-plus-lg me-2"></i>{{ __('admin.club_instructors_index_add_instructor') }}
         </button>
     </div>
     @endif
@@ -162,25 +163,25 @@
             <div class="modal-content border-0 shadow-lg w-full max-w-sm relative rounded-lg overflow-hidden" @click.stop>
                 <div class="modal-header border-b border-red-200 px-6 py-4">
                     <h5 class="modal-title text-destructive font-semibold">
-                        <i class="bi bi-person-dash mr-2"></i>Remove Instructor
+                        <i class="bi bi-person-dash me-2"></i>{{ __('admin.club_instructors_index_remove_instructor_title') }}
                     </h5>
                     <button type="button" class="text-muted-foreground hover:text-foreground" @click="removeInstructorId = null">
                         <i class="bi bi-x-lg"></i>
                     </button>
                 </div>
                 <div class="modal-body px-6 py-4">
-                    <p class="mb-1">Are you sure you want to remove</p>
+                    <p class="mb-1">{{ __('admin.club_instructors_index_confirm_remove') }}</p>
                     <p class="font-semibold" x-text="removeInstructorName"></p>
-                    <p class="text-sm text-muted-foreground mt-1">from this club?</p>
+                    <p class="text-sm text-muted-foreground mt-1">{{ __('admin.club_instructors_index_from_this_club') }}</p>
                     <div class="alert alert-warning mt-3 text-sm space-y-1">
-                        <div><i class="bi bi-info-circle mr-1"></i>This only removes their <strong>instructor role</strong> from this club.</div>
-                        <div>Their platform account and any <strong>package subscriptions</strong> they hold in this club will remain unchanged.</div>
+                        <div><i class="bi bi-info-circle me-1"></i>{{ __('admin.club_instructors_index_remove_note_pre') }}<strong>{{ __('admin.club_instructors_index_remove_note_role') }}</strong>{{ __('admin.club_instructors_index_remove_note_post') }}</div>
+                        <div>{{ __('admin.club_instructors_index_remove_note2_pre') }}<strong>{{ __('admin.club_instructors_index_remove_note2_strong') }}</strong>{{ __('admin.club_instructors_index_remove_note2_post') }}</div>
                     </div>
                 </div>
                 <div class="modal-footer border-t px-6 py-4 flex justify-end gap-3">
-                    <button type="button" class="btn btn-secondary" @click="removeInstructorId = null">Cancel</button>
+                    <button type="button" class="btn btn-secondary" @click="removeInstructorId = null">{{ __('shared.cancel') }}</button>
                     <button type="button" class="btn btn-danger" @click="removeInstructor(removeInstructorId)">
-                        <i class="bi bi-person-dash mr-1"></i>Remove
+                        <i class="bi bi-person-dash me-1"></i>{{ __('admin.club_instructors_index_remove') }}
                     </button>
                 </div>
             </div>
@@ -231,12 +232,12 @@ function removeInstructor(id) {
         if (data.success) {
             document.getElementById('instructor-' + id)?.remove();
             window.dispatchEvent(new CustomEvent('instructor-removed'));
-            window.showToast('success', data.message || 'Instructor removed.');
+            window.showToast('success', data.message || '{{ __("admin.club_instructors_index_toast_removed") }}');
         } else {
-            window.showToast('error', data.message || 'Failed to remove instructor.');
+            window.showToast('error', data.message || '{{ __("admin.club_instructors_index_toast_remove_failed") }}');
         }
     })
-    .catch(() => window.showToast('error', 'An error occurred. Please try again.'));
+    .catch(() => window.showToast('error', '{{ __("admin.club_instructors_index_toast_error") }}'));
 }
 
 function loadNationalityFlags() {
@@ -277,8 +278,8 @@ function loadNationalityFlags() {
             body: JSON.stringify({ order: ids })
         })
         .then(function (r) { return r.json(); })
-        .then(function (d) { if (d && d.success) window.showToast && window.showToast('success', 'Trainer order saved.'); })
-        .catch(function () { window.showToast && window.showToast('error', 'Could not save the new order.'); });
+        .then(function (d) { if (d && d.success) window.showToast && window.showToast('success', '{{ __("admin.club_instructors_index_toast_order_saved") }}'); })
+        .catch(function () { window.showToast && window.showToast('error', '{{ __("admin.club_instructors_index_toast_order_failed") }}'); });
     }
 
     function init() {

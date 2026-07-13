@@ -33,12 +33,12 @@
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4"><p class="text-xs text-muted-foreground">{{ __('market.stat_revenue') }}</p><p class="text-2xl font-bold text-gray-900 mt-1">{{ $cur }} {{ number_format($stats['revenue'], 2) }}</p></div>
     </div>
 
-    {{-- Filter --}}
-    <div class="flex gap-2 overflow-x-auto">
+    {{-- Filter (segmented) --}}
+    <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-1 flex max-w-md">
         <template x-for="f in filters" :key="f">
-            <button type="button" @click="filter = f"
-                    class="px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors"
-                    :class="filter === f ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'"
+            <button type="button" @click="setFilter(f)"
+                    class="flex-1 py-2 rounded-xl text-xs font-bold transition-colors"
+                    :class="filter === f ? 'bg-primary text-white' : 'text-muted-foreground hover:text-foreground'"
                     x-text="label(f)"></button>
         </template>
     </div>
@@ -53,7 +53,7 @@
 
     {{-- Orders --}}
     <div class="space-y-3" x-show="shown.length">
-        <template x-for="o in shown" :key="o.id">
+        <template x-for="o in visible" :key="o.id">
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div class="min-w-0">
@@ -100,17 +100,23 @@
 
                 {{-- actions --}}
                 <div class="mt-3 pt-3 border-t border-gray-50 flex flex-wrap gap-2 items-center">
-                    <button type="button" x-show="o.status !== 'fulfilled' && o.status !== 'cancelled'" @click="confirmFulfill(o)"
+                    <button type="button" x-show="o.status === 'pending' || o.status === 'confirmed'" @click="confirmFulfill(o)"
                             class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors">
                         <i class="bi bi-bag-check mr-1"></i>{{ __('market.mark_fulfilled') }}
                     </button>
-                    <button type="button" x-show="o.status !== 'cancelled' && o.status !== 'fulfilled'" @click="setStatus(o, 'cancelled')"
+                    <button type="button" x-show="o.status === 'pending' || o.status === 'confirmed'" @click="setStatus(o, 'cancelled')"
                             class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-red-200 text-red-600 hover:bg-red-50 transition-colors">
                         {{ __('market.mark_cancelled') }}
                     </button>
                 </div>
             </div>
         </template>
+
+        {{-- Show more --}}
+        <button type="button" x-show="shown.length > limit" @click="limit += perPage"
+                class="w-full flex items-center justify-center gap-1.5 rounded-xl border border-primary/30 text-primary text-sm font-semibold py-2.5 hover:bg-primary/5 transition-colors">
+            <span x-text="'{{ __('market.show_more') }}' + ' (' + (shown.length - limit) + ')'"></span><i class="bi bi-chevron-down"></i>
+        </button>
     </div>
 
     {{-- Proof viewer (teleported to <body> so the dark backdrop covers the whole
@@ -137,22 +143,28 @@
 function clubOrders(orders) {
     return {
         orders: orders,
-        filter: 'all',
-        filters: ['all', 'pending', 'confirmed', 'fulfilled', 'cancelled'],
+        filter: 'pending',
+        filters: ['pending', 'confirmed', 'fulfilled', 'cancelled'],
+        perPage: 10, limit: 10,
+        setFilter(f) { this.filter = f; this.limit = this.perPage; },
         statusBase: @js(url('/admin/club/'.$club->slug.'/orders')),
         csrf: document.querySelector('meta[name=csrf-token]')?.content || '',
         labels: {
             all: @js(__('admin.all')),
             pending: @js(__('market.status_pending')), confirmed: @js(__('market.status_confirmed')),
-            fulfilled: @js(__('market.status_fulfilled')), cancelled: @js(__('market.status_cancelled')),
+            fulfilled: @js(__('market.status_fulfilled')), received: @js(__('market.status_received')),
+            cancelled: @js(__('market.status_cancelled')),
         },
         label(s) { return this.labels[s] || s; },
-        get shown() { return this.filter === 'all' ? this.orders : this.orders.filter(o => o.status === this.filter); },
+        {{-- "Fulfilled" (sold) also covers orders the buyer has since confirmed
+             received — receipt is a customer-side step, not a separate seller stage. --}}
+        get shown() { return this.orders.filter(o => this.filter === 'fulfilled' ? (o.status === 'fulfilled' || o.status === 'received') : o.status === this.filter); },
+        get visible() { return this.shown.slice(0, this.limit); },
         proofView: null,
         openProof(url) { this.proofView = url; },
         closeProof() { this.proofView = null; },
         badgeClass(s) {
-            return ({ pending: 'bg-amber-50 text-amber-700', confirmed: 'bg-blue-50 text-blue-700', fulfilled: 'bg-green-50 text-green-700', cancelled: 'bg-gray-100 text-gray-500' })[s] || 'bg-muted';
+            return ({ pending: 'bg-amber-50 text-amber-700', confirmed: 'bg-blue-50 text-blue-700', fulfilled: 'bg-green-50 text-green-700', received: 'bg-green-50 text-green-700', cancelled: 'bg-gray-100 text-gray-500' })[s] || 'bg-muted';
         },
         async confirmFulfill(o) {
             const ok = await window.confirmAction({

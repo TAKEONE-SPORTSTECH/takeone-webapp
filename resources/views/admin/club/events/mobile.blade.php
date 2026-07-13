@@ -14,7 +14,7 @@
         @foreach($events as $e)
             <div class="m-card p-4 {{ $e->is_archived ? 'opacity-60' : '' }}">
                 <div class="flex items-start gap-3">
-                    <div class="flex flex-col items-center justify-center w-14 h-14 rounded-xl text-white flex-shrink-0" style="background: {{ $e->color ?? '#7c3aed' }};">
+                    <div class="flex flex-col items-center justify-center w-14 h-14 rounded-xl text-white flex-shrink-0" style="background: {{ $e->color ?? 'hsl(250 65% 60%)' }};">
                         <span class="text-lg font-bold leading-none">{{ optional($e->date)->format('d') }}</span>
                         <span class="text-[10px] uppercase">{{ optional($e->date)->format('M') }}</span>
                     </div>

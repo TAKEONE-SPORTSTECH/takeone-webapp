@@ -38,7 +38,7 @@
                 <div class="p-6">
                     <!-- File Input -->
                     <div x-show="!showCropper" class="mb-4">
-                        <label for="imageFile" class="tf-label mb-2">Select Image</label>
+                        <label for="imageFile" class="tf-label mb-2">{{ __('shared.image_upload_modal_select_image') }}</label>
                         <input type="file"
                                id="imageFile"
                                accept="image/*"
@@ -51,18 +51,18 @@
                     <div x-show="showCropper">
                         <div class="text-center mb-4">
                             <div id="cropboxContainer" class="mx-auto border border-gray-300 rounded-lg" style="width: 400px; height: 400px;">
-                                <img id="imagePreview" alt="Image Preview" class="block">
+                                <img id="imagePreview" alt="{{ __('shared.image_upload_modal_image_preview_alt') }}" class="block">
                             </div>
                         </div>
                         <div class="flex justify-center gap-2 mb-4">
                             <button type="button" @click="zoomIn()" class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                                <i class="bi bi-zoom-in mr-1"></i> Zoom In
+                                <i class="bi bi-zoom-in me-1"></i> {{ __('shared.image_upload_modal_zoom_in') }}
                             </button>
                             <button type="button" @click="zoomOut()" class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                                <i class="bi bi-zoom-out mr-1"></i> Zoom Out
+                                <i class="bi bi-zoom-out me-1"></i> {{ __('shared.image_upload_modal_zoom_out') }}
                             </button>
                             <button type="button" @click="reset()" class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                                <i class="bi bi-arrow-counterclockwise mr-1"></i> Reset
+                                <i class="bi bi-arrow-counterclockwise me-1"></i> {{ __('shared.image_upload_modal_reset') }}
                             </button>
                         </div>
                     </div>
@@ -72,7 +72,7 @@
                         <div class="w-full h-2 bg-gray-200 rounded-full mb-3 overflow-hidden">
                             <div class="h-full bg-primary rounded-full transition-all duration-300" :style="'width: ' + progress + '%'"></div>
                         </div>
-                        <p class="text-center text-gray-600">Compressing and uploading...</p>
+                        <p class="text-center text-gray-600">{{ __('shared.image_upload_modal_compressing_uploading') }}</p>
                     </div>
                 </div>
 
@@ -81,13 +81,13 @@
                     <button type="button"
                             @click="close()"
                             class="px-6 py-2 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors">
-                        Cancel
+                        {{ __('shared.cancel') }}
                     </button>
                     <button type="button"
                             @click="upload()"
                             :disabled="!canUpload || uploading"
                             class="px-6 py-2 text-white bg-primary rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                        Upload
+                        {{ __('shared.image_upload_modal_upload') }}
                     </button>
                 </div>
             </div>
@@ -125,12 +125,12 @@ function imageUploadModal() {
             if (!file) return;
 
             if (!file.type.startsWith('image/')) {
-                window.showToast('error', 'Please select a valid image file.');
+                window.showToast('error', '{{ __("shared.image_upload_modal_invalid_image") }}');
                 return;
             }
 
             if (file.size > {{ $maxSize }} * 2) {
-                window.showToast('error', 'File is too large. Please select a smaller image.');
+                window.showToast('error', '{{ __("shared.image_upload_modal_file_too_large") }}');
                 return;
             }
 
@@ -193,7 +193,7 @@ function imageUploadModal() {
                     }
                 });
 
-                if (!response.ok) throw new Error('Upload failed');
+                if (!response.ok) throw new Error('{{ __("shared.image_upload_modal_upload_failed") }}');
 
                 const result = await response.json();
                 this.close();
@@ -203,12 +203,12 @@ function imageUploadModal() {
                 } else {
                     // No reload — notify any listeners so the page can update in place.
                     window.dispatchEvent(new CustomEvent('image-uploaded', { detail: result }));
-                    window.showToast('success', result.message || 'Image uploaded');
+                    window.showToast('success', result.message || '{{ __("shared.image_upload_modal_image_uploaded") }}');
                 }
 
             } catch (error) {
                 console.error('Upload error:', error);
-                window.showToast('error', 'Upload failed: ' + error.message);
+                window.showToast('error', '{{ __("shared.image_upload_modal_upload_failed") }}: ' + error.message);
                 this.canUpload = true;
                 this.uploading = false;
             }

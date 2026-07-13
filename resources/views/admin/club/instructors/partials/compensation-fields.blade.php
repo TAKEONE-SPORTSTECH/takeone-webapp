@@ -24,11 +24,11 @@
         </div>
         <div>
             <label class="form-label">{{ __('admin.ins_wage_period') }}</label>
-            <select x-model="wagePeriod" class="form-control">
-                <option value="monthly">{{ __('admin.ins_per_month') }}</option>
-                <option value="session">{{ __('admin.ins_per_session') }}</option>
-                <option value="hourly">{{ __('admin.ins_per_hour') }}</option>
-            </select>
+            <x-select-menu model="wagePeriod" :options="[
+                ['value' => 'monthly', 'label' => __('admin.ins_per_month')],
+                ['value' => 'session', 'label' => __('admin.ins_per_session')],
+                ['value' => 'hourly',  'label' => __('admin.ins_per_hour')],
+            ]" />
         </div>
     </div>
 

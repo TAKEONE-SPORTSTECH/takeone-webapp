@@ -17,14 +17,14 @@
                 <button type="button" @click="joinModal.close()" class="m-press w-9 h-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground shrink-0"><i class="bi bi-x-lg"></i></button>
                 <div class="min-w-0 flex-1">
                     <p class="font-bold text-foreground truncate" x-text="joinModal.clubName ? @js(__('club.join_prefix')) + ' ' + joinModal.clubName : @js(__('club.join_club'))"></p>
-                    <p class="text-[11px] text-muted-foreground" x-text="@js(__('club.step')) + ' ' + (joinModal.step === 'select-members' ? 1 : (joinModal.step === 'package-selection' ? 2 : 3)) + ' ' + @js(__('club.of')) + ' 3 · ' + (joinModal.step === 'select-members' ? @js(__('club.step_who')) : (joinModal.step === 'package-selection' ? @js(__('club.step_packages')) : @js(__('club.step_payment'))))"></p>
+                    <p class="text-[11px] text-muted-foreground" x-text="@js(__('club.step')) + ' ' + joinModal.stepIndex() + ' ' + @js(__('club.of')) + ' ' + joinModal.stepCount() + ' · ' + ({'select-members': @js(__('club.step_who')), 'package-selection': @js(__('club.step_packages')), 'equipment': @js(__('club.step_equipment')), 'payment-review': @js(__('club.step_payment'))}[joinModal.step] || '')"></p>
                 </div>
             </div>
             {{-- Progress segments --}}
             <div class="flex gap-1.5 mt-3">
-                <span class="h-1.5 flex-1 rounded-full transition-colors bg-primary"></span>
-                <span class="h-1.5 flex-1 rounded-full transition-colors" :class="joinModal.step !== 'select-members' ? 'bg-primary' : 'bg-gray-200'"></span>
-                <span class="h-1.5 flex-1 rounded-full transition-colors" :class="joinModal.step === 'payment-review' ? 'bg-primary' : 'bg-gray-200'"></span>
+                <template x-for="n in joinModal.stepCount()" :key="n">
+                    <span class="h-1.5 flex-1 rounded-full transition-colors" :class="n <= joinModal.stepIndex() ? 'bg-primary' : 'bg-gray-200'"></span>
+                </template>
             </div>
         </div>
 
@@ -120,8 +120,27 @@
                                                     <p class="text-[10px] text-muted-foreground">{{ __('club.per_month') }}</p>
                                                 </div>
                                             </div>
-                                            <template x-if="pkg.schedules && pkg.schedules.length > 0">
-                                                <p class="text-[11px] text-muted-foreground mt-2 pt-2 border-t border-gray-100"><i class="bi bi-calendar-week text-primary"></i> <span x-text="pkg.schedules[0].days + ' · ' + pkg.schedules[0].time"></span></p>
+                                            <template x-if="(pkg.schedules && pkg.schedules.length > 0) || (pkg.instructors && pkg.instructors.length > 0)">
+                                                <div class="mt-2 pt-2 border-t border-gray-100 space-y-1.5">
+                                                    <template x-if="pkg.schedules && pkg.schedules.length > 0">
+                                                        <div class="space-y-0.5">
+                                                            <template x-for="(sch, si) in pkg.schedules" :key="si">
+                                                                <p class="text-[11px] text-muted-foreground flex items-center gap-1.5"><i class="bi bi-calendar-week text-primary shrink-0"></i> <span x-text="sch.days + ' · ' + sch.time"></span></p>
+                                                            </template>
+                                                        </div>
+                                                    </template>
+                                                    <template x-if="pkg.instructors && pkg.instructors.length > 0">
+                                                        <div class="flex flex-wrap gap-1.5">
+                                                            <template x-for="(inst, ii) in pkg.instructors" :key="ii">
+                                                                <span class="inline-flex items-center gap-1 bg-muted/60 rounded-full pl-0.5 pr-2 py-0.5">
+                                                                    <template x-if="inst.image_url"><img :src="inst.image_url" class="w-4 h-4 rounded-full object-cover" alt=""></template>
+                                                                    <template x-if="!inst.image_url"><span class="w-4 h-4 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[8px] font-bold" x-text="inst.name.charAt(0).toUpperCase()"></span></template>
+                                                                    <span class="text-[10px] font-medium text-foreground" x-text="inst.name"></span>
+                                                                </span>
+                                                            </template>
+                                                        </div>
+                                                    </template>
+                                                </div>
                                             </template>
                                         </button>
                                     </template>
@@ -132,7 +151,66 @@
                 </template>
             </div>
 
-            {{-- ===== Step 3: Review & Payment ===== --}}
+            {{-- ===== Step 3: Equipment ===== --}}
+            <div x-show="joinModal.step === 'equipment'" x-cloak>
+                <div class="text-center mb-4">
+                    <span class="inline-flex w-14 h-14 rounded-2xl bg-accent text-primary items-center justify-center mb-2"><i class="bi bi-bag-check text-2xl"></i></span>
+                    <h2 class="text-lg font-bold text-foreground">{{ __('club.equipment_title') }}</h2>
+                    <p class="text-[13px] text-muted-foreground">{{ __('club.equipment_subtitle') }}</p>
+                </div>
+
+                <div class="space-y-5">
+                    <template x-for="reg in joinModal.registrants" :key="reg.id">
+                        <div x-show="(reg.equipment || []).length > 0">
+                            <div class="flex items-center gap-2.5 mb-2 px-1">
+                                <template x-if="reg.avatarUrl"><img :src="reg.avatarUrl" class="w-8 h-8 rounded-full object-cover" alt=""></template>
+                                <template x-if="!reg.avatarUrl"><span class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs" x-text="reg.name.charAt(0).toUpperCase()"></span></template>
+                                <span class="text-sm font-bold text-foreground truncate" x-text="reg.name"></span>
+                            </div>
+                            <div class="space-y-2">
+                                <template x-for="item in reg.equipment" :key="item.id">
+                                    <div class="rounded-2xl border-2 p-3 transition-all"
+                                         :class="item.selected ? 'border-primary bg-primary/5' : 'border-gray-100 bg-white'">
+                                        <div class="flex items-center gap-3">
+                                            <button type="button" @click="joinModal.toggleEquip(reg, item)"
+                                                    class="m-press shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all"
+                                                    :class="item.selected ? 'bg-primary border-primary' : 'border-gray-300'">
+                                                <i x-show="item.selected" class="bi bi-check text-white text-sm"></i>
+                                            </button>
+                                            <template x-if="item.image"><img :src="item.image" class="w-10 h-10 rounded-lg object-cover shrink-0" alt=""></template>
+                                            <template x-if="!item.image"><span class="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-muted-foreground shrink-0"><i class="bi bi-box-seam"></i></span></template>
+                                            <div class="min-w-0 flex-1" @click="joinModal.toggleEquip(reg, item)">
+                                                <div class="flex items-center gap-1.5 flex-wrap">
+                                                    <span class="font-semibold text-sm text-foreground" x-text="item.name"></span>
+                                                    <span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase"
+                                                          :class="item.is_required ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'"
+                                                          x-text="item.is_required ? @js(__('club.required_badge')) : @js(__('club.optional_badge'))"></span>
+                                                    <span x-show="item.owned" class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-green-100 text-green-700">{{ __('club.owned_badge') }}</span>
+                                                </div>
+                                                <p class="text-[11px] text-muted-foreground mt-0.5"
+                                                   x-text="item.selected ? joinModal.formatCurrency(joinModal.equipItemPrice(item)) : (item.is_required ? @js(__('club.already_have_it')) : joinModal.formatCurrency(item.price))"></p>
+                                            </div>
+                                        </div>
+                                        {{-- Variant chooser --}}
+                                        <div x-show="item.has_variants && item.selected" class="mt-2.5 flex flex-wrap gap-1.5 pl-9">
+                                            <template x-for="v in item.variants" :key="v.id">
+                                                <button type="button" @click="joinModal.setEquipVariant(item, v.id)"
+                                                        :disabled="!v.in_stock"
+                                                        class="m-press px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-all"
+                                                        :class="item.variantId == v.id ? 'border-primary bg-primary text-white' : (v.in_stock ? 'border-gray-200 text-foreground bg-white' : 'border-gray-100 text-gray-300 line-through')">
+                                                    <span x-text="v.label"></span> · <span x-text="joinModal.formatCurrency(v.price)"></span>
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            {{-- ===== Step 4: Review & Payment ===== --}}
             <div x-show="joinModal.step === 'payment-review'" x-cloak>
                 <div class="text-center mb-4">
                     <span class="inline-flex w-14 h-14 rounded-2xl bg-accent text-primary items-center justify-center mb-2"><i class="bi bi-credit-card text-2xl"></i></span>
@@ -160,8 +238,11 @@
                 {{-- Billing summary --}}
                 <div class="bg-white rounded-2xl border border-gray-100 p-4 mb-4 space-y-2">
                     <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1">{{ __('club.billing') }}</p>
-                    <template x-if="joinModal.enrollmentFee > 0 && joinModal.firstTimerCount() > 0">
-                        <div class="flex justify-between text-[13px]"><span class="text-muted-foreground">{{ __('club.enrolment_fee') }} (<span x-text="joinModal.firstTimerCount()"></span>)</span><span class="font-medium" x-text="(joinModal.enrollmentFee * joinModal.firstTimerCount()).toFixed(2) + ' ' + joinModal.currency"></span></div>
+                    <template x-if="joinModal.registrationTotal() > 0">
+                        <div class="flex justify-between text-[13px]"><span class="text-muted-foreground">{{ __('club.registration_fee') }} (<span x-text="joinModal.firstTimerCount()"></span>)</span><span class="font-medium" x-text="joinModal.registrationTotal().toFixed(2) + ' ' + joinModal.currency"></span></div>
+                    </template>
+                    <template x-if="joinModal.equipmentTotal() > 0">
+                        <div class="flex justify-between text-[13px]"><span class="text-muted-foreground">{{ __('club.equipment_line') }}</span><span class="font-medium" x-text="joinModal.equipmentTotal().toFixed(2) + ' ' + joinModal.currency"></span></div>
                     </template>
                     <div class="flex justify-between text-[13px]"><span class="text-muted-foreground">{{ __('club.subtotal') }}</span><span class="font-medium" x-text="joinModal.calculateSubtotal() + ' ' + joinModal.currency"></span></div>
                     <template x-if="joinModal.vatRegNumber && joinModal.vatPercentage > 0">
@@ -185,7 +266,18 @@
                     </label>
 
                     <template x-if="!joinModal.payLater">
-                        <div class="space-y-3 mt-3">
+                        <div class="space-y-3 mt-3 overflow-hidden">
+                            {{-- Keep the fixed-size cropper preview inside the card on narrow phones. --}}
+                            <style>
+                                #previewContainer_joinPaymentProofCropper,
+                                #previewContainer_joinPaymentProofCropper .cropper-preview-image,
+                                #previewContainer_joinPaymentProofCropper .cropper-preview-placeholder {
+                                    width: 100% !important;
+                                    max-width: 320px;
+                                    height: auto !important;
+                                    aspect-ratio: 320 / 200;
+                                }
+                            </style>
                             <div class="flex items-start gap-2 p-3 bg-blue-50 border border-blue-100 rounded-xl text-[12px] text-blue-700"><i class="bi bi-info-circle mt-0.5"></i><span>{{ __('club.upload_note') }}</span></div>
                             <x-takeone-cropper
                                 id="joinPaymentProofCropper"

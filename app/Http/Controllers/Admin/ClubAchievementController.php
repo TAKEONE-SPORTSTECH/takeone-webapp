@@ -36,25 +36,25 @@ class ClubAchievementController extends Controller
         }
 
         $achievement = ClubAchievement::create([
-            'tenant_id'        => $club->id,
-            'title'            => $request->title,
-            'short_title'      => null,
-            'type_icon'        => $request->type_icon,
-            'description'      => $request->description,
-            'location'         => $request->location,
+            'tenant_id' => $club->id,
+            'title' => $request->title,
+            'short_title' => null,
+            'type_icon' => $request->type_icon,
+            'description' => $request->description,
+            'location' => $request->location,
             'achievement_date' => $request->achievement_date,
-            'date_label'       => $this->deriveDateLabel($request->achievement_date),
-            'category'         => $request->category,
-            'chips'            => null,
-            'athletes'         => $athletes,
-            'tag'              => $request->tag ?: 'Achievement',
-            'tag_icon'         => 'bi-trophy',
-            'image_path'       => null,
-            'images'           => $images ?: null,
-            'bg_from'          => '#f59e0b',
-            'bg_to'            => '#f97316',
-            'status'           => $request->status,
-            'sort_order'       => $request->sort_order ?? 0,
+            'date_label' => $this->deriveDateLabel($request->achievement_date),
+            'category' => $request->category,
+            'chips' => null,
+            'athletes' => $athletes,
+            'tag' => $request->tag ?: 'Achievement',
+            'tag_icon' => 'bi-trophy',
+            'image_path' => null,
+            'images' => $images ?: null,
+            'bg_from' => '#f59e0b',
+            'bg_to' => '#f97316',
+            'status' => $request->status,
+            'sort_order' => $request->sort_order ?? 0,
         ] + $this->deriveMedals($athletes));
 
         $this->applyTranslations($achievement, $request);
@@ -69,7 +69,7 @@ class ClubAchievementController extends Controller
 
         try {
             $athletes = $request->athletes ? json_decode($request->athletes, true, 512, JSON_THROW_ON_ERROR) : null;
-            $kept     = json_decode($request->input('keep_extra_images', '[]'), true, 512, JSON_THROW_ON_ERROR);
+            $kept = json_decode($request->input('keep_extra_images', '[]'), true, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
             return back()->withErrors(['athletes' => 'Invalid data format.']);
         }
@@ -81,14 +81,14 @@ class ClubAchievementController extends Controller
             'achievement_date', 'category', 'status',
         ]);
         $data['short_title'] = null;
-        $data['date_label']  = $this->deriveDateLabel($request->achievement_date);
-        $data['athletes']    = $athletes;
+        $data['date_label'] = $this->deriveDateLabel($request->achievement_date);
+        $data['athletes'] = $athletes;
         $data += $this->deriveMedals($athletes);
 
-        $newExtra      = $this->saveAchievementBase64Images($request->input('achievement_images_base64', []), $club->id);
+        $newExtra = $this->saveAchievementBase64Images($request->input('achievement_images_base64', []), $club->id);
         $data['images'] = array_merge($kept, $newExtra) ?: null;
 
-        if ($achievement->image_path && !in_array($achievement->image_path, $kept)) {
+        if ($achievement->image_path && ! in_array($achievement->image_path, $kept)) {
             Storage::disk('public')->delete($achievement->image_path);
             $data['image_path'] = null;
         }
@@ -125,9 +125,15 @@ class ClubAchievementController extends Controller
         $gold = $silver = $bronze = 0;
         foreach ($athletes ?? [] as $athlete) {
             $role = mb_strtolower((string) ($athlete['role'] ?? ''));
-            if (str_contains($role, 'gold'))   $gold++;
-            if (str_contains($role, 'silver')) $silver++;
-            if (str_contains($role, 'bronze')) $bronze++;
+            if (str_contains($role, 'gold')) {
+                $gold++;
+            }
+            if (str_contains($role, 'silver')) {
+                $silver++;
+            }
+            if (str_contains($role, 'bronze')) {
+                $bronze++;
+            }
         }
 
         return ['medals_gold' => $gold, 'medals_silver' => $silver, 'medals_bronze' => $bronze];
@@ -143,14 +149,17 @@ class ClubAchievementController extends Controller
     {
         $paths = [];
         foreach ($base64List as $base64) {
-            if (!str_starts_with($base64, 'data:image')) continue;
+            if (! str_starts_with($base64, 'data:image')) {
+                continue;
+            }
             [$meta, $imageData] = explode(',', $base64, 2);
             preg_match('/image\/(\w+)/', $meta, $m);
-            $ext  = $m[1] ?? 'jpg';
-            $path = 'clubs/' . $clubId . '/achievements/' . uniqid('ach_') . '.' . $ext;
+            $ext = $m[1] ?? 'jpg';
+            $path = 'clubs/'.$clubId.'/achievements/'.uniqid('ach_').'.'.$ext;
             Storage::disk('public')->put($path, base64_decode($imageData));
             $paths[] = $path;
         }
+
         return $paths;
     }
 }

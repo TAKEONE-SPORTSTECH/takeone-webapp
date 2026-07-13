@@ -73,45 +73,48 @@ class QrController extends Controller
     public function clubPoster(Tenant $club): View
     {
         $this->authorizeClub($club);
+
         return $this->poster([
-            'title'    => $club->tr('club_name') ?: $club->club_name,
+            'title' => $club->tr('club_name') ?: $club->club_name,
             'subtitle' => $club->country,
-            'kicker'   => 'Club page',
-            'cta'      => 'Scan to view the club',
-            'hint'     => 'See packages, schedule, gallery and more.',
-            'logo'     => $club->logo ? asset('storage/' . $club->logo) : null,
+            'kicker' => 'Club page',
+            'cta' => 'Scan to view the club',
+            'hint' => 'See packages, schedule, gallery and more.',
+            'logo' => $club->logo ? asset('storage/'.$club->logo) : null,
             'logoIcon' => 'bi-buildings',
-            'url'      => self::clubPageUrl($club),
+            'url' => self::clubPageUrl($club),
         ]);
     }
 
     public function clubRegisterPoster(Tenant $club): View
     {
         $this->authorizeClub($club);
+
         return $this->poster([
-            'title'    => $club->tr('club_name') ?: $club->club_name,
+            'title' => $club->tr('club_name') ?: $club->club_name,
             'subtitle' => 'Join the club',
-            'kicker'   => 'Register',
-            'cta'      => 'Scan to register',
-            'hint'     => 'Create your account and enrol in minutes.',
-            'logo'     => $club->logo ? asset('storage/' . $club->logo) : null,
+            'kicker' => 'Register',
+            'cta' => 'Scan to register',
+            'hint' => 'Create your account and enrol in minutes.',
+            'logo' => $club->logo ? asset('storage/'.$club->logo) : null,
             'logoIcon' => 'bi-person-plus',
-            'url'      => self::clubRegisterUrl($club),
+            'url' => self::clubRegisterUrl($club),
         ]);
     }
 
     public function memberPoster(Request $request, User $user): View
     {
         abort_unless($this->canViewMember($request, $user), 403);
+
         return $this->poster([
-            'title'    => $user->full_name ?: $user->name,
+            'title' => $user->full_name ?: $user->name,
             'subtitle' => 'Member profile',
-            'kicker'   => 'Profile',
-            'cta'      => 'Scan to view profile',
-            'hint'     => 'Connect and see their activity.',
-            'logo'     => $user->profile_picture ? asset('storage/' . $user->profile_picture) : null,
+            'kicker' => 'Profile',
+            'cta' => 'Scan to view profile',
+            'hint' => 'Connect and see their activity.',
+            'logo' => $user->profile_picture ? asset('storage/'.$user->profile_picture) : null,
             'logoIcon' => 'bi-person',
-            'url'      => $this->memberQrTarget($request, $user),
+            'url' => $this->memberQrTarget($request, $user),
         ]);
     }
 
@@ -120,8 +123,9 @@ class QrController extends Controller
     {
         // Same self / super-admin / club-manager rule the poster endpoint enforces.
         abort_unless($this->canViewMember($request, $user), 403);
+
         return response(Qr::svg($this->memberQrTarget($request, $user), 256, 1), 200, [
-            'Content-Type'  => 'image/svg+xml',
+            'Content-Type' => 'image/svg+xml',
             'Cache-Control' => 'private, max-age=600',
         ]);
     }
@@ -131,15 +135,16 @@ class QrController extends Controller
         $me = auth()->user();
         abort_unless($me && $this->canViewEvent($me, $event), 403);
         $club = $event->tenant;
+
         return $this->poster([
-            'title'    => $event->title,
+            'title' => $event->title,
             'subtitle' => $club?->club_name,
-            'kicker'   => 'Event',
-            'cta'      => 'Scan to take part',
-            'hint'     => 'Open the event to register and join.',
-            'logo'     => $club && $club->logo ? asset('storage/' . $club->logo) : null,
+            'kicker' => 'Event',
+            'cta' => 'Scan to take part',
+            'hint' => 'Open the event to register and join.',
+            'logo' => $club && $club->logo ? asset('storage/'.$club->logo) : null,
             'logoIcon' => 'bi-calendar-event',
-            'url'      => self::eventUrl($event),
+            'url' => self::eventUrl($event),
         ]);
     }
 
@@ -148,6 +153,7 @@ class QrController extends Controller
     private function poster(array $data): View
     {
         $data['svg'] = Qr::svg($data['url'], 600, 1);
+
         return view('qr.poster', $data);
     }
 
@@ -155,9 +161,15 @@ class QrController extends Controller
     private function canViewMember(Request $request, User $user): bool
     {
         $me = auth()->user();
-        if (! $me) return false;
-        if ($me->id === $user->id) return true;
-        if ($me->isSuperAdmin()) return true;
+        if (! $me) {
+            return false;
+        }
+        if ($me->id === $user->id) {
+            return true;
+        }
+        if ($me->isSuperAdmin()) {
+            return true;
+        }
 
         // A manager may pull the QR for a member of a club they run.
         if ($request->filled('club')) {
@@ -169,6 +181,7 @@ class QrController extends Controller
                 return true;
             }
         }
+
         return false;
     }
 
@@ -179,16 +192,22 @@ class QrController extends Controller
      */
     private function canViewEvent(User $me, ClubEvent $event): bool
     {
-        if ($event->is_archived) return false;
-        if ($me->isSuperAdmin() || $event->created_by === $me->id) return true;
-        if ($me->memberClubs()->whereKey($event->tenant_id)->exists()) return true;
+        if ($event->is_archived) {
+            return false;
+        }
+        if ($me->isSuperAdmin() || $event->created_by === $me->id) {
+            return true;
+        }
+        if ($me->memberClubs()->whereKey($event->tenant_id)->exists()) {
+            return true;
+        }
 
         return match ($event->scope ?? 'internal') {
             'inter_club', 'worldwide' => true,
             // regional currently mirrors nationwide until a region taxonomy exists.
-            'nationwide', 'regional'  => (bool) ($event->tenant?->country
+            'nationwide', 'regional' => (bool) ($event->tenant?->country
                 && $me->memberClubs()->where('tenants.country', $event->tenant->country)->exists()),
-            default                   => false, // internal
+            default => false, // internal
         };
     }
 }

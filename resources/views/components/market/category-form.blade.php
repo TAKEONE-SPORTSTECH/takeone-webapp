@@ -3,6 +3,8 @@
     'action'    => '',                        // optional POST url; form UI only by default
     'eventName' => 'market-category-saved',   // CustomEvent dispatched on (demo) save
     'category'  => null,                       // existing category (edit prefill)
+    'editEvent' => null,                       // window event that loads a category for editing
+    'storeUrl'  => '',                         // base store URL, used to reset back to "add" mode
 ])
 
 @php
@@ -15,7 +17,7 @@
     $iconChoices = ['bi-grid-1x2','bi-bag','bi-bicycle','bi-cup-hot','bi-ticket-perforated','bi-person-arms-up','bi-trophy','bi-droplet-half','bi-basket','bi-box-seam','bi-lightning-charge-fill','bi-shield-check','bi-heart-pulse','bi-water','bi-stars','bi-tag'];
 @endphp
 
-<div x-data="marketCategoryForm({{ Illuminate\Support\Js::from($init) }}, {{ Illuminate\Support\Js::from(['action' => $action, 'event' => $eventName, 'mode' => $mode]) }})"
+<div x-data="marketCategoryForm({{ Illuminate\Support\Js::from($init) }}, {{ Illuminate\Support\Js::from(['action' => $action, 'event' => $eventName, 'mode' => $mode, 'editEvent' => $editEvent, 'storeUrl' => $storeUrl]) }})"
      class="space-y-5">
 
     {{-- Signature: live category chip (exactly as it renders in the market) --}}
@@ -68,6 +70,8 @@
     </form>
 </div>
 
+{{-- Inline (inside #shell-content) so both admin shells re-run it on in-place
+     nav — see the note in product-form.blade.php. Not @push('scripts'). --}}
 @once
 <script>
 window.marketCategoryForm = function (init, opts) {
@@ -76,7 +80,27 @@ window.marketCategoryForm = function (init, opts) {
         saving: false,
         mode: opts.mode || 'create',
         _action: opts.action || '',
+        _method: 'POST',
         _event: opts.event || 'market-category-saved',
+        _editEvent: opts.editEvent || null,
+        _storeUrl: opts.storeUrl || '',
+        init() {
+            // One form instance handles both add and edit: a window event hands it
+            // the category to edit (plus its PUT url), or null to reset to "add".
+            if (this._editEvent) {
+                window.addEventListener(this._editEvent, (e) => this.loadCategory(e.detail.category, e.detail.action));
+            }
+        },
+        loadCategory(c, action) {
+            if (!c) {   // reset to add mode
+                this.mode = 'create'; this._method = 'POST'; this._action = this._storeUrl;
+                this.label = ''; this.key = ''; this.icon = 'bi-grid-1x2'; this.keyTouched = false;
+                return;
+            }
+            this.mode = 'edit'; this._method = 'PUT'; this._action = action || '';
+            this.label = c.label || ''; this.key = c.key || ''; this.icon = c.icon || 'bi-grid-1x2';
+            this.keyTouched = true;
+        },
         slug(s) { return (s || '').toString().toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''); },
         async save() {
             if (!this.label.trim() || this.saving) return;
@@ -92,7 +116,7 @@ window.marketCategoryForm = function (init, opts) {
             try {
                 const csrf = document.querySelector('meta[name=csrf-token]')?.content || '';
                 const res = await fetch(this._action, {
-                    method: 'POST',
+                    method: this._method,
                     headers: { 'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json', 'Accept': 'application/json' },
                     credentials: 'same-origin', body: JSON.stringify(data),
                 });
@@ -100,6 +124,8 @@ window.marketCategoryForm = function (init, opts) {
                 if (!res.ok || d.success === false) throw new Error(d.message || @js(__('shared.error')));
                 this.$dispatch(this._event, d.category || data);
                 window.showToast && window.showToast('success', d.message || @js(__('market.category_added')));
+                // After an edit, drop back to add mode so the form is ready for the next new category.
+                if (this._storeUrl) this.loadCategory(null);
             } catch (e) {
                 window.showToast && window.showToast('error', e.message);
             } finally {

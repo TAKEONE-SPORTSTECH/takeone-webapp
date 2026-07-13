@@ -55,10 +55,10 @@
                 window.applyFinancials?.(d.financials);
                 window.patchLedgerStatus?.(d.subscription_id, d.payment_status);
                 if (window.prependLedgerRow?.(d.transaction)) this.ledgerTotal++;
-                window.showToast('success', d.message || 'Refund processed successfully.');
+                window.showToast('success', d.message || '{{ __("admin.club_financials_index_refund_success") }}');
             }
-            else window.showToast('error', d.message || 'Failed to process refund.');
-        } catch { window.showToast('error', 'An error occurred.'); }
+            else window.showToast('error', d.message || '{{ __("admin.club_financials_index_refund_failed") }}');
+        } catch { window.showToast('error', '{{ __("admin.club_financials_index_error") }}'); }
         finally { this.refundingPayment = false; }
     },
     async approvePayment(subscriptionId) {
@@ -75,10 +75,10 @@
                 this.showTransactionDetailModal = false;
                 window.applyFinancials?.(d.financials);
                 window.patchLedgerStatus?.(d.subscription_id, d.payment_status);
-                window.showToast('success', d.message || 'Payment approved successfully.');
+                window.showToast('success', d.message || '{{ __("admin.club_financials_index_approve_success") }}');
             }
-            else window.showToast('error', d.message || 'Failed to approve payment.');
-        } catch { window.showToast('error', 'An error occurred.'); }
+            else window.showToast('error', d.message || '{{ __("admin.club_financials_index_approve_failed") }}');
+        } catch { window.showToast('error', '{{ __("admin.club_financials_index_error") }}'); }
         finally { this.approvingPayment = false; }
     }
 }" class="space-y-6">
@@ -95,22 +95,39 @@
 {{-- ─── Page header ─── --}}
 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
     <div>
-        <h2 class="text-xl font-bold text-gray-900">Financials</h2>
-        <p class="text-sm text-gray-500 mt-1">Income, expenses, and financial reports</p>
+        <h2 class="text-xl font-bold text-gray-900">{{ __('admin.club_financials_index_financials') }}</h2>
+        <p class="text-sm text-gray-500 mt-1">{{ __('admin.club_financials_index_subtitle') }}</p>
     </div>
-    <div class="flex flex-wrap gap-2">
-        <button @click="showExportModal=true" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-            <i class="bi bi-download"></i> Export
-        </button>
-        <button @click="showAutoExpenseModal=true" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-            <i class="bi bi-arrow-repeat"></i> Auto Expense
-        </button>
-        <button @click="showIncomeModal=true" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors">
-            <i class="bi bi-plus-lg"></i> Income
-        </button>
-        <button @click="showExpenseModal=true" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors">
-            <i class="bi bi-dash-lg"></i> Expense
-        </button>
+    <div class="flex flex-wrap gap-2" x-data="{ open: false }">
+        <div class="relative">
+            <button type="button" @click="open = !open" @click.outside="open = false" @keydown.escape="open = false"
+                    class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors">
+                <i class="bi bi-plus-lg"></i> {{ __('admin.club_financials_index_add_record') }}
+                <i class="bi bi-chevron-down text-xs transition-transform duration-200" :class="open && 'rotate-180'"></i>
+            </button>
+            <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-100"
+                 x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-75"
+                 x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                 class="absolute end-0 mt-2 w-56 max-w-[calc(100vw-2rem)] rounded-xl bg-white border border-gray-100 shadow-lg overflow-hidden z-50">
+                <button type="button" @click="open = false; showIncomeModal=true"
+                        class="w-full text-start flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:bg-muted/60 transition-colors">
+                    <i class="bi bi-plus-lg text-green-600 w-4"></i> {{ __('admin.club_financials_index_income') }}
+                </button>
+                <button type="button" @click="open = false; showExpenseModal=true"
+                        class="w-full text-start flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:bg-muted/60 transition-colors">
+                    <i class="bi bi-dash-lg text-primary w-4"></i> {{ __('admin.club_financials_index_expense') }}
+                </button>
+                <button type="button" @click="open = false; showAutoExpenseModal=true"
+                        class="w-full text-start flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:bg-muted/60 transition-colors">
+                    <i class="bi bi-arrow-repeat text-primary w-4"></i> {{ __('admin.club_financials_index_auto_expense') }}
+                </button>
+                <button type="button" @click="open = false; showExportModal=true"
+                        class="w-full text-start flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-800 hover:bg-muted/60 transition-colors">
+                    <i class="bi bi-download text-primary w-4"></i> {{ __('admin.club_financials_index_export') }}
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -131,9 +148,9 @@
 
     <x-stat-card
         card-id="sc-net"
-        :label="$netIncome >= 0 ? 'Net Profit' : 'Net Loss'"
+        :label="$netIncome >= 0 ? __('admin.club_financials_index_net_profit') : __('admin.club_financials_index_net_loss')"
         :value="number_format(abs($netIncome), 2)"
-        :sub-label="$currency.' · '.abs($marginPct).'% margin'"
+        :sub-label="$currency.' · '.abs($marginPct).__('admin.club_financials_index_pct_margin')"
         :icon="$netIcon"
         :icon-bg="$netIconBg"
         :icon-color="$netIconColor"
@@ -145,9 +162,9 @@
 
     <x-stat-card
         card-id="sc-income"
-        label="Income"
+        :label="__('admin.club_financials_index_income')"
         :value="number_format($totalIncome, 2)"
-        :sub-label="$currency.' · '.$incomeCount.' transactions'"
+        :sub-label="$currency.' · '.$incomeCount.' '.__('admin.club_financials_index_transactions')"
         icon="bi-arrow-down-circle"
         icon-bg="bg-emerald-100"
         icon-color="text-emerald-600"
@@ -159,9 +176,9 @@
 
     <x-stat-card
         card-id="sc-expenses"
-        label="Expenses"
+        :label="__('admin.club_financials_index_expenses')"
         :value="number_format($totalExpenses, 2)"
-        :sub-label="$currency.' · '.$expenseCount.' transactions'"
+        :sub-label="$currency.' · '.$expenseCount.' '.__('admin.club_financials_index_transactions')"
         icon="bi-arrow-up-circle"
         icon-bg="bg-red-100"
         icon-color="text-red-500"
@@ -173,9 +190,9 @@
 
     <x-stat-card
         card-id="sc-collect"
-        label="To Collect"
+        :label="__('admin.club_financials_index_to_collect')"
         :value="number_format($cashToCollect, 2)"
-        :sub-label="$currency.' · pending payments'"
+        :sub-label="$currency.' · '.__('admin.club_financials_index_pending_payments')"
         icon="bi-hourglass-split"
         icon-bg="bg-amber-100"
         icon-color="text-amber-600"
@@ -187,9 +204,9 @@
 
     <x-stat-card
         card-id="sc-refunds"
-        label="Refunds"
+        :label="__('admin.club_financials_index_refunds')"
         :value="number_format($totalRefunds, 2)"
-        :sub-label="$currency.' · issued'"
+        :sub-label="$currency.' · '.__('admin.club_financials_index_issued')"
         icon="bi-arrow-counterclockwise"
         icon-bg="bg-orange-100"
         icon-color="text-orange-500"
@@ -226,9 +243,9 @@
                 :class="activeTab==='ledger'
                     ? 'border-primary text-primary'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'">
-                <i class="bi bi-journal-text mr-1.5"></i>
-                Ledger
-                <span id="ledgerCountBadge" class="ml-1.5 px-2 py-0.5 rounded-full text-xs font-medium"
+                <i class="bi bi-journal-text me-1.5"></i>
+                {{ __('admin.club_financials_index_ledger') }}
+                <span id="ledgerCountBadge" class="ms-1.5 px-2 py-0.5 rounded-full text-xs font-medium"
                     :class="activeTab==='ledger' ? 'bg-accent text-primary' : 'bg-gray-100 text-gray-500'">
                     {{ $transactions->count() }}
                 </span>
@@ -238,16 +255,16 @@
                 :class="activeTab==='expenses'
                     ? 'border-primary text-primary'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'">
-                <i class="bi bi-pie-chart mr-1.5"></i>
-                Expenses
+                <i class="bi bi-pie-chart me-1.5"></i>
+                {{ __('admin.club_financials_index_expenses') }}
             </button>
             <button @click="activeTab='reports'"
                 class="px-5 py-3.5 text-sm font-medium border-b-2 transition-colors"
                 :class="activeTab==='reports'
                     ? 'border-primary text-primary'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'">
-                <i class="bi bi-file-earmark-bar-graph mr-1.5"></i>
-                Reports
+                <i class="bi bi-file-earmark-bar-graph me-1.5"></i>
+                {{ __('admin.club_financials_index_reports') }}
             </button>
         </nav>
     </div>
@@ -259,12 +276,12 @@
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-gray-100 bg-gray-50/60">
-                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Date</th>
-                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Description</th>
-                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Category</th>
-                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Method</th>
-                        <th class="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
-                        <th class="px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Amount</th>
+                        <th class="px-5 py-3 text-start text-xs font-semibold text-gray-400 uppercase tracking-wider">{{ __('admin.club_financials_index_col_date') }}</th>
+                        <th class="px-5 py-3 text-start text-xs font-semibold text-gray-400 uppercase tracking-wider">{{ __('admin.club_financials_index_col_description') }}</th>
+                        <th class="px-5 py-3 text-start text-xs font-semibold text-gray-400 uppercase tracking-wider">{{ __('admin.club_financials_index_col_category') }}</th>
+                        <th class="px-5 py-3 text-start text-xs font-semibold text-gray-400 uppercase tracking-wider">{{ __('admin.club_financials_index_col_method') }}</th>
+                        <th class="px-5 py-3 text-start text-xs font-semibold text-gray-400 uppercase tracking-wider">{{ __('admin.club_financials_index_col_status') }}</th>
+                        <th class="px-5 py-3 text-end text-xs font-semibold text-gray-400 uppercase tracking-wider">{{ __('admin.club_financials_index_col_amount') }}</th>
                         <th class="px-5 py-3"></th>
                     </tr>
                 </thead>
@@ -295,7 +312,7 @@
                                 <span class="text-gray-800 font-medium truncate max-w-[180px]">{{ $t->description ?? '—' }}</span>
                             </div>
                             @if($t->reference_number)
-                            <p class="ml-4 text-xs text-gray-400 font-mono mt-0.5">{{ $t->reference_number }}</p>
+                            <p class="ms-4 text-xs text-gray-400 font-mono mt-0.5">{{ $t->reference_number }}</p>
                             @endif
                         </td>
 
@@ -319,22 +336,22 @@
                         <td class="px-5 py-3.5 js-status-cell">
                             @if($subPayStatus === 'pending_approval')
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600">
-                                    <i class="bi bi-hourglass-split text-[10px]"></i> Pending
+                                    <i class="bi bi-hourglass-split text-[10px]"></i> {{ __('admin.club_financials_index_status_pending') }}
                                 </span>
                             @elseif($subPayStatus === 'paid')
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-600">
-                                    <i class="bi bi-check-circle-fill text-[10px]"></i> Paid
+                                    <i class="bi bi-check-circle-fill text-[10px]"></i> {{ __('admin.club_financials_index_status_paid') }}
                                 </span>
                             @elseif($subPayStatus === 'unpaid')
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-600">
-                                    <i class="bi bi-clock-fill text-[10px]"></i> Unpaid
+                                    <i class="bi bi-clock-fill text-[10px]"></i> {{ __('admin.club_financials_index_status_unpaid') }}
                                 </span>
                             @else
                                 <span class="text-gray-300 text-xs">—</span>
                             @endif
                         </td>
 
-                        <td class="px-5 py-3.5 text-right font-semibold tabular-nums whitespace-nowrap
+                        <td class="px-5 py-3.5 text-end font-semibold tabular-nums whitespace-nowrap
                             {{ $t->type === 'income' ? 'text-emerald-600' : ($t->type === 'refund' ? 'text-amber-600' : 'text-red-500') }}">
                             {{ $t->type === 'income' ? '+' : '−' }}{{ $currency }} {{ number_format($t->amount, 2) }}
                         </td>
@@ -342,7 +359,7 @@
                         <td class="px-3 py-3.5">
                             <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button type="button"
-                                    title="Edit"
+                                    title="{{ __('shared.edit') }}"
                                     @click.stop="openEdit({
                                         id: {{ $t->id }},
                                         description: @js($t->description ?? ''),
@@ -357,7 +374,7 @@
                                     <i class="bi bi-pencil"></i>
                                 </button>
                                 <button type="button"
-                                    title="Delete"
+                                    title="{{ __('shared.delete') }}"
                                     @click.stop="openDelete({{ $t->id }}, @js($t->reference_number ?? $t->description))"
                                     class="w-7 h-7 flex items-center justify-center rounded-md border border-gray-200 text-gray-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-colors text-xs">
                                     <i class="bi bi-trash"></i>
@@ -373,8 +390,8 @@
         {{-- Ledger pagination --}}
         <div class="flex items-center justify-between px-5 py-3.5 border-t border-gray-100 text-sm" x-show="ledgerTotalPages > 1">
             <span class="text-gray-400 text-xs">
-                Showing <strong class="text-gray-700" x-text="ledgerStart + 1"></strong>–<strong class="text-gray-700" x-text="Math.min(ledgerEnd, ledgerTotal)"></strong>
-                of <strong class="text-gray-700" x-text="ledgerTotal"></strong>
+                {{ __('admin.club_financials_index_showing') }} <strong class="text-gray-700" x-text="ledgerStart + 1"></strong>–<strong class="text-gray-700" x-text="Math.min(ledgerEnd, ledgerTotal)"></strong>
+                {{ __('admin.club_financials_index_of') }} <strong class="text-gray-700" x-text="ledgerTotal"></strong>
             </span>
             <div class="flex items-center gap-1.5">
                 <button @click="ledgerPage = Math.max(1, ledgerPage - 1)" :disabled="ledgerPage === 1"
@@ -394,14 +411,14 @@
             <div class="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
                 <i class="bi bi-receipt text-2xl text-gray-300"></i>
             </div>
-            <p class="text-gray-500 font-medium">No transactions yet</p>
-            <p class="text-gray-400 text-sm mt-1 mb-4">Record your first income or expense to get started</p>
+            <p class="text-gray-500 font-medium">{{ __('admin.club_financials_index_no_transactions') }}</p>
+            <p class="text-gray-400 text-sm mt-1 mb-4">{{ __('admin.club_financials_index_no_transactions_hint') }}</p>
             <div class="flex gap-2 justify-center">
                 <button @click="showIncomeModal=true" class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors">
-                    <i class="bi bi-plus-lg"></i> Income
+                    <i class="bi bi-plus-lg"></i> {{ __('admin.club_financials_index_income') }}
                 </button>
                 <button @click="showExpenseModal=true" class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors">
-                    <i class="bi bi-dash-lg"></i> Expense
+                    <i class="bi bi-dash-lg"></i> {{ __('admin.club_financials_index_expense') }}
                 </button>
             </div>
         </div>
@@ -417,7 +434,7 @@
             @php $pct = $expTotal > 0 ? round($cat['total'] / $expTotal * 100) : 0; @endphp
             <div class="border border-gray-100 rounded-xl p-4 space-y-3">
                 <div class="flex items-center justify-between">
-                    <p class="text-sm font-semibold text-gray-800 capitalize">{{ $cat['category'] ?? 'Uncategorized' }}</p>
+                    <p class="text-sm font-semibold text-gray-800 capitalize">{{ $cat['category'] ?? __('admin.club_financials_index_uncategorized') }}</p>
                     <p class="text-sm font-bold text-red-500">{{ $currency }} {{ number_format($cat['total'], 2) }}</p>
                 </div>
                 <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -442,8 +459,8 @@
             <div class="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
                 <i class="bi bi-pie-chart text-2xl text-gray-300"></i>
             </div>
-            <p class="text-gray-500 font-medium">No expenses recorded</p>
-            <p class="text-gray-400 text-sm mt-1">Expense categories will appear here once expenses are added</p>
+            <p class="text-gray-500 font-medium">{{ __('admin.club_financials_index_no_expenses') }}</p>
+            <p class="text-gray-400 text-sm mt-1">{{ __('admin.club_financials_index_no_expenses_hint') }}</p>
         </div>
         @endif
     </div>
@@ -454,39 +471,39 @@
 
             {{-- P&L --}}
             <div class="border border-gray-100 rounded-xl p-5 space-y-2.5">
-                <p class="text-sm font-semibold text-gray-700 mb-4">Profit & Loss</p>
+                <p class="text-sm font-semibold text-gray-700 mb-4">{{ __('admin.club_financials_index_profit_loss') }}</p>
                 <div class="flex justify-between items-center py-2.5 px-3 bg-green-50 rounded-lg">
-                    <span class="text-sm text-green-700 flex items-center gap-2"><i class="bi bi-arrow-down-circle"></i> Gross Income</span>
+                    <span class="text-sm text-green-700 flex items-center gap-2"><i class="bi bi-arrow-down-circle"></i> {{ __('admin.club_financials_index_gross_income') }}</span>
                     <span class="text-sm font-bold text-green-700">{{ $currency }} {{ number_format($totalIncome, 2) }}</span>
                 </div>
                 <div class="flex justify-between items-center py-2.5 px-3 bg-red-50 rounded-lg">
-                    <span class="text-sm text-red-600 flex items-center gap-2"><i class="bi bi-arrow-up-circle"></i> Total Expenses</span>
+                    <span class="text-sm text-red-600 flex items-center gap-2"><i class="bi bi-arrow-up-circle"></i> {{ __('admin.club_financials_index_total_expenses') }}</span>
                     <span class="text-sm font-bold text-red-600">−{{ $currency }} {{ number_format($totalExpenses, 2) }}</span>
                 </div>
                 @if($totalRefunds > 0)
                 <div class="flex justify-between items-center py-2.5 px-3 bg-amber-50 rounded-lg">
-                    <span class="text-sm text-amber-700 flex items-center gap-2"><i class="bi bi-arrow-counterclockwise"></i> Refunds</span>
+                    <span class="text-sm text-amber-700 flex items-center gap-2"><i class="bi bi-arrow-counterclockwise"></i> {{ __('admin.club_financials_index_refunds') }}</span>
                     <span class="text-sm font-bold text-amber-700">−{{ $currency }} {{ number_format($totalRefunds, 2) }}</span>
                 </div>
                 @endif
                 <div class="flex justify-between items-center py-3 px-3 rounded-lg mt-1
                     {{ $netIncome >= 0 ? 'bg-emerald-500' : 'bg-red-500' }} text-white">
-                    <span class="text-sm font-bold">{{ $netIncome >= 0 ? 'Net Profit' : 'Net Loss' }}</span>
+                    <span class="text-sm font-bold">{{ $netIncome >= 0 ? __('admin.club_financials_index_net_profit') : __('admin.club_financials_index_net_loss') }}</span>
                     <span class="text-base font-bold">{{ $currency }} {{ number_format(abs($netIncome), 2) }}</span>
                 </div>
             </div>
 
             {{-- Transaction summary --}}
             <div class="border border-gray-100 rounded-xl p-5">
-                <p class="text-sm font-semibold text-gray-700 mb-4">Transaction Summary</p>
+                <p class="text-sm font-semibold text-gray-700 mb-4">{{ __('admin.club_financials_index_transaction_summary') }}</p>
                 <div class="space-y-3">
                     @php
                         $rows = [
-                            ['label'=>'Total Transactions','value'=> $transactions->count(),'color'=>'text-gray-900'],
-                            ['label'=>'Income','value'=> $incomeCount,'color'=>'text-emerald-600'],
-                            ['label'=>'Expenses','value'=> $expenseCount,'color'=>'text-red-500'],
-                            ['label'=>'Refunds','value'=> $transactions->where('type','refund')->count(),'color'=>'text-amber-600'],
-                            ['label'=>'Profit Margin','value'=> $marginPct.'%','color'=> $marginPct >= 0 ? 'text-emerald-600' : 'text-red-500'],
+                            ['label'=> __('admin.club_financials_index_total_transactions'),'value'=> $transactions->count(),'color'=>'text-gray-900'],
+                            ['label'=> __('admin.club_financials_index_income'),'value'=> $incomeCount,'color'=>'text-emerald-600'],
+                            ['label'=> __('admin.club_financials_index_expenses'),'value'=> $expenseCount,'color'=>'text-red-500'],
+                            ['label'=> __('admin.club_financials_index_refunds'),'value'=> $transactions->where('type','refund')->count(),'color'=>'text-amber-600'],
+                            ['label'=> __('admin.club_financials_index_profit_margin'),'value'=> $marginPct.'%','color'=> $marginPct >= 0 ? 'text-emerald-600' : 'text-red-500'],
                         ];
                     @endphp
                     @foreach($rows as $i => $row)
@@ -505,7 +522,7 @@
             @endphp
             @if($paymentMethods->count() > 0)
             <div class="border border-gray-100 rounded-xl p-5 md:col-span-2">
-                <p class="text-sm font-semibold text-gray-700 mb-4">Payment Methods</p>
+                <p class="text-sm font-semibold text-gray-700 mb-4">{{ __('admin.club_financials_index_payment_methods') }}</p>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     @foreach($paymentMethods as $method => $total)
                     @php
@@ -593,8 +610,8 @@ window.applyFinancials = function (data) {
 
     StatCard.update('sc-net', {
         value:    window._finMoney(Math.abs(net)),
-        label:    net >= 0 ? 'Net Profit' : 'Net Loss',
-        subLabel: window._finCurrency + ' · ' + Math.abs(margin) + '% margin',
+        label:    net >= 0 ? '{{ __("admin.club_financials_index_net_profit") }}' : '{{ __("admin.club_financials_index_net_loss") }}',
+        subLabel: window._finCurrency + ' · ' + Math.abs(margin) + '{{ __("admin.club_financials_index_pct_margin") }}',
         sparkData: col('profit'),
     });
     StatCard.update('sc-income',   { value: window._finMoney(s.total_income),     sparkData: col('income') });
@@ -607,11 +624,11 @@ window.applyFinancials = function (data) {
 window._finStatusBadge = function (status) {
     switch (status) {
         case 'pending_approval':
-            return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600"><i class="bi bi-hourglass-split text-[10px]"></i> Pending</span>';
+            return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600"><i class="bi bi-hourglass-split text-[10px]"></i> {{ __("admin.club_financials_index_status_pending") }}</span>';
         case 'paid':
-            return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-600"><i class="bi bi-check-circle-fill text-[10px]"></i> Paid</span>';
+            return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-600"><i class="bi bi-check-circle-fill text-[10px]"></i> {{ __("admin.club_financials_index_status_paid") }}</span>';
         case 'unpaid':
-            return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-600"><i class="bi bi-clock-fill text-[10px]"></i> Unpaid</span>';
+            return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-600"><i class="bi bi-clock-fill text-[10px]"></i> {{ __("admin.club_financials_index_status_unpaid") }}</span>';
         default:
             return '<span class="text-gray-300 text-xs">—</span>';
     }
@@ -644,9 +661,9 @@ window.prependLedgerRow = function (t) {
             '<span class="text-gray-800 font-medium truncate max-w-[180px]">' + esc(t.description || '—') + '</span>' +
         '</div></td>' +
         '<td class="px-5 py-3.5 text-gray-500 text-xs capitalize">' + esc(t.category || '—') + '</td>' +
-        '<td class="px-5 py-3.5"><span class="inline-flex items-center gap-1 text-xs text-gray-500 capitalize"><i class="bi bi-bank text-blue-500"></i> Bank transfer</span></td>' +
+        '<td class="px-5 py-3.5"><span class="inline-flex items-center gap-1 text-xs text-gray-500 capitalize"><i class="bi bi-bank text-blue-500"></i> {{ __("admin.club_financials_index_bank_transfer") }}</span></td>' +
         '<td class="px-5 py-3.5 js-status-cell"><span class="text-gray-300 text-xs">—</span></td>' +
-        '<td class="px-5 py-3.5 text-right font-semibold tabular-nums whitespace-nowrap text-amber-600">−' + cur + ' ' + window._finMoney(t.amount) + '</td>' +
+        '<td class="px-5 py-3.5 text-end font-semibold tabular-nums whitespace-nowrap text-amber-600">−' + cur + ' ' + window._finMoney(t.amount) + '</td>' +
         '<td class="px-3 py-3.5"></td>';
     body.insertBefore(tr, body.firstElementChild);
 
@@ -668,8 +685,8 @@ function exportCSV() {
         ])->values();
     @endphp
     const rows = @json($csvData);
-    if (!rows.length) { window.showToast('info', 'No transactions to export'); return; }
-    const headers = ['Date','Type','Description','Category','Amount','Payment Method','Reference #'];
+    if (!rows.length) { window.showToast('info', '{{ __("admin.club_financials_index_no_export") }}'); return; }
+    const headers = ['{{ __("admin.club_financials_index_col_date") }}','{{ __("admin.club_financials_index_col_type") }}','{{ __("admin.club_financials_index_col_description") }}','{{ __("admin.club_financials_index_col_category") }}','{{ __("admin.club_financials_index_col_amount") }}','{{ __("admin.club_financials_index_payment_method") }}','{{ __("admin.club_financials_index_reference") }}'];
     const csv = [headers, ...rows.map(r => [
         r.date, r.type,
         '"' + (r.description||'').replace(/"/g,'""') + '"',

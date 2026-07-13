@@ -5,13 +5,13 @@
 @endphp
 
 <div class="px-0">
-    <h5 class="font-bold mb-3">Identity & Branding</h5>
-    <p class="text-muted-foreground mb-4">Define your club's public identity, URL, and visual branding</p>
+    <h5 class="font-bold mb-3">{{ __('shared.tabs_identity_branding_title') }}</h5>
+    <p class="text-muted-foreground mb-4">{{ __('shared.tabs_identity_branding_subtitle') }}</p>
 
     <!-- Club Slug -->
     <div class="mb-4">
         <label for="slug" class="form-label">
-            Club Slug <span class="text-destructive">*</span>
+            {{ __('shared.tabs_identity_branding_club_slug') }} <span class="text-destructive">*</span>
         </label>
         <div class="input-group">
             <span class="input-group-text bg-white">
@@ -24,49 +24,49 @@
                    value="{{ $club->slug ?? old('slug') }}"
                    required
                    pattern="[a-z0-9-]+"
-                   data-error-message="Slug is required and must be URL-friendly"
-                   placeholder="e.g., bh-taekwondo">
+                   data-error-message="{{ __('shared.tabs_identity_branding_slug_error_msg') }}"
+                   placeholder="{{ __('shared.tabs_identity_branding_slug_placeholder') }}">
         </div>
-        <small class="text-muted-foreground">URL-friendly identifier (lowercase letters, numbers, and hyphens only)</small>
-        <div class="invalid-feedback">Please enter a valid slug.</div>
+        <small class="text-muted-foreground">{{ __('shared.tabs_identity_branding_slug_help') }}</small>
+        <div class="invalid-feedback">{{ __('shared.tabs_identity_branding_slug_invalid') }}</div>
     </div>
 
     <!-- Club URL Preview -->
     <div class="mb-4">
-        <label class="form-label">Club Public URL</label>
+        <label class="form-label">{{ __('shared.tabs_identity_branding_public_url') }}</label>
         <div class="border border-border rounded-lg p-3 bg-muted/20">
             <div class="flex items-center gap-2">
                 <i class="bi bi-globe text-primary"></i>
                 <code id="clubUrlPreview" class="text-primary mb-0">{{ $isEdit && $club ? $club->url : url(strtolower(config('app.default_country', 'bh')) . '/clubs/your-club-slug') }}</code>
-                <button type="button" class="btn btn-sm btn-outline-primary ml-auto" onclick="copyClubUrl()">
+                <button type="button" class="btn btn-sm btn-outline-primary ms-auto" onclick="copyClubUrl()">
                     <i class="bi bi-clipboard"></i>
                 </button>
             </div>
         </div>
-        <small class="text-muted-foreground">This is the public URL where members can view your club</small>
+        <small class="text-muted-foreground">{{ __('shared.tabs_identity_branding_public_url_help') }}</small>
     </div>
 
     <!-- QR Code -->
     <div class="mb-4">
-        <label class="form-label">Club QR Code</label>
+        <label class="form-label">{{ __('shared.tabs_identity_branding_club_qr_code') }}</label>
         <div class="border border-border rounded-lg p-4 text-center bg-muted/10">
             <div id="qrCodeContainer" class="inline-block mb-3"></div>
             <div>
                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="downloadQRCode()">
-                    <i class="bi bi-download mr-2"></i>Download QR Code
+                    <i class="bi bi-download me-2"></i>{{ __('shared.tabs_identity_branding_download_qr') }}
                 </button>
                 <button type="button" class="btn btn-sm btn-outline-secondary" onclick="printQRCode()">
-                    <i class="bi bi-printer mr-2"></i>Print
+                    <i class="bi bi-printer me-2"></i>{{ __('shared.tabs_identity_branding_print') }}
                 </button>
             </div>
         </div>
-        <small class="text-muted-foreground">Share this QR code for easy access to your club's page</small>
+        <small class="text-muted-foreground">{{ __('shared.tabs_identity_branding_qr_help') }}</small>
     </div>
 
     <!-- Logo and Cover Images -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
-            <label class="form-label block">Club Logo <span class="text-destructive">*</span></label>
+            <label class="form-label block">{{ __('shared.tabs_identity_branding_club_logo') }} <span class="text-destructive">*</span></label>
             <div class="text-center">
                 <!-- Logo Preview -->
                 <div class="cropper-preview-container mb-2" id="logoPreviewContainer">
@@ -87,14 +87,14 @@
                 <input type="hidden" name="logo_folder" value="clubs/logos">
                 <input type="hidden" name="logo_filename" value="logo_{{ time() }}">
                 <button type="button" class="btn btn-outline-primary btn-sm" onclick="openLogoCropper()">
-                    <i class="bi bi-camera mr-2"></i>Upload Logo
+                    <i class="bi bi-camera me-2"></i>{{ __('shared.tabs_identity_branding_upload_logo') }}
                 </button>
-                <small class="text-muted-foreground block mt-2">Square image recommended (400x400px)</small>
-                <small class="text-muted-foreground block">Used as main logo and favicon</small>
+                <small class="text-muted-foreground block mt-2">{{ __('shared.tabs_identity_branding_logo_help_1') }}</small>
+                <small class="text-muted-foreground block">{{ __('shared.tabs_identity_branding_logo_help_2') }}</small>
             </div>
         </div>
         <div>
-            <label class="form-label block">Cover Image</label>
+            <label class="form-label block">{{ __('shared.tabs_identity_branding_cover_image') }}</label>
             <div class="text-center">
                 <!-- Cover Preview -->
                 <div class="cropper-preview-container mb-2" id="coverPreviewContainer">
@@ -115,10 +115,10 @@
                 <input type="hidden" name="cover_image_folder" value="clubs/covers">
                 <input type="hidden" name="cover_image_filename" value="cover_{{ time() }}">
                 <button type="button" class="btn btn-outline-primary btn-sm" onclick="openCoverCropper()">
-                    <i class="bi bi-camera mr-2"></i>Upload Cover
+                    <i class="bi bi-camera me-2"></i>{{ __('shared.tabs_identity_branding_upload_cover') }}
                 </button>
-                <small class="text-muted-foreground block mt-2">Wide banner image (1200x400px)</small>
-                <small class="text-muted-foreground block">Used for club profile header</small>
+                <small class="text-muted-foreground block mt-2">{{ __('shared.tabs_identity_branding_cover_help_1') }}</small>
+                <small class="text-muted-foreground block">{{ __('shared.tabs_identity_branding_cover_help_2') }}</small>
             </div>
         </div>
     </div>
@@ -167,8 +167,8 @@
     @endonce
 
     <div class="mb-4">
-        <label class="form-label block">Registration Splash Image</label>
-        <p class="text-muted-foreground text-sm mb-3">A dedicated portrait image shown as the background of this club's self-registration page. This is <strong>not</strong> the cover banner — upload a tall phone-shaped image. The live preview shows exactly how it will look behind the logo, club name and language picker.</p>
+        <label class="form-label block">{{ __('shared.tabs_identity_branding_reg_splash') }}</label>
+        <p class="text-muted-foreground text-sm mb-3">{!! __('shared.tabs_identity_branding_reg_splash_desc') !!}</p>
 
         <div class="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
             {{-- Uploader --}}
@@ -191,14 +191,14 @@
                 <input type="hidden" name="registration_splash_image_folder" value="clubs/splash">
                 <input type="hidden" name="registration_splash_image_filename" value="splash_{{ time() }}">
                 <button type="button" class="btn btn-outline-primary btn-sm" onclick="openSplashCropper()">
-                    <i class="bi bi-camera mr-2"></i>Upload Splash
+                    <i class="bi bi-camera me-2"></i>{{ __('shared.tabs_identity_branding_upload_splash') }}
                 </button>
-                <small class="text-muted-foreground block mt-2">Portrait phone image<br>(1080×1920px, 9:16)</small>
+                <small class="text-muted-foreground block mt-2">{!! __('shared.tabs_identity_branding_splash_help') !!}</small>
             </div>
 
             {{-- Live phone preview --}}
             <div x-data="splashPhonePreview()" x-init="init()" class="flex flex-col items-center">
-                <small class="text-muted-foreground mb-2 flex items-center gap-1"><i class="bi bi-eye"></i> Live preview</small>
+                <small class="text-muted-foreground mb-2 flex items-center gap-1"><i class="bi bi-eye"></i> {{ __('shared.tabs_identity_branding_live_preview') }}</small>
                 <div class="reg-phone">
                     <div class="reg-phone-notch"></div>
                     <div class="reg-phone-screen" :style="splash ? ('background-image:url(' + splash + ')') : ''">
@@ -225,7 +225,7 @@
     <div id="logoCropperOverlay" class="cropper-overlay" style="display: none;">
         <div class="cropper-panel">
             <div class="flex justify-between items-center mb-3">
-                <h5 class="mb-0 font-semibold">Crop Logo</h5>
+                <h5 class="mb-0 font-semibold">{{ __('shared.tabs_identity_branding_crop_logo') }}</h5>
                 <button type="button" class="btn-close" onclick="closeLogoCropper()"></button>
             </div>
 
@@ -235,18 +235,18 @@
 
             <div class="grid grid-cols-2 gap-4 mt-3">
                 <div>
-                    <label class="form-label text-sm">Zoom</label>
+                    <label class="form-label text-sm">{{ __('shared.tabs_identity_branding_zoom') }}</label>
                     <input type="range" class="w-full" id="logoZoom" min="0" max="100" step="1" value="0">
                 </div>
                 <div>
-                    <label class="form-label text-sm">Rotation</label>
+                    <label class="form-label text-sm">{{ __('shared.tabs_identity_branding_rotation') }}</label>
                     <input type="range" class="w-full" id="logoRotation" min="-180" max="180" step="1" value="0">
                 </div>
             </div>
 
             <div class="flex gap-2 mt-3">
-                <button type="button" class="btn btn-secondary flex-1" onclick="closeLogoCropper()">Cancel</button>
-                <button type="button" class="btn btn-primary flex-1" onclick="saveLogoCrop()">Save & Apply</button>
+                <button type="button" class="btn btn-secondary flex-1" onclick="closeLogoCropper()">{{ __('shared.cancel') }}</button>
+                <button type="button" class="btn btn-primary flex-1" onclick="saveLogoCrop()">{{ __('shared.tabs_identity_branding_save_apply') }}</button>
             </div>
         </div>
     </div>
@@ -255,7 +255,7 @@
     <div id="coverCropperOverlay" class="cropper-overlay" style="display: none;">
         <div class="cropper-panel">
             <div class="flex justify-between items-center mb-3">
-                <h5 class="mb-0 font-semibold">Crop Cover Image</h5>
+                <h5 class="mb-0 font-semibold">{{ __('shared.tabs_identity_branding_crop_cover') }}</h5>
                 <button type="button" class="btn-close" onclick="closeCoverCropper()"></button>
             </div>
 
@@ -265,18 +265,18 @@
 
             <div class="grid grid-cols-2 gap-4 mt-3">
                 <div>
-                    <label class="form-label text-sm">Zoom</label>
+                    <label class="form-label text-sm">{{ __('shared.tabs_identity_branding_zoom') }}</label>
                     <input type="range" class="w-full" id="coverZoom" min="0" max="100" step="1" value="0">
                 </div>
                 <div>
-                    <label class="form-label text-sm">Rotation</label>
+                    <label class="form-label text-sm">{{ __('shared.tabs_identity_branding_rotation') }}</label>
                     <input type="range" class="w-full" id="coverRotation" min="-180" max="180" step="1" value="0">
                 </div>
             </div>
 
             <div class="flex gap-2 mt-3">
-                <button type="button" class="btn btn-secondary flex-1" onclick="closeCoverCropper()">Cancel</button>
-                <button type="button" class="btn btn-primary flex-1" onclick="saveCoverCrop()">Save & Apply</button>
+                <button type="button" class="btn btn-secondary flex-1" onclick="closeCoverCropper()">{{ __('shared.cancel') }}</button>
+                <button type="button" class="btn btn-primary flex-1" onclick="saveCoverCrop()">{{ __('shared.tabs_identity_branding_save_apply') }}</button>
             </div>
         </div>
     </div>
@@ -285,7 +285,7 @@
     <div id="splashCropperOverlay" class="cropper-overlay" style="display: none;">
         <div class="cropper-panel">
             <div class="flex justify-between items-center mb-3">
-                <h5 class="mb-0 font-semibold">Crop Splash Image</h5>
+                <h5 class="mb-0 font-semibold">{{ __('shared.tabs_identity_branding_crop_splash') }}</h5>
                 <button type="button" class="btn-close" onclick="closeSplashCropper()"></button>
             </div>
 
@@ -295,26 +295,26 @@
 
             <div class="grid grid-cols-2 gap-4 mt-3">
                 <div>
-                    <label class="form-label text-sm">Zoom</label>
+                    <label class="form-label text-sm">{{ __('shared.tabs_identity_branding_zoom') }}</label>
                     <input type="range" class="w-full" id="splashZoom" min="0" max="100" step="1" value="0">
                 </div>
                 <div>
-                    <label class="form-label text-sm">Rotation</label>
+                    <label class="form-label text-sm">{{ __('shared.tabs_identity_branding_rotation') }}</label>
                     <input type="range" class="w-full" id="splashRotation" min="-180" max="180" step="1" value="0">
                 </div>
             </div>
 
             <div class="flex gap-2 mt-3">
-                <button type="button" class="btn btn-secondary flex-1" onclick="closeSplashCropper()">Cancel</button>
-                <button type="button" class="btn btn-primary flex-1" onclick="saveSplashCrop()">Save & Apply</button>
+                <button type="button" class="btn btn-secondary flex-1" onclick="closeSplashCropper()">{{ __('shared.cancel') }}</button>
+                <button type="button" class="btn btn-primary flex-1" onclick="saveSplashCrop()">{{ __('shared.tabs_identity_branding_save_apply') }}</button>
             </div>
         </div>
     </div>
 
     <!-- Social Media Links -->
     <div class="mb-4">
-        <label class="form-label">Social Media Links</label>
-        <p class="text-muted-foreground text-sm mb-3">Add links to your club's social media profiles</p>
+        <label class="form-label">{{ __('shared.tabs_identity_branding_social_links') }}</label>
+        <p class="text-muted-foreground text-sm mb-3">{{ __('shared.tabs_identity_branding_social_links_desc') }}</p>
 
         <div id="socialLinksContainer">
             @if($isEdit && $club->socialLinks && $club->socialLinks->count() > 0)
@@ -323,7 +323,7 @@
                         <div class="grid grid-cols-12 gap-2">
                             <div class="col-span-12 md:col-span-4">
                                 <select class="form-select" name="social_links[{{ $index }}][platform]" required>
-                                    <option value="">Select Platform</option>
+                                    <option value="">{{ __('shared.tabs_identity_branding_select_platform') }}</option>
                                     <option value="facebook" {{ $link->platform === 'facebook' ? 'selected' : '' }}>
                                         Facebook
                                     </option>
@@ -343,7 +343,7 @@
                                         WhatsApp
                                     </option>
                                     <option value="website" {{ $link->platform === 'website' ? 'selected' : '' }}>
-                                        Website
+                                        {{ __('shared.tabs_identity_branding_website') }}
                                     </option>
                                 </select>
                             </div>
@@ -367,7 +367,7 @@
         </div>
 
         <button type="button" class="btn btn-outline-primary btn-sm" onclick="addSocialLink()">
-            <i class="bi bi-plus-circle mr-2"></i>Add Social Link
+            <i class="bi bi-plus-circle me-2"></i>{{ __('shared.tabs_identity_branding_add_social') }}
         </button>
     </div>
 </div>
@@ -417,7 +417,7 @@
 
                 if (!/^[a-z0-9-]+$/.test(val)) {
                     this.classList.add('is-invalid');
-                    if (slugError) { slugError.textContent = 'Slug must only contain lowercase letters, numbers, and hyphens.'; slugError.style.display = 'block'; }
+                    if (slugError) { slugError.textContent = '{{ __("shared.tabs_identity_branding_slug_chars_error") }}'; slugError.style.display = 'block'; }
                     return;
                 }
 
@@ -434,7 +434,7 @@
                     const data = await res.json();
                     if (!data.available) {
                         this.classList.add('is-invalid');
-                        if (slugError) { slugError.textContent = data.message || 'This slug is already taken.'; slugError.style.display = 'block'; }
+                        if (slugError) { slugError.textContent = data.message || '{{ __("shared.tabs_identity_branding_slug_taken") }}'; slugError.style.display = 'block'; }
                     } else {
                         this.classList.remove('is-invalid');
                         if (slugError) slugError.style.display = 'none';
@@ -475,9 +475,9 @@
         const url = urlPreview.textContent;
         navigator.clipboard.writeText(url).then(() => {
             if (typeof Toast !== 'undefined') {
-                Toast.success('Copied!', 'Club URL copied to clipboard');
+                Toast.success('{{ __("shared.tabs_identity_branding_copied") }}', '{{ __("shared.tabs_identity_branding_url_copied_desc") }}');
             } else {
-                window.showToast('success', 'URL copied to clipboard!');
+                window.showToast('success', '{{ __("shared.tabs_identity_branding_url_copied") }}');
             }
         }).catch(err => {
             console.error('Failed to copy:', err);
@@ -511,7 +511,7 @@
         printWindow.document.write(`
             <html>
                 <head>
-                    <title>Club QR Code</title>
+                    <title>{{ __("shared.tabs_identity_branding_club_qr_code") }}</title>
                     <style>
                         body { display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; font-family: Arial, sans-serif; }
                         .container { text-align: center; }
@@ -521,8 +521,8 @@
                 </head>
                 <body>
                     <div class="container">
-                        <img src="${canvas.toDataURL('image/png')}" alt="Club QR Code">
-                        <h2>${document.getElementById('club_name')?.value || 'Club QR Code'}</h2>
+                        <img src="${canvas.toDataURL('image/png')}" alt="{{ __("shared.tabs_identity_branding_club_qr_code") }}">
+                        <h2>${document.getElementById('club_name')?.value || '{{ __("shared.tabs_identity_branding_club_qr_code") }}'}</h2>
                         <p>${document.getElementById('clubUrlPreview')?.textContent || ''}</p>
                     </div>
                 </body>
@@ -548,14 +548,14 @@
             <div class="grid grid-cols-12 gap-2">
                 <div class="col-span-12 md:col-span-4">
                     <select class="form-select" name="social_links[${socialLinkIndex}][platform]" required>
-                        <option value="">Select Platform</option>
+                        <option value="">{{ __("shared.tabs_identity_branding_select_platform") }}</option>
                         <option value="facebook">Facebook</option>
                         <option value="instagram">Instagram</option>
                         <option value="twitter">X (Twitter)</option>
                         <option value="tiktok">TikTok</option>
                         <option value="youtube">YouTube</option>
                         <option value="whatsapp">WhatsApp</option>
-                        <option value="website">Website</option>
+                        <option value="website">{{ __("shared.tabs_identity_branding_website") }}</option>
                     </select>
                 </div>
                 <div class="col-span-12 md:col-span-7">

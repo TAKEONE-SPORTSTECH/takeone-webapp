@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Mail\WelcomeEmail;
+use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -46,7 +46,8 @@ class RegisteredUserController extends Controller
     public function createForClub(Request $request, string $country, string $slug)
     {
         $club = \App\Models\Tenant::where('slug', $slug)->first([
-            'club_name', 'slug', 'country_code', 'logo', 'cover_image',
+            'club_name', 'slug', 'country_code', 'logo', 'cover_image', 'currency',
+            'enrollment_fee', 'registration_fee',
             'registration_splash_image', 'registration_terms', 'registration_requirements', 'translations',
         ]);
 
@@ -66,16 +67,17 @@ class RegisteredUserController extends Controller
     private function setClubContext(\App\Models\Tenant $club): void
     {
         session(['club.context' => [
-            'name'            => $club->club_name,
-            'logo'            => $club->logo,
-            'slug'            => $club->slug,
-            'cover_image'     => $club->cover_image,
-            'currency'        => $club->currency,
-            'enrollment_fee'  => $club->enrollment_fee,
-            'splash'          => $club->registration_splash_image,
-            'terms'           => $club->registration_terms,
-            'terms_ar'        => data_get($club->translations, 'registration_terms.ar'),
-            'requirements'    => $club->registration_requirements,
+            'name' => $club->club_name,
+            'logo' => $club->logo,
+            'slug' => $club->slug,
+            'cover_image' => $club->cover_image,
+            'currency' => $club->currency,
+            'enrollment_fee' => $club->enrollment_fee,
+            'registration_fee' => $club->registration_fee,
+            'splash' => $club->registration_splash_image,
+            'terms' => $club->registration_terms,
+            'terms_ar' => data_get($club->translations, 'registration_terms.ar'),
+            'requirements' => $club->registration_requirements,
             'requirements_ar' => data_get($club->translations, 'registration_requirements.ar'),
         ]]);
     }
@@ -83,7 +85,6 @@ class RegisteredUserController extends Controller
     /**
      * Handle an incoming registration request.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\RedirectResponse
      *
      * @throws \Illuminate\Validation\ValidationException
@@ -118,7 +119,7 @@ class RegisteredUserController extends Controller
                 $query->where('slug', 'super-admin');
             })->exists();
 
-            if (!$hasSuperAdmin) {
+            if (! $hasSuperAdmin) {
                 $user->assignRole('super-admin');
                 // Refresh the user to load the role relationship
                 $user->load('roles');
@@ -132,15 +133,16 @@ class RegisteredUserController extends Controller
             // Send welcome email with verification link
             try {
                 $intended = session('url.intended');
-            Mail::to($user->email)->queue(new WelcomeEmail($user, $user, null, $intended));
+                Mail::to($user->email)->queue(new WelcomeEmail($user, $user, null, $intended));
             } catch (\Exception $e) {
                 // Log the error but don't stop the registration process
-                \Log::error('Failed to send welcome email: ' . $e->getMessage());
+                \Log::error('Failed to send welcome email: '.$e->getMessage());
             }
 
             return redirect()->route('verification.notice')->with('success', 'Registration successful! Please check your email to verify your account.');
         } catch (\Exception $e) {
-            \Log::error('Registration failed: ' . $e->getMessage());
+            \Log::error('Registration failed: '.$e->getMessage());
+
             return back()->withInput()->withErrors(['error' => 'Registration failed. Please try again.']);
         }
     }

@@ -33,11 +33,11 @@ class SendClubNotification implements ShouldQueue
                 // Create in-app notification
                 UserNotification::insertOrIgnore([
                     'club_notification_id' => $this->notification->id,
-                    'user_id'              => $recipient->id,
-                    'tenant_id'            => $this->notification->tenant_id,
-                    'is_read'              => false,
-                    'created_at'           => now(),
-                    'updated_at'           => now(),
+                    'user_id' => $recipient->id,
+                    'tenant_id' => $this->notification->tenant_id,
+                    'is_read' => false,
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
 
                 // Queue email
@@ -73,12 +73,12 @@ class SendClubNotification implements ShouldQueue
             ->get(['id', 'user_id'])
             ->each(function ($un) use (&$messages, $clubName) {
                 $messages[] = [
-                    'topic'   => Realtime()->userTopic($un->user_id, 'notifications'),
+                    'topic' => Realtime()->userTopic($un->user_id, 'notifications'),
                     'payload' => [
-                        'id'               => $un->id,
-                        'subject'          => $this->notification->subject,
-                        'club_name'        => $clubName,
-                        'action_url'       => $this->notification->action_url,
+                        'id' => $un->id,
+                        'subject' => $this->notification->subject,
+                        'club_name' => $clubName,
+                        'action_url' => $this->notification->action_url,
                         'created_at_human' => 'just now',
                     ],
                 ];

@@ -84,6 +84,40 @@ class RealtimeManager
         return $this->app->make(TokenIssuer::class)->issue($userId);
     }
 
+    /** Current admin-editable settings, shaped for the admin form(s). */
+    public function adminSettings(): array
+    {
+        return [
+            'enabled'         => $this->enabled(),
+            'broker_host'     => $this->config('broker.host'),
+            'broker_port'     => $this->config('broker.port'),
+            'broker_username' => $this->config('broker.username'),
+            'broker_ws_url'   => $this->config('broker.ws_url'),
+            'jwt_ttl'         => $this->config('jwt.ttl'),
+            'jwt_secret_set'  => filled($this->config('jwt.secret')),
+        ];
+    }
+
+    /** Lightweight reachability probe for the status pill (TCP connect only). */
+    public function probe(): array
+    {
+        if (! $this->enabled()) {
+            return ['state' => 'disabled', 'label' => 'Disabled'];
+        }
+
+        $host = $this->config('broker.host', '127.0.0.1');
+        $port = (int) $this->config('broker.port', 1883);
+        $conn = @fsockopen($host, $port, $errno, $errstr, 2);
+
+        if ($conn) {
+            fclose($conn);
+
+            return ['state' => 'online', 'label' => 'Broker online'];
+        }
+
+        return ['state' => 'offline', 'label' => 'Broker offline (' . ($errstr ?: 'no route') . ')'];
+    }
+
     private function cast(string $key, mixed $value): mixed
     {
         return match ($key) {

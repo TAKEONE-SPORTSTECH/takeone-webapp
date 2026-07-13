@@ -33,8 +33,8 @@ class LocaleController extends Controller
         return response()->json([
             'success' => true,
             'message' => __('shared.language_updated'),
-            'locale'  => $data['locale'],
-            'dir'     => config('locales.' . $data['locale'] . '.dir', 'ltr'),
+            'locale' => $data['locale'],
+            'dir' => config('locales.'.$data['locale'].'.dir', 'ltr'),
         ]);
     }
 }

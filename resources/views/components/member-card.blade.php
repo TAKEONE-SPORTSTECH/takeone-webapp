@@ -102,6 +102,9 @@
     $accent     = $isMale ? 'hsl(250 65% 60%)' : '#d63384';
     $accentSoft = $isMale ? 'hsl(250 65% 65% / 0.10)' : 'rgba(214, 51, 132, 0.09)';
     $accentText = $isMale ? 'text-primary' : 'text-pink-600';
+
+    // Instructors aren't athletes — drop the competitor fields (category, weight class, next birthday).
+    $isInstructor = $variant === 'instructor';
 @endphp
 
 <div {{ $attributes->merge(['class' => 'member-card-wrapper']) }}
@@ -121,10 +124,10 @@
         <div class="card h-full shadow-sm border overflow-hidden flex flex-col {{ $cardClass }} relative">
 
             {{-- Gender accent rail --}}
-            <span class="absolute left-0 top-0 bottom-0 w-1.5 z-10" style="background: {{ $accent }};"></span>
+            <span class="absolute start-0 top-0 bottom-0 w-1.5 z-10" style="background: {{ $accent }};"></span>
 
             {{-- Header --}}
-            <div class="pl-5 pr-4 pt-4 pb-3" style="background: linear-gradient(135deg, {{ $accentSoft }} 0%, transparent 65%);">
+            <div class="ps-5 pe-4 pt-3.5 pb-2.5" style="background: linear-gradient(135deg, {{ $accentSoft }} 0%, transparent 65%);">
                 <div class="flex items-start gap-3">
                     <div class="relative shrink-0">
                         <div class="rounded-full border-4 border-white shadow w-16 h-16 overflow-hidden" style="box-shadow: 0 0 0 2px {{ $isMale ? 'hsl(250 65% 65% / 0.35)' : 'rgba(214, 51, 132, 0.3)' }} !important;">
@@ -138,7 +141,7 @@
                         </div>
                     </div>
                     <div class="grow min-w-0">
-                        <h5 class="font-bold mb-1.5 truncate leading-tight">{{ $member->full_name ?? 'Unknown' }}</h5>
+                        <h5 class="font-bold mb-1 truncate leading-tight">{{ $member->full_name ?? __('shared.components_member_card_unknown') }}</h5>
                         <div class="flex flex-wrap gap-1.5">
                             <span class="badge {{ $isMale ? 'bg-primary' : 'bg-pink-600' }}">{{ $ageGroup }}</span>
                             @if(isset($member->member_clubs_count) && $member->member_clubs_count > 0)
@@ -147,7 +150,7 @@
                             {{ $badges ?? '' }}
                         </div>
                         {{-- Identity meta: nationality · horoscope --}}
-                        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground mt-2 min-w-0">
+                        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground mt-1.5 min-w-0">
                             <span class="inline-flex items-center font-medium truncate max-w-[55%]">{{ $nationalityDisplay }}</span>
                             <span class="text-gray-300">·</span>
                             <span class="inline-flex items-center gap-1 font-medium whitespace-nowrap">{{ $symbol }} {{ $horoscope }}</span>
@@ -158,11 +161,11 @@
             </div>
 
             {{-- Contact --}}
-            <div class="pl-5 pr-4 py-3 border-t border-gray-100 space-y-1.5">
+            <div class="ps-5 pe-4 py-2.5 border-t border-gray-100 space-y-1">
                 @if($isGuardianContact && $guardian)
                 <div class="flex items-center gap-1 text-xs text-info">
                     <i class="bi bi-info-circle-fill"></i>
-                    <span class="font-medium">Guardian's contact ({{ $guardian->full_name }})</span>
+                    <span class="font-medium">{{ __('shared.components_member_card_guardian_contact', ['name' => $guardian->full_name]) }}</span>
                 </div>
                 @endif
                 @if($displayMobile && is_array($displayMobile) && isset($displayMobile['number']))
@@ -170,7 +173,7 @@
                         <i class="bi bi-telephone-fill {{ $accentText }}"></i>
                         <span class="font-medium text-muted-foreground">{{ $displayMobile['code'] ?? '' }} {{ $displayMobile['number'] }}</span>
                         @if($isGuardianContact)
-                            <span class="inline-block px-2 py-0.5 text-xs font-medium rounded-full ml-auto {{ $isMale ? 'bg-accent text-primary' : 'bg-pink-500 text-white' }}">Guardian's</span>
+                            <span class="inline-block px-2 py-0.5 text-xs font-medium rounded-full ms-auto {{ $isMale ? 'bg-accent text-primary' : 'bg-pink-500 text-white' }}">{{ __('shared.components_member_card_guardians') }}</span>
                         @endif
                     </div>
                 @elseif($displayMobile && is_string($displayMobile))
@@ -178,7 +181,7 @@
                         <i class="bi bi-telephone-fill {{ $accentText }}"></i>
                         <span class="font-medium text-muted-foreground">{{ $displayMobile }}</span>
                         @if($isGuardianContact)
-                            <span class="inline-block px-2 py-0.5 text-xs font-medium rounded-full ml-auto {{ $isMale ? 'bg-accent text-primary' : 'bg-pink-500 text-white' }}">Guardian's</span>
+                            <span class="inline-block px-2 py-0.5 text-xs font-medium rounded-full ms-auto {{ $isMale ? 'bg-accent text-primary' : 'bg-pink-500 text-white' }}">{{ __('shared.components_member_card_guardians') }}</span>
                         @endif
                     </div>
                 @endif
@@ -187,73 +190,77 @@
                         <i class="bi bi-envelope-fill {{ $accentText }}"></i>
                         <span class="font-medium text-muted-foreground truncate">{{ $displayEmail }}</span>
                         @if($isGuardianContact)
-                            <span class="inline-block px-2 py-0.5 text-xs font-medium rounded-full ml-auto {{ $isMale ? 'bg-accent text-primary' : 'bg-pink-500 text-white' }}">Guardian's</span>
+                            <span class="inline-block px-2 py-0.5 text-xs font-medium rounded-full ms-auto {{ $isMale ? 'bg-accent text-primary' : 'bg-pink-500 text-white' }}">{{ __('shared.components_member_card_guardians') }}</span>
                         @endif
                     </div>
                 @endif
                 @if(!$displayMobile && !$displayEmail)
                     <div class="flex items-center gap-2 text-sm text-muted-foreground">
                         <i class="bi bi-info-circle"></i>
-                        <span class="font-medium">No contact info</span>
+                        <span class="font-medium">{{ __('shared.components_member_card_no_contact_info') }}</span>
                     </div>
                 @endif
             </div>
 
             {{-- Stats + details --}}
-            <div class="pl-5 pr-4 py-3 grow">
-                {{-- Headline stat strip: Age · Category · Gender --}}
-                <div class="grid grid-cols-3 divide-x divide-gray-100 text-center">
+            <div class="ps-5 pe-4 py-2.5 grow">
+                {{-- Headline stat strip — athletes: Age · Category · Gender; instructors: Age · Gender --}}
+                <div class="grid {{ $isInstructor ? 'grid-cols-2' : 'grid-cols-3' }} divide-x divide-gray-100 text-center">
                     <div class="px-2">
                         <div class="text-lg font-bold text-foreground leading-none">{{ $age ?? '—' }}</div>
-                        <div class="text-[10px] uppercase tracking-wide text-muted-foreground mt-1">Years</div>
+                        <div class="text-[10px] uppercase tracking-wide text-muted-foreground mt-1">{{ __('shared.components_member_card_years') }}</div>
                     </div>
+                    @unless($isInstructor)
                     <div class="px-2 min-w-0">
                         <div class="text-sm font-bold {{ $accentText }} leading-none truncate">
-                            <i class="bi bi-trophy-fill text-[11px] mr-0.5"></i>{{ $tkdCategory ?? '—' }}
+                            <i class="bi bi-trophy-fill text-[11px] me-0.5"></i>{{ $tkdCategory ?? '—' }}
                         </div>
-                        <div class="text-[10px] uppercase tracking-wide text-muted-foreground mt-1">Category</div>
+                        <div class="text-[10px] uppercase tracking-wide text-muted-foreground mt-1">{{ __('shared.components_member_card_category') }}</div>
                     </div>
+                    @endunless
                     <div class="px-2">
                         <div class="text-base font-bold leading-none">
                             <i class="bi {{ $isMale ? 'bi-man text-primary' : 'bi-woman text-pink-600' }}"></i>
                         </div>
-                        <div class="text-[10px] uppercase tracking-wide text-muted-foreground mt-1">{{ $isMale ? 'Male' : 'Female' }}</div>
+                        <div class="text-[10px] uppercase tracking-wide text-muted-foreground mt-1">{{ $isMale ? __('shared.components_member_card_male') : __('shared.components_member_card_female') }}</div>
                     </div>
                 </div>
 
                 {{ $extraDetails ?? '' }}
 
                 {{-- Key facts --}}
-                <div class="mt-3 pt-3 border-t border-gray-100 space-y-1.5 text-sm">
+                <div class="mt-2.5 pt-2.5 border-t border-gray-100 space-y-1 text-sm">
+                    @unless($isInstructor)
                     <div class="flex justify-between items-center gap-2">
-                        <span class="text-muted-foreground">Weight class</span>
+                        <span class="text-muted-foreground">{{ __('shared.components_member_card_weight_class') }}</span>
                         @if($weightClass)
-                            <span class="font-semibold {{ $accentText }}"><span class="mr-0.5">⚖️</span>{{ $weightClass }}</span>
+                            <span class="font-semibold {{ $accentText }}"><span class="me-0.5">⚖️</span>{{ $weightClass }}</span>
                         @else
-                            <span class="font-normal text-muted-foreground">No weight data</span>
+                            <span class="font-normal text-muted-foreground">{{ __('shared.components_member_card_no_weight_data') }}</span>
                         @endif
                     </div>
                     <div class="flex justify-between items-center gap-2">
-                        <span class="text-muted-foreground">Next birthday</span>
+                        <span class="text-muted-foreground">{{ __('shared.components_member_card_next_birthday') }}</span>
                         <span class="font-semibold text-foreground">
                             @if($member->birthdate)
                                 {{ $member->birthdate->copy()->year(now()->year)->isFuture()
                                     ? $member->birthdate->copy()->year(now()->year)->diffForHumans(['parts' => 2, 'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE])
                                     : $member->birthdate->copy()->year(now()->year + 1)->diffForHumans(['parts' => 2, 'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE]) }}
                             @else
-                                N/A
+                                {{ __('shared.components_member_card_na') }}
                             @endif
                         </span>
                     </div>
+                    @endunless
                     <div class="flex justify-between items-center gap-2">
-                        <span class="text-muted-foreground">Member since</span>
-                        <span class="font-semibold text-foreground">{{ $sinceDate ? $sinceDate->format('d/m/Y') : 'N/A' }}</span>
+                        <span class="text-muted-foreground">{{ $isInstructor ? __('shared.components_member_card_joined') : __('shared.components_member_card_member_since') }}</span>
+                        <span class="font-semibold text-foreground">{{ $sinceDate ? $sinceDate->format('d/m/Y') : __('shared.components_member_card_na') }}</span>
                     </div>
                 </div>
             </div>
 
             {{-- Ghost footer — quiet status chip, not a loud bar --}}
-            <div class="pl-5 pr-4 py-2.5 border-t border-gray-100 flex items-center justify-between gap-2" style="background: {{ $accentSoft }};">
+            <div class="ps-5 pe-4 py-2 border-t border-gray-100 flex items-center justify-between gap-2" style="background: {{ $accentSoft }};">
                 <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider {{ $accentText }}">
                     <span class="w-1.5 h-1.5 rounded-full" style="background: {{ $accent }};"></span>
                     {{ $footerLabel }}

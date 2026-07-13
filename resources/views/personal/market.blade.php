@@ -37,8 +37,8 @@
         <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
         <div class="flex items-center justify-between relative z-10">
             <div>
-                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">Shop</p>
-                <h1 class="text-2xl font-black mt-0.5">Market</h1>
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">{{ __('market.personal_market_eyebrow') }}</p>
+                <h1 class="text-2xl font-black mt-0.5">{{ __('market.personal_market_title') }}</h1>
             </div>
             <div class="flex items-center gap-2">
                 <a href="{{ route('me.orders') }}" data-shell-link data-route="me.orders"
@@ -49,7 +49,7 @@
                         class="m-press relative w-11 h-11 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center">
                     <i class="bi bi-bag text-lg" :class="cartBump ? 'cart-bump' : ''"></i>
                     <span x-show="count>0" x-transition
-                          class="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold grid place-items-center"
+                          class="absolute -top-1 -end-1 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold grid place-items-center"
                           :class="cartBump ? 'cart-pop' : ''" x-text="count"></span>
                     {{-- floating +1 on add --}}
                     <span x-show="cartBump" x-cloak class="cart-plus">+1</span>
@@ -58,9 +58,9 @@
         </div>
 
         <div class="relative mt-5 z-10">
-            <i class="bi bi-search absolute left-3.5 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none"></i>
-            <input x-model="q" type="search" placeholder="Search gear, supplements, passes…"
-                   class="w-full pl-10 pr-3 py-3 bg-white/15 border border-white/25 backdrop-blur rounded-2xl text-sm text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/40">
+            <i class="bi bi-search absolute start-3.5 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none"></i>
+            <input x-model="q" type="search" placeholder="{{ __('market.personal_market_search_placeholder') }}"
+                   class="w-full ps-10 pe-3 py-3 bg-white/15 border border-white/25 backdrop-blur rounded-2xl text-sm text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/40">
         </div>
     </header>
 
@@ -77,42 +77,55 @@
         </div>
     </div>
 
-    {{-- ===== Featured carousel ===== --}}
+    {{-- ===== Featured carousel (only when there are featured products) ===== --}}
+    @if($featured->isNotEmpty())
     <div class="mt-5" x-show="cat==='all' && q===''" x-transition>
         <div class="px-4 mb-2.5">
-            <h2 class="text-sm font-black text-foreground flex items-center gap-2"><i class="bi bi-stars text-primary"></i> Featured</h2>
+            <h2 class="text-sm font-black text-foreground flex items-center gap-2"><i class="bi bi-stars text-primary"></i> {{ __('market.personal_market_featured') }}</h2>
         </div>
         <div class="flex gap-3 overflow-x-auto scrollbar-hide px-4 pb-1 snap-x snap-mandatory">
             @foreach($featured as $p)
                 <a href="{{ route('me.market.show', $p['id']) }}" data-shell-link data-route="me.market"
                    class="m-press snap-start flex-shrink-0 w-64 rounded-3xl overflow-hidden shadow-lg text-white relative"
                    style="background: linear-gradient(135deg, {{ $p['color'] }}, {{ $p['color'] }}bb);">
-                    <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
+                    @if(!empty($p['image']))
+                        {{-- Real product photo fills the card; a bottom gradient keeps the text legible. --}}
+                        <img src="{{ $p['image'] }}" alt="{{ $p['name'] }}" loading="lazy" class="absolute inset-0 w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/5"></div>
+                    @else
+                        <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
+                    @endif
                     <div class="relative p-4 h-40 flex flex-col">
                         @if($p['badge'])<span class="self-start px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/20 backdrop-blur">{{ $p['badge'] }}</span>@endif
-                        <i class="bi {{ $p['icon'] }} text-4xl mt-auto opacity-90 m-float"></i>
-                        <h3 class="font-black text-base mt-2 leading-tight">{{ $p['name'] }}</h3>
+                        @if(empty($p['image']))
+                            <i class="bi {{ $p['icon'] }} text-4xl mt-auto opacity-90 m-float"></i>
+                        @else
+                            <span class="mt-auto"></span>
+                        @endif
+                        <h3 class="font-black text-base mt-2 leading-tight drop-shadow-sm">{{ $p['name'] }}</h3>
                         <div class="flex items-center justify-between mt-1">
-                            <span class="text-sm font-bold">BHD {{ number_format($p['price'], 2) }}</span>
-                            <span class="text-[11px] bg-white/20 px-2 py-0.5 rounded-full"><i class="bi bi-star-fill text-[9px]"></i> {{ $p['rating'] }}</span>
+                            <span class="text-sm font-bold drop-shadow-sm">BHD {{ number_format($p['price'], 2) }}</span>
+                            <span class="text-[11px] bg-white/20 backdrop-blur px-2 py-0.5 rounded-full"><i class="bi bi-star-fill text-[9px]"></i> {{ $p['rating'] }}</span>
                         </div>
                     </div>
                 </a>
             @endforeach
         </div>
     </div>
+    @endif
 
-    {{-- ===== Flash deals strip ===== --}}
+    {{-- ===== Flash deals strip (only when there are on-sale products) ===== --}}
+    @if($deals->isNotEmpty())
     <div class="mt-6" x-show="cat==='all' && q===''" x-transition>
         <div class="mx-4 rounded-3xl p-4 text-white relative overflow-hidden" style="background: linear-gradient(135deg, #ef4444, #f59e0b);">
             <div class="absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-white/10"></div>
             <div class="relative flex items-center justify-between">
                 <div>
-                    <p class="text-[11px] font-bold uppercase tracking-wide flex items-center gap-1.5"><i class="bi bi-lightning-charge-fill"></i> Flash deals</p>
-                    <h3 class="text-lg font-black mt-0.5">Up to 30% off</h3>
+                    <p class="text-[11px] font-bold uppercase tracking-wide flex items-center gap-1.5"><i class="bi bi-lightning-charge-fill"></i> {{ __('market.personal_market_flash_deals') }}</p>
+                    <h3 class="text-lg font-black mt-0.5">{{ __('market.personal_market_flash_subtitle') }}</h3>
                 </div>
-                <div class="text-right">
-                    <p class="text-[10px] text-white/80 uppercase">Ends in</p>
+                <div class="text-end">
+                    <p class="text-[10px] text-white/80 uppercase">{{ __('market.personal_market_ends_in') }}</p>
                     <p class="text-base font-black tabular-nums" x-text="countdown"></p>
                 </div>
             </div>
@@ -121,9 +134,15 @@
                     @php $off = $p['old'] ? round(($p['old'] - $p['price']) / $p['old'] * 100) : 0; @endphp
                     <a href="{{ route('me.market.show', $p['id']) }}" data-shell-link data-route="me.market"
                        class="m-press flex-shrink-0 w-28 bg-white rounded-2xl p-2.5 text-foreground">
-                        <div class="aspect-square rounded-xl grid place-items-center mb-2" style="background: {{ $p['color'] }}15;">
-                            <i class="bi {{ $p['icon'] }} text-2xl" style="color: {{ $p['color'] }};"></i>
-                        </div>
+                        @if(!empty($p['image']))
+                            <div class="aspect-square rounded-xl overflow-hidden mb-2">
+                                <img src="{{ $p['image'] }}" alt="{{ $p['name'] }}" loading="lazy" class="w-full h-full object-cover">
+                            </div>
+                        @else
+                            <div class="aspect-square rounded-xl grid place-items-center mb-2" style="background: {{ $p['color'] }}15;">
+                                <i class="bi {{ $p['icon'] }} text-2xl" style="color: {{ $p['color'] }};"></i>
+                            </div>
+                        @endif
                         <p class="text-[11px] font-bold truncate">{{ $p['name'] }}</p>
                         <div class="flex items-center gap-1.5 mt-0.5">
                             <span class="text-xs font-black text-foreground">BHD {{ number_format($p['price'], 2) }}</span>
@@ -134,48 +153,59 @@
             </div>
         </div>
     </div>
+    @endif
 
     {{-- ===== Product grid ===== --}}
     <div class="px-4 mt-6">
         <h2 class="text-sm font-black text-foreground flex items-center gap-2 mb-3">
-            <i class="bi bi-shop text-primary"></i> <span x-text="cat==='all' ? 'All products' : 'Products'"></span>
+            <i class="bi bi-shop text-primary"></i> <span x-text="cat==='all' ? '{{ __('market.personal_market_all_products') }}' : '{{ __('market.personal_market_products') }}'"></span>
         </h2>
         <div class="grid grid-cols-2 gap-3">
             @foreach($list as $p)
                 <div x-show="(cat==='all' || cat==='{{ $p['cat'] }}') && '{{ strtolower($p['name'].' '.$p['brand']) }}'.includes(q.toLowerCase())"
                      x-transition class="m-card rounded-2xl overflow-hidden flex flex-col">
                     <a href="{{ route('me.market.show', $p['id']) }}" data-shell-link data-route="me.market" class="m-press block relative">
-                        <div class="aspect-square grid place-items-center" style="background: linear-gradient(160deg, {{ $p['color'] }}18, {{ $p['color'] }}08);">
-                            <i class="bi {{ $p['icon'] }} text-5xl" style="color: {{ $p['color'] }};"></i>
-                        </div>
+                        @if(!empty($p['image']))
+                            <div class="aspect-square">
+                                <img src="{{ $p['image'] }}" alt="{{ $p['name'] }}" loading="lazy" class="w-full h-full object-cover">
+                            </div>
+                        @else
+                            <div class="aspect-square grid place-items-center" style="background: linear-gradient(160deg, {{ $p['color'] }}18, {{ $p['color'] }}08);">
+                                <i class="bi {{ $p['icon'] }} text-5xl" style="color: {{ $p['color'] }};"></i>
+                            </div>
+                        @endif
                         @if($p['badge'])
-                            <span class="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
+                            <span class="absolute top-2 start-2 px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
                                   style="background: {{ $p['badge']==='Sale' ? '#ef4444' : ($p['badge']==='New' ? '#10b981' : $p['color']) }};">{{ $p['badge'] }}</span>
                         @endif
                     </a>
-                    <div class="p-3 flex flex-col flex-1">
-                        <p class="text-[10px] text-muted-foreground uppercase tracking-wide">{{ $p['brand'] }}</p>
-                        <a href="{{ route('me.market.show', $p['id']) }}" data-shell-link data-route="me.market" class="font-bold text-foreground text-sm leading-tight mt-0.5 line-clamp-2">{{ $p['name'] }}</a>
-                        <div class="flex items-center gap-1 mt-1 text-[11px] text-muted-foreground">
-                            <i class="bi bi-star-fill text-amber-400 text-[10px]"></i>{{ $p['rating'] }}
-                            <span class="text-gray-300">·</span>{{ $p['reviews'] }}
+                    <div class="p-2.5 flex flex-col flex-1">
+                        {{-- Brand + rating share a row; name is one line — keeps the card short. --}}
+                        <div class="flex items-center justify-between gap-2">
+                            <p class="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider truncate">{{ $p['brand'] }}</p>
+                            @if((int) $p['reviews'] > 0)
+                                <span class="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-medium text-muted-foreground">
+                                    <i class="bi bi-star-fill text-amber-400 text-[9px]"></i>{{ $p['rating'] }}
+                                </span>
+                            @endif
                         </div>
-                        <div class="flex items-end justify-between mt-auto pt-2">
-                            <div>
-                                <p class="text-sm font-black text-foreground">@if(!empty($p['hasVariants']))<span class="text-[9px] font-semibold text-muted-foreground">{{ __('market.from_price') }} </span>@endif BHD {{ number_format($p['price'], 2) }}</p>
-                                @if($p['old'])<p class="text-[10px] text-muted-foreground line-through">BHD {{ number_format($p['old'], 2) }}</p>@endif
-                            </div>
+                        <a href="{{ route('me.market.show', $p['id']) }}" data-shell-link data-route="me.market"
+                           class="block font-bold text-foreground text-[13px] leading-tight mt-0.5 truncate">{{ $p['name'] }}</a>
+                        <div class="flex items-center justify-between gap-2 mt-2">
+                            <p class="min-w-0 truncate text-[15px] font-black text-foreground leading-none">
+                                @if(!empty($p['hasVariants']))<span class="text-[9px] font-semibold text-muted-foreground">{{ __('market.from_price') }} </span>@endif BHD {{ number_format($p['price'], 2) }}@if($p['old'])<span class="ms-1 text-[10px] font-medium text-muted-foreground line-through">{{ number_format($p['old'], 2) }}</span>@endif
+                            </p>
                             @if(!empty($p['hasVariants']))
                                 {{-- Variants need a choice — send the buyer to the detail page to pick. --}}
                                 <a href="{{ route('me.market.show', $p['id']) }}" data-shell-link data-route="me.market"
-                                   class="m-press w-9 h-9 rounded-xl grid place-items-center text-white" style="background: {{ $p['color'] }};" title="{{ __('market.choose_options') }}">
-                                    <i class="bi bi-sliders"></i>
+                                   class="m-press w-9 h-9 shrink-0 rounded-xl grid place-items-center text-white active:scale-95 transition-transform" style="background: {{ $p['color'] }};" title="{{ __('market.choose_options') }}">
+                                    <i class="bi bi-sliders text-sm"></i>
                                 </a>
                             @else
                                 <button type="button"
                                         @click="add({{ Illuminate\Support\Js::from(['id'=>$p['id'],'name'=>$p['name'],'price'=>$p['price'],'color'=>$p['color'],'icon'=>$p['icon']]) }})"
-                                        class="m-press w-9 h-9 rounded-xl grid place-items-center text-white" style="background: {{ $p['color'] }};">
-                                    <i class="bi bi-plus-lg"></i>
+                                        class="m-press w-9 h-9 shrink-0 rounded-xl grid place-items-center text-white active:scale-95 transition-transform" style="background: {{ $p['color'] }};" aria-label="{{ __('market.add_to_cart') }}">
+                                    <i class="bi bi-plus-lg text-sm"></i>
                                 </button>
                             @endif
                         </div>
@@ -186,7 +216,7 @@
 
         <div x-show="!hasResults()" x-cloak class="bg-white rounded-2xl border border-gray-100 px-5 py-12 text-center">
             <i class="bi bi-search text-3xl text-gray-300 m-float"></i>
-            <p class="text-sm text-muted-foreground mt-3">No products match your search.</p>
+            <p class="text-sm text-muted-foreground mt-3">{{ __('market.personal_market_no_results') }}</p>
         </div>
     </div>
 
@@ -201,7 +231,7 @@
             <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mt-2.5"></div>
             <div class="p-4 border-b border-gray-100 flex items-center justify-between">
                 <h3 class="font-black text-foreground flex items-center gap-2">
-                    <button type="button" x-show="cartStep==='pay'" @click="cartStep='cart'" class="m-press -ml-1 w-7 h-7 grid place-items-center" aria-label="{{ __('market.back') }}"><i class="bi bi-arrow-left"></i></button>
+                    <button type="button" x-show="cartStep==='pay'" @click="cartStep='cart'" class="m-press -ms-1 w-7 h-7 grid place-items-center" aria-label="{{ __('market.back') }}"><i class="bi bi-arrow-left"></i></button>
                     <i class="bi" :class="cartStep==='pay' ? 'bi-shield-lock' : 'bi-bag'"></i>
                     <span x-text="cartStep==='pay' ? @js(__('market.pay_title')) : @js(__('market.your_cart'))"></span>
                     <span class="text-muted-foreground font-medium" x-show="cartStep==='cart'" x-text="`(${count})`"></span>

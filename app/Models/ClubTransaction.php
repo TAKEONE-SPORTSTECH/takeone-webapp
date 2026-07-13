@@ -11,7 +11,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class ClubTransaction extends Model
 {
-    use HasFactory, BelongsToTenant, LogsActivity;
+    use BelongsToTenant, HasFactory, LogsActivity;
 
     public function getActivitylogOptions(): LogOptions
     {

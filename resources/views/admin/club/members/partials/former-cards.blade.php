@@ -1,7 +1,7 @@
 @if($formerMembers->total() > 0)
 <div class="mb-4 flex items-center gap-2 px-1">
     <i class="bi bi-person-dash text-gray-400"></i>
-    <span class="text-sm text-gray-500">{{ $formerMembers->total() }} former member{{ $formerMembers->total() !== 1 ? 's' : '' }} — profiles and history are preserved</span>
+    <span class="text-sm text-gray-500">{{ trans_choice('admin.partials_former_cards_summary', $formerMembers->total(), ['count' => $formerMembers->total()]) }}</span>
 </div>
 <div class="grid gap-6" style="grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));">
     @foreach($formerMembers as $member)
@@ -17,7 +17,7 @@
         :href="route('member.show', $user->uuid)"
         :guardian="$guardian"
         :memberSince="$member->created_at"
-        footerLabel="FORMER MEMBER"
+        footerLabel="{{ __('admin.partials_former_cards_footer_label') }}"
         footerStyle="translucent"
         cardClass="member-card opacity-75"
         class="member-item"
@@ -34,6 +34,6 @@
 @else
 <div class="text-center py-16 text-gray-400">
     <i class="bi bi-person-check text-4xl mb-3 block"></i>
-    <p class="text-sm">No former members yet</p>
+    <p class="text-sm">{{ __('admin.partials_former_cards_empty') }}</p>
 </div>
 @endif

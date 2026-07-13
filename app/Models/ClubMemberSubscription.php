@@ -4,17 +4,17 @@ namespace App\Models;
 
 use App\Traits\BelongsToTenant;
 use App\Traits\DeletesUploadedFiles;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Carbon\Carbon;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
 class ClubMemberSubscription extends Model
 {
-    use HasFactory, BelongsToTenant, LogsActivity, DeletesUploadedFiles;
+    use BelongsToTenant, DeletesUploadedFiles, HasFactory, LogsActivity;
 
     /**
      * Uploaded proof files removed automatically before the record is deleted.
@@ -22,7 +22,7 @@ class ClubMemberSubscription extends Model
      */
     protected array $fileUploads = [
         'proof_of_payment' => 'local',
-        'refund_proof'     => 'local',
+        'refund_proof' => 'local',
     ];
 
     public function getActivitylogOptions(): LogOptions
@@ -56,6 +56,7 @@ class ClubMemberSubscription extends Model
         'end_date',
         'status',
         'payment_status',
+        'settled_at',
         'amount_paid',
         'amount_due',
         'registration_fee',
@@ -81,7 +82,7 @@ class ClubMemberSubscription extends Model
     {
         $setKey = function (self $sub): void {
             $sub->active_key = in_array($sub->status, self::ACTIVE_STATUSES, true)
-                ? "{$sub->tenant_id}:{$sub->user_id}:" . ($sub->package_id ?? 'null')
+                ? "{$sub->tenant_id}:{$sub->user_id}:".($sub->package_id ?? 'null')
                 : null;
         };
 
@@ -97,6 +98,7 @@ class ClubMemberSubscription extends Model
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
+        'settled_at' => 'datetime',
         'amount_paid' => 'decimal:2',
         'amount_due' => 'decimal:2',
         'registration_fee' => 'decimal:2',
@@ -160,6 +162,7 @@ class ClubMemberSubscription extends Model
         }
 
         $daysUntilExpiry = Carbon::now()->diffInDays($this->end_date, false);
+
         return $daysUntilExpiry >= 0 && $daysUntilExpiry <= 3;
     }
 

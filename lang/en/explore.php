@@ -25,4 +25,46 @@ return [
     'cat_venues'        => 'Venues',
     'cat_supplements'   => 'Supplements',
     'cat_food_plans'    => 'Food Plans',
+
+    'loading'           => 'Loading...',
+
+    // Result cards
+    'na'                    => 'N/A',
+    'personal_trainer_badge' => 'Personal Trainer',
+    'sports_club_badge'     => 'Sports Club',
+    'years_exp'             => 'Years Exp',
+    'reviews'               => 'Reviews',
+    'rating'                => 'Rating',
+    'book_session'          => 'Book Session',
+    'view_details'          => 'View Details',
+    'members'               => 'Members',
+    'packages'              => 'Packages',
+    'trainers'              => 'Trainers',
+    'join_club'             => 'Join Club',
+    'km_away'               => 'km away',
+    'location_available'    => 'Location available',
+
+    // Join / registration wizard
+    'no_members_selected_title' => 'No members selected',
+    'no_members_selected_body'  => 'Select at least one member to continue.',
+    'packages_required_title'   => 'Package required',
+    'packages_required_body'    => 'Choose a package for every selected member.',
+    'choose_option_title'       => 'Option required',
+    'choose_option_body'        => 'Choose an option for each selected equipment item.',
+    'payment_required_title'    => 'Payment proof required',
+    'payment_required_body'     => 'Upload a payment screenshot or choose to pay later.',
+    'registration_submitted_title' => 'Registration submitted',
+    'registration_submitted_body'  => 'Your registration has been sent to the club for approval.',
+    'registration_failed_title' => 'Registration failed',
+    'please_try_again'          => 'Please try again.',
+    'registration_error_body'   => 'Something went wrong while submitting your registration.',
+
+    // Geolocation / fetch errors
+    'geolocation_not_supported'  => 'Geolocation is not supported by your browser.',
+    'unable_to_get_location'     => 'Unable to get your location.',
+    'location_access_denied'     => ' Location access was denied.',
+    'location_unavailable'       => ' Location information is unavailable.',
+    'location_request_timed_out' => ' The location request timed out.',
+    'failed_to_fetch_clubs'      => 'Failed to load clubs. Please try again.',
+    'error_fetching_clubs'       => 'An error occurred while loading clubs.',
 ];

@@ -29,11 +29,11 @@ $perksJson = $perks->map(function($p) {
     {{-- Header --}}
     <div class="flex items-center justify-between mb-6">
         <div>
-            <h2 class="text-xl font-bold text-foreground">Member Exclusive Perks</h2>
-            <p class="text-sm text-muted-foreground mt-0.5">Manage perks and offers available to active members</p>
+            <h2 class="text-xl font-bold text-foreground">{{ __('admin.club_perks_index_title') }}</h2>
+            <p class="text-sm text-muted-foreground mt-0.5">{{ __('admin.club_perks_index_subtitle') }}</p>
         </div>
         <button @click="openAdd()" class="btn btn-primary">
-            <i class="bi bi-plus-lg mr-2"></i>Add Perk
+            <i class="bi bi-plus-lg me-2"></i>{{ __('admin.club_perks_index_add_perk') }}
         </button>
     </div>
 
@@ -42,9 +42,9 @@ $perksJson = $perks->map(function($p) {
         <div class="card border-0 shadow-sm">
             <div class="card-body text-center py-16">
                 <i class="bi bi-gift text-muted-foreground" style="font-size:2.5rem;opacity:.3;"></i>
-                <p class="mt-3 text-muted-foreground">No perks yet. Add your first member exclusive perk.</p>
+                <p class="mt-3 text-muted-foreground">{{ __('admin.club_perks_index_empty') }}</p>
                 <button @click="openAdd()" class="btn btn-primary mt-2">
-                    <i class="bi bi-plus-lg mr-2"></i>Add Perk
+                    <i class="bi bi-plus-lg me-2"></i>{{ __('admin.club_perks_index_add_perk') }}
                 </button>
             </div>
         </div>
@@ -66,13 +66,13 @@ $perksJson = $perks->map(function($p) {
                         </div>
                     @endif
                     {{-- Badge --}}
-                    <span class="absolute top-2 left-2 text-xs font-extrabold px-2 py-1 rounded-full bg-white/90 text-gray-800">
+                    <span class="absolute top-2 start-2 text-xs font-extrabold px-2 py-1 rounded-full bg-white/90 text-gray-800">
                         {{ $perk->badge }}
                     </span>
                     {{-- Type badge --}}
-                    <span class="absolute top-2 right-2 text-xs font-semibold px-2 py-1 rounded-full
+                    <span class="absolute top-2 end-2 text-xs font-semibold px-2 py-1 rounded-full
                         {{ $perk->perk_type === 'qr' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">
-                        {{ $perk->perk_type === 'qr' ? 'QR Code' : 'Promo Code' }}
+                        {{ $perk->perk_type === 'qr' ? __('admin.club_perks_index_qr_code') : __('admin.club_perks_index_promo_code') }}
                     </span>
                 </div>
                 {{-- Card body --}}
@@ -91,17 +91,17 @@ $perksJson = $perks->map(function($p) {
                         </div>
                         <div class="flex gap-1.5 flex-shrink-0">
                             <button @click="openEdit({{ $perk->id }})"
-                                    class="btn btn-sm btn-outline-secondary" title="Edit">
+                                    class="btn btn-sm btn-outline-secondary" title="{{ __('shared.edit') }}">
                                 <i class="bi bi-pencil"></i>
                             </button>
                             <button @click="deletePerk({{ $perk->id }})"
-                                    class="btn btn-sm btn-outline-danger" title="Delete">
+                                    class="btn btn-sm btn-outline-danger" title="{{ __('shared.delete') }}">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>
                     </div>
                     @if($isInactive)
-                    <span class="badge bg-gray-100 text-gray-500 text-xs mt-2">Inactive</span>
+                    <span class="badge bg-gray-100 text-gray-500 text-xs mt-2">{{ __('admin.club_perks_index_inactive') }}</span>
                     @endif
                 </div>
             </div>
@@ -122,7 +122,7 @@ $perksJson = $perks->map(function($p) {
         <div class="flex min-h-full items-center justify-center p-4">
             <div class="modal-content border-0 shadow-lg w-full max-w-2xl relative" @click.stop>
                 <div class="modal-header border-b border-border px-6 py-4">
-                    <h5 class="modal-title text-lg font-semibold" x-text="isEdit ? 'Edit Perk' : 'Add Perk'"></h5>
+                    <h5 class="modal-title text-lg font-semibold" x-text="isEdit ? '{{ __('admin.club_perks_index_edit_perk') }}' : '{{ __('admin.club_perks_index_add_perk') }}'"></h5>
                     <button type="button" class="text-muted-foreground hover:text-foreground" @click="showModal = false">
                         <i class="bi bi-x-lg"></i>
                     </button>
@@ -134,10 +134,10 @@ $perksJson = $perks->map(function($p) {
                         @include('admin.club.perks.partials.form-fields')
                     </div>
                     <div class="modal-footer border-t border-border px-6 py-4 flex justify-end gap-3">
-                        <button type="button" class="btn btn-outline-secondary" @click="showModal = false">Cancel</button>
+                        <button type="button" class="btn btn-outline-secondary" @click="showModal = false">{{ __('shared.cancel') }}</button>
                         <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-lg mr-1"></i>
-                            <span x-text="isEdit ? 'Update Perk' : 'Save Perk'"></span>
+                            <i class="bi bi-check-lg me-1"></i>
+                            <span x-text="isEdit ? '{{ __('admin.club_perks_index_update_perk') }}' : '{{ __('admin.club_perks_index_save_perk') }}'"></span>
                         </button>
                     </div>
                 </form>
@@ -188,9 +188,9 @@ function perksAdmin() {
 
         deletePerk(id) {
             confirmAction({
-                title:       'Delete Perk',
-                message:     'This perk will be permanently removed.',
-                confirmText: 'Delete',
+                title:       '{{ __('admin.club_perks_index_delete_perk_title') }}',
+                message:     '{{ __('admin.club_perks_index_delete_perk_confirm') }}',
+                confirmText: '{{ __('shared.delete') }}',
                 type:        'danger',
             }).then(confirmed => {
                 if (!confirmed) return;
@@ -205,12 +205,12 @@ function perksAdmin() {
                 .then(data => {
                     if (data.success) {
                         document.getElementById('perk-' + id)?.remove();
-                        window.showToast('success', data.message || 'Perk deleted.');
+                        window.showToast('success', data.message || '{{ __('admin.club_perks_index_deleted') }}');
                     } else {
-                        window.showToast('error', data.message || 'Failed to delete perk.');
+                        window.showToast('error', data.message || '{{ __('admin.club_perks_index_delete_failed') }}');
                     }
                 })
-                .catch(() => window.showToast('error', 'Failed to delete perk.'));
+                .catch(() => window.showToast('error', '{{ __('admin.club_perks_index_delete_failed') }}'));
             });
         },
     };

@@ -2,9 +2,9 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use App\Models\User;
 use App\Models\Role;
+use App\Models\User;
+use Illuminate\Console\Command;
 
 class MakeSuperAdmin extends Command
 {
@@ -31,14 +31,16 @@ class MakeSuperAdmin extends Command
 
         $user = User::where('email', $email)->first();
 
-        if (!$user) {
+        if (! $user) {
             $this->error("User with email '{$email}' not found!");
+
             return 1;
         }
 
         // Check if user already has super-admin role
         if ($user->hasRole('super-admin')) {
             $this->info("User '{$user->full_name}' ({$email}) is already a super admin!");
+
             return 0;
         }
 
@@ -46,7 +48,7 @@ class MakeSuperAdmin extends Command
         $user->assignRole('super-admin');
 
         $this->info("✅ Successfully made '{$user->full_name}' ({$email}) a super admin!");
-        $this->info("They can now access the admin panel at: " . url('/admin'));
+        $this->info('They can now access the admin panel at: '.url('/admin'));
 
         return 0;
     }

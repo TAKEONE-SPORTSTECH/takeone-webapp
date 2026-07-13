@@ -17,7 +17,7 @@
         <div class="modal-content border-0 shadow-lg w-full max-w-3xl relative rounded-xl overflow-hidden" @click.stop>
             <!-- Header -->
             <div class="modal-header border-b border-gray-200 px-6 py-4">
-                <h5 class="modal-title text-lg font-semibold" id="editFacilityModalLabel">Edit Facility</h5>
+                <h5 class="modal-title text-lg font-semibold" id="editFacilityModalLabel">{{ __('admin.club_facilities_edit_title') }}</h5>
                 <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" @click="showEditFacilityModal = false">
                     <i class="bi bi-x-lg"></i>
                 </button>
@@ -33,19 +33,19 @@
                     <div class="space-y-6">
                         <!-- Basic Info Section -->
                         <div class="space-y-4">
-                            <h6 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Basic Information</h6>
+                            <h6 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">{{ __('admin.club_facilities_edit_basic_information') }}</h6>
 
                             <x-lang-toggle class="mb-4" />
 
                             <!-- Facility Name -->
                             <div class="space-y-2">
-                                <label for="editFacilityName" class="block text-sm font-medium text-gray-700">Facility Name <span class="text-red-500">*</span></label>
+                                <label for="editFacilityName" class="block text-sm font-medium text-gray-700">{{ __('admin.club_facilities_edit_facility_name') }} <span class="text-red-500">*</span></label>
                                 <input type="text"
                                        id="editFacilityName"
                                        name="name"
                                        required
                                        x-show="lang==='en'"
-                                       placeholder="e.g., Main Swimming Pool"
+                                       placeholder="{{ __('admin.club_facilities_edit_facility_name_placeholder') }}"
                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                                 <input type="text"
                                        id="editFacilityNameAr"
@@ -62,7 +62,7 @@
                         <div class="space-y-4">
                             <h6 class="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
                                 <i class="bi bi-geo-alt"></i>
-                                Location
+                                {{ __('admin.club_facilities_edit_location') }}
                             </h6>
                             <x-location-map
                                 id="editFacility"
@@ -73,7 +73,7 @@
                                 :defaultLng="$club->longitude ?? 55.2708"
                             />
                             <div class="space-y-1" x-show="lang==='ar'" x-cloak>
-                                <label class="block text-sm font-medium text-gray-700">Address (العربية)</label>
+                                <label class="block text-sm font-medium text-gray-700">{{ __('admin.club_facilities_edit_address_ar_label') }}</label>
                                 <input type="text"
                                        id="editFacilityAddressAr"
                                        name="translations[address][ar]"
@@ -84,22 +84,22 @@
                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                             </div>
                             <div class="space-y-1">
-                                <label class="block text-sm font-medium text-gray-700">Google Maps URL</label>
+                                <label class="block text-sm font-medium text-gray-700">{{ __('admin.club_facilities_edit_google_maps_url') }}</label>
                                 <input type="url" id="editFacilityMapsUrl" name="maps_url" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                                        placeholder="https://maps.google.com/...">
-                                <p class="text-xs text-gray-500">Paste a Google Maps share link for members to navigate directly to this facility.</p>
+                                <p class="text-xs text-gray-500">{{ __('admin.club_facilities_edit_maps_url_hint') }}</p>
                             </div>
                         </div>
 
                         <!-- Availability Options -->
                         <div class="space-y-4">
-                            <h6 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Availability</h6>
+                            <h6 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">{{ __('admin.club_facilities_edit_availability') }}</h6>
 
                             <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                                 <input type="checkbox" id="editIsAvailable" name="is_available" value="1" class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary">
                                 <div>
-                                    <span class="block text-sm font-medium text-gray-700">Currently Available</span>
-                                    <span class="text-xs text-gray-500">Facility is open for use</span>
+                                    <span class="block text-sm font-medium text-gray-700">{{ __('admin.club_facilities_edit_currently_available') }}</span>
+                                    <span class="text-xs text-gray-500">{{ __('admin.club_facilities_edit_currently_available_hint') }}</span>
                                 </div>
                             </label>
                         </div>
@@ -108,14 +108,14 @@
                         <div class="space-y-3">
                             <h6 class="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
                                 <i class="bi bi-images"></i>
-                                Facility Images
+                                {{ __('admin.club_facilities_edit_facility_images') }}
                             </h6>
                             <div id="editFacilityImagePreviews" class="flex flex-wrap gap-2"></div>
                             <input type="hidden" name="keep_images" id="editFacilityKeepImages" value="[]">
                             <div id="editFacilityBase64Inputs"></div>
                             <button type="button" onclick="openFacilityCropper('edit')"
                                     class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-2">
-                                <i class="bi bi-camera"></i> Add Image
+                                <i class="bi bi-camera"></i> {{ __('admin.club_facilities_edit_add_image') }}
                             </button>
                         </div>
                     </div>
@@ -127,14 +127,14 @@
                 <button type="button"
                         class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                         @click="showEditFacilityModal = false">
-                    Cancel
+                    {{ __('shared.cancel') }}
                 </button>
                 <button type="submit"
                         form="editFacilityForm"
                         id="submitEditFacilityBtn"
                         class="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2">
                     <i class="bi bi-check-lg"></i>
-                    <span>Update Facility</span>
+                    <span>{{ __('admin.club_facilities_edit_update_facility') }}</span>
                 </button>
             </div>
         </div>

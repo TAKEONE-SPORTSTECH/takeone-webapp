@@ -120,15 +120,15 @@
                     @if(Auth::user()->isSuperAdmin())
                         <a href="{{ route('admin.platform.index') }}"
                            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent">
-                            <i class="bi bi-shield-check text-lg w-5 text-center"></i>Admin Dashboard
+                            <i class="bi bi-shield-check text-lg w-5 text-center"></i>{{ __('nav.admin_club_mobile_admin_dashboard') }}
                         </a>
                         <a href="{{ route('me.home') }}"
                            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent">
-                            <i class="bi bi-house text-lg w-5 text-center"></i>My Home
+                            <i class="bi bi-house text-lg w-5 text-center"></i>{{ __('nav.admin_club_mobile_my_home') }}
                         </a>
                         <a href="{{ route('admin.platform.clubs') }}"
                            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-accent">
-                            <i class="bi bi-arrow-left text-lg w-5 text-center"></i>Back to Clubs
+                            <i class="bi bi-arrow-left text-lg w-5 text-center"></i>{{ __('nav.admin_club_mobile_back_to_clubs') }}
                         </a>
                     @else
                         <a href="{{ $hasBusiness ? route('business.dashboard') : route('clubs.explore') }}"
@@ -143,7 +143,7 @@
     </div>
 
     {{-- ===== Content ===== --}}
-    <main id="shell-content" data-route="{{ $currentRoute }}" data-title="{{ $activeLabel }}" class="mobile-stagger px-4 py-4 pb-24 min-h-[60vh]">
+    <main id="shell-content" data-shell-id="admin-club" data-route="{{ $currentRoute }}" data-title="{{ $activeLabel }}" class="mobile-stagger px-4 py-4 pb-24 min-h-[60vh]">
         @yield('club-admin-content')
     </main>
 

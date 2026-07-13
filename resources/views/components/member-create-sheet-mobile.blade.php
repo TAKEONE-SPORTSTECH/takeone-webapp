@@ -175,15 +175,16 @@
                                                 <i class="bi bi-x-circle"></i>
                                             </button>
                                         </div>
-                                        <select x-model="contact.relationship" class="tf-select text-sm py-2">
-                                            <option value="">{{ __('member.relationship') }}</option>
-                                            <option value="parent">{{ __('member.rel_parent') }}</option>
-                                            <option value="spouse">{{ __('member.rel_spouse') }}</option>
-                                            <option value="sibling">{{ __('member.rel_sibling') }}</option>
-                                            <option value="child">{{ __('member.rel_child') }}</option>
-                                            <option value="friend">{{ __('member.rel_friend') }}</option>
-                                            <option value="other">{{ __('member.rel_other') }}</option>
-                                        </select>
+                                        <x-select-menu model="contact.relationship"
+                                            placeholder="{{ __('member.relationship') }}"
+                                            :options="[
+                                                ['value' => 'parent', 'label' => __('member.rel_parent')],
+                                                ['value' => 'spouse', 'label' => __('member.rel_spouse')],
+                                                ['value' => 'sibling', 'label' => __('member.rel_sibling')],
+                                                ['value' => 'child', 'label' => __('member.rel_child')],
+                                                ['value' => 'friend', 'label' => __('member.rel_friend')],
+                                                ['value' => 'other', 'label' => __('member.rel_other')],
+                                            ]" />
                                         <div class="flex items-center gap-2">
                                             <input type="text" x-model="contact.phone_code" placeholder="+973" class="tf-input text-sm py-2 w-20 text-center">
                                             <input type="tel" x-model="contact.phone" placeholder="{{ __('member.phone_number') }}" class="tf-input text-sm py-2 flex-1">
@@ -237,15 +238,18 @@
                                 <template x-for="(doc, i) in docs" :key="i">
                                     <div class="p-3 bg-gray-50 rounded-xl space-y-2">
                                         <div class="flex items-center gap-2">
-                                            <select x-model="doc.type" class="tf-select text-sm py-2 flex-1">
-                                                <option value="">{{ __('member.document_type') }}</option>
-                                                <option value="National ID">{{ __('member.doc_national_id') }}</option>
-                                                <option value="Passport">{{ __('member.doc_passport') }}</option>
-                                                <option value="CPR">{{ __('member.doc_cpr') }}</option>
-                                                <option value="Driving Licence">{{ __('member.doc_driving_licence') }}</option>
-                                                <option value="Residence Permit">{{ __('member.doc_residence_permit') }}</option>
-                                                <option value="Other">{{ __('member.doc_other') }}</option>
-                                            </select>
+                                            <div class="flex-1">
+                                                <x-select-menu model="doc.type"
+                                                    placeholder="{{ __('member.document_type') }}"
+                                                    :options="[
+                                                        ['value' => 'National ID', 'label' => __('member.doc_national_id')],
+                                                        ['value' => 'Passport', 'label' => __('member.doc_passport')],
+                                                        ['value' => 'CPR', 'label' => __('member.doc_cpr')],
+                                                        ['value' => 'Driving Licence', 'label' => __('member.doc_driving_licence')],
+                                                        ['value' => 'Residence Permit', 'label' => __('member.doc_residence_permit')],
+                                                        ['value' => 'Other', 'label' => __('member.doc_other')],
+                                                    ]" />
+                                            </div>
                                             <button type="button" @click="docs.splice(i,1)" class="text-red-400 hover:text-red-600 flex-shrink-0 w-8 h-8 flex items-center justify-center">
                                                 <i class="bi bi-x-circle"></i>
                                             </button>

@@ -22,8 +22,9 @@ use Illuminate\View\View;
  */
 class PersonalMobileController extends Controller
 {
-    use \App\Traits\HandlesClubAuthorization;
     use \App\Traits\BuildsMemberPayments;
+    use \App\Traits\HandlesClubAuthorization;
+    use \App\Traits\StoresBase64Images;
 
     private function clubIds()
     {
@@ -49,8 +50,10 @@ class PersonalMobileController extends Controller
             'pollVotes:id,user_post_id,user_id,option',
         ];
 
-        // "My Feed" — the member's own persisted posts (newest first).
+        // "My Feed" — the member's own persisted posts (newest first). Hidden
+        // (moderated) posts drop out for everyone but super-admins.
         $personalPosts = \App\Models\UserPost::where('user_id', $user->id)
+            ->visibleTo($user)
             ->with($postWith)->withCount(['likes', 'views'])->latest()->get()
             ->map(fn ($p) => $p->toFeedArray($user))->values();
 
@@ -65,6 +68,7 @@ class PersonalMobileController extends Controller
         $followingPosts = $audience->isEmpty()
             ? collect()
             : \App\Models\UserPost::whereIn('user_id', $audience)
+                ->visibleTo($user)
                 ->with($postWith)->withCount(['likes', 'views'])->latest()->limit(50)->get()
                 ->map(fn ($p) => $p->toFeedArray($user))->values();
 
@@ -78,15 +82,15 @@ class PersonalMobileController extends Controller
             ->take(20);
 
         $suggestions = \App\Models\User::whereIn('id', $mateIds)
-            ->get(['id', 'slug', 'full_name', 'profile_picture', 'updated_at'])
+            ->get(['id', 'uuid', 'slug', 'full_name', 'profile_picture', 'updated_at'])
             ->map(fn ($u) => [
-                'id'        => $u->id,
-                'slug'      => $u->slug,
-                'name'      => $u->full_name,
-                'avatar'    => $u->profile_picture
-                    ? asset('storage/' . $u->profile_picture) . '?v=' . optional($u->updated_at)->timestamp
+                'id' => $u->id,
+                'slug' => $u->slug,
+                'name' => $u->full_name,
+                'avatar' => $u->profile_picture
+                    ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp
                     : null,
-                'url'       => route('wall.show', $u),
+                'url' => route('people.show', $u->uuid),
                 'following' => $followingIdSet->has($u->id),
             ])->values();
 
@@ -108,48 +112,36 @@ class PersonalMobileController extends Controller
             ->values();
 
         $memberFeed = \App\Models\UserPost::whereIn('user_id', $allMemberIds)
+            ->visibleTo($user)
             ->with($postWith)->withCount(['likes', 'views'])->latest()->limit(80)->get()
             ->map(fn ($p) => $p->toFeedArray($user) + ['kind' => 'member']);
 
         $clubFeed = $posts->map(fn ($p) => [
-            'kind'     => 'club',
-            'id'       => $p->id,
-            'ts'       => optional($p->posted_at)->timestamp ?? 0,
-            'club'     => [
+            'kind' => 'club',
+            'id' => $p->id,
+            'ts' => optional($p->posted_at)->timestamp ?? 0,
+            'club' => [
                 'name' => $p->tenant->club_name ?? __('personal.club'),
-                'logo' => $p->tenant && $p->tenant->logo ? asset('storage/' . $p->tenant->logo) : null,
+                'logo' => $p->tenant && $p->tenant->logo ? asset('storage/'.$p->tenant->logo) : null,
             ],
             'category' => $p->category ?? __('personal.update'),
-            'time'     => optional($p->posted_at)->diffForHumans(),
-            'body'     => $p->body ?? '',
-            'image'    => $p->image_path ? asset('storage/' . $p->image_path) : null,
-            'cover'    => $p->cover,
-            'likes'    => (int) $p->likes_count,
+            'time' => optional($p->posted_at)->diffForHumans(),
+            'body' => $p->body ?? '',
+            'image' => $p->image_path ? asset('storage/'.$p->image_path) : null,
+            'cover' => $p->cover,
+            'likes' => (int) $p->likes_count,
             'comments' => (int) $p->comments_count,
         ]);
 
         $allPosts = $clubFeed->concat($memberFeed)->sortByDesc('ts')->values();
 
-        // Stories — real, DB-backed (24h). Show active stories from the people
-        // you can see: those you follow, your club-mates and yourself, minus
-        // blocked accounts. Newest first; the current user's own stories first.
-        $storyAudience = $followIds
-            ->merge($clubMemberIds)
-            ->push($user->id)
-            ->unique()
-            ->diff($blockedIds)
-            ->values();
+        // Unseen (red-dot) indicators for the feed sub-tabs. The "All" tab is the
+        // default active view, so mark it seen now — its dot clears on open.
+        $activity = app(\App\Support\SectionActivity::class);
+        $activity->markSeen($user, 'feed:all');
+        $feedTabDots = $activity->feedTabDots($user);
 
-        $stories = \App\Models\UserStory::active()
-            ->whereIn('user_id', $storyAudience)
-            ->with('user:id,full_name,profile_picture,updated_at')
-            ->latest()
-            ->get()
-            ->sortByDesc(fn ($s) => $s->user_id === $user->id ? PHP_INT_MAX : $s->id)
-            ->map(fn ($s) => $s->toFeedArray())
-            ->values();
-
-        return view('personal.home', compact('user', 'posts', 'personalPosts', 'followingPosts', 'suggestions', 'allPosts', 'stories'));
+        return view('personal.home', compact('user', 'posts', 'personalPosts', 'followingPosts', 'suggestions', 'allPosts', 'feedTabDots'));
     }
 
     /**
@@ -160,17 +152,18 @@ class PersonalMobileController extends Controller
      */
     private function assembleSchedule(): array
     {
-        $now       = \Carbon\Carbon::now();
+        $now = \Carbon\Carbon::now();
         $weekStart = $now->copy()->startOfWeek(\Carbon\Carbon::SUNDAY);
 
         $weekDays = collect(range(0, 6))->map(function ($i) use ($weekStart, $now) {
             $d = $weekStart->copy()->addDays($i);
+
             return [
-                'key'     => strtolower($d->format('l')),
-                'short'   => $d->format('D'),
-                'd'       => $d->format('j'),
+                'key' => strtolower($d->format('l')),
+                'short' => $d->format('D'),
+                'd' => $d->format('j'),
                 'isToday' => $d->isSameDay($now),
-                'isPast'  => $d->lt($now->copy()->startOfDay()),
+                'isPast' => $d->lt($now->copy()->startOfDay()),
             ];
         });
 
@@ -179,9 +172,9 @@ class PersonalMobileController extends Controller
         [$members, $subjectKeys] = $this->scheduleMembers();
         $teaching = $this->teachingSessions();
         // If a class is both taught and enrolled-in by "me", the teaching card wins.
-        $taughtKeys = $teaching->map(fn ($c) => $c['token'] . '|' . $c['who'])->flip();
+        $taughtKeys = $teaching->map(fn ($c) => $c['token'].'|'.$c['who'])->flip();
         $synced = $this->syncedSessions($subjectKeys)
-            ->reject(fn ($c) => isset($taughtKeys[($c['token'] ?? '') . '|' . $c['who']]))
+            ->reject(fn ($c) => isset($taughtKeys[($c['token'] ?? '').'|'.$c['who']]))
             ->values();
 
         // Apply substitute trainers + cancellations to this week's occurrences.
@@ -197,17 +190,18 @@ class PersonalMobileController extends Controller
 
         // Stamp each session with a status relative to today (weekly recurring).
         $todayKey = strtolower($now->format('l'));
-        $order    = ['sunday'=>0,'monday'=>1,'tuesday'=>2,'wednesday'=>3,'thursday'=>4,'friday'=>5,'saturday'=>6];
+        $order = ['sunday' => 0, 'monday' => 1, 'tuesday' => 2, 'wednesday' => 3, 'thursday' => 4, 'friday' => 5, 'saturday' => 6];
         $sessions = $sessions->map(function ($s) use ($order, $todayKey) {
             $cmp = ($order[$s['day']] ?? 0) <=> $order[$todayKey];
             $s['status'] = $cmp < 0 ? 'done' : ($cmp === 0 ? 'today' : 'upcoming');
+
             return $s;
         })->values();
 
         return [
             'weekDays' => $weekDays,
             'sessions' => $sessions,
-            'members'  => $members,
+            'members' => $members,
             'todayKey' => $todayKey,
             'todayShort' => $now->format('D'),
         ];
@@ -218,7 +212,7 @@ class PersonalMobileController extends Controller
         ['weekDays' => $weekDays, 'sessions' => $sessions, 'members' => $members, 'todayKey' => $todayKey, 'todayShort' => $todayShort] = $this->assembleSchedule();
 
         $subjectsList = collect($members)->values();   // for the create-form subject picker
-        $iconChoices  = $this->scheduleIconChoices();
+        $iconChoices = $this->scheduleIconChoices();
         $colorChoices = $this->scheduleColorChoices();
 
         return view('personal.schedule', compact(
@@ -235,7 +229,7 @@ class PersonalMobileController extends Controller
         return response()->json([
             'weekDays' => $weekDays,
             'sessions' => $sessions,
-            'members'  => $members,
+            'members' => $members,
             'todayKey' => $todayKey,
         ]);
     }
@@ -250,25 +244,25 @@ class PersonalMobileController extends Controller
             ->firstOrFail();
 
         $whoKey = $subjectKeys[$model->subject_user_id] ?? 'me';
-        $s      = $model->toCardArray($whoKey);
+        $s = $model->toCardArray($whoKey);
 
         // Status relative to today so the detail's "complete" state matches.
-        $order = ['sunday'=>0,'monday'=>1,'tuesday'=>2,'wednesday'=>3,'thursday'=>4,'friday'=>5,'saturday'=>6];
-        $cmp   = ($order[$s['day']] ?? 0) <=> $order[strtolower(\Carbon\Carbon::now()->format('l'))];
+        $order = ['sunday' => 0, 'monday' => 1, 'tuesday' => 2, 'wednesday' => 3, 'thursday' => 4, 'friday' => 5, 'saturday' => 6];
+        $cmp = ($order[$s['day']] ?? 0) <=> $order[strtolower(\Carbon\Carbon::now()->format('l'))];
         $s['status'] = $cmp < 0 ? 'done' : ($cmp === 0 ? 'today' : 'upcoming');
 
-        $member       = $members[$whoKey] ?? ($members['me'] ?? null);
+        $member = $members[$whoKey] ?? ($members['me'] ?? null);
         $subjectsList = collect($members)->values();
-        $isOwner      = $model->user_id === Auth::id();
+        $isOwner = $model->user_id === Auth::id();
 
         $synced = false;
 
         // Structured location (map + Google link) for the detail.
         $location = $this->locationView($s['location_type'] ?? null, [
-            'lat'     => $s['location_lat'] ?? null,
-            'lng'     => $s['location_lng'] ?? null,
+            'lat' => $s['location_lat'] ?? null,
+            'lng' => $s['location_lng'] ?? null,
             'address' => $s['location_address'] ?? null,
-            'text'    => $s['location'] ?? null,
+            'text' => $s['location'] ?? null,
         ]);
         $clubFacilities = collect();   // personal sessions have no facilities / instructors
         $clubInstructors = collect();
@@ -289,13 +283,13 @@ class PersonalMobileController extends Controller
 
         $members = [
             'me' => [
-                'key'      => 'me',
-                'user_id'  => $user->id,
-                'name'     => 'You',
+                'key' => 'me',
+                'user_id' => $user->id,
+                'name' => 'You',
                 'relation' => 'Me',
                 'initials' => $this->initialsFor($user->name ?? 'You'),
-                'color'    => '#7c3aed',
-                'avatar'   => $this->avatarUrl($user),
+                'color' => '#7c3aed',
+                'avatar' => $this->avatarUrl($user),
             ],
         ];
         $subjectKeys = [$user->id => 'me'];
@@ -304,17 +298,21 @@ class PersonalMobileController extends Controller
         $i = 0;
         foreach ($user->dependents()->with('dependent:id,name,profile_picture,updated_at')->get() as $rel) {
             $dep = $rel->dependent;
-            if (! $dep) continue;                       // skip name-only dependents
-            if (isset($subjectKeys[$dep->id])) continue;
-            $key = 'u' . $dep->id;
+            if (! $dep) {
+                continue;
+            }                       // skip name-only dependents
+            if (isset($subjectKeys[$dep->id])) {
+                continue;
+            }
+            $key = 'u'.$dep->id;
             $members[$key] = [
-                'key'      => $key,
-                'user_id'  => $dep->id,
-                'name'     => $dep->name,
+                'key' => $key,
+                'user_id' => $dep->id,
+                'name' => $dep->name,
                 'relation' => ucfirst($rel->relationship_type ?? 'Family'),
                 'initials' => $this->initialsFor($dep->name),
-                'color'    => $palette[$i % count($palette)],
-                'avatar'   => $this->avatarUrl($dep),
+                'color' => $palette[$i % count($palette)],
+                'avatar' => $this->avatarUrl($dep),
             ];
             $subjectKeys[$dep->id] = $key;
             $i++;
@@ -341,7 +339,7 @@ class PersonalMobileController extends Controller
      */
     private function syncedSessions(array $subjectKeys): \Illuminate\Support\Collection
     {
-        $weekdays = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+        $weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
         $subs = ClubMemberSubscription::whereIn('user_id', array_keys($subjectKeys))
             ->whereIn('status', ['active', 'pending'])
@@ -356,13 +354,15 @@ class PersonalMobileController extends Controller
         $out = collect();
         foreach ($subs as $sub) {
             $whoKey = $subjectKeys[$sub->user_id] ?? 'me';
-            $club   = $sub->tenant?->club_name ?? 'Club';
-            $slug   = $sub->tenant?->slug;
+            $club = $sub->tenant?->club_name ?? 'Club';
+            $slug = $sub->tenant?->slug;
             foreach ($sub->package?->packageActivities ?? [] as $pa) {
                 $sched = is_array($pa->schedule) ? $pa->schedule : (json_decode($pa->schedule ?? '[]', true) ?: []);
                 foreach ($sched as $slot) {
                     $day = strtolower($slot['day'] ?? '');
-                    if (! in_array($day, $weekdays, true)) continue;
+                    if (! in_array($day, $weekdays, true)) {
+                        continue;
+                    }
                     $out->push($this->syncedCard($pa, $slot, $whoKey, $club, $slug, $sub->package?->name, 'synced'));
                 }
             }
@@ -378,7 +378,7 @@ class PersonalMobileController extends Controller
      */
     private function teachingSessions(): \Illuminate\Support\Collection
     {
-        $weekdays = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+        $weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
         $instructorIds = \App\Models\ClubInstructor::where('user_id', Auth::id())->pluck('id');
         if ($instructorIds->isEmpty()) {
@@ -401,7 +401,9 @@ class PersonalMobileController extends Controller
             $sched = is_array($pa->schedule) ? $pa->schedule : (json_decode($pa->schedule ?? '[]', true) ?: []);
             foreach ($sched as $slot) {
                 $day = strtolower($slot['day'] ?? '');
-                if (! in_array($day, $weekdays, true)) continue;
+                if (! in_array($day, $weekdays, true)) {
+                    continue;
+                }
                 $out->push($this->syncedCard($pa, $slot, 'me', $club, $slug, $pa->package?->name, 'teaching'));
             }
         }
@@ -430,10 +432,14 @@ class PersonalMobileController extends Controller
         $out = collect();
         foreach ($rows as $r) {
             $pa = $r->packageActivity;
-            if (! $pa) continue;
+            if (! $pa) {
+                continue;
+            }
             $sched = is_array($pa->schedule) ? $pa->schedule : (json_decode($pa->schedule ?? '[]', true) ?: []);
             $slot = collect($sched)->first(fn ($s) => strtolower($s['day'] ?? '') === $r->slot_day && (string) ($s['start_time'] ?? '') === (string) $r->slot_start);
-            if (! $slot) continue;
+            if (! $slot) {
+                continue;
+            }
             $club = $pa->package?->tenant?->club_name ?? 'Club';
             $out->push($this->syncedCard($pa, $slot, 'me', $club, $pa->package?->tenant?->slug, $pa->package?->name, 'substituting'));
         }
@@ -448,55 +454,55 @@ class PersonalMobileController extends Controller
      */
     private function syncedCard($pa, array $slot, string $whoKey, ?string $club, ?string $slug, ?string $packageName, string $source = 'synced'): array
     {
-        $day   = strtolower($slot['day'] ?? '');
-        $club  = $club ?: 'Club';
+        $day = strtolower($slot['day'] ?? '');
+        $club = $club ?: 'Club';
         $token = $this->syncedToken($pa->id, $day, $slot['start_time'] ?? '');
 
         $workout = $slot['workout'] ?? null;
 
         return [
-            'id'         => $source . '-' . $token . '-' . $whoKey,
-            'token'      => $token,
-            'pa_id'      => $pa->id,
-            'source'     => $source,                       // 'synced' (enrolled) | 'teaching' (coach)
-            'editable'   => false,
-            'club'       => $club,
-            'club_slug'  => $slug,
+            'id' => $source.'-'.$token.'-'.$whoKey,
+            'token' => $token,
+            'pa_id' => $pa->id,
+            'source' => $source,                       // 'synced' (enrolled) | 'teaching' (coach)
+            'editable' => false,
+            'club' => $club,
+            'club_slug' => $slug,
             'detail_url' => route('me.schedule.synced', ['token' => $token]),
-            'who'        => $whoKey,
-            'day'        => $day,
-            'start'      => $this->fmtTime($slot['start_time'] ?? null),
-            'end'        => $this->fmtTime($slot['end_time'] ?? null),
-            'start_raw'  => $slot['start_time'] ?? null,
-            'end_raw'    => $slot['end_time'] ?? null,
-            'duration'   => $this->slotDuration($slot['start_time'] ?? null, $slot['end_time'] ?? null),
-            'title'      => $slot['title'] ?? ($pa->activity->name ?? ($packageName ?? 'Class')),
+            'who' => $whoKey,
+            'day' => $day,
+            'start' => $this->fmtTime($slot['start_time'] ?? null),
+            'end' => $this->fmtTime($slot['end_time'] ?? null),
+            'start_raw' => $slot['start_time'] ?? null,
+            'end_raw' => $slot['end_time'] ?? null,
+            'duration' => $this->slotDuration($slot['start_time'] ?? null, $slot['end_time'] ?? null),
+            'title' => $slot['title'] ?? ($pa->activity->name ?? ($packageName ?? 'Class')),
             'discipline' => $slot['discipline'] ?? ($packageName ?? $club),
-            'icon'       => $slot['icon'] ?? match ($source) {
-                'teaching'     => 'bi-person-video3',
+            'icon' => $slot['icon'] ?? match ($source) {
+                'teaching' => 'bi-person-video3',
                 'substituting' => 'bi-person-check-fill',
-                default        => 'bi-calendar-check',
+                default => 'bi-calendar-check',
             },
-            'color'      => $slot['color'] ?? match ($source) {
-                'teaching'     => '#f59e0b',
+            'color' => $slot['color'] ?? match ($source) {
+                'teaching' => '#f59e0b',
                 'substituting' => '#10b981',
-                default        => '#0ea5e9',
+                default => '#0ea5e9',
             },
-            'coach'      => $slot['coach'] ?? ($pa->instructor?->user?->name ?? null),
-            'location'   => $this->slotLocationLabel($slot),
-            'location_type' => $slot['location_type'] ?? (!empty($slot['facility_id']) ? 'facility' : (isset($slot['location_lat']) ? 'map' : 'text')),
-            'facility_id'      => $slot['facility_id'] ?? null,
-            'location_lat'     => $slot['location_lat'] ?? null,
-            'location_lng'     => $slot['location_lng'] ?? null,
+            'coach' => $slot['coach'] ?? ($pa->instructor?->user?->name ?? null),
+            'location' => $this->slotLocationLabel($slot),
+            'location_type' => $slot['location_type'] ?? (! empty($slot['facility_id']) ? 'facility' : (isset($slot['location_lat']) ? 'map' : 'text')),
+            'facility_id' => $slot['facility_id'] ?? null,
+            'location_lat' => $slot['location_lat'] ?? null,
+            'location_lng' => $slot['location_lng'] ?? null,
             'location_address' => $slot['location_address'] ?? null,
-            'location_text'    => $slot['location_text'] ?? null,
-            'intensity'  => $slot['intensity'] ?? null,
-            'focus'      => $slot['focus'] ?? [],
-            'notes'      => $slot['notes'] ?? null,
-            'workout'    => [
-                'warmup'   => $workout['warmup']   ?? [],
-                'main'     => $workout['main']      ?? [],
-                'cooldown' => $workout['cooldown']  ?? [],
+            'location_text' => $slot['location_text'] ?? null,
+            'intensity' => $slot['intensity'] ?? null,
+            'focus' => $slot['focus'] ?? [],
+            'notes' => $slot['notes'] ?? null,
+            'workout' => [
+                'warmup' => $workout['warmup'] ?? [],
+                'main' => $workout['main'] ?? [],
+                'cooldown' => $workout['cooldown'] ?? [],
             ],
         ];
     }
@@ -510,11 +516,12 @@ class PersonalMobileController extends Controller
     /** Short display label for a club slot's location (facility name / address / text). */
     private function slotLocationLabel(array $slot): ?string
     {
-        $type = $slot['location_type'] ?? (!empty($slot['facility_id']) ? 'facility' : (isset($slot['location_lat']) ? 'map' : 'text'));
+        $type = $slot['location_type'] ?? (! empty($slot['facility_id']) ? 'facility' : (isset($slot['location_lat']) ? 'map' : 'text'));
+
         return match ($type) {
             'facility' => $slot['facility_name'] ?? null,
-            'map'      => $slot['location_address'] ?? 'Pinned location',
-            default    => $slot['location_text'] ?? ($slot['facility_name'] ?? null),
+            'map' => $slot['location_address'] ?? 'Pinned location',
+            default => $slot['location_text'] ?? ($slot['facility_name'] ?? null),
         };
     }
 
@@ -525,7 +532,7 @@ class PersonalMobileController extends Controller
 
     private function gsearchUrl(?string $q): ?string
     {
-        return $q ? 'https://www.google.com/maps/search/?api=1&query=' . urlencode($q) : null;
+        return $q ? 'https://www.google.com/maps/search/?api=1&query='.urlencode($q) : null;
     }
 
     /** Only allow http(s) URLs through (blocks javascript:/data: etc. from club-entered fields). */
@@ -548,15 +555,17 @@ class PersonalMobileController extends Controller
             if ($f) {
                 $lat = $f->gps_lat !== null ? (float) $f->gps_lat : null;
                 $lng = $f->gps_long !== null ? (float) $f->gps_long : null;
+
                 return [
-                    'type'     => 'facility',
-                    'label'    => $f->name,
-                    'address'  => $f->address,
-                    'lat'      => $lat,
-                    'lng'      => $lng,
+                    'type' => 'facility',
+                    'label' => $f->name,
+                    'address' => $f->address,
+                    'lat' => $lat,
+                    'lng' => $lng,
                     'maps_url' => $this->safeUrl($f->maps_url) ?: ($this->gmapUrl($lat, $lng) ?: $this->gsearchUrl($f->name)),
                 ];
             }
+
             // facility gone — fall back to cached name
             return ['type' => 'facility', 'label' => $opts['facility_name'] ?? 'Facility', 'address' => null, 'lat' => null, 'lng' => null, 'maps_url' => $this->gsearchUrl($opts['facility_name'] ?? null)];
         }
@@ -564,36 +573,43 @@ class PersonalMobileController extends Controller
         if ($type === 'map') {
             $lat = isset($opts['lat']) && $opts['lat'] !== null && $opts['lat'] !== '' ? (float) $opts['lat'] : null;
             $lng = isset($opts['lng']) && $opts['lng'] !== null && $opts['lng'] !== '' ? (float) $opts['lng'] : null;
+
             return [
-                'type'     => 'map',
-                'label'    => $opts['address'] ?: 'Pinned location',
-                'address'  => $opts['address'] ?? null,
-                'lat'      => $lat,
-                'lng'      => $lng,
+                'type' => 'map',
+                'label' => $opts['address'] ?: 'Pinned location',
+                'address' => $opts['address'] ?? null,
+                'lat' => $lat,
+                'lng' => $lng,
                 'maps_url' => $this->gmapUrl($lat, $lng) ?: $this->gsearchUrl($opts['address'] ?? null),
             ];
         }
 
         $text = $opts['text'] ?? null;
-        if (! $text) return null;
+        if (! $text) {
+            return null;
+        }
+
         return [
-            'type'     => 'text',
-            'label'    => $text,
-            'address'  => $text,
-            'lat'      => null,
-            'lng'      => null,
+            'type' => 'text',
+            'label' => $text,
+            'address' => $text,
+            'lat' => null,
+            'lng' => null,
             'maps_url' => $this->gsearchUrl($text),
         ];
     }
 
-    private array $dayOrder = ['sunday'=>0,'monday'=>1,'tuesday'=>2,'wednesday'=>3,'thursday'=>4,'friday'=>5,'saturday'=>6];
+    private array $dayOrder = ['sunday' => 0, 'monday' => 1, 'tuesday' => 2, 'wednesday' => 3, 'thursday' => 4, 'friday' => 5, 'saturday' => 6];
 
     /** Parse "HH:MM" / "6:30 AM" → minutes since midnight (null if unknown). */
     private function toMinutes(?string $t): ?int
     {
-        if (! $t) return null;
+        if (! $t) {
+            return null;
+        }
         try {
             $c = \Carbon\Carbon::parse($t);
+
             return $c->hour * 60 + $c->minute;
         } catch (\Throwable) {
             return null;
@@ -604,6 +620,7 @@ class PersonalMobileController extends Controller
     private function slotsForDay($pa, string $day): array
     {
         $sched = is_array($pa->schedule) ? $pa->schedule : (json_decode($pa->schedule ?? '[]', true) ?: []);
+
         return array_values(array_filter($sched, fn ($s) => strtolower($s['day'] ?? '') === $day));
     }
 
@@ -617,19 +634,26 @@ class PersonalMobileController extends Controller
     private function trainerBusyConflict(int $userId, string $day, ?string $start, ?string $end, string $date, int $excludePaId): ?string
     {
         $ts = $this->toMinutes($start);
-        if ($ts === null) return null;                 // no start time → can't judge
+        if ($ts === null) {
+            return null;
+        }                 // no start time → can't judge
         $te = $this->toMinutes($end) ?? ($ts + 60);
 
         $overlaps = function ($s, $e) use ($ts, $te) {
             $bs = $this->toMinutes($s);
-            if ($bs === null) return false;
+            if ($bs === null) {
+                return false;
+            }
             $be = $this->toMinutes($e) ?? ($bs + 60);
+
             return $bs < $te && $ts < $be;             // half-open interval overlap
         };
 
         // 1) Their own personal sessions on that weekday.
         foreach (UserScheduleSession::where('subject_user_id', $userId)->where('day', $day)->get(['start_time', 'end_time']) as $p) {
-            if ($overlaps($p->start_time, $p->end_time)) return 'a personal session';
+            if ($overlaps($p->start_time, $p->end_time)) {
+                return 'a personal session';
+            }
         }
 
         // 2) Classes they coach.
@@ -637,7 +661,9 @@ class PersonalMobileController extends Controller
         if ($instrIds->isNotEmpty()) {
             foreach (ClubPackageActivity::whereIn('instructor_id', $instrIds)->where('id', '!=', $excludePaId)->get() as $pa) {
                 foreach ($this->slotsForDay($pa, $day) as $sl) {
-                    if ($overlaps($sl['start_time'] ?? null, $sl['end_time'] ?? null)) return 'another class they coach';
+                    if ($overlaps($sl['start_time'] ?? null, $sl['end_time'] ?? null)) {
+                        return 'another class they coach';
+                    }
                 }
             }
         }
@@ -648,9 +674,13 @@ class PersonalMobileController extends Controller
             ->with('package.packageActivities')->get();
         foreach ($subs as $sub) {
             foreach ($sub->package?->packageActivities ?? [] as $pa) {
-                if ((int) $pa->id === $excludePaId) continue;
+                if ((int) $pa->id === $excludePaId) {
+                    continue;
+                }
                 foreach ($this->slotsForDay($pa, $day) as $sl) {
-                    if ($overlaps($sl['start_time'] ?? null, $sl['end_time'] ?? null)) return 'a class they’re enrolled in';
+                    if ($overlaps($sl['start_time'] ?? null, $sl['end_time'] ?? null)) {
+                        return 'a class they’re enrolled in';
+                    }
                 }
             }
         }
@@ -661,8 +691,12 @@ class PersonalMobileController extends Controller
             ->where('package_activity_id', '!=', $excludePaId)
             ->get();
         foreach ($others as $os) {
-            if ($os->slot_day !== $day) continue;
-            if ($overlaps($os->slot_start, null)) return 'another class they’re covering';
+            if ($os->slot_day !== $day) {
+                continue;
+            }
+            if ($overlaps($os->slot_start, null)) {
+                return 'another class they’re covering';
+            }
         }
 
         return null;
@@ -674,12 +708,16 @@ class PersonalMobileController extends Controller
         $target = $this->dayOrder[$day] ?? 0;
         $cursor = $from->copy()->startOfDay();
         $guard = 0;
-        while ($cursor->dayOfWeek !== $target && $guard < 7) { $cursor->addDay(); $guard++; }
+        while ($cursor->dayOfWeek !== $target && $guard < 7) {
+            $cursor->addDay();
+            $guard++;
+        }
         $dates = [];
         while ($cursor->lte($to) && count($dates) < 200) {
             $dates[] = $cursor->toDateString();
             $cursor->addDays(7);
         }
+
         return array_reverse($dates);   // recent first
     }
 
@@ -687,8 +725,9 @@ class PersonalMobileController extends Controller
     private function nextOccurrence(string $day): \Carbon\Carbon
     {
         $target = $this->dayOrder[$day] ?? 0;
-        $today  = \Carbon\Carbon::now()->startOfDay();
-        $diff   = (($target - $today->dayOfWeek) + 7) % 7;   // 0 = today
+        $today = \Carbon\Carbon::now()->startOfDay();
+        $diff = (($target - $today->dayOfWeek) + 7) % 7;   // 0 = today
+
         return $today->copy()->addDays($diff);
     }
 
@@ -711,20 +750,21 @@ class PersonalMobileController extends Controller
 
         $map = [];
         foreach ($rows as $r) {
-            $key = $r->package_activity_id . '|' . $r->slot_day . '|' . (string) $r->slot_start . '|' . $r->date->toDateString();
+            $key = $r->package_activity_id.'|'.$r->slot_day.'|'.(string) $r->slot_start.'|'.$r->date->toDateString();
             $map[$key] = $r;
         }
 
         return $cards->map(function ($c) use ($map, $weekStart) {
             $occ = $weekStart->copy()->addDays($this->dayOrder[$c['day']] ?? 0)->toDateString();
-            $key = ($c['pa_id'] ?? '') . '|' . $c['day'] . '|' . (string) ($c['start_raw'] ?? '') . '|' . $occ;
+            $key = ($c['pa_id'] ?? '').'|'.$c['day'].'|'.(string) ($c['start_raw'] ?? '').'|'.$occ;
             if (isset($map[$key])) {
                 $sub = $map[$key]->substitute;
                 $name = $sub ? ($sub->full_name ?: $sub->name) : 'Substitute';
-                $c['coach']        = $name;
-                $c['substitute']   = ['name' => $name, 'date' => $occ];
+                $c['coach'] = $name;
+                $c['substitute'] = ['name' => $name, 'date' => $occ];
                 $c['is_substituted'] = true;
             }
+
             return $c;
         })->values();
     }
@@ -744,13 +784,16 @@ class PersonalMobileController extends Controller
 
         $set = [];
         foreach ($rows as $r) {
-            $set[$r->package_activity_id . '|' . $r->slot_day . '|' . (string) $r->slot_start . '|' . $r->date->toDateString()] = true;
+            $set[$r->package_activity_id.'|'.$r->slot_day.'|'.(string) $r->slot_start.'|'.$r->date->toDateString()] = true;
         }
 
         return $cards->map(function ($c) use ($set, $weekStart) {
             $occ = $weekStart->copy()->addDays($this->dayOrder[$c['day']] ?? 0)->toDateString();
-            $key = ($c['pa_id'] ?? '') . '|' . $c['day'] . '|' . (string) ($c['start_raw'] ?? '') . '|' . $occ;
-            if (isset($set[$key])) $c['is_cancelled'] = true;
+            $key = ($c['pa_id'] ?? '').'|'.$c['day'].'|'.(string) ($c['start_raw'] ?? '').'|'.$occ;
+            if (isset($set[$key])) {
+                $c['is_cancelled'] = true;
+            }
+
             return $c;
         })->values();
     }
@@ -759,17 +802,23 @@ class PersonalMobileController extends Controller
     private function classFromToken(string $token): ?ClubPackageActivity
     {
         [$paId] = $this->decodeSyncedToken($token);
-        if ($paId === null) return null;
+        if ($paId === null) {
+            return null;
+        }
+
         return ClubPackageActivity::with(['package.tenant', 'instructor.user', 'activity:id,name'])->find($paId);
     }
 
     /** May the current user edit / manage this class (assigned coach OR club manager)? */
     private function canEditClass(?ClubPackageActivity $pa): bool
     {
-        if (! $pa) return false;
-        $tenant  = $pa->package?->tenant;
+        if (! $pa) {
+            return false;
+        }
+        $tenant = $pa->package?->tenant;
         $manages = $tenant && $this->canManageClub($tenant);
         $teaches = $pa->instructor && $pa->instructor->user_id === Auth::id();
+
         return $manages || $teaches;
     }
 
@@ -793,20 +842,22 @@ class PersonalMobileController extends Controller
             ->unique()
             ->values();
 
-        if ($recipients->isEmpty()) return;
+        if ($recipients->isEmpty()) {
+            return;
+        }
 
         $actionUrl = route('me.schedule.synced', ['token' => $token]);
-        $tenantId  = $pa->package?->tenant_id;
+        $tenantId = $pa->package?->tenant_id;
 
         foreach ($recipients as $uid) {
             UserNotification::notifyUser($uid, 'class_update', $title, [
-                'actor_id'     => Auth::id(),
-                'tenant_id'    => $tenantId,
-                'action_url'   => $actionUrl,
-                'icon'         => 'bi-calendar-week',
-                'body'         => $body,
+                'actor_id' => Auth::id(),
+                'tenant_id' => $tenantId,
+                'action_url' => $actionUrl,
+                'icon' => 'bi-calendar-week',
+                'body' => $body,
                 'subject_type' => 'class',
-                'subject_id'   => $pa->id,
+                'subject_id' => $pa->id,
             ]);
         }
     }
@@ -854,7 +905,7 @@ class PersonalMobileController extends Controller
         // picker can warn / disable them.
         [$paId, $day, $start] = $this->decodeSyncedToken($token);
         $slot = collect($this->slotsForDay($pa, $day))->first(fn ($s) => (string) ($s['start_time'] ?? '') === (string) $start);
-        $end  = $slot['end_time'] ?? null;
+        $end = $slot['end_time'] ?? null;
         $date = (string) $request->query('date', $this->nextOccurrence($day)->toDateString());
 
         // Each candidate's trainer rating (avg of their InstructorReviews across clubs).
@@ -869,14 +920,15 @@ class PersonalMobileController extends Controller
             'results' => $users->map(function ($u) use ($day, $start, $end, $date, $paId, $ratings) {
                 $busy = $this->trainerBusyConflict($u->id, $day, $start, $end, $date, (int) $paId);
                 $r = $ratings->get($u->id);
+
                 return [
-                    'id'       => $u->id,
-                    'name'     => $u->full_name ?: $u->name,
-                    'avatar'   => $this->avatarUrl($u),
+                    'id' => $u->id,
+                    'name' => $u->full_name ?: $u->name,
+                    'avatar' => $this->avatarUrl($u),
                     'initials' => $this->initialsFor($u->full_name ?: ($u->name ?: 'U')),
-                    'rating'   => $r ? round((float) $r->avg_rating, 1) : null,
+                    'rating' => $r ? round((float) $r->avg_rating, 1) : null,
                     'rating_count' => $r ? (int) $r->cnt : 0,
-                    'busy'     => $busy !== null,
+                    'busy' => $busy !== null,
                     'busy_reason' => $busy,
                 ];
             })->values(),
@@ -894,13 +946,13 @@ class PersonalMobileController extends Controller
 
         $data = $request->validate([
             'substitute_user_id' => ['required', 'integer', 'exists:users,id'],
-            'date'               => ['required', 'date', 'after_or_equal:today'],
-            'note'               => ['nullable', 'string', 'max:300'],
+            'date' => ['required', 'date', 'after_or_equal:today'],
+            'note' => ['nullable', 'string', 'max:300'],
         ]);
 
         // The slot's time window — used for the busy/conflict check.
-        $slot  = collect($this->slotsForDay($pa, $day))->first(fn ($s) => (string) ($s['start_time'] ?? '') === (string) $start) ?: [];
-        $end   = $slot['end_time'] ?? null;
+        $slot = collect($this->slotsForDay($pa, $day))->first(fn ($s) => (string) ($s['start_time'] ?? '') === (string) $start) ?: [];
+        $end = $slot['end_time'] ?? null;
 
         $sub = \App\Models\User::find($data['substitute_user_id']);
 
@@ -908,31 +960,32 @@ class PersonalMobileController extends Controller
         $conflict = $this->trainerBusyConflict($sub->id, $day, $start, $end, $data['date'], (int) $paId);
         if ($conflict !== null) {
             $who = $sub->full_name ?: $sub->name;
+
             return response()->json([
                 'success' => false,
-                'message' => $who . ' is already busy at that time (' . $conflict . '). Pick someone else or another date.',
+                'message' => $who.' is already busy at that time ('.$conflict.'). Pick someone else or another date.',
             ], 422);
         }
 
         \App\Models\ClassSubstitution::updateOrCreate(
             ['package_activity_id' => $paId, 'slot_day' => $day, 'slot_start' => $start, 'date' => $data['date']],
             [
-                'original_user_id'   => $pa->instructor?->user_id,
+                'original_user_id' => $pa->instructor?->user_id,
                 'substitute_user_id' => $sub->id,
-                'assigned_by'        => Auth::id(),
-                'note'               => $data['note'] ?? null,
+                'assigned_by' => Auth::id(),
+                'note' => $data['note'] ?? null,
             ]
         );
 
-        $name      = $sub->full_name ?: $sub->name;
+        $name = $sub->full_name ?: $sub->name;
         $whenLabel = \Carbon\Carbon::parse($data['date'])->format('D, M j');
         $className = ($pa->activity->name ?? 'your class');
 
         // Notify enrolled members, the regular coach, and the substitute.
         $this->notifyClassRecipients(
             $pa,
-            'Substitute trainer for ' . $className,
-            $name . ' will cover the ' . $whenLabel . ' class.',
+            'Substitute trainer for '.$className,
+            $name.' will cover the '.$whenLabel.' class.',
             $token,
             [$sub->id],
         );
@@ -942,10 +995,10 @@ class PersonalMobileController extends Controller
         $this->pushScheduleRefresh($this->classAudience($pa, [$sub->id, Auth::id()]));
 
         return response()->json([
-            'success'    => true,
-            'message'    => $name . ' will cover this class on ' . $whenLabel . '.',
+            'success' => true,
+            'message' => $name.' will cover this class on '.$whenLabel.'.',
             'substitute' => ['name' => $name, 'date' => $data['date']],
-            'redirect'   => route('me.schedule'),
+            'redirect' => route('me.schedule'),
         ]);
     }
 
@@ -978,8 +1031,8 @@ class PersonalMobileController extends Controller
         // Tell enrolled members + the regular coach it reverts (NOT the dropped sub).
         $this->notifyClassRecipients(
             $pa,
-            'Substitute cancelled for ' . $className,
-            'The ' . $whenLabel . ' class will run with its regular trainer.',
+            'Substitute cancelled for '.$className,
+            'The '.$whenLabel.' class will run with its regular trainer.',
             $token,
         );
 
@@ -993,8 +1046,8 @@ class PersonalMobileController extends Controller
         $this->pushScheduleRefresh($this->classAudience($pa, array_merge($removedIds, [Auth::id()])));
 
         return response()->json([
-            'success'  => true,
-            'message'  => 'Substitute removed.',
+            'success' => true,
+            'message' => 'Substitute removed.',
             'redirect' => route('me.schedule'),
         ]);
     }
@@ -1005,7 +1058,9 @@ class PersonalMobileController extends Controller
         $ids = UserNotification::where('user_id', $userId)
             ->where('subject_type', 'class')->where('subject_id', $paId)
             ->pluck('id');
-        if ($ids->isEmpty()) return;
+        if ($ids->isEmpty()) {
+            return;
+        }
 
         UserNotification::whereIn('id', $ids)->delete();
 
@@ -1013,7 +1068,7 @@ class PersonalMobileController extends Controller
             if (function_exists('Realtime') && Realtime()->enabled()) {
                 Realtime()->publishToUser($userId, 'notifications', [
                     'action' => 'remove',
-                    'ids'    => $ids->map(fn ($i) => (int) $i)->all(),
+                    'ids' => $ids->map(fn ($i) => (int) $i)->all(),
                 ]);
             }
         } catch (\Throwable) {
@@ -1028,13 +1083,13 @@ class PersonalMobileController extends Controller
         abort_if($paId === null, 404);
 
         $pa = ClubPackageActivity::with([
-                'package:id,name,tenant_id,translations,session_count,duration_months',
-                // owner_user_id + business_id are REQUIRED by canManageClub() — never trim them.
-                'package.tenant:id,club_name,slug,translations,owner_user_id,business_id',
-                'package.packageActivities:id,package_id,schedule',     // all the package's weekly slots
-                'activity:id,name',
-                'instructor.user:id,name,full_name,profile_picture,updated_at',
-            ])->find($paId);
+            'package:id,name,tenant_id,translations,session_count,duration_months',
+            // owner_user_id + business_id are REQUIRED by canManageClub() — never trim them.
+            'package.tenant:id,club_name,slug,translations,owner_user_id,business_id',
+            'package.packageActivities:id,package_id,schedule',     // all the package's weekly slots
+            'activity:id,name',
+            'instructor.user:id,name,full_name,profile_picture,updated_at',
+        ])->find($paId);
         abort_unless($pa, 404);
 
         $tenant = $pa->package?->tenant;
@@ -1042,8 +1097,8 @@ class PersonalMobileController extends Controller
 
         // Who may see this class? An enrolled member/dependent, the assigned coach,
         // a club manager, or someone assigned as a substitute for it.
-        $manages  = $tenant && $this->canManageClub($tenant);
-        $teaches  = $pa->instructor && $pa->instructor->user_id === Auth::id();
+        $manages = $tenant && $this->canManageClub($tenant);
+        $teaches = $pa->instructor && $pa->instructor->user_id === Auth::id();
         $enrolled = ClubMemberSubscription::whereIn('user_id', array_keys($subjectKeys))
             ->where('package_id', $pa->package_id)
             ->whereIn('status', ['active', 'pending'])
@@ -1055,30 +1110,30 @@ class PersonalMobileController extends Controller
         abort_unless($manages || $teaches || $enrolled || $isSubstitute, 404);
 
         $sched = is_array($pa->schedule) ? $pa->schedule : (json_decode($pa->schedule ?? '[]', true) ?: []);
-        $slot  = collect($sched)->first(function ($s) use ($day, $start) {
+        $slot = collect($sched)->first(function ($s) use ($day, $start) {
             return strtolower($s['day'] ?? '') === $day && (string) ($s['start_time'] ?? '') === $start;
         });
         abort_unless($slot, 404);
 
         $source = $teaches ? 'teaching' : ($isSubstitute && ! $enrolled ? 'substituting' : 'synced');
-        $club   = $tenant?->club_name ?? 'Club';
-        $s      = $this->syncedCard($pa, $slot, 'me', $club, $tenant?->slug, $pa->package?->name, $source);
-        $s      = $this->stampStatus($s);
+        $club = $tenant?->club_name ?? 'Club';
+        $s = $this->syncedCard($pa, $slot, 'me', $club, $tenant?->slug, $pa->package?->name, $source);
+        $s = $this->stampStatus($s);
         $member = $members['me'] ?? null;
 
         // The coach of the class and club owners/admins may edit the schedule slot.
         $canEditClub = $manages || $teaches;
         $editSlot = [
-            'day'           => $day,
-            'start_time'    => $slot['start_time'] ?? '',
-            'end_time'      => $slot['end_time'] ?? '',
+            'day' => $day,
+            'start_time' => $slot['start_time'] ?? '',
+            'end_time' => $slot['end_time'] ?? '',
             'facility_name' => $slot['facility_name'] ?? '',
         ];
         $updateUrl = route('me.schedule.synced.update', ['token' => $token]);
 
         // Substitute trainer for the next occurrence of this class (>= today).
         $occurrence = $this->nextOccurrence($day);
-        $occDate    = $occurrence->toDateString();
+        $occDate = $occurrence->toDateString();
         // If the caller tapped a specific dated card (?on=Y-m-d), show THAT occurrence
         // instead of defaulting to the next one — as long as it matches the class weekday.
         $on = (string) $request->query('on', '');
@@ -1087,19 +1142,20 @@ class PersonalMobileController extends Controller
                 $d = \Carbon\Carbon::createFromFormat('Y-m-d', $on)->startOfDay();
                 if ($d && strtolower($d->format('l')) === $day) {
                     $occurrence = $d;
-                    $occDate    = $d->toDateString();
+                    $occDate = $d->toDateString();
                 }
-            } catch (\Throwable $e) { /* bad date → keep the next occurrence */ }
+            } catch (\Throwable $e) { /* bad date → keep the next occurrence */
+            }
         }
         // Attendance is markable only DURING the class — not before it starts, not after
         // it ends. Interpret the wall-clock start/end in the CLUB's timezone (server runs
         // UTC) so the window is correct in real time.
-        $clubTz       = $tenant?->timezone ?: config('app.timezone');
-        $classEnded   = ! empty($slot['end_time'])
-            && \Carbon\Carbon::parse($occDate . ' ' . $slot['end_time'], $clubTz)->isPast();
+        $clubTz = $tenant?->timezone ?: config('app.timezone');
+        $classEnded = ! empty($slot['end_time'])
+            && \Carbon\Carbon::parse($occDate.' '.$slot['end_time'], $clubTz)->isPast();
         $classStarted = empty($slot['start_time'])
             ? true   // unknown start → don't block marking
-            : \Carbon\Carbon::parse($occDate . ' ' . $slot['start_time'], $clubTz)->isPast();
+            : \Carbon\Carbon::parse($occDate.' '.$slot['start_time'], $clubTz)->isPast();
         $subRow = \App\Models\ClassSubstitution::where('package_activity_id', $paId)
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->whereDate('date', $occDate)
@@ -1153,12 +1209,12 @@ class PersonalMobileController extends Controller
                 ->pluck('user_id')->map(fn ($i) => (int) $i)->all();
 
             $entry = fn ($u, string $role, ?string $note = null) => [
-                'id'       => $u->id,
-                'name'     => $u->full_name ?: $u->name,
+                'id' => $u->id,
+                'name' => $u->full_name ?: $u->name,
                 'initials' => $this->initialsFor($u->full_name ?: ($u->name ?: 'U')),
-                'avatar'   => $this->avatarUrl($u),
-                'role'     => $role,                    // trainer | member
-                'note'     => $note,
+                'avatar' => $this->avatarUrl($u),
+                'role' => $role,                    // trainer | member
+                'note' => $note,
                 'attended' => in_array((int) $u->id, $attendedIds, true),
             ];
 
@@ -1167,7 +1223,7 @@ class PersonalMobileController extends Controller
             // Trainer slot: when a substitute covers the shown occurrence, THEY are
             // the trainer for it; otherwise the regular instructor.
             if ($subRow && $subRow->substitute) {
-                $rows->push($entry($subRow->substitute, 'trainer', 'Substitute · ' . $occurrence->format('D, M j')));
+                $rows->push($entry($subRow->substitute, 'trainer', 'Substitute · '.$occurrence->format('D, M j')));
             } elseif ($pa->instructor?->user) {
                 $rows->push($entry($pa->instructor->user, 'trainer'));
             }
@@ -1183,10 +1239,13 @@ class PersonalMobileController extends Controller
             // start_date + the package's duration; null = genuinely open-ended.
             $pkgMonths = max(0, (int) ($pa->package?->duration_months ?? 0));
             $effEnd = function ($sub) use ($pkgMonths) {
-                if ($sub->end_date)   return \Carbon\Carbon::parse($sub->end_date)->toDateString();
+                if ($sub->end_date) {
+                    return \Carbon\Carbon::parse($sub->end_date)->toDateString();
+                }
                 if ($pkgMonths > 0 && $sub->start_date) {
                     return \Carbon\Carbon::parse($sub->start_date)->addMonths($pkgMonths)->toDateString();
                 }
+
                 return null;
             };
             $subsByUser = $memberSubs->filter(fn ($s) => $s->user)->groupBy(fn ($s) => $s->user->id);
@@ -1194,8 +1253,8 @@ class PersonalMobileController extends Controller
             // ---- Package-wide attendance: ALL the package's weekly class days,
             // counted from enrolment, capped at the package's total classes. ----
             $now2 = \Carbon\Carbon::now();
-            $weekdaysL = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-            $pkgPas    = $pa->package?->packageActivities ?? collect();
+            $weekdaysL = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            $pkgPas = $pa->package?->packageActivities ?? collect();
             $packagePaIds = $pkgPas->pluck('id')->all();
             $weeklySlots = [];   // every weekly class day across the package
             foreach ($pkgPas as $ppa) {
@@ -1211,21 +1270,21 @@ class PersonalMobileController extends Controller
             // (class-days/week × 4 weeks × duration_months) — e.g. 3/week × 1 month = 12.
             $totalCap = (int) ($pa->package?->session_count ?? 0);
             if ($totalCap <= 0) {
-                $months   = max(1, (int) ($pa->package?->duration_months ?? 1));
+                $months = max(1, (int) ($pa->package?->duration_months ?? 1));
                 $totalCap = count($weeklySlots) * 4 * $months;
             }
 
             // Cancellations + attendance across the WHOLE package, keyed pa|day|start|date.
             $cancelSet = [];
             foreach (\App\Models\ClassCancellation::whereIn('package_activity_id', $packagePaIds)->get() as $c) {
-                $cancelSet[$c->package_activity_id . '|' . $c->slot_day . '|' . (string) $c->slot_start . '|' . $c->date->toDateString()] = true;
+                $cancelSet[$c->package_activity_id.'|'.$c->slot_day.'|'.(string) $c->slot_start.'|'.$c->date->toDateString()] = true;
             }
             $attSet = [];
             foreach (\App\Models\ClassAttendance::whereIn('package_activity_id', $packagePaIds)->get() as $a) {
-                $attSet[$a->user_id][$a->package_activity_id . '|' . $a->slot_day . '|' . (string) $a->slot_start . '|' . $a->date->toDateString()] = true;
+                $attSet[$a->user_id][$a->package_activity_id.'|'.$a->slot_day.'|'.(string) $a->slot_start.'|'.$a->date->toDateString()] = true;
             }
             // The occurrence key for THIS class's shown session (for live updates on mark).
-            $curOccKey = $pa->id . '|' . $day . '|' . (string) $start . '|' . $occDate;
+            $curOccKey = $pa->id.'|'.$day.'|'.(string) $start.'|'.$occDate;
 
             $memberUsers = $memberSubs->map(fn ($sub) => $sub->user)->filter()
                 ->unique('id')->sortBy(fn ($u) => $u->full_name ?: $u->name)->values();
@@ -1237,12 +1296,19 @@ class PersonalMobileController extends Controller
                 // until they re-enrol, while keeping them on occurrences they were valid for.
                 $covering = ($subsByUser[$u->id] ?? collect())->first(function ($sub) use ($occDate, $effEnd) {
                     $start = $sub->start_date ? \Carbon\Carbon::parse($sub->start_date)->toDateString() : null;
-                    if ($start && $start > $occDate) return false;     // not enrolled yet on that date
+                    if ($start && $start > $occDate) {
+                        return false;
+                    }     // not enrolled yet on that date
                     $end = $effEnd($sub);
-                    if ($end && $end < $occDate) return false;         // enrolment had already ended
+                    if ($end && $end < $occDate) {
+                        return false;
+                    }         // enrolment had already ended
+
                     return true;
                 });
-                if (! $covering) continue;
+                if (! $covering) {
+                    continue;
+                }
 
                 $e = $entry($u, 'member');
                 $from = $covering->start_date ? \Carbon\Carbon::parse($covering->start_date) : $now2->copy()->subWeeks(12);
@@ -1251,22 +1317,26 @@ class PersonalMobileController extends Controller
                 $occ = [];
                 foreach ($weeklySlots as $sl) {
                     foreach ($this->pastOccurrences($sl['day'], $from, $now2) as $d) {
-                        $key = $sl['pa_id'] . '|' . $sl['day'] . '|' . $sl['start'] . '|' . $d;
-                        if (isset($cancelSet[$key])) continue;           // cancelled classes don't count
+                        $key = $sl['pa_id'].'|'.$sl['day'].'|'.$sl['start'].'|'.$d;
+                        if (isset($cancelSet[$key])) {
+                            continue;
+                        }           // cancelled classes don't count
                         $occ[] = ['date' => $d, 'start' => $sl['start'], 'key' => $key];
                     }
                 }
                 // Chronological (1st class … nth class), then cap at the enrolment's total.
-                usort($occ, fn ($x, $y) => ($x['date'] . $x['start']) <=> ($y['date'] . $y['start']));
-                if ($totalCap > 0) $occ = array_slice($occ, 0, $totalCap);
+                usort($occ, fn ($x, $y) => ($x['date'].$x['start']) <=> ($y['date'].$y['start']));
+                if ($totalCap > 0) {
+                    $occ = array_slice($occ, 0, $totalCap);
+                }
 
                 $att = $attSet[$u->id] ?? [];
                 $e['attended_count'] = count(array_filter($occ, fn ($o) => isset($att[$o['key']])));
-                $e['total_count']    = count($occ);
-                $e['breakdown']      = array_map(fn ($o) => [
-                    'date'     => $o['date'],
-                    'key'      => $o['key'],
-                    'label'    => \Carbon\Carbon::parse($o['date'])->format('D, M j'),
+                $e['total_count'] = count($occ);
+                $e['breakdown'] = array_map(fn ($o) => [
+                    'date' => $o['date'],
+                    'key' => $o['key'],
+                    'label' => \Carbon\Carbon::parse($o['date'])->format('D, M j'),
                     'attended' => isset($att[$o['key']]),
                 ], array_reverse($occ));      // recent-first for display
                 $rows->push($e);
@@ -1280,7 +1350,7 @@ class PersonalMobileController extends Controller
         $cancelRow = \App\Models\ClassCancellation::where('package_activity_id', $paId)
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->whereDate('date', $occDate)->first();
-        $cancelled    = (bool) $cancelRow;
+        $cancelled = (bool) $cancelRow;
         $cancelReason = $cancelRow?->reason;
         $cancelCreditable = $cancelRow?->creditable ?? false;
 
@@ -1297,16 +1367,16 @@ class PersonalMobileController extends Controller
 
         // Who gets rated = whoever actually taught the shown occurrence (the
         // substitute if covered, else the regular instructor) + my existing rating.
-        $trainerUid  = $this->trainerUserId($pa, $day, (string) $start, $occDate);
+        $trainerUid = $this->trainerUserId($pa, $day, (string) $start, $occDate);
         $trainerUser = $trainerUid ? \App\Models\User::find($trainerUid) : null;
-        $rateCi      = $this->trainerInstructor($pa, $trainerUid, false);   // no create on display
+        $rateCi = $this->trainerInstructor($pa, $trainerUid, false);   // no create on display
         $rateInstructorId = $trainerUid;                                    // show the rating UI when there's a trainer
-        $coachRatingName  = $trainerUser ? ($trainerUser->full_name ?: $trainerUser->name) : ($s['coach'] ?? null);
-        $coachRatingAvg   = $rateCi ? round((float) $rateCi->reviews()->avg('rating'), 1) : null;
+        $coachRatingName = $trainerUser ? ($trainerUser->full_name ?: $trainerUser->name) : ($s['coach'] ?? null);
+        $coachRatingAvg = $rateCi ? round((float) $rateCi->reviews()->avg('rating'), 1) : null;
         $myReview = $rateCi
             ? \App\Models\InstructorReview::where('instructor_id', $rateCi->id)->where('reviewer_user_id', Auth::id())->first()
             : null;
-        $myRating  = (int) ($myReview->rating ?? 0);
+        $myRating = (int) ($myReview->rating ?? 0);
         $myComment = $myReview->comment ?? null;
         $canEngage = $enrolled;     // reactions + rating are a trainee thing
 
@@ -1315,12 +1385,12 @@ class PersonalMobileController extends Controller
             ->where('package_activity_id', $paId)
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->orderByDesc('updated_at')->get();
-        $myClassRow     = $classRows->firstWhere('user_id', Auth::id());
-        $myClassRating  = (int) ($myClassRow->rating ?? 0);
+        $myClassRow = $classRows->firstWhere('user_id', Auth::id());
+        $myClassRating = (int) ($myClassRow->rating ?? 0);
         $myClassComment = $myClassRow->comment ?? null;
-        $classRatingAvg   = $classRows->count() ? round((float) $classRows->avg('rating'), 1) : null;
+        $classRatingAvg = $classRows->count() ? round((float) $classRows->avg('rating'), 1) : null;
         $classRatingCount = $classRows->count();
-        $classComments    = $this->classCommentPayload($classRows);
+        $classComments = $this->classCommentPayload($classRows);
         $classDistribution = $this->classRatingDistribution($classRows);
 
         // ----- Who may review: enrolled + attended a session of this class that has already started -----
@@ -1332,14 +1402,14 @@ class PersonalMobileController extends Controller
         $canReview = $enrolled && $this->attendedStartedClass($paId, $day, (string) $start);
 
         // Structured location for the detail (map + Google link), resolving a facility.
-        $locType = $slot['location_type'] ?? (!empty($slot['facility_id']) ? 'facility' : (isset($slot['location_lat']) ? 'map' : 'text'));
+        $locType = $slot['location_type'] ?? (! empty($slot['facility_id']) ? 'facility' : (isset($slot['location_lat']) ? 'map' : 'text'));
         $location = $this->locationView($locType, [
-            'facility_id'   => $slot['facility_id'] ?? null,
+            'facility_id' => $slot['facility_id'] ?? null,
             'facility_name' => $slot['facility_name'] ?? null,
-            'lat'           => $slot['location_lat'] ?? null,
-            'lng'           => $slot['location_lng'] ?? null,
-            'address'       => $slot['location_address'] ?? null,
-            'text'          => $slot['location_text'] ?? ($slot['facility_name'] ?? null),
+            'lat' => $slot['location_lat'] ?? null,
+            'lng' => $slot['location_lng'] ?? null,
+            'address' => $slot['location_address'] ?? null,
+            'text' => $slot['location_text'] ?? ($slot['facility_name'] ?? null),
         ]);
 
         // Facilities for the edit form's dropdown (club classes only).
@@ -1356,8 +1426,8 @@ class PersonalMobileController extends Controller
                 ->map(fn ($i) => $i->user)->filter()
                 ->unique('id')
                 ->map(fn ($u) => [
-                    'name'     => $u->full_name ?: $u->name,
-                    'avatar'   => $u->profile_picture ? asset('storage/' . $u->profile_picture) . '?v=' . optional($u->updated_at)->timestamp : null,
+                    'name' => $u->full_name ?: $u->name,
+                    'avatar' => $u->profile_picture ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
                     'initials' => $this->initialsFor($u->full_name ?: ($u->name ?: 'U')),
                 ])
                 ->sortBy('name')->values()
@@ -1414,10 +1484,11 @@ class PersonalMobileController extends Controller
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->where('user_id', $userId)->pluck('date');
         foreach ($dates as $d) {
-            if (\Carbon\Carbon::parse(\Carbon\Carbon::parse($d)->toDateString() . ' ' . $start)->isPast()) {
+            if (\Carbon\Carbon::parse(\Carbon\Carbon::parse($d)->toDateString().' '.$start)->isPast()) {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -1431,6 +1502,7 @@ class PersonalMobileController extends Controller
                 $dist[$n]++;
             }
         }
+
         return $dist;
     }
 
@@ -1440,17 +1512,18 @@ class PersonalMobileController extends Controller
         return $rows->filter(fn ($r) => filled($r->comment))->map(function ($r) {
             $u = $r->user;
             $name = $u ? ($u->full_name ?: $u->name) : 'Member';
+
             return [
-                'id'       => $r->id,
-                'user_id'  => $r->user_id,
-                'name'     => $name,
-                'avatar'   => $u && $u->profile_picture
-                    ? asset('storage/' . $u->profile_picture) . '?v=' . optional($u->updated_at)->timestamp
+                'id' => $r->id,
+                'user_id' => $r->user_id,
+                'name' => $name,
+                'avatar' => $u && $u->profile_picture
+                    ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp
                     : null,
                 'initials' => $this->initialsFor($name),
-                'rating'   => (int) $r->rating,
-                'comment'  => $r->comment,
-                'when'     => optional($r->updated_at)->diffForHumans(),
+                'rating' => (int) $r->rating,
+                'comment' => $r->comment,
+                'when' => optional($r->updated_at)->diffForHumans(),
             ];
         })->values()->all();
     }
@@ -1464,7 +1537,7 @@ class PersonalMobileController extends Controller
         }
         [$paId, $day, $start] = $this->decodeSyncedToken($token);
         $data = $request->validate([
-            'rating'  => ['required', 'integer', 'between:1,5'],
+            'rating' => ['required', 'integer', 'between:1,5'],
             'comment' => ['nullable', 'string', 'max:500'],
         ]);
 
@@ -1492,11 +1565,11 @@ class PersonalMobileController extends Controller
             ->orderByDesc('updated_at')->get();
 
         return response()->json([
-            'success'  => true,
-            'message'  => 'Thanks — your class rating was saved.',
-            'rating'   => $data['rating'],
-            'average'  => $rows->count() ? round((float) $rows->avg('rating'), 1) : null,
-            'count'    => $rows->count(),
+            'success' => true,
+            'message' => 'Thanks — your class rating was saved.',
+            'rating' => $data['rating'],
+            'average' => $rows->count() ? round((float) $rows->avg('rating'), 1) : null,
+            'count' => $rows->count(),
             'comments' => $this->classCommentPayload($rows),
             'distribution' => $this->classRatingDistribution($rows),
         ]);
@@ -1522,10 +1595,10 @@ class PersonalMobileController extends Controller
             ->orderByDesc('updated_at')->get();
 
         return response()->json([
-            'success'  => true,
-            'message'  => 'Your review was deleted.',
-            'average'  => $rows->count() ? round((float) $rows->avg('rating'), 1) : null,
-            'count'    => $rows->count(),
+            'success' => true,
+            'message' => 'Your review was deleted.',
+            'average' => $rows->count() ? round((float) $rows->avg('rating'), 1) : null,
+            'count' => $rows->count(),
             'comments' => $this->classCommentPayload($rows),
             'distribution' => $this->classRatingDistribution($rows),
         ]);
@@ -1534,17 +1607,25 @@ class PersonalMobileController extends Controller
     /** End time ("HH:MM[:SS]") of a class slot, or null. */
     private function slotEndTime(?ClubPackageActivity $pa, string $day, string $start): ?string
     {
-        if (! $pa) return null;
+        if (! $pa) {
+            return null;
+        }
         $sched = is_array($pa->schedule) ? $pa->schedule : (json_decode($pa->schedule ?? '[]', true) ?: []);
-        $slot  = collect($sched)->first(fn ($s) => strtolower($s['day'] ?? '') === $day && (string) ($s['start_time'] ?? '') === $start);
+        $slot = collect($sched)->first(fn ($s) => strtolower($s['day'] ?? '') === $day && (string) ($s['start_time'] ?? '') === $start);
+
         return $slot['end_time'] ?? null;
     }
 
     /** May the current user run this class (mark attendance) — coach/manager OR the assigned substitute. */
     private function canRunClass(?ClubPackageActivity $pa): bool
     {
-        if (! $pa) return false;
-        if ($this->canEditClass($pa)) return true;
+        if (! $pa) {
+            return false;
+        }
+        if ($this->canEditClass($pa)) {
+            return true;
+        }
+
         return \App\Models\ClassSubstitution::where('package_activity_id', $pa->id)
             ->where('substitute_user_id', Auth::id())
             ->whereDate('date', '>=', \Carbon\Carbon::now()->toDateString())
@@ -1562,21 +1643,21 @@ class PersonalMobileController extends Controller
 
         $data = $request->validate([
             'user_id' => ['required', 'integer', 'exists:users,id'],
-            'date'    => ['required', 'date'],
+            'date' => ['required', 'date'],
         ]);
 
         // Attendance can only be marked DURING the class — not before it starts, not
         // after it ends. Interpret the wall-clock times in the club's timezone so the
         // window is correct regardless of server TZ.
         $tz = $pa->package?->tenant?->timezone ?: config('app.timezone');
-        if (! empty($start) && \Carbon\Carbon::parse($data['date'] . ' ' . $start, $tz)->isFuture()) {
+        if (! empty($start) && \Carbon\Carbon::parse($data['date'].' '.$start, $tz)->isFuture()) {
             return response()->json([
                 'success' => false,
                 'message' => 'This class hasn’t started yet — attendance opens when it begins.',
             ], 422);
         }
         $end = $this->slotEndTime($pa, $day, (string) $start);
-        if ($end && \Carbon\Carbon::parse($data['date'] . ' ' . $end, $tz)->isPast()) {
+        if ($end && \Carbon\Carbon::parse($data['date'].' '.$end, $tz)->isPast()) {
             return response()->json([
                 'success' => false,
                 'message' => 'This class is over — attendance can no longer be changed.',
@@ -1598,11 +1679,11 @@ class PersonalMobileController extends Controller
         } else {
             \App\Models\ClassAttendance::create([
                 'package_activity_id' => $paId,
-                'slot_day'            => $day,
-                'slot_start'          => (string) $start,
-                'date'                => $data['date'],
-                'user_id'             => $data['user_id'],
-                'marked_by'           => Auth::id(),
+                'slot_day' => $day,
+                'slot_start' => (string) $start,
+                'date' => $data['date'],
+                'user_id' => $data['user_id'],
+                'marked_by' => Auth::id(),
             ]);
             $attended = true;
         }
@@ -1616,8 +1697,11 @@ class PersonalMobileController extends Controller
     /** True if the current user is enrolled in this class's package (a trainee). */
     private function isEnrolledIn(?ClubPackageActivity $pa): bool
     {
-        if (! $pa) return false;
+        if (! $pa) {
+            return false;
+        }
         [, $subjectKeys] = $this->scheduleMembers();
+
         return ClubMemberSubscription::whereIn('user_id', array_keys($subjectKeys))
             ->where('package_id', $pa->package_id)
             ->whereIn('status', ['active', 'pending'])->exists();
@@ -1626,11 +1710,16 @@ class PersonalMobileController extends Controller
     /** User id of whoever TAUGHT the shown occurrence: the substitute if covered, else the regular instructor. */
     private function trainerUserId(?ClubPackageActivity $pa, string $day, string $start, string $date): ?int
     {
-        if (! $pa) return null;
+        if (! $pa) {
+            return null;
+        }
         $sub = \App\Models\ClassSubstitution::where('package_activity_id', $pa->id)
             ->where('slot_day', $day)->where('slot_start', (string) $start)
             ->whereDate('date', $date)->first();
-        if ($sub) return (int) $sub->substitute_user_id;
+        if ($sub) {
+            return (int) $sub->substitute_user_id;
+        }
+
         return $pa->instructor?->user_id;
     }
 
@@ -1642,7 +1731,9 @@ class PersonalMobileController extends Controller
      */
     private function trainerInstructor(?ClubPackageActivity $pa, ?int $userId, bool $create = false): ?\App\Models\ClubInstructor
     {
-        if (! $pa || ! $userId) return null;
+        if (! $pa || ! $userId) {
+            return null;
+        }
         if ($pa->instructor && (int) $pa->instructor->user_id === $userId) {
             return $pa->instructor;                       // regular coach — use the exact record
         }
@@ -1653,6 +1744,7 @@ class PersonalMobileController extends Controller
                 'tenant_id' => $tenantId, 'user_id' => $userId, 'role' => 'Substitute', 'rating' => 0,
             ]);
         }
+
         return $ci;
     }
 
@@ -1666,7 +1758,7 @@ class PersonalMobileController extends Controller
         [$paId, $day, $start] = $this->decodeSyncedToken($token);
         $data = $request->validate([
             'emoji' => ['required', 'string', Rule::in(self::REACTION_EMOJIS)],
-            'date'  => ['required', 'date'],
+            'date' => ['required', 'date'],
         ]);
 
         $row = \App\Models\ClassReaction::where('package_activity_id', $paId)
@@ -1703,14 +1795,14 @@ class PersonalMobileController extends Controller
         }
         [$paId, $day, $start] = $this->decodeSyncedToken($token);
         $data = $request->validate([
-            'rating'  => ['required', 'integer', 'between:1,5'],
+            'rating' => ['required', 'integer', 'between:1,5'],
             'comment' => ['nullable', 'string', 'max:500'],
-            'date'    => ['nullable', 'date'],
+            'date' => ['nullable', 'date'],
         ]);
 
         $date = $data['date'] ?? \Carbon\Carbon::now()->toDateString();
-        $uid  = $this->trainerUserId($pa, $day, (string) $start, $date);
-        $ci   = $this->trainerInstructor($pa, $uid, true);   // create the trainer's record so it lands on THEIR profile
+        $uid = $this->trainerUserId($pa, $day, (string) $start, $date);
+        $ci = $this->trainerInstructor($pa, $uid, true);   // create the trainer's record so it lands on THEIR profile
         if (! $ci) {
             return response()->json(['success' => false, 'message' => 'No trainer to rate for this class.'], 422);
         }
@@ -1727,7 +1819,7 @@ class PersonalMobileController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Thanks — your rating was saved.',
-            'rating'  => $data['rating'],
+            'rating' => $data['rating'],
             'average' => round($avg, 1),
         ]);
     }
@@ -1750,24 +1842,29 @@ class PersonalMobileController extends Controller
         [$paId, $day, $start] = $this->decodeSyncedToken($token);
 
         $data = $request->validate([
-            'from'   => ['required', 'date'],
-            'to'     => ['nullable', 'date', 'after_or_equal:from'],
+            'from' => ['required', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
             'reason' => ['nullable', 'string', 'max:300'],
             'credit' => ['nullable', 'boolean'],
         ]);
         $creditable = $data['credit'] ?? true;          // default: members are credited
 
         $today = \Carbon\Carbon::now()->startOfDay();
-        $from  = \Carbon\Carbon::parse($data['from'])->startOfDay();
-        if ($from->lt($today)) $from = $today->copy();          // can't cancel the past
+        $from = \Carbon\Carbon::parse($data['from'])->startOfDay();
+        if ($from->lt($today)) {
+            $from = $today->copy();
+        }          // can't cancel the past
         $to = isset($data['to']) ? \Carbon\Carbon::parse($data['to'])->startOfDay() : $from->copy();
 
         // Occurrences of THIS slot's weekday within the span.
         $dates = [];
-        $cursor = $from->copy(); $guard = 0;
+        $cursor = $from->copy();
+        $guard = 0;
         while ($cursor->lte($to) && $guard < 400) {
             $guard++;
-            if (strtolower($cursor->format('l')) === $day) $dates[] = $cursor->toDateString();
+            if (strtolower($cursor->format('l')) === $day) {
+                $dates[] = $cursor->toDateString();
+            }
             $cursor->addDay();
         }
         if (empty($dates)) {
@@ -1780,16 +1877,18 @@ class PersonalMobileController extends Controller
             $already = \App\Models\ClassCancellation::where('package_activity_id', $paId)
                 ->where('slot_day', $day)->where('slot_start', (string) $start)
                 ->whereDate('date', $d)->exists();
-            if ($already) continue;
+            if ($already) {
+                continue;
+            }
 
             \App\Models\ClassCancellation::create([
                 'package_activity_id' => $paId,
-                'slot_day'            => $day,
-                'slot_start'          => (string) $start,
-                'date'                => $d,
-                'reason'              => $data['reason'] ?? null,
-                'creditable'          => $creditable,
-                'cancelled_by'        => Auth::id(),
+                'slot_day' => $day,
+                'slot_start' => (string) $start,
+                'date' => $d,
+                'reason' => $data['reason'] ?? null,
+                'creditable' => $creditable,
+                'cancelled_by' => Auth::id(),
             ]);
             // A cancelled class can't also have a substitute.
             \App\Models\ClassSubstitution::where('package_activity_id', $paId)
@@ -1805,25 +1904,25 @@ class PersonalMobileController extends Controller
 
         $className = $pa->activity->name ?? 'your class';
         $label = count($dates) > 1
-            ? (count($dates) . ' sessions')
+            ? (count($dates).' sessions')
             : \Carbon\Carbon::parse($dates[0])->format('D, M j');
         $this->notifyClassRecipients(
             $pa,
-            $className . ' cancelled',
+            $className.' cancelled',
             $creditable
-                ? ('The ' . $label . ' was cancelled — a make-up credit has been added to your account.')
-                : ('The ' . $label . ' was cancelled.'),
+                ? ('The '.$label.' was cancelled — a make-up credit has been added to your account.')
+                : ('The '.$label.' was cancelled.'),
             $token,
             $affected,
         );
         $this->pushScheduleRefresh($this->classAudience($pa, array_merge($affected, [Auth::id()])));
 
-        $msg = 'Class cancelled for ' . count($dates) . ' session' . (count($dates) === 1 ? '' : 's') . '. '
-            . ($creditable ? (count($affected) . ' member(s) credited.') : 'No make-up credit given.');
+        $msg = 'Class cancelled for '.count($dates).' session'.(count($dates) === 1 ? '' : 's').'. '
+            .($creditable ? (count($affected).' member(s) credited.') : 'No make-up credit given.');
 
         return response()->json([
-            'success'  => true,
-            'message'  => $msg,
+            'success' => true,
+            'message' => $msg,
             'redirect' => route('me.schedule'),
         ]);
     }
@@ -1865,8 +1964,8 @@ class PersonalMobileController extends Controller
         $className = $pa->activity->name ?? 'your class';
         $this->notifyClassRecipients(
             $pa,
-            $className . ' is back on',
-            'The ' . \Carbon\Carbon::parse($data['date'])->format('D, M j') . ' class is no longer cancelled.',
+            $className.' is back on',
+            'The '.\Carbon\Carbon::parse($data['date'])->format('D, M j').' class is no longer cancelled.',
             $token,
             $affected,
         );
@@ -1896,7 +1995,9 @@ class PersonalMobileController extends Controller
             $exists = \App\Models\ClassMakeupCredit::where('package_activity_id', $pa->id)
                 ->where('user_id', $sub->user_id)
                 ->whereDate('source_date', $date)->exists();
-            if ($exists) continue;                       // already credited for this date
+            if ($exists) {
+                continue;
+            }                       // already credited for this date
 
             $days = 0;
             if ($sub->end_date) {                        // only time-bounded subs need the nudge
@@ -1907,12 +2008,12 @@ class PersonalMobileController extends Controller
 
             \App\Models\ClassMakeupCredit::create([
                 'package_activity_id' => $pa->id,
-                'user_id'             => $sub->user_id,
-                'subscription_id'     => $sub->id,
-                'source_date'         => $date,
-                'credit_days'         => $days,
-                'status'              => 'open',
-                'created_by'          => Auth::id(),
+                'user_id' => $sub->user_id,
+                'subscription_id' => $sub->id,
+                'source_date' => $date,
+                'credit_days' => $days,
+                'status' => 'open',
+                'created_by' => Auth::id(),
             ]);
         }
 
@@ -1926,6 +2027,7 @@ class PersonalMobileController extends Controller
         if (count($parts) < 2) {
             return [null, null, null];
         }
+
         return [(int) $parts[0], $parts[1], $parts[2] ?? ''];
     }
 
@@ -1949,7 +2051,7 @@ class PersonalMobileController extends Controller
         }
 
         // The assigned coach OR a manager of the club may edit the class.
-        $tenant  = $pa->package?->tenant;
+        $tenant = $pa->package?->tenant;
         $manages = $tenant && $this->canManageClub($tenant);
         $teaches = $pa->instructor && $pa->instructor->user_id === Auth::id();
         if (! $manages && ! $teaches) {
@@ -1958,30 +2060,30 @@ class PersonalMobileController extends Controller
 
         // Same field set as a personal session, minus the family "subject".
         $data = $request->validate([
-            'day'                 => ['required', 'in:sunday,monday,tuesday,wednesday,thursday,friday,saturday'],
-            'start_time'          => ['nullable', 'string', 'max:12'],
-            'end_time'            => ['nullable', 'string', 'max:12'],
-            'title'               => ['nullable', 'string', 'max:120'],
-            'discipline'          => ['nullable', 'string', 'max:120'],
-            'icon'                => ['nullable', 'string', 'max:40'],
-            'color'               => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
-            'coach'               => ['nullable', 'string', 'max:120'],
-            'location'            => ['nullable', 'string', 'max:160'],     // text-mode value
-            'location_type'       => ['nullable', 'in:facility,map,text'],
-            'facility_id'         => ['nullable', 'integer'],
-            'location_lat'        => ['nullable', 'numeric', 'between:-90,90'],
-            'location_lng'        => ['nullable', 'numeric', 'between:-180,180'],
-            'location_address'    => ['nullable', 'string', 'max:200'],
-            'intensity'           => ['nullable', 'in:Low,Moderate,High'],
-            'focus'               => ['nullable', 'array', 'max:12'],
-            'focus.*'             => ['nullable', 'string', 'max:40'],
-            'notes'               => ['nullable', 'string', 'max:2000'],
-            'workout'             => ['nullable', 'array'],
-            'workout.warmup'      => ['nullable', 'array', 'max:30'],
-            'workout.warmup.*'    => ['nullable', 'string', 'max:200'],
-            'workout.cooldown'    => ['nullable', 'array', 'max:30'],
-            'workout.cooldown.*'  => ['nullable', 'string', 'max:200'],
-            'workout.main'        => ['nullable', 'array', 'max:30'],
+            'day' => ['required', 'in:sunday,monday,tuesday,wednesday,thursday,friday,saturday'],
+            'start_time' => ['nullable', 'string', 'max:12'],
+            'end_time' => ['nullable', 'string', 'max:12'],
+            'title' => ['nullable', 'string', 'max:120'],
+            'discipline' => ['nullable', 'string', 'max:120'],
+            'icon' => ['nullable', 'string', 'max:40'],
+            'color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'coach' => ['nullable', 'string', 'max:120'],
+            'location' => ['nullable', 'string', 'max:160'],     // text-mode value
+            'location_type' => ['nullable', 'in:facility,map,text'],
+            'facility_id' => ['nullable', 'integer'],
+            'location_lat' => ['nullable', 'numeric', 'between:-90,90'],
+            'location_lng' => ['nullable', 'numeric', 'between:-180,180'],
+            'location_address' => ['nullable', 'string', 'max:200'],
+            'intensity' => ['nullable', 'in:Low,Moderate,High'],
+            'focus' => ['nullable', 'array', 'max:12'],
+            'focus.*' => ['nullable', 'string', 'max:40'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+            'workout' => ['nullable', 'array'],
+            'workout.warmup' => ['nullable', 'array', 'max:30'],
+            'workout.warmup.*' => ['nullable', 'string', 'max:200'],
+            'workout.cooldown' => ['nullable', 'array', 'max:30'],
+            'workout.cooldown.*' => ['nullable', 'string', 'max:200'],
+            'workout.main' => ['nullable', 'array', 'max:30'],
             'workout.main.*.name' => ['nullable', 'string', 'max:120'],
             'workout.main.*.sets' => ['nullable', 'string', 'max:20'],
             'workout.main.*.reps' => ['nullable', 'string', 'max:40'],
@@ -2003,19 +2105,26 @@ class PersonalMobileController extends Controller
         $slot = $sched[$idx];
 
         // ----- Scheduling -----
-        $slot['day']        = $data['day'];
+        $slot['day'] = $data['day'];
         $slot['start_time'] = $data['start_time'] ?? '';
-        $slot['end_time']   = $data['end_time'] ?? '';
+        $slot['end_time'] = $data['end_time'] ?? '';
 
         // ----- Location (facility | map | text) -----
         $locType = $data['location_type'] ?? 'text';
         // reset all location keys, then set the chosen mode's
         $slot['location_type'] = $locType;
-        $slot['facility_id'] = null; $slot['facility_name'] = null;
-        $slot['location_lat'] = null; $slot['location_lng'] = null; $slot['location_address'] = null; $slot['location_text'] = null;
+        $slot['facility_id'] = null;
+        $slot['facility_name'] = null;
+        $slot['location_lat'] = null;
+        $slot['location_lng'] = null;
+        $slot['location_address'] = null;
+        $slot['location_text'] = null;
         if ($locType === 'facility' && ! empty($data['facility_id'])) {
             $f = \App\Models\ClubFacility::where('tenant_id', $tenant?->id)->find($data['facility_id']);
-            if ($f) { $slot['facility_id'] = $f->id; $slot['facility_name'] = $f->name; }
+            if ($f) {
+                $slot['facility_id'] = $f->id;
+                $slot['facility_name'] = $f->name;
+            }
         } elseif ($locType === 'map' && isset($data['location_lat'], $data['location_lng'])) {
             $slot['location_lat'] = (float) $data['location_lat'];
             $slot['location_lng'] = (float) $data['location_lng'];
@@ -2028,7 +2137,7 @@ class PersonalMobileController extends Controller
         // ----- Rich content (clean the workout lists, like a personal session) -----
         $focus = collect($data['focus'] ?? [])->map(fn ($f) => trim((string) $f))->filter()->values()->all();
         $w = $data['workout'] ?? [];
-        $warmup   = collect($w['warmup']   ?? [])->map(fn ($x) => trim((string) $x))->filter()->values()->all();
+        $warmup = collect($w['warmup'] ?? [])->map(fn ($x) => trim((string) $x))->filter()->values()->all();
         $cooldown = collect($w['cooldown'] ?? [])->map(fn ($x) => trim((string) $x))->filter()->values()->all();
         $main = collect($w['main'] ?? [])
             ->map(fn ($ex) => [
@@ -2040,15 +2149,15 @@ class PersonalMobileController extends Controller
             ->filter(fn ($ex) => $ex['name'] !== '')
             ->values()->all();
 
-        $slot['title']      = ($data['title'] ?? null)      ?: null;
+        $slot['title'] = ($data['title'] ?? null) ?: null;
         $slot['discipline'] = ($data['discipline'] ?? null) ?: null;
-        $slot['icon']       = ($data['icon'] ?? null)       ?: null;
-        $slot['color']      = ($data['color'] ?? null)      ?: null;
-        $slot['coach']      = ($data['coach'] ?? null)      ?: null;
-        $slot['intensity']  = ($data['intensity'] ?? null)  ?: null;
-        $slot['focus']      = $focus;
-        $slot['notes']      = ($data['notes'] ?? null) ?: null;
-        $slot['workout']    = ['warmup' => $warmup, 'main' => $main, 'cooldown' => $cooldown];
+        $slot['icon'] = ($data['icon'] ?? null) ?: null;
+        $slot['color'] = ($data['color'] ?? null) ?: null;
+        $slot['coach'] = ($data['coach'] ?? null) ?: null;
+        $slot['intensity'] = ($data['intensity'] ?? null) ?: null;
+        $slot['focus'] = $focus;
+        $slot['notes'] = ($data['notes'] ?? null) ?: null;
+        $slot['workout'] = ['warmup' => $warmup, 'main' => $main, 'cooldown' => $cooldown];
 
         $sched[$idx] = $slot;
 
@@ -2058,11 +2167,11 @@ class PersonalMobileController extends Controller
         // Notify everyone enrolled + the coach + any substitutes, and deep-link
         // them to the (possibly rescheduled) class. Token reflects the new slot.
         $newToken = $this->syncedToken($pa->id, $slot['day'], (string) ($slot['start_time'] ?? ''));
-        $subIds   = $this->slotSubstituteUserIds($paId, $origDay, $origStart);
+        $subIds = $this->slotSubstituteUserIds($paId, $origDay, $origStart);
         $className = $slot['title'] ?: ($pa->activity->name ?? 'Your class');
         $this->notifyClassRecipients(
             $pa,
-            $className . ' was updated',
+            $className.' was updated',
             'The class schedule or details changed. Tap to see what’s new.',
             $newToken,
             $subIds,
@@ -2072,8 +2181,8 @@ class PersonalMobileController extends Controller
         $this->pushScheduleRefresh($this->classAudience($pa, array_merge($subIds, [Auth::id()])));
 
         return response()->json([
-            'success'  => true,
-            'message'  => 'Class schedule updated.',
+            'success' => true,
+            'message' => 'Class schedule updated.',
             'redirect' => route('me.schedule'),
         ]);
     }
@@ -2081,7 +2190,7 @@ class PersonalMobileController extends Controller
     /** Store a new personal session. */
     public function store(Request $request): JsonResponse
     {
-        $data   = $this->validateSession($request);
+        $data = $this->validateSession($request);
         $member = $this->resolveSubject($data['subject']);
         if (! $member) {
             return response()->json(['success' => false, 'message' => 'Unknown family member.'], 422);
@@ -2104,7 +2213,7 @@ class PersonalMobileController extends Controller
             ->where('user_id', Auth::id())
             ->firstOrFail();
 
-        $data   = $this->validateSession($request);
+        $data = $this->validateSession($request);
         $member = $this->resolveSubject($data['subject']);
         if (! $member) {
             return response()->json(['success' => false, 'message' => 'Unknown family member.'], 422);
@@ -2135,30 +2244,30 @@ class PersonalMobileController extends Controller
     private function validateSession(Request $request): array
     {
         return $request->validate([
-            'subject'             => ['required', 'string', 'max:40'],
-            'day'                 => ['required', 'in:sunday,monday,tuesday,wednesday,thursday,friday,saturday'],
-            'start_time'          => ['nullable', 'string', 'max:12'],
-            'end_time'            => ['nullable', 'string', 'max:12'],
-            'title'               => ['required', 'string', 'max:120'],
-            'discipline'          => ['nullable', 'string', 'max:120'],
-            'icon'                => ['nullable', 'string', 'max:40'],
-            'color'               => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
-            'coach'               => ['nullable', 'string', 'max:120'],
-            'location'            => ['nullable', 'string', 'max:160'],
-            'location_type'       => ['nullable', 'in:map,text'],          // personal: no facility
-            'location_lat'        => ['nullable', 'numeric', 'between:-90,90'],
-            'location_lng'        => ['nullable', 'numeric', 'between:-180,180'],
-            'location_address'    => ['nullable', 'string', 'max:200'],
-            'intensity'           => ['nullable', 'in:Low,Moderate,High'],
-            'focus'               => ['nullable', 'array', 'max:12'],
-            'focus.*'             => ['nullable', 'string', 'max:40'],
-            'notes'               => ['nullable', 'string', 'max:2000'],
-            'workout'             => ['nullable', 'array'],
-            'workout.warmup'      => ['nullable', 'array', 'max:30'],
-            'workout.warmup.*'    => ['nullable', 'string', 'max:200'],
-            'workout.cooldown'    => ['nullable', 'array', 'max:30'],
-            'workout.cooldown.*'  => ['nullable', 'string', 'max:200'],
-            'workout.main'        => ['nullable', 'array', 'max:30'],
+            'subject' => ['required', 'string', 'max:40'],
+            'day' => ['required', 'in:sunday,monday,tuesday,wednesday,thursday,friday,saturday'],
+            'start_time' => ['nullable', 'string', 'max:12'],
+            'end_time' => ['nullable', 'string', 'max:12'],
+            'title' => ['required', 'string', 'max:120'],
+            'discipline' => ['nullable', 'string', 'max:120'],
+            'icon' => ['nullable', 'string', 'max:40'],
+            'color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'coach' => ['nullable', 'string', 'max:120'],
+            'location' => ['nullable', 'string', 'max:160'],
+            'location_type' => ['nullable', 'in:map,text'],          // personal: no facility
+            'location_lat' => ['nullable', 'numeric', 'between:-90,90'],
+            'location_lng' => ['nullable', 'numeric', 'between:-180,180'],
+            'location_address' => ['nullable', 'string', 'max:200'],
+            'intensity' => ['nullable', 'in:Low,Moderate,High'],
+            'focus' => ['nullable', 'array', 'max:12'],
+            'focus.*' => ['nullable', 'string', 'max:40'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+            'workout' => ['nullable', 'array'],
+            'workout.warmup' => ['nullable', 'array', 'max:30'],
+            'workout.warmup.*' => ['nullable', 'string', 'max:200'],
+            'workout.cooldown' => ['nullable', 'array', 'max:30'],
+            'workout.cooldown.*' => ['nullable', 'string', 'max:200'],
+            'workout.main' => ['nullable', 'array', 'max:30'],
             'workout.main.*.name' => ['nullable', 'string', 'max:120'],
             'workout.main.*.sets' => ['nullable', 'string', 'max:20'],
             'workout.main.*.reps' => ['nullable', 'string', 'max:40'],
@@ -2172,7 +2281,7 @@ class PersonalMobileController extends Controller
         $focus = collect($data['focus'] ?? [])->map(fn ($f) => trim((string) $f))->filter()->values()->all();
 
         $w = $data['workout'] ?? [];
-        $warmup   = collect($w['warmup']   ?? [])->map(fn ($x) => trim((string) $x))->filter()->values()->all();
+        $warmup = collect($w['warmup'] ?? [])->map(fn ($x) => trim((string) $x))->filter()->values()->all();
         $cooldown = collect($w['cooldown'] ?? [])->map(fn ($x) => trim((string) $x))->filter()->values()->all();
         $main = collect($w['main'] ?? [])
             ->map(fn ($ex) => [
@@ -2185,22 +2294,22 @@ class PersonalMobileController extends Controller
             ->values()->all();
 
         return [
-            'user_id'         => Auth::id(),
+            'user_id' => Auth::id(),
             'subject_user_id' => $subjectUserId,
-            'day'             => $data['day'],
-            'start_time'      => $data['start_time'] ?? null,
-            'end_time'        => $data['end_time'] ?? null,
-            'title'           => $data['title'],
-            'discipline'      => $data['discipline'] ?? null,
-            'icon'            => ($data['icon'] ?? null) ?: 'bi-calendar-check',
-            'color'           => ($data['color'] ?? null) ?: '#7c3aed',
-            'coach'           => $data['coach'] ?? null,
-            'location'        => $this->personalLocationLabel($data),
-            'location_meta'   => $this->personalLocationMeta($data),
-            'intensity'       => $data['intensity'] ?? null,
-            'focus'           => $focus,
-            'notes'           => $data['notes'] ?? null,
-            'workout'         => ['warmup' => $warmup, 'main' => $main, 'cooldown' => $cooldown],
+            'day' => $data['day'],
+            'start_time' => $data['start_time'] ?? null,
+            'end_time' => $data['end_time'] ?? null,
+            'title' => $data['title'],
+            'discipline' => $data['discipline'] ?? null,
+            'icon' => ($data['icon'] ?? null) ?: 'bi-calendar-check',
+            'color' => ($data['color'] ?? null) ?: '#7c3aed',
+            'coach' => $data['coach'] ?? null,
+            'location' => $this->personalLocationLabel($data),
+            'location_meta' => $this->personalLocationMeta($data),
+            'intensity' => $data['intensity'] ?? null,
+            'focus' => $focus,
+            'notes' => $data['notes'] ?? null,
+            'workout' => ['warmup' => $warmup, 'main' => $main, 'cooldown' => $cooldown],
         ];
     }
 
@@ -2211,6 +2320,7 @@ class PersonalMobileController extends Controller
         if ($type === 'map') {
             return ($data['location_address'] ?? null) ?: 'Pinned location';
         }
+
         return ($data['location'] ?? null) ?: null;
     }
 
@@ -2221,28 +2331,31 @@ class PersonalMobileController extends Controller
         if ($type === 'map' && isset($data['location_lat'], $data['location_lng'])
             && $data['location_lat'] !== null && $data['location_lng'] !== null) {
             return [
-                'type'    => 'map',
-                'lat'     => (float) $data['location_lat'],
-                'lng'     => (float) $data['location_lng'],
+                'type' => 'map',
+                'lat' => (float) $data['location_lat'],
+                'lng' => (float) $data['location_lng'],
                 'address' => $data['location_address'] ?? null,
             ];
         }
+
         return ['type' => 'text'];
     }
 
     /** Resolve a subject key ("me" / "u{id}") to a roster member the user owns. */
     private function resolveSubject(string $key): ?array
     {
-        [$members, ] = $this->scheduleMembers();
+        [$members] = $this->scheduleMembers();
+
         return $members[$key] ?? null;
     }
 
     /** Tag a card with done/today/upcoming for the current week. */
     private function stampStatus(array $card): array
     {
-        $order = ['sunday'=>0,'monday'=>1,'tuesday'=>2,'wednesday'=>3,'thursday'=>4,'friday'=>5,'saturday'=>6];
+        $order = ['sunday' => 0, 'monday' => 1, 'tuesday' => 2, 'wednesday' => 3, 'thursday' => 4, 'friday' => 5, 'saturday' => 6];
         $cmp = ($order[$card['day']] ?? 0) <=> $order[strtolower(\Carbon\Carbon::now()->format('l'))];
         $card['status'] = $cmp < 0 ? 'done' : ($cmp === 0 ? 'today' : 'upcoming');
+
         return $card;
     }
 
@@ -2270,11 +2383,13 @@ class PersonalMobileController extends Controller
             return;
         }
         $ids = collect($userIds)->filter()->map(fn ($id) => (int) $id)->unique()->values();
-        if ($ids->isEmpty()) return;
+        if ($ids->isEmpty()) {
+            return;
+        }
 
         try {
             $batch = $ids->map(fn ($uid) => [
-                'topic'   => Realtime()->userTopic($uid, 'schedule'),
+                'topic' => Realtime()->userTopic($uid, 'schedule'),
                 'payload' => ['action' => 'refresh'],
             ])->all();
             Realtime()->publishMany($batch);
@@ -2301,20 +2416,26 @@ class PersonalMobileController extends Controller
         $parts = preg_split('/\s+/', trim($name)) ?: [];
         $a = mb_substr($parts[0] ?? '', 0, 1);
         $b = mb_substr($parts[1] ?? '', 0, 1);
-        return mb_strtoupper(($a . $b) ?: 'U');
+
+        return mb_strtoupper(($a.$b) ?: 'U');
     }
 
     /** Public storage URL for a user's profile picture (cache-busted), or null. */
     private function avatarUrl(?\App\Models\User $u): ?string
     {
-        if (! $u || ! $u->profile_picture) return null;
-        return asset('storage/' . $u->profile_picture) . '?v=' . optional($u->updated_at)->timestamp;
+        if (! $u || ! $u->profile_picture) {
+            return null;
+        }
+
+        return asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp;
     }
 
     /** "18:00" → "6:00 PM"; passes already-formatted strings through. */
     private function fmtTime(?string $t): ?string
     {
-        if (! $t) return null;
+        if (! $t) {
+            return null;
+        }
         try {
             return \Carbon\Carbon::parse($t)->format('g:i A');
         } catch (\Throwable) {
@@ -2324,10 +2445,13 @@ class PersonalMobileController extends Controller
 
     private function slotDuration(?string $start, ?string $end): string
     {
-        if (! $start || ! $end) return '—';
+        if (! $start || ! $end) {
+            return '—';
+        }
         try {
             $mins = \Carbon\Carbon::parse($start)->diffInMinutes(\Carbon\Carbon::parse($end));
-            return $mins > 0 ? $mins . ' min' : '—';
+
+            return $mins > 0 ? $mins.' min' : '—';
         } catch (\Throwable) {
             return '—';
         }
@@ -2349,18 +2473,20 @@ class PersonalMobileController extends Controller
         return ['#7c3aed', '#ec4899', '#0ea5e9', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#14b8a6'];
     }
 
-
     /** Dedicated page: the member's club affiliations — active now + history of clubs left. */
     public function affiliations(): View
     {
         $affiliations = Auth::user()->clubAffiliations()
-            ->with('skillAcquisitions')
+            ->with(['skillAcquisitions', 'tenant:id,slug,country'])
             ->get();
 
         $active = $affiliations->whereNull('end_date')->sortByDesc('start_date')->values();
-        $left   = $affiliations->whereNotNull('end_date')->sortByDesc('end_date')->values();
+        $left = $affiliations->whereNotNull('end_date')->sortByDesc('end_date')->values();
 
-        return view('personal.affiliations', compact('active', 'left'));
+        // The mobile shell labels its header from $shellTitle for routes that
+        // aren't in its own nav list.
+        return view('personal.affiliations', compact('active', 'left'))
+            ->with('shellTitle', __('nav.affiliations'));
     }
 
     /**
@@ -2368,20 +2494,29 @@ class PersonalMobileController extends Controller
      * mobile shell (keeps the top bar + bottom tabs) via the $inShell flag.
      * Mirrors the data MemberController@show builds for one's own profile.
      */
-    public function profile(): View
+    public function profile(): \Illuminate\Http\RedirectResponse
+    {
+        // The standalone "my profile" page is redundant with the full member
+        // profile — send members straight to /member/{uuid}, the single source
+        // of truth for a person's profile.
+        return redirect()->route('member.show', Auth::user()->uuid);
+    }
+
+    /** @deprecated superseded by member.show — kept for reference. */
+    private function profileLegacy(): View
     {
         $user = Auth::user();
 
         $relationship = (object) [
-            'dependent'         => $user,
+            'dependent' => $user,
             'relationship_type' => 'self',
-            'guardian_user_id'  => $user->id,
+            'guardian_user_id' => $user->id,
             'dependent_user_id' => $user->id,
         ];
 
         $latestHealthRecord = $user->healthRecords()->latest('recorded_at')->first();
-        $healthRecords      = $user->healthRecords()->orderBy('recorded_at', 'desc')->paginate(10);
-        $comparisonRecords  = $user->healthRecords()->orderBy('recorded_at', 'desc')->take(2)->get();
+        $healthRecords = $user->healthRecords()->orderBy('recorded_at', 'desc')->paginate(10);
+        $comparisonRecords = $user->healthRecords()->orderBy('recorded_at', 'desc')->take(2)->get();
 
         $invoices = \App\Models\Invoice::where('student_user_id', $user->id)
             ->orWhere('payer_user_id', $user->id)
@@ -2398,9 +2533,9 @@ class PersonalMobileController extends Controller
 
         $awardCounts = [
             'special' => $tournamentEvents->flatMap->performanceResults->where('medal_type', 'special')->count(),
-            '1st'     => $tournamentEvents->flatMap->performanceResults->where('medal_type', '1st')->count(),
-            '2nd'     => $tournamentEvents->flatMap->performanceResults->where('medal_type', '2nd')->count(),
-            '3rd'     => $tournamentEvents->flatMap->performanceResults->where('medal_type', '3rd')->count(),
+            '1st' => $tournamentEvents->flatMap->performanceResults->where('medal_type', '1st')->count(),
+            '2nd' => $tournamentEvents->flatMap->performanceResults->where('medal_type', '2nd')->count(),
+            '3rd' => $tournamentEvents->flatMap->performanceResults->where('medal_type', '3rd')->count(),
         ];
         $sports = $tournamentEvents->pluck('sport')->unique()->sort()->values();
 
@@ -2417,21 +2552,22 @@ class PersonalMobileController extends Controller
                     $athletes = is_array($a->athletes) ? $a->athletes : [];
                     $mine = collect($athletes)->first(fn ($x) => is_array($x) && (int) ($x['user_id'] ?? 0) === (int) $user->id);
                     $a->member_award = $mine['role'] ?? null;
+
                     return $mine ? $a : null;
                 })
                 ->filter()
                 ->values();
 
-        $goals               = $user->goals()->orderBy('created_at', 'desc')->get();
-        $activeGoalsCount    = $goals->where('status', 'active')->count();
+        $goals = $user->goals()->orderBy('created_at', 'desc')->get();
+        $activeGoalsCount = $goals->where('status', 'active')->count();
         $completedGoalsCount = $goals->where('status', 'completed')->count();
-        $successRate         = $goals->count() > 0 ? round(($completedGoalsCount / $goals->count()) * 100) : 0;
+        $successRate = $goals->count() > 0 ? round(($completedGoalsCount / $goals->count()) * 100) : 0;
 
         $attendanceRecords = $user->attendanceRecords()->orderBy('session_datetime', 'desc')->get();
         $sessionsCompleted = $attendanceRecords->where('status', 'completed')->count();
-        $noShows           = $attendanceRecords->where('status', 'no_show')->count();
-        $totalSessions     = $attendanceRecords->count();
-        $attendanceRate    = $totalSessions > 0 ? round(($sessionsCompleted / $totalSessions) * 100, 1) : 0;
+        $noShows = $attendanceRecords->where('status', 'no_show')->count();
+        $totalSessions = $attendanceRecords->count();
+        $attendanceRate = $totalSessions > 0 ? round(($sessionsCompleted / $totalSessions) * 100, 1) : 0;
 
         $clubAffiliations = $user->clubAffiliations()
             ->with([
@@ -2443,57 +2579,64 @@ class PersonalMobileController extends Controller
             ->orderBy('start_date', 'desc')->get();
         $clubAffiliations->each(fn ($a) => $a->affiliationMedia->each(fn ($m) => $m->icon_class = $m->icon_class));
 
-        $totalAffiliations       = $clubAffiliations->count();
-        $distinctSkills          = $clubAffiliations->flatMap->skillAcquisitions->pluck('skill_name')->unique()->count();
+        $totalAffiliations = $clubAffiliations->count();
+        $distinctSkills = $clubAffiliations->flatMap->skillAcquisitions->pluck('skill_name')->unique()->count();
         $totalMembershipDuration = $clubAffiliations->sum('duration_in_months');
-        $allSkills               = $clubAffiliations->flatMap(fn ($a) => $a->skillAcquisitions->pluck('skill_name'))->unique()->sort()->values();
-        $totalInstructors        = $clubAffiliations->flatMap(fn ($a) => $a->skillAcquisitions->pluck('instructor'))->filter()->unique('id')->count();
+        $allSkills = $clubAffiliations->flatMap(fn ($a) => $a->skillAcquisitions->pluck('skill_name'))->unique()->sort()->values();
+        $totalInstructors = $clubAffiliations->flatMap(fn ($a) => $a->skillAcquisitions->pluck('instructor'))->filter()->unique('id')->count();
 
         $joinedEventRegistrations = \App\Models\ClubEventRegistration::where('user_id', $user->id)
             ->with(['event.tenant'])->orderBy('registered_at', 'desc')->get();
 
         return view('components-templates.member.mobile.show', [
-            'inShell'                  => true,
-            'relationship'             => $relationship,
-            'user'                     => $user,
+            'inShell' => true,
+            'relationship' => $relationship,
+            'user' => $user,
             // Own profile: may edit basic info; not club staff over themselves.
-            'canEditBasic'             => true,
-            'canManageMember'          => false,
+            'canEditBasic' => true,
+            'canManageMember' => false,
             // Own profile — the member can always see their own sensitive sections.
-            'canViewSensitive'         => true,
-            'latestHealthRecord'       => $latestHealthRecord,
-            'healthRecords'            => $healthRecords,
-            'comparisonRecords'        => $comparisonRecords,
-            'invoices'                 => $invoices,
-            'payments'                 => $payments,
-            'tournamentEvents'         => $tournamentEvents,
-            'awardCounts'              => $awardCounts,
-            'sports'                   => $sports,
-            'awardedAchievements'      => $awardedAchievements,
-            'goals'                    => $goals,
-            'activeGoalsCount'         => $activeGoalsCount,
-            'completedGoalsCount'      => $completedGoalsCount,
-            'successRate'              => $successRate,
-            'attendanceRecords'        => $attendanceRecords,
-            'sessionsCompleted'        => $sessionsCompleted,
-            'noShows'                  => $noShows,
-            'attendanceRate'           => $attendanceRate,
-            'clubAffiliations'         => $clubAffiliations,
-            'totalAffiliations'        => $totalAffiliations,
-            'distinctSkills'           => $distinctSkills,
-            'totalMembershipDuration'  => $totalMembershipDuration,
-            'allSkills'                => $allSkills,
-            'totalInstructors'         => $totalInstructors,
+            'canViewSensitive' => true,
+            'latestHealthRecord' => $latestHealthRecord,
+            'healthRecords' => $healthRecords,
+            'comparisonRecords' => $comparisonRecords,
+            'invoices' => $invoices,
+            'payments' => $payments,
+            'tournamentEvents' => $tournamentEvents,
+            'awardCounts' => $awardCounts,
+            'sports' => $sports,
+            'awardedAchievements' => $awardedAchievements,
+            'goals' => $goals,
+            'activeGoalsCount' => $activeGoalsCount,
+            'completedGoalsCount' => $completedGoalsCount,
+            'successRate' => $successRate,
+            'attendanceRecords' => $attendanceRecords,
+            'sessionsCompleted' => $sessionsCompleted,
+            'noShows' => $noShows,
+            'attendanceRate' => $attendanceRate,
+            'clubAffiliations' => $clubAffiliations,
+            'totalAffiliations' => $totalAffiliations,
+            'distinctSkills' => $distinctSkills,
+            'totalMembershipDuration' => $totalMembershipDuration,
+            'allSkills' => $allSkills,
+            'totalInstructors' => $totalInstructors,
             'joinedEventRegistrations' => $joinedEventRegistrations,
-            'allClubs'                 => \App\Models\Tenant::orderBy('club_name')->get(['id', 'club_name', 'address', 'logo']),
-            'canResetPassword'         => true,
+            'allClubs' => \App\Models\Tenant::orderBy('club_name')->get(['id', 'club_name', 'address', 'logo']),
+            'canResetPassword' => true,
         ]);
     }
 
     public function packages(): View
     {
         $subscriptions = ClubMemberSubscription::where('user_id', Auth::id())
-            ->with(['package:id,name,cover_image,price,translations', 'tenant:id,club_name,logo,currency,translations'])
+            ->with([
+                'package:id,name,cover_image,price,translations',
+                'package.packageActivities:id,package_id,activity_id,instructor_id,schedule',
+                'package.packageActivities.activity:id,name,translations',
+                'package.packageActivities.instructor:id,user_id',
+                'package.packageActivities.instructor.user:id,full_name,profile_picture,updated_at',
+                'tenant:id,club_name,logo,currency,translations',
+            ])
             ->latest()
             ->get();
 
@@ -2504,9 +2647,9 @@ class PersonalMobileController extends Controller
     {
         $goals = Goal::where('user_id', Auth::id())->latest()->get();
         $goalStats = [
-            'completed'   => $goals->where('status', 'completed')->count(),
+            'completed' => $goals->where('status', 'completed')->count(),
             'in_progress' => $goals->where('status', 'in_progress')->count(),
-            'pending'     => $goals->whereNotIn('status', ['completed', 'in_progress'])->count(),
+            'pending' => $goals->whereNotIn('status', ['completed', 'in_progress'])->count(),
         ];
 
         return view('personal.progress', compact('goals', 'goalStats'));
@@ -2520,9 +2663,76 @@ class PersonalMobileController extends Controller
             ->get();
 
         $totalPaid = (float) $subscriptions->sum('amount_paid');
-        $totalDue  = (float) $subscriptions->whereIn('payment_status', ['unpaid', 'pending_approval'])->sum('amount_due');
+        $totalDue = (float) $subscriptions->whereIn('payment_status', ['unpaid', 'pending_approval'])->sum('amount_due');
 
         return view('personal.payments', compact('subscriptions', 'totalPaid', 'totalDue'));
+    }
+
+    /**
+     * Settle an outstanding bill: the member uploads proof of payment, which
+     * moves the subscription to "pending approval" and notifies the club owner
+     * to review it. The owner's approval (SubscriptionService::approvePayment)
+     * marks it paid and stamps settled_at.
+     */
+    public function settlePayment(Request $request, \App\Models\ClubMemberSubscription $subscription): JsonResponse
+    {
+        // A bill may be settled by the member themselves, their guardian, or a
+        // super-admin (the same people who can see the member's billing tab).
+        $actor = Auth::user();
+        $isSelf = $subscription->user_id === $actor->id;
+        $isSuper = $actor->hasRole('super-admin');
+        $isGuardian = ! $isSelf && \App\Models\UserRelationship::where('guardian_user_id', $actor->id)
+            ->where('dependent_user_id', $subscription->user_id)
+            ->exists();
+        abort_unless($isSelf || $isSuper || $isGuardian, 403);
+
+        if (! in_array($subscription->payment_status, ['unpaid', 'pending_approval'], true)) {
+            return response()->json(['success' => false, 'message' => __('This bill cannot be settled.')], 422);
+        }
+
+        $validated = $request->validate([
+            'payment_proof_base64' => ['required', 'string'],
+        ]);
+
+        $path = $this->storeBase64Image(
+            $validated['payment_proof_base64'], 'payment-proofs', 'sub_'.$subscription->id.'_'.time(), 'local'
+        );
+        if (! $path) {
+            return response()->json(['success' => false, 'message' => __('Please upload a valid image (JPG or PNG).')], 422);
+        }
+
+        // Replace any previous proof file so we don't orphan it in storage.
+        if ($subscription->proof_of_payment && $subscription->proof_of_payment !== $path) {
+            rescue(fn () => \Illuminate\Support\Facades\Storage::disk('local')->delete($subscription->proof_of_payment), null, false);
+        }
+
+        $subscription->update([
+            'proof_of_payment' => $path,
+            'payment_status' => 'pending_approval',
+        ]);
+
+        // Notify the club owner to review the payment.
+        if ($ownerId = $subscription->tenant?->owner_user_id) {
+            UserNotification::notifyUser(
+                $ownerId,
+                'payment_pending',
+                __(':name submitted a payment to review.', ['name' => $subscription->user?->full_name ?? $actor->full_name]),
+                [
+                    'actor_id' => Auth::id(),
+                    'tenant_id' => $subscription->tenant_id,
+                    'icon' => 'bi-cash-coin',
+                    'body' => $subscription->package?->tr('name') ?? __('Membership payment'),
+                    'action_url' => route('admin.club.members', $subscription->tenant->slug ?? $subscription->tenant_id),
+                ],
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Payment sent for review.'),
+            'payment_status' => 'pending_approval',
+            'subscription_id' => $subscription->id,
+        ]);
     }
 
     public function events(): View
@@ -2764,30 +2974,30 @@ class PersonalMobileController extends Controller
                 'rounds' => [
                     ['name' => 'Quarter-finals', 'matches' => [
                         ['court' => 'Mat 1', 'time' => '10:00', 'status' => 'done', 'winner' => 'a',
-                         'a' => ['name' => 'Omar Khalid',  'country' => 'BHR', 'seed' => 1, 'score' => '2'],
-                         'b' => ['name' => 'Diego Santos',  'country' => 'BRA', 'seed' => 8, 'score' => '0']],
+                            'a' => ['name' => 'Omar Khalid',  'country' => 'BHR', 'seed' => 1, 'score' => '2'],
+                            'b' => ['name' => 'Diego Santos',  'country' => 'BRA', 'seed' => 8, 'score' => '0']],
                         ['court' => 'Mat 1', 'time' => '10:30', 'status' => 'done', 'winner' => 'b',
-                         'a' => ['name' => 'Min-jun Park',  'country' => 'KOR', 'seed' => 4, 'score' => '1'],
-                         'b' => ['name' => 'Ivan Petrov',   'country' => 'RUS', 'seed' => 5, 'score' => '2']],
+                            'a' => ['name' => 'Min-jun Park',  'country' => 'KOR', 'seed' => 4, 'score' => '1'],
+                            'b' => ['name' => 'Ivan Petrov',   'country' => 'RUS', 'seed' => 5, 'score' => '2']],
                         ['court' => 'Mat 2', 'time' => '11:00', 'status' => 'done', 'winner' => 'a',
-                         'a' => ['name' => 'Carlos Ruiz',   'country' => 'ESP', 'seed' => 3, 'score' => '2'],
-                         'b' => ['name' => 'Yuki Tanaka',   'country' => 'JPN', 'seed' => 6, 'score' => '1']],
+                            'a' => ['name' => 'Carlos Ruiz',   'country' => 'ESP', 'seed' => 3, 'score' => '2'],
+                            'b' => ['name' => 'Yuki Tanaka',   'country' => 'JPN', 'seed' => 6, 'score' => '1']],
                         ['court' => 'Mat 2', 'time' => '11:30', 'status' => 'done', 'winner' => 'a',
-                         'a' => ['name' => 'Ahmed Saleh',   'country' => 'EGY', 'seed' => 2, 'score' => '2'],
-                         'b' => ['name' => 'Sami Haddad',   'country' => 'LBN', 'seed' => 7, 'score' => '0']],
+                            'a' => ['name' => 'Ahmed Saleh',   'country' => 'EGY', 'seed' => 2, 'score' => '2'],
+                            'b' => ['name' => 'Sami Haddad',   'country' => 'LBN', 'seed' => 7, 'score' => '0']],
                     ]],
                     ['name' => 'Semi-finals', 'matches' => [
                         ['court' => 'Mat 1', 'time' => '14:00', 'status' => 'live', 'winner' => null,
-                         'a' => ['name' => 'Omar Khalid', 'country' => 'BHR', 'seed' => 1, 'score' => '1'],
-                         'b' => ['name' => 'Ivan Petrov', 'country' => 'RUS', 'seed' => 5, 'score' => '1']],
+                            'a' => ['name' => 'Omar Khalid', 'country' => 'BHR', 'seed' => 1, 'score' => '1'],
+                            'b' => ['name' => 'Ivan Petrov', 'country' => 'RUS', 'seed' => 5, 'score' => '1']],
                         ['court' => 'Mat 1', 'time' => '14:45', 'status' => 'upcoming', 'winner' => null,
-                         'a' => ['name' => 'Carlos Ruiz', 'country' => 'ESP', 'seed' => 3, 'score' => '–'],
-                         'b' => ['name' => 'Ahmed Saleh', 'country' => 'EGY', 'seed' => 2, 'score' => '–']],
+                            'a' => ['name' => 'Carlos Ruiz', 'country' => 'ESP', 'seed' => 3, 'score' => '–'],
+                            'b' => ['name' => 'Ahmed Saleh', 'country' => 'EGY', 'seed' => 2, 'score' => '–']],
                     ]],
                     ['name' => 'Final', 'matches' => [
                         ['court' => 'Mat 1', 'time' => '17:00', 'status' => 'upcoming', 'winner' => null,
-                         'a' => ['name' => 'Winner SF1', 'country' => '', 'seed' => null, 'score' => '–'],
-                         'b' => ['name' => 'Winner SF2', 'country' => '', 'seed' => null, 'score' => '–']],
+                            'a' => ['name' => 'Winner SF1', 'country' => '', 'seed' => null, 'score' => '–'],
+                            'b' => ['name' => 'Winner SF2', 'country' => '', 'seed' => null, 'score' => '–']],
                     ]],
                 ],
             ],
@@ -2803,16 +3013,16 @@ class PersonalMobileController extends Controller
                 'rounds' => [
                     ['name' => 'Semi-finals', 'matches' => [
                         ['court' => 'Mat 2', 'time' => '15:00', 'status' => 'done', 'winner' => 'a',
-                         'a' => ['name' => 'Jin-ho Lee',     'country' => 'KOR', 'seed' => 1, 'score' => '2'],
-                         'b' => ['name' => 'Tariq Bin Saad', 'country' => 'KSA', 'seed' => 4, 'score' => '1']],
+                            'a' => ['name' => 'Jin-ho Lee',     'country' => 'KOR', 'seed' => 1, 'score' => '2'],
+                            'b' => ['name' => 'Tariq Bin Saad', 'country' => 'KSA', 'seed' => 4, 'score' => '1']],
                         ['court' => 'Mat 2', 'time' => '15:45', 'status' => 'done', 'winner' => 'b',
-                         'a' => ['name' => 'Luca Moretti',   'country' => 'ITA', 'seed' => 3, 'score' => '0'],
-                         'b' => ['name' => 'Mehdi Karimi',   'country' => 'IRI', 'seed' => 2, 'score' => '2']],
+                            'a' => ['name' => 'Luca Moretti',   'country' => 'ITA', 'seed' => 3, 'score' => '0'],
+                            'b' => ['name' => 'Mehdi Karimi',   'country' => 'IRI', 'seed' => 2, 'score' => '2']],
                     ]],
                     ['name' => 'Final', 'matches' => [
                         ['court' => 'Mat 1', 'time' => '18:00', 'status' => 'done', 'winner' => 'a',
-                         'a' => ['name' => 'Jin-ho Lee',   'country' => 'KOR', 'seed' => 1, 'score' => '2'],
-                         'b' => ['name' => 'Mehdi Karimi', 'country' => 'IRI', 'seed' => 2, 'score' => '1']],
+                            'a' => ['name' => 'Jin-ho Lee',   'country' => 'KOR', 'seed' => 1, 'score' => '2'],
+                            'b' => ['name' => 'Mehdi Karimi', 'country' => 'IRI', 'seed' => 2, 'score' => '1']],
                     ]],
                 ],
             ],
@@ -2831,41 +3041,41 @@ class PersonalMobileController extends Controller
         ];
     }
 
-    /** DEMO news-feed: stories + curated club posts (All) + member posts (Following/Mine). */
+    /** DEMO news-feed: curated club posts (All) + member posts (Following/Mine). */
     public function demoFeed(?\App\Models\User $me = null): array
     {
         $now = \Carbon\Carbon::now();
-        $myName   = $me?->full_name ?? 'You';
+        $myName = $me?->full_name ?? 'You';
         $myAvatar = $me && $me->profile_picture
-            ? asset('storage/' . $me->profile_picture) . '?v=' . optional($me->updated_at)->timestamp
+            ? asset('storage/'.$me->profile_picture).'?v='.optional($me->updated_at)->timestamp
             : null;
 
         // Member-shaped post factory (matches UserPost::toFeedArray + post-card).
         $mem = function ($id, $hours, $name, $isMe, $body, $likes, $comments, $avatar = null) use ($now, $myAvatar) {
             return [
-                'id'           => $id,
-                'demo'         => true,
-                'type'         => 'member',
-                'author'       => [
-                    'id'     => $id,
-                    'slug'   => 'demo-'.$id,
-                    'name'   => $name,
+                'id' => $id,
+                'demo' => true,
+                'type' => 'member',
+                'author' => [
+                    'id' => $id,
+                    'slug' => 'demo-'.$id,
+                    'name' => $name,
                     'avatar' => $isMe ? $myAvatar : $avatar,
-                    'url'    => '#',
-                    'isMe'   => $isMe,
+                    'url' => '#',
+                    'isMe' => $isMe,
                 ],
-                'time'         => $now->copy()->subHours($hours)->diffForHumans(),
-                'edited'       => false,
-                'body'         => $body,
-                'editing'      => false,
-                'draft'        => '',
-                'images'       => [],
-                'likes'        => $likes,
-                'liked'        => false,
-                'comments'     => $comments,
+                'time' => $now->copy()->subHours($hours)->diffForHumans(),
+                'edited' => false,
+                'body' => $body,
+                'editing' => false,
+                'draft' => '',
+                'images' => [],
+                'likes' => $likes,
+                'liked' => false,
+                'comments' => $comments,
                 'showComments' => false,
                 'commentDraft' => '',
-                'url'          => '#',
+                'url' => '#',
             ];
         };
 
@@ -2877,40 +3087,29 @@ class PersonalMobileController extends Controller
             $mem(95002, 6, 'Layla Ahmad', false, "New 5K PB this morning — 22:48! ☀️🏃‍♀️ Six months ago I couldn't run 1K without stopping. Consistency really does pay off.", 88, [
                 ['id' => 3, 'name' => 'Noor S.', 'avatar' => null, 'body' => 'Amazing progress 👏'],
             ]),
-            $mem(95003, 14, 'Yousef Hadi', false, "Anyone up for a doubles padel match this weekend? Looking for 2 more players 🎾", 17, []),
+            $mem(95003, 14, 'Yousef Hadi', false, 'Anyone up for a doubles padel match this weekend? Looking for 2 more players 🎾', 17, []),
         ];
 
         $mine = [
-            $mem(96001, 3, $myName, true, "Hit a new bench press PR today — 80kg for 3 reps 💪 Slow and steady. Next stop: 85.", 32, [
+            $mem(96001, 3, $myName, true, 'Hit a new bench press PR today — 80kg for 3 reps 💪 Slow and steady. Next stop: 85.', 32, [
                 ['id' => 9, 'name' => 'Coach Adam', 'avatar' => null, 'body' => "That's the way — proud of you!"],
             ]),
-            $mem(96002, 26, $myName, true, "Rest day done right: mobility, a long walk and an early night. 😴 Recovery is part of the program.", 14, []),
-        ];
-
-
-
-        $stories = [
-            ['name' => 'Add',         'me' => true,  'color' => '#7c3aed', 'icon' => 'bi-plus-lg'],
-            ['name' => 'Eta Club',    'me' => false, 'color' => '#7c3aed', 'icon' => 'bi-buildings', 'seen' => false, 'caption' => 'Match day at the stadium! 🏟️'],
-            ['name' => 'Coach Adam',  'me' => false, 'color' => '#0ea5e9', 'icon' => 'bi-person',    'seen' => false, 'caption' => 'Early morning grind 💪'],
-            ['name' => 'Sara',        'me' => false, 'color' => '#ec4899', 'icon' => 'bi-person',    'seen' => false, 'caption' => 'New personal best today! 🏃‍♀️'],
-            ['name' => 'Omar',        'me' => false, 'color' => '#10b981', 'icon' => 'bi-person',    'seen' => true,  'caption' => 'Sparring session 🥊'],
-            ['name' => 'Boxing Team', 'me' => false, 'color' => '#ef4444', 'icon' => 'bi-trophy',    'seen' => true,  'caption' => 'Champions! 🏆'],
+            $mem(96002, 26, $myName, true, 'Rest day done right: mobility, a long walk and an early night. 😴 Recovery is part of the program.', 14, []),
         ];
 
         $mk = function ($id, $hours, $club, $category, $body, $likes, $comments, $cover = null, $commentList = []) use ($now) {
             return [
-                'type'        => 'club',
-                'id'          => $id,
-                'ts'          => $now->copy()->subHours($hours)->timestamp,
-                'club'        => ['name' => $club, 'logo' => null],
-                'category'    => $category,
-                'time'        => $now->copy()->subHours($hours)->diffForHumans(),
-                'body'        => $body,
-                'image'       => null,
-                'cover'       => $cover,
-                'likes'       => $likes,
-                'comments'    => $comments,
+                'type' => 'club',
+                'id' => $id,
+                'ts' => $now->copy()->subHours($hours)->timestamp,
+                'club' => ['name' => $club, 'logo' => null],
+                'category' => $category,
+                'time' => $now->copy()->subHours($hours)->diffForHumans(),
+                'body' => $body,
+                'image' => null,
+                'cover' => $cover,
+                'likes' => $likes,
+                'comments' => $comments,
                 'commentList' => $commentList,
             ];
         };
@@ -2924,16 +3123,16 @@ class PersonalMobileController extends Controller
                 ]),
             $mk(90002, 4, 'Coach Adam', 'Tip of the day', "Recovery is where the gains happen. Aim for 7–9 hours of sleep, hydrate well, and don't skip your mobility work. Your body will thank you tomorrow. 💪", 64, 8, null,
                 [['id' => 103, 'name' => 'Layla Ahmad', 'avatar' => null, 'body' => 'Saving this 🙌']]),
-            $mk(90003, 7, 'Eta Athletics Club', 'Event', "📣 New this week: Sunrise Yoga every Sunday at 8 AM on the rooftop. Limited to 15 spots — book through the app. Namaste 🧘", 38, 5,
+            $mk(90003, 7, 'Eta Athletics Club', 'Event', '📣 New this week: Sunrise Yoga every Sunday at 8 AM on the rooftop. Limited to 15 spots — book through the app. Namaste 🧘', 38, 5,
                 ['color' => '#10b981', 'icon' => 'bi-flower1', 'label' => 'Sunrise Yoga · Sundays']),
             $mk(90004, 11, 'Boxing Team', 'Milestone', "Big shoutout to Omar K. for landing his 10th win this season! 🥊 The grind never stops. Who's next in the ring?", 97, 19, null,
                 [['id' => 104, 'name' => 'Yousef Hadi', 'avatar' => null, 'body' => 'Legend 👏']]),
-            $mk(90005, 20, 'FuelLab', 'Community', "Fuel feature 🥤 — your favourite post-workout shake just got a new strawberry flavour. Drop a 💗 if you want us to stock it at the club café!", 51, 12,
+            $mk(90005, 20, 'FuelLab', 'Community', 'Fuel feature 🥤 — your favourite post-workout shake just got a new strawberry flavour. Drop a 💗 if you want us to stock it at the club café!', 51, 12,
                 ['color' => '#ec4899', 'icon' => 'bi-cup-straw', 'label' => 'New Flavour Drop']),
             $mk(90006, 28, 'Eta Athletics Club', 'Throwback', "#ThrowbackThursday to last month's regional friendly. The energy in the stands was unreal — thank you to everyone who came out to support. 🙌", 73, 9, null),
         ];
 
-        return compact('stories', 'posts', 'following', 'mine');
+        return compact('posts', 'following', 'mine');
     }
 
     public function market(): View
@@ -2981,19 +3180,20 @@ class PersonalMobileController extends Controller
             ->latest()->limit(30)->get();
 
         $comments = \App\Models\OrderReview::whereIn('order_id', $rows->pluck('order_id')->filter()->unique())
-            ->get()->keyBy(fn ($r) => $r->order_id . '-' . $r->user_id);
+            ->get()->keyBy(fn ($r) => $r->order_id.'-'.$r->user_id);
 
         $reviews = $rows->map(function ($r) use ($comments) {
             $u = $r->user;
             $name = $u?->full_name ?? __('admin.fin_member');
+
             return [
-                'name'     => $name,
-                'initials' => mb_strtoupper(mb_substr(strtok($name, ' '), 0, 1) . mb_substr(strstr($name, ' ') ?: '', 1, 1)),
-                'avatar'   => $u && $u->profile_picture
-                    ? asset('storage/' . $u->profile_picture) . '?v=' . optional($u->updated_at)->timestamp : null,
-                'rating'   => (int) $r->rating,
-                'comment'  => optional($comments->get($r->order_id . '-' . $r->user_id))->comment,
-                'time'     => $r->created_at->diffForHumans(),
+                'name' => $name,
+                'initials' => mb_strtoupper(mb_substr(strtok($name, ' '), 0, 1).mb_substr(strstr($name, ' ') ?: '', 1, 1)),
+                'avatar' => $u && $u->profile_picture
+                    ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
+                'rating' => (int) $r->rating,
+                'comment' => optional($comments->get($r->order_id.'-'.$r->user_id))->comment,
+                'time' => $r->created_at->diffForHumans(),
             ];
         })->values()->all();
 
@@ -3027,15 +3227,15 @@ class PersonalMobileController extends Controller
                 'price' => 28.0, 'old' => 38.0, 'rating' => 4.8, 'reviews' => 124, 'icon' => 'bi-trophy',
                 'color' => '#7c3aed', 'badge' => 'Sale', 'stock' => 'In stock', 'featured' => true,
                 'desc' => 'Premium 12oz sparring gloves with multi-layer foam, moisture-wicking lining and a secure wrist strap. Built for daily training.',
-                'specs' => [['Weight','12 oz'],['Material','Vegan leather'],['Closure','Velcro strap'],['Warranty','1 year']],
-                'colors' => ['#7c3aed','#ef4444','#111827'],
+                'specs' => [['Weight', '12 oz'], ['Material', 'Vegan leather'], ['Closure', 'Velcro strap'], ['Warranty', '1 year']],
+                'colors' => ['#7c3aed', '#ef4444', '#111827'],
             ],
             2 => [
                 'id' => 2, 'cat' => 'equipment', 'name' => 'Adjustable Dumbbell 24kg', 'brand' => 'IronCore',
                 'price' => 95.0, 'old' => null, 'rating' => 4.9, 'reviews' => 88, 'icon' => 'bi-bicycle',
                 'color' => '#0ea5e9', 'badge' => null, 'stock' => 'In stock', 'featured' => true,
                 'desc' => 'One dumbbell, fifteen weights. Dial from 2.5kg to 24kg in seconds — perfect for a compact home gym.',
-                'specs' => [['Range','2.5–24 kg'],['Increments','2.5 kg'],['Handle','Knurled steel'],['Warranty','2 years']],
+                'specs' => [['Range', '2.5–24 kg'], ['Increments', '2.5 kg'], ['Handle', 'Knurled steel'], ['Warranty', '2 years']],
                 'colors' => ['#111827'],
             ],
             3 => [
@@ -3043,15 +3243,15 @@ class PersonalMobileController extends Controller
                 'price' => 22.0, 'old' => 26.0, 'rating' => 4.7, 'reviews' => 256, 'icon' => 'bi-cup-hot',
                 'color' => '#f59e0b', 'badge' => 'Sale', 'stock' => 'In stock', 'featured' => false,
                 'desc' => '24g of protein per scoop, low sugar, mixes smooth. Chocolate, vanilla and strawberry.',
-                'specs' => [['Protein','24 g / scoop'],['Servings','33'],['Flavour','Chocolate'],['Vegetarian','Yes']],
-                'colors' => ['#7c3aed','#f59e0b','#ec4899'],
+                'specs' => [['Protein', '24 g / scoop'], ['Servings', '33'], ['Flavour', 'Chocolate'], ['Vegetarian', 'Yes']],
+                'colors' => ['#7c3aed', '#f59e0b', '#ec4899'],
             ],
             4 => [
                 'id' => 4, 'cat' => 'passes', 'name' => '10-Session Class Pass', 'brand' => 'Eta Athletics',
                 'price' => 45.0, 'old' => 60.0, 'rating' => 5.0, 'reviews' => 42, 'icon' => 'bi-ticket-perforated',
                 'color' => '#10b981', 'badge' => 'Best value', 'stock' => 'Digital', 'featured' => true,
                 'desc' => 'Ten drop-in sessions to use across any group class. Valid for 3 months — share with family.',
-                'specs' => [['Sessions','10'],['Valid','3 months'],['Transferable','Family'],['Delivery','Instant']],
+                'specs' => [['Sessions', '10'], ['Valid', '3 months'], ['Transferable', 'Family'], ['Delivery', 'Instant']],
                 'colors' => ['#10b981'],
             ],
             5 => [
@@ -3059,32 +3259,32 @@ class PersonalMobileController extends Controller
                 'price' => 16.0, 'old' => null, 'rating' => 4.6, 'reviews' => 73, 'icon' => 'bi-person-arms-up',
                 'color' => '#ec4899', 'badge' => 'New', 'stock' => 'In stock', 'featured' => false,
                 'desc' => 'Breathable quick-dry tee with a relaxed athletic cut. Stays light through the toughest sessions.',
-                'specs' => [['Fabric','Quick-dry poly'],['Fit','Athletic'],['Sizes','XS–XXL'],['Care','Machine wash']],
-                'colors' => ['#111827','#ec4899','#0ea5e9','#10b981'],
+                'specs' => [['Fabric', 'Quick-dry poly'], ['Fit', 'Athletic'], ['Sizes', 'XS–XXL'], ['Care', 'Machine wash']],
+                'colors' => ['#111827', '#ec4899', '#0ea5e9', '#10b981'],
             ],
             6 => [
                 'id' => 6, 'cat' => 'gear', 'name' => 'Speed Jump Rope', 'brand' => 'IronCore',
                 'price' => 9.0, 'old' => 14.0, 'rating' => 4.5, 'reviews' => 310, 'icon' => 'bi-lightning-charge-fill',
                 'color' => '#ef4444', 'badge' => 'Sale', 'stock' => 'In stock', 'featured' => false,
                 'desc' => 'Ball-bearing speed rope with adjustable length and anti-slip handles. Built for double-unders.',
-                'specs' => [['Length','Adjustable'],['Bearing','Dual ball'],['Cable','Coated steel'],['Handles','Anti-slip']],
-                'colors' => ['#ef4444','#111827'],
+                'specs' => [['Length', 'Adjustable'], ['Bearing', 'Dual ball'], ['Cable', 'Coated steel'], ['Handles', 'Anti-slip']],
+                'colors' => ['#ef4444', '#111827'],
             ],
             7 => [
                 'id' => 7, 'cat' => 'equipment', 'name' => 'Yoga & Recovery Mat', 'brand' => 'FlowState',
                 'price' => 19.0, 'old' => null, 'rating' => 4.8, 'reviews' => 145, 'icon' => 'bi-grid',
                 'color' => '#10b981', 'badge' => null, 'stock' => 'In stock', 'featured' => false,
                 'desc' => 'Extra-thick 6mm non-slip mat with alignment lines. Cushions joints for floor work and stretching.',
-                'specs' => [['Thickness','6 mm'],['Size','183 × 61 cm'],['Surface','Non-slip'],['Strap','Included']],
-                'colors' => ['#10b981','#7c3aed','#111827'],
+                'specs' => [['Thickness', '6 mm'], ['Size', '183 × 61 cm'], ['Surface', 'Non-slip'], ['Strap', 'Included']],
+                'colors' => ['#10b981', '#7c3aed', '#111827'],
             ],
             8 => [
                 'id' => 8, 'cat' => 'nutrition', 'name' => 'Electrolyte Hydration Mix', 'brand' => 'FuelLab',
                 'price' => 12.0, 'old' => 15.0, 'rating' => 4.4, 'reviews' => 67, 'icon' => 'bi-droplet-half',
                 'color' => '#0ea5e9', 'badge' => 'Sale', 'stock' => 'In stock', 'featured' => false,
                 'desc' => 'Sugar-free electrolyte sachets to keep you hydrated through long sessions. 20 sticks per box.',
-                'specs' => [['Sticks','20'],['Sugar','0 g'],['Flavour','Citrus'],['Caffeine','None']],
-                'colors' => ['#0ea5e9','#f59e0b'],
+                'specs' => [['Sticks', '20'], ['Sugar', '0 g'], ['Flavour', 'Citrus'], ['Caffeine', 'None']],
+                'colors' => ['#0ea5e9', '#f59e0b'],
             ],
         ];
 
@@ -3095,7 +3295,7 @@ class PersonalMobileController extends Controller
     {
         // DUMMY: curated sample challenges + 1v1 duels for design preview.
         $challenges = $this->demoChallenges();
-        $duels      = $this->demoDuels();
+        $duels = $this->demoDuels();
 
         return view('personal.challenge', compact('challenges', 'duels'));
     }
@@ -3199,7 +3399,7 @@ class PersonalMobileController extends Controller
                 'rewards' => [
                     ['icon' => 'bi-award-fill', 'label' => 'Spring Runner badge', 'sub' => 'Earned'],
                     ['icon' => 'bi-star-fill',  'label' => '300 points',          'sub' => 'Earned'],
-                    ['icon' => 'bi-trophy-fill','label' => 'Podium · 3rd',        'sub' => 'Earned'],
+                    ['icon' => 'bi-trophy-fill', 'label' => 'Podium · 3rd',        'sub' => 'Earned'],
                 ],
                 'leaders' => [
                     ['name' => 'Fahad N.', 'val' => '10/10', 'pts' => 360],
@@ -3239,7 +3439,7 @@ class PersonalMobileController extends Controller
             ['name' => 'Hassan Tariq',   'initials' => 'HT', 'record' => '15W · 5L', 'tag' => 'MMA',        'club' => 'Desert MMA',         'city' => 'Riyadh',    'verified' => false],
             ['name' => 'Dana Wael',      'initials' => 'DW', 'record' => '9W · 1L',  'tag' => 'CrossFit',   'club' => 'Pulse Strength',     'city' => 'Doha',      'verified' => true],
             ['name' => 'Karim Mostafa',  'initials' => 'KM', 'record' => '6W · 6L',  'tag' => 'Cycling',    'club' => 'Cairo Riders',       'city' => 'Cairo',     'verified' => false],
-            ['name' => 'Reem Al Najjar', 'initials' => 'RN', 'record' => '11W · 0L', 'tag' => 'Swimming',   'club' => 'Aqua Elite',         'city' => 'Kuwait City','verified' => true],
+            ['name' => 'Reem Al Najjar', 'initials' => 'RN', 'record' => '11W · 0L', 'tag' => 'Swimming',   'club' => 'Aqua Elite',         'city' => 'Kuwait City', 'verified' => true],
             ['name' => 'Tariq Bin Saad', 'initials' => 'TS', 'record' => '4W · 2L',  'tag' => 'Powerlift',  'club' => 'Iron House',         'city' => 'Jeddah',    'verified' => false],
         ];
 
@@ -3249,8 +3449,8 @@ class PersonalMobileController extends Controller
     /** DUMMY challenge results & history (solo + versus, completed). */
     public function challengeHistory(): View
     {
-        $duels  = collect($this->demoDuels())->where('status', 'completed')->values()->all();
-        $solo   = collect($this->demoChallenges())->where('status', 'completed')->values()->all();
+        $duels = collect($this->demoDuels())->where('status', 'completed')->values()->all();
+        $solo = collect($this->demoChallenges())->where('status', 'completed')->values()->all();
 
         return view('personal.challenge-history', compact('duels', 'solo'));
     }
@@ -3319,6 +3519,36 @@ class PersonalMobileController extends Controller
     public function settings(): View
     {
         $user = Auth::user();
+
         return view('personal.settings', compact('user'));
+    }
+
+    /** Mark an app section / feed-tab as seen (clears its unseen indicator). */
+    public function markSectionSeen(Request $request, \App\Support\SectionActivity $activity): JsonResponse
+    {
+        $activity->markSeen(Auth::user(), (string) $request->input('section', ''));
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Toggle the current user's people-discovery visibility (search + cold DMs).
+     * Opt-out: default is discoverable.
+     */
+    public function updateDiscoverable(Request $request): JsonResponse
+    {
+        $data = $request->validate(['is_discoverable' => 'required|boolean']);
+
+        $user = Auth::user();
+        $user->is_discoverable = $data['is_discoverable'];
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'is_discoverable' => $user->is_discoverable,
+            'message' => $user->is_discoverable
+                ? __('personal.discoverable_on')
+                : __('personal.discoverable_off'),
+        ]);
     }
 }

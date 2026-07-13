@@ -13,7 +13,7 @@ abstract class AbstractCombatSport implements CombatSport
 
     public function divisionName(string $ageGroup, string $gender, string $label): string
     {
-        return $ageGroup . ' ' . $this->genderWord($gender) . ' ' . $label . ' kg';
+        return $ageGroup.' '.$this->genderWord($gender).' '.$label.' kg';
     }
 
     public function bronzeRule(): string

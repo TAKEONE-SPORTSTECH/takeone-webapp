@@ -14,17 +14,17 @@ class PerkRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title'       => 'required|string|max:255',
+            'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:255',
-            'badge'       => 'required|string|max:50',
-            'icon'        => 'nullable|string|max:60',
-            'bg_from'     => 'nullable|string|max:20',
-            'bg_to'       => 'nullable|string|max:20',
-            'perk_type'   => 'required|in:code,qr',
-            'perk_value'  => 'nullable|string|max:1000',
-            'status'      => 'required|in:active,inactive',
-            'sort_order'  => 'nullable|integer|min:0',
-            'translations'     => ['nullable', 'array'],
+            'badge' => 'required|string|max:50',
+            'icon' => 'nullable|string|max:60',
+            'bg_from' => 'nullable|string|max:20',
+            'bg_to' => 'nullable|string|max:20',
+            'perk_type' => 'required|in:code,qr',
+            'perk_value' => 'nullable|string|max:1000',
+            'status' => 'required|in:active,inactive',
+            'sort_order' => 'nullable|integer|min:0',
+            'translations' => ['nullable', 'array'],
             'translations.*.*' => ['nullable', 'string', 'max:2000'],
         ];
     }

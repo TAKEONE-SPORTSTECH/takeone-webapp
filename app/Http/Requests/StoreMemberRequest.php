@@ -14,14 +14,14 @@ class StoreMemberRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'full_name'           => 'required|string|max:255',
-            'email'               => 'nullable|email|max:255|unique:users,email',
-            'gender'              => 'required|in:Male,Female',
-            'birthdate'           => 'required|date',
-            'blood_type'          => 'nullable|string|max:10',
-            'nationality'         => 'required|string|max:100',
-            'relationship_type'   => 'required|string|max:50',
-            'is_billing_contact'  => 'boolean',
+            'full_name' => 'required|string|max:255',
+            'email' => 'nullable|email|max:255|unique:users,email',
+            'gender' => 'required|in:Male,Female',
+            'birthdate' => 'required|date',
+            'blood_type' => 'nullable|string|max:10',
+            'nationality' => 'required|string|max:100',
+            'relationship_type' => 'required|string|max:50',
+            'is_billing_contact' => 'boolean',
         ];
     }
 }

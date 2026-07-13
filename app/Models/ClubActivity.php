@@ -13,7 +13,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class ClubActivity extends Model
 {
-    use HasFactory, BelongsToTenant, LogsActivity, HasTranslations;
+    use BelongsToTenant, HasFactory, HasTranslations, LogsActivity;
 
     /** Translatable fields (notes is internal/admin-only and intentionally excluded). */
     protected array $translatable = ['name', 'description'];
@@ -84,8 +84,8 @@ class ClubActivity extends Model
     public function packages(): BelongsToMany
     {
         return $this->belongsToMany(ClubPackage::class, 'club_package_activities', 'activity_id', 'package_id')
-                    ->withPivot('instructor_id', 'schedule')
-                    ->withTimestamps();
+            ->withPivot('instructor_id', 'schedule')
+            ->withTimestamps();
     }
 
     /**
@@ -94,7 +94,7 @@ class ClubActivity extends Model
     public function instructors(): BelongsToMany
     {
         return $this->belongsToMany(ClubInstructor::class, 'club_activity_instructor', 'activity_id', 'instructor_id')
-                    ->withTimestamps();
+            ->withTimestamps();
     }
 
     /**

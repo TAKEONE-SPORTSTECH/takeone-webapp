@@ -32,7 +32,7 @@ class AffiliationMedia extends Model
             return $this->media_url;
         }
 
-        return asset('storage/' . $this->media_url);
+        return asset('storage/'.$this->media_url);
     }
 
     /**
@@ -40,7 +40,7 @@ class AffiliationMedia extends Model
      */
     public function getIconClassAttribute(): string
     {
-        return match($this->media_type) {
+        return match ($this->media_type) {
             'certificate' => 'bi-file-earmark-text',
             'photo' => 'bi-image',
             'video' => 'bi-play-circle',

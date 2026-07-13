@@ -9,8 +9,9 @@ use Illuminate\Support\Facades\Cache;
 
 class AuthenticatedSessionController extends Controller
 {
-    private const MAX_ATTEMPTS  = 5;
-    private const LOCKOUT_SECS  = 15 * 60; // 15 minutes
+    private const MAX_ATTEMPTS = 5;
+
+    private const LOCKOUT_SECS = 15 * 60; // 15 minutes
 
     public function create()
     {
@@ -22,16 +23,17 @@ class AuthenticatedSessionController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'email'    => ['required'],
+            'email' => ['required'],
             'password' => ['required'],
         ]);
 
-        $lockKey = 'login.lockout.' . strtolower($request->input('email')) . '|' . $request->ip();
+        $lockKey = 'login.lockout.'.strtolower($request->input('email')).'|'.$request->ip();
 
         // Check lockout before attempting auth.
         if (Cache::has($lockKey)) {
-            $seconds = Cache::get($lockKey . '.ttl', self::LOCKOUT_SECS);
+            $seconds = Cache::get($lockKey.'.ttl', self::LOCKOUT_SECS);
             $minutes = (int) ceil($seconds / 60);
+
             return back()->withErrors([
                 'email' => "Too many failed login attempts. Try again in {$minutes} minute(s).",
             ])->onlyInput('email');
@@ -48,6 +50,7 @@ class AuthenticatedSessionController extends Controller
                 $credentials = ['email' => $user->email, 'password' => $request->password];
             } else {
                 $this->incrementFailures($lockKey);
+
                 return back()->withErrors([
                     'email' => 'The provided credentials do not match our records.',
                 ])->onlyInput('email');
@@ -60,14 +63,15 @@ class AuthenticatedSessionController extends Controller
         if (Auth::attempt($credentials, true)) {
             // Clear any lockout state on successful login.
             Cache::forget($lockKey);
-            Cache::forget($lockKey . '.attempts');
+            Cache::forget($lockKey.'.attempts');
 
             $request->session()->regenerate();
             $authedUser = $request->user();
 
-            if (!$authedUser->hasVerifiedEmail()) {
+            if (! $authedUser->hasVerifiedEmail()) {
                 $email = $authedUser->email;
                 Auth::logout();
+
                 return redirect()->route('login')
                     ->with('warning', 'Your email address is not verified. Please check your inbox and click the verification link.')
                     ->with('unverified_email', $email);
@@ -77,6 +81,7 @@ class AuthenticatedSessionController extends Controller
                 $userId = $authedUser->id;
                 Auth::logout();
                 $request->session()->put('two_factor.user_id', $userId);
+
                 return redirect()->route('two-factor.challenge');
             }
 
@@ -127,14 +132,14 @@ class AuthenticatedSessionController extends Controller
 
     private function incrementFailures(string $lockKey): int
     {
-        $attemptsKey = $lockKey . '.attempts';
-        $attempts    = (int) Cache::get($attemptsKey, 0) + 1;
+        $attemptsKey = $lockKey.'.attempts';
+        $attempts = (int) Cache::get($attemptsKey, 0) + 1;
 
         Cache::put($attemptsKey, $attempts, self::LOCKOUT_SECS);
 
         if ($attempts >= self::MAX_ATTEMPTS) {
             Cache::put($lockKey, true, self::LOCKOUT_SECS);
-            Cache::put($lockKey . '.ttl', self::LOCKOUT_SECS, self::LOCKOUT_SECS);
+            Cache::put($lockKey.'.ttl', self::LOCKOUT_SECS, self::LOCKOUT_SECS);
         }
 
         return $attempts;

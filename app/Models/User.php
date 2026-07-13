@@ -2,44 +2,24 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use App\Models\Attendance;
-use App\Models\ClubAffiliation;
-use App\Models\ClubEventRegistration;
-use App\Models\ClubGalleryImage;
-use App\Models\ClubInstructor;
-use App\Models\ClubMemberSubscription;
-use App\Models\ClubMessage;
-use App\Models\ClubNotification;
-use App\Models\ClubReview;
-use App\Models\ClubTimelinePostComment;
-use App\Models\ClubTimelinePostLike;
-use App\Models\ClubTransaction;
-use App\Models\Goal;
-use App\Models\HealthRecord;
-use App\Models\InstructorReview;
-use App\Models\Invoice;
-use App\Models\Membership;
-use App\Models\TournamentEvent;
-use App\Models\PerkCollection;
-use App\Models\UserNotification;
-use App\Models\UserRelationship;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Database\Eloquent\Casts\Attribute;
-use Carbon\Carbon;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, SoftDeletes;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     /**
      * Keep `name` in sync with `full_name` so they are always the same.
@@ -166,6 +146,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'skills',
         'experience_years',
         'is_personal_trainer',
+        'is_discoverable',
         'two_factor_secret',
         'two_factor_recovery_codes',
         'two_factor_confirmed_at',
@@ -202,6 +183,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'skills' => 'array',
             'experience_years' => 'integer',
             'is_personal_trainer' => 'boolean',
+            'is_discoverable' => 'boolean',
             'two_factor_confirmed_at' => 'datetime',
         ];
     }
@@ -221,9 +203,10 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return Attribute::make(
             get: function () {
-                if (!$this->birthdate) {
+                if (! $this->birthdate) {
                     return null;
                 }
+
                 return Carbon::parse($this->birthdate)->age;
             }
         );
@@ -236,7 +219,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return Attribute::make(
             get: function () {
-                if (!$this->birthdate) {
+                if (! $this->birthdate) {
                     return null;
                 }
 
@@ -279,7 +262,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return Attribute::make(
             get: function () {
-                if (!$this->birthdate) {
+                if (! $this->birthdate) {
                     return null;
                 }
 
@@ -307,10 +290,11 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return Attribute::make(
             get: function () {
-                if (!$this->mobile || !is_array($this->mobile) || empty($this->mobile['code'] ?? '') || empty($this->mobile['number'] ?? '')) {
+                if (! $this->mobile || ! is_array($this->mobile) || empty($this->mobile['code'] ?? '') || empty($this->mobile['number'] ?? '')) {
                     return null;
                 }
-                return ($this->mobile['code'] ?? '') . ' ' . ($this->mobile['number'] ?? '');
+
+                return ($this->mobile['code'] ?? '').' '.($this->mobile['number'] ?? '');
             }
         );
     }
@@ -321,6 +305,14 @@ class User extends Authenticatable implements MustVerifyEmail
     public function clubInstructors(): HasMany
     {
         return $this->hasMany(ClubInstructor::class);
+    }
+
+    /**
+     * Registered device tokens for native push (FCM).
+     */
+    public function pushTokens(): HasMany
+    {
+        return $this->hasMany(PushToken::class);
     }
 
     /**
@@ -371,8 +363,20 @@ class User extends Authenticatable implements MustVerifyEmail
     public function memberClubs(): BelongsToMany
     {
         return $this->belongsToMany(Tenant::class, 'memberships')
-                    ->withPivot('status')
-                    ->withTimestamps();
+            ->withPivot('status')
+            ->withTimestamps();
+    }
+
+    /**
+     * True when any club the user belongs to has switched off member
+     * cross-club discovery (club settings → "block_explore"). Used to hide the
+     * Explore entry from the member's navigation. Memoized per request.
+     */
+    public function isExploreLocked(): bool
+    {
+        return once(fn () => $this->memberClubs()
+            ->get(['tenants.id', 'tenants.settings'])
+            ->contains(fn (Tenant $club) => ! empty($club->settings['block_explore'])));
     }
 
     public function orders(): HasMany
@@ -432,6 +436,7 @@ class User extends Authenticatable implements MustVerifyEmail
         if ($row->status === 'accepted') {
             return 'connected';
         }
+
         return $row->requester_id === $this->id ? 'pending_outgoing' : 'pending_incoming';
     }
 
@@ -452,6 +457,7 @@ class User extends Authenticatable implements MustVerifyEmail
         if ($this->blockedEitherWay($owner->id)) {
             return false;
         }
+
         return $this->sharesClubWith($owner)
             || $this->isFollowing($owner->id);
     }
@@ -470,12 +476,32 @@ class User extends Authenticatable implements MustVerifyEmail
         if ($this->blockedEitherWay($other->id)) {
             return false;
         }
+
         return $this->sharesClubWith($other)
             || $this->isConnectedTo($other->id)
+            // A discoverable member has opted into being found AND contacted.
+            || $other->isDiscoverable()
             || \App\Models\Conversation::where('type', 'direct')
                 ->whereHas('participants', fn ($q) => $q->where('user_id', $this->id))
                 ->whereHas('participants', fn ($q) => $q->where('user_id', $other->id))
                 ->exists();
+    }
+
+    /** Whether this member opts into people-discovery (search + cold DMs). Default true. */
+    public function isDiscoverable(): bool
+    {
+        return (bool) ($this->is_discoverable ?? true);
+    }
+
+    /**
+     * Who may open this member's SAFE public profile (people.show): anyone
+     * signed in who isn't blocked either way. The public profile deliberately
+     * exposes only non-sensitive fields, so it is broadly viewable — private
+     * data stays on the family/admin-gated member.show.
+     */
+    public function canViewPublicProfile(User $viewer): bool
+    {
+        return $viewer->id === $this->id || ! $viewer->blockedEitherWay($this->id);
     }
 
     /** A unique, URL-safe slug derived from a display name (e.g. "john-doe", "john-doe-2"). */
@@ -486,8 +512,9 @@ class User extends Authenticatable implements MustVerifyEmail
         $i = 1;
         // withTrashed: the unique index also covers soft-deleted rows.
         while (static::withTrashed()->where('slug', $slug)->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))->exists()) {
-            $slug = $base . '-' . (++$i);
+            $slug = $base.'-'.(++$i);
         }
+
         return $slug;
     }
 
@@ -495,10 +522,10 @@ class User extends Authenticatable implements MustVerifyEmail
     public function relationshipWith(User $other): array
     {
         return [
-            'following'  => $this->isFollowing($other->id),
+            'following' => $this->isFollowing($other->id),
             'followsYou' => $other->isFollowing($this->id),
-            'blocked'    => $this->hasBlocked($other->id),
-            'blockedBy'  => $this->isBlockedBy($other->id),
+            'blocked' => $this->hasBlocked($other->id),
+            'blockedBy' => $this->isBlockedBy($other->id),
             'sharesClub' => $this->sharesClubWith($other),
         ];
     }
@@ -560,6 +587,14 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Get the free-form event-participation log entries for the user.
+     */
+    public function memberEvents(): HasMany
+    {
+        return $this->hasMany(MemberEvent::class);
+    }
+
+    /**
      * Get the club affiliations for the user.
      */
     public function clubAffiliations(): HasMany
@@ -573,8 +608,8 @@ class User extends Authenticatable implements MustVerifyEmail
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class, 'user_roles')
-                    ->withPivot('tenant_id')
-                    ->withTimestamps();
+            ->withPivot('tenant_id')
+            ->withTimestamps();
     }
 
     /**
@@ -695,6 +730,7 @@ class User extends Authenticatable implements MustVerifyEmail
         if ($tenantId !== null) {
             return $this->roles()->wherePivot('tenant_id', $tenantId)->get();
         }
+
         return $this->roles;
     }
 
@@ -718,7 +754,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         $role = Role::where('slug', $roleSlug)->first();
 
-        if (!$role) {
+        if (! $role) {
             return;
         }
 

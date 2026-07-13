@@ -19,6 +19,7 @@ class Scheduler
         if ($event->end_date && $event->date) {
             return max(1, (int) $event->date->diffInDays($event->end_date) + 1);
         }
+
         return 1;
     }
 
@@ -27,6 +28,7 @@ class Scheduler
     {
         $days = $this->eventDayCount($event);
         $base = $days > 1 ? ((((int) $cat->sort_order - 1) % $days) + 1) : 1;
+
         return ['preliminary' => $base, 'quarterfinals' => $base, 'finals' => $base];
     }
 
@@ -34,6 +36,7 @@ class Scheduler
     public function phaseDay(EventCategory $cat, string $phase): int
     {
         $s = $cat->schedule[$phase] ?? null;
+
         return (int) (is_array($s) ? ($s['day'] ?? 1) : ($s ?: 1));
     }
 
@@ -41,6 +44,7 @@ class Scheduler
     public function phaseCourt(EventCategory $cat, string $phase): ?int
     {
         $s = $cat->schedule[$phase] ?? null;
+
         return is_array($s) && ! empty($s['court']) ? (int) $s['court'] : null;
     }
 
@@ -48,6 +52,7 @@ class Scheduler
     public function minsOfDay(string $t): int
     {
         [$h, $m] = array_map('intval', array_pad(explode(':', $t), 2, '0'));
+
         return $h * 60 + $m;
     }
 
@@ -55,12 +60,13 @@ class Scheduler
     public function dailyCapacityPerCourt(ClubEvent $event): int
     {
         $start = $event->start_time ? $this->minsOfDay($event->start_time) : 9 * 60;
-        $end   = $event->end_time ? $this->minsOfDay($event->end_time) : $start + 480; // default 8h day
+        $end = $event->end_time ? $this->minsOfDay($event->end_time) : $start + 480; // default 8h day
         $break = ($event->break_start && $event->break_end)
             ? max(0, $this->minsOfDay($event->break_end) - $this->minsOfDay($event->break_start))
             : (int) ($event->break_minutes ?? 0);
         $window = max(0, $end - $start - $break);
-        $per    = max(1, (int) ($event->minutes_per_match ?: 8));
+        $per = max(1, (int) ($event->minutes_per_match ?: 8));
+
         return max(1, intdiv($window, $per));
     }
 
@@ -86,9 +92,15 @@ class Scheduler
         $byDay = [];
         $byes = [];
         foreach ($matches as $m) {
-            if ($isBye($m)) { $byes[] = $m->id; continue; }
+            if ($isBye($m)) {
+                $byes[] = $m->id;
+
+                continue;
+            }
             $cat = $cats->get($m->category_id);
-            if (! $cat) { continue; }
+            if (! $cat) {
+                continue;
+            }
             $phase = $m->phase ?: 'preliminary';
             $byDay[$this->phaseDay($cat, $phase)][] = ['m' => $m, 'cat' => $cat, 'phase' => $phase, 'rank' => $phaseRank[$phase] ?? 0];
         }
@@ -125,7 +137,7 @@ class Scheduler
                         $any = false;
                         foreach ($queues as &$q) {
                             if ($m = array_shift($q)) {
-                                $m->court = 'Mat ' . $court;
+                                $m->court = 'Mat '.$court;
                                 $m->match_no = ++$no;
                                 $m->save();
                                 $any = true;

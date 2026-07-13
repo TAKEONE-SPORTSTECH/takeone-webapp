@@ -32,7 +32,7 @@
                     credentials: 'same-origin',
                 });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok || !data.success) throw new Error(data.message || 'Action failed');
+                if (!res.ok || !data.success) throw new Error(data.message || '{{ __("challenge.personal_challenge_show_action_failed") }}');
                 return data;
             } catch (e) {
                 window.showToast('error', e.message);
@@ -63,16 +63,16 @@
     {{-- ===== Cover ===== --}}
     <header class="m-hero px-5 pt-5 pb-20 text-white relative overflow-hidden"
             style="background: linear-gradient(150deg, {{ $c['color'] }}, {{ $c['color'] }}b0);">
-        <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
-        <div class="absolute right-8 bottom-10 w-24 h-24 rounded-full bg-white/10"></div>
+        <div class="absolute -end-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+        <div class="absolute end-8 bottom-10 w-24 h-24 rounded-full bg-white/10"></div>
 
         <div class="flex items-center justify-between relative z-10">
-            <a href="{{ route('me.challenge') }}" data-shell-link data-route="me.challenge"
-               class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="Back">
+            <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('me.challenge') }}')"
+               class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="{{ __('shared.back') }}">
                 <i class="bi bi-arrow-left text-lg"></i>
-            </a>
-            <button type="button" @click="if(navigator.share){navigator.share({title:'{{ addslashes($c['title']) }}'}).catch(()=>{});}else{window.showToast('success','Challenge link copied')}"
-                    class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="Share">
+            </button>
+            <button type="button" @click="if(navigator.share){navigator.share({title:'{{ addslashes($c['title']) }}'}).catch(()=>{});}else{window.showToast('success','{{ __("challenge.personal_challenge_show_link_copied") }}')}"
+                    class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="{{ __('challenge.personal_challenge_show_share') }}">
                 <i class="bi bi-share text-base"></i>
             </button>
         </div>
@@ -82,9 +82,9 @@
                 <i class="bi {{ $c['icon'] }}"></i> {{ $c['tag'] }}
             </span>
             @if($isCompleted)
-                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/20 backdrop-blur"><i class="bi bi-check2-circle"></i> Completed</span>
+                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/20 backdrop-blur"><i class="bi bi-check2-circle"></i> {{ __('challenge.personal_challenge_show_completed') }}</span>
             @elseif($isUpcoming)
-                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/20 backdrop-blur"><i class="bi bi-hourglass-split"></i> {{ $c['starts_in'] ?? 'Upcoming' }}</span>
+                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/20 backdrop-blur"><i class="bi bi-hourglass-split"></i> {{ $c['starts_in'] ?? __('challenge.personal_challenge_show_upcoming') }}</span>
             @endif
         </div>
         <h1 class="text-2xl font-black mt-3 leading-tight relative z-10">{{ $c['title'] }}</h1>
@@ -109,13 +109,13 @@
                     <div class="absolute inset-0 grid place-items-center">
                         <div class="text-center">
                             <p class="text-xl font-black text-foreground leading-none"><span x-text="progress">{{ $c['progress'] }}</span>%</p>
-                            <p class="text-[9px] text-muted-foreground uppercase tracking-wide mt-0.5">done</p>
+                            <p class="text-[9px] text-muted-foreground uppercase tracking-wide mt-0.5">{{ __('shared.done') }}</p>
                         </div>
                     </div>
                 </div>
 
                 <div class="min-w-0 flex-1">
-                    <p class="text-xs text-muted-foreground">Your progress</p>
+                    <p class="text-xs text-muted-foreground">{{ __('challenge.personal_challenge_show_your_progress') }}</p>
                     <p class="text-lg font-black text-foreground leading-tight">
                         <span x-text="current.toLocaleString()">{{ number_format($c['current']) }}</span><span class="text-sm">{{ $c['unit'] }}</span>
                         <span class="text-sm font-medium text-muted-foreground">/ {{ number_format($c['goal']) }}{{ $c['unit'] }}</span>
@@ -125,9 +125,9 @@
                     <button type="button" @click="logProgress()" x-show="joined && !completed"
                             class="m-press mt-3 px-3 py-1.5 rounded-lg text-xs font-bold text-white inline-flex items-center gap-1.5"
                             style="background: {{ $c['color'] }};">
-                        <i class="bi bi-plus-lg"></i> Log progress
+                        <i class="bi bi-plus-lg"></i> {{ __('challenge.personal_challenge_show_log_progress') }}
                     </button>
-                    <p x-show="completed" class="mt-3 text-xs font-bold text-green-600 inline-flex items-center gap-1.5"><i class="bi bi-check2-circle"></i> Goal reached</p>
+                    <p x-show="completed" class="mt-3 text-xs font-bold text-green-600 inline-flex items-center gap-1.5"><i class="bi bi-check2-circle"></i> {{ __('challenge.personal_challenge_show_goal_reached') }}</p>
                 </div>
             </div>
 
@@ -135,15 +135,15 @@
             <div class="grid grid-cols-3 gap-2 mt-5 text-center">
                 <div class="rounded-xl bg-muted/60 py-2.5">
                     <p class="text-sm font-black text-foreground">{{ $c['points'] }}</p>
-                    <p class="text-[10px] text-muted-foreground uppercase tracking-wide">Points</p>
+                    <p class="text-[10px] text-muted-foreground uppercase tracking-wide">{{ __('challenge.personal_challenge_show_points') }}</p>
                 </div>
                 <div class="rounded-xl bg-muted/60 py-2.5">
                     <p class="text-sm font-black text-foreground">{{ $c['rank'] ? '#'.$c['rank'] : '—' }}</p>
-                    <p class="text-[10px] text-muted-foreground uppercase tracking-wide">Rank</p>
+                    <p class="text-[10px] text-muted-foreground uppercase tracking-wide">{{ __('challenge.personal_challenge_show_rank') }}</p>
                 </div>
                 <div class="rounded-xl bg-muted/60 py-2.5">
-                    <p class="text-sm font-black text-foreground">{{ $isUpcoming ? $c['days_left'].'d' : ($isCompleted ? 'Done' : $c['days_left'].'d') }}</p>
-                    <p class="text-[10px] text-muted-foreground uppercase tracking-wide">{{ $isUpcoming ? 'To start' : 'Left' }}</p>
+                    <p class="text-sm font-black text-foreground">{{ $isUpcoming ? $c['days_left'].'d' : ($isCompleted ? __('shared.done') : $c['days_left'].'d') }}</p>
+                    <p class="text-[10px] text-muted-foreground uppercase tracking-wide">{{ $isUpcoming ? __('challenge.personal_challenge_show_to_start') : __('challenge.personal_challenge_show_left') }}</p>
                 </div>
             </div>
         </div>
@@ -152,7 +152,7 @@
     {{-- ===== About ===== --}}
     <div class="px-4 mt-4">
         <div class="m-card rounded-2xl p-4">
-            <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-info-circle text-primary"></i> About</h2>
+            <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-info-circle text-primary"></i> {{ __('challenge.personal_challenge_show_about') }}</h2>
             <p class="text-sm text-muted-foreground leading-relaxed mt-2">{{ $c['about'] }}</p>
         </div>
     </div>
@@ -160,7 +160,7 @@
     {{-- ===== Rules ===== --}}
     <div class="px-4 mt-4">
         <div class="m-card rounded-2xl p-4">
-            <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-list-check text-primary"></i> How it works</h2>
+            <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-list-check text-primary"></i> {{ __('challenge.personal_challenge_show_how_it_works') }}</h2>
             <ul class="mt-3 space-y-2.5">
                 @foreach($c['rules'] as $rule)
                     <li class="flex items-start gap-2.5 text-sm text-muted-foreground">
@@ -175,7 +175,7 @@
     {{-- ===== Rewards ===== --}}
     <div class="px-4 mt-4">
         <div class="m-card rounded-2xl p-4">
-            <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-gift text-primary"></i> Rewards</h2>
+            <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-gift text-primary"></i> {{ __('challenge.personal_challenge_show_rewards') }}</h2>
             <div class="mt-3 space-y-2.5">
                 @foreach($c['rewards'] as $r)
                     <div class="flex items-center gap-3 rounded-xl bg-muted/50 p-2.5">
@@ -197,8 +197,8 @@
         <div class="px-4 mt-4">
             <div class="m-card rounded-2xl p-4">
                 <div class="flex items-center justify-between">
-                    <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-bar-chart-line text-primary"></i> Leaderboard</h2>
-                    <span class="text-[11px] text-muted-foreground">{{ $c['participants'] }} in</span>
+                    <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-bar-chart-line text-primary"></i> {{ __('challenge.personal_challenge_show_leaderboard') }}</h2>
+                    <span class="text-[11px] text-muted-foreground">{{ __('challenge.personal_challenge_show_participants_in', ['count' => $c['participants']]) }}</span>
                 </div>
                 <div class="mt-3 space-y-1.5">
                     @foreach($c['leaders'] as $i => $l)
@@ -213,10 +213,10 @@
                                 <div class="w-8 h-8 rounded-full grid place-items-center text-white text-[10px] font-bold flex-shrink-0"
                                      style="background: hsl({{ ($i * 67) % 360 }} 55% 60%);">{{ $initials }}</div>
                             @endif
-                            <p class="flex-1 text-sm font-semibold text-foreground truncate">{{ $l['name'] }}@if($l['me'] ?? false)<span class="text-[10px] font-bold ml-1" style="color: {{ $c['color'] }};">YOU</span>@endif</p>
-                            <div class="text-right">
+                            <p class="flex-1 text-sm font-semibold text-foreground truncate">{{ $l['name'] }}@if($l['me'] ?? false)<span class="text-[10px] font-bold ms-1" style="color: {{ $c['color'] }};">{{ __('challenge.personal_challenge_show_you') }}</span>@endif</p>
+                            <div class="text-end">
                                 <p class="text-xs font-bold text-foreground">{{ $l['val'] }}</p>
-                                <p class="text-[10px] text-muted-foreground">{{ $l['pts'] }} pts</p>
+                                <p class="text-[10px] text-muted-foreground">{{ __('challenge.personal_challenge_show_pts', ['count' => $l['pts']]) }}</p>
                             </div>
                         </div>
                     @endforeach
@@ -230,15 +230,15 @@
         <div class="px-4 mt-4">
             <div class="m-card rounded-2xl p-4 flex items-center gap-3">
                 <div class="leading-tight">
-                    <p class="text-[10px] text-muted-foreground uppercase tracking-wide">Reward</p>
-                    <p class="text-base font-black text-foreground">{{ $c['points'] }} pts</p>
+                    <p class="text-[10px] text-muted-foreground uppercase tracking-wide">{{ __('challenge.personal_challenge_show_reward') }}</p>
+                    <p class="text-base font-black text-foreground">{{ __('challenge.personal_challenge_show_pts', ['count' => $c['points']]) }}</p>
                 </div>
                 <button type="button" @click="toggleJoin()"
                         class="m-press flex-1 py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-colors"
                         :class="joined ? 'bg-green-50 text-green-700 border border-green-200' : 'text-white'"
                         :style="joined ? '' : 'background: {{ $c['color'] }}'">
                     <i class="bi" :class="joined ? 'bi-check2-circle' : 'bi-plus-circle'"></i>
-                    <span x-text="joined ? ('{{ $isUpcoming ? 'Joined · notify me' : 'Joined' }}') : ('{{ $isUpcoming ? 'Join when it starts' : 'Join challenge' }}')"></span>
+                    <span x-text="joined ? ('{{ $isUpcoming ? __('challenge.personal_challenge_show_joined_notify') : __('challenge.personal_challenge_show_joined') }}') : ('{{ $isUpcoming ? __('challenge.personal_challenge_show_join_when_starts') : __('challenge.personal_challenge_show_join_challenge') }}')"></span>
                 </button>
             </div>
         </div>
@@ -246,8 +246,8 @@
         <div class="px-4 mt-4">
             <div class="m-card rounded-2xl p-4 text-center">
                 <div class="w-14 h-14 mx-auto rounded-2xl grid place-items-center text-white m-float" style="background: {{ $c['color'] }};"><i class="bi bi-trophy-fill text-2xl"></i></div>
-                <p class="text-sm font-bold text-foreground mt-3">Challenge completed</p>
-                <p class="text-xs text-muted-foreground mt-1">You earned {{ $c['points'] }} points{{ $c['rank'] ? ' · finished #'.$c['rank'] : '' }}.</p>
+                <p class="text-sm font-bold text-foreground mt-3">{{ __('challenge.personal_challenge_show_challenge_completed') }}</p>
+                <p class="text-xs text-muted-foreground mt-1">{{ __('challenge.personal_challenge_show_you_earned_points', ['points' => $c['points']]) }}{{ $c['rank'] ? __('challenge.personal_challenge_show_finished_rank', ['rank' => $c['rank']]) : '' }}.</p>
             </div>
         </div>
     @endunless

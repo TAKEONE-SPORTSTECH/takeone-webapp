@@ -6,7 +6,6 @@ use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
 use App\Models\EventExpense;
-use App\Models\EventMatch;
 use App\Models\EventParticipantBan;
 use App\Models\User;
 use Carbon\Carbon;
@@ -26,16 +25,45 @@ class PersonalEventController extends Controller
     ) {}
 
     /* ---- Schema (config-driven: types + sports) ---- */
-    private function types(): array  { return config('event_schema.types', []); }
-    private function sports(): array { return config('event_schema.sports', []); }
-    private function scopes(): array { return config('event_schema.scopes', []); }
+    private function types(): array
+    {
+        return config('event_schema.types', []);
+    }
 
-    private function scopeLabel(string $k): string { return $this->scopes()[$k]['label'] ?? 'This club only'; }
+    private function sports(): array
+    {
+        return config('event_schema.sports', []);
+    }
 
-    private function typeLabel(string $k): string { return $this->types()[$k]['label'] ?? 'Event'; }
-    private function typeIcon(string $k): string  { return $this->types()[$k]['icon']  ?? 'bi-calendar-event'; }
-    private function typeColor(string $k): string { return $this->types()[$k]['color'] ?? '#7c3aed'; }
-    private function typeSections(string $k): array { return $this->types()[$k]['sections'] ?? []; }
+    private function scopes(): array
+    {
+        return config('event_schema.scopes', []);
+    }
+
+    private function scopeLabel(string $k): string
+    {
+        return $this->scopes()[$k]['label'] ?? 'This club only';
+    }
+
+    private function typeLabel(string $k): string
+    {
+        return $this->types()[$k]['label'] ?? 'Event';
+    }
+
+    private function typeIcon(string $k): string
+    {
+        return $this->types()[$k]['icon'] ?? 'bi-calendar-event';
+    }
+
+    private function typeColor(string $k): string
+    {
+        return $this->types()[$k]['color'] ?? '#7c3aed';
+    }
+
+    private function typeSections(string $k): array
+    {
+        return $this->types()[$k]['sections'] ?? [];
+    }
 
     /* ===================== Pages ===================== */
 
@@ -53,9 +81,9 @@ class PersonalEventController extends Controller
             ->where('status', '!=', 'cancelled')
             ->where(function ($q) use ($clubIds, $myCountries) {
                 $q->whereIn('tenant_id', $clubIds)
-                  ->orWhereIn('scope', ['inter_club', 'worldwide'])
-                  ->orWhere(fn ($w) => $w->whereIn('scope', ['nationwide', 'regional'])
-                      ->whereHas('tenant', fn ($t) => $t->whereIn('country', $myCountries)));
+                    ->orWhereIn('scope', ['inter_club', 'worldwide'])
+                    ->orWhere(fn ($w) => $w->whereIn('scope', ['nationwide', 'regional'])
+                        ->whereHas('tenant', fn ($t) => $t->whereIn('country', $myCountries)));
             })
             ->withCount('participantRegistrations')
             ->with('tenant:id,club_name,country');
@@ -63,13 +91,13 @@ class PersonalEventController extends Controller
         // Upcoming / ongoing — end_date (or date when no end_date) is today or later. Soonest first.
         $upcoming = $base()->where(function ($q) use ($today) {
             $q->where(fn ($w) => $w->whereNotNull('end_date')->whereDate('end_date', '>=', $today))
-              ->orWhere(fn ($w) => $w->whereNull('end_date')->whereDate('date', '>=', $today));
+                ->orWhere(fn ($w) => $w->whereNull('end_date')->whereDate('date', '>=', $today));
         })->orderBy('date')->get();
 
         // Finished — most recent first, capped.
         $past = $base()->where(function ($q) use ($today) {
             $q->where(fn ($w) => $w->whereNotNull('end_date')->whereDate('end_date', '<', $today))
-              ->orWhere(fn ($w) => $w->whereNull('end_date')->whereDate('date', '<', $today));
+                ->orWhere(fn ($w) => $w->whereNull('end_date')->whereDate('date', '<', $today));
         })->orderByDesc('date')->limit(40)->get();
 
         $all = $upcoming->concat($past);
@@ -98,14 +126,14 @@ class PersonalEventController extends Controller
         $elig = $this->competeEligibility($event, $me, $myReg->get($event->id));
 
         return view('personal.event-show', [
-            'e'          => $e,
-            'canManage'  => $canManage,
-            'isTkd'      => $event->sport === 'taekwondo',
-            'myWeight'   => $myWeight,
-            'banned'     => $banned,
+            'e' => $e,
+            'canManage' => $canManage,
+            'isTkd' => $event->sport === 'taekwondo',
+            'myWeight' => $myWeight,
+            'banned' => $banned,
             'canCompete' => $banned ? false : $elig['can'],
             'eligReason' => $banned ? 'You’ve been removed from this event by the organiser.' : $elig['reason'],
-            'finance'    => $canManage ? $this->computeFinance($event) : null,
+            'finance' => $canManage ? $this->computeFinance($event) : null,
         ]);
     }
 
@@ -115,7 +143,7 @@ class PersonalEventController extends Controller
         return EventParticipantBan::where('user_id', $userId)
             ->where(function ($q) use ($event) {
                 $q->where(fn ($w) => $w->where('scope', 'event')->where('event_id', $event->id))
-                  ->orWhere(fn ($w) => $w->where('scope', 'club')->where('tenant_id', $event->tenant_id));
+                    ->orWhere(fn ($w) => $w->where('scope', 'club')->where('tenant_id', $event->tenant_id));
             })->exists();
     }
 
@@ -145,6 +173,7 @@ class PersonalEventController extends Controller
         if (! $this->routeToTaekwondoDivision($event, $me, $weight)) {
             return ['can' => false, 'reason' => 'This championship’s divisions don’t include your age/weight category, so you can’t compete in it.'];
         }
+
         return ['can' => true, 'reason' => null];
     }
 
@@ -178,15 +207,15 @@ class PersonalEventController extends Controller
         $divisions = $event
             ? $event->categories()->orderBy('sort_order')->get(['id', 'name', 'capacity', 'schedule'])
                 ->map(fn ($c) => [
-                    'name'     => $c->name,
+                    'name' => $c->name,
                     'capacity' => $c->capacity,
                     'schedule' => $c->schedule ?: ['preliminary' => 1, 'quarterfinals' => 1, 'finals' => 1],
                 ])->all()
             : [];
 
         return [
-            'schema'       => config('event_schema'),
-            'divisions'    => $divisions,
+            'schema' => config('event_schema'),
+            'divisions' => $divisions,
             'tkdDivisions' => config('taekwondo_divisions'),
         ];
     }
@@ -204,26 +233,26 @@ class PersonalEventController extends Controller
         $me = Auth::user();
 
         $data = $request->validate([
-            'tenant_id'        => ['required', 'integer'],
-            'title'            => ['required', 'string', 'max:140'],
-            'event_type'       => ['required', Rule::in(array_keys($this->types()))],
-            'scope'            => ['nullable', Rule::in(array_keys($this->scopes()))],
-            'date'             => ['required', 'date'],
-            'end_date'         => ['nullable', 'date', 'after_or_equal:date'],
-            'start_time'       => ['required', 'date_format:H:i'],
-            'end_time'         => ['nullable', 'date_format:H:i'],
-            'weigh_in_at'      => ['nullable', 'date'],
+            'tenant_id' => ['required', 'integer'],
+            'title' => ['required', 'string', 'max:140'],
+            'event_type' => ['required', Rule::in(array_keys($this->types()))],
+            'scope' => ['nullable', Rule::in(array_keys($this->scopes()))],
+            'date' => ['required', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:date'],
+            'start_time' => ['required', 'date_format:H:i'],
+            'end_time' => ['nullable', 'date_format:H:i'],
+            'weigh_in_at' => ['nullable', 'date'],
             'enrollment_starts_at' => ['nullable', 'date'],
-            'enrollment_ends_at'   => ['nullable', 'date', 'after_or_equal:enrollment_starts_at', 'before_or_equal:date'],
-            'location'         => ['nullable', 'string', 'max:160'],
-            'level'            => ['nullable', 'string', 'max:80'],
-            'description'      => ['nullable', 'string', 'max:2000'],
+            'enrollment_ends_at' => ['nullable', 'date', 'after_or_equal:enrollment_starts_at', 'before_or_equal:date'],
+            'location' => ['nullable', 'string', 'max:160'],
+            'level' => ['nullable', 'string', 'max:80'],
+            'description' => ['nullable', 'string', 'max:2000'],
             'participant_free' => ['required', 'boolean'],
-            'participant_fee'  => ['nullable', 'string', 'max:40'],
-            'spectator_enabled'=> ['required', 'boolean'],
-            'spectator_fee'    => ['nullable', 'string', 'max:40'],
-            'max_capacity'     => ['nullable', 'integer', 'min:1', 'max:100000'],
-            'prize'            => ['nullable', 'string', 'max:120'],
+            'participant_fee' => ['nullable', 'string', 'max:40'],
+            'spectator_enabled' => ['required', 'boolean'],
+            'spectator_fee' => ['nullable', 'string', 'max:40'],
+            'max_capacity' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'prize' => ['nullable', 'string', 'max:120'],
         ] + $this->detailRules());
 
         // Must belong to the club you're creating the event for.
@@ -233,42 +262,42 @@ class PersonalEventController extends Controller
         $combat = $this->isCombatSport($data['sport'] ?? null);
 
         $event = ClubEvent::create([
-            'tenant_id'        => $data['tenant_id'],
-            'created_by'       => $me->id,
-            'title'            => $data['title'],
-            'event_type'       => $data['event_type'],
-            'scope'            => $data['scope'] ?? 'internal',
-            'icon'             => $this->typeIcon($data['event_type']),
-            'date'             => $data['date'],
-            'end_date'         => $data['end_date'] ?? null,
-            'start_time'       => $data['start_time'],
-            'end_time'         => $data['end_time'] ?? null,
-            'weigh_in_at'      => $data['weigh_in_at'] ?? null,
+            'tenant_id' => $data['tenant_id'],
+            'created_by' => $me->id,
+            'title' => $data['title'],
+            'event_type' => $data['event_type'],
+            'scope' => $data['scope'] ?? 'internal',
+            'icon' => $this->typeIcon($data['event_type']),
+            'date' => $data['date'],
+            'end_date' => $data['end_date'] ?? null,
+            'start_time' => $data['start_time'],
+            'end_time' => $data['end_time'] ?? null,
+            'weigh_in_at' => $data['weigh_in_at'] ?? null,
             'enrollment_starts_at' => $data['enrollment_starts_at'] ?? null,
-            'enrollment_ends_at'   => $data['enrollment_ends_at'] ?? null,
-            'location'         => $data['location'] ?? null,
-            'gps_lat'          => $data['gps_lat'] ?? null,
-            'gps_long'         => $data['gps_long'] ?? null,
-            'location_url'     => $data['location_url'] ?? null,
-            'break_start'      => $data['break_start'] ?? null,
-            'break_end'        => $data['break_end'] ?? null,
-            'level'            => $combat ? null : ($data['level'] ?? null),
-            'description'      => $data['description'] ?? null,
-            'participant_fee'  => $data['participant_free'] ? null : ($data['participant_fee'] ?: 'Free'),
-            'spectator_enabled'=> (bool) $data['spectator_enabled'],
-            'spectator_fee'    => $data['spectator_enabled'] ? ($data['spectator_fee'] ?: 'Free') : null,
-            'prize'            => $combat ? null : ($data['prize'] ?? null),
-            'max_capacity'     => $combat ? null : ($data['max_capacity'] ?? null),
-            'color'            => $this->typeColor($data['event_type']),
-            'status'           => 'active',
-            'is_archived'      => false,
+            'enrollment_ends_at' => $data['enrollment_ends_at'] ?? null,
+            'location' => $data['location'] ?? null,
+            'gps_lat' => $data['gps_lat'] ?? null,
+            'gps_long' => $data['gps_long'] ?? null,
+            'location_url' => $data['location_url'] ?? null,
+            'break_start' => $data['break_start'] ?? null,
+            'break_end' => $data['break_end'] ?? null,
+            'level' => $combat ? null : ($data['level'] ?? null),
+            'description' => $data['description'] ?? null,
+            'participant_fee' => $data['participant_free'] ? null : ($data['participant_fee'] ?: 'Free'),
+            'spectator_enabled' => (bool) $data['spectator_enabled'],
+            'spectator_fee' => $data['spectator_enabled'] ? ($data['spectator_fee'] ?: 'Free') : null,
+            'prize' => $combat ? null : ($data['prize'] ?? null),
+            'max_capacity' => $combat ? null : ($data['max_capacity'] ?? null),
+            'color' => $this->typeColor($data['event_type']),
+            'status' => 'active',
+            'is_archived' => false,
         ] + $this->extractDetails($data));
 
         $this->syncDivisions($event, $data['divisions'] ?? []);
 
         return response()->json([
-            'success'  => true,
-            'message'  => 'Event created 🎉',
+            'success' => true,
+            'message' => 'Event created 🎉',
             'redirect' => route('me.events.show', $event->uuid),
         ]);
     }
@@ -290,54 +319,54 @@ class PersonalEventController extends Controller
         $this->assertCanManage($event, $me);
 
         $data = $request->validate([
-            'title'            => ['required', 'string', 'max:140'],
-            'event_type'       => ['required', Rule::in(array_keys($this->types()))],
-            'scope'            => ['nullable', Rule::in(array_keys($this->scopes()))],
-            'date'             => ['required', 'date'],
-            'end_date'         => ['nullable', 'date', 'after_or_equal:date'],
-            'start_time'       => ['required', 'date_format:H:i'],
-            'end_time'         => ['nullable', 'date_format:H:i'],
-            'weigh_in_at'      => ['nullable', 'date'],
+            'title' => ['required', 'string', 'max:140'],
+            'event_type' => ['required', Rule::in(array_keys($this->types()))],
+            'scope' => ['nullable', Rule::in(array_keys($this->scopes()))],
+            'date' => ['required', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:date'],
+            'start_time' => ['required', 'date_format:H:i'],
+            'end_time' => ['nullable', 'date_format:H:i'],
+            'weigh_in_at' => ['nullable', 'date'],
             'enrollment_starts_at' => ['nullable', 'date'],
-            'enrollment_ends_at'   => ['nullable', 'date', 'after_or_equal:enrollment_starts_at', 'before_or_equal:date'],
-            'location'         => ['nullable', 'string', 'max:160'],
-            'level'            => ['nullable', 'string', 'max:80'],
-            'description'      => ['nullable', 'string', 'max:2000'],
+            'enrollment_ends_at' => ['nullable', 'date', 'after_or_equal:enrollment_starts_at', 'before_or_equal:date'],
+            'location' => ['nullable', 'string', 'max:160'],
+            'level' => ['nullable', 'string', 'max:80'],
+            'description' => ['nullable', 'string', 'max:2000'],
             'participant_free' => ['required', 'boolean'],
-            'participant_fee'  => ['nullable', 'string', 'max:40'],
-            'spectator_enabled'=> ['required', 'boolean'],
-            'spectator_fee'    => ['nullable', 'string', 'max:40'],
-            'max_capacity'     => ['nullable', 'integer', 'min:1', 'max:100000'],
-            'prize'            => ['nullable', 'string', 'max:120'],
+            'participant_fee' => ['nullable', 'string', 'max:40'],
+            'spectator_enabled' => ['required', 'boolean'],
+            'spectator_fee' => ['nullable', 'string', 'max:40'],
+            'max_capacity' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'prize' => ['nullable', 'string', 'max:120'],
         ] + $this->detailRules());
 
         $combat = $this->isCombatSport($data['sport'] ?? $event->sport);
 
         $event->update([
-            'title'            => $data['title'],
-            'event_type'       => $data['event_type'],
-            'scope'            => $data['scope'] ?? $event->scope ?? 'internal',
-            'icon'             => $event->icon ?: ($this->typeIcon($data['event_type'])),
-            'date'             => $data['date'],
-            'end_date'         => $data['end_date'] ?? null,
-            'start_time'       => $data['start_time'],
-            'end_time'         => $data['end_time'] ?? null,
-            'weigh_in_at'      => $data['weigh_in_at'] ?? null,
+            'title' => $data['title'],
+            'event_type' => $data['event_type'],
+            'scope' => $data['scope'] ?? $event->scope ?? 'internal',
+            'icon' => $event->icon ?: ($this->typeIcon($data['event_type'])),
+            'date' => $data['date'],
+            'end_date' => $data['end_date'] ?? null,
+            'start_time' => $data['start_time'],
+            'end_time' => $data['end_time'] ?? null,
+            'weigh_in_at' => $data['weigh_in_at'] ?? null,
             'enrollment_starts_at' => $data['enrollment_starts_at'] ?? null,
-            'enrollment_ends_at'   => $data['enrollment_ends_at'] ?? null,
-            'location'         => $data['location'] ?? null,
-            'gps_lat'          => $data['gps_lat'] ?? null,
-            'gps_long'         => $data['gps_long'] ?? null,
-            'location_url'     => $data['location_url'] ?? null,
-            'break_start'      => $data['break_start'] ?? null,
-            'break_end'        => $data['break_end'] ?? null,
-            'level'            => $combat ? null : ($data['level'] ?? null),
-            'description'      => $data['description'] ?? null,
-            'participant_fee'  => $data['participant_free'] ? null : ($data['participant_fee'] ?: 'Free'),
-            'spectator_enabled'=> (bool) $data['spectator_enabled'],
-            'spectator_fee'    => $data['spectator_enabled'] ? ($data['spectator_fee'] ?: 'Free') : null,
-            'prize'            => $combat ? null : ($data['prize'] ?? null),
-            'max_capacity'     => $combat ? null : ($data['max_capacity'] ?? null),
+            'enrollment_ends_at' => $data['enrollment_ends_at'] ?? null,
+            'location' => $data['location'] ?? null,
+            'gps_lat' => $data['gps_lat'] ?? null,
+            'gps_long' => $data['gps_long'] ?? null,
+            'location_url' => $data['location_url'] ?? null,
+            'break_start' => $data['break_start'] ?? null,
+            'break_end' => $data['break_end'] ?? null,
+            'level' => $combat ? null : ($data['level'] ?? null),
+            'description' => $data['description'] ?? null,
+            'participant_fee' => $data['participant_free'] ? null : ($data['participant_fee'] ?: 'Free'),
+            'spectator_enabled' => (bool) $data['spectator_enabled'],
+            'spectator_fee' => $data['spectator_enabled'] ? ($data['spectator_fee'] ?: 'Free') : null,
+            'prize' => $combat ? null : ($data['prize'] ?? null),
+            'max_capacity' => $combat ? null : ($data['max_capacity'] ?? null),
         ] + $this->extractDetails($data));
 
         $this->syncDivisions($event, $data['divisions'] ?? []);
@@ -349,8 +378,8 @@ class PersonalEventController extends Controller
         }
 
         return response()->json([
-            'success'  => true,
-            'message'  => 'Event updated',
+            'success' => true,
+            'message' => 'Event updated',
             'redirect' => route('me.events.show', $event->uuid),
         ]);
     }
@@ -362,17 +391,17 @@ class PersonalEventController extends Controller
         $this->assertCanManage($event, $me);
 
         $data = $request->validate([
-            'results'             => ['present', 'array', 'max:20'],
-            'results.*.place'     => ['nullable', 'integer', 'min:1', 'max:50'],
-            'results.*.name'      => ['nullable', 'string', 'max:120'],
-            'results.*.prize'     => ['nullable', 'string', 'max:120'],
+            'results' => ['present', 'array', 'max:20'],
+            'results.*.place' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'results.*.name' => ['nullable', 'string', 'max:120'],
+            'results.*.prize' => ['nullable', 'string', 'max:120'],
         ]);
 
         // Normalise: drop blank names, default missing places by order, sort.
         $results = collect($data['results'])
             ->map(fn ($r, $i) => [
                 'place' => (int) ($r['place'] ?? 0) ?: ($i + 1),
-                'name'  => trim((string) ($r['name'] ?? '')),
+                'name' => trim((string) ($r['name'] ?? '')),
                 'prize' => trim((string) ($r['prize'] ?? '')) ?: null,
             ])
             ->filter(fn ($r) => $r['name'] !== '')
@@ -396,8 +425,8 @@ class PersonalEventController extends Controller
         $event->update(['status' => 'cancelled']);
 
         return response()->json([
-            'success'  => true,
-            'message'  => 'Event cancelled',
+            'success' => true,
+            'message' => 'Event cancelled',
             'redirect' => route('me.events'),
         ]);
     }
@@ -411,8 +440,8 @@ class PersonalEventController extends Controller
         $event->delete();
 
         return response()->json([
-            'success'  => true,
-            'message'  => 'Event deleted',
+            'success' => true,
+            'message' => 'Event deleted',
             'redirect' => route('me.events'),
         ]);
     }
@@ -446,10 +475,10 @@ class PersonalEventController extends Controller
         // Enrollment window.
         $today = now()->startOfDay();
         if ($event->enrollment_starts_at && $today->lt($event->enrollment_starts_at)) {
-            return response()->json(['success' => false, 'message' => 'Registration opens ' . $event->enrollment_starts_at->format('M j') . '.'], 422);
+            return response()->json(['success' => false, 'message' => 'Registration opens '.$event->enrollment_starts_at->format('M j').'.'], 422);
         }
         if ($event->enrollment_ends_at && $today->gt($event->enrollment_ends_at)) {
-            return response()->json(['success' => false, 'message' => 'Registration closed on ' . $event->enrollment_ends_at->format('M j') . '.'], 422);
+            return response()->json(['success' => false, 'message' => 'Registration closed on '.$event->enrollment_ends_at->format('M j').'.'], 422);
         }
 
         // Capacity guard (participants only).
@@ -464,13 +493,13 @@ class PersonalEventController extends Controller
         // an offered division they CAN'T compete — they're steered to a spectator
         // ticket instead.
         $categoryId = $data['category_id'] ?? null;
-        $weight     = null;
-        $division   = null;
+        $weight = null;
+        $division = null;
         if ($isTkd) {
             if (! $me->gender || ! $me->birthdate) {
                 return response()->json([
                     'success' => false,
-                    'code'    => 'no_profile',
+                    'code' => 'no_profile',
                     'message' => 'Add your gender and date of birth to your profile so we can place you in a weight category.',
                 ], 422);
             }
@@ -479,7 +508,7 @@ class PersonalEventController extends Controller
             if (! $weight) {
                 return response()->json([
                     'success' => false,
-                    'code'    => 'no_weight',
+                    'code' => 'no_weight',
                     'message' => 'Add your current weight to your health profile so we can place you in a weight category.',
                 ], 422);
             }
@@ -488,17 +517,17 @@ class PersonalEventController extends Controller
             if (! $cat) {
                 // Their weight category isn't being run here → not eligible to compete.
                 return response()->json([
-                    'success'   => false,
-                    'code'      => 'no_division',
+                    'success' => false,
+                    'code' => 'no_division',
                     'spectator' => (bool) $event->spectator_enabled,
-                    'message'   => $event->spectator_enabled
+                    'message' => $event->spectator_enabled
                         ? 'Your weight category isn’t one of this championship’s divisions, so you can’t compete — but you’re welcome to attend as a spectator.'
                         : 'Your weight category isn’t one of this championship’s divisions, so you’re not eligible to compete in this event.',
                 ], 422);
             }
 
             $categoryId = $cat->id;
-            $division   = $cat->name;
+            $division = $cat->name;
         }
 
         $paidFee = $event->participant_fee && ! str_contains(strtolower($event->participant_fee), 'free');
@@ -506,27 +535,27 @@ class PersonalEventController extends Controller
         ClubEventRegistration::updateOrCreate(
             ['event_id' => $event->id, 'user_id' => $me->id],
             [
-                'role'          => 'participant',
-                'status'        => 'joined',
-                'paid'          => ! $paidFee,        // free → instantly "settled"; paid → awaiting proof
-                'category_id'   => $categoryId,
-                'weight'        => $weight,
+                'role' => 'participant',
+                'status' => 'joined',
+                'paid' => ! $paidFee,        // free → instantly "settled"; paid → awaiting proof
+                'category_id' => $categoryId,
+                'weight' => $weight,
                 'registered_at' => now(),
             ]
         );
 
         $note = $division
-            ? ' · ' . $division
+            ? ' · '.$division
             : ($isTkd ? ' · you’ll be weighed in at the event to set your division' : '');
 
         return response()->json([
-            'success'  => true,
-            'message'  => ($paidFee
-                ? 'Spot reserved · ' . $event->participant_fee . ' — confirm payment at the club'
-                : "You're in! See you there 🎉") . $note,
-            'role'     => 'participant',
+            'success' => true,
+            'message' => ($paidFee
+                ? 'Spot reserved · '.$event->participant_fee.' — confirm payment at the club'
+                : "You're in! See you there 🎉").$note,
+            'role' => 'participant',
             'division' => $division,
-            'going'    => $event->participantRegistrations()->count(),
+            'going' => $event->participantRegistrations()->count(),
         ]);
     }
 
@@ -550,12 +579,11 @@ class PersonalEventController extends Controller
         }
 
         $genderWord = strtolower($me->gender) === 'female' ? 'Women' : 'Men';
-        $name       = $cls['age_group'] . ' ' . $genderWord . ' ' . $cls['category'] . ' kg'; // "Senior Men -58 kg"
+        $name = $cls['age_group'].' '.$genderWord.' '.$cls['category'].' kg'; // "Senior Men -58 kg"
 
         // Competitors can only enter a weight category the creator set up.
         return EventCategory::where('event_id', $event->id)->where('name', $name)->first();
     }
-
 
     /** Manager: (re)generate the draw for every division + renumber. */
     public function generateDraw(ClubEvent $event): JsonResponse
@@ -579,11 +607,11 @@ class PersonalEventController extends Controller
         }
         $plan = $this->scheduler->scheduleAndNumber($event);
 
-        $courtsLine = collect($plan)->map(fn ($p, $day) => 'Day ' . $day . ': ' . $p['courts'] . ' ' . \Illuminate\Support\Str::plural('mat', $p['courts']))->implode(' · ');
+        $courtsLine = collect($plan)->map(fn ($p, $day) => 'Day '.$day.': '.$p['courts'].' '.\Illuminate\Support\Str::plural('mat', $p['courts']))->implode(' · ');
 
         return response()->json([
-            'success'  => true,
-            'message'  => ($paidOnly ? 'Final draw generated 🥋' : 'Provisional draw generated') . ($courtsLine ? ' · ' . $courtsLine : ''),
+            'success' => true,
+            'message' => ($paidOnly ? 'Final draw generated 🥋' : 'Provisional draw generated').($courtsLine ? ' · '.$courtsLine : ''),
             'redirect' => route('me.events.bracket', $event->uuid),
         ]);
     }
@@ -612,11 +640,11 @@ class PersonalEventController extends Controller
         );
 
         return response()->json([
-            'success'    => true,
-            'message'    => $paidFee
-                ? 'Ticket booked · ' . $event->spectator_fee . ' — show this in the app at the door'
+            'success' => true,
+            'message' => $paidFee
+                ? 'Ticket booked · '.$event->spectator_fee.' — show this in the app at the door'
                 : "You're on the guest list 🎟️",
-            'role'       => 'spectator',
+            'role' => 'spectator',
             'spectators' => $event->registrations()->where('role', 'spectator')->count(),
         ]);
     }
@@ -693,25 +721,25 @@ class PersonalEventController extends Controller
 
         // Best-effort realtime nudge to the affected member (DB stays source of truth).
         rescue(fn () => \Realtime()->publishToUser($user->id, 'events', [
-            'action'   => 'moderated',
-            'event'    => $event->uuid,
-            'kind'     => $data['action'],
+            'action' => 'moderated',
+            'event' => $event->uuid,
+            'kind' => $data['action'],
         ]), null, false);
 
         $banned = $data['action'] !== 'remove';
         $messages = [
-            'remove'    => $user->name . ' was removed from the event.',
-            'block'     => $user->name . ' was blocked from this event.',
-            'blacklist' => $user->name . ' was blacklisted from all your club’s events.',
+            'remove' => $user->name.' was removed from the event.',
+            'block' => $user->name.' was blocked from this event.',
+            'blacklist' => $user->name.' was blacklisted from all your club’s events.',
         ];
 
         return response()->json([
-            'success'     => true,
-            'message'     => $messages[$data['action']],
-            'user'        => ['id' => $user->id, 'name' => $user->name, 'scope' => $banned ? ($data['action'] === 'block' ? 'event' : 'club') : null],
-            'banned'      => $banned,
-            'going'       => $event->participantRegistrations()->count(),
-            'spectators'  => $event->registrations()->where('role', 'spectator')->count(),
+            'success' => true,
+            'message' => $messages[$data['action']],
+            'user' => ['id' => $user->id, 'name' => $user->name, 'scope' => $banned ? ($data['action'] === 'block' ? 'event' : 'club') : null],
+            'banned' => $banned,
+            'going' => $event->participantRegistrations()->count(),
+            'spectators' => $event->registrations()->where('role', 'spectator')->count(),
         ]);
     }
 
@@ -724,7 +752,7 @@ class PersonalEventController extends Controller
         EventParticipantBan::where('user_id', $user->id)
             ->where(function ($q) use ($event) {
                 $q->where(fn ($w) => $w->where('scope', 'event')->where('event_id', $event->id))
-                  ->orWhere(fn ($w) => $w->where('scope', 'club')->where('tenant_id', $event->tenant_id));
+                    ->orWhere(fn ($w) => $w->where('scope', 'club')->where('tenant_id', $event->tenant_id));
             })->delete();
 
         rescue(fn () => \Realtime()->publishToUser($user->id, 'events', [
@@ -733,8 +761,8 @@ class PersonalEventController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => $user->name . ' can join again.',
-            'user'    => ['id' => $user->id, 'name' => $user->name],
+            'message' => $user->name.' can join again.',
+            'user' => ['id' => $user->id, 'name' => $user->name],
         ]);
     }
 
@@ -764,7 +792,7 @@ class PersonalEventController extends Controller
     {
         $date = $e->date ? Carbon::parse($e->date) : now();
         $start = $e->start_time ? Carbon::parse($e->start_time) : null;
-        $end   = $e->end_time ? Carbon::parse($e->end_time) : null;
+        $end = $e->end_time ? Carbon::parse($e->end_time) : null;
 
         $going = $e->participant_registrations_count ?? $e->participantRegistrations()->count();
         $spectators = $e->spectator_enabled ? $e->registrations()->where('role', 'spectator')->count() : 0;
@@ -790,43 +818,43 @@ class PersonalEventController extends Controller
         }
 
         $view = [
-            'id'    => $e->id,
-            'key'   => $e->uuid,   // unpredictable public id for URLs
-            'day'   => $date->format('d'),
-            'mon'   => $date->format('M'),
-            'wday'  => $date->format('D'),
+            'id' => $e->id,
+            'key' => $e->uuid,   // unpredictable public id for URLs
+            'day' => $date->format('d'),
+            'mon' => $date->format('M'),
+            'wday' => $date->format('D'),
             'title' => $e->title,
-            'club'  => $e->tenant?->club_name ?? 'TAKEONE',
+            'club' => $e->tenant?->club_name ?? 'TAKEONE',
             'location' => $e->location ?? 'TBA',
-            'address'  => $e->location ?? '',
+            'address' => $e->location ?? '',
             'location_url' => $e->location_url,
-            'lat'      => $e->gps_lat ? (float) $e->gps_lat : ($e->tenant?->gps_lat ? (float) $e->tenant->gps_lat : null),
-            'lng'      => $e->gps_long ? (float) $e->gps_long : ($e->tenant?->gps_long ? (float) $e->tenant->gps_long : null),
-            'time'  => $start ? $start->format('g:i A') : 'TBA',
-            'end'   => $end ? $end->format('g:i A') : '',
+            'lat' => $e->gps_lat ? (float) $e->gps_lat : ($e->tenant?->gps_lat ? (float) $e->tenant->gps_lat : null),
+            'lng' => $e->gps_long ? (float) $e->gps_long : ($e->tenant?->gps_long ? (float) $e->tenant->gps_long : null),
+            'time' => $start ? $start->format('g:i A') : 'TBA',
+            'end' => $end ? $end->format('g:i A') : '',
             'duration' => $this->duration($start, $end),
             'level' => $e->level ?? 'All',
-            'tag'   => $this->typeLabel($e->event_type),
-            'type'  => $this->typeLabel($e->event_type),
-            'scope'       => $e->scope ?? 'internal',
+            'tag' => $this->typeLabel($e->event_type),
+            'type' => $this->typeLabel($e->event_type),
+            'scope' => $e->scope ?? 'internal',
             'scope_label' => $this->scopeLabel($e->scope ?? 'internal'),
-            'host_club'   => $e->tenant?->club_name,
+            'host_club' => $e->tenant?->club_name,
             'sections' => $this->typeSections($e->event_type),
-            'sport'        => $e->sport,
-            'sport_label'  => $e->sport ? ($this->sports()[$e->sport]['label'] ?? null) : null,
-            'sport_icon'   => $e->sport ? ($this->sports()[$e->sport]['icon'] ?? null) : null,
+            'sport' => $e->sport,
+            'sport_label' => $e->sport ? ($this->sports()[$e->sport]['label'] ?? null) : null,
+            'sport_icon' => $e->sport ? ($this->sports()[$e->sport]['icon'] ?? null) : null,
             'division_label' => $e->sport ? ($this->sports()[$e->sport]['division_label'] ?? 'Category') : 'Category',
             'league' => $this->leagueView($e->league),
-            'icon'  => $e->icon ?: $this->typeIcon($e->event_type),
+            'icon' => $e->icon ?: $this->typeIcon($e->event_type),
             'color' => $e->color ?: $this->typeColor($e->event_type),
             'going' => $going,
-            'cap'   => $e->max_capacity ?: max($going, 1),
+            'cap' => $e->max_capacity ?: max($going, 1),
             'participant_fee' => $e->participant_fee ?: 'Free',
             'spectator' => $e->spectator_enabled ? ['fee' => $e->spectator_fee ?: 'Free', 'count' => $spectators] : null,
             'prize' => $e->prize,
             'results' => array_values($e->results ?? []),
             'about' => $e->description ?? '',
-            'tags'  => $e->tags ?: [],
+            'tags' => $e->tags ?: [],
             'requirements' => $e->requirements ?: [],
             // Combat events derive their timeline from the real schedule; manual agenda is dropped.
             'phases' => ($full && $this->isCombatSport($e->sport) && $e->categories()->exists())
@@ -836,15 +864,15 @@ class PersonalEventController extends Controller
             // Combat: medalists computed from the brackets (gold/silver/2×bronze per class).
             'bracket_results' => ($full && $this->isCombatSport($e->sport)) ? $this->results->podium($e) : [],
             'divisions' => $e->categories()->orderBy('sort_order')->pluck('name')->all(),
-            'participants'       => $participants,
+            'participants' => $participants,
             'participants_total' => $participantsTotal,
-            'spectators_list'    => $spectatorRows,
-            'spectators_total'   => $spectatorsTotal,
-            'bans_list'          => $full ? $this->bansList($e) : [],
-            'joined'   => $reg && $reg->role === 'participant',
+            'spectators_list' => $spectatorRows,
+            'spectators_total' => $spectatorsTotal,
+            'bans_list' => $full ? $this->bansList($e) : [],
+            'joined' => $reg && $reg->role === 'participant',
             'watching' => $reg && $reg->role === 'spectator',
-            'started'  => $e->hasStarted(),
-            'ended'    => $e->hasEnded(),
+            'started' => $e->hasStarted(),
+            'ended' => $e->hasEnded(),
             'categories' => $e->categories()->exists() ? ['_' => true] : [],
         ];
 
@@ -875,28 +903,28 @@ class PersonalEventController extends Controller
                     // read from the division name ("<Age> <Men|Women> <label> kg"), never from a
                     // live re-classify.
                     $category = null;
-                    $weight   = null;
+                    $weight = null;
                     if ($cat = $r->category) {
-                        $parts    = preg_split('/\s+(?:Men|Women)\s+/', $cat->name, 2);
+                        $parts = preg_split('/\s+(?:Men|Women)\s+/', $cat->name, 2);
                         $category = $parts[0] ?? $cat->name;                  // age group, e.g. "Senior"
-                        $weight   = $parts[1] ?? ($cat->weight_class ?: null); // weight label, e.g. "-58 kg"
+                        $weight = $parts[1] ?? ($cat->weight_class ?: null); // weight label, e.g. "-58 kg"
                     }
                     $meta = $gender ?: ($category ? 'Registered' : 'Unclassified');
                 } else {
                     $category = $r->category?->name ?: null;
-                    $weight   = $r->category?->weight_class ?: null;
-                    $meta     = $r->meta ?: ($r->category?->name ?? ($r->paid ? 'Registered' : 'Pending payment'));
+                    $weight = $r->category?->weight_class ?: null;
+                    $meta = $r->meta ?: ($r->category?->name ?? ($r->paid ? 'Registered' : 'Pending payment'));
                 }
 
                 return [
-                    'id'           => $u?->id,
-                    'name'         => $u?->full_name ?? $u?->name ?? 'Member',
-                    'gender'       => $gender,
-                    'category'     => $category,
+                    'id' => $u?->id,
+                    'name' => $u?->full_name ?? $u?->name ?? 'Member',
+                    'gender' => $gender,
+                    'category' => $category,
                     'weight_class' => $weight,
-                    'meta'         => $meta,
-                    'paid'         => (bool) $r->paid,
-                    'has_weight'   => $kg !== null,
+                    'meta' => $meta,
+                    'paid' => (bool) $r->paid,
+                    'has_weight' => $kg !== null,
                 ];
             });
 
@@ -908,20 +936,19 @@ class PersonalEventController extends Controller
         return $rows->values()->all();
     }
 
-
     /** Active bans affecting this event (event blocks + club-wide blacklist), for the manager tab. */
     private function bansList(ClubEvent $e): array
     {
         return EventParticipantBan::with('user:id,full_name,name')
             ->where(function ($q) use ($e) {
                 $q->where(fn ($w) => $w->where('scope', 'event')->where('event_id', $e->id))
-                  ->orWhere(fn ($w) => $w->where('scope', 'club')->where('tenant_id', $e->tenant_id));
+                    ->orWhere(fn ($w) => $w->where('scope', 'club')->where('tenant_id', $e->tenant_id));
             })
             ->latest()->get()
             ->unique('user_id')
             ->map(fn ($b) => [
-                'id'    => $b->user_id,
-                'name'  => $b->user?->full_name ?? $b->user?->name ?? 'Member',
+                'id' => $b->user_id,
+                'name' => $b->user?->full_name ?? $b->user?->name ?? 'Member',
                 'scope' => $b->scope,   // 'event' | 'club'
             ])->values()->all();
     }
@@ -933,7 +960,7 @@ class PersonalEventController extends Controller
             ->with('user:id,full_name,name')
             ->latest('registered_at')->get()
             ->map(fn ($r) => [
-                'id'   => $r->user?->id,
+                'id' => $r->user?->id,
                 'name' => $r->user?->full_name ?? $r->user?->name ?? 'Member',
                 'paid' => (bool) $r->paid,
             ])->values()->all();
@@ -961,18 +988,18 @@ class PersonalEventController extends Controller
         $expTotal = array_sum(array_column($expenses, 'amount'));
 
         return [
-            'currency'            => $event->tenant?->currency ?: 'BHD',
-            'participant_fee'     => $pFee,
-            'paid_participants'   => $paidP,
+            'currency' => $event->tenant?->currency ?: 'BHD',
+            'participant_fee' => $pFee,
+            'paid_participants' => $paidP,
             'participant_revenue' => $pRev,
-            'spectator_enabled'   => (bool) $event->spectator_enabled,
-            'spectator_fee'       => $sFee,
-            'paid_spectators'     => $paidS,
-            'spectator_revenue'   => $sRev,
-            'revenue'             => $revenue,
-            'expenses'            => $expenses,
-            'expenses_total'      => $expTotal,
-            'profit'              => $revenue - $expTotal,
+            'spectator_enabled' => (bool) $event->spectator_enabled,
+            'spectator_fee' => $sFee,
+            'paid_spectators' => $paidS,
+            'spectator_revenue' => $sRev,
+            'revenue' => $revenue,
+            'expenses' => $expenses,
+            'expenses_total' => $expTotal,
+            'profit' => $revenue - $expTotal,
         ];
     }
 
@@ -980,12 +1007,13 @@ class PersonalEventController extends Controller
     {
         $this->assertCanManage($event, Auth::user());
         $data = $request->validate([
-            'label'  => ['required', 'string', 'max:120'],
+            'label' => ['required', 'string', 'max:120'],
             'amount' => ['required', 'numeric', 'min:0', 'max:100000000'],
         ]);
         $exp = $event->expenses()->create([
             'label' => $data['label'], 'amount' => $data['amount'], 'created_by' => Auth::id(),
         ]);
+
         return response()->json(['success' => true, 'expense' => ['id' => $exp->id, 'label' => $exp->label, 'amount' => (float) $exp->amount]]);
     }
 
@@ -994,6 +1022,7 @@ class PersonalEventController extends Controller
         $this->assertCanManage($event, Auth::user());
         abort_unless($expense->event_id === $event->id, 404);
         $expense->delete();
+
         return response()->json(['success' => true]);
     }
 
@@ -1010,11 +1039,11 @@ class PersonalEventController extends Controller
             $rounds = [];
             $flat = [];
             foreach ($c->matches as $m) {
-                $mday  = $this->scheduler->phaseDay($c, $m->phase ?: 'preliminary');
+                $mday = $this->scheduler->phaseDay($c, $m->phase ?: 'preliminary');
                 $mdate = $e->date ? $e->date->copy()->addDays(max(0, $mday - 1))->format('D, M j') : '';
                 // Match code = court no. + bout no. (e.g. Mat 1, bout 4 → "1-04"). Unique per day.
                 $courtNo = ($m->court && preg_match('/(\d+)/', $m->court, $cm)) ? (int) $cm[1] : null;
-                $mcode = ($courtNo && $m->match_no) ? ($courtNo . '-' . str_pad((string) $m->match_no, 2, '0', STR_PAD_LEFT)) : null;
+                $mcode = ($courtNo && $m->match_no) ? ($courtNo.'-'.str_pad((string) $m->match_no, 2, '0', STR_PAD_LEFT)) : null;
                 $rounds[$m->round] ??= ['name' => $m->round, 'matches' => []];
                 $rounds[$m->round]['matches'][] = [
                     'no' => $m->match_no, 'phase' => $m->phase, 'date' => $mdate, 'code' => $mcode,
@@ -1030,29 +1059,29 @@ class PersonalEventController extends Controller
             }
 
             $out[$c->id] = [
-                'key'    => 'c' . $c->id,
-                'id'     => $c->id,
-                'name'   => $c->name,
-                'class'  => $c->weight_class ?? '',
-                'cap'    => $c->capacity,                                  // null = no cap
+                'key' => 'c'.$c->id,
+                'id' => $c->id,
+                'name' => $c->name,
+                'class' => $c->weight_class ?? '',
+                'cap' => $c->capacity,                                  // null = no cap
                 'joined' => $joined,
-                'open'   => $c->capacity ? max(0, $c->capacity - $joined) : null,
+                'open' => $c->capacity ? max(0, $c->capacity - $joined) : null,
                 'status' => $c->status,
-                'draw_state'     => $c->draw_state,
-                'provisional'    => $c->draw_state === 'provisional',
+                'draw_state' => $c->draw_state,
+                'provisional' => $c->draw_state === 'provisional',
                 // At risk of removal at start: unpaid OR not weighed in (no recorded weight).
-                'unpaid_count'   => $c->registrations->where('role', 'participant')
-                                        ->filter(fn ($r) => ! $r->paid || $r->weight === null)->count(),
-                'note'   => $c->note ?? '',
+                'unpaid_count' => $c->registrations->where('role', 'participant')
+                    ->filter(fn ($r) => ! $r->paid || $r->weight === null)->count(),
+                'note' => $c->note ?? '',
                 'rounds' => array_values($rounds),
                 'matches_flat' => $flat,
                 'podium' => $c->podium ?? [],
                 'roster' => $c->registrations->map(fn ($r) => [
-                    'name'    => $r->user?->full_name ?? $r->user?->name ?? 'Athlete',
+                    'name' => $r->user?->full_name ?? $r->user?->name ?? 'Athlete',
                     'country' => $r->meta ?: '',
                 ])->all(),
                 'roster_names' => $c->registrations->map(fn ($r) => $r->user?->full_name ?? $r->user?->name ?? 'Athlete')->values()->all(),
-                'mine'   => $c->registrations->contains('user_id', $meId),
+                'mine' => $c->registrations->contains('user_id', $meId),
             ];
         }
 
@@ -1075,39 +1104,39 @@ class PersonalEventController extends Controller
         }
 
         $data = $request->validate([
-            'status'              => ['required', Rule::in(['enrolling', 'live', 'completed'])],
-            'note'                => ['nullable', 'string', 'max:120'],
-            'matches'             => ['present', 'array', 'max:64'],
-            'matches.*.round'     => ['nullable', 'string', 'max:40'],
-            'matches.*.a_name'    => ['nullable', 'string', 'max:80'],
-            'matches.*.a_seed'    => ['nullable', 'integer', 'min:1', 'max:128'],
-            'matches.*.a_score'   => ['nullable', 'string', 'max:16'],
-            'matches.*.b_name'    => ['nullable', 'string', 'max:80'],
-            'matches.*.b_seed'    => ['nullable', 'integer', 'min:1', 'max:128'],
-            'matches.*.b_score'   => ['nullable', 'string', 'max:16'],
-            'matches.*.winner'    => ['nullable', Rule::in(['a', 'b', ''])],
-            'matches.*.court'     => ['nullable', 'string', 'max:40'],
-            'matches.*.time'      => ['nullable', 'string', 'max:40'],
-            'matches.*.status'    => ['nullable', Rule::in(['upcoming', 'live', 'done'])],
-            'podium'              => ['nullable', 'array', 'max:8'],
-            'podium.*.place'      => ['nullable', 'integer', 'min:1', 'max:8'],
-            'podium.*.name'       => ['nullable', 'string', 'max:80'],
-            'podium.*.country'    => ['nullable', 'string', 'max:8'],
-            'podium.*.prize'      => ['nullable', 'string', 'max:80'],
+            'status' => ['required', Rule::in(['enrolling', 'live', 'completed'])],
+            'note' => ['nullable', 'string', 'max:120'],
+            'matches' => ['present', 'array', 'max:64'],
+            'matches.*.round' => ['nullable', 'string', 'max:40'],
+            'matches.*.a_name' => ['nullable', 'string', 'max:80'],
+            'matches.*.a_seed' => ['nullable', 'integer', 'min:1', 'max:128'],
+            'matches.*.a_score' => ['nullable', 'string', 'max:16'],
+            'matches.*.b_name' => ['nullable', 'string', 'max:80'],
+            'matches.*.b_seed' => ['nullable', 'integer', 'min:1', 'max:128'],
+            'matches.*.b_score' => ['nullable', 'string', 'max:16'],
+            'matches.*.winner' => ['nullable', Rule::in(['a', 'b', ''])],
+            'matches.*.court' => ['nullable', 'string', 'max:40'],
+            'matches.*.time' => ['nullable', 'string', 'max:40'],
+            'matches.*.status' => ['nullable', Rule::in(['upcoming', 'live', 'done'])],
+            'podium' => ['nullable', 'array', 'max:8'],
+            'podium.*.place' => ['nullable', 'integer', 'min:1', 'max:8'],
+            'podium.*.name' => ['nullable', 'string', 'max:80'],
+            'podium.*.country' => ['nullable', 'string', 'max:8'],
+            'podium.*.prize' => ['nullable', 'string', 'max:80'],
         ]);
 
         $podium = collect($data['podium'] ?? [])
             ->map(fn ($p, $i) => [
-                'place'   => (int) ($p['place'] ?? 0) ?: ($i + 1),
-                'name'    => trim((string) ($p['name'] ?? '')),
+                'place' => (int) ($p['place'] ?? 0) ?: ($i + 1),
+                'name' => trim((string) ($p['name'] ?? '')),
                 'country' => trim((string) ($p['country'] ?? '')),
-                'prize'   => trim((string) ($p['prize'] ?? '')),
+                'prize' => trim((string) ($p['prize'] ?? '')),
             ])
             ->filter(fn ($p) => $p['name'] !== '')->sortBy('place')->values()->all();
 
         $category->update([
             'status' => $data['status'],
-            'note'   => $data['note'] ?? null,
+            'note' => $data['note'] ?? null,
             'podium' => $podium ?: null,
         ]);
 
@@ -1119,19 +1148,19 @@ class PersonalEventController extends Controller
                 continue;
             }
             $category->matches()->create([
-                'event_id'       => $event->id,
-                'round'          => trim((string) ($m['round'] ?? '')) ?: 'Round',
-                'slot'           => $slot++,
-                'a_name'         => trim((string) ($m['a_name'] ?? '')) ?: null,
-                'a_seed'         => $m['a_seed'] ?? null,
-                'a_score'        => trim((string) ($m['a_score'] ?? '')) ?: null,
-                'b_name'         => trim((string) ($m['b_name'] ?? '')) ?: null,
-                'b_seed'         => $m['b_seed'] ?? null,
-                'b_score'        => trim((string) ($m['b_score'] ?? '')) ?: null,
-                'winner'         => in_array($m['winner'] ?? '', ['a', 'b'], true) ? $m['winner'] : null,
-                'court'          => trim((string) ($m['court'] ?? '')) ?: null,
+                'event_id' => $event->id,
+                'round' => trim((string) ($m['round'] ?? '')) ?: 'Round',
+                'slot' => $slot++,
+                'a_name' => trim((string) ($m['a_name'] ?? '')) ?: null,
+                'a_seed' => $m['a_seed'] ?? null,
+                'a_score' => trim((string) ($m['a_score'] ?? '')) ?: null,
+                'b_name' => trim((string) ($m['b_name'] ?? '')) ?: null,
+                'b_seed' => $m['b_seed'] ?? null,
+                'b_score' => trim((string) ($m['b_score'] ?? '')) ?: null,
+                'winner' => in_array($m['winner'] ?? '', ['a', 'b'], true) ? $m['winner'] : null,
+                'court' => trim((string) ($m['court'] ?? '')) ?: null,
                 'scheduled_time' => trim((string) ($m['time'] ?? '')) ?: null,
-                'status'         => in_array($m['status'] ?? '', ['upcoming', 'live', 'done'], true) ? $m['status'] : 'upcoming',
+                'status' => in_array($m['status'] ?? '', ['upcoming', 'live', 'done'], true) ? $m['status'] : 'upcoming',
             ]);
         }
 
@@ -1151,7 +1180,8 @@ class PersonalEventController extends Controller
         }
         $h = intdiv($mins, 60);
         $m = $mins % 60;
-        return trim(($h ? "{$h}h " : '') . ($m ? "{$m}m" : '')) ?: "{$mins}m";
+
+        return trim(($h ? "{$h}h " : '').($m ? "{$m}m" : '')) ?: "{$mins}m";
     }
 
     /**
@@ -1167,8 +1197,8 @@ class PersonalEventController extends Controller
         return match ($event->scope ?? 'internal') {
             'inter_club', 'worldwide' => true,
             // regional currently mirrors nationwide until a region taxonomy exists.
-            'nationwide', 'regional'  => $this->shareCountry($event, $me),
-            default                   => false, // internal
+            'nationwide', 'regional' => $this->shareCountry($event, $me),
+            default => false, // internal
         };
     }
 
@@ -1190,41 +1220,41 @@ class PersonalEventController extends Controller
     private function detailRules(): array
     {
         return [
-            'gps_lat'      => ['nullable', 'numeric', 'between:-90,90'],
-            'gps_long'     => ['nullable', 'numeric', 'between:-180,180'],
+            'gps_lat' => ['nullable', 'numeric', 'between:-90,90'],
+            'gps_long' => ['nullable', 'numeric', 'between:-180,180'],
             'location_url' => ['nullable', 'url:http,https', 'max:500'],
-            'break_start'  => ['nullable', 'date_format:H:i', 'after_or_equal:start_time'],
-            'break_end'    => ['nullable', 'date_format:H:i', 'after:break_start', 'before_or_equal:end_time'],
-            'courts'       => ['nullable', 'integer', 'min:1', 'max:50'],
+            'break_start' => ['nullable', 'date_format:H:i', 'after_or_equal:start_time'],
+            'break_end' => ['nullable', 'date_format:H:i', 'after:break_start', 'before_or_equal:end_time'],
+            'courts' => ['nullable', 'integer', 'min:1', 'max:50'],
 
-            'agenda'             => ['nullable', 'array', 'max:40'],
-            'agenda.*.t'         => ['nullable', 'date'],   // date+time picker
-            'agenda.*.d'         => ['nullable', 'string', 'max:200'],
-            'requirements'       => ['nullable', 'array', 'max:30'],
-            'requirements.*'     => ['nullable', 'string', 'max:200'],
-            'tags'               => ['nullable', 'array', 'max:20'],
-            'tags.*'             => ['nullable', 'string', 'max:40'],
-            'phases'             => ['nullable', 'array', 'max:20'],
-            'phases.*.label'     => ['nullable', 'string', 'max:60'],
-            'phases.*.date'      => ['nullable', 'date'],   // real date; status is derived, not stored
-            'phases.*.note'      => ['nullable', 'string', 'max:160'],
+            'agenda' => ['nullable', 'array', 'max:40'],
+            'agenda.*.t' => ['nullable', 'date'],   // date+time picker
+            'agenda.*.d' => ['nullable', 'string', 'max:200'],
+            'requirements' => ['nullable', 'array', 'max:30'],
+            'requirements.*' => ['nullable', 'string', 'max:200'],
+            'tags' => ['nullable', 'array', 'max:20'],
+            'tags.*' => ['nullable', 'string', 'max:40'],
+            'phases' => ['nullable', 'array', 'max:20'],
+            'phases.*.label' => ['nullable', 'string', 'max:60'],
+            'phases.*.date' => ['nullable', 'date'],   // real date; status is derived, not stored
+            'phases.*.note' => ['nullable', 'string', 'max:160'],
 
             // sport-aware sections
-            'sport'                    => ['nullable', Rule::in(array_keys($this->sports()))],
-            'divisions'                => ['nullable', 'array', 'max:64'],
-            'divisions.*.name'         => ['nullable', 'string', 'max:80'],
-            'divisions.*.capacity'     => ['nullable', 'integer', 'min:2', 'max:512'],
-            'divisions.*.schedule'                => ['nullable', 'array'],
-            'divisions.*.schedule.preliminary'    => ['nullable', 'integer', 'min:1', 'max:60'],
-            'divisions.*.schedule.quarterfinals'  => ['nullable', 'integer', 'min:1', 'max:60'],
-            'divisions.*.schedule.finals'         => ['nullable', 'integer', 'min:1', 'max:60'],
-            'league'                   => ['nullable', 'array'],
-            'league.teams'             => ['nullable', 'array', 'max:64'],
-            'league.teams.*'           => ['nullable', 'string', 'max:80'],
-            'league.fixtures'          => ['nullable', 'array', 'max:300'],
-            'league.fixtures.*.home'       => ['nullable', 'string', 'max:80'],
-            'league.fixtures.*.away'       => ['nullable', 'string', 'max:80'],
-            'league.fixtures.*.date'       => ['nullable', 'string', 'max:40'],
+            'sport' => ['nullable', Rule::in(array_keys($this->sports()))],
+            'divisions' => ['nullable', 'array', 'max:64'],
+            'divisions.*.name' => ['nullable', 'string', 'max:80'],
+            'divisions.*.capacity' => ['nullable', 'integer', 'min:2', 'max:512'],
+            'divisions.*.schedule' => ['nullable', 'array'],
+            'divisions.*.schedule.preliminary' => ['nullable', 'integer', 'min:1', 'max:60'],
+            'divisions.*.schedule.quarterfinals' => ['nullable', 'integer', 'min:1', 'max:60'],
+            'divisions.*.schedule.finals' => ['nullable', 'integer', 'min:1', 'max:60'],
+            'league' => ['nullable', 'array'],
+            'league.teams' => ['nullable', 'array', 'max:64'],
+            'league.teams.*' => ['nullable', 'string', 'max:80'],
+            'league.fixtures' => ['nullable', 'array', 'max:300'],
+            'league.fixtures.*.home' => ['nullable', 'string', 'max:80'],
+            'league.fixtures.*.away' => ['nullable', 'string', 'max:80'],
+            'league.fixtures.*.date' => ['nullable', 'string', 'max:40'],
             'league.fixtures.*.home_score' => ['nullable', 'integer', 'min:0', 'max:1000'],
             'league.fixtures.*.away_score' => ['nullable', 'integer', 'min:0', 'max:1000'],
         ];
@@ -1251,9 +1281,9 @@ class PersonalEventController extends Controller
         $phases = collect($data['phases'] ?? [])
             ->map(fn ($p) => [
                 'label' => trim((string) ($p['label'] ?? '')),
-                'date'  => ! empty($p['date']) ? Carbon::parse($p['date'])->toDateString() : null,
-                'note'  => trim((string) ($p['note'] ?? '')),
-                'icon'  => 'bi-flag',
+                'date' => ! empty($p['date']) ? Carbon::parse($p['date'])->toDateString() : null,
+                'note' => trim((string) ($p['note'] ?? '')),
+                'icon' => 'bi-flag',
             ])
             ->filter(fn ($p) => $p['label'] !== '')->values()->all();
 
@@ -1262,9 +1292,9 @@ class PersonalEventController extends Controller
             ->map(fn ($t) => trim((string) $t))->filter()->values()->all();
         $fixtures = collect($data['league']['fixtures'] ?? [])
             ->map(fn ($f) => [
-                'home'       => trim((string) ($f['home'] ?? '')),
-                'away'       => trim((string) ($f['away'] ?? '')),
-                'date'       => trim((string) ($f['date'] ?? '')),
+                'home' => trim((string) ($f['home'] ?? '')),
+                'away' => trim((string) ($f['away'] ?? '')),
+                'date' => trim((string) ($f['date'] ?? '')),
                 'home_score' => isset($f['home_score']) && $f['home_score'] !== '' ? (int) $f['home_score'] : null,
                 'away_score' => isset($f['away_score']) && $f['away_score'] !== '' ? (int) $f['away_score'] : null,
             ])
@@ -1272,13 +1302,13 @@ class PersonalEventController extends Controller
         $league = ($teams || $fixtures) ? ['teams' => $teams, 'fixtures' => $fixtures] : null;
 
         return [
-            'agenda'       => $agenda ?: null,
+            'agenda' => $agenda ?: null,
             'requirements' => $requirements ?: null,
-            'tags'         => $tags ?: null,
-            'phases'       => $phases ?: null,
-            'sport'        => $data['sport'] ?? null,
-            'league'       => $league,
-            'courts'       => isset($data['courts']) && $data['courts'] !== '' ? (int) $data['courts'] : null,
+            'tags' => $tags ?: null,
+            'phases' => $phases ?: null,
+            'sport' => $data['sport'] ?? null,
+            'league' => $league,
+            'courts' => isset($data['courts']) && $data['courts'] !== '' ? (int) $data['courts'] : null,
         ];
     }
 
@@ -1289,7 +1319,7 @@ class PersonalEventController extends Controller
             return null;
         }
 
-        $teams    = $league['teams'] ?? [];
+        $teams = $league['teams'] ?? [];
         $fixtures = $league['fixtures'] ?? [];
 
         // Seed the table with every named team.
@@ -1300,23 +1330,40 @@ class PersonalEventController extends Controller
         }
 
         foreach ($fixtures as $f) {
-            $h = $f['home']; $a = $f['away'];
+            $h = $f['home'];
+            $a = $f['away'];
             $tbl[$h] ??= $row($h);
             $tbl[$a] ??= $row($a);
             if ($f['home_score'] === null || $f['away_score'] === null) {
                 continue; // unplayed fixture
             }
-            $hs = (int) $f['home_score']; $as = (int) $f['away_score'];
-            $tbl[$h]['p']++; $tbl[$a]['p']++;
-            $tbl[$h]['gf'] += $hs; $tbl[$h]['ga'] += $as;
-            $tbl[$a]['gf'] += $as; $tbl[$a]['ga'] += $hs;
-            if ($hs > $as) { $tbl[$h]['w']++; $tbl[$h]['pts'] += 3; $tbl[$a]['l']++; }
-            elseif ($hs < $as) { $tbl[$a]['w']++; $tbl[$a]['pts'] += 3; $tbl[$h]['l']++; }
-            else { $tbl[$h]['d']++; $tbl[$a]['d']++; $tbl[$h]['pts']++; $tbl[$a]['pts']++; }
+            $hs = (int) $f['home_score'];
+            $as = (int) $f['away_score'];
+            $tbl[$h]['p']++;
+            $tbl[$a]['p']++;
+            $tbl[$h]['gf'] += $hs;
+            $tbl[$h]['ga'] += $as;
+            $tbl[$a]['gf'] += $as;
+            $tbl[$a]['ga'] += $hs;
+            if ($hs > $as) {
+                $tbl[$h]['w']++;
+                $tbl[$h]['pts'] += 3;
+                $tbl[$a]['l']++;
+            } elseif ($hs < $as) {
+                $tbl[$a]['w']++;
+                $tbl[$a]['pts'] += 3;
+                $tbl[$h]['l']++;
+            } else {
+                $tbl[$h]['d']++;
+                $tbl[$a]['d']++;
+                $tbl[$h]['pts']++;
+                $tbl[$a]['pts']++;
+            }
         }
 
         $standings = collect($tbl)->map(function ($r) {
             $r['gd'] = $r['gf'] - $r['ga'];
+
             return $r;
         })->sortBy([['pts', 'desc'], ['gd', 'desc'], ['gf', 'desc']])->values()->all();
 
@@ -1343,7 +1390,7 @@ class PersonalEventController extends Controller
             // Owner-set day per phase (later phase can't precede an earlier one).
             if (! empty($d['schedule']) && is_array($d['schedule'])) {
                 $pre = max(1, (int) ($d['schedule']['preliminary'] ?? 1));
-                $qf  = max($pre, (int) ($d['schedule']['quarterfinals'] ?? $pre));
+                $qf = max($pre, (int) ($d['schedule']['quarterfinals'] ?? $pre));
                 $fin = max($qf, (int) ($d['schedule']['finals'] ?? $qf));
                 $cat->schedule = ['preliminary' => $pre, 'quarterfinals' => $qf, 'finals' => $fin];
             }

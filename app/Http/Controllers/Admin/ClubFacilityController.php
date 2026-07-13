@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Storage;
 
 class ClubFacilityController extends Controller
 {
+    use \App\Traits\StoresBase64Images;
     use HandlesClubAuthorization;
     use PersistsTranslations;
 
@@ -21,6 +22,7 @@ class ClubFacilityController extends Controller
     {
         $this->authorizeClub($club);
         $facilities = ClubFacility::where('tenant_id', $club->id)->get();
+
         return view(\App\Support\ClubView::pick('facilities'), compact('club', 'facilities'));
     }
 
@@ -30,18 +32,20 @@ class ClubFacilityController extends Controller
         $clubId = $club->id;
 
         $data = [
-            'tenant_id'    => $clubId,
-            'name'         => $request->name,
-            'description'  => $request->description,
-            'address'      => $request->address,
-            'gps_lat'      => $request->latitude,
-            'gps_long'     => $request->longitude,
-            'maps_url'     => $request->maps_url,
+            'tenant_id' => $clubId,
+            'name' => $request->name,
+            'description' => $request->description,
+            'address' => $request->address,
+            'gps_lat' => $request->latitude,
+            'gps_long' => $request->longitude,
+            'maps_url' => $request->maps_url,
             'is_available' => $request->has('is_available'),
         ];
 
         $paths = $this->saveFacilityBase64Images($request->input('facility_images_base64', []), $clubId);
-        if ($paths) $data['images'] = $paths;
+        if ($paths) {
+            $data['images'] = $paths;
+        }
 
         $facility = ClubFacility::create($data);
 
@@ -49,8 +53,8 @@ class ClubFacilityController extends Controller
 
         if ($request->wantsJson()) {
             return response()->json([
-                'success'  => true,
-                'message'  => 'Facility added successfully.',
+                'success' => true,
+                'message' => 'Facility added successfully.',
                 'facility' => $facility,
             ]);
         }
@@ -65,7 +69,7 @@ class ClubFacilityController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $facility,
+            'data' => $facility,
         ]);
     }
 
@@ -76,7 +80,7 @@ class ClubFacilityController extends Controller
 
         $facility = ClubFacility::where('tenant_id', $clubId)->findOrFail($facilityId);
 
-        $data               = $request->only(['name', 'address', 'gps_lat', 'gps_long', 'maps_url']);
+        $data = $request->only(['name', 'address', 'gps_lat', 'gps_long', 'maps_url']);
         $data['is_available'] = $request->has('is_available');
 
         try {
@@ -84,7 +88,7 @@ class ClubFacilityController extends Controller
         } catch (\JsonException) {
             return response()->json(['success' => false, 'message' => 'Invalid image data.'], 422);
         }
-        $newPaths      = $this->saveFacilityBase64Images($request->input('facility_images_base64', []), $clubId);
+        $newPaths = $this->saveFacilityBase64Images($request->input('facility_images_base64', []), $clubId);
         $data['images'] = array_merge($kept, $newPaths);
 
         $facility->update($data);
@@ -95,11 +99,25 @@ class ClubFacilityController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Facility updated successfully.',
-                'data'    => $facility,
+                'data' => $facility,
             ]);
         }
 
         return back()->with('success', 'Facility updated successfully.');
+    }
+
+    /** Toggle a facility's public visibility (is_available) — inline owner control. */
+    public function toggleFacility(Tenant $club, $facilityId)
+    {
+        $this->authorizeClub($club);
+        $facility = ClubFacility::where('tenant_id', $club->id)->findOrFail($facilityId);
+        $facility->update(['is_available' => ! $facility->is_available]);
+
+        return response()->json([
+            'success' => true,
+            'hidden' => ! $facility->is_available,
+            'message' => $facility->is_available ? 'Facility is now visible.' : 'Facility hidden.',
+        ]);
     }
 
     public function destroyFacility(Tenant $club, $facilityId)
@@ -128,26 +146,23 @@ class ClubFacilityController extends Controller
         try {
             $facility = ClubFacility::where('tenant_id', $clubId)->findOrFail($facilityId);
 
-            $imageData    = $request->image;
-            $imageParts   = explode(';base64,', $imageData);
-            $imageTypeAux = explode('image/', $imageParts[0]);
-            $extension    = $imageTypeAux[1];
-            $imageBinary  = base64_decode($imageParts[1]);
+            // Validate + store the base64 image with a server-assigned extension
+            // (real MIME sniffed from the bytes; PHP/HTML/SVG rejected).
+            $fullPath = $this->storeBase64Image($request->image, $request->folder, $request->filename);
+            if ($fullPath === null) {
+                return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
+            }
 
-            $folder   = trim($request->folder, '/');
-            $fullPath = $folder . '/' . $request->filename . '.' . $extension;
-
-            if ($facility->photo && Storage::disk('public')->exists($facility->photo)) {
+            if ($facility->photo && $facility->photo !== $fullPath && Storage::disk('public')->exists($facility->photo)) {
                 Storage::disk('public')->delete($facility->photo);
             }
 
-            Storage::disk('public')->put($fullPath, $imageBinary);
             $facility->update(['photo' => $fullPath]);
 
             return response()->json([
                 'success' => true,
-                'path'    => $fullPath,
-                'url'     => asset('storage/' . $fullPath),
+                'path' => $fullPath,
+                'url' => asset('storage/'.$fullPath),
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -158,14 +173,17 @@ class ClubFacilityController extends Controller
     {
         $paths = [];
         foreach ($base64List as $base64) {
-            if (!str_starts_with($base64, 'data:image')) continue;
-            [$meta, $imageData] = explode(',', $base64, 2);
-            preg_match('/image\/(\w+)/', $meta, $m);
-            $ext  = $m[1] ?? 'jpg';
-            $path = 'clubs/' . $clubId . '/facilities/' . uniqid('facility_') . '.' . $ext;
-            Storage::disk('public')->put($path, base64_decode($imageData));
-            $paths[] = $path;
+            if (! str_starts_with($base64, 'data:image')) {
+                continue;
+            }
+            // Validate content + assign a safe extension server-side; skip anything
+            // that isn't a real whitelisted image (was: client-controlled \w+ ext).
+            $path = $this->storeBase64Image($base64, 'clubs/'.$clubId.'/facilities', uniqid('facility_'));
+            if ($path !== null) {
+                $paths[] = $path;
+            }
         }
+
         return $paths;
     }
 }

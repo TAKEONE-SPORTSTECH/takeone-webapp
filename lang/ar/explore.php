@@ -25,4 +25,46 @@ return [
     'cat_venues'        => 'الأماكن',
     'cat_supplements'   => 'المكمّلات',
     'cat_food_plans'    => 'خطط الطعام',
+
+    'loading'           => 'جارٍ التحميل...',
+
+    // Result cards
+    'na'                    => 'غير متوفر',
+    'personal_trainer_badge' => 'مدرّب شخصي',
+    'sports_club_badge'     => 'نادٍ رياضي',
+    'years_exp'             => 'سنوات الخبرة',
+    'reviews'               => 'التقييمات',
+    'rating'                => 'التقييم',
+    'book_session'          => 'احجز جلسة',
+    'view_details'          => 'عرض التفاصيل',
+    'members'               => 'الأعضاء',
+    'packages'              => 'الباقات',
+    'trainers'              => 'المدرّبون',
+    'join_club'             => 'انضم إلى النادي',
+    'km_away'               => 'كم',
+    'location_available'    => 'الموقع متاح',
+
+    // Join / registration wizard
+    'no_members_selected_title' => 'لم يتم اختيار أعضاء',
+    'no_members_selected_body'  => 'اختر عضواً واحداً على الأقل للمتابعة.',
+    'packages_required_title'   => 'الباقة مطلوبة',
+    'packages_required_body'    => 'اختر باقة لكل عضو محدد.',
+    'choose_option_title'       => 'الخيار مطلوب',
+    'choose_option_body'        => 'اختر خياراً لكل قطعة معدات محددة.',
+    'payment_required_title'    => 'إثبات الدفع مطلوب',
+    'payment_required_body'     => 'ارفع صورة الدفع أو اختر الدفع لاحقاً.',
+    'registration_submitted_title' => 'تم إرسال التسجيل',
+    'registration_submitted_body'  => 'تم إرسال تسجيلك إلى النادي للموافقة.',
+    'registration_failed_title' => 'فشل التسجيل',
+    'please_try_again'          => 'يرجى المحاولة مرة أخرى.',
+    'registration_error_body'   => 'حدث خطأ أثناء إرسال تسجيلك.',
+
+    // Geolocation / fetch errors
+    'geolocation_not_supported'  => 'المتصفح لا يدعم تحديد الموقع.',
+    'unable_to_get_location'     => 'تعذّر تحديد موقعك.',
+    'location_access_denied'     => ' تم رفض إذن الوصول إلى الموقع.',
+    'location_unavailable'       => ' معلومات الموقع غير متوفرة.',
+    'location_request_timed_out' => ' انتهت مهلة طلب الموقع.',
+    'failed_to_fetch_clubs'      => 'تعذّر تحميل الأندية. يرجى المحاولة مرة أخرى.',
+    'error_fetching_clubs'       => 'حدث خطأ أثناء تحميل الأندية.',
 ];

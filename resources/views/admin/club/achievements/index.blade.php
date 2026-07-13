@@ -45,11 +45,11 @@ $achievementsJson = $achievements->map(function($a) {
     {{-- Header --}}
     <div class="flex items-center justify-between mb-6">
         <div>
-            <h2 class="text-xl font-bold text-foreground">Latest Achievements</h2>
-            <p class="text-sm text-muted-foreground mt-0.5">Manage club achievements and milestones shown on your public page (top 3 active shown)</p>
+            <h2 class="text-xl font-bold text-foreground">{{ __('admin.club_achievements_index_title') }}</h2>
+            <p class="text-sm text-muted-foreground mt-0.5">{{ __('admin.club_achievements_index_subtitle') }}</p>
         </div>
         <button @click="openAdd()" class="btn btn-primary">
-            <i class="bi bi-plus-lg mr-2"></i>Add Achievement
+            <i class="bi bi-plus-lg me-2"></i>{{ __('admin.club_achievements_index_add_achievement') }}
         </button>
     </div>
 
@@ -58,9 +58,9 @@ $achievementsJson = $achievements->map(function($a) {
         <div class="card border-0 shadow-sm">
             <div class="card-body text-center py-16">
                 <i class="bi bi-trophy text-muted-foreground" style="font-size:2.5rem;opacity:.3;"></i>
-                <p class="mt-3 text-muted-foreground">No achievements yet. Add your first club achievement.</p>
+                <p class="mt-3 text-muted-foreground">{{ __('admin.club_achievements_index_empty') }}</p>
                 <button @click="openAdd()" class="btn btn-primary mt-2">
-                    <i class="bi bi-plus-lg mr-2"></i>Add Achievement
+                    <i class="bi bi-plus-lg me-2"></i>{{ __('admin.club_achievements_index_add_achievement') }}
                 </button>
             </div>
         </div>
@@ -86,8 +86,8 @@ $achievementsJson = $achievements->map(function($a) {
                             <span class="ach-dot{{ $j === 0 ? ' active' : '' }}"></span>
                             @endforeach
                         </div>
-                        <span class="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded-full backdrop-blur-sm">
-                            <i class="bi bi-images mr-1"></i>{{ count($achCardImages) }}
+                        <span class="absolute bottom-2 end-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded-full backdrop-blur-sm">
+                            <i class="bi bi-images me-1"></i>{{ count($achCardImages) }}
                         </span>
                         @endif
                     @else
@@ -95,8 +95,8 @@ $achievementsJson = $achievements->map(function($a) {
                              style="background: linear-gradient(135deg, {{ $achievement->bg_from }}, {{ $achievement->bg_to }});"></div>
                     @endif
                     {{-- Tag --}}
-                    <span class="absolute bottom-2 left-2 text-xs font-semibold px-2 py-1 rounded-full bg-black/50 text-white">
-                        <i class="bi {{ $achievement->tag_icon }} mr-1"></i>{{ $achievement->tag }}
+                    <span class="absolute bottom-2 start-2 text-xs font-semibold px-2 py-1 rounded-full bg-black/50 text-white">
+                        <i class="bi {{ $achievement->tag_icon }} me-1"></i>{{ $achievement->tag }}
                     </span>
                 </div>
                 {{-- Card body --}}
@@ -110,17 +110,17 @@ $achievementsJson = $achievements->map(function($a) {
                         </div>
                         <div class="flex gap-1.5 flex-shrink-0" @click.stop>
                             <button @click="openEdit({{ $achievement->id }})"
-                                    class="btn btn-sm btn-outline-secondary" title="Edit">
+                                    class="btn btn-sm btn-outline-secondary" title="{{ __('shared.edit') }}">
                                 <i class="bi bi-pencil"></i>
                             </button>
                             <button @click="deleteAchievement({{ $achievement->id }})"
-                                    class="btn btn-sm btn-outline-danger" title="Delete">
+                                    class="btn btn-sm btn-outline-danger" title="{{ __('shared.delete') }}">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>
                     </div>
                     @if($isInactive)
-                    <span class="badge bg-gray-100 text-gray-500 text-xs mt-2">Inactive</span>
+                    <span class="badge bg-gray-100 text-gray-500 text-xs mt-2">{{ __('admin.club_achievements_index_inactive') }}</span>
                     @endif
                 </div>
             </div>
@@ -193,12 +193,12 @@ $achievementsJson = $achievements->map(function($a) {
 
                             {{-- Close --}}
                             <button @click.stop="showDetail = false"
-                                    class="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-black/50 hover:bg-black/75 text-white flex items-center justify-center transition-colors z-10">
+                                    class="absolute top-2.5 end-2.5 w-8 h-8 rounded-full bg-black/50 hover:bg-black/75 text-white flex items-center justify-center transition-colors z-10">
                                 <i class="bi bi-x-lg text-xs"></i>
                             </button>
 
                             {{-- Tag --}}
-                            <span class="absolute bottom-2 left-3 text-xs font-semibold px-2.5 py-1 rounded-full bg-black/50 text-white pointer-events-none">
+                            <span class="absolute bottom-2 start-3 text-xs font-semibold px-2.5 py-1 rounded-full bg-black/50 text-white pointer-events-none">
                                 <i :class="'bi ' + detailAchievement.tag_icon + ' mr-1'"></i>
                                 <span x-text="detailAchievement.tag"></span>
                             </span>
@@ -213,9 +213,9 @@ $achievementsJson = $achievements->map(function($a) {
                             <div class="flex justify-end gap-2">
                                 <button type="button" class="btn btn-outline-secondary btn-sm"
                                         @click="showDetail = false; openEdit(detailAchievement.id)">
-                                    <i class="bi bi-pencil mr-1"></i>Edit
+                                    <i class="bi bi-pencil me-1"></i>{{ __('shared.edit') }}
                                 </button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" @click="showDetail = false">Close</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" @click="showDetail = false">{{ __('admin.club_achievements_index_close') }}</button>
                             </div>
                         </div>
                     </div>
@@ -237,7 +237,7 @@ $achievementsJson = $achievements->map(function($a) {
         <div class="flex min-h-full items-center justify-center p-4">
             <div class="modal-content border-0 shadow-lg w-full max-w-2xl relative" @click.stop>
                 <div class="modal-header border-b border-border px-6 py-4">
-                    <h5 class="modal-title text-lg font-semibold" x-text="isEdit ? 'Edit Achievement' : 'Add Achievement'"></h5>
+                    <h5 class="modal-title text-lg font-semibold" x-text="isEdit ? '{{ __('admin.club_achievements_index_edit_achievement') }}' : '{{ __('admin.club_achievements_index_add_achievement') }}'"></h5>
                     <button type="button" class="text-muted-foreground hover:text-foreground" @click="showModal = false">
                         <i class="bi bi-x-lg"></i>
                     </button>
@@ -249,10 +249,10 @@ $achievementsJson = $achievements->map(function($a) {
                         @include('admin.club.achievements.partials.form-fields')
                     </div>
                     <div class="modal-footer border-t border-border px-6 py-4 flex justify-end gap-3">
-                        <button type="button" class="btn btn-outline-secondary" @click="showModal = false">Cancel</button>
+                        <button type="button" class="btn btn-outline-secondary" @click="showModal = false">{{ __('shared.cancel') }}</button>
                         <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-lg mr-1"></i>
-                            <span x-text="isEdit ? 'Update Achievement' : 'Save Achievement'"></span>
+                            <i class="bi bi-check-lg me-1"></i>
+                            <span x-text="isEdit ? '{{ __('admin.club_achievements_index_update_achievement') }}' : '{{ __('admin.club_achievements_index_save_achievement') }}'"></span>
                         </button>
                     </div>
                 </form>
@@ -297,7 +297,7 @@ async function renderAchievementNewPreviews() {
         wrap.className = 'relative group';
         wrap.innerHTML = `
             <img src="${b64}" class="w-20 h-20 object-cover rounded-lg border border-gray-200">
-            <button type="button" class="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <button type="button" class="absolute -top-1.5 -end-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <i class="bi bi-x"></i>
             </button>`;
         wrap.querySelector('button').addEventListener('click', () => {
@@ -336,7 +336,7 @@ function renderAchievementExistingThumbnails(paths) {
         wrap.className = 'relative group';
         wrap.innerHTML = `
             <img src="/storage/${path}" class="w-20 h-20 object-cover rounded-lg border border-border" onerror="this.parentElement.style.display='none'">
-            <button type="button" class="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <button type="button" class="absolute -top-1.5 -end-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <i class="bi bi-x"></i>
             </button>`;
         wrap.querySelector('button').addEventListener('click', () => {
@@ -392,36 +392,36 @@ const emptyForm = {
 };
 
 const achievementIcons = [
-    { value: 'bi-trophy',          label: 'Trophy' },
-    { value: 'bi-trophy-fill',     label: 'Trophy Fill' },
-    { value: 'bi-award',           label: 'Award' },
-    { value: 'bi-award-fill',      label: 'Award Fill' },
-    { value: 'bi-star',            label: 'Star' },
-    { value: 'bi-star-fill',       label: 'Star Fill' },
-    { value: 'bi-medal',           label: 'Medal' },
-    { value: 'bi-patch-check',     label: 'Verified' },
-    { value: 'bi-patch-check-fill',label: 'Verified Fill' },
-    { value: 'bi-patch-star',      label: 'Star Patch' },
-    { value: 'bi-gem',             label: 'Gem' },
-    { value: 'bi-crown',           label: 'Crown' },
-    { value: 'bi-crown-fill',      label: 'Crown Fill' },
-    { value: 'bi-shield-check',    label: 'Shield' },
-    { value: 'bi-flag',            label: 'Flag' },
-    { value: 'bi-flag-fill',       label: 'Flag Fill' },
-    { value: 'bi-lightning',       label: 'Lightning' },
-    { value: 'bi-lightning-fill',  label: 'Lightning Fill' },
-    { value: 'bi-fire',            label: 'Fire' },
-    { value: 'bi-rocket',          label: 'Rocket' },
-    { value: 'bi-rocket-fill',     label: 'Rocket Fill' },
-    { value: 'bi-bullseye',        label: 'Target' },
-    { value: 'bi-graph-up-arrow',  label: 'Growth' },
-    { value: 'bi-people',          label: 'Team' },
-    { value: 'bi-people-fill',     label: 'Team Fill' },
-    { value: 'bi-hand-thumbs-up',  label: 'Thumbs Up' },
-    { value: 'bi-heart',           label: 'Heart' },
-    { value: 'bi-heart-fill',      label: 'Heart Fill' },
-    { value: 'bi-bookmark-star',   label: 'Bookmark Star' },
-    { value: 'bi-emoji-smile',     label: 'Smile' },
+    { value: 'bi-trophy',          label: '{{ __("admin.club_achievements_index_icon_trophy") }}' },
+    { value: 'bi-trophy-fill',     label: '{{ __("admin.club_achievements_index_icon_trophy_fill") }}' },
+    { value: 'bi-award',           label: '{{ __("admin.club_achievements_index_icon_award") }}' },
+    { value: 'bi-award-fill',      label: '{{ __("admin.club_achievements_index_icon_award_fill") }}' },
+    { value: 'bi-star',            label: '{{ __("admin.club_achievements_index_icon_star") }}' },
+    { value: 'bi-star-fill',       label: '{{ __("admin.club_achievements_index_icon_star_fill") }}' },
+    { value: 'bi-medal',           label: '{{ __("admin.club_achievements_index_icon_medal") }}' },
+    { value: 'bi-patch-check',     label: '{{ __("admin.club_achievements_index_icon_verified") }}' },
+    { value: 'bi-patch-check-fill',label: '{{ __("admin.club_achievements_index_icon_verified_fill") }}' },
+    { value: 'bi-patch-star',      label: '{{ __("admin.club_achievements_index_icon_star_patch") }}' },
+    { value: 'bi-gem',             label: '{{ __("admin.club_achievements_index_icon_gem") }}' },
+    { value: 'bi-crown',           label: '{{ __("admin.club_achievements_index_icon_crown") }}' },
+    { value: 'bi-crown-fill',      label: '{{ __("admin.club_achievements_index_icon_crown_fill") }}' },
+    { value: 'bi-shield-check',    label: '{{ __("admin.club_achievements_index_icon_shield") }}' },
+    { value: 'bi-flag',            label: '{{ __("admin.club_achievements_index_icon_flag") }}' },
+    { value: 'bi-flag-fill',       label: '{{ __("admin.club_achievements_index_icon_flag_fill") }}' },
+    { value: 'bi-lightning',       label: '{{ __("admin.club_achievements_index_icon_lightning") }}' },
+    { value: 'bi-lightning-fill',  label: '{{ __("admin.club_achievements_index_icon_lightning_fill") }}' },
+    { value: 'bi-fire',            label: '{{ __("admin.club_achievements_index_icon_fire") }}' },
+    { value: 'bi-rocket',          label: '{{ __("admin.club_achievements_index_icon_rocket") }}' },
+    { value: 'bi-rocket-fill',     label: '{{ __("admin.club_achievements_index_icon_rocket_fill") }}' },
+    { value: 'bi-bullseye',        label: '{{ __("admin.club_achievements_index_icon_target") }}' },
+    { value: 'bi-graph-up-arrow',  label: '{{ __("admin.club_achievements_index_icon_growth") }}' },
+    { value: 'bi-people',          label: '{{ __("admin.club_achievements_index_icon_team") }}' },
+    { value: 'bi-people-fill',     label: '{{ __("admin.club_achievements_index_icon_team_fill") }}' },
+    { value: 'bi-hand-thumbs-up',  label: '{{ __("admin.club_achievements_index_icon_thumbs_up") }}' },
+    { value: 'bi-heart',           label: '{{ __("admin.club_achievements_index_icon_heart") }}' },
+    { value: 'bi-heart-fill',      label: '{{ __("admin.club_achievements_index_icon_heart_fill") }}' },
+    { value: 'bi-bookmark-star',   label: '{{ __("admin.club_achievements_index_icon_bookmark_star") }}' },
+    { value: 'bi-emoji-smile',     label: '{{ __("admin.club_achievements_index_icon_smile") }}' },
 ];
 
 function achievementsAdmin() {
@@ -434,6 +434,13 @@ function achievementsAdmin() {
         formData:          { ...emptyForm },
         showIconPicker:    false,
         icons:             achievementIcons,
+
+        // Deep-link: /admin/club/{club}/achievements?edit={id} (e.g. the pencil on
+        // the public club page) opens that achievement's editor straight away.
+        init() {
+            const id = parseInt(new URLSearchParams(window.location.search).get('edit') || '', 10);
+            if (id) this.$nextTick(() => this.openEdit(id));
+        },
 
         openDetail(id) {
             this.detailAchievement = achievementsData.find(a => a.id === id) || null;
@@ -476,9 +483,9 @@ function achievementsAdmin() {
 
         deleteAchievement(id) {
             confirmAction({
-                title:       'Delete Achievement',
-                message:     'This achievement will be permanently removed.',
-                confirmText: 'Delete',
+                title:       '{{ __("admin.club_achievements_index_delete_title") }}',
+                message:     '{{ __("admin.club_achievements_index_delete_message") }}',
+                confirmText: '{{ __("shared.delete") }}',
                 type:        'danger',
             }).then(confirmed => {
                 if (!confirmed) return;
@@ -494,12 +501,12 @@ function achievementsAdmin() {
                     if (data.success) {
                         document.getElementById(`achievement-${id}`)?.remove();
                         this.showDetail = false;
-                        window.showToast('success', data.message || 'Achievement deleted.');
+                        window.showToast('success', data.message || '{{ __("admin.club_achievements_index_deleted") }}');
                     } else {
-                        window.showToast('error', data.message || 'Failed to delete achievement.');
+                        window.showToast('error', data.message || '{{ __("admin.club_achievements_index_delete_failed") }}');
                     }
                 })
-                .catch(() => window.showToast('error', 'Failed to delete achievement.'));
+                .catch(() => window.showToast('error', '{{ __("admin.club_achievements_index_delete_failed") }}'));
             });
         },
     };

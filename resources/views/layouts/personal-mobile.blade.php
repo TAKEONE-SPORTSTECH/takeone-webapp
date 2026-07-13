@@ -14,7 +14,7 @@
             ['route'=>'me.schedule', 'icon'=>'bi-calendar-event', 'label'=>__('nav.my_schedule')],
         ],
         'Profile' => [
-            ['route'=>'me.profile',  'icon'=>'bi-person',         'label'=>__('nav.my_profile')],
+            ['url'=>route('member.show', $u->uuid), 'icon'=>'bi-person', 'label'=>__('nav.my_profile')],
             ['route'=>'me.packages', 'icon'=>'bi-box',            'label'=>__('nav.my_packages')],
             ['route'=>'me.progress', 'icon'=>'bi-graph-up-arrow', 'label'=>__('nav.my_progress')],
         ],
@@ -36,12 +36,23 @@
     // Bottom bar = the most-used, always-in-shell destinations (Facebook-style).
     // Challenge is the raised center action. Profile lives in the side drawer.
     $bottomTabs = [
-        ['route'=>'me.home',      'icon'=>'bi-newspaper',      'label'=>__('nav.tab_feed')],
+        ['route'=>'me.home',      'icon'=>'bi-newspaper',      'label'=>__('nav.tab_feed'),      'dot'=>'feed'],
         ['route'=>'me.schedule',  'icon'=>'bi-calendar-week',  'label'=>__('nav.tab_schedule')],
-        ['route'=>'me.challenge', 'icon'=>'bi-trophy-fill',    'label'=>__('nav.tab_challenge'), 'center'=>true],
-        ['route'=>'me.events',    'icon'=>'bi-calendar-heart', 'label'=>__('nav.tab_events')],
-        ['route'=>'me.market',    'icon'=>'bi-shop',           'label'=>__('nav.tab_market')],
+        ['route'=>'me.challenge', 'icon'=>'bi-trophy-fill',    'label'=>__('nav.tab_challenge'), 'center'=>true, 'dot'=>'challenge'],
+        ['route'=>'me.events',    'icon'=>'bi-calendar-heart', 'label'=>__('nav.tab_events'),    'dot'=>'events'],
+        ['route'=>'me.market',    'icon'=>'bi-shop',           'label'=>__('nav.tab_market'),    'dot'=>'market'],
     ];
+
+    // Unseen (red-dot) indicators for the bottom nav. Mark the section the user
+    // is currently viewing as seen first, so its own dot never shows.
+    $__navUser = auth()->user();
+    $__navSection = ['me.home'=>'feed:all', 'me.challenge'=>'challenge', 'me.events'=>'events', 'me.market'=>'market'][$currentRoute] ?? null;
+    $navDots = ['feed'=>false, 'challenge'=>false, 'events'=>false, 'market'=>false];
+    if ($__navUser) {
+        $__act = app(\App\Support\SectionActivity::class);
+        if ($__navSection) { $__act->markSeen($__navUser, $__navSection); }
+        $navDots = $__act->navDots($__navUser);
+    }
 
     $hasBusiness = $u->hasApprovedBusiness();
     $businessName = $hasBusiness ? $u->ownedBusiness->name : null;
@@ -71,6 +82,18 @@
                     </div>
                 </a>
             </div>
+            {{-- Get the App / Update — compact row; device-aware badge set via JS. --}}
+            <div class="px-3 pt-2">
+                <a id="get-app-nav" href="{{ route('me.app') }}" data-shell-link data-route="me.app"
+                   class="m-press flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors">
+                    <i class="bi bi-phone text-lg w-5 text-center"></i>
+                    <span id="get-app-label" class="flex-1">{{ __('nav.get_app') }}</span>
+                    <span id="get-app-sub" class="hidden"></span>
+                    <span id="get-app-badge" class="hidden"></span>
+                    <i class="bi bi-chevron-right text-xs text-muted-foreground/60"></i>
+                </a>
+            </div>
+
             @php
                 $ownedBusiness    = $u->ownedBusiness;
                 $businessApproved = $ownedBusiness && $ownedBusiness->isApproved();
@@ -89,10 +112,13 @@
                         ['shell' => 'me.packages', 'icon' => 'bi-box',            'label' => __('nav.my_packages')],
                         ['shell' => 'me.payments', 'icon' => 'bi-receipt',        'label' => __('nav.payments')],
                     ],
-                    __('nav.group_discover') => [
-                        ['url' => route('clubs.explore'),  'icon' => 'bi-compass', 'label' => __('nav.explore_clubs')],
+                    // Explore is hidden when a club the user belongs to has locked
+                    // cross-club discovery (club settings → block_explore).
+                    __('nav.group_discover') => array_values(array_filter([
+                        ['url' => route('me.people'),      'icon' => 'bi-people-fill', 'label' => __('personal.find_people')],
+                        $u->isExploreLocked() ? null : ['url' => route('clubs.explore'), 'icon' => 'bi-compass', 'label' => __('nav.explore_clubs')],
                         ['scan' => true, 'icon' => 'bi-qr-code-scan', 'label' => __('header.scan_qr')],
-                    ],
+                    ])),
                 ];
             @endphp
             <nav class="p-3 flex-1">
@@ -171,7 +197,7 @@
     </div>
 
     {{-- ===== Content ===== --}}
-    <main id="shell-content" data-route="{{ $currentRoute }}" data-title="{{ $activeLabel }}" class="mobile-stagger px-4 py-4 pb-24 min-h-[60vh]">
+    <main id="shell-content" data-shell-id="personal" data-route="{{ $currentRoute }}" data-title="{{ $activeLabel }}" class="mobile-stagger px-4 py-4 pb-24 min-h-[60vh]">
         @yield('personal-content')
     </main>
 
@@ -180,20 +206,25 @@
         <div class="grid grid-cols-5 items-end">
             @foreach($bottomTabs as $tab)
                 @php $active = $currentRoute === $tab['route']; @endphp
+                @php $showDot = ! empty($tab['dot']) && ! $active && ($navDots[$tab['dot']] ?? false); @endphp
                 @if($tab['center'] ?? false)
                     {{-- Raised, enlarged center action --}}
-                    <a href="{{ route($tab['route']) }}" data-shell-link data-route="{{ $tab['route'] }}"
+                    <a href="{{ route($tab['route']) }}" data-shell-link data-route="{{ $tab['route'] }}" @if(!empty($tab['dot'])) data-nav-dot="{{ $tab['dot'] }}" @endif
                        class="shell-tab flex flex-col items-center justify-end gap-1 pb-2">
-                        <span class="-mt-7 w-16 h-16 rounded-full grid place-items-center border-4 border-white transition-transform active:scale-95
+                        <span class="relative -mt-7 w-16 h-16 rounded-full grid place-items-center border-4 border-white transition-transform active:scale-95
                                      {{ $active ? 'bg-primary text-white' : 'bg-primary text-white' }}">
                             <i class="bi {{ $tab['icon'] }} text-2xl"></i>
+                            <span class="nav-dot absolute top-0.5 right-0.5 w-3 h-3 rounded-full bg-red-500 ring-2 ring-white {{ $showDot ? '' : 'hidden' }}"></span>
                         </span>
                         <span class="text-[10px] font-semibold {{ $active ? 'text-primary' : 'text-muted-foreground' }}">{{ $tab['label'] }}</span>
                     </a>
                 @else
-                    <a href="{{ route($tab['route']) }}" data-shell-link data-route="{{ $tab['route'] }}"
-                       class="shell-tab flex flex-col items-center justify-center gap-0.5 py-2.5 {{ $active ? 'is-active' : '' }}">
-                        <i class="bi {{ $tab['icon'] }} text-lg"></i>
+                    <a href="{{ route($tab['route']) }}" data-shell-link data-route="{{ $tab['route'] }}" @if(!empty($tab['dot'])) data-nav-dot="{{ $tab['dot'] }}" @endif
+                       class="relative shell-tab flex flex-col items-center justify-center gap-0.5 py-2.5 {{ $active ? 'is-active' : '' }}">
+                        <span class="relative">
+                            <i class="bi {{ $tab['icon'] }} text-lg"></i>
+                            <span class="nav-dot absolute -top-1 -right-1.5 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-white {{ $showDot ? '' : 'hidden' }}"></span>
+                        </span>
                         <span class="text-[10px] font-medium">{{ $tab['label'] }}</span>
                     </a>
                 @endif
@@ -203,7 +234,35 @@
 
 </div>
 
+@once
+<script>
+    // Clear a bottom-tab's unseen dot the moment it's tapped (the shell swaps
+    // content in place and doesn't re-render this nav), and mark it seen server-side.
+    if (!window.__navDotInit) {
+        window.__navDotInit = true;
+        document.addEventListener('click', function (e) {
+            const a = e.target.closest('a[data-nav-dot]');
+            if (!a) return;
+            const dot = a.querySelector('.nav-dot');
+            if (!dot || dot.classList.contains('hidden')) return;
+            dot.classList.add('hidden');
+            const map = { feed: 'feed:all', challenge: 'challenge', events: 'events', market: 'market' };
+            const section = map[a.getAttribute('data-nav-dot')];
+            if (!section) return;
+            fetch('{{ route('me.seen') }}', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content, 'Content-Type': 'application/json' },
+                credentials: 'same-origin', body: JSON.stringify({ section }),
+            }).catch(() => {});
+        });
+    }
+</script>
+@endonce
+
 @include('partials.mobile-shell-nav')
+
+{{-- Android app version/update helpers + drawer decoration (no-op in a browser). --}}
+@include('partials.app-update')
 
 {{-- Map runtime available shell-wide (Leaflet loads lazily, only when a map is built). --}}
 @include('partials.location-map-runtime')

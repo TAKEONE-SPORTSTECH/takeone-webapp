@@ -28,14 +28,14 @@
                 @if($alreadyDone)
                     <div class="text-center py-10">
                         <div class="w-14 h-14 mx-auto rounded-2xl grid place-items-center bg-green-100 text-green-600"><i class="bi bi-check-lg text-2xl"></i></div>
-                        <p class="text-sm font-bold text-gray-800 mt-3">You've already submitted this form.</p>
+                        <p class="text-sm font-bold text-gray-800 mt-3">{{ __('shared.forms_show_already_submitted') }}</p>
                     </div>
                 @else
                     <x-dynamic-form :form="$form" />
                 @endif
             </div>
         </div>
-        <p class="text-center text-[11px] text-gray-400 mt-4">Powered by TAKEONE</p>
+        <p class="text-center text-[11px] text-gray-400 mt-4">{{ __('shared.forms_show_powered_by') }}</p>
     </div>
 
     <x-toast-notification />

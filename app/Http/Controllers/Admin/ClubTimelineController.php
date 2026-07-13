@@ -30,16 +30,16 @@ class ClubTimelineController extends Controller
 
         $imagePath = null;
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('timeline/' . $club->slug, 'public');
+            $imagePath = $request->file('image')->store('timeline/'.$club->slug, 'public');
         }
 
         ClubTimelinePost::create([
-            'tenant_id'  => $club->id,
-            'body'       => $request->body,
-            'category'   => $request->category,
+            'tenant_id' => $club->id,
+            'body' => $request->body,
+            'category' => $request->category,
             'image_path' => $imagePath,
-            'posted_at'  => $request->posted_at,
-            'status'     => $request->status,
+            'posted_at' => $request->posted_at,
+            'status' => $request->status,
         ]);
 
         return back()->with('success', 'Post created successfully.');
@@ -56,7 +56,7 @@ class ClubTimelineController extends Controller
             if ($post->image_path) {
                 Storage::disk('public')->delete($post->image_path);
             }
-            $data['image_path'] = $request->file('image')->store('timeline/' . $club->slug, 'public');
+            $data['image_path'] = $request->file('image')->store('timeline/'.$club->slug, 'public');
         }
 
         if ($request->boolean('remove_image') && $post->image_path) {

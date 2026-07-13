@@ -5,24 +5,24 @@
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div>
-            <h1 class="text-xl font-bold text-gray-900">Club Details</h1>
-            <p class="text-sm text-gray-500 mt-1">Manage your club's information and settings</p>
+            <h1 class="text-xl font-bold text-gray-900">{{ __('admin.club_details_index_title') }}</h1>
+            <p class="text-sm text-gray-500 mt-1">{{ __('admin.club_details_index_subtitle') }}</p>
         </div>
         <button type="submit" form="clubDetailsForm" class="btn btn-primary shrink-0">
-            <i class="bi bi-check-lg mr-2"></i>Save All Changes
+            <i class="bi bi-check-lg me-2"></i>{{ __('admin.club_details_index_save_all_changes') }}
         </button>
     </div>
 
     <!-- Success/Error Messages -->
     @if($errors->any())
     <div class="alert alert-danger relative" role="alert" x-data="{ show: true }" x-show="show">
-        <i class="bi bi-exclamation-triangle mr-2"></i>
+        <i class="bi bi-exclamation-triangle me-2"></i>
         <ul class="mb-0">
             @foreach($errors->all() as $error)
                 <li>{{ $error }}</li>
             @endforeach
         </ul>
-        <button type="button" class="absolute top-3 right-3 text-red-600 hover:text-red-800" @click="show = false">
+        <button type="button" class="absolute top-3 end-3 text-red-600 hover:text-red-800" @click="show = false">
             <i class="bi bi-x-lg"></i>
         </button>
     </div>
@@ -32,22 +32,22 @@
     <div class="border-b overflow-x-auto">
         <nav class="flex gap-1 min-w-max" role="tablist">
             <button type="button" class="tab-btn" :class="{ 'active': activeTab === 'basic' }" @click="activeTab = 'basic'" role="tab">
-                <i class="bi bi-info-circle mr-2"></i>Basic
+                <i class="bi bi-info-circle me-2"></i>{{ __('admin.club_details_index_tab_basic') }}
             </button>
             <button type="button" class="tab-btn" :class="{ 'active': activeTab === 'location' }" @click="activeTab = 'location'; window.LocationMap && window.LocationMap.refresh('clubDetailsLoc')" role="tab">
-                <i class="bi bi-geo-alt mr-2"></i>Location
+                <i class="bi bi-geo-alt me-2"></i>{{ __('admin.club_details_index_tab_location') }}
             </button>
             <button type="button" class="tab-btn" :class="{ 'active': activeTab === 'branding' }" @click="activeTab = 'branding'" role="tab">
-                <i class="bi bi-palette mr-2"></i>Branding
+                <i class="bi bi-palette me-2"></i>{{ __('admin.club_details_index_tab_branding') }}
             </button>
             <button type="button" class="tab-btn" :class="{ 'active': activeTab === 'registration' }" @click="activeTab = 'registration'" role="tab">
-                <i class="bi bi-clipboard-check mr-2"></i>Registration
+                <i class="bi bi-clipboard-check me-2"></i>{{ __('admin.club_details_index_tab_registration') }}
             </button>
             <button type="button" class="tab-btn" :class="{ 'active': activeTab === 'social' }" @click="activeTab = 'social'" role="tab">
-                <i class="bi bi-share mr-2"></i>Social Media
+                <i class="bi bi-share me-2"></i>{{ __('admin.club_details_index_tab_social_media') }}
             </button>
             <button type="button" class="tab-btn" :class="{ 'active': activeTab === 'settings' }" @click="activeTab = 'settings'" role="tab">
-                <i class="bi bi-gear mr-2"></i>Settings
+                <i class="bi bi-gear me-2"></i>{{ __('admin.club_details_index_tab_settings') }}
             </button>
         </nav>
     </div>
@@ -65,47 +65,52 @@
                 <div class="card">
                     <div class="card-header">
                         <h5 class="card-title mb-0">
-                            <i class="bi bi-building text-primary mr-2"></i>Basic Information
+                            <i class="bi bi-building text-primary me-2"></i>{{ __('admin.club_details_index_basic_information') }}
                         </h5>
                     </div>
                     <div class="card-body space-y-4">
                         <div>
-                            <label class="form-label">Club Name <span class="text-danger">*</span></label>
+                            <label class="form-label">{{ __('admin.club_details_index_club_name_label') }} <span class="text-danger">*</span></label>
                             <input type="text" name="club_name" class="form-control" value="{{ old('club_name', $club->club_name) }}" x-show="lang==='en'" required>
                             <input type="text" name="translations[club_name][ar]" dir="rtl" x-show="lang==='ar'" x-cloak class="form-control" placeholder="اسم النادي بالعربية" value="{{ old('translations.club_name.ar', data_get($club ?? null, 'translations.club_name.ar')) }}">
                         </div>
                         <div>
-                            <label class="form-label">Slogan</label>
-                            <input type="text" name="slogan" class="form-control" value="{{ old('slogan', $club->slogan) }}" x-show="lang==='en'" placeholder="A catchy tagline for your club">
+                            <label class="form-label">{{ __('admin.club_details_index_slogan_label') }}</label>
+                            <input type="text" name="slogan" class="form-control" value="{{ old('slogan', $club->slogan) }}" x-show="lang==='en'" placeholder="{{ __('admin.club_details_index_slogan_placeholder') }}">
                             <input type="text" name="translations[slogan][ar]" dir="rtl" x-show="lang==='ar'" x-cloak class="form-control" placeholder="شعار النادي بالعربية" value="{{ old('translations.slogan.ar', data_get($club ?? null, 'translations.slogan.ar')) }}">
                         </div>
                         <div>
-                            <label class="form-label">Description</label>
-                            <textarea name="description" class="form-control" rows="3" x-show="lang==='en'" placeholder="Describe your club...">{{ old('description', $club->description) }}</textarea>
+                            <label class="form-label">{{ __('admin.club_details_index_description_label') }}</label>
+                            <textarea name="description" class="form-control" rows="3" x-show="lang==='en'" placeholder="{{ __('admin.club_details_index_description_placeholder') }}">{{ old('description', $club->description) }}</textarea>
                             <textarea name="translations[description][ar]" dir="rtl" x-show="lang==='ar'" x-cloak class="form-control" rows="3" placeholder="وصف النادي بالعربية">{{ old('translations.description.ar', data_get($club ?? null, 'translations.description.ar')) }}</textarea>
                         </div>
                         <div>
-                            <label class="form-label">First-Time Enrollment Fee ({{ $club->currency ?? 'USD' }})</label>
+                            <label class="form-label">{{ __('admin.club_details_index_registration_fee_label') }} ({{ $club->currency ?? 'USD' }})</label>
+                            <input type="number" name="registration_fee" class="form-control" step="0.01" value="{{ old('registration_fee', $club->registration_fee) }}" placeholder="0.00">
+                            <small class="text-muted">{{ __('admin.club_details_index_registration_fee_help') }}</small>
+                        </div>
+                        <div>
+                            <label class="form-label">{{ __('admin.club_details_index_enrollment_fee_label') }} ({{ $club->currency ?? 'USD' }})</label>
                             <input type="number" name="enrollment_fee" class="form-control" step="0.01" value="{{ old('enrollment_fee', $club->enrollment_fee) }}" placeholder="0.00">
-                            <small class="text-muted">One-time fee charged when a new member joins the club</small>
+                            <small class="text-muted">{{ __('admin.club_details_index_enrollment_fee_help') }}</small>
                         </div>
                         <div>
-                            <label class="form-label">Commercial Registration Number (Optional)</label>
-                            <input type="text" name="commercial_reg_number" class="form-control" value="{{ old('commercial_reg_number', $club->commercial_reg_number) }}" placeholder="e.g., CR-123456-01">
-                            <small class="text-muted">Appears on receipts if provided</small>
+                            <label class="form-label">{{ __('admin.club_details_index_commercial_reg_label') }}</label>
+                            <input type="text" name="commercial_reg_number" class="form-control" value="{{ old('commercial_reg_number', $club->commercial_reg_number) }}" placeholder="{{ __('admin.club_details_index_commercial_reg_placeholder') }}">
+                            <small class="text-muted">{{ __('admin.club_details_index_appears_on_receipts') }}</small>
                         </div>
                         <div>
-                            <label class="form-label">VAT Registration Number (Optional)</label>
-                            <input type="text" name="vat_reg_number" class="form-control" value="{{ old('vat_reg_number', $club->vat_reg_number) }}" placeholder="e.g., VAT123456789">
-                            <small class="text-muted">Appears on receipts if provided</small>
+                            <label class="form-label">{{ __('admin.club_details_index_vat_reg_label') }}</label>
+                            <input type="text" name="vat_reg_number" class="form-control" value="{{ old('vat_reg_number', $club->vat_reg_number) }}" placeholder="{{ __('admin.club_details_index_vat_reg_placeholder') }}">
+                            <small class="text-muted">{{ __('admin.club_details_index_appears_on_receipts') }}</small>
                         </div>
                         <div>
-                            <label class="form-label">VAT Percentage (Optional)</label>
+                            <label class="form-label">{{ __('admin.club_details_index_vat_percentage_label') }}</label>
                             <input type="number" name="vat_percentage" class="form-control" step="0.01" value="{{ old('vat_percentage', $club->vat_percentage) }}" placeholder="0.00">
-                            <small class="text-muted">Tax percentage for financial transactions (e.g., 5 for 5%, 10 for 10%)</small>
+                            <small class="text-muted">{{ __('admin.club_details_index_vat_percentage_help') }}</small>
                             <div class="alert alert-warning mt-2 py-2 px-3 small">
-                                <i class="bi bi-exclamation-triangle mr-1"></i>
-                                This VAT rate applies to NEW transactions only. Past transactions preserve their original VAT rate.
+                                <i class="bi bi-exclamation-triangle me-1"></i>
+                                {{ __('admin.club_details_index_vat_rate_warning') }}
                             </div>
                         </div>
                     </div>
@@ -115,23 +120,23 @@
                 <div class="card">
                     <div class="card-header">
                         <h5 class="card-title mb-0">
-                            <i class="bi bi-telephone text-primary mr-2"></i>Contact Information
+                            <i class="bi bi-telephone text-primary me-2"></i>{{ __('admin.club_details_index_contact_information') }}
                         </h5>
                     </div>
                     <div class="card-body space-y-4">
-                        <h6 class="text-muted text-uppercase small font-semibold border-bottom pb-2">Club Contact</h6>
+                        <h6 class="text-muted text-uppercase small font-semibold border-bottom pb-2">{{ __('admin.club_details_index_club_contact') }}</h6>
 
                         <div>
-                            <label class="form-label">Club Email</label>
-                            <input type="email" name="email" class="form-control" value="{{ old('email', $club->email) }}" placeholder="info@yourclub.com">
+                            <label class="form-label">{{ __('admin.club_details_index_club_email_label') }}</label>
+                            <input type="email" name="email" class="form-control" value="{{ old('email', $club->email) }}" placeholder="{{ __('admin.club_details_index_club_email_placeholder') }}">
                         </div>
                         <x-country-dropdown
                             name="country"
                             id="countrySelect"
                             :value="old('country', $club->country)"
-                            label="Country" />
+                            :label="__('admin.club_details_index_country_label')" />
                         <div>
-                            <label class="form-label">Club Phone</label>
+                            <label class="form-label">{{ __('admin.club_details_index_club_phone_label') }}</label>
                             <x-country-code-dropdown
                                 name="phone_code"
                                 id="phoneCode"
@@ -148,21 +153,21 @@
                             name="currency"
                             id="currencySelect"
                             :value="old('currency', $club->currency)"
-                            label="Currency" />
+                            :label="__('admin.club_details_index_currency_label')" />
                         <x-timezone-dropdown
                             name="timezone"
                             id="timezoneSelect"
                             :value="old('timezone', $club->timezone)"
-                            label="Timezone" />
+                            :label="__('admin.club_details_index_timezone_label')" />
                         <div>
-                            <label class="form-label">Club Slug (Unique URL)</label>
+                            <label class="form-label">{{ __('admin.club_details_index_club_slug_label') }}</label>
                             <div class="input-group">
-                                <input type="text" name="slug" class="form-control" value="{{ old('slug', $club->slug) }}" placeholder="e.g., emperor-tkd-academy">
+                                <input type="text" name="slug" class="form-control" value="{{ old('slug', $club->slug) }}" placeholder="{{ __('admin.club_details_index_club_slug_placeholder') }}">
                             </div>
-                            <small class="text-muted">URL-friendly identifier (lowercase, hyphens, no spaces)</small>
+                            <small class="text-muted">{{ __('admin.club_details_index_club_slug_help') }}</small>
                             @if($club->slug && $club->country)
                             <div class="mt-2 p-2 bg-light rounded">
-                                <small class="text-muted">Club URL:</small>
+                                <small class="text-muted">{{ __('admin.club_details_index_club_url_label') }}</small>
                                 <div class="flex items-center gap-2 mt-1">
                                     <code class="flex-1">{{ route('clubs.show', [strtolower($club->country), $club->slug]) }}</code>
                                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyClubUrl()">
@@ -176,17 +181,17 @@
                                     <x-qr-code
                                         :url="\App\Http\Controllers\QrController::clubPageUrl($club)"
                                         :title="($club->club_name ?? 'Club') . ' — Club page'"
-                                        caption="Scan to view the club page"
+                                        :caption="__('admin.club_details_index_qr_page_caption')"
                                         :filename="'qr-' . $club->slug . '-page'"
-                                        label="Club page QR"
+                                        :label="__('admin.club_details_index_qr_page_label')"
                                         icon="bi-qr-code"
                                         :poster-url="route('qr.club.page', $club)" />
                                     <x-qr-code
                                         :url="\App\Http\Controllers\QrController::clubRegisterUrl($club)"
                                         :title="($club->club_name ?? 'Club') . ' — Registration'"
-                                        caption="Scan to register and join"
+                                        :caption="__('admin.club_details_index_qr_register_caption')"
                                         :filename="'qr-' . $club->slug . '-register'"
-                                        label="Registration QR"
+                                        :label="__('admin.club_details_index_qr_register_label')"
                                         icon="bi-person-plus"
                                         :poster-url="route('qr.club.register', $club)" />
                                 </div>
@@ -194,7 +199,7 @@
                             @endif
                         </div>
 
-                        <h6 class="text-muted text-uppercase small font-semibold border-bottom pb-2 pt-4">Owner Information</h6>
+                        <h6 class="text-muted text-uppercase small font-semibold border-bottom pb-2 pt-4">{{ __('admin.club_details_index_owner_information') }}</h6>
 
                         <div id="ownerSection">
                         @if($club->owner)
@@ -205,12 +210,12 @@
                                         <h6 class="mb-1">{{ $club->owner->full_name }}</h6>
                                         @if($club->owner->email)
                                         <p class="text-muted small mb-1">
-                                            <i class="bi bi-envelope mr-1"></i>{{ $club->owner->email }}
+                                            <i class="bi bi-envelope me-1"></i>{{ $club->owner->email }}
                                         </p>
                                         @endif
                                         @if($club->owner->formatted_mobile)
                                         <p class="text-muted small mb-0">
-                                            <i class="bi bi-phone mr-1"></i>{{ $club->owner->formatted_mobile }}
+                                            <i class="bi bi-phone me-1"></i>{{ $club->owner->formatted_mobile }}
                                         </p>
                                         @endif
                                     </div>
@@ -223,13 +228,13 @@
                         @else
                         <div class="text-center py-4 border-2 border-dashed rounded">
                             <i class="bi bi-person-plus text-muted" style="font-size: 2rem;"></i>
-                            <p class="text-muted mt-2 mb-3">No owner assigned yet</p>
+                            <p class="text-muted mt-2 mb-3">{{ __('admin.club_details_index_no_owner_assigned') }}</p>
                             <div class="flex gap-2 justify-center">
                                 <button type="button" class="btn btn-outline-primary btn-sm" @click="showOwnerModal = true; ownerTab = 'existing'">
-                                    <i class="bi bi-link mr-1"></i>Link Existing
+                                    <i class="bi bi-link me-1"></i>{{ __('admin.club_details_index_link_existing') }}
                                 </button>
                                 <button type="button" class="btn btn-outline-primary btn-sm" @click="showOwnerModal = true; ownerTab = 'new'">
-                                    <i class="bi bi-person-plus mr-1"></i>Create New
+                                    <i class="bi bi-person-plus me-1"></i>{{ __('admin.club_details_index_create_new') }}
                                 </button>
                             </div>
                         </div>
@@ -248,7 +253,7 @@
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
-                        <i class="bi bi-geo-alt text-primary mr-2"></i>Location & GPS
+                        <i class="bi bi-geo-alt text-primary me-2"></i>{{ __('admin.club_details_index_location_gps') }}
                     </h5>
                 </div>
                 <div class="card-body space-y-4">
@@ -267,17 +272,17 @@
                     </div>
                     <div class="flex gap-2 flex-wrap">
                         <button type="button" class="btn btn-outline-primary btn-sm" id="useMyLocationBtn">
-                            <i class="bi bi-crosshair mr-1"></i>Use My Location
+                            <i class="bi bi-crosshair me-1"></i>{{ __('admin.club_details_index_use_my_location') }}
                         </button>
                         @if($club->gps_lat && $club->gps_long)
                         <a href="https://www.google.com/maps?q={{ $club->gps_lat }},{{ $club->gps_long }}" target="_blank" class="btn btn-outline-secondary btn-sm">
-                            <i class="bi bi-box-arrow-up-right mr-1"></i>View on Google Maps
+                            <i class="bi bi-box-arrow-up-right me-1"></i>{{ __('admin.club_details_index_view_on_google_maps') }}
                         </a>
                         @endif
                     </div>
 
                     <div>
-                        <label class="form-label">Google Maps URL</label>
+                        <label class="form-label">{{ __('admin.club_details_index_google_maps_url_label') }}</label>
                         <div class="flex gap-2">
                             <input type="url" name="maps_url" class="form-control"
                                    placeholder="https://maps.google.com/..."
@@ -288,7 +293,7 @@
                             </a>
                             @endif
                         </div>
-                        <p class="text-xs text-muted-foreground mt-1">Paste a Google Maps share link to show members exactly where to find you.</p>
+                        <p class="text-xs text-muted-foreground mt-1">{{ __('admin.club_details_index_google_maps_help') }}</p>
                     </div>
                 </div>
             </div>
@@ -299,14 +304,14 @@
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
-                        <i class="bi bi-palette text-primary mr-2"></i>Branding Assets
+                        <i class="bi bi-palette text-primary me-2"></i>{{ __('admin.club_details_index_branding_assets') }}
                     </h5>
                 </div>
                 <div class="card-body space-y-5">
                     <!-- Logo -->
                     <div>
-                        <label class="form-label font-medium">Club Logo</label>
-                        <small class="text-muted block mb-3">Recommended: Square image, at least 512x512px</small>
+                        <label class="form-label font-medium">{{ __('admin.club_details_index_club_logo_label') }}</label>
+                        <small class="text-muted block mb-3">{{ __('admin.club_details_index_logo_recommendation') }}</small>
                         <x-takeone-cropper
                             id="clubDetailLogo"
                             :width="200"
@@ -319,7 +324,7 @@
                             :previewWidth="150"
                             :previewHeight="150"
                             :currentImage="$club->logo ? asset('storage/' . $club->logo) : ''"
-                            buttonText="Change Logo"
+                            :buttonText="__('admin.club_details_index_change_logo')"
                             buttonClass="btn btn-outline-secondary"
                         />
                     </div>
@@ -328,8 +333,8 @@
 
                     <!-- Favicon -->
                     <div>
-                        <label class="form-label font-medium">Favicon</label>
-                        <small class="text-muted block mb-3">Recommended: Square image, 32x32px or 64x64px</small>
+                        <label class="form-label font-medium">{{ __('admin.club_details_index_favicon_label') }}</label>
+                        <small class="text-muted block mb-3">{{ __('admin.club_details_index_favicon_recommendation') }}</small>
                         <x-takeone-cropper
                             id="clubDetailFavicon"
                             :width="64"
@@ -342,7 +347,7 @@
                             :previewWidth="64"
                             :previewHeight="64"
                             :currentImage="$club->favicon ? asset('storage/' . $club->favicon) : ''"
-                            buttonText="Change Favicon"
+                            :buttonText="__('admin.club_details_index_change_favicon')"
                             buttonClass="btn btn-outline-secondary"
                         />
                     </div>
@@ -351,8 +356,8 @@
 
                     <!-- Cover Image -->
                     <div>
-                        <label class="form-label font-medium">Cover Image</label>
-                        <small class="text-muted block mb-3">Recommended: 16:9 aspect ratio (e.g. 1920×1080px)</small>
+                        <label class="form-label font-medium">{{ __('admin.club_details_index_cover_image_label') }}</label>
+                        <small class="text-muted block mb-3">{{ __('admin.club_details_index_cover_recommendation') }}</small>
                         <x-takeone-cropper
                             id="clubDetailCover"
                             :width="600"
@@ -365,10 +370,10 @@
                             :previewWidth="400"
                             :previewHeight="225"
                             :currentImage="$club->cover_image ? asset('storage/' . $club->cover_image) : ''"
-                            buttonText="Change Cover"
+                            :buttonText="__('admin.club_details_index_change_cover')"
                             buttonClass="btn btn-outline-secondary"
                             :uploadAsIs="true"
-                            uploadAsIsText="Upload Without Cropping"
+                            :uploadAsIsText="__('admin.club_details_index_upload_without_cropping')"
                         />
                     </div>
                 </div>
@@ -383,10 +388,10 @@
             @endphp
             <div class="card">
                 <div class="card-header">
-                    <h5 class="card-title mb-0"><i class="bi bi-clipboard-check text-primary mr-2"></i>Self-registration page</h5>
+                    <h5 class="card-title mb-0"><i class="bi bi-clipboard-check text-primary me-2"></i>{{ __('admin.club_details_index_self_registration_page') }}</h5>
                 </div>
                 <div class="card-body space-y-5">
-                    <p class="text-muted small mb-0">Customise what members see on this club's registration page (<code>/register/{{ strtolower($club->country) }}/{{ $club->slug }}</code>). Fill in <strong>both languages</strong> using the language toggle at the top of this form.</p>
+                    <p class="text-muted small mb-0">{{ __('admin.club_details_index_reg_page_intro_before') }}<code>/register/{{ strtolower($club->country) }}/{{ $club->slug }}</code>{{ __('admin.club_details_index_reg_page_intro_mid') }}<strong>{{ __('admin.club_details_index_both_languages') }}</strong>{{ __('admin.club_details_index_reg_page_intro_after') }}</p>
 
                     <!-- Registration background image — full-resolution upload + live phone preview -->
                     @once
@@ -424,20 +429,20 @@
                     </script>
                     @endonce
                     <div x-data="splashFilePreview({ logo: @js($club->logo ? asset('storage/' . $club->logo) : ''), name: @js($club->club_name), current: @js($club->registration_splash_image ? asset('storage/' . $club->registration_splash_image) : '') })" x-init="init()">
-                        <label class="form-label font-medium">Registration background image</label>
-                        <small class="text-muted block mb-3">A tall portrait image (9:16, e.g. 1080×1920px) shown behind the language picker. Uploaded at <strong>full quality</strong> (no cropping/downscaling). This is <strong>not</strong> the cover banner.</small>
+                        <label class="form-label font-medium">{{ __('admin.club_details_index_reg_bg_image_label') }}</label>
+                        <small class="text-muted block mb-3">{{ __('admin.club_details_index_reg_bg_help_1') }}<strong>{{ __('admin.club_details_index_reg_bg_full_quality') }}</strong>{{ __('admin.club_details_index_reg_bg_help_2') }}<strong>{{ __('admin.club_details_index_reg_bg_not') }}</strong>{{ __('admin.club_details_index_reg_bg_help_3') }}</small>
                         <div class="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
                             <div>
                                 <label class="btn btn-outline-secondary btn-sm" style="cursor:pointer">
-                                    <i class="bi bi-upload mr-2"></i>Choose image
+                                    <i class="bi bi-upload me-2"></i>{{ __('admin.club_details_index_choose_image') }}
                                     <input type="file" name="registration_splash_image" accept="image/jpeg,image/png,image/webp"
                                            style="display:none" @change="onFile($event)">
                                 </label>
-                                <p class="text-muted small mt-2 mb-0" x-text="fileName || 'No file chosen'"></p>
-                                <small class="text-muted block mt-2">Tip: a 1080×1920 (or larger) portrait JPG/PNG looks crisp on every phone.</small>
+                                <p class="text-muted small mt-2 mb-0" x-text="fileName || '{{ __('admin.club_details_index_no_file_chosen') }}'"></p>
+                                <small class="text-muted block mt-2">{{ __('admin.club_details_index_reg_bg_tip') }}</small>
                             </div>
                             <div class="flex flex-col items-center">
-                                <small class="text-muted mb-2"><i class="bi bi-eye mr-1"></i>Live preview</small>
+                                <small class="text-muted mb-2"><i class="bi bi-eye me-1"></i>{{ __('admin.club_details_index_live_preview') }}</small>
                                 <div class="reg-phone">
                                     <div class="reg-phone-notch"></div>
                                     <div class="reg-phone-screen" :style="splash ? ('background-image:url(' + splash + ')') : ''">
@@ -463,24 +468,24 @@
 
                     <!-- Registration requirements (both languages shown together) -->
                     <div>
-                        <label class="form-label font-medium">Registration requirements</label>
-                        <small class="text-muted block mb-3">A checklist shown on the Terms step (e.g. valid CPR/ID, recent photo, proof of payment). Fill in both languages — leave both blank to hide.</small>
-                        <p class="small font-semibold mb-1"><span class="fi fi-gb mr-1"></span> English</p>
+                        <label class="form-label font-medium">{{ __('admin.club_details_index_reg_requirements_label') }}</label>
+                        <small class="text-muted block mb-3">{{ __('admin.club_details_index_reg_requirements_help') }}</small>
+                        <p class="small font-semibold mb-1"><span class="fi fi-gb me-1"></span> {{ __('admin.club_details_index_english') }}</p>
                         <x-rich-text-editor name="registration_requirements" :value="$club->registration_requirements ?? ''"
-                            placeholder="What members need to register…" />
-                        <p class="small font-semibold mb-1 mt-3"><span class="fi fi-bh mr-1"></span> العربية</p>
+                            :placeholder="__('admin.club_details_index_reg_requirements_placeholder')" />
+                        <p class="small font-semibold mb-1 mt-3"><span class="fi fi-bh me-1"></span> {{ __('admin.club_details_index_arabic') }}</p>
                         <x-rich-text-editor name="translations[registration_requirements][ar]" :value="$reqAr" dir="rtl"
                             placeholder="ما يحتاجه الأعضاء للتسجيل…" />
                     </div>
 
                     <!-- Terms & conditions (both languages shown together) -->
                     <div>
-                        <label class="form-label font-medium">Terms &amp; conditions</label>
-                        <small class="text-muted block mb-3">Your club's terms for joining. Fill in both languages — leave both blank to use the platform default terms.</small>
-                        <p class="small font-semibold mb-1"><span class="fi fi-gb mr-1"></span> English</p>
+                        <label class="form-label font-medium">{{ __('admin.club_details_index_terms_conditions_label') }}</label>
+                        <small class="text-muted block mb-3">{{ __('admin.club_details_index_terms_help') }}</small>
+                        <p class="small font-semibold mb-1"><span class="fi fi-gb me-1"></span> {{ __('admin.club_details_index_english') }}</p>
                         <x-rich-text-editor name="registration_terms" :value="$club->registration_terms ?? ''" min-height="200px"
-                            placeholder="Your club's terms &amp; conditions for joining…" />
-                        <p class="small font-semibold mb-1 mt-3"><span class="fi fi-bh mr-1"></span> العربية</p>
+                            :placeholder="__('admin.club_details_index_terms_placeholder')" />
+                        <p class="small font-semibold mb-1 mt-3"><span class="fi fi-bh me-1"></span> {{ __('admin.club_details_index_arabic') }}</p>
                         <x-rich-text-editor name="translations[registration_terms][ar]" :value="$termsAr" dir="rtl" min-height="200px"
                             placeholder="شروط وأحكام النادي للانضمام…" />
                     </div>
@@ -493,11 +498,11 @@
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
-                        <i class="bi bi-share text-primary mr-2"></i>Social Media Links
+                        <i class="bi bi-share text-primary me-2"></i>{{ __('admin.club_details_index_social_media_links') }}
                     </h5>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted text-sm mb-4">Add your club's social media profiles so members can find and follow you.</p>
+                    <p class="text-muted text-sm mb-4">{{ __('admin.club_details_index_social_media_help') }}</p>
                     <x-social-links-editor :links="$club->socialLinks" containerId="clubSocialLinksContainer" />
                 </div>
             </div>
@@ -509,7 +514,7 @@
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
-                        <i class="bi bi-hash text-primary mr-2"></i>Code Prefixes
+                        <i class="bi bi-hash text-primary me-2"></i>{{ __('admin.club_details_index_code_prefixes') }}
                     </h5>
                 </div>
                 <div class="card-body">
@@ -518,52 +523,132 @@
                     @endphp
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <label class="form-label">Member Code Prefix</label>
+                            <label class="form-label">{{ __('admin.club_details_index_member_code_prefix_label') }}</label>
                             <input type="text" name="settings[member_code_prefix]" class="form-control text-uppercase" value="{{ old('settings.member_code_prefix', $settings['member_code_prefix'] ?? 'MEM') }}" placeholder="MEM">
                         </div>
                         <div>
-                            <label class="form-label">Child Code Prefix</label>
+                            <label class="form-label">{{ __('admin.club_details_index_child_code_prefix_label') }}</label>
                             <input type="text" name="settings[child_code_prefix]" class="form-control text-uppercase" value="{{ old('settings.child_code_prefix', $settings['child_code_prefix'] ?? 'CHILD') }}" placeholder="CHILD">
-                            <small class="text-muted">For children of members becoming members</small>
+                            <small class="text-muted">{{ __('admin.club_details_index_child_code_help') }}</small>
                         </div>
                         <div>
-                            <label class="form-label">Invoice Code Prefix</label>
+                            <label class="form-label">{{ __('admin.club_details_index_invoice_code_prefix_label') }}</label>
                             <input type="text" name="settings[invoice_code_prefix]" class="form-control text-uppercase" value="{{ old('settings.invoice_code_prefix', $settings['invoice_code_prefix'] ?? 'INV') }}" placeholder="INV">
                         </div>
                         <div>
-                            <label class="form-label">Receipt Code Prefix</label>
+                            <label class="form-label">{{ __('admin.club_details_index_receipt_code_prefix_label') }}</label>
                             <input type="text" name="settings[receipt_code_prefix]" class="form-control text-uppercase" value="{{ old('settings.receipt_code_prefix', $settings['receipt_code_prefix'] ?? 'REC') }}" placeholder="REC">
                         </div>
                         <div>
-                            <label class="form-label">Expense Code Prefix</label>
+                            <label class="form-label">{{ __('admin.club_details_index_expense_code_prefix_label') }}</label>
                             <input type="text" name="settings[expense_code_prefix]" class="form-control text-uppercase" value="{{ old('settings.expense_code_prefix', $settings['expense_code_prefix'] ?? 'EXP') }}" placeholder="EXP">
                         </div>
                         <div>
-                            <label class="form-label">Specialist Code Prefix</label>
+                            <label class="form-label">{{ __('admin.club_details_index_specialist_code_prefix_label') }}</label>
                             <input type="text" name="settings[specialist_code_prefix]" class="form-control text-uppercase" value="{{ old('settings.specialist_code_prefix', $settings['specialist_code_prefix'] ?? 'SPEC') }}" placeholder="SPEC">
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Danger Zone -->
-            <div class="card border-danger">
-                <div class="card-header bg-danger bg-opacity-10">
-                    <h5 class="card-title mb-0 text-danger">
-                        <i class="bi bi-exclamation-triangle mr-2"></i>Danger Zone
+            <!-- Member Preferences -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-people text-primary me-2"></i>{{ __('admin.club_details_index_member_prefs') }}
                     </h5>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted mb-3">Once you delete a club, there is no going back. This action will permanently delete:</p>
-                    <ul class="text-muted small mb-4">
-                        <li>All club information and settings</li>
-                        <li>All facilities, instructors, and activities</li>
-                        <li>All packages, memberships, and member data</li>
-                        <li>All uploaded images and files from storage</li>
-                        <li>All reviews, statistics, and historical data</li>
+                    {{-- Hidden 0 so an unchecked box still submits an explicit "off"
+                         (a bare unchecked checkbox sends nothing → array_merge would
+                         keep the old value). --}}
+                    <input type="hidden" name="settings[block_explore]" value="0">
+                    <label class="flex items-start gap-3 cursor-pointer">
+                        <input type="checkbox" name="settings[block_explore]" value="1"
+                               class="mt-0.5 w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
+                               @checked(old('settings.block_explore', ! empty($settings['block_explore']))) >
+                        <span>
+                            <span class="block text-sm font-medium text-gray-900">{{ __('admin.club_details_index_block_explore_label') }}</span>
+                            <span class="block text-xs text-muted-foreground mt-0.5">{{ __('admin.club_details_index_block_explore_help') }}</span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- WhatsApp Integration -->
+            <div class="card mb-4" x-data="clubWhatsAppIntegration()">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-whatsapp text-primary me-2"></i>{{ __('admin.club_details_index_whatsapp_title') }}
+                    </h5>
+                </div>
+                <div class="card-body space-y-4">
+                    <p class="text-muted small mb-0">{{ __('admin.club_details_index_whatsapp_description') }}</p>
+
+                    @unless($whatsappSettings['gateway_configured'])
+                    <div class="alert alert-warning mb-0">
+                        <i class="bi bi-exclamation-triangle me-2"></i>{{ __('admin.club_details_index_whatsapp_gateway_not_configured') }}
+                    </div>
+                    @endunless
+
+                    <label class="flex items-start gap-3 cursor-pointer">
+                        <input type="checkbox" x-model="form.enabled"
+                               class="mt-0.5 w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary">
+                        <span>
+                            <span class="block text-sm font-medium text-gray-900">{{ __('admin.club_details_index_whatsapp_enable') }}</span>
+                            <span class="block text-xs text-muted-foreground mt-0.5">{{ __('admin.club_details_index_whatsapp_enable_hint') }}</span>
+                        </span>
+                    </label>
+
+                    <div>
+                        <label class="form-label">{{ __('admin.club_details_index_whatsapp_session_name') }}</label>
+                        <input type="text" x-model="form.session_name" class="form-control" placeholder="my-club-session">
+                        <small class="text-muted">{{ __('admin.club_details_index_whatsapp_session_name_hint') }}</small>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+                        <button type="button" class="btn btn-outline-primary btn-sm w-full sm:w-auto" @click="test" :disabled="testing">
+                            <i class="bi bi-broadcast me-1"></i>
+                            <span x-text="testing ? '{{ __('admin.club_details_index_whatsapp_testing') }}' : '{{ __('admin.club_details_index_whatsapp_test') }}'"></span>
+                        </button>
+                        <button type="button" class="btn btn-primary btn-sm w-full sm:w-auto" @click="save" :disabled="saving">
+                            <i class="bi bi-check-lg me-1"></i>
+                            <span x-text="saving ? '{{ __('admin.club_details_index_whatsapp_saving') }}' : '{{ __('admin.club_details_index_whatsapp_save') }}'"></span>
+                        </button>
+                    </div>
+
+                    <div class="border-top pt-3">
+                        <label class="form-label">{{ __('admin.club_details_index_whatsapp_send_test_label') }}</label>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <input type="text" x-model="testPhone" class="form-control" placeholder="{{ __('admin.club_details_index_whatsapp_send_test_placeholder') }}">
+                            <button type="button" class="btn btn-outline-primary btn-sm w-full sm:w-auto flex-shrink-0" @click="sendTest" :disabled="sendingTest || !testPhone">
+                                <i class="bi bi-send me-1"></i>
+                                <span x-text="sendingTest ? '{{ __('admin.club_details_index_whatsapp_sending_test') }}' : '{{ __('admin.club_details_index_whatsapp_send_test') }}'"></span>
+                            </button>
+                        </div>
+                        <small class="text-muted">{{ __('admin.club_details_index_whatsapp_send_test_hint') }}</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Danger Zone -->
+            <div class="bg-white rounded-xl shadow-sm border border-red-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-red-200 bg-red-50">
+                    <h5 class="flex items-center gap-2 text-sm font-semibold text-red-600 m-0">
+                        <i class="bi bi-exclamation-triangle"></i>{{ __('admin.club_details_index_danger_zone') }}
+                    </h5>
+                </div>
+                <div class="p-6">
+                    <p class="text-sm text-muted-foreground mb-3">{{ __('admin.club_details_index_delete_intro') }}</p>
+                    <ul class="text-sm text-muted-foreground space-y-1 mb-4 list-disc list-inside">
+                        <li>{{ __('admin.club_details_index_delete_item_info') }}</li>
+                        <li>{{ __('admin.club_details_index_delete_item_facilities') }}</li>
+                        <li>{{ __('admin.club_details_index_delete_item_packages') }}</li>
+                        <li>{{ __('admin.club_details_index_delete_item_files') }}</li>
+                        <li>{{ __('admin.club_details_index_delete_item_reviews') }}</li>
                     </ul>
-                    <button type="button" class="btn btn-danger" @click="showDeleteClubModal = true">
-                        <i class="bi bi-trash mr-1"></i>Delete This Club
+                    <button type="button" class="bg-destructive text-white px-4 py-2 rounded-lg hover:bg-destructive/90 transition-colors font-medium inline-flex items-center gap-2" @click="showDeleteClubModal = true">
+                        <i class="bi bi-trash"></i>{{ __('admin.club_details_index_delete_this_club') }}
                     </button>
                 </div>
             </div>
@@ -584,7 +669,7 @@
     <div class="flex min-h-full items-center justify-center p-4">
         <div class="modal-content border-0 shadow-lg w-full max-w-lg relative rounded-lg overflow-hidden" @click.stop>
             <div class="modal-header border-b px-6 py-4 flex items-center justify-between">
-                <h5 class="modal-title font-semibold"><i class="bi bi-person-gear mr-2"></i>Transfer Ownership</h5>
+                <h5 class="modal-title font-semibold"><i class="bi bi-person-gear me-2"></i>{{ __('admin.club_details_index_transfer_ownership') }}</h5>
                 <button type="button" class="text-muted-foreground hover:text-foreground" @click="showOwnerModal = false">
                     <i class="bi bi-x-lg"></i>
                 </button>
@@ -597,24 +682,24 @@
                             class="px-4 py-2 text-sm font-medium border-b-2 transition-colors"
                             :class="ownerTab === 'existing' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'"
                             @click="ownerTab = 'existing'">
-                        <i class="bi bi-search mr-1"></i>Link Existing Member
+                        <i class="bi bi-search me-1"></i>{{ __('admin.club_details_index_link_existing_member') }}
                     </button>
                     <button type="button"
                             class="px-4 py-2 text-sm font-medium border-b-2 transition-colors"
                             :class="ownerTab === 'new' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'"
                             @click="ownerTab = 'new'">
-                        <i class="bi bi-person-plus mr-1"></i>Create New Member
+                        <i class="bi bi-person-plus me-1"></i>{{ __('admin.club_details_index_create_new_member') }}
                     </button>
                 </div>
 
                 {{-- Tab: Link Existing --}}
                 <div x-show="ownerTab === 'existing'">
-                    <p class="text-sm text-muted-foreground mb-3">Search for an existing platform member to become the new owner.</p>
+                    <p class="text-sm text-muted-foreground mb-3">{{ __('admin.club_details_index_transfer_existing_help') }}</p>
                     <div class="relative mb-3">
-                        <input type="text" id="ownerSearchInput" placeholder="Search by name, email or phone..."
+                        <input type="text" id="ownerSearchInput" placeholder="{{ __('admin.club_details_index_owner_search_placeholder') }}"
                                autocomplete="new-password"
-                               class="form-control" style="padding-left: 2.25rem;">
-                        <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none"></i>
+                               class="form-control" style="padding-inline-start: 2.25rem;">
+                        <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none"></i>
                     </div>
                     <div id="ownerSearchResults" class="space-y-2 max-h-60 overflow-y-auto"></div>
                     <div id="ownerSelectedUser" class="hidden mt-3 p-3 border border-primary/40 bg-primary/5 rounded-lg">
@@ -626,7 +711,7 @@
                                 <div class="font-semibold text-sm" id="ownerSelectedName"></div>
                                 <div class="text-xs text-muted-foreground" id="ownerSelectedEmail"></div>
                             </div>
-                            <button type="button" class="ml-auto text-muted-foreground hover:text-destructive" onclick="clearOwnerSelection()">
+                            <button type="button" class="ms-auto text-muted-foreground hover:text-destructive" onclick="clearOwnerSelection()">
                                 <i class="bi bi-x-lg"></i>
                             </button>
                         </div>
@@ -636,22 +721,22 @@
 
                 {{-- Tab: Create New --}}
                 <div x-show="ownerTab === 'new'">
-                    <p class="text-sm text-muted-foreground mb-3">Create a full platform account and assign them as the new owner.</p>
+                    <p class="text-sm text-muted-foreground mb-3">{{ __('admin.club_details_index_transfer_new_help') }}</p>
                     <div class="text-center py-4">
                         <i class="bi bi-person-plus text-primary" style="font-size:2.5rem;"></i>
-                        <p class="text-sm text-muted-foreground mt-2 mb-4">Fill in the full member profile to create the new owner account.</p>
+                        <p class="text-sm text-muted-foreground mt-2 mb-4">{{ __('admin.club_details_index_transfer_new_instruction') }}</p>
                         <button type="button" class="btn btn-primary"
                                 @click="showOwnerModal = false; $dispatch('open-create-owner-modal')">
-                            <i class="bi bi-person-plus mr-2"></i>Open Registration Form
+                            <i class="bi bi-person-plus me-2"></i>{{ __('admin.club_details_index_open_registration_form') }}
                         </button>
                     </div>
                 </div>
 
             </div>
             <div class="modal-footer border-t px-6 py-4 flex justify-end gap-3">
-                <button type="button" class="btn btn-secondary" @click="showOwnerModal = false">Cancel</button>
+                <button type="button" class="btn btn-secondary" @click="showOwnerModal = false">{{ __('shared.cancel') }}</button>
                 <button type="button" class="btn btn-primary" id="confirmTransferBtn" onclick="confirmOwnerTransfer()">
-                    <i class="bi bi-check-lg mr-1"></i>Confirm Transfer
+                    <i class="bi bi-check-lg me-1"></i>{{ __('admin.club_details_index_confirm_transfer') }}
                 </button>
             </div>
         </div>
@@ -674,7 +759,7 @@
         <div class="modal-content border-0 shadow-lg w-full max-w-md relative rounded-lg overflow-hidden" @click.stop>
             <div class="modal-header border-b border-destructive/30 px-6 py-4">
                 <h5 class="modal-title text-destructive font-semibold">
-                    <i class="bi bi-exclamation-triangle mr-2"></i>Delete Club
+                    <i class="bi bi-exclamation-triangle me-2"></i>{{ __('admin.club_details_index_delete_club_title') }}
                 </h5>
                 <button type="button" class="text-muted-foreground hover:text-foreground" @click="showDeleteClubModal = false">
                     <i class="bi bi-x-lg"></i>
@@ -685,15 +770,15 @@
                 @method('DELETE')
                 <div class="modal-body px-6 py-4">
                     <div class="alert alert-danger mb-4">
-                        <strong>Warning!</strong> This action cannot be undone.
+                        <strong>{{ __('admin.club_details_index_warning_label') }}</strong>{{ __('admin.club_details_index_action_cannot_be_undone') }}
                     </div>
-                    <p class="mb-3">To confirm deletion, please type the club name: <strong>{{ $club->club_name }}</strong></p>
-                    <input type="text" class="form-control" id="confirmClubName" placeholder="Type club name to confirm" required>
+                    <p class="mb-3">{{ __('admin.club_details_index_confirm_delete_prompt') }} <strong>{{ $club->club_name }}</strong></p>
+                    <input type="text" class="form-control" id="confirmClubName" placeholder="{{ __('admin.club_details_index_confirm_delete_placeholder') }}" required>
                 </div>
                 <div class="modal-footer border-t border-border px-6 py-4 flex justify-end gap-3">
-                    <button type="button" class="btn btn-secondary" @click="showDeleteClubModal = false">Cancel</button>
+                    <button type="button" class="btn btn-secondary" @click="showDeleteClubModal = false">{{ __('shared.cancel') }}</button>
                     <button type="submit" class="btn btn-danger" id="confirmDeleteBtn" disabled>
-                        <i class="bi bi-trash mr-1"></i>Delete Permanently
+                        <i class="bi bi-trash me-1"></i>{{ __('admin.club_details_index_delete_permanently') }}
                     </button>
                 </div>
             </form>
@@ -705,8 +790,8 @@
 {{-- Create Owner Modal --}}
 <x-profile-modal
     mode="create"
-    title="Create New Owner"
-    subtitle="Fill in the details to create the new owner account"
+    :title="__('admin.club_details_index_create_new_owner')"
+    :subtitle="__('admin.club_details_index_create_owner_subtitle')"
     :showPasswordFields="true"
     :formAction="route('admin.club.create-owner', $club->slug)"
     formMethod="POST"
@@ -740,13 +825,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (useLocationBtn) {
         useLocationBtn.addEventListener('click', function() {
             if (!navigator.geolocation) {
-                window.showToast('error', 'Geolocation is not supported by your browser.');
+                window.showToast('error', '{{ __('admin.club_details_index_js_geolocation_unsupported') }}');
                 return;
             }
             const btn = this;
             const originalHtml = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span>Getting location...';
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>{{ __('admin.club_details_index_getting_location') }}';
 
             navigator.geolocation.getCurrentPosition(function(position) {
                 const lat = position.coords.latitude;
@@ -759,7 +844,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 btn.disabled = false;
                 btn.innerHTML = originalHtml;
             }, function(error) {
-                window.showToast('error', 'Unable to get your location. Please enter coordinates manually.');
+                window.showToast('error', '{{ __('admin.club_details_index_js_location_error') }}');
                 btn.disabled = false;
                 btn.innerHTML = originalHtml;
             });
@@ -793,7 +878,7 @@ function searchOwnerUsers(q) {
             container.innerHTML = '';
             const users = data.users || [];
             if (!users.length) {
-                container.innerHTML = '<p class="text-sm text-muted-foreground text-center py-3">No members found.</p>';
+                container.innerHTML = '<p class="text-sm text-muted-foreground text-center py-3">{{ __('admin.club_details_index_js_no_members_found') }}</p>';
                 return;
             }
             users.forEach(user => {
@@ -844,16 +929,16 @@ function confirmOwnerTransfer() {
 
     const btn = document.getElementById('confirmTransferBtn');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span>Transferring...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>{{ __('admin.club_details_index_js_transferring') }}';
 
     let body = { _token: '{{ csrf_token() }}' };
 
     if (tab === 'existing') {
         const userId = document.getElementById('ownerSelectedUserId').value;
         if (!userId) {
-            window.showToast('error', 'Please select a member first.');
+            window.showToast('error', '{{ __('admin.club_details_index_js_select_member') }}');
             btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-check-lg mr-1"></i>Confirm Transfer';
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>{{ __('admin.club_details_index_confirm_transfer') }}';
             return;
         }
         body.mode = 'existing';
@@ -863,9 +948,9 @@ function confirmOwnerTransfer() {
         const email    = document.getElementById('newOwnerEmail').value.trim();
         const password = document.getElementById('newOwnerPassword').value;
         if (!name || !email || !password) {
-            window.showToast('error', 'Please fill in all fields.');
+            window.showToast('error', '{{ __('admin.club_details_index_js_fill_all_fields') }}');
             btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-check-lg mr-1"></i>Confirm Transfer';
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>{{ __('admin.club_details_index_confirm_transfer') }}';
             return;
         }
         body.mode      = 'new';
@@ -889,10 +974,10 @@ function confirmOwnerTransfer() {
                 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
                 let inner = '<h6 class="mb-1">' + esc(data.owner.name) + '</h6>';
                 if (data.owner.email) {
-                    inner += '<p class="text-muted small mb-1"><i class="bi bi-envelope mr-1"></i>' + esc(data.owner.email) + '</p>';
+                    inner += '<p class="text-muted small mb-1"><i class="bi bi-envelope me-1"></i>' + esc(data.owner.email) + '</p>';
                 }
                 if (data.owner.mobile) {
-                    inner += '<p class="text-muted small mb-0"><i class="bi bi-phone mr-1"></i>' + esc(data.owner.mobile) + '</p>';
+                    inner += '<p class="text-muted small mb-0"><i class="bi bi-phone me-1"></i>' + esc(data.owner.mobile) + '</p>';
                 }
                 section.innerHTML =
                     '<div class="card bg-light"><div class="card-body">' +
@@ -906,19 +991,19 @@ function confirmOwnerTransfer() {
             // Close modal (Alpine 3 scope) — no reload.
             try { if (window.Alpine) window.Alpine.$data(btn).showOwnerModal = false; } catch (e) {}
 
-            window.showToast('success', data.message || 'Ownership transferred successfully.');
+            window.showToast('success', data.message || '{{ __('admin.club_details_index_js_transfer_success') }}');
             btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-check-lg mr-1"></i>Confirm Transfer';
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>{{ __('admin.club_details_index_confirm_transfer') }}';
         } else {
-            window.showToast('error', data.message || 'Something went wrong.');
+            window.showToast('error', data.message || '{{ __('admin.club_details_index_js_something_wrong') }}');
             btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-check-lg mr-1"></i>Confirm Transfer';
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>{{ __('admin.club_details_index_confirm_transfer') }}';
         }
     })
     .catch(() => {
-        window.showToast('error', 'Network error. Please try again.');
+        window.showToast('error', '{{ __('admin.club_details_index_js_network_error') }}');
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-check-lg mr-1"></i>Confirm Transfer';
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>{{ __('admin.club_details_index_confirm_transfer') }}';
     });
 }
 
@@ -927,9 +1012,85 @@ function copyClubUrl() {
     const url = '{{ $club->slug && $club->country ? route("clubs.show", [strtolower($club->country), $club->slug]) : "" }}';
     if (url) {
         navigator.clipboard.writeText(url).then(function() {
-            window.showToast('success', 'URL copied to clipboard!');
+            window.showToast('success', '{{ __('admin.club_details_index_js_url_copied') }}');
         });
     }
+}
+
+function clubWhatsAppIntegration() {
+    return {
+        saving: false,
+        testing: false,
+        sendingTest: false,
+        testPhone: '',
+        form: {
+            enabled:      @json($whatsappSettings['enabled']),
+            session_name: @json($whatsappSettings['session_name']),
+        },
+
+        async save() {
+            this.saving = true;
+            try {
+                const res = await fetch('{{ route('admin.club.settings.whatsapp.update', $club->slug) }}', {
+                    method: 'PUT',
+                    headers: this._headers(),
+                    body: JSON.stringify(this.form),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    window.showToast('success', data.message);
+                } else {
+                    window.showToast('error', data.message || 'Could not save settings.');
+                }
+            } catch (e) {
+                window.showToast('error', 'Network error while saving.');
+            } finally {
+                this.saving = false;
+            }
+        },
+
+        async test() {
+            this.testing = true;
+            try {
+                const res = await fetch('{{ route('admin.club.settings.whatsapp.test', $club->slug) }}', {
+                    method: 'POST',
+                    headers: this._headers(),
+                });
+                const data = await res.json();
+                window.showToast(data.success ? 'success' : 'error', data.message);
+            } catch (e) {
+                window.showToast('error', 'Network error during test.');
+            } finally {
+                this.testing = false;
+            }
+        },
+
+        async sendTest() {
+            if (!this.testPhone) return;
+            this.sendingTest = true;
+            try {
+                const res = await fetch('{{ route('admin.club.settings.whatsapp.send-test', $club->slug) }}', {
+                    method: 'POST',
+                    headers: this._headers(),
+                    body: JSON.stringify({ phone: this.testPhone }),
+                });
+                const data = await res.json();
+                window.showToast(data.success ? 'success' : 'error', data.message);
+            } catch (e) {
+                window.showToast('error', 'Network error while sending.');
+            } finally {
+                this.sendingTest = false;
+            }
+        },
+
+        _headers() {
+            return {
+                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            };
+        },
+    };
 }
 </script>
 @endpush

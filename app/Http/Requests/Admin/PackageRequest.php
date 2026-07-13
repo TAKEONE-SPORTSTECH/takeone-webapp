@@ -14,16 +14,16 @@ class PackageRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name'               => 'required|string|max:255',
-            'description'        => 'nullable|string',
-            'price'              => 'required|numeric|min:0',
-            'registration_fee'   => 'nullable|numeric|min:0',
-            'duration_months'    => 'required|integer|min:1',
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'price' => 'required|numeric|min:0',
+            'registration_fee' => 'nullable|numeric|min:0',
+            'duration_months' => 'required|integer|min:1',
             'gender_restriction' => 'nullable|string|in:mixed,male,female',
-            'age_min'            => 'nullable|integer|min:0',
-            'age_max'            => 'nullable|integer|min:0',
-            'translations'       => ['nullable', 'array'],
-            'translations.*.*'   => ['nullable', 'string', 'max:2000'],
+            'age_min' => 'nullable|integer|min:0',
+            'age_max' => 'nullable|integer|min:0',
+            'translations' => ['nullable', 'array'],
+            'translations.*.*' => ['nullable', 'string', 'max:2000'],
         ];
     }
 }

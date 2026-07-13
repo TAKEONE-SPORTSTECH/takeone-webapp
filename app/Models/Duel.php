@@ -16,10 +16,10 @@ class Duel extends Model
     ];
 
     protected $casts = [
-        'deadline'     => 'datetime',   // the scheduled challenge time (date + time)
+        'deadline' => 'datetime',   // the scheduled challenge time (date + time)
         'responded_at' => 'datetime',
         'completed_at' => 'datetime',
-        'rounds'       => 'array',
+        'rounds' => 'array',
     ];
 
     public const FORMATS = ['single', 'bo3', 'bo5', 'points', 'time'];
@@ -29,10 +29,10 @@ class Duel extends Model
     {
         return [
             'single' => 'Single match',
-            'bo3'    => 'Best of 3',
-            'bo5'    => 'Best of 5',
+            'bo3' => 'Best of 3',
+            'bo5' => 'Best of 5',
             'points' => 'Points — highest wins',
-            'time'   => 'Fastest time wins',
+            'time' => 'Fastest time wins',
         ][$format] ?? 'Single match';
     }
 

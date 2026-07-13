@@ -22,6 +22,10 @@
         height: calc(100vh - 64px); /* 64px = h-16 app navbar */
         overflow: hidden;
     }
+
+    /* Full-bleed shell on lg+, so un-cap the app top bar (it otherwise centers at
+       `container`/1280px) — aligns the logo with the sidebar and icons with the content. */
+    .to-bar > .container { max-width: none; }
 }
 
 /* ── SIDEBAR ── */
@@ -65,21 +69,23 @@
 }
 
 /* ── TOGGLE BUTTON ── */
+/* Match the .nav-icon-btn token used by the other top-bar icons (compass/chat/bell). */
 #pa-sidebar-toggle {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
     background: transparent;
-    border: 1px solid transparent;
+    border: 0;
     display: none;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: #6b7280;
-    font-size: 16px;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    color: hsl(220 9% 46%);
+    font-size: 1.25rem;
+    transition: background-color .18s ease, color .18s ease, transform .18s cubic-bezier(.22,.61,.36,1);
 }
-#pa-sidebar-toggle:hover { background: hsl(250 60% 95%); border-color: hsl(250 60% 88%); color: hsl(250 55% 55%); }
+#pa-sidebar-toggle:hover { background: hsl(250 60% 92%); color: hsl(var(--primary)); transform: translateY(-1px); }
+#pa-sidebar-toggle:active { transform: scale(.92); }
 @media (min-width: 1024px) { #pa-sidebar-toggle { display: flex; } }
 
 /* ── SIDEBAR INTERNALS ── */
@@ -214,16 +220,25 @@
 
     $navGroups = [
         'Management' => [
-            ['route'=>'admin.platform.clubs',      'pattern'=>['admin.platform.clubs*','admin.platform.index'], 'icon'=>'bi-building',  'label'=>'All Clubs'],
-            ['route'=>'admin.platform.members',    'pattern'=>['admin.platform.members*'],                       'icon'=>'bi-people',    'label'=>'All Members'],
-            ['route'=>'admin.platform.businesses', 'pattern'=>['admin.platform.businesses*'],                    'icon'=>'bi-buildings', 'label'=>'Businesses'],
+            ['route'=>'admin.platform.clubs',      'pattern'=>['admin.platform.clubs*'],     'icon'=>'bi-building',  'label'=>__('nav.layouts_admin_nav_all_clubs')],
+            ['route'=>'admin.platform.members',    'pattern'=>['admin.platform.members*'],    'icon'=>'bi-people',    'label'=>__('nav.layouts_admin_nav_all_members')],
+            ['route'=>'admin.platform.businesses', 'pattern'=>['admin.platform.businesses*'], 'icon'=>'bi-buildings', 'label'=>__('nav.layouts_admin_nav_businesses')],
         ],
         'System' => [
-            ['route'=>'admin.platform.backup',        'pattern'=>['admin.platform.backup*'],    'icon'=>'bi-database',      'label'=>'Backup & Restore'],
-            ['route'=>'admin.platform.audit-log',     'pattern'=>['admin.platform.audit-log*'], 'icon'=>'bi-journal-text',  'label'=>'Audit Log'],
-            ['route'=>'admin.plugins.realtime.index', 'pattern'=>['admin.plugins.realtime*'],   'icon'=>'bi-broadcast-pin', 'label'=>'Realtime / MQTT'],
+            ['route'=>'admin.platform.settings',      'pattern'=>['admin.platform.settings*'],  'icon'=>'bi-gear',          'label'=>__('nav.layouts_admin_nav_settings')],
+            ['route'=>'admin.platform.backup',        'pattern'=>['admin.platform.backup*'],    'icon'=>'bi-database',      'label'=>__('nav.layouts_admin_nav_backup')],
+            ['route'=>'admin.platform.audit-log',     'pattern'=>['admin.platform.audit-log*'], 'icon'=>'bi-journal-text',  'label'=>__('nav.layouts_admin_nav_audit_log')],
         ],
     ];
+
+    // Desktop-only Dashboard entry (mobile keeps its own dedicated dashboard, untouched).
+    if (! ($isMobile ?? false)) {
+        array_unshift($navGroups['Management'], [
+            'route' => 'admin.platform.index', 'pattern' => ['admin.platform.index'],
+            'icon'  => 'bi-grid-1x2-fill', 'label' => __('nav.layouts_admin_nav_dashboard'),
+        ]);
+    }
+
     $isActive = fn ($item) => request()->routeIs(...$item['pattern']);
 @endphp
 
@@ -232,12 +247,12 @@
 <!-- ── MOBILE TOP BAR (hamburger) ── -->
 <div class="lg:hidden mobile-nav-bar sticky top-0 z-40 shadow-sm">
     <div class="flex items-center gap-3 px-4 py-2">
-        <button type="button" @click="drawerOpen = true" title="Menu"
+        <button type="button" @click="drawerOpen = true" title="{{ __('nav.layouts_admin_menu') }}"
                 class="pa-sb-btn" style="width:36px;height:36px;">
             <i class="bi bi-list" style="font-size:20px;"></i>
         </button>
-        <span class="flex-1 truncate text-sm font-bold text-gray-900">Platform Admin</span>
-        <a href="{{ route('clubs.explore') }}" class="pa-sb-btn" title="Back to Explore">←</a>
+        <span class="flex-1 truncate text-sm font-bold text-gray-900">{{ __('nav.layouts_admin_platform_admin') }}</span>
+        <a href="{{ route('clubs.explore') }}" class="pa-sb-btn" title="{{ __('nav.layouts_admin_back_to_explore') }}">←</a>
     </div>
 </div>
 
@@ -248,7 +263,7 @@
      x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
 
 @push('navbar-left')
-<button id="pa-sidebar-toggle" title="Toggle sidebar" onclick="paToggleSidebar()">
+<button id="pa-sidebar-toggle" title="{{ __('nav.layouts_admin_toggle_sidebar') }}" onclick="paToggleSidebar()">
     <i class="bi bi-layout-sidebar-inset" id="pa-toggle-icon"></i>
 </button>
 @endpush
@@ -260,7 +275,7 @@
     <aside id="pa-sidebar" class="flex flex-col" :class="{ 'pa-drawer-open': drawerOpen }">
 
         <!-- Mobile close button -->
-        <button type="button" @click="drawerOpen = false" title="Close menu"
+        <button type="button" @click="drawerOpen = false" title="{{ __('nav.layouts_admin_close_menu') }}"
                 class="lg:hidden pa-sb-btn" style="position:absolute;top:14px;right:14px;width:32px;height:32px;z-index:2;">
             <i class="bi bi-x-lg"></i>
         </button>
@@ -269,18 +284,19 @@
         <div class="pa-brand">
             <span class="pa-brand-mark"><i class="bi bi-shield-lock-fill"></i></span>
             <span class="pa-collapse-hide">
-                <span class="pa-brand-title">Platform Admin</span>
-                <span class="pa-brand-sub">Super Admin Console</span>
+                <span class="pa-brand-title">{{ __('nav.layouts_admin_platform_admin') }}</span>
+                <span class="pa-brand-sub">{{ __('nav.layouts_admin_super_admin_console') }}</span>
             </span>
         </div>
 
         <!-- Navigation -->
         <nav id="pa-sidebar-nav" class="flex flex-col px-3 py-1" style="overflow-y:auto;flex:1">
             @foreach($navGroups as $groupLabel => $items)
-                <p class="pa-group pa-collapse-hide">{{ $groupLabel }}</p>
+                <p class="pa-group pa-collapse-hide">{{ __('nav.layouts_admin_group_' . strtolower($groupLabel)) }}</p>
                 @foreach($items as $item)
                     @php $active = $isActive($item); @endphp
                     <a href="{{ route($item['route']) }}" @click="drawerOpen = false"
+                       data-shell-link data-route="{{ $item['route'] }}"
                        title="{{ $item['label'] }}"
                        class="nav-item {{ $active ? 'active' : '' }}" style="margin-bottom:2px">
                         <span class="ni"><i class="bi {{ $item['icon'] }}"></i></span>
@@ -298,23 +314,25 @@
                 <span class="pa-user-av">{{ $initials }}</span>
                 <span style="min-width:0;flex:1">
                     <span class="pa-user-name truncate" style="display:block">{{ $adminName }}</span>
-                    <span class="pa-user-role">Super Admin</span>
+                    <span class="pa-user-role">{{ __('nav.layouts_admin_super_admin') }}</span>
                 </span>
             </div>
             <a href="{{ route('clubs.explore') }}" @click="drawerOpen = false"
-               title="Back to Explore" class="nav-item pa-explore">
+               title="{{ __('nav.layouts_admin_back_to_explore') }}" class="nav-item pa-explore">
                 <span class="ni"><i class="bi bi-box-arrow-left"></i></span>
-                <span>Back to Explore</span>
+                <span>{{ __('nav.layouts_admin_back_to_explore') }}</span>
             </a>
         </div>
     </aside>
 
     <!-- ── MAIN CONTENT ── -->
-    <main id="pa-main-area">
+    <main id="pa-main-area" data-shell-main="platform" data-shell-base="{{ url('/admin') }}" data-route="{{ request()->route()?->getName() }}">
         @yield('admin-content')
     </main>
 
 </div>{{-- #pa-layout --}}
+
+@include('partials.admin-shell-nav')
 
 </div>{{-- x-data --}}
 

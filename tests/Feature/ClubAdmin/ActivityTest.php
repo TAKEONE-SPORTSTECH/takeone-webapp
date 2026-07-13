@@ -86,8 +86,10 @@ class ActivityTest extends TestCase
         $club2    = $this->createClub($owner2);
         $activity = ClubActivity::create(['tenant_id' => $club2->id, 'name' => 'Club2 Activity']);
 
+        // putJson mirrors the app's real AJAX write path (and keeps a clean 404;
+        // browser writes now redirect via the global not-found handler).
         $this->actingAs($owner1)
-             ->put("/admin/club/{$club1->slug}/activities/{$activity->id}", ['name' => 'Hijacked'])
+             ->putJson("/admin/club/{$club1->slug}/activities/{$activity->id}", ['name' => 'Hijacked'])
              ->assertNotFound();
 
         $this->assertDatabaseHas('club_activities', ['id' => $activity->id, 'name' => 'Club2 Activity']);

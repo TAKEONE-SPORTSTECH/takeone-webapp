@@ -28,8 +28,8 @@
                 <div class="p-6 border-b border-gray-100">
                     <div class="flex items-start justify-between">
                         <div>
-                            <h3 class="text-xl font-bold text-gray-900">Add Family Member</h3>
-                            <p class="text-sm text-gray-500 mt-1">Fill in the details to add a new family member</p>
+                            <h3 class="text-xl font-bold text-gray-900">{{ __('shared.member_create_modal_title') }}</h3>
+                            <p class="text-sm text-gray-500 mt-1">{{ __('shared.member_create_modal_subtitle') }}</p>
                         </div>
                         <button @click="close()" class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
                             <i class="bi bi-x-lg text-gray-500"></i>
@@ -45,7 +45,7 @@
                         <!-- Full Name -->
                         <div class="mb-4">
                             <label for="full_name" class="tf-label">
-                                Full Name <span class="text-red-500">*</span>
+                                {{ __('shared.member_create_modal_full_name') }} <span class="text-red-500">*</span>
                             </label>
                             <input type="text"
                                    class="tf-input @error('full_name') border-red-500 @enderror"
@@ -61,7 +61,7 @@
                         <!-- Email -->
                         <div class="mb-4">
                             <label for="email" class="tf-label">
-                                Email Address <span class="text-gray-400">(Optional for children)</span>
+                                {{ __('shared.member_create_modal_email') }} <span class="text-gray-400">{{ __('shared.member_create_modal_email_optional') }}</span>
                             </label>
                             <input type="email"
                                    class="tf-input @error('email') border-red-500 @enderror"
@@ -75,7 +75,7 @@
 
                         <!-- Mobile Number -->
                         <div class="mb-4">
-                            <label for="mobile" class="tf-label">Mobile Number</label>
+                            <label for="mobile" class="tf-label">{{ __('shared.member_create_modal_mobile') }}</label>
                             <x-country-code-dropdown
                                 name="mobile_code"
                                 id="country_code"
@@ -87,7 +87,7 @@
                                        name="mobile"
                                        value="{{ old('mobile') }}"
                                        autocomplete="tel"
-                                       placeholder="Phone number">
+                                       placeholder="{{ __('shared.member_create_modal_phone_placeholder') }}">
                             </x-country-code-dropdown>
                             @error('mobile')
                                 <span class="tf-error">{{ $message }}</span>
@@ -108,7 +108,7 @@
                                 <x-birthdate-dropdown
                                     name="birthdate"
                                     id="birthdate"
-                                    label="Birthdate"
+                                    label="{{ __('shared.member_create_modal_birthdate') }}"
                                     :value="old('birthdate')"
                                     :required="true"
                                     :min-age="0"
@@ -120,30 +120,18 @@
                         <!-- Blood Type & Nationality -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label for="blood_type" class="tf-label">Blood Type</label>
-                                <select class="tf-select @error('blood_type') border-red-500 @enderror"
-                                        id="blood_type"
-                                        name="blood_type">
-                                    <option value="">Select Blood Type</option>
-                                    <option value="A+" {{ old('blood_type') == 'A+' ? 'selected' : '' }}>A+</option>
-                                    <option value="A-" {{ old('blood_type') == 'A-' ? 'selected' : '' }}>A-</option>
-                                    <option value="B+" {{ old('blood_type') == 'B+' ? 'selected' : '' }}>B+</option>
-                                    <option value="B-" {{ old('blood_type') == 'B-' ? 'selected' : '' }}>B-</option>
-                                    <option value="AB+" {{ old('blood_type') == 'AB+' ? 'selected' : '' }}>AB+</option>
-                                    <option value="AB-" {{ old('blood_type') == 'AB-' ? 'selected' : '' }}>AB-</option>
-                                    <option value="O+" {{ old('blood_type') == 'O+' ? 'selected' : '' }}>O+</option>
-                                    <option value="O-" {{ old('blood_type') == 'O-' ? 'selected' : '' }}>O-</option>
-                                    <option value="Unknown" {{ old('blood_type') == 'Unknown' ? 'selected' : '' }}>Unknown</option>
-                                </select>
-                                @error('blood_type')
-                                    <span class="tf-error">{{ $message }}</span>
-                                @enderror
+                                <x-blood-type-dropdown
+                                    name="blood_type"
+                                    id="blood_type"
+                                    label="{{ __('shared.member_create_modal_blood_type') }}"
+                                    :value="old('blood_type')"
+                                    :error="$errors->first('blood_type')" />
                             </div>
                             <div>
                                 <x-country-dropdown
                                     name="nationality"
                                     id="nationality"
-                                    label="Nationality"
+                                    label="{{ __('shared.member_create_modal_nationality') }}"
                                     :value="old('nationality')"
                                     :required="true"
                                     :error="$errors->first('nationality')" />
@@ -165,13 +153,13 @@
 
                         <!-- Motto -->
                         <div class="mb-4">
-                            <label for="motto" class="tf-label">Personal Motto</label>
+                            <label for="motto" class="tf-label">{{ __('shared.member_create_modal_motto') }}</label>
                             <textarea class="tf-textarea @error('motto') border-red-500 @enderror"
                                       id="motto"
                                       name="motto"
                                       rows="3"
-                                      placeholder="Enter personal motto or quote...">{{ old('motto') }}</textarea>
-                            <p class="text-xs text-gray-400 mt-1">Share a personal motto or quote that inspires them.</p>
+                                      placeholder="{{ __('shared.member_create_modal_motto_placeholder') }}">{{ old('motto') }}</textarea>
+                            <p class="text-xs text-gray-400 mt-1">{{ __('shared.member_create_modal_motto_hint') }}</p>
                             @error('motto')
                                 <span class="tf-error">{{ $message }}</span>
                             @enderror
@@ -182,30 +170,31 @@
                             <input type="hidden" name="emergency_contacts_json" id="createEmergencyContactsJson">
                             <div class="flex justify-between items-center mb-2">
                                 <label class="tf-label mb-0">
-                                    <i class="bi bi-telephone-fill text-red-500 mr-1"></i>Emergency Contacts
+                                    <i class="bi bi-telephone-fill text-red-500 me-1"></i>{{ __('shared.member_create_modal_emergency_contacts') }}
                                 </label>
                                 <button type="button"
                                         @click="contacts.push({name:'',relationship:'',phone_code:'+973',phone:''})"
                                         class="text-xs text-primary hover:underline flex items-center gap-1">
-                                    <i class="bi bi-plus-circle"></i> Add Contact
+                                    <i class="bi bi-plus-circle"></i> {{ __('shared.member_create_modal_add_contact') }}
                                 </button>
                             </div>
                             <div class="flex flex-col gap-2">
                                 <template x-for="(contact, i) in contacts" :key="i">
                                     <div class="grid grid-cols-12 gap-2 p-3 bg-gray-50 rounded-lg items-center">
                                         <div class="col-span-3">
-                                            <input type="text" x-model="contact.name" placeholder="Full name" class="tf-input text-sm py-2">
+                                            <input type="text" x-model="contact.name" placeholder="{{ __('shared.member_create_modal_full_name_placeholder') }}" class="tf-input text-sm py-2">
                                         </div>
                                         <div class="col-span-3">
-                                            <select x-model="contact.relationship" class="tf-select text-sm py-2">
-                                                <option value="">Relationship</option>
-                                                <option value="parent">Parent</option>
-                                                <option value="spouse">Spouse</option>
-                                                <option value="sibling">Sibling</option>
-                                                <option value="child">Child</option>
-                                                <option value="friend">Friend</option>
-                                                <option value="other">Other</option>
-                                            </select>
+                                            <x-select-menu model="contact.relationship"
+                                                placeholder="{{ __('shared.member_create_modal_relationship_placeholder') }}"
+                                                :options="[
+                                                    ['value' => 'parent', 'label' => __('shared.member_create_modal_rel_parent')],
+                                                    ['value' => 'spouse', 'label' => __('shared.member_create_modal_rel_spouse')],
+                                                    ['value' => 'sibling', 'label' => __('shared.member_create_modal_rel_sibling')],
+                                                    ['value' => 'child', 'label' => __('shared.member_create_modal_rel_child')],
+                                                    ['value' => 'friend', 'label' => __('shared.member_create_modal_rel_friend')],
+                                                    ['value' => 'other', 'label' => __('shared.member_create_modal_other')],
+                                                ]" />
                                         </div>
                                         <div class="col-span-5">
                                             <div class="tf-input-group"
@@ -217,16 +206,16 @@
                                                  }">
                                                 <div class="relative flex-shrink-0">
                                                     <button type="button" @click="open = !open" @click.outside="open = false"
-                                                            class="h-full px-2 py-1 flex items-center gap-1 border-r border-primary/20 bg-transparent hover:bg-gray-50 transition-colors cursor-pointer rounded-l-xl whitespace-nowrap">
+                                                            class="h-full px-2 py-1 flex items-center gap-1 border-e border-primary/20 bg-transparent hover:bg-gray-50 transition-colors cursor-pointer rounded-s-xl whitespace-nowrap">
                                                         <span :class="'fi fi-' + flag"></span>
                                                         <span x-text="contact.phone_code || '+973'" class="text-xs font-medium text-gray-700"></span>
                                                         <i class="bi bi-chevron-down text-xs" :class="{'rotate-180': open}"></i>
                                                     </button>
                                                     <div x-show="open" x-cloak
-                                                         class="absolute left-0 z-50 mt-1 w-56 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
+                                                         class="absolute start-0 z-50 mt-1 w-56 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
                                                          style="top:100%">
                                                         <div class="p-2 border-b border-gray-100">
-                                                            <input type="text" x-model="search" @click.stop placeholder="Search..."
+                                                            <input type="text" x-model="search" @click.stop placeholder="{{ __('shared.member_create_modal_search_placeholder') }}"
                                                                    class="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:border-primary">
                                                         </div>
                                                         <div class="max-h-44 overflow-y-auto">
@@ -242,7 +231,7 @@
                                                     </div>
                                                 </div>
                                                 <div class="flex-1">
-                                                    <input type="tel" x-model="contact.phone" placeholder="Phone number"
+                                                    <input type="tel" x-model="contact.phone" placeholder="{{ __('shared.member_create_modal_phone_placeholder') }}"
                                                            class="w-full px-2 py-1 text-sm bg-transparent focus:outline-none">
                                                 </div>
                                             </div>
@@ -256,7 +245,7 @@
                                 </template>
                             </div>
                             <p x-show="contacts.length === 0" class="text-gray-400 text-xs text-center py-2 border border-dashed border-gray-200 rounded-lg">
-                                Optional — click "Add Contact" to add an emergency contact.
+                                {{ __('shared.member_create_modal_contacts_hint') }}
                             </p>
                         </div>
 
@@ -265,12 +254,12 @@
                             <input type="hidden" name="health_conditions_json" id="createHealthConditionsJson">
                             <div class="flex justify-between items-center mb-2">
                                 <label class="tf-label mb-0">
-                                    <i class="bi bi-clipboard2-pulse-fill text-amber-500 mr-1"></i>Chronic Health Conditions
+                                    <i class="bi bi-clipboard2-pulse-fill text-amber-500 me-1"></i>{{ __('shared.member_create_modal_health_conditions') }}
                                 </label>
                                 <button type="button"
                                         @click="conditions.push({condition:'', noted_at: new Date().toISOString().split('T')[0], notes:''})"
                                         class="text-xs text-primary hover:underline flex items-center gap-1">
-                                    <i class="bi bi-plus-circle"></i> Add Condition
+                                    <i class="bi bi-plus-circle"></i> {{ __('shared.member_create_modal_add_condition') }}
                                 </button>
                             </div>
                             <div class="flex flex-col gap-2">
@@ -278,13 +267,13 @@
                                     <div class="p-3 bg-amber-50 border border-amber-100 rounded-lg">
                                         <div class="grid grid-cols-12 gap-2 items-start">
                                             <div class="col-span-5">
-                                                <input type="text" x-model="cond.condition" placeholder="e.g. Asthma, Diabetes" class="tf-input text-sm py-2">
+                                                <input type="text" x-model="cond.condition" placeholder="{{ __('shared.member_create_modal_condition_placeholder') }}" class="tf-input text-sm py-2">
                                             </div>
                                             <div class="col-span-3">
                                                 <input type="date" x-model="cond.noted_at" class="tf-input text-sm py-2">
                                             </div>
                                             <div class="col-span-3">
-                                                <input type="text" x-model="cond.notes" placeholder="Notes" class="tf-input text-sm py-2">
+                                                <input type="text" x-model="cond.notes" placeholder="{{ __('shared.member_create_modal_notes_placeholder') }}" class="tf-input text-sm py-2">
                                             </div>
                                             <div class="col-span-1 flex justify-center pt-1">
                                                 <button type="button" @click="conditions.splice(i, 1)" class="text-red-400 hover:text-red-600 transition-colors">
@@ -296,7 +285,7 @@
                                 </template>
                             </div>
                             <p x-show="conditions.length === 0" class="text-gray-400 text-xs text-center py-2 border border-dashed border-gray-200 rounded-lg">
-                                Optional — click "Add Condition" to record a chronic condition.
+                                {{ __('shared.member_create_modal_conditions_hint') }}
                             </p>
                         </div>
 
@@ -305,30 +294,31 @@
                             <input type="hidden" name="documents_json" id="createDocumentsJson">
                             <div class="flex justify-between items-center mb-2">
                                 <label class="tf-label mb-0">
-                                    <i class="bi bi-file-earmark-person-fill text-primary mr-1"></i>Identity Documents
+                                    <i class="bi bi-file-earmark-person-fill text-primary me-1"></i>{{ __('shared.member_create_modal_identity_documents') }}
                                 </label>
                                 <button type="button"
                                         @click="docs.push({type:'',number:''})"
                                         class="text-xs text-primary hover:underline flex items-center gap-1">
-                                    <i class="bi bi-plus-circle"></i> Add Document
+                                    <i class="bi bi-plus-circle"></i> {{ __('shared.member_create_modal_add_document') }}
                                 </button>
                             </div>
                             <div class="flex flex-col gap-2">
                                 <template x-for="(doc, i) in docs" :key="i">
                                     <div class="grid grid-cols-12 gap-2 p-3 bg-gray-50 rounded-lg items-center">
                                         <div class="col-span-5">
-                                            <select x-model="doc.type" class="tf-select text-sm py-2">
-                                                <option value="">Document Type</option>
-                                                <option value="National ID">National ID</option>
-                                                <option value="Passport">Passport</option>
-                                                <option value="CPR">CPR</option>
-                                                <option value="Driving Licence">Driving Licence</option>
-                                                <option value="Residence Permit">Residence Permit</option>
-                                                <option value="Other">Other</option>
-                                            </select>
+                                            <x-select-menu model="doc.type"
+                                                placeholder="{{ __('shared.member_create_modal_document_type_placeholder') }}"
+                                                :options="[
+                                                    ['value' => 'National ID', 'label' => __('shared.member_create_modal_doc_national_id')],
+                                                    ['value' => 'Passport', 'label' => __('shared.member_create_modal_doc_passport')],
+                                                    ['value' => 'CPR', 'label' => __('shared.member_create_modal_doc_cpr')],
+                                                    ['value' => 'Driving Licence', 'label' => __('shared.member_create_modal_doc_driving_licence')],
+                                                    ['value' => 'Residence Permit', 'label' => __('shared.member_create_modal_doc_residence_permit')],
+                                                    ['value' => 'Other', 'label' => __('shared.member_create_modal_other')],
+                                                ]" />
                                         </div>
                                         <div class="col-span-6">
-                                            <input type="text" x-model="doc.number" placeholder="Document number" class="tf-input text-sm py-2 font-mono">
+                                            <input type="text" x-model="doc.number" placeholder="{{ __('shared.member_create_modal_document_number_placeholder') }}" class="tf-input text-sm py-2 font-mono">
                                         </div>
                                         <div class="col-span-1 flex justify-center">
                                             <button type="button" @click="docs.splice(i, 1)" class="text-red-400 hover:text-red-600 transition-colors">
@@ -339,30 +329,18 @@
                                 </template>
                             </div>
                             <p x-show="docs.length === 0" class="text-gray-400 text-xs text-center py-2 border border-dashed border-gray-200 rounded-lg">
-                                Optional — click "Add Document" to record an ID or passport. Upload the file after saving.
+                                {{ __('shared.member_create_modal_documents_hint') }}
                             </p>
                         </div>
 
                         <!-- Relationship -->
-                        <div class="mb-4">
-                            <label for="relationship_type" class="tf-label">
-                                Relationship <span class="text-red-500">*</span>
-                            </label>
-                            <select class="tf-select @error('relationship_type') border-red-500 @enderror"
-                                    id="relationship_type"
-                                    name="relationship_type"
-                                    required>
-                                <option value="">Select Relationship</option>
-                                <option value="son" {{ old('relationship_type') == 'son' ? 'selected' : '' }}>Son</option>
-                                <option value="daughter" {{ old('relationship_type') == 'daughter' ? 'selected' : '' }}>Daughter</option>
-                                <option value="spouse" {{ old('relationship_type') == 'spouse' ? 'selected' : '' }}>Wife</option>
-                                <option value="sponsor" {{ old('relationship_type') == 'sponsor' ? 'selected' : '' }}>Sponsor</option>
-                                <option value="other" {{ old('relationship_type') == 'other' ? 'selected' : '' }}>Other</option>
-                            </select>
-                            @error('relationship_type')
-                                <span class="tf-error">{{ $message }}</span>
-                            @enderror
-                        </div>
+                        <x-relationship-dropdown
+                            name="relationship_type"
+                            id="relationship_type"
+                            label="{{ __('shared.member_create_modal_relationship') }}"
+                            :value="old('relationship_type')"
+                            :required="true"
+                            :error="$errors->first('relationship_type')" />
 
                         <!-- Is Billing Contact -->
                         <div class="mb-4">
@@ -373,7 +351,7 @@
                                        name="is_billing_contact"
                                        value="1"
                                        {{ old('is_billing_contact') ? 'checked' : '' }}>
-                                <span class="text-sm text-gray-700">Is Billing Contact</span>
+                                <span class="text-sm text-gray-700">{{ __('shared.member_create_modal_is_billing_contact') }}</span>
                             </label>
                         </div>
                     </form>
@@ -384,12 +362,12 @@
                     <button type="button"
                             @click="close()"
                             class="px-6 py-2 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors">
-                        Cancel
+                        {{ __('shared.cancel') }}
                     </button>
                     <button type="button"
                             @click="submitWithData()"
                             class="px-6 py-2 text-white bg-primary rounded-xl hover:bg-primary/90 transition-colors">
-                        Add Family Member
+                        {{ __('shared.member_create_modal_title') }}
                     </button>
                 </div>
             </div>

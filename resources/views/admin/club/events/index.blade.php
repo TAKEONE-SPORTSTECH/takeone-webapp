@@ -38,18 +38,18 @@ $eventsJson = $events->map(function($e) {
     {{-- Header --}}
     <div class="flex items-center justify-between mb-6">
         <div>
-            <h2 class="text-xl font-bold text-foreground">Events</h2>
-            <p class="text-sm text-muted-foreground mt-0.5">Manage events shown on your public club page</p>
+            <h2 class="text-xl font-bold text-foreground">{{ __('admin.club_events_index_title') }}</h2>
+            <p class="text-sm text-muted-foreground mt-0.5">{{ __('admin.club_events_index_subtitle') }}</p>
         </div>
         <div class="flex gap-2">
             <button @click="showArchiveModal = true" class="btn btn-outline-secondary">
-                <i class="bi bi-archive mr-2"></i>Archived
+                <i class="bi bi-archive me-2"></i>{{ __('admin.club_events_index_archived') }}
                 @if($archivedEvents->isNotEmpty())
                 <span class="badge bg-muted text-muted-foreground ms-1">{{ $archivedEvents->count() }}</span>
                 @endif
             </button>
             <button @click="openAdd()" class="btn btn-primary">
-                <i class="bi bi-plus-lg mr-2"></i>Add Event
+                <i class="bi bi-plus-lg me-2"></i>{{ __('admin.club_events_index_add_event') }}
             </button>
         </div>
     </div>
@@ -59,9 +59,9 @@ $eventsJson = $events->map(function($e) {
         <div class="card border-0 shadow-sm">
             <div class="card-body text-center py-16">
                 <i class="bi bi-calendar-x text-muted-foreground" style="font-size:2.5rem;opacity:.3;"></i>
-                <p class="mt-3 text-muted-foreground">No events yet. Add your first event to display it on your club page.</p>
+                <p class="mt-3 text-muted-foreground">{{ __('admin.club_events_index_empty') }}</p>
                 <button @click="openAdd()" class="btn btn-primary mt-2">
-                    <i class="bi bi-plus-lg mr-2"></i>Add Event
+                    <i class="bi bi-plus-lg me-2"></i>{{ __('admin.club_events_index_add_event') }}
                 </button>
             </div>
         </div>
@@ -92,15 +92,15 @@ $eventsJson = $events->map(function($e) {
                             <div class="flex items-center gap-2 flex-wrap mb-1">
                                 <span class="font-semibold text-foreground">{{ $event->title }}</span>
                                 @if($event->isOngoing())
-                                    <span class="status-chip status-ongoing"><span class="live-dot"></span> Ongoing</span>
+                                    <span class="status-chip status-ongoing"><span class="live-dot"></span> {{ __('admin.club_events_index_ongoing') }}</span>
                                 @endif
                             </div>
                             <div class="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground mb-1">
-                                <span><i class="bi bi-calendar mr-1"></i>{{ $event->date->format('d M Y') }}{{ $event->end_date ? ' – ' . $event->end_date->format('d M Y') : '' }}</span>
-                                <span><i class="bi bi-clock mr-1"></i>{{ \Carbon\Carbon::parse($event->start_time)->format('g:i A') }}{{ $event->end_time ? ' – ' . \Carbon\Carbon::parse($event->end_time)->format('g:i A') : '' }}</span>
-                                @if($event->location)<span><i class="bi bi-geo-alt mr-1"></i>{{ $event->location }}</span>@endif
-                                @if($event->level)<span><i class="bi bi-bar-chart mr-1"></i>{{ $event->level }}</span>@endif
-                                @if($event->max_capacity)<span><i class="bi bi-people mr-1"></i>{{ $event->max_capacity }} spots</span>@endif
+                                <span><i class="bi bi-calendar me-1"></i>{{ $event->date->format('d M Y') }}{{ $event->end_date ? ' – ' . $event->end_date->format('d M Y') : '' }}</span>
+                                <span><i class="bi bi-clock me-1"></i>{{ \Carbon\Carbon::parse($event->start_time)->format('g:i A') }}{{ $event->end_time ? ' – ' . \Carbon\Carbon::parse($event->end_time)->format('g:i A') : '' }}</span>
+                                @if($event->location)<span><i class="bi bi-geo-alt me-1"></i>{{ $event->location }}</span>@endif
+                                @if($event->level)<span><i class="bi bi-bar-chart me-1"></i>{{ $event->level }}</span>@endif
+                                @if($event->max_capacity)<span><i class="bi bi-people me-1"></i>{{ $event->max_capacity }} {{ __('admin.club_events_index_spots') }}</span>@endif
                             </div>
                             @if($tagsArr)
                                 <div class="flex flex-wrap gap-1 mt-1">
@@ -114,17 +114,17 @@ $eventsJson = $events->map(function($e) {
                         {{-- Actions --}}
                         <div class="flex gap-2 flex-shrink-0" @click.stop>
                             <button @click="openEdit({{ $event->id }})"
-                                    class="btn btn-sm btn-outline-secondary" title="Edit">
+                                    class="btn btn-sm btn-outline-secondary" title="{{ __('shared.edit') }}">
                                 <i class="bi bi-pencil"></i>
                             </button>
                             <form method="POST" action="{{ route('admin.club.events.archive', [$club->slug, $event->id]) }}">
                                 @csrf @method('PATCH')
-                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Archive">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="{{ __('admin.club_events_index_archive') }}">
                                     <i class="bi bi-archive"></i>
                                 </button>
                             </form>
                             <button @click="deleteEvent({{ $event->id }})"
-                                    class="btn btn-sm btn-outline-danger" title="Delete">
+                                    class="btn btn-sm btn-outline-danger" title="{{ __('shared.delete') }}">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>
@@ -150,7 +150,7 @@ $eventsJson = $events->map(function($e) {
             <div class="modal-content border-0 shadow-lg w-full max-w-xl relative" @click.stop>
                 <div class="modal-header border-b border-border px-6 py-4">
                     <h5 class="modal-title text-lg font-semibold">
-                        <i class="bi bi-archive mr-2"></i>Archived Events
+                        <i class="bi bi-archive me-2"></i>{{ __('admin.club_events_index_archived_events') }}
                     </h5>
                     <button type="button" class="text-muted-foreground hover:text-foreground" @click="showArchiveModal = false">
                         <i class="bi bi-x-lg"></i>
@@ -177,12 +177,12 @@ $eventsJson = $events->map(function($e) {
                         <div class="flex gap-2 flex-shrink-0">
                             <form method="POST" action="{{ route('admin.club.events.archive', [$club->slug, $event->id]) }}">
                                 @csrf @method('PATCH')
-                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Unarchive">
-                                    <i class="bi bi-arrow-counterclockwise mr-1"></i>Unarchive
+                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="{{ __('admin.club_events_index_unarchive') }}">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i>{{ __('admin.club_events_index_unarchive') }}
                                 </button>
                             </form>
                             <button @click="deleteEvent({{ $event->id }})"
-                                    class="btn btn-sm btn-outline-danger" title="Delete">
+                                    class="btn btn-sm btn-outline-danger" title="{{ __('shared.delete') }}">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>
@@ -190,7 +190,7 @@ $eventsJson = $events->map(function($e) {
                     @empty
                     <div class="text-center py-10 text-muted-foreground">
                         <i class="bi bi-archive" style="font-size:2rem;opacity:.3;"></i>
-                        <p class="mt-2 text-sm">No archived events.</p>
+                        <p class="mt-2 text-sm">{{ __('admin.club_events_index_no_archived') }}</p>
                     </div>
                     @endforelse
                 </div>
@@ -250,7 +250,7 @@ $eventsJson = $events->map(function($e) {
                             </div>
                             {{-- Close button on image --}}
                             <button @mousedown.stop @click.stop="showDetail = false"
-                                    class="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-black/50 hover:bg-black/75 text-white flex items-center justify-center transition-colors z-10">
+                                    class="absolute top-2.5 end-2.5 w-8 h-8 rounded-full bg-black/50 hover:bg-black/75 text-white flex items-center justify-center transition-colors z-10">
                                 <i class="bi bi-x-lg text-xs"></i>
                             </button>
                         </div>
@@ -276,10 +276,10 @@ $eventsJson = $events->map(function($e) {
 
                         {{-- Meta --}}
                         <div class="px-6 py-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground border-b border-border">
-                            <span><i class="bi bi-clock mr-1"></i><span x-text="detailEvent.time_label"></span></span>
-                            <span x-show="detailEvent.location"><i class="bi bi-geo-alt mr-1"></i><span x-text="detailEvent.location"></span></span>
-                            <span x-show="detailEvent.level"><i class="bi bi-bar-chart mr-1"></i><span x-text="detailEvent.level"></span></span>
-                            <span x-show="detailEvent.max_capacity"><i class="bi bi-people mr-1"></i><span x-text="detailEvent.max_capacity + ' spots'"></span></span>
+                            <span><i class="bi bi-clock me-1"></i><span x-text="detailEvent.time_label"></span></span>
+                            <span x-show="detailEvent.location"><i class="bi bi-geo-alt me-1"></i><span x-text="detailEvent.location"></span></span>
+                            <span x-show="detailEvent.level"><i class="bi bi-bar-chart me-1"></i><span x-text="detailEvent.level"></span></span>
+                            <span x-show="detailEvent.max_capacity"><i class="bi bi-people me-1"></i><span x-text="detailEvent.max_capacity + ' spots'"></span></span>
                         </div>
 
                         {{-- Description --}}
@@ -297,9 +297,9 @@ $eventsJson = $events->map(function($e) {
                         {{-- Footer actions --}}
                         <div class="px-6 py-4 border-t border-border flex justify-end gap-2">
                             <button type="button" class="btn btn-outline-secondary btn-sm" @click="showDetail = false; openEdit(detailEvent.id)">
-                                <i class="bi bi-pencil mr-1"></i> Edit
+                                <i class="bi bi-pencil me-1"></i> {{ __('shared.edit') }}
                             </button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" @click="showDetail = false">Close</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" @click="showDetail = false">{{ __('admin.club_events_index_close') }}</button>
                         </div>
                     </div>
                 </template>
@@ -333,9 +333,9 @@ $eventsJson = $events->map(function($e) {
                         @include('admin.club.events.partials.form-fields')
                     </div>
                     <div class="modal-footer border-t border-border px-6 py-4 flex justify-end gap-3">
-                        <button type="button" class="btn btn-outline-secondary" @click="showModal = false">Cancel</button>
+                        <button type="button" class="btn btn-outline-secondary" @click="showModal = false">{{ __('shared.cancel') }}</button>
                         <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-lg mr-1"></i>
+                            <i class="bi bi-check-lg me-1"></i>
                             <span x-text="isEdit ? 'Update Event' : 'Save Event'"></span>
                         </button>
                     </div>
@@ -358,17 +358,17 @@ $eventsJson = $events->map(function($e) {
                 <div id="eventCropperCanvas" class="takeone-canvas" style="height:380px;"></div>
                 <div class="grid grid-cols-2 gap-4 mt-4">
                     <div>
-                        <label class="block text-xs font-medium text-gray-500 mb-1">Zoom</label>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('admin.club_events_index_zoom') }}</label>
                         <input type="range" id="eventCropperZoom" class="form-range" min="0" max="100" step="1" value="0">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-gray-500 mb-1">Rotation</label>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('admin.club_events_index_rotation') }}</label>
                         <input type="range" id="eventCropperRot" class="form-range" min="-180" max="180" step="1" value="0">
                     </div>
                 </div>
                 <button type="button" id="eventCropperSave"
                         class="btn btn-success btn-lg font-bold w-full py-3 mt-3">
-                    Crop & Add
+                    {{ __('admin.club_events_index_crop_add') }}
                 </button>
             </div>
         </div>
@@ -453,11 +453,11 @@ $(function() {
 
     $('#eventCropperSave').on('click', function() {
         if (!eventCropperInstance || !eventCropperInstance.properties?.image) {
-            window.showToast('warning', 'Please select an image first.');
+            window.showToast('warning', '{{ __("admin.club_events_index_select_image_first") }}');
             return;
         }
         const btn = $(this);
-        btn.prop('disabled', true).text('Processing...');
+        btn.prop('disabled', true).text('{{ __("admin.club_events_index_processing") }}');
         eventCropperInstance.crop({ type: 'base64' }).then(base64 => {
             eventNewImages.push(base64);
             renderEventNewThumbnails();
@@ -483,7 +483,7 @@ function renderEventNewThumbnails() {
         wrap.className = 'relative group';
         wrap.innerHTML = `
             <img src="${b64}" class="w-20 h-20 object-cover rounded-lg border border-gray-200">
-            <button type="button" class="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <button type="button" class="absolute -top-1.5 -end-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <i class="bi bi-x"></i>
             </button>`;
         wrap.querySelector('button').addEventListener('click', () => {
@@ -572,9 +572,9 @@ function eventsAdmin() {
 
         deleteEvent(id) {
             confirmAction({
-                title:       'Delete Event',
-                message:     'This event will be permanently removed.',
-                confirmText: 'Delete',
+                title:       '{{ __("admin.club_events_index_delete_event_title") }}',
+                message:     '{{ __("admin.club_events_index_delete_event_confirm") }}',
+                confirmText: '{{ __("shared.delete") }}',
                 type:        'danger',
             }).then(confirmed => {
                 if (!confirmed) return;
@@ -591,12 +591,12 @@ function eventsAdmin() {
                         document.getElementById(`event-${id}`)?.remove();
                         document.getElementById(`event-archived-${id}`)?.remove();
                         this.showDetail = false;
-                        window.showToast('success', data.message || 'Event deleted.');
+                        window.showToast('success', data.message || '{{ __("admin.club_events_index_event_deleted") }}');
                     } else {
-                        window.showToast('error', data.message || 'Failed to delete event.');
+                        window.showToast('error', data.message || '{{ __("admin.club_events_index_delete_failed") }}');
                     }
                 })
-                .catch(() => window.showToast('error', 'Failed to delete event.'));
+                .catch(() => window.showToast('error', '{{ __("admin.club_events_index_delete_failed") }}'));
             });
         },
     };

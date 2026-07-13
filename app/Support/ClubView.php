@@ -20,7 +20,7 @@ class ClubView
     public static function pick(string $section): string
     {
         $isMobile = (bool) request()->attributes->get('is_mobile', false);
-        $mobile   = "admin.club.{$section}.mobile";
+        $mobile = "admin.club.{$section}.mobile";
 
         if ($isMobile && View::exists($mobile)) {
             return $mobile;

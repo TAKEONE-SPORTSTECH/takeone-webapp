@@ -6,9 +6,9 @@ use App\Models\ClubProduct;
 use App\Models\Order;
 use App\Models\Tenant;
 use App\Models\UserNotification;
+use App\Traits\StoresBase64Images;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use App\Traits\StoresBase64Images;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -42,11 +42,11 @@ class OrderController extends Controller
         abort_unless($order->status === 'fulfilled', 422, __('shared.error'));
 
         $data = $request->validate([
-            'seller_rating'      => ['nullable', 'integer', 'min:1', 'max:5'],
-            'comment'            => ['nullable', 'string', 'max:1000'],
-            'products'           => ['nullable', 'array', 'max:50'],
-            'products.*.id'      => ['required', 'integer'],
-            'products.*.rating'  => ['required', 'integer', 'min:1', 'max:5'],
+            'seller_rating' => ['nullable', 'integer', 'min:1', 'max:5'],
+            'comment' => ['nullable', 'string', 'max:1000'],
+            'products' => ['nullable', 'array', 'max:50'],
+            'products.*.id' => ['required', 'integer'],
+            'products.*.rating' => ['required', 'integer', 'min:1', 'max:5'],
         ]);
 
         DB::transaction(function () use ($order, $data) {
@@ -84,12 +84,12 @@ class OrderController extends Controller
         if ($club && $club->owner_user_id) {
             UserNotification::notifyUser((int) $club->owner_user_id, 'order',
                 __('market.notify_order_received', ['name' => Auth::user()->full_name, 'ref' => $order->reference]), [
-                    'actor_id'     => Auth::id(),
-                    'tenant_id'    => $club->id,
-                    'icon'         => 'bi-patch-check-fill',
-                    'action_url'   => route('admin.club.orders', $club),
+                    'actor_id' => Auth::id(),
+                    'tenant_id' => $club->id,
+                    'icon' => 'bi-patch-check-fill',
+                    'action_url' => route('admin.club.orders', $club),
                     'subject_type' => 'order',
-                    'subject_id'   => $order->id,
+                    'subject_id' => $order->id,
                 ]);
         }
 
@@ -99,15 +99,15 @@ class OrderController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'items'              => ['required', 'array', 'min:1', 'max:50'],
-            'items.*.id'         => ['required', 'integer'],
-            'items.*.qty'        => ['required', 'integer', 'min:1', 'max:99'],
-            'items.*.color'      => ['nullable', 'string', 'max:16'],
+            'items' => ['required', 'array', 'min:1', 'max:50'],
+            'items.*.id' => ['required', 'integer'],
+            'items.*.qty' => ['required', 'integer', 'min:1', 'max:99'],
+            'items.*.color' => ['nullable', 'string', 'max:16'],
             'items.*.variant_id' => ['nullable', 'integer'],
-            'note'               => ['nullable', 'string', 'max:1000'],
-            'proof'              => ['required', 'string', 'starts_with:data:image'],
+            'note' => ['nullable', 'string', 'max:1000'],
+            'proof' => ['required', 'string', 'starts_with:data:image'],
         ], [
-            'proof.required'    => __('market.proof_required'),
+            'proof.required' => __('market.proof_required'),
             'proof.starts_with' => __('market.proof_required'),
         ]);
 
@@ -115,7 +115,7 @@ class OrderController extends Controller
 
         // No gateway — store the buyer's proof of payment. Rejected if it isn't
         // a real image (the trait sniffs the bytes).
-        $proofPath = $this->storeBase64Image($data['proof'], 'order-proofs/' . $user->id, 'proof_' . uniqid());
+        $proofPath = $this->storeBase64Image($data['proof'], 'order-proofs/'.$user->id, 'proof_'.uniqid());
         if (! $proofPath) {
             return response()->json(['success' => false, 'message' => __('market.proof_required')], 422);
         }
@@ -148,10 +148,10 @@ class OrderController extends Controller
             }
 
             $byTenant[$p->tenant_id][] = [
-                'p'       => $p,
+                'p' => $p,
                 'variant' => $variant,
-                'qty'     => (int) $line['qty'],
-                'color'   => $line['color'] ?? null,
+                'qty' => (int) $line['qty'],
+                'color' => $line['color'] ?? null,
             ];
         }
 
@@ -164,36 +164,39 @@ class OrderController extends Controller
             foreach ($byTenant as $tenantId => $lines) {
                 $club = Tenant::find($tenantId);
                 $order = Order::create([
-                    'tenant_id'          => $tenantId,
-                    'user_id'            => $user->id,
-                    'status'             => 'pending',
-                    'currency'           => $club?->currency ?: 'BHD',
-                    'note'               => $data['note'] ?? null,
+                    'tenant_id' => $tenantId,
+                    'user_id' => $user->id,
+                    'status' => 'pending',
+                    'currency' => $club?->currency ?: 'BHD',
+                    'note' => $data['note'] ?? null,
                     'payment_proof_path' => $proofPath,
                 ]);
 
                 $subtotal = 0.0;
-                $hasDrop  = false;
+                $hasDrop = false;
                 foreach ($lines as $l) {
-                    $variant   = $l['variant'];
+                    $variant = $l['variant'];
                     $unitPrice = (float) ($variant ? $variant->price : $l['p']->price);
                     $lineTotal = $unitPrice * $l['qty'];
                     $subtotal += $lineTotal;
-                    $hasDrop = $hasDrop || $l['p']->fulfillment === 'dropship';
+                    // A variant carries its own fulfillment (a product can mix in-stock
+                    // and dropshipped variations); fall back to the product otherwise.
+                    $lineFulfillment = $variant ? ($variant->fulfillment ?: 'stock') : $l['p']->fulfillment;
+                    $hasDrop = $hasDrop || $lineFulfillment === 'dropship';
 
                     $order->items()->create([
-                        'club_product_id'         => $l['p']->id,
+                        'club_product_id' => $l['p']->id,
                         'club_product_variant_id' => $variant?->id,
-                        'name'                    => $l['p']->name,
-                        'brand'                   => $variant?->brand ?: $l['p']->brand,
-                        'image_path'              => $variant?->image_path ?: $l['p']->image_path,
-                        'color'                   => $variant?->color_hex ?: $l['color'],
-                        'size'                    => $variant?->size,
-                        'variant_label'           => $variant?->label,
-                        'fulfillment'             => $l['p']->fulfillment,
-                        'price'                   => $unitPrice,
-                        'qty'                     => $l['qty'],
-                        'line_total'              => $lineTotal,
+                        'name' => $l['p']->name,
+                        'brand' => $variant?->brand ?: $l['p']->brand,
+                        'image_path' => $variant?->image_path ?: $l['p']->image_path,
+                        'color' => $variant?->color_hex ?: $l['color'],
+                        'size' => $variant?->size,
+                        'variant_label' => $variant?->label,
+                        'fulfillment' => $lineFulfillment,
+                        'price' => $unitPrice,
+                        'qty' => $l['qty'],
+                        'line_total' => $lineTotal,
                     ]);
 
                     // Decrement stock for held inventory (never below zero). For a
@@ -212,31 +215,31 @@ class OrderController extends Controller
                 // Tell the club owner an order came in.
                 if ($club && $club->owner_user_id) {
                     UserNotification::notifyUser((int) $club->owner_user_id, 'order',
-                        $user->full_name . ' placed an order', [
-                            'actor_id'     => $user->id,
-                            'tenant_id'    => $club->id,
-                            'icon'         => 'bi-bag-check-fill',
-                            'body'         => $order->reference . ' · ' . $club->currency . ' ' . number_format($subtotal, 2),
-                            'action_url'   => route('admin.club.orders', $club),
+                        $user->full_name.' placed an order', [
+                            'actor_id' => $user->id,
+                            'tenant_id' => $club->id,
+                            'icon' => 'bi-bag-check-fill',
+                            'body' => $order->reference.' · '.$club->currency.' '.number_format($subtotal, 2),
+                            'action_url' => route('admin.club.orders', $club),
                             'subject_type' => 'order',
-                            'subject_id'   => $order->id,
+                            'subject_id' => $order->id,
                         ]);
                 }
 
                 $summaries[] = [
                     'reference' => $order->reference,
-                    'club'      => $club?->club_name,
-                    'total'     => $subtotal,
-                    'currency'  => $order->currency,
+                    'club' => $club?->club_name,
+                    'total' => $subtotal,
+                    'currency' => $order->currency,
                 ];
             }
         });
 
         return response()->json([
-            'success'    => true,
-            'message'    => __('market.order_placed'),
-            'orders'     => $summaries,
-            'redirect'   => route('me.orders'),
+            'success' => true,
+            'message' => __('market.order_placed'),
+            'orders' => $summaries,
+            'redirect' => route('me.orders'),
         ]);
     }
 }

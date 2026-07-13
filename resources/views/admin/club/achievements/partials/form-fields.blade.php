@@ -104,14 +104,10 @@
                     write() { formData.achievement_date = (this.d && this.m && /^\d{4}$/.test(this.y)) ? (this.y + '-' + this.m + '-' + this.d) : ''; }
                  }"
                  x-init="parse(formData.achievement_date); $watch('formData.achievement_date', v => parse(v))">
-                <select x-model="d" @change="write()" class="{{ $field }} ach-select">
-                    <option value="">{{ __('admin.ach_f_day') }}</option>
-                    @for($dd = 1; $dd <= 31; $dd++)<option value="{{ sprintf('%02d', $dd) }}">{{ $dd }}</option>@endfor
-                </select>
-                <select x-model="m" @change="write()" class="{{ $field }} ach-select">
-                    <option value="">{{ __('admin.ach_f_month') }}</option>
-                    @foreach($achMonths as $mo)<option value="{{ $mo['v'] }}">{{ $mo['l'] }}</option>@endforeach
-                </select>
+                <x-select-menu model="d" change="write()" :placeholder="__('admin.ach_f_day')"
+                    :options="collect(range(1, 31))->map(fn ($dd) => ['value' => sprintf('%02d', $dd), 'label' => (string) $dd])->all()" />
+                <x-select-menu model="m" change="write()" :placeholder="__('admin.ach_f_month')"
+                    :options="collect($achMonths)->map(fn ($mo) => ['value' => $mo['v'], 'label' => $mo['l']])->all()" />
                 <input type="text" inputmode="numeric" maxlength="4" x-model="y"
                        @input="y = y.replace(/\D/g, '').slice(0, 4); write()"
                        placeholder="{{ __('admin.ach_f_year') }}" class="{{ $field }} text-center">
@@ -263,10 +259,11 @@
             <div class="flex-1 h-px bg-gradient-to-r from-gray-200 to-transparent"></div>
         </div>
         <label class="{{ $lbl }}">{{ __('admin.ach_f_visibility') }} <span class="font-normal text-gray-400">— {{ __('admin.ach_f_status_hint') }}</span></label>
-        <select name="status" x-model="formData.status" class="{{ $field }} ach-select">
-            <option value="active">{{ __('admin.ach_f_active') }}</option>
-            <option value="inactive">{{ __('admin.ach_f_inactive') }}</option>
-        </select>
+        <x-select-menu model="formData.status" name="status"
+            :options="[
+                ['value' => 'active', 'label' => __('admin.ach_f_active')],
+                ['value' => 'inactive', 'label' => __('admin.ach_f_inactive')],
+            ]" />
     </section>
 
     {{-- ════════ Gallery ════════ --}}

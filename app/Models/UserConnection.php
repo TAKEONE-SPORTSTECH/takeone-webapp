@@ -25,7 +25,7 @@ class UserConnection extends Model
     {
         return $query->where(function (Builder $q) use ($a, $b) {
             $q->where(['requester_id' => $a, 'addressee_id' => $b])
-              ->orWhere(['requester_id' => $b, 'addressee_id' => $a]);
+                ->orWhere(['requester_id' => $b, 'addressee_id' => $a]);
         });
     }
 }

@@ -52,15 +52,15 @@
 }
 .dc:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(124,58,237,0.08), 0 2px 8px rgba(0,0,0,0.06);
-    border-color: #ddd6fe;
+    box-shadow: 0 8px 24px rgba(124,99,224,0.08), 0 2px 8px rgba(0,0,0,0.06);
+    border-color: hsl(250 60% 88%);
 }
 
 /* ── CARD HEADER ── */
 .dc-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-shrink: 0; }
 .dc-ttl {  font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:#9ca3af; }
 .dc-ico { width:24px; height:24px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:11px; }
-.dc-ico-p { background:#ede9fe; color:#7c3aed; }
+.dc-ico-p { background:hsl(250 60% 93%); color:hsl(250 65% 60%); }
 .dc-ico-g { background:#dcfce7; color:#16a34a; }
 .dc-ico-a { background:#fef3c7; color:#d97706; }
 .dc-ico-b { background:#dbeafe; color:#2563eb; }
@@ -84,8 +84,8 @@
     background:#f9fafb; border:1px solid #f3f4f6; border-radius:10px; padding:10px;
     transition:border-color 0.15s;
 }
-.pkg-item:hover { border-color:#ddd6fe; }
-.pkg-name  {  font-size:9px; font-weight:700; letter-spacing:0.5px; color:#7c3aed; text-transform:uppercase; margin-bottom:4px; }
+.pkg-item:hover { border-color:hsl(250 60% 88%); }
+.pkg-name  {  font-size:9px; font-weight:700; letter-spacing:0.5px; color:hsl(250 65% 60%); text-transform:uppercase; margin-bottom:4px; }
 .pkg-price {  font-size:22px; font-weight:700; color:#111827; line-height:1; margin-bottom:5px; }
 .pkg-price .cur { font-size:10px; color:#9ca3af; }
 .pkg-badge { display:inline-block; font-size:8px; font-weight:700; border-radius:20px; padding:2px 7px; text-transform:uppercase; letter-spacing:0.4px; }
@@ -95,9 +95,9 @@
 .pkg-badge-y { background:#fef9c3; color:#ca8a04; }
 .pkg-dots { display:flex; gap:4px; }
 .pkg-dot { width:5px; height:5px; border-radius:50%; background:#e5e7eb; cursor:pointer; transition:all 0.2s; }
-.pkg-dot.on { background:#7c3aed; }
+.pkg-dot.on { background:hsl(250 65% 60%); }
 .pkg-arr { width:22px; height:22px; border-radius:7px; cursor:pointer; background:#f3f4f6; border:1px solid #e5e7eb; display:flex; align-items:center; justify-content:center; font-size:9px; color:#6b7280; transition:all 0.15s; }
-.pkg-arr:hover { background:#ede9fe; border-color:#7c3aed; color:#7c3aed; }
+.pkg-arr:hover { background:hsl(250 60% 93%); border-color:hsl(250 65% 60%); color:hsl(250 65% 60%); }
 
 /* ── TALENT card ── */
 .act-count {  font-size:34px; color:#111827; line-height:1; }
@@ -108,32 +108,32 @@
 .act-nm { font-size:9px; color:#6b7280; width:64px; flex-shrink:0; line-height:1.2;  font-weight:600; }
 .act-bars { flex:1; display:flex; height:14px; border-radius:5px; overflow:hidden; gap:1px; }
 .act-seg { flex:1; border-radius:2px; }
-.act-see { display:block; text-align:center; margin-top:auto; padding-top:8px; font-size:9px; color:#7c3aed; text-decoration:none;  font-weight:700; letter-spacing:0.4px; text-transform:uppercase; }
-.act-see:hover { color:#6d28d9; }
+.act-see { display:block; text-align:center; margin-top:auto; padding-top:8px; font-size:9px; color:hsl(250 65% 60%); text-decoration:none;  font-weight:700; letter-spacing:0.4px; text-transform:uppercase; }
+.act-see:hover { color:hsl(250 55% 50%); }
 
 /* ── TRAINERS card ── */
 .tr-item { display:flex; align-items:center; gap:8px; padding:8px; border-radius:9px; background:#f9fafb; border:1px solid #f3f4f6; margin-bottom:7px; transition:border-color 0.15s; }
 .tr-item:last-child { margin-bottom:0; }
-.tr-item:hover { border-color:#ddd6fe; background:#f5f3ff; }
-.tr-photo { width:34px; height:34px; border-radius:50%; flex-shrink:0; border:2px solid #e5e7eb; overflow:hidden; background:linear-gradient(135deg,#ede9fe,#ddd6fe); display:flex; align-items:center; justify-content:center; font-size:13px;  font-weight:700; color:#7c3aed; }
+.tr-item:hover { border-color:hsl(250 60% 88%); background:hsl(250 60% 97%); }
+.tr-photo { width:34px; height:34px; border-radius:50%; flex-shrink:0; border:2px solid #e5e7eb; overflow:hidden; background:linear-gradient(135deg,hsl(250 60% 93%),hsl(250 60% 88%)); display:flex; align-items:center; justify-content:center; font-size:13px;  font-weight:700; color:hsl(250 65% 60%); }
 .tr-name  { font-size:12px; font-weight:700; color:#111827; line-height:1;  }
 .tr-exp   { font-size:9px; color:#9ca3af; }
 .tr-sub   { font-size:9px; margin-top:1px; }
 .tr-badge { font-size:7px; font-weight:700; border-radius:5px; padding:2px 6px; text-transform:uppercase; letter-spacing:0.4px; flex-shrink:0; }
 .badge-act { background:#dcfce7; color:#16a34a; }
 .badge-avl { background:#f3f4f6; color:#6b7280; }
-.tr-see { display:block; text-align:center; margin-top:auto; padding-top:8px; font-size:9px; color:#7c3aed; text-decoration:none;  font-weight:700; text-transform:uppercase; }
+.tr-see { display:block; text-align:center; margin-top:auto; padding-top:8px; font-size:9px; color:hsl(250 65% 60%); text-decoration:none;  font-weight:700; text-transform:uppercase; }
 
 /* ── HALL OF FAME card ── */
 .hof-item { display:flex; align-items:center; gap:7px; padding:7px 8px; border-radius:9px; background:#f9fafb; border:1px solid #f3f4f6; margin-bottom:6px; transition:all 0.15s; }
 .hof-item:last-child { margin-bottom:0; }
-.hof-item:hover { border-color:#ddd6fe; background:#f5f3ff; }
-.hof-photo { width:32px; height:32px; border-radius:50%; flex-shrink:0; border:2px solid #e5e7eb; overflow:hidden; background:linear-gradient(135deg,#ede9fe,#ddd6fe); display:flex; align-items:center; justify-content:center; font-size:12px;  font-weight:700; color:#7c3aed; }
+.hof-item:hover { border-color:hsl(250 60% 88%); background:hsl(250 60% 97%); }
+.hof-photo { width:32px; height:32px; border-radius:50%; flex-shrink:0; border:2px solid #e5e7eb; overflow:hidden; background:linear-gradient(135deg,hsl(250 60% 93%),hsl(250 60% 88%)); display:flex; align-items:center; justify-content:center; font-size:12px;  font-weight:700; color:hsl(250 65% 60%); }
 .hof-name  { font-size:11px; font-weight:700; color:#111827; line-height:1;  }
 .hof-rank  { font-size:8px; color:#9ca3af; margin-top:1px; }
-.hof-ach   { font-size:8px; color:#7c3aed; margin-top:2px; display:block; }
+.hof-ach   { font-size:8px; color:hsl(250 65% 60%); margin-top:2px; display:block; }
 .hof-star  { font-size:13px; color:#f59e0b; flex-shrink:0; }
-.hof-see { display:block; text-align:center; margin-top:auto; padding-top:8px; font-size:9px; color:#7c3aed; text-decoration:none;  font-weight:700; text-transform:uppercase; }
+.hof-see { display:block; text-align:center; margin-top:auto; padding-top:8px; font-size:9px; color:hsl(250 65% 60%); text-decoration:none;  font-weight:700; text-transform:uppercase; }
 
 /* ── EVENTS card ── */
 .ev-num {  font-size:42px; color:#111827; line-height:1; }
@@ -151,7 +151,7 @@
 .ach-bar-row { display:flex; align-items:center; gap:8px; }
 .ach-bar-lbl { font-size:10px; color:#6b7280; width:70px; text-transform:uppercase; letter-spacing:0.3px;  font-weight:700; }
 .ach-bar-track { flex:1; height:4px; background:#f3f4f6; border-radius:2px; overflow:hidden; }
-.ach-bar-fill { height:100%; background:#7c3aed; border-radius:2px; }
+.ach-bar-fill { height:100%; background:hsl(250 65% 60%); border-radius:2px; }
 .ach-bar-val {  font-size:9px; color:#9ca3af; width:22px; text-align:right; }
 .ach-pending { font-size:9px; color:#9ca3af; margin-top:10px; font-style:italic; line-height:1.4; }
 
@@ -164,8 +164,8 @@
 .fiscal-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
 .fiscal-line { width:14px; height:2px; flex-shrink:0; border-radius:1px; }
 .fiscal-arr { width:24px; height:24px; border-radius:7px; cursor:pointer; background:#f3f4f6; border:1px solid #e5e7eb; display:flex; align-items:center; justify-content:center; font-size:10px; color:#6b7280; transition:all 0.15s; }
-.fiscal-arr:hover { background:#ede9fe; border-color:#7c3aed; color:#7c3aed; }
-.growth-ttl {  font-size:9px; font-weight:700; color:#7c3aed; letter-spacing:0.5px; text-transform:uppercase; margin-bottom:6px; }
+.fiscal-arr:hover { background:hsl(250 60% 93%); border-color:hsl(250 65% 60%); color:hsl(250 65% 60%); }
+.growth-ttl {  font-size:9px; font-weight:700; color:hsl(250 65% 60%); letter-spacing:0.5px; text-transform:uppercase; margin-bottom:6px; }
 
 /* Page header */
 .pg-title { font-size:1.875rem; font-weight:700; color:#111827; }
@@ -182,20 +182,19 @@
 <div style="display:flex;flex-direction:column;gap:14px">
 
     <!-- Page Header -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div>
-            <div class="pg-title">The Pillars of Progress</div>
-            <div class="pg-sub">Welcome to {{ $club->club_name }} management panel</div>
-        </div>
-        <div class="flex gap-2">
-            <a href="{{ route('admin.club.members', $club->slug) }}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors no-underline" style="letter-spacing:0.4px">
-                <i class="bi bi-people"></i> View Members
+    <x-admin-hero eyebrow="{{ __('admin.club_dashboard_index_eyebrow') }}" :title="$club->club_name"
+                  subtitle="{{ __('admin.club_dashboard_index_hero_subtitle') }}" icon="bi-trophy-fill">
+        <x-slot:actions>
+            <a href="{{ route('admin.club.members', $club->slug) }}"
+               class="inline-flex items-center gap-2 bg-white/15 text-white border border-white/30 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white/25 transition-colors no-underline">
+                <i class="bi bi-people"></i> {{ __('admin.club_dashboard_index_members_btn') }}
             </a>
-            <a href="{{ route('admin.club.financials', $club->slug) }}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold bg-primary text-white hover:bg-primary/90 transition-colors no-underline" style="letter-spacing:0.4px">
-                <i class="bi bi-bar-chart"></i> Financials
+            <a href="{{ route('admin.club.financials', $club->slug) }}"
+               class="inline-flex items-center gap-2 bg-white text-primary px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white/90 transition-colors no-underline">
+                <i class="bi bi-bar-chart"></i> {{ __('admin.club_dashboard_index_financials_btn') }}
             </a>
-        </div>
-    </div>
+        </x-slot:actions>
+    </x-admin-hero>
 
     <!-- ══ MAIN GRID ══ -->
     <div class="dash-grid">
@@ -203,7 +202,7 @@
         {{-- ── 1. ACTIVE MEMBERS ── --}}
         <div class="dc dash-members">
             <div class="dc-hdr">
-                <div class="dc-ttl">Active Members</div>
+                <div class="dc-ttl">{{ __('admin.club_dashboard_index_active_members') }}</div>
                 <div class="dc-ico dc-ico-p"><i class="bi bi-people-fill"></i></div>
             </div>
             @php
@@ -218,8 +217,8 @@
             </div>
             <div class="m-legend">
                 @php
-                    $ageLabels = ['Kids (0-12)','Juniors (13-17)','Youth (18-25)','Adults (26+)'];
-                    $ageCols   = ['#f97316','#f59e0b','#7c3aed','#22c55e'];
+                    $ageLabels = [__('admin.club_dashboard_index_age_kids'),__('admin.club_dashboard_index_age_juniors'),__('admin.club_dashboard_index_age_youth'),__('admin.club_dashboard_index_age_adults')];
+                    $ageCols   = ['#f97316','#f59e0b','hsl(250 65% 60%)','#22c55e'];
                     $ai = 0;
                 @endphp
                 @foreach($ageGroups as $grp => $cnt)
@@ -236,7 +235,7 @@
         {{-- ── 2. PACKAGES ── --}}
         <div class="dc dash-packages">
             <div class="dc-hdr">
-                <div class="dc-ttl">Club Programs &amp; Packages</div>
+                <div class="dc-ttl">{{ __('admin.club_dashboard_index_programs_packages') }}</div>
                 <div class="dc-ico dc-ico-g"><i class="bi bi-box"></i></div>
             </div>
             <div class="pkg-scroll" style="flex:1;min-height:0">
@@ -245,17 +244,17 @@
                     <div class="pkg-item">
                         <div class="pkg-name">{{ Str::limit($pkg->name, 16) }}</div>
                         <div class="pkg-price"><span class="cur">{{ $club->currency ?? 'BHD' }} </span>{{ number_format($pkg->price ?? 0) }}</div>
-                        @php $badges=[['g','Available'],['b','Popular'],['o','Premium'],['y','Seasonal']]; $b=$badges[$i%4]; @endphp
+                        @php $badges=[['g',__('admin.club_dashboard_index_badge_available')],['b',__('admin.club_dashboard_index_badge_popular')],['o',__('admin.club_dashboard_index_badge_premium')],['y',__('admin.club_dashboard_index_badge_seasonal')]]; $b=$badges[$i%4]; @endphp
                         <span class="pkg-badge pkg-badge-{{ $b[0] }}">{{ $b[1] }}</span>
                         @if($pkg->duration_months)
-                        <div style="margin-top:5px;font-size:8px;color:#9ca3af;font-weight:600">{{ $pkg->duration_months }} month{{ $pkg->duration_months > 1 ? 's' : '' }}</div>
+                        <div style="margin-top:5px;font-size:8px;color:#9ca3af;font-weight:600">{{ $pkg->duration_months }} {{ $pkg->duration_months > 1 ? __('admin.club_dashboard_index_month_plural') : __('admin.club_dashboard_index_month_singular') }}</div>
                         @endif
                     </div>
                     @empty
                     <div class="pkg-item">
-                        <div class="pkg-name">No packages</div>
+                        <div class="pkg-name">{{ __('admin.club_dashboard_index_no_packages') }}</div>
                         <div class="pkg-price" style="font-size:14px;color:#9ca3af">—</div>
-                        <span class="pkg-badge pkg-badge-g">Add one</span>
+                        <span class="pkg-badge pkg-badge-g">{{ __('admin.club_dashboard_index_add_one') }}</span>
                     </div>
                     @endforelse
                 </div>
@@ -272,17 +271,17 @@
         {{-- ── 3. TALENT & ACTIVITIES ── --}}
         <div class="dc dash-talent">
             <div class="dc-hdr">
-                <div class="dc-ttl">Talent &amp; Activities</div>
+                <div class="dc-ttl">{{ __('admin.club_dashboard_index_talent_activities') }}</div>
                 <div class="dc-ico dc-ico-a"><i class="bi bi-activity"></i></div>
             </div>
             <div>
                 <span class="act-count">{{ $stats['activities'] ?? 0 }}</span>
-                <span class="act-sublbl">{{ Str::plural('Activity', $stats['activities'] ?? 0) }} Registered</span>
+                <span class="act-sublbl">{{ Str::plural('Activity', $stats['activities'] ?? 0) }} {{ __('admin.club_dashboard_index_registered') }}</span>
             </div>
             <div class="act-gantt">
                 @php
                     $actColors = [
-                        ['#7c3aed','#3b82f6'],
+                        ['hsl(250 65% 60%)','#3b82f6'],
                         ['#f97316','#dc2626'],
                         ['#22c55e','#16a34a'],
                     ];
@@ -290,7 +289,7 @@
                 @forelse($activities->take(3) as $i => $act)
                 <div class="act-row">
                     <div class="act-av" style="background:linear-gradient(135deg,{{ $actColors[$i % 3][0] }},{{ $actColors[$i % 3][1] }})"></div>
-                    <div class="act-nm">{{ Str::limit($act->name ?? 'Activity', 10) }}</div>
+                    <div class="act-nm">{{ Str::limit($act->name ?? __('admin.club_dashboard_index_activity_fallback'), 10) }}</div>
                     <div class="act-bars">
                         <div class="act-seg" style="background:#86efac;flex:{{ 1.8 + $i*0.4 }}"></div>
                         <div class="act-seg" style="background:#93c5fd;flex:1.3"></div>
@@ -301,21 +300,21 @@
                 </div>
                 @empty
                 <div class="act-row">
-                    <div class="act-av" style="background:linear-gradient(135deg,#7c3aed,#3b82f6)"></div>
-                    <div class="act-nm">No activities</div>
+                    <div class="act-av" style="background:linear-gradient(135deg,hsl(250 65% 60%),#3b82f6)"></div>
+                    <div class="act-nm">{{ __('admin.club_dashboard_index_no_activities') }}</div>
                     <div class="act-bars">
                         <div class="act-seg" style="background:#e5e7eb;flex:5"></div>
                     </div>
                 </div>
                 @endforelse
             </div>
-            <a href="{{ route('admin.club.activities', $club->slug) }}" class="act-see">See All Activities →</a>
+            <a href="{{ route('admin.club.activities', $club->slug) }}" class="act-see">{{ __('admin.club_dashboard_index_see_all_activities') }}</a>
         </div>
 
         {{-- ── 4. TRAINERS ── --}}
         <div class="dc dash-trainers">
             <div class="dc-hdr">
-                <div class="dc-ttl">Trainers</div>
+                <div class="dc-ttl">{{ __('admin.club_dashboard_index_trainers') }}</div>
                 <div class="dc-ico dc-ico-b"><i class="bi bi-person-badge"></i></div>
             </div>
             @forelse($instructors->take(3) as $instr)
@@ -329,28 +328,28 @@
                     @endif
                 </div>
                 <div style="flex:1;min-width:0">
-                    <div class="tr-name">{{ $u?->full_name ?? 'Instructor' }}</div>
+                    <div class="tr-name">{{ $u?->full_name ?? __('admin.club_dashboard_index_instructor_fallback') }}</div>
                     <div class="tr-exp">{{ ucwords(str_replace('_',' ',$instr->role ?? 'Instructor')) }}</div>
                 </div>
                 <div class="tr-badge {{ $instr->role === 'head_instructor' ? 'badge-act' : 'badge-avl' }}">
-                    {{ $instr->role === 'head_instructor' ? 'Active' : 'Staff' }}
+                    {{ $instr->role === 'head_instructor' ? __('admin.club_dashboard_index_status_active') : __('admin.club_dashboard_index_status_staff') }}
                 </div>
             </div>
             @empty
             <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#9ca3af">
                 <i class="bi bi-person-x" style="font-size:28px;color:#e5e7eb"></i>
-                <span style="font-size:11px">No instructors added</span>
+                <span style="font-size:11px">{{ __('admin.club_dashboard_index_no_instructors') }}</span>
             </div>
             @endforelse
-            <a href="{{ route('admin.club.instructors', $club->slug) }}" class="tr-see">Manage Trainers →</a>
+            <a href="{{ route('admin.club.instructors', $club->slug) }}" class="tr-see">{{ __('admin.club_dashboard_index_manage_trainers') }}</a>
         </div>
 
         {{-- ── 5. HALL OF FAME (row-span 2) ── --}}
         <div class="dc dash-hof" style="padding:14px">
             <div class="dc-hdr">
                 <div>
-                    <div class="dc-ttl">Hall of Fame</div>
-                    <div style="font-size:8px;color:#d1d5db;font-weight:600;margin-top:1px">ACHIEVEMENTS</div>
+                    <div class="dc-ttl">{{ __('admin.club_dashboard_index_hall_of_fame') }}</div>
+                    <div style="font-size:8px;color:#d1d5db;font-weight:600;margin-top:1px">{{ __('admin.club_dashboard_index_achievements_label') }}</div>
                 </div>
                 <div class="dc-ico dc-ico-s"><i class="bi bi-trophy-fill"></i></div>
             </div>
@@ -364,9 +363,9 @@
                     @endif
                 </div>
                 <div style="flex:1;min-width:0">
-                    <div class="hof-name">{{ $member->full_name ?? 'Member' }}</div>
-                    <div class="hof-rank">{{ $member->clubAffiliations->first()?->name ?? ['Red Belt','Blue Belt','Green Belt','Yellow Belt','Black Belt'][$i % 5] }}</div>
-                    <span class="hof-ach">{{ ['Champion 2024','Club Spirit','Top Performer','Rising Star','Excellence'][$i % 5] }}</span>
+                    <div class="hof-name">{{ $member->full_name ?? __('admin.club_dashboard_index_member_fallback') }}</div>
+                    <div class="hof-rank">{{ $member->clubAffiliations->first()?->name ?? [__('admin.club_dashboard_index_belt_red'),__('admin.club_dashboard_index_belt_blue'),__('admin.club_dashboard_index_belt_green'),__('admin.club_dashboard_index_belt_yellow'),__('admin.club_dashboard_index_belt_black')][$i % 5] }}</div>
+                    <span class="hof-ach">{{ [__('admin.club_dashboard_index_ach_champion_2024'),__('admin.club_dashboard_index_ach_club_spirit'),__('admin.club_dashboard_index_ach_top_performer'),__('admin.club_dashboard_index_ach_rising_star'),__('admin.club_dashboard_index_ach_excellence')][$i % 5] }}</span>
                 </div>
                 @if($i < 3)<span class="hof-star">★</span>@endif
             </div>
@@ -376,43 +375,43 @@
                 <div class="hof-photo" style="font-size:11px">{{ mb_strtoupper(mb_substr($nm, 0, 1, 'UTF-8'), 'UTF-8') }}</div>
                 <div style="flex:1;min-width:0">
                     <div class="hof-name">{{ $nm }}</div>
-                    <div class="hof-rank">{{ ['Red Belt','Blue Belt','Blue Belt','Instructor','Instructor'][$i] }}</div>
-                    <span class="hof-ach">{{ ['Champion 2024','Club Spirit','Top Performer','Rising Star','Excellence'][$i] }}</span>
+                    <div class="hof-rank">{{ [__('admin.club_dashboard_index_belt_red'),__('admin.club_dashboard_index_belt_blue'),__('admin.club_dashboard_index_belt_blue'),__('admin.club_dashboard_index_instructor_fallback'),__('admin.club_dashboard_index_instructor_fallback')][$i] }}</div>
+                    <span class="hof-ach">{{ [__('admin.club_dashboard_index_ach_champion_2024'),__('admin.club_dashboard_index_ach_club_spirit'),__('admin.club_dashboard_index_ach_top_performer'),__('admin.club_dashboard_index_ach_rising_star'),__('admin.club_dashboard_index_ach_excellence')][$i] }}</span>
                 </div>
                 @if($i < 3)<span class="hof-star">★</span>@endif
             </div>
             @endforeach
             @endforelse
-            <a href="{{ route('admin.club.achievements', $club->slug) }}" class="hof-see">See All Achievements →</a>
+            <a href="{{ route('admin.club.achievements', $club->slug) }}" class="hof-see">{{ __('admin.club_dashboard_index_see_all_achievements') }}</a>
         </div>
 
         {{-- ── 6. EVENTS ── --}}
         <div class="dc dash-events">
             <div class="dc-hdr">
-                <div class="dc-ttl">Events</div>
+                <div class="dc-ttl">{{ __('admin.club_dashboard_index_events') }}</div>
                 <div class="dc-ico dc-ico-p"><i class="bi bi-calendar-event"></i></div>
             </div>
-            <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;font-weight:600">Future Planning</div>
+            <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;font-weight:600">{{ __('admin.club_dashboard_index_future_planning') }}</div>
             <div class="ev-num">{{ $stats['events'] ?? 0 }}</div>
-            <span class="ev-lbl">Active Events</span>
+            <span class="ev-lbl">{{ __('admin.club_dashboard_index_active_events') }}</span>
             <div class="ev-cal">
                 @for($c = 0; $c < 10; $c++)
                 <div class="ev-cell"></div>
                 @endfor
             </div>
-            <div class="ev-pend">Data for next grading session pending</div>
+            <div class="ev-pend">{{ __('admin.club_dashboard_index_grading_pending') }}</div>
         </div>
 
         {{-- ── 7. ACTIVITIES GANTT ── --}}
         <div class="dc dash-activities">
             <div class="dc-hdr">
-                <div class="dc-ttl">Activity Schedule</div>
+                <div class="dc-ttl">{{ __('admin.club_dashboard_index_activity_schedule') }}</div>
                 <div class="dc-ico dc-ico-a"><i class="bi bi-bar-chart-steps"></i></div>
             </div>
             <div style="display:flex;gap:10px;align-items:stretch;flex:1;min-height:0">
                 <div style="text-align:center;padding-right:10px;border-right:1px solid #f3f4f6">
                     <div style="font-size:36px;color:#111827;line-height:1">{{ $stats['activities'] ?? 0 }}</div>
-                    <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Total</div>
+                    <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;font-weight:600">{{ __('admin.club_dashboard_index_total') }}</div>
                 </div>
                 <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
                     <div style="display:flex;gap:1px;margin-bottom:2px">
@@ -422,8 +421,8 @@
                     </div>
                     @forelse($activities->take(3) as $i => $act)
                     <div class="act-row">
-                        <div class="act-av" style="width:16px;height:16px;background:linear-gradient(135deg,{{ ['#7c3aed,#3b82f6','#f97316,#dc2626','#22c55e,#16a34a'][$i%3] }})"></div>
-                        <div class="act-nm" style="width:56px;font-size:8.5px">{{ Str::limit($act->name ?? 'Activity', 9) }}</div>
+                        <div class="act-av" style="width:16px;height:16px;background:linear-gradient(135deg,{{ ['hsl(250 65% 60%),#3b82f6','#f97316,#dc2626','#22c55e,#16a34a'][$i%3] }})"></div>
+                        <div class="act-nm" style="width:56px;font-size:8.5px">{{ Str::limit($act->name ?? __('admin.club_dashboard_index_activity_fallback'), 9) }}</div>
                         <div class="act-bars" style="height:13px">
                             <div class="act-seg" style="background:#86efac;flex:2.2"></div>
                             <div class="act-seg" style="background:#93c5fd;flex:1.4"></div>
@@ -433,17 +432,17 @@
                         </div>
                     </div>
                     @empty
-                    <div style="flex:1;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:11px">No activities yet</div>
+                    <div style="flex:1;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:11px">{{ __('admin.club_dashboard_index_no_activities_yet') }}</div>
                     @endforelse
                 </div>
             </div>
-            <a href="{{ route('admin.club.activities', $club->slug) }}" class="act-see">View Schedule →</a>
+            <a href="{{ route('admin.club.activities', $club->slug) }}" class="act-see">{{ __('admin.club_dashboard_index_view_schedule') }}</a>
         </div>
 
         {{-- ── 8. FEATURED ACHIEVEMENTS / RATING ── --}}
         <div class="dc dash-achievements">
             <div class="dc-hdr">
-                <div class="dc-ttl">Member Rating &amp; Achievements</div>
+                <div class="dc-ttl">{{ __('admin.club_dashboard_index_member_rating_achievements') }}</div>
                 <div class="dc-ico dc-ico-s"><i class="bi bi-star-fill"></i></div>
             </div>
             <div style="display:flex;align-items:center;flex:1;min-height:0">
@@ -458,22 +457,22 @@
                 </div>
                 <div class="ach-bars" style="flex:1">
                     <div class="ach-bar-row">
-                        <div class="ach-bar-lbl">Technique</div>
+                        <div class="ach-bar-lbl">{{ __('admin.club_dashboard_index_bar_technique') }}</div>
                         <div class="ach-bar-track"><div class="ach-bar-fill" style="width:{{ min($averageRating*20,100) }}%"></div></div>
                         <div class="ach-bar-val">{{ number_format($averageRating,1) }}</div>
                     </div>
                     <div class="ach-bar-row">
-                        <div class="ach-bar-lbl">Discipline</div>
+                        <div class="ach-bar-lbl">{{ __('admin.club_dashboard_index_bar_discipline') }}</div>
                         <div class="ach-bar-track"><div class="ach-bar-fill" style="width:{{ min(max($averageRating-0.2,0)*20,100) }}%;background:#3b82f6"></div></div>
                         <div class="ach-bar-val">{{ number_format(max($averageRating-0.2,0),1) }}</div>
                     </div>
                     <div class="ach-bar-row">
-                        <div class="ach-bar-lbl">Focus</div>
+                        <div class="ach-bar-lbl">{{ __('admin.club_dashboard_index_bar_focus') }}</div>
                         <div class="ach-bar-track"><div class="ach-bar-fill" style="width:{{ min(max($averageRating-0.3,0)*20,100) }}%;background:#22c55e"></div></div>
                         <div class="ach-bar-val">{{ number_format(max($averageRating-0.3,0),1) }}</div>
                     </div>
                     @if($reviews->count() === 0)
-                    <div class="ach-pending">Reviews pending — Data will populate after the first seasonal grading.</div>
+                    <div class="ach-pending">{{ __('admin.club_dashboard_index_reviews_pending') }}</div>
                     @endif
                 </div>
             </div>
@@ -497,20 +496,20 @@
     @if(isset($expiringSubscriptions) && count($expiringSubscriptions) > 0)
     <div style="background:#fff;border:1px solid #fde68a;border-left:4px solid #f59e0b;border-radius:14px;padding:16px">
         <h5 style="font-size:13px;color:#111827;margin:0 0 12px;display:flex;align-items:center;gap:6px">
-            <i class="bi bi-exclamation-triangle" style="color:#f59e0b"></i> Expiring Subscriptions
+            <i class="bi bi-exclamation-triangle" style="color:#f59e0b"></i> {{ __('admin.club_dashboard_index_expiring_subscriptions') }}
         </h5>
         <div class="overflow-x-auto">
             <table class="exp-table">
                 <thead><tr>
-                    <th>Member</th><th>Package</th><th>Expires</th><th>Action</th>
+                    <th>{{ __('admin.club_dashboard_index_th_member') }}</th><th>{{ __('admin.club_dashboard_index_th_package') }}</th><th>{{ __('admin.club_dashboard_index_th_expires') }}</th><th>{{ __('admin.club_dashboard_index_th_action') }}</th>
                 </tr></thead>
                 <tbody>
                 @foreach($expiringSubscriptions as $sub)
                 <tr>
-                    <td style="font-weight:600;color:#374151">{{ $sub->user->full_name ?? 'N/A' }}</td>
-                    <td style="color:#6b7280">{{ $sub->package->name ?? 'N/A' }}</td>
-                    <td style="font-size:11px;color:#d97706">{{ $sub->end_date?->format('M d, Y') ?? 'N/A' }}</td>
-                    <td><button style="background:#ede9fe;border:none;color:#7c3aed;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Renew</button></td>
+                    <td style="font-weight:600;color:#374151">{{ $sub->user->full_name ?? __('admin.club_dashboard_index_na') }}</td>
+                    <td style="color:#6b7280">{{ $sub->package->name ?? __('admin.club_dashboard_index_na') }}</td>
+                    <td style="font-size:11px;color:#d97706">{{ $sub->end_date?->format('M d, Y') ?? __('admin.club_dashboard_index_na') }}</td>
+                    <td><button style="background:hsl(250 60% 93%);border:none;color:hsl(250 65% 60%);border-radius:6px;padding:4px 12px;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">{{ __('admin.club_dashboard_index_renew') }}</button></td>
                 </tr>
                 @endforeach
                 </tbody>
@@ -535,7 +534,7 @@ document.addEventListener('DOMContentLoaded', function () {
             datasets: [{
                 data: ageVals.length ? ageVals : [1],
                 backgroundColor: ageVals.length
-                    ? ['rgba(249,115,22,0.85)','rgba(245,158,11,0.85)','rgba(124,58,237,0.85)','rgba(34,197,94,0.85)']
+                    ? ['rgba(249,115,22,0.85)','rgba(245,158,11,0.85)','rgba(124,99,224,0.85)','rgba(34,197,94,0.85)']
                     : ['#f3f4f6'],
                 borderWidth: 2,
                 borderColor: '#fff',

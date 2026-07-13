@@ -8,11 +8,11 @@
     {{-- Header --}}
     <div class="flex items-center justify-between mb-6">
         <div>
-            <h2 class="text-xl font-bold text-foreground">Timeline</h2>
-            <p class="text-sm text-muted-foreground mt-0.5">Manage posts shown on your club's public timeline</p>
+            <h2 class="text-xl font-bold text-foreground">{{ __('admin.club_timeline_index_title') }}</h2>
+            <p class="text-sm text-muted-foreground mt-0.5">{{ __('admin.club_timeline_index_subtitle') }}</p>
         </div>
         <button @click="openAdd()" class="btn btn-primary">
-            <i class="bi bi-plus-lg mr-2"></i>New Post
+            <i class="bi bi-plus-lg me-2"></i>{{ __('admin.club_timeline_index_new_post') }}
         </button>
     </div>
 
@@ -21,9 +21,9 @@
         <div class="card border-0 shadow-sm">
             <div class="card-body text-center py-16">
                 <i class="bi bi-newspaper text-muted-foreground" style="font-size:2.5rem;opacity:.3;"></i>
-                <p class="mt-3 text-muted-foreground">No posts yet. Create your first timeline post.</p>
+                <p class="mt-3 text-muted-foreground">{{ __('admin.club_timeline_index_empty') }}</p>
                 <button @click="openAdd()" class="btn btn-primary mt-2">
-                    <i class="bi bi-plus-lg mr-2"></i>New Post
+                    <i class="bi bi-plus-lg me-2"></i>{{ __('admin.club_timeline_index_new_post') }}
                 </button>
             </div>
         </div>
@@ -62,12 +62,12 @@
                             <p class="text-sm text-foreground mb-2 line-clamp-2">{{ $post->body }}</p>
                             <div class="flex flex-wrap gap-3 text-xs text-muted-foreground">
                                 @if($post->image_path)
-                                    <span><i class="bi bi-image mr-1"></i>Has image</span>
+                                    <span><i class="bi bi-image me-1"></i>{{ __('admin.club_timeline_index_has_image') }}</span>
                                 @endif
-                                <span><i class="bi bi-heart mr-1"></i>{{ $post->likes_count }} likes</span>
-                                <span><i class="bi bi-chat mr-1"></i>{{ $post->comments_count }} comments</span>
+                                <span><i class="bi bi-heart me-1"></i>{{ $post->likes_count }} {{ __('admin.club_timeline_index_likes') }}</span>
+                                <span><i class="bi bi-chat me-1"></i>{{ $post->comments_count }} {{ __('admin.club_timeline_index_comments') }}</span>
                                 @if($isDraft)
-                                    <span class="badge bg-gray-100 text-gray-500">Draft</span>
+                                    <span class="badge bg-gray-100 text-gray-500">{{ __('admin.club_timeline_index_draft') }}</span>
                                 @endif
                             </div>
                         </div>
@@ -75,11 +75,11 @@
                         {{-- Actions --}}
                         <div class="flex gap-2 flex-shrink-0">
                             <button @click="openEdit({{ $post->id }})"
-                                    class="btn btn-sm btn-outline-secondary" title="Edit">
+                                    class="btn btn-sm btn-outline-secondary" title="{{ __('shared.edit') }}">
                                 <i class="bi bi-pencil"></i>
                             </button>
                             <button @click="deletePost({{ $post->id }})"
-                                    class="btn btn-sm btn-outline-danger" title="Delete">
+                                    class="btn btn-sm btn-outline-danger" title="{{ __('shared.delete') }}">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>
@@ -87,9 +87,9 @@
 
                     {{-- Image thumbnail if present --}}
                     @if($post->image_path)
-                    <div class="mt-3 pl-[88px]">
+                    <div class="mt-3 ps-[88px]">
                         <img src="{{ asset('storage/' . $post->image_path) }}"
-                             class="rounded-lg object-cover" style="max-height:120px;" alt="Post image">
+                             class="rounded-lg object-cover" style="max-height:120px;" alt="{{ __('admin.club_timeline_index_post_image_alt') }}">
                     </div>
                     @endif
                 </div>
@@ -117,7 +117,7 @@
         <div class="flex min-h-full items-center justify-center p-4">
             <div class="modal-content border-0 shadow-lg w-full max-w-xl relative" @click.stop>
                 <div class="modal-header border-b border-border px-6 py-4">
-                    <h5 class="modal-title text-lg font-semibold" x-text="isEdit ? 'Edit Post' : 'New Post'"></h5>
+                    <h5 class="modal-title text-lg font-semibold" x-text="isEdit ? '{{ __('admin.club_timeline_index_edit_post') }}' : '{{ __('admin.club_timeline_index_new_post') }}'"></h5>
                     <button type="button" class="text-muted-foreground hover:text-foreground" @click="showModal = false">
                         <i class="bi bi-x-lg"></i>
                     </button>
@@ -129,10 +129,10 @@
                         @include('admin.club.timeline.partials.form-fields')
                     </div>
                     <div class="modal-footer border-t border-border px-6 py-4 flex justify-end gap-3">
-                        <button type="button" class="btn btn-outline-secondary" @click="showModal = false">Cancel</button>
+                        <button type="button" class="btn btn-outline-secondary" @click="showModal = false">{{ __('shared.cancel') }}</button>
                         <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-lg mr-1"></i>
-                            <span x-text="isEdit ? 'Update Post' : 'Save Post'"></span>
+                            <i class="bi bi-check-lg me-1"></i>
+                            <span x-text="isEdit ? '{{ __('admin.club_timeline_index_update_post') }}' : '{{ __('admin.club_timeline_index_save_post') }}'"></span>
                         </button>
                     </div>
                 </form>
@@ -196,9 +196,9 @@ function timelineAdmin() {
 
         deletePost(id) {
             confirmAction({
-                title:       'Delete Post',
-                message:     'This post and all its likes and comments will be permanently removed.',
-                confirmText: 'Delete',
+                title:       '{{ __("admin.club_timeline_index_delete_confirm_title") }}',
+                message:     '{{ __("admin.club_timeline_index_delete_confirm_message") }}',
+                confirmText: '{{ __("shared.delete") }}',
                 type:        'danger',
             }).then(confirmed => {
                 if (!confirmed) return;
@@ -213,12 +213,12 @@ function timelineAdmin() {
                 .then(data => {
                     if (data.success) {
                         document.getElementById('timeline-post-' + id)?.remove();
-                        window.showToast('success', data.message || 'Post deleted.');
+                        window.showToast('success', data.message || '{{ __("admin.club_timeline_index_post_deleted") }}');
                     } else {
-                        window.showToast('error', data.message || 'Failed to delete post.');
+                        window.showToast('error', data.message || '{{ __("admin.club_timeline_index_delete_failed") }}');
                     }
                 })
-                .catch(() => window.showToast('error', 'Failed to delete post.'));
+                .catch(() => window.showToast('error', '{{ __("admin.club_timeline_index_delete_failed") }}'));
             });
         },
     };

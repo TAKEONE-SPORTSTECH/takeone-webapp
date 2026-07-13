@@ -43,12 +43,27 @@
             var html = await res.text();
             var doc = new DOMParser().parseFromString(html, 'text/html');
             var nc = doc.getElementById('shell-content');
-            if (!nc) { window.location.href = url; return; } // different shell -> full load
+            if (!nc) { window.location.href = url; return; } // no shell content -> full load
+            // Cross-shell guard: every mobile shell reuses id="shell-content", so a
+            // link that crosses shells (personal ↔ admin-club ↔ business) would swap
+            // foreign content under the wrong header/drawer/tab-bar. If the destination
+            // declares a different data-shell-id, hard-load instead of swapping.
+            var here = c.getAttribute('data-shell-id');
+            var there = nc.getAttribute('data-shell-id');
+            if (here && there && here !== there) { window.location.href = url; return; }
             c.innerHTML = nc.innerHTML;
             var route = nc.getAttribute('data-route') || '';
             c.setAttribute('data-route', route);
             var titleEl = document.getElementById('shell-title');
             if (titleEl && nc.getAttribute('data-title')) titleEl.textContent = nc.getAttribute('data-title');
+            // Page actions live in the header, outside #shell-content, so swap them
+            // too — and clear them when the destination declares none, or the previous
+            // page's buttons linger on a page they don't belong to.
+            var actionsEl = document.getElementById('shell-actions');
+            if (actionsEl) {
+                var newActions = doc.getElementById('shell-actions');
+                actionsEl.innerHTML = newActions ? newActions.innerHTML : '';
+            }
             if (doc.title) document.title = doc.title;
             updateActive(route);
             // Update the URL BEFORE running inline scripts so they can read the

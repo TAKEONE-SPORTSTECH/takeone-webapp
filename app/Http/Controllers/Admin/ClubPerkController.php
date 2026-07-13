@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 
 class ClubPerkController extends Controller
 {
+    use \App\Traits\StoresBase64Images;
     use HandlesClubAuthorization;
     use PersistsTranslations;
 
@@ -19,6 +20,7 @@ class ClubPerkController extends Controller
     {
         $this->authorizeClub($club);
         $perks = ClubPerk::where('tenant_id', $club->id)->orderBy('sort_order')->orderBy('id')->get();
+
         return view(\App\Support\ClubView::pick('perks'), compact('club', 'perks'));
     }
 
@@ -28,28 +30,27 @@ class ClubPerkController extends Controller
 
         $imagePath = null;
         if ($request->filled('image') && str_starts_with($request->image, 'data:image')) {
-            $imageParts  = explode(';base64,', $request->image);
-            $extension   = explode('image/', $imageParts[0])[1];
-            $imageBinary = base64_decode($imageParts[1]);
-            $folder      = $request->input('image_folder', 'perks/' . $club->slug);
-            $filename    = $request->input('image_filename', 'perk_' . time());
-            $imagePath   = $folder . '/' . $filename . '.' . $extension;
-            Storage::disk('public')->put($imagePath, $imageBinary);
+            $folder = $request->input('image_folder', 'perks/'.$club->slug);
+            $filename = $request->input('image_filename', 'perk_'.time());
+            $imagePath = $this->storeBase64Image($request->image, $folder, $filename);
+            if ($imagePath === null) {
+                return back()->withErrors(['image' => 'Invalid or unsupported image.']);
+            }
         }
 
         $perk = ClubPerk::create([
-            'tenant_id'   => $club->id,
-            'title'       => $request->title,
+            'tenant_id' => $club->id,
+            'title' => $request->title,
             'description' => $request->description,
-            'badge'       => $request->badge,
-            'image_path'  => $imagePath,
-            'icon'        => $request->icon ?: 'bi-gift',
-            'bg_from'     => $request->bg_from ?: '#f59e0b',
-            'bg_to'       => $request->bg_to   ?: '#f97316',
-            'perk_type'   => $request->perk_type,
-            'perk_value'  => $request->perk_value,
-            'status'      => $request->status,
-            'sort_order'  => $request->sort_order ?? 0,
+            'badge' => $request->badge,
+            'image_path' => $imagePath,
+            'icon' => $request->icon ?: 'bi-gift',
+            'bg_from' => $request->bg_from ?: '#f59e0b',
+            'bg_to' => $request->bg_to ?: '#f97316',
+            'perk_type' => $request->perk_type,
+            'perk_value' => $request->perk_value,
+            'status' => $request->status,
+            'sort_order' => $request->sort_order ?? 0,
         ]);
 
         $this->applyTranslations($perk, $request);
@@ -65,16 +66,16 @@ class ClubPerkController extends Controller
         $data = $request->only(['title', 'description', 'badge', 'icon', 'bg_from', 'bg_to', 'perk_type', 'perk_value', 'status', 'sort_order']);
 
         if ($request->filled('image') && str_starts_with($request->image, 'data:image')) {
+            $folder = $request->input('image_folder', 'perks/'.$club->slug);
+            $filename = $request->input('image_filename', 'perk_'.time());
+            $stored = $this->storeBase64Image($request->image, $folder, $filename);
+            if ($stored === null) {
+                return back()->withErrors(['image' => 'Invalid or unsupported image.']);
+            }
             if ($perk->image_path) {
                 Storage::disk('public')->delete($perk->image_path);
             }
-            $imageParts         = explode(';base64,', $request->image);
-            $extension          = explode('image/', $imageParts[0])[1];
-            $imageBinary        = base64_decode($imageParts[1]);
-            $folder             = $request->input('image_folder', 'perks/' . $club->slug);
-            $filename           = $request->input('image_filename', 'perk_' . time());
-            $data['image_path'] = $folder . '/' . $filename . '.' . $extension;
-            Storage::disk('public')->put($data['image_path'], $imageBinary);
+            $data['image_path'] = $stored;
         }
 
         if ($request->boolean('remove_image') && $perk->image_path) {

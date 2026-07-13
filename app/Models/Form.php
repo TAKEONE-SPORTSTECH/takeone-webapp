@@ -29,8 +29,8 @@ class Form extends Model
     ];
 
     protected $casts = [
-        'schema'    => 'array',
-        'settings'  => 'array',
+        'schema' => 'array',
+        'settings' => 'array',
         'is_active' => 'boolean',
     ];
 
@@ -74,6 +74,7 @@ class Form extends Model
                 }
             }
         }
+
         return $out;
     }
 }

@@ -28,8 +28,8 @@ class BusinessApprovalController extends Controller
             ->get();
 
         $counts = [
-            'all'      => $businesses->count(),
-            'pending'  => $businesses->where('status', Business::STATUS_PENDING)->count(),
+            'all' => $businesses->count(),
+            'pending' => $businesses->where('status', Business::STATUS_PENDING)->count(),
             'approved' => $businesses->where('status', Business::STATUS_APPROVED)->count(),
             'rejected' => $businesses->where('status', Business::STATUS_REJECTED)->count(),
         ];
@@ -71,15 +71,15 @@ class BusinessApprovalController extends Controller
     public function update(Request $request, Business $business): JsonResponse|RedirectResponse
     {
         $validated = $request->validate([
-            'name'             => ['required', 'string', 'max:120'],
-            'description'      => ['nullable', 'string', 'max:1000'],
-            'status'           => ['required', Rule::in([
+            'name' => ['required', 'string', 'max:120'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'status' => ['required', Rule::in([
                 Business::STATUS_PENDING,
                 Business::STATUS_APPROVED,
                 Business::STATUS_REJECTED,
             ])],
             'rejection_reason' => ['nullable', 'string', 'max:1000'],
-            'logo'             => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:4096'],
+            'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:4096'],
         ]);
 
         if ($request->hasFile('logo')) {
@@ -89,7 +89,7 @@ class BusinessApprovalController extends Controller
             $business->logo = $request->file('logo')->store('business-logos', 'public');
         }
 
-        $business->name        = $validated['name'];
+        $business->name = $validated['name'];
         $business->description = $validated['description'] ?? null;
         $business->save();
 
@@ -101,10 +101,10 @@ class BusinessApprovalController extends Controller
             $business->reject($validated['rejection_reason'] ?? null, Auth::id());
         } elseif ($validated['status'] === Business::STATUS_PENDING && $business->status !== Business::STATUS_PENDING) {
             $business->update([
-                'status'           => Business::STATUS_PENDING,
+                'status' => Business::STATUS_PENDING,
                 'rejection_reason' => null,
-                'approved_at'      => null,
-                'approved_by'      => null,
+                'approved_at' => null,
+                'approved_by' => null,
             ]);
         }
 
@@ -117,9 +117,9 @@ class BusinessApprovalController extends Controller
     public function transferOwner(Request $request, Business $business): JsonResponse|RedirectResponse
     {
         $validated = $request->validate([
-            'to_user_id'     => ['required', 'integer', 'exists:users,id'],
+            'to_user_id' => ['required', 'integer', 'exists:users,id'],
             'reassign_clubs' => ['nullable', 'boolean'],
-            'note'           => ['nullable', 'string', 'max:1000'],
+            'note' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $newOwnerId = (int) $validated['to_user_id'];
@@ -148,10 +148,10 @@ class BusinessApprovalController extends Controller
 
         if ($request->wantsJson()) {
             return response()->json([
-                'success'  => true,
-                'message'  => "Ownership transferred to {$newOwner->full_name}.",
+                'success' => true,
+                'message' => "Ownership transferred to {$newOwner->full_name}.",
                 'business' => $this->payload($business->fresh()),
-                'history'  => $this->historyPayload($business),
+                'history' => $this->historyPayload($business),
             ]);
         }
 
@@ -175,23 +175,23 @@ class BusinessApprovalController extends Controller
     public function clubs(Business $business): JsonResponse
     {
         $available = Tenant::where(function ($q) use ($business) {
-                $q->whereNull('business_id')->orWhere('business_id', '!=', $business->id);
-            })
+            $q->whereNull('business_id')->orWhere('business_id', '!=', $business->id);
+        })
             ->with(['owner:id,full_name', 'business:id,name'])
             ->orderBy('club_name')
             ->get(['id', 'club_name', 'logo', 'owner_user_id', 'business_id'])
             ->map(fn ($c) => [
-                'id'       => $c->id,
-                'name'     => $c->club_name,
-                'logo_url' => $c->logo ? asset('storage/' . $c->logo) : null,
-                'owner'    => $c->owner?->full_name,
-                'business' => $c->business?->name,
-            ])
+            'id' => $c->id,
+            'name' => $c->club_name,
+            'logo_url' => $c->logo ? asset('storage/'.$c->logo) : null,
+            'owner' => $c->owner?->full_name,
+            'business' => $c->business?->name,
+        ])
             ->all();
 
         return response()->json([
-            'success'   => true,
-            'clubs'     => $this->clubsPayload($business),
+            'success' => true,
+            'clubs' => $this->clubsPayload($business),
             'available' => $available,
         ]);
     }
@@ -225,7 +225,7 @@ class BusinessApprovalController extends Controller
 
         $club = $business->clubs()->find($validated['club_id']);
 
-        if (!$club) {
+        if (! $club) {
             return $this->fail($request, 'That club is not part of this chain.');
         }
 
@@ -245,10 +245,10 @@ class BusinessApprovalController extends Controller
             ->orderBy('club_name')
             ->get(['id', 'club_name', 'logo', 'owner_user_id', 'business_id'])
             ->map(fn ($c) => [
-                'id'       => $c->id,
-                'name'     => $c->club_name,
-                'logo_url' => $c->logo ? asset('storage/' . $c->logo) : null,
-                'owner'    => $c->owner?->full_name,
+                'id' => $c->id,
+                'name' => $c->club_name,
+                'logo_url' => $c->logo ? asset('storage/'.$c->logo) : null,
+                'owner' => $c->owner?->full_name,
             ])
             ->all();
     }
@@ -260,10 +260,10 @@ class BusinessApprovalController extends Controller
     {
         if ($request->wantsJson()) {
             return response()->json([
-                'success'  => true,
-                'message'  => $message,
+                'success' => true,
+                'message' => $message,
                 'business' => $this->payload($business->fresh()),
-                'clubs'    => $this->clubsPayload($business),
+                'clubs' => $this->clubsPayload($business),
             ]);
         }
 
@@ -289,7 +289,7 @@ class BusinessApprovalController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => "“{$name}” has been deleted.",
-                'id'      => $business->id,
+                'id' => $business->id,
             ]);
         }
 
@@ -304,17 +304,17 @@ class BusinessApprovalController extends Controller
         $business->loadMissing('owner:id,full_name,email')->loadCount('clubs');
 
         return [
-            'id'               => $business->id,
-            'name'             => $business->name,
-            'description'      => $business->description,
-            'status'           => $business->status,
+            'id' => $business->id,
+            'name' => $business->name,
+            'description' => $business->description,
+            'status' => $business->status,
             'rejection_reason' => $business->rejection_reason,
-            'logo'             => $business->logo,
-            'logo_url'         => $business->logo ? asset('storage/' . $business->logo) : null,
-            'owner_id'         => $business->owner_user_id,
-            'owner_name'       => $business->owner?->full_name,
-            'owner_email'      => $business->owner?->email,
-            'clubs_count'      => $business->clubs_count,
+            'logo' => $business->logo,
+            'logo_url' => $business->logo ? asset('storage/'.$business->logo) : null,
+            'owner_id' => $business->owner_user_id,
+            'owner_name' => $business->owner?->full_name,
+            'owner_email' => $business->owner?->email,
+            'clubs_count' => $business->clubs_count,
         ];
     }
 
@@ -327,13 +327,13 @@ class BusinessApprovalController extends Controller
             ->with(['fromUser:id,full_name', 'toUser:id,full_name', 'changedBy:id,full_name'])
             ->get()
             ->map(fn ($log) => [
-                'from'             => $log->fromUser?->full_name,
-                'to'               => $log->toUser?->full_name,
-                'changed_by'       => $log->changedBy?->full_name,
+                'from' => $log->fromUser?->full_name,
+                'to' => $log->toUser?->full_name,
+                'changed_by' => $log->changedBy?->full_name,
                 'clubs_reassigned' => $log->clubs_reassigned,
-                'clubs_count'      => $log->clubs_reassigned_count,
-                'note'             => $log->note,
-                'at'               => $log->created_at?->format('M j, Y g:i A'),
+                'clubs_count' => $log->clubs_reassigned_count,
+                'note' => $log->note,
+                'at' => $log->created_at?->format('M j, Y g:i A'),
             ])
             ->all();
     }
@@ -357,8 +357,8 @@ class BusinessApprovalController extends Controller
     {
         if ($request->wantsJson()) {
             return response()->json([
-                'success'  => true,
-                'message'  => $message,
+                'success' => true,
+                'message' => $message,
                 'business' => $this->payload($business->fresh()),
             ]);
         }

@@ -126,8 +126,10 @@ class PackageTest extends TestCase
             'is_active'       => true,
         ]);
 
+        // putJson mirrors the app's real AJAX write path (and keeps a clean 404;
+        // browser writes now redirect via the global not-found handler).
         $this->actingAs($owner1)
-             ->put("/admin/club/{$club1->slug}/packages/{$package->id}", [
+             ->putJson("/admin/club/{$club1->slug}/packages/{$package->id}", [
                  'name'            => 'Hijacked',
                  'price'           => 1,
                  'duration_months' => 1,

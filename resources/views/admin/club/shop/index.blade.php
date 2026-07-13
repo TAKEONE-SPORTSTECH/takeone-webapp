@@ -11,8 +11,29 @@
         editModal: false,
         categoryModal: false,
         products: {{ Illuminate\Support\Js::from($products) }},
+        manageCategories: {{ Illuminate\Support\Js::from($manageCategories) }},
         productBase: @js(url('/admin/club/'.$club->slug.'/shop/products')),
+        categoryBase: @js(url('/admin/club/'.$club->slug.'/shop/categories')),
         csrf: document.querySelector('meta[name=csrf-token]')?.content || '',
+        openCategories() { this.categoryModal = true; this.$nextTick(() => this.addCategory()); },
+        addCategory() { window.dispatchEvent(new CustomEvent('market-category-edit-open', { detail: { category: null } })); },
+        editCategory(c) { window.dispatchEvent(new CustomEvent('market-category-edit-open', { detail: { category: c, action: `${this.categoryBase}/${c.id}` } })); },
+        upsertCategory(cat) {
+            if (!cat || !cat.id) return;
+            const i = this.manageCategories.findIndex(x => x.id === cat.id);
+            if (i === -1) this.manageCategories.push(cat); else this.manageCategories[i] = cat;
+        },
+        async deleteCategory(c) {
+            const ok = await window.confirmAction({ title: @js(__('market.delete_category')), message: @js(__('market.delete_category_confirm')), type: 'danger', confirmText: @js(__('shared.delete')) });
+            if (!ok) return;
+            try {
+                const res = await fetch(`${this.categoryBase}/${c.id}`, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': this.csrf, 'Accept': 'application/json' }, credentials: 'same-origin' });
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok || d.success === false) throw new Error(d.message || @js(__('shared.error')));
+                this.manageCategories = this.manageCategories.filter(x => x.id !== c.id);
+                window.showToast && window.showToast('success', d.message || @js(__('shared.deleted')));
+            } catch (e) { window.showToast && window.showToast('error', e.message); }
+        },
         openEdit(p) {
             this.editModal = true;
             // Hand the product + its update URL to the edit form (next tick so it's mounted).
@@ -33,7 +54,7 @@
      }"
      @market-product-saved.window="products.unshift($event.detail); productModal = false"
      @market-product-updated.window="products = products.map(x => x.id === $event.detail.id ? $event.detail : x); editModal = false"
-     @market-category-saved.window="categoryModal = false"
+     @market-category-saved.window="upsertCategory($event.detail)"
      @market-form-cancel.window="productModal = false; editModal = false; categoryModal = false">
 
     {{-- Header --}}
@@ -48,8 +69,8 @@
                 <i class="bi bi-receipt mr-1.5"></i>{{ __('market.view_orders') }}
             </a>
             <button class="border border-primary text-primary bg-transparent px-4 py-2 rounded-md text-sm font-medium hover:bg-primary hover:text-white transition-colors"
-                    @click="categoryModal = true">
-                <i class="bi bi-grid-1x2 mr-1.5"></i>{{ __('market.add_category') }}
+                    @click="openCategories()">
+                <i class="bi bi-grid-1x2 mr-1.5"></i>{{ __('market.manage_categories') }}
             </button>
             <button class="btn btn-primary" @click="productModal = true">
                 <i class="bi bi-plus-lg mr-2"></i>{{ __('market.add_product') }}
@@ -166,13 +187,39 @@
     {{-- ===== Add category modal ===== --}}
     <div x-show="categoryModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-4" style="display:none;">
         <div class="absolute inset-0 bg-black/40" @click="categoryModal = false"></div>
-        <div class="relative w-full max-w-md bg-white rounded-2xl shadow-xl p-5"
+        <div class="relative w-full max-w-md bg-white rounded-2xl shadow-xl p-5 max-h-[90vh] overflow-y-auto"
              x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-base font-bold text-gray-900"><i class="bi bi-grid-1x2 text-primary mr-2"></i>{{ __('market.add_category') }}</h3>
+                <h3 class="text-base font-bold text-gray-900"><i class="bi bi-grid-1x2 text-primary mr-2"></i>{{ __('market.manage_categories') }}</h3>
                 <button @click="categoryModal = false" class="w-8 h-8 rounded-full grid place-items-center text-gray-500 hover:bg-muted"><i class="bi bi-x-lg"></i></button>
             </div>
-            <x-market.category-form :action="route('admin.club.shop.categories.store', $club)" />
+
+            {{-- Existing categories --}}
+            <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-2">{{ __('market.your_categories') }}</p>
+            <template x-if="manageCategories.length === 0">
+                <p class="text-sm text-muted-foreground bg-muted/50 rounded-xl px-3 py-3 mb-4">{{ __('market.no_categories') }}</p>
+            </template>
+            <div x-show="manageCategories.length" class="space-y-2 mb-5">
+                <template x-for="c in manageCategories" :key="c.id">
+                    <div class="flex items-center gap-3 rounded-xl border border-gray-100 px-3 py-2.5">
+                        <span class="w-8 h-8 rounded-lg bg-accent text-primary grid place-items-center flex-shrink-0"><i class="bi" :class="c.icon"></i></span>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm font-semibold text-foreground truncate" x-text="c.label"></p>
+                            <p class="text-[11px] text-muted-foreground font-mono truncate" x-text="c.key"></p>
+                        </div>
+                        <button type="button" @click="editCategory(c)" class="w-8 h-8 rounded-lg grid place-items-center text-gray-400 hover:bg-accent hover:text-primary transition-colors" title="{{ __('market.edit_category') }}"><i class="bi bi-pencil text-sm"></i></button>
+                        <button type="button" @click="deleteCategory(c)" class="w-8 h-8 rounded-lg grid place-items-center text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors" title="{{ __('market.delete_category') }}"><i class="bi bi-trash text-sm"></i></button>
+                    </div>
+                </template>
+            </div>
+
+            {{-- Add / edit form --}}
+            <div class="border-t border-gray-100 pt-4">
+                <x-market.category-form
+                    :action="route('admin.club.shop.categories.store', $club)"
+                    :store-url="route('admin.club.shop.categories.store', $club)"
+                    edit-event="market-category-edit-open" />
+            </div>
         </div>
     </div>
 

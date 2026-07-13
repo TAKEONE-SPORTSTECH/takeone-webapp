@@ -1,6 +1,6 @@
 @extends('layouts.personal-mobile')
 
-@section('title', 'New Challenge')
+@section('title', __('challenge.personal_challenge_create_page_title'))
 
 {{--
     Create challenge & invite a challenger — DUMMY form. Pick type (athletic/fight),
@@ -25,7 +25,7 @@
             const out = [];
             for (let h = 0; h < 24; h++) for (const m of [0, 30]) {
                 const v = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
-                const ap = h < 12 ? 'AM' : 'PM'; const h12 = (h % 12) || 12;
+                const ap = h < 12 ? '{{ __("challenge.personal_challenge_create_am") }}' : '{{ __("challenge.personal_challenge_create_pm") }}'; const h12 = (h % 12) || 12;
                 out.push({ v, l: h12 + ':' + String(m).padStart(2,'0') + ' ' + ap });
             }
             return out;
@@ -56,8 +56,8 @@
         pick(o) { this.opponent = o; },
         get hasRival() { return this.source==='invite' ? this.validInvite() : !!this.opponent; },
         get rivalName() {
-            if (this.source==='invite') { const v=this.invite.trim().replace(/^@/,''); return v ? (v.split('@')[0] || 'Invitee') : 'Rival'; }
-            return this.opponent ? this.opponent.name.split(' ')[0] : 'Rival';
+            if (this.source==='invite') { const v=this.invite.trim().replace(/^@/,''); return v ? (v.split('@')[0] || '{{ __("challenge.personal_challenge_create_invitee") }}') : '{{ __("challenge.personal_challenge_create_rival") }}'; }
+            return this.opponent ? this.opponent.name.split(' ')[0] : '{{ __("challenge.personal_challenge_create_rival") }}';
         },
         get rivalInitials() {
             if (this.source==='invite') { const v=this.invite.trim().replace(/^@/,''); return v ? v.slice(0,2).toUpperCase() : '?'; }
@@ -69,11 +69,11 @@
         copyLink() {
             const l = this.link;
             (navigator.clipboard?.writeText(l) || Promise.reject())
-                .then(() => window.showToast('success','Challenge link copied — share it anywhere'))
+                .then(() => window.showToast('success','{{ __("challenge.personal_challenge_create_toast_link_copied") }}'))
                 .catch(() => window.showToast('info', l));
         },
         async send() {
-            if (!this.canSend()) { window.showToast('warning','Pick someone to challenge and a discipline first'); return; }
+            if (!this.canSend()) { window.showToast('warning','{{ __("challenge.personal_challenge_create_toast_pick_first") }}'); return; }
             if (this.sending) return;
             this.sending = true;
             try {
@@ -104,9 +104,9 @@
                     body: JSON.stringify(payload),
                 });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok || !data.success) throw new Error(data.message || 'Could not send challenge');
+                if (!res.ok || !data.success) throw new Error(data.message || '{{ __("challenge.personal_challenge_create_toast_could_not_send") }}');
 
-                window.showToast('success', data.message || 'Challenge sent 🔥');
+                window.showToast('success', data.message || '{{ __("challenge.personal_challenge_create_toast_sent") }}');
                 setTimeout(() => {
                     const a = document.querySelector('a[data-route=\'me.challenge\'][href$=\'/me/challenge\']');
                     if (a) { a.click(); } else { window.location.href = data.redirect || '{{ route('me.challenge') }}'; }
@@ -123,15 +123,15 @@
     {{-- ===== Header ===== --}}
     <header class="m-hero px-5 pt-5 pb-10 text-white relative overflow-hidden"
             :style="`background: linear-gradient(150deg, ${color}, #1f2937)`">
-        <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+        <div class="absolute -end-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
         <div class="flex items-center gap-3 relative z-10">
-            <a href="{{ route('me.challenge') }}" data-shell-link data-route="me.challenge"
-               class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="Back">
+            <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('me.challenge') }}')"
+               class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="{{ __('shared.back') }}">
                 <i class="bi bi-arrow-left text-lg"></i>
-            </a>
+            </button>
             <div>
-                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">Versus 1v1</p>
-                <h1 class="text-xl font-black">Challenge a rival</h1>
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">{{ __('challenge.personal_challenge_create_versus_1v1') }}</p>
+                <h1 class="text-xl font-black">{{ __('challenge.personal_challenge_create_challenge_a_rival') }}</h1>
             </div>
         </div>
     </header>
@@ -140,45 +140,45 @@
 
         {{-- ===== 1 · Type ===== --}}
         <div class="m-card rounded-2xl p-4">
-            <p class="text-sm font-bold text-foreground mb-3"><span class="text-primary">1.</span> Challenge type</p>
+            <p class="text-sm font-bold text-foreground mb-3"><span class="text-primary">1.</span> {{ __('challenge.personal_challenge_create_challenge_type') }}</p>
             <div class="grid grid-cols-2 gap-3">
                 <button type="button" @click="type='athletic'"
                         class="m-press rounded-2xl p-4 border-2 text-center transition-colors"
                         :class="type==='athletic' ? 'border-primary bg-accent' : 'border-gray-100 bg-white'">
                     <div class="w-12 h-12 mx-auto rounded-2xl grid place-items-center text-white" style="background: #7c3aed;"><i class="bi bi-lightning-charge-fill text-xl"></i></div>
-                    <p class="text-sm font-bold text-foreground mt-2">Athletic</p>
-                    <p class="text-[11px] text-muted-foreground">Sprint, row, swim…</p>
+                    <p class="text-sm font-bold text-foreground mt-2">{{ __('challenge.personal_challenge_create_type_athletic') }}</p>
+                    <p class="text-[11px] text-muted-foreground">{{ __('challenge.personal_challenge_create_type_athletic_desc') }}</p>
                 </button>
                 <button type="button" @click="type='fight'"
                         class="m-press rounded-2xl p-4 border-2 text-center transition-colors"
                         :class="type==='fight' ? 'border-red-400 bg-red-50' : 'border-gray-100 bg-white'">
                     <div class="w-12 h-12 mx-auto rounded-2xl grid place-items-center text-white" style="background: #ef4444;"><i class="bi bi-trophy text-xl"></i></div>
-                    <p class="text-sm font-bold text-foreground mt-2">Fight</p>
-                    <p class="text-[11px] text-muted-foreground">Spar, grapple, bout…</p>
+                    <p class="text-sm font-bold text-foreground mt-2">{{ __('challenge.personal_challenge_create_type_fight') }}</p>
+                    <p class="text-[11px] text-muted-foreground">{{ __('challenge.personal_challenge_create_type_fight_desc') }}</p>
                 </button>
             </div>
         </div>
 
         {{-- ===== 2 · Opponent ===== --}}
         <div class="m-card rounded-2xl p-4" x-data="{ q: '', qd: '' }">
-            <p class="text-sm font-bold text-foreground mb-3"><span class="text-primary">2.</span> Who are you challenging?</p>
+            <p class="text-sm font-bold text-foreground mb-3"><span class="text-primary">2.</span> {{ __('challenge.personal_challenge_create_who_challenging') }}</p>
 
             {{-- source toggle: My Club · Discover (platform-wide) · Invite link --}}
             <div class="bg-muted/60 rounded-xl p-1 flex mb-3">
                 <button type="button" @click="source='club'; opponent=null"
                         class="m-press flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-colors"
                         :class="source==='club' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground'">
-                    <i class="bi bi-buildings"></i> My Club
+                    <i class="bi bi-buildings"></i> {{ __('challenge.personal_challenge_create_source_my_club') }}
                 </button>
                 <button type="button" @click="source='discover'; opponent=null"
                         class="m-press flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-colors"
                         :class="source==='discover' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground'">
-                    <i class="bi bi-globe2"></i> Discover
+                    <i class="bi bi-globe2"></i> {{ __('challenge.personal_challenge_create_source_discover') }}
                 </button>
                 <button type="button" @click="source='invite'; opponent=null"
                         class="m-press flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-colors"
                         :class="source==='invite' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground'">
-                    <i class="bi bi-link-45deg"></i> Invite
+                    <i class="bi bi-link-45deg"></i> {{ __('challenge.personal_challenge_create_source_invite') }}
                 </button>
             </div>
 
@@ -205,9 +205,9 @@
             {{-- MY CLUB list --}}
             <div x-show="source==='club' && !opponent">
                 <div class="relative mb-3">
-                    <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                    <input x-model="q" type="text" placeholder="Search club members…"
-                           class="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                    <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                    <input x-model="q" type="text" placeholder="{{ __('challenge.personal_challenge_create_search_club_members') }}"
+                           class="w-full ps-9 pe-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                 </div>
                 <div class="space-y-2 max-h-64 overflow-y-auto">
                     @foreach($opponents as $o)
@@ -233,11 +233,11 @@
             {{-- DISCOVER (platform-wide) list --}}
             <div x-show="source==='discover' && !opponent">
                 <div class="relative mb-2">
-                    <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                    <input x-model="qd" type="text" placeholder="Search athletes everywhere…"
-                           class="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                    <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                    <input x-model="qd" type="text" placeholder="{{ __('challenge.personal_challenge_create_search_athletes') }}"
+                           class="w-full ps-9 pe-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                 </div>
-                <p class="text-[11px] text-muted-foreground mb-2 flex items-center gap-1"><i class="bi bi-globe2"></i> Anyone on TAKEONE — other clubs &amp; cities</p>
+                <p class="text-[11px] text-muted-foreground mb-2 flex items-center gap-1"><i class="bi bi-globe2"></i> {{ __('challenge.personal_challenge_create_discover_hint') }}</p>
                 <div class="space-y-2 max-h-64 overflow-y-auto">
                     @foreach($athletes as $a)
                         <button type="button"
@@ -264,26 +264,26 @@
 
             {{-- INVITE external person (handle / email / phone + shareable link) --}}
             <div x-show="source==='invite'">
-                <p class="text-[11px] text-muted-foreground mb-2">Challenge anyone — even if they're not in your club yet. Invite them by handle, email or phone.</p>
+                <p class="text-[11px] text-muted-foreground mb-2">{{ __('challenge.personal_challenge_create_invite_hint') }}</p>
                 <div class="relative mb-3">
-                    <i class="bi bi-at absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                    <input x-model="invite" type="text" placeholder="@username, email or phone"
-                           class="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                    <i class="bi bi-at absolute start-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input x-model="invite" type="text" placeholder="{{ __('challenge.personal_challenge_create_invite_placeholder') }}"
+                           class="w-full ps-9 pe-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                 </div>
 
                 <div class="rounded-xl border border-dashed border-gray-200 p-3">
                     <div class="flex items-center justify-between">
                         <div class="min-w-0">
-                            <p class="text-xs font-bold text-foreground">Or share a challenge link</p>
-                            <p class="text-[11px] text-muted-foreground">Anyone with the link can accept</p>
+                            <p class="text-xs font-bold text-foreground">{{ __('challenge.personal_challenge_create_share_link_title') }}</p>
+                            <p class="text-[11px] text-muted-foreground">{{ __('challenge.personal_challenge_create_share_link_desc') }}</p>
                         </div>
                         <button type="button" @click="copyLink()" class="m-press flex-shrink-0 px-3 py-1.5 rounded-lg text-white text-xs font-bold flex items-center gap-1.5" :style="`background:${color}`">
-                            <i class="bi bi-clipboard"></i> Copy link
+                            <i class="bi bi-clipboard"></i> {{ __('challenge.personal_challenge_create_copy_link') }}
                         </button>
                     </div>
                     <div class="flex gap-2 mt-3">
-                        <button type="button" @click="window.showToast('info','Opening WhatsApp share…')" class="m-press flex-1 py-2 rounded-lg bg-muted text-xs font-semibold text-foreground flex items-center justify-center gap-1.5"><i class="bi bi-whatsapp text-green-500"></i> WhatsApp</button>
-                        <button type="button" @click="window.showToast('info','Opening share sheet…')" class="m-press flex-1 py-2 rounded-lg bg-muted text-xs font-semibold text-foreground flex items-center justify-center gap-1.5"><i class="bi bi-share"></i> More</button>
+                        <button type="button" @click="window.showToast('info','{{ __("challenge.personal_challenge_create_toast_whatsapp") }}')" class="m-press flex-1 py-2 rounded-lg bg-muted text-xs font-semibold text-foreground flex items-center justify-center gap-1.5"><i class="bi bi-whatsapp text-green-500"></i> WhatsApp</button>
+                        <button type="button" @click="window.showToast('info','{{ __("challenge.personal_challenge_create_toast_share_sheet") }}')" class="m-press flex-1 py-2 rounded-lg bg-muted text-xs font-semibold text-foreground flex items-center justify-center gap-1.5"><i class="bi bi-share"></i> {{ __('challenge.personal_challenge_create_share_more') }}</button>
                     </div>
                 </div>
             </div>
@@ -291,21 +291,21 @@
 
         {{-- ===== 3 · Terms ===== --}}
         <div class="m-card rounded-2xl p-4 space-y-4">
-            <p class="text-sm font-bold text-foreground"><span class="text-primary">3.</span> Set the terms</p>
+            <p class="text-sm font-bold text-foreground"><span class="text-primary">3.</span> {{ __('challenge.personal_challenge_create_set_terms') }}</p>
 
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Discipline <span class="text-red-500">*</span></label>
-                <input x-model="discipline" type="text" :placeholder="type==='fight' ? 'e.g. Boxing spar — 3 rounds' : 'e.g. 100m sprint'"
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('challenge.personal_challenge_create_discipline_label') }} <span class="text-red-500">*</span></label>
+                <input x-model="discipline" type="text" :placeholder="type==='fight' ? '{{ __("challenge.personal_challenge_create_discipline_placeholder_fight") }}' : '{{ __("challenge.personal_challenge_create_discipline_placeholder_athletic") }}'"
                        class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
             </div>
 
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Stake (points) <span class="text-red-500">*</span></label>
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('challenge.personal_challenge_create_stake_label') }} <span class="text-red-500">*</span></label>
                 <div class="relative" :style="open ? 'z-index:1100' : ''" x-data="{ open: false, opts: ['100','150','200','300'] }" @click.outside="open=false" @keydown.escape="open=false">
                         <button type="button" @click="open=!open"
-                                class="w-full px-3 py-2.5 border rounded-xl text-sm bg-white text-left flex items-center justify-between gap-2 outline-none transition-colors"
+                                class="w-full px-3 py-2.5 border rounded-xl text-sm bg-white text-start flex items-center justify-between gap-2 outline-none transition-colors"
                                 :class="open ? 'ring-2 ring-purple-500 border-transparent' : 'border-gray-200'">
-                            <span class="truncate" x-text="stake + ' pts'"></span>
+                            <span class="truncate" x-text="stake + '{{ __("challenge.personal_challenge_create_pts") }}'"></span>
                             <i class="bi bi-chevron-down text-gray-400 text-xs transition-transform flex-shrink-0" :class="open ? 'rotate-180' : ''"></i>
                         </button>
                         <div x-show="open" x-cloak
@@ -314,9 +314,9 @@
                              class="absolute mt-1.5 w-full bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden py-1">
                             <template x-for="opt in opts" :key="opt">
                                 <button type="button" @click="stake=opt; open=false"
-                                        class="w-full text-left px-3 py-2 text-sm transition-colors flex items-center justify-between gap-2 hover:bg-muted/60"
+                                        class="w-full text-start px-3 py-2 text-sm transition-colors flex items-center justify-between gap-2 hover:bg-muted/60"
                                         :class="stake===opt ? 'text-primary font-semibold bg-muted/40' : 'text-foreground'">
-                                    <span x-text="opt + ' pts'"></span>
+                                    <span x-text="opt + '{{ __("challenge.personal_challenge_create_pts") }}'"></span>
                                     <i class="bi bi-check-lg text-primary text-xs" x-show="stake===opt"></i>
                                 </button>
                             </template>
@@ -326,15 +326,15 @@
 
             {{-- Scoring format --}}
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Scoring format <span class="text-red-500">*</span></label>
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('challenge.personal_challenge_create_scoring_format_label') }} <span class="text-red-500">*</span></label>
                 <div class="relative" :style="open ? 'z-index:1100' : ''" x-data="{ open:false, opts:[
-                        {v:'single',l:'Single match'},{v:'bo3',l:'Best of 3'},{v:'bo5',l:'Best of 5'},
-                        {v:'points',l:'Points — highest wins'},{v:'time',l:'Fastest time wins'} ] }"
+                        {v:'single',l:'{{ __("challenge.personal_challenge_create_format_single") }}'},{v:'bo3',l:'{{ __("challenge.personal_challenge_create_format_bo3") }}'},{v:'bo5',l:'{{ __("challenge.personal_challenge_create_format_bo5") }}'},
+                        {v:'points',l:'{{ __("challenge.personal_challenge_create_format_points") }}'},{v:'time',l:'{{ __("challenge.personal_challenge_create_format_time") }}'} ] }"
                      @click.outside="open=false" @keydown.escape="open=false">
                     <button type="button" @click="open=!open"
-                            class="w-full px-3 py-2.5 border rounded-xl text-sm bg-white text-left flex items-center justify-between gap-2 outline-none transition-colors"
+                            class="w-full px-3 py-2.5 border rounded-xl text-sm bg-white text-start flex items-center justify-between gap-2 outline-none transition-colors"
                             :class="open ? 'ring-2 ring-purple-500 border-transparent' : 'border-gray-200'">
-                        <span class="truncate" x-text="(opts.find(o=>o.v===format)||{}).l || 'Single match'"></span>
+                        <span class="truncate" x-text="(opts.find(o=>o.v===format)||{}).l || '{{ __("challenge.personal_challenge_create_format_single") }}'"></span>
                         <i class="bi bi-chevron-down text-gray-400 text-xs transition-transform flex-shrink-0" :class="open ? 'rotate-180' : ''"></i>
                     </button>
                     <div x-show="open" x-cloak
@@ -343,7 +343,7 @@
                          class="absolute mt-1.5 w-full bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden py-1">
                         <template x-for="o in opts" :key="o.v">
                             <button type="button" @click="format=o.v; open=false"
-                                    class="w-full text-left px-3 py-2 text-sm transition-colors flex items-center justify-between gap-2 hover:bg-muted/60"
+                                    class="w-full text-start px-3 py-2 text-sm transition-colors flex items-center justify-between gap-2 hover:bg-muted/60"
                                     :class="format===o.v ? 'text-primary font-semibold bg-muted/40' : 'text-foreground'">
                                 <span x-text="o.l"></span>
                                 <i class="bi bi-check-lg text-primary text-xs" x-show="format===o.v"></i>
@@ -351,32 +351,32 @@
                         </template>
                     </div>
                 </div>
-                <p class="text-[11px] text-muted-foreground mt-1" x-show="format==='bo3'||format==='bo5'" x-cloak>You'll log each round's winner — majority takes the duel.</p>
-                <p class="text-[11px] text-muted-foreground mt-1" x-show="format==='points'||format==='time'" x-cloak>Each player enters a number; the winner is computed automatically.</p>
+                <p class="text-[11px] text-muted-foreground mt-1" x-show="format==='bo3'||format==='bo5'" x-cloak>{{ __('challenge.personal_challenge_create_format_rounds_hint') }}</p>
+                <p class="text-[11px] text-muted-foreground mt-1" x-show="format==='points'||format==='time'" x-cloak>{{ __('challenge.personal_challenge_create_format_number_hint') }}</p>
             </div>
 
             {{-- Part of an event? — when chosen, the duel inherits the event's location --}}
             <div x-show="events.length" x-cloak>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Part of an event? <span class="text-muted-foreground font-normal">(optional)</span></label>
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('challenge.personal_challenge_create_event_label') }} <span class="text-muted-foreground font-normal">{{ __('challenge.personal_challenge_create_optional') }}</span></label>
                 <div class="relative" :style="open ? 'z-index:1100' : ''" x-data="{ open:false }" @click.outside="open=false" @keydown.escape="open=false">
                     <button type="button" @click="open=!open"
-                            class="w-full px-3 py-2.5 border rounded-xl text-sm bg-white text-left flex items-center justify-between gap-2 outline-none transition-colors"
+                            class="w-full px-3 py-2.5 border rounded-xl text-sm bg-white text-start flex items-center justify-between gap-2 outline-none transition-colors"
                             :class="open ? 'ring-2 ring-purple-500 border-transparent' : 'border-gray-200'">
-                        <span class="truncate" :class="eventId ? 'text-foreground' : 'text-gray-400'" x-text="eventId ? eventLabel : 'Not part of an event'"></span>
+                        <span class="truncate" :class="eventId ? 'text-foreground' : 'text-gray-400'" x-text="eventId ? eventLabel : '{{ __("challenge.personal_challenge_create_not_part_of_event") }}'"></span>
                         <i class="bi bi-chevron-down text-gray-400 text-xs transition-transform flex-shrink-0" :class="open ? 'rotate-180' : ''"></i>
                     </button>
                     <div x-show="open" x-cloak
                          x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
                          class="absolute mt-1.5 w-full bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden py-1 max-h-60 overflow-y-auto">
                         <button type="button" @click="clearEvent(); open=false"
-                                class="w-full text-left px-3 py-2 text-sm transition-colors flex items-center justify-between gap-2 hover:bg-muted/60"
+                                class="w-full text-start px-3 py-2 text-sm transition-colors flex items-center justify-between gap-2 hover:bg-muted/60"
                                 :class="!eventId ? 'text-primary font-semibold bg-muted/40' : 'text-foreground'">
-                            <span>Not part of an event</span>
+                            <span>{{ __('challenge.personal_challenge_create_not_part_of_event') }}</span>
                             <i class="bi bi-check-lg text-primary text-xs" x-show="!eventId"></i>
                         </button>
                         <template x-for="e in events" :key="e.id">
                             <button type="button" @click="pickEvent(e); open=false"
-                                    class="w-full text-left px-3 py-2 text-sm transition-colors flex items-center justify-between gap-2 hover:bg-muted/60"
+                                    class="w-full text-start px-3 py-2 text-sm transition-colors flex items-center justify-between gap-2 hover:bg-muted/60"
                                     :class="eventId===e.id ? 'bg-muted/40' : ''">
                                 <span class="min-w-0">
                                     <span class="block truncate font-semibold text-foreground" x-text="e.title"></span>
@@ -387,28 +387,28 @@
                         </template>
                     </div>
                 </div>
-                <p class="text-[11px] text-muted-foreground mt-1" x-show="eventId" x-cloak><i class="bi bi-geo-alt-fill text-primary"></i> Takes place at the event location: <span class="font-semibold text-foreground" x-text="location || '—'"></span></p>
+                <p class="text-[11px] text-muted-foreground mt-1" x-show="eventId" x-cloak><i class="bi bi-geo-alt-fill text-primary"></i> {{ __('challenge.personal_challenge_create_event_location_note') }} <span class="font-semibold text-foreground" x-text="location || '—'"></span></p>
             </div>
 
             {{-- Location (hidden when the duel is attached to an event — it uses the event's location) --}}
             <div x-show="!eventId">
-                <label class="block text-xs font-medium text-gray-600 mb-1">Location <span class="text-muted-foreground font-normal">(optional)</span></label>
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('challenge.personal_challenge_create_location_label') }} <span class="text-muted-foreground font-normal">{{ __('challenge.personal_challenge_create_optional') }}</span></label>
                 <div class="flex flex-wrap gap-2 mb-2">
                     <template x-if="facilities.length">
-                        <button type="button" @click="locMode='facility'" class="m-press flex-1 min-w-[70px] py-1.5 rounded-lg text-xs font-bold border-2 transition-colors" :class="locMode==='facility' ? 'border-primary bg-accent text-primary' : 'border-gray-200 text-muted-foreground'"><i class="bi bi-building"></i> Facility</button>
+                        <button type="button" @click="locMode='facility'" class="m-press flex-1 min-w-[70px] py-1.5 rounded-lg text-xs font-bold border-2 transition-colors" :class="locMode==='facility' ? 'border-primary bg-accent text-primary' : 'border-gray-200 text-muted-foreground'"><i class="bi bi-building"></i> {{ __('challenge.personal_challenge_create_loc_facility') }}</button>
                     </template>
-                    <button type="button" @click="locMode='map'" class="m-press flex-1 min-w-[70px] py-1.5 rounded-lg text-xs font-bold border-2 transition-colors" :class="locMode==='map' ? 'border-primary bg-accent text-primary' : 'border-gray-200 text-muted-foreground'"><i class="bi bi-geo-alt"></i> Map</button>
-                    <button type="button" @click="locMode='url'" class="m-press flex-1 min-w-[70px] py-1.5 rounded-lg text-xs font-bold border-2 transition-colors" :class="locMode==='url' ? 'border-primary bg-accent text-primary' : 'border-gray-200 text-muted-foreground'"><i class="bi bi-link-45deg"></i> Link</button>
-                    <button type="button" @click="locMode='text'" class="m-press flex-1 min-w-[70px] py-1.5 rounded-lg text-xs font-bold border-2 transition-colors" :class="locMode==='text' ? 'border-primary bg-accent text-primary' : 'border-gray-200 text-muted-foreground'"><i class="bi bi-pencil"></i> Type</button>
+                    <button type="button" @click="locMode='map'" class="m-press flex-1 min-w-[70px] py-1.5 rounded-lg text-xs font-bold border-2 transition-colors" :class="locMode==='map' ? 'border-primary bg-accent text-primary' : 'border-gray-200 text-muted-foreground'"><i class="bi bi-geo-alt"></i> {{ __('challenge.personal_challenge_create_loc_map') }}</button>
+                    <button type="button" @click="locMode='url'" class="m-press flex-1 min-w-[70px] py-1.5 rounded-lg text-xs font-bold border-2 transition-colors" :class="locMode==='url' ? 'border-primary bg-accent text-primary' : 'border-gray-200 text-muted-foreground'"><i class="bi bi-link-45deg"></i> {{ __('challenge.personal_challenge_create_loc_link') }}</button>
+                    <button type="button" @click="locMode='text'" class="m-press flex-1 min-w-[70px] py-1.5 rounded-lg text-xs font-bold border-2 transition-colors" :class="locMode==='text' ? 'border-primary bg-accent text-primary' : 'border-gray-200 text-muted-foreground'"><i class="bi bi-pencil"></i> {{ __('challenge.personal_challenge_create_loc_type') }}</button>
                 </div>
 
                 {{-- Facility dropdown --}}
                 <div x-show="locMode==='facility'" x-cloak>
                     <div class="relative" :style="open ? 'z-index:1100' : ''" x-data="{ open:false }" @click.outside="open=false" @keydown.escape="open=false">
                         <button type="button" @click="open=!open"
-                                class="w-full px-3 py-2.5 border rounded-xl text-sm bg-white text-left flex items-center justify-between gap-2 outline-none transition-colors"
+                                class="w-full px-3 py-2.5 border rounded-xl text-sm bg-white text-start flex items-center justify-between gap-2 outline-none transition-colors"
                                 :class="open ? 'ring-2 ring-purple-500 border-transparent' : 'border-gray-200'">
-                            <span class="truncate" :class="facilityId ? 'text-foreground' : 'text-gray-400'" x-text="facilityId ? location : 'Choose a facility…'"></span>
+                            <span class="truncate" :class="facilityId ? 'text-foreground' : 'text-gray-400'" x-text="facilityId ? location : '{{ __("challenge.personal_challenge_create_choose_facility") }}'"></span>
                             <i class="bi bi-chevron-down text-gray-400 text-xs transition-transform flex-shrink-0" :class="open ? 'rotate-180' : ''"></i>
                         </button>
                         <div x-show="open" x-cloak
@@ -416,7 +416,7 @@
                              class="absolute mt-1.5 w-full bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden py-1 max-h-56 overflow-y-auto">
                             <template x-for="f in facilities" :key="f.id">
                                 <button type="button" @click="pickFacility(f); open=false"
-                                        class="w-full text-left px-3 py-2 text-sm transition-colors flex items-center justify-between gap-2 hover:bg-muted/60"
+                                        class="w-full text-start px-3 py-2 text-sm transition-colors flex items-center justify-between gap-2 hover:bg-muted/60"
                                         :class="facilityId===f.id ? 'bg-muted/40' : ''">
                                     <span class="min-w-0">
                                         <span class="block truncate font-semibold text-foreground" x-text="f.name"></span>
@@ -431,7 +431,7 @@
 
                 {{-- Pin on map --}}
                 <div x-show="locMode==='map'" x-cloak class="space-y-2" @location-changed="gps_lat = $event.detail.lat; gps_long = $event.detail.lng">
-                    <input x-model="location" type="text" placeholder="Place title (optional) — e.g. City Sports Hall"
+                    <input x-model="location" type="text" placeholder="{{ __('challenge.personal_challenge_create_map_place_placeholder') }}"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                     <x-location-map id="duelLocMap" height="10rem" :zoom="13" :show-labels="false" />
                 </div>
@@ -440,13 +440,13 @@
                 <div x-show="locMode==='url'" x-cloak class="space-y-2">
                     <input x-model="location_url" type="url" placeholder="https://maps.google.com/…"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                    <input x-model="location" type="text" placeholder="Place name (optional)"
+                    <input x-model="location" type="text" placeholder="{{ __('challenge.personal_challenge_create_place_name_placeholder') }}"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                 </div>
 
                 {{-- Type a place --}}
                 <div x-show="locMode==='text'" x-cloak>
-                    <input x-model="location" type="text" placeholder="e.g. Juffair Park, near the corniche"
+                    <input x-model="location" type="text" placeholder="{{ __('challenge.personal_challenge_create_text_place_placeholder') }}"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                 </div>
             </div>
@@ -461,12 +461,12 @@
             </script>
 
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Challenge time <span class="text-muted-foreground font-normal">(optional)</span></label>
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('challenge.personal_challenge_create_challenge_time_label') }} <span class="text-muted-foreground font-normal">{{ __('challenge.personal_challenge_create_optional') }}</span></label>
                 <div class="relative" :style="open ? 'z-index:1100' : ''" x-data="{
                         open: false,
                         view: { y: (new Date()).getFullYear(), m: (new Date()).getMonth() },
-                        months: ['January','February','March','April','May','June','July','August','September','October','November','December'],
-                        dows: ['Su','Mo','Tu','We','Th','Fr','Sa'],
+                        months: ['{{ __("challenge.personal_challenge_create_month_january") }}','{{ __("challenge.personal_challenge_create_month_february") }}','{{ __("challenge.personal_challenge_create_month_march") }}','{{ __("challenge.personal_challenge_create_month_april") }}','{{ __("challenge.personal_challenge_create_month_may") }}','{{ __("challenge.personal_challenge_create_month_june") }}','{{ __("challenge.personal_challenge_create_month_july") }}','{{ __("challenge.personal_challenge_create_month_august") }}','{{ __("challenge.personal_challenge_create_month_september") }}','{{ __("challenge.personal_challenge_create_month_october") }}','{{ __("challenge.personal_challenge_create_month_november") }}','{{ __("challenge.personal_challenge_create_month_december") }}'],
+                        dows: ['{{ __("challenge.personal_challenge_create_dow_su") }}','{{ __("challenge.personal_challenge_create_dow_mo") }}','{{ __("challenge.personal_challenge_create_dow_tu") }}','{{ __("challenge.personal_challenge_create_dow_we") }}','{{ __("challenge.personal_challenge_create_dow_th") }}','{{ __("challenge.personal_challenge_create_dow_fr") }}','{{ __("challenge.personal_challenge_create_dow_sa") }}'],
                         get grid() {
                             const start = new Date(this.view.y, this.view.m, 1).getDay();
                             const days  = new Date(this.view.y, this.view.m + 1, 0).getDate();
@@ -486,10 +486,10 @@
                      x-init="if (deadline) { const d = new Date(deadline + 'T00:00:00'); view = { y: d.getFullYear(), m: d.getMonth() }; }"
                      @click.outside="open=false" @keydown.escape="open=false">
                     <button type="button" @click="open=!open"
-                            class="w-full px-3 py-2.5 border rounded-xl text-sm bg-white text-left flex items-center gap-2 outline-none transition-colors"
+                            class="w-full px-3 py-2.5 border rounded-xl text-sm bg-white text-start flex items-center gap-2 outline-none transition-colors"
                             :class="open ? 'ring-2 ring-purple-500 border-transparent' : 'border-gray-200'">
                         <i class="bi bi-calendar-event text-gray-400 flex-shrink-0"></i>
-                        <span class="flex-1 truncate" :class="deadline ? 'text-foreground' : 'text-gray-400'" x-text="deadline ? fmt(deadline) : 'Pick a date'"></span>
+                        <span class="flex-1 truncate" :class="deadline ? 'text-foreground' : 'text-gray-400'" x-text="deadline ? fmt(deadline) : '{{ __("challenge.personal_challenge_create_pick_a_date") }}'"></span>
                         <i class="bi bi-chevron-down text-gray-400 text-xs transition-transform flex-shrink-0" :class="open ? 'rotate-180' : ''"></i>
                     </button>
                     <div x-show="open" x-cloak
@@ -514,8 +514,8 @@
                             </template>
                         </div>
                         <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
-                            <button type="button" @click="deadline=''; open=false" class="text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-colors">Clear</button>
-                            <button type="button" @click="const t=new Date(); view={y:t.getFullYear(),m:t.getMonth()}; deadline=todayIso(); open=false" class="text-[11px] font-semibold text-primary">Today</button>
+                            <button type="button" @click="deadline=''; open=false" class="text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-colors">{{ __('challenge.personal_challenge_create_cal_clear') }}</button>
+                            <button type="button" @click="const t=new Date(); view={y:t.getFullYear(),m:t.getMonth()}; deadline=todayIso(); open=false" class="text-[11px] font-semibold text-primary">{{ __('challenge.personal_challenge_create_cal_today') }}</button>
                         </div>
                     </div>
                 </div>
@@ -523,7 +523,7 @@
                 {{-- time of day --}}
                 <div class="relative mt-2" :style="open ? 'z-index:1100' : ''" x-data="{ open: false }" @click.outside="open=false" @keydown.escape="open=false" x-show="deadline" x-cloak>
                     <button type="button" @click="open=!open"
-                            class="w-full px-3 py-2.5 border rounded-xl text-sm bg-white text-left flex items-center gap-2 outline-none transition-colors"
+                            class="w-full px-3 py-2.5 border rounded-xl text-sm bg-white text-start flex items-center gap-2 outline-none transition-colors"
                             :class="open ? 'ring-2 ring-purple-500 border-transparent' : 'border-gray-200'">
                         <i class="bi bi-clock text-gray-400 flex-shrink-0"></i>
                         <span class="flex-1 truncate text-foreground" x-text="timeLabel"></span>
@@ -534,7 +534,7 @@
                          class="absolute mt-1.5 w-full bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden py-1 max-h-56 overflow-y-auto">
                         <template x-for="o in timeOpts" :key="o.v">
                             <button type="button" @click="timeVal=o.v; open=false"
-                                    class="w-full text-left px-3 py-2 text-sm transition-colors flex items-center justify-between gap-2 hover:bg-muted/60"
+                                    class="w-full text-start px-3 py-2 text-sm transition-colors flex items-center justify-between gap-2 hover:bg-muted/60"
                                     :class="timeVal===o.v ? 'text-primary font-semibold bg-muted/40' : 'text-foreground'">
                                 <span x-text="o.l"></span>
                                 <i class="bi bi-check-lg text-primary text-xs" x-show="timeVal===o.v"></i>
@@ -545,8 +545,8 @@
             </div>
 
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Trash talk <span class="text-muted-foreground font-normal">(optional)</span></label>
-                <textarea x-model="message" rows="2" placeholder="Say something to fire them up… 🔥"
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('challenge.personal_challenge_create_trash_talk_label') }} <span class="text-muted-foreground font-normal">{{ __('challenge.personal_challenge_create_optional') }}</span></label>
+                <textarea x-model="message" rows="2" placeholder="{{ __('challenge.personal_challenge_create_trash_talk_placeholder') }}"
                           class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"></textarea>
             </div>
         </div>
@@ -555,19 +555,19 @@
         <div class="rounded-2xl overflow-hidden shadow-lg border border-gray-100" :style="`background: linear-gradient(135deg, ${color}, ${color}cc)`">
             <div class="px-4 py-2.5 text-white text-[11px] font-bold flex items-center gap-1.5">
                 <i class="bi" :class="type==='fight' ? 'bi-trophy' : 'bi-lightning-charge-fill'"></i>
-                <span x-text="(type==='fight' ? 'Fight' : 'Athletic') + ' · ' + (discipline || 'Your challenge')"></span>
+                <span x-text="(type==='fight' ? '{{ __("challenge.personal_challenge_create_type_fight") }}' : '{{ __("challenge.personal_challenge_create_type_athletic") }}') + ' · ' + (discipline || '{{ __("challenge.personal_challenge_create_your_challenge") }}')"></span>
             </div>
             <div class="bg-white px-4 py-4">
                 <div class="flex items-center justify-around">
                     <div class="flex flex-col items-center">
                         @if(!empty($myAvatar))
-                            <img src="{{ $myAvatar }}" alt="You" class="w-12 h-12 rounded-full object-cover">
+                            <img src="{{ $myAvatar }}" alt="{{ __('challenge.personal_challenge_create_you') }}" class="w-12 h-12 rounded-full object-cover">
                         @else
                             <div class="w-12 h-12 rounded-full grid place-items-center text-white font-bold" style="background: hsl(250 55% 60%);">YO</div>
                         @endif
-                        <p class="text-[11px] font-bold text-foreground mt-1">You</p>
+                        <p class="text-[11px] font-bold text-foreground mt-1">{{ __('challenge.personal_challenge_create_you') }}</p>
                     </div>
-                    <div class="w-9 h-9 rounded-full grid place-items-center text-white text-[11px] font-black" :style="`background:${color}`">VS</div>
+                    <div class="w-9 h-9 rounded-full grid place-items-center text-white text-[11px] font-black" :style="`background:${color}`">{{ __('challenge.personal_challenge_create_vs') }}</div>
                     <div class="flex flex-col items-center">
                         <template x-if="rivalAvatar">
                             <img :src="rivalAvatar" :alt="rivalName" class="w-12 h-12 rounded-full object-cover">
@@ -583,7 +583,7 @@
                 </div>
                 <div class="flex items-center justify-center gap-3 mt-3 text-[11px] text-muted-foreground">
                     <span class="inline-flex items-center gap-1"><i class="bi bi-flag"></i><span x-text="metric"></span></span>
-                    <span class="inline-flex items-center gap-1"><i class="bi bi-star-fill text-amber-400"></i><span x-text="stake + ' pts'"></span></span>
+                    <span class="inline-flex items-center gap-1"><i class="bi bi-star-fill text-amber-400"></i><span x-text="stake + '{{ __("challenge.personal_challenge_create_pts") }}'"></span></span>
                 </div>
             </div>
         </div>
@@ -593,7 +593,7 @@
                 class="m-press w-full py-3.5 rounded-2xl text-white font-black text-sm flex items-center justify-center gap-2 transition-opacity"
                 :class="(canSend() && !sending) ? '' : 'opacity-50'" :style="`background:${color}`">
             <i class="bi" :class="sending ? 'bi-arrow-repeat animate-spin' : 'bi-send-fill'"></i>
-            <span x-text="sending ? 'Sending…' : 'Send challenge invite'"></span>
+            <span x-text="sending ? '{{ __("challenge.personal_challenge_create_sending") }}' : '{{ __("challenge.personal_challenge_create_send_invite") }}'"></span>
         </button>
     </div>
 

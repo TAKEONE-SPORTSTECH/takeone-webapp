@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class ClubProduct extends Model
 {
-    use HasFactory, BelongsToTenant, SoftDeletes;
+    use BelongsToTenant, HasFactory, SoftDeletes;
 
     protected $table = 'club_products';
 
@@ -23,21 +23,34 @@ class ClubProduct extends Model
         'tenant_id', 'name', 'brand', 'category', 'price', 'old_price', 'cost',
         'margin_type', 'margin_value', 'badge',
         'availability', 'featured', 'color', 'icon', 'image_path', 'description',
-        'colors', 'specs', 'fulfillment', 'quantity', 'low_stock_alert',
+        'colors', 'specs', 'attributes', 'fulfillment', 'quantity', 'low_stock_alert',
         'supplier', 'supplier_url', 'ships_in', 'status', 'sort',
         'rating_count', 'rating_sum',
     ];
 
     protected $casts = [
-        'price'        => 'decimal:2',
-        'old_price'    => 'decimal:2',
-        'cost'         => 'decimal:2',
+        'price' => 'decimal:2',
+        'old_price' => 'decimal:2',
+        'cost' => 'decimal:2',
         'margin_value' => 'decimal:2',
-        'featured'  => 'boolean',
-        'colors'    => 'array',
-        'specs'     => 'array',
-        'quantity'  => 'integer',
+        'featured' => 'boolean',
+        'colors' => 'array',
+        'specs' => 'array',
+        'attributes' => 'array',
+        'quantity' => 'integer',
     ];
+
+    /**
+     * Declared variant attributes — WooCommerce-style dimensions, each a name
+     * plus its list of values, e.g. [['name'=>'Brand','values'=>['Adidas',…]], …].
+     */
+    public function attributeList(): array
+    {
+        // NOTE: the DB column is named `attributes`, which collides with Eloquent's
+        // internal $this->attributes storage array — always read it via getAttribute()
+        // so the 'array' cast is applied and we get the decoded value.
+        return $this->getAttribute('attributes') ?? [];
+    }
 
     public function tenant(): BelongsTo
     {
@@ -89,35 +102,36 @@ class ClubProduct extends Model
             : (float) $this->price;
 
         return [
-            'id'          => $this->id,
-            'name'        => $this->name,
-            'brand'       => $this->brand,
-            'cat'         => $this->category,
-            'price'       => $displayPrice,
+            'id' => $this->id,
+            'name' => $this->name,
+            'brand' => $this->brand,
+            'cat' => $this->category,
+            'price' => $displayPrice,
             'hasVariants' => $hasVariants,
-            'variants'    => $variants->map->toCardArray()->values()->all(),
-            'old'         => $this->old_price !== null ? (float) $this->old_price : null,
-            'cost'        => $this->cost !== null ? (float) $this->cost : null,
-            'marginType'  => $this->margin_type ?? 'fixed',
+            'attributes' => $this->attributeList(),
+            'variants' => $variants->map->toCardArray()->values()->all(),
+            'old' => $this->old_price !== null ? (float) $this->old_price : null,
+            'cost' => $this->cost !== null ? (float) $this->cost : null,
+            'marginType' => $this->margin_type ?? 'fixed',
             'marginValue' => $this->margin_value !== null ? (float) $this->margin_value : null,
-            'badge'       => $this->badge,
-            'availability'=> $this->availability,
-            'featured'    => (bool) $this->featured,
-            'color'       => $this->color,
-            'icon'        => $this->icon,
-            'image'       => $this->image_path ? asset('storage/' . $this->image_path) : null,
-            'stock'       => $this->availability,   // display label for the market
-            'rating'      => $this->rating_count ? round($this->rating_sum / $this->rating_count, 1) : 0,
-            'reviews'     => (int) $this->rating_count,
-            'desc'        => $this->description,
-            'colors'      => $this->colors ?? [],
-            'specs'       => $this->specs ?? [],
+            'badge' => $this->badge,
+            'availability' => $this->availability,
+            'featured' => (bool) $this->featured,
+            'color' => $this->color,
+            'icon' => $this->icon,
+            'image' => $this->image_path ? asset('storage/'.$this->image_path) : null,
+            'stock' => $this->availability,   // display label for the market
+            'rating' => $this->rating_count ? round($this->rating_sum / $this->rating_count, 1) : 0,
+            'reviews' => (int) $this->rating_count,
+            'desc' => $this->description,
+            'colors' => $this->colors ?? [],
+            'specs' => $this->specs ?? [],
             'fulfillment' => $this->fulfillment,
-            'quantity'    => $this->quantity,
-            'lowStock'    => $this->low_stock_alert,
-            'supplier'    => $this->supplier,
+            'quantity' => $this->quantity,
+            'lowStock' => $this->low_stock_alert,
+            'supplier' => $this->supplier,
             'supplierUrl' => $this->supplier_url,
-            'shipsIn'     => $this->ships_in,
+            'shipsIn' => $this->ships_in,
         ];
     }
 }

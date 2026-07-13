@@ -29,10 +29,10 @@ class ExpirePendingDuels extends Command
             try {
                 UserNotification::notifyUser($duel->challenger_id, 'duel:cancelled', 'Your challenge expired', [
                     'subject_type' => Duel::class,
-                    'subject_id'   => $duel->id,
-                    'action_url'   => route('me.challenge.duel', $duel->id),
-                    'icon'         => 'bi-lightning-charge-fill',
-                    'body'         => $duel->discipline . ' — not accepted within 3 days',
+                    'subject_id' => $duel->id,
+                    'action_url' => route('me.challenge.duel', $duel->id),
+                    'icon' => 'bi-lightning-charge-fill',
+                    'body' => $duel->discipline.' — not accepted within 3 days',
                 ]);
             } catch (\Throwable $e) {
                 // best-effort

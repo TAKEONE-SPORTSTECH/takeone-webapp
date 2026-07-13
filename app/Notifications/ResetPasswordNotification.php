@@ -4,8 +4,8 @@ namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Notification;
 
 class ResetPasswordNotification extends Notification implements ShouldQueue
 {
@@ -26,7 +26,7 @@ class ResetPasswordNotification extends Notification implements ShouldQueue
         ], false));
 
         return (new MailMessage)
-            ->subject('Reset Your Password - ' . config('app.name'))
+            ->subject('Reset Your Password - '.config('app.name'))
             ->view('emails.reset-password', ['url' => $url]);
     }
 }

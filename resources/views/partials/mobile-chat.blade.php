@@ -22,13 +22,13 @@
 
         <div class="flex items-center justify-between px-4 py-3 border-b border-border">
             <div>
-                <h6 class="text-sm font-bold text-foreground mb-0">Messages</h6>
+                <h6 class="text-sm font-bold text-foreground mb-0">{{ __('nav.partials_mobile_chat_messages_title') }}</h6>
                 <p class="text-[10px] text-muted-foreground mb-0 flex items-center gap-1">
                     <span class="w-1.5 h-1.5 rounded-full" :class="connected ? 'bg-green-500' : 'bg-gray-300'"></span>
-                    <span x-text="connected ? 'Connected · realtime' : 'Delivers instantly'"></span>
+                    <span x-text="connected ? '{{ __('nav.partials_mobile_chat_connected_realtime') }}' : '{{ __('nav.partials_mobile_chat_delivers_instantly') }}'"></span>
                 </p>
             </div>
-            <a href="{{ route('messages.index') }}" class="text-xs text-primary font-medium hover:underline">Open inbox</a>
+            <a href="{{ route('messages.index') }}" class="text-xs text-primary font-medium hover:underline">{{ __('nav.partials_mobile_chat_open_inbox') }}</a>
         </div>
 
         <div class="max-h-[60vh] overflow-y-auto">
@@ -45,7 +45,7 @@
             <template x-if="!loading && chats.length === 0">
                 <div class="px-4 py-10 text-center">
                     <i class="bi bi-chat-heart text-4xl text-gray-200 m-float inline-block"></i>
-                    <p class="text-sm text-muted-foreground mt-3 mb-0">No chats yet.</p>
+                    <p class="text-sm text-muted-foreground mt-3 mb-0">{{ __('nav.partials_mobile_chat_no_chats_yet') }}</p>
                 </div>
             </template>
 
@@ -53,12 +53,12 @@
             <div class="mobile-stagger">
                 <template x-for="c in chats" :key="c.id">
                     <button type="button" @click="openHead(c)"
-                            class="w-full flex items-center gap-3 px-3 py-2.5 text-left m-press border-b border-border/60 last:border-0"
+                            class="w-full flex items-center gap-3 px-3 py-2.5 text-start m-press border-b border-border/60 last:border-0"
                             :class="c.unread_count > 0 ? 'bg-accent/40' : 'bg-white'">
                         <span class="relative shrink-0">
                             <template x-if="c.partner.avatar"><img :src="c.partner.avatar" class="w-11 h-11 rounded-full object-cover" alt=""></template>
                             <template x-if="!c.partner.avatar"><span class="w-11 h-11 rounded-full bg-gradient-to-br from-primary to-purple-400 text-white flex items-center justify-center font-bold" x-text="c.partner.initial"></span></template>
-                            <span x-show="c.unread_count > 0" class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-primary ring-2 ring-white"></span>
+                            <span x-show="c.unread_count > 0" class="absolute -top-0.5 -end-0.5 w-3.5 h-3.5 rounded-full bg-primary ring-2 ring-white"></span>
                         </span>
                         <span class="flex-1 min-w-0">
                             <span class="flex items-center justify-between gap-2">
@@ -66,7 +66,7 @@
                                 <span class="text-[10px] text-muted-foreground shrink-0" x-text="c.last_at_human"></span>
                             </span>
                             <span class="block text-[12px] truncate mt-0.5" dir="auto" :class="c.unread_count > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground'">
-                                <span x-show="c.last_mine">You: </span><span x-text="c.last_body || 'New message'"></span>
+                                <span x-show="c.last_mine">{{ __('nav.partials_mobile_chat_you_prefix') }}</span><span x-text="c.last_body || '{{ __('nav.partials_mobile_chat_new_message') }}'"></span>
                             </span>
                         </span>
                         <span x-show="c.unread_count > 0" class="shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center"
@@ -88,10 +88,10 @@
                     <template x-if="h.partner.avatar"><img :src="h.partner.avatar" class="w-full h-full object-cover" alt=""></template>
                     <template x-if="!h.partner.avatar"><span class="text-lg font-bold" x-text="h.partner.initial"></span></template>
                 </button>
-                <span x-show="h.unread > 0" class="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-destructive text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white"
+                <span x-show="h.unread > 0" class="absolute -top-1 -end-1 min-w-[20px] h-5 px-1 rounded-full bg-destructive text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white"
                       x-text="h.unread > 99 ? '99+' : h.unread"></span>
                 <button type="button" @click.stop="closeHead(h)"
-                        class="absolute -top-1 -left-1 w-5 h-5 rounded-full bg-white text-muted-foreground border border-border shadow flex items-center justify-center text-[10px]">
+                        class="absolute -top-1 -start-1 w-5 h-5 rounded-full bg-white text-muted-foreground border border-border shadow flex items-center justify-center text-[10px]">
                     <i class="bi bi-x"></i>
                 </button>
             </div>
@@ -108,7 +108,7 @@
 
             {{-- Page header --}}
             <div class="flex items-center gap-2 px-2 border-b border-border bg-white" style="padding-top: calc(0.625rem + env(safe-area-inset-top)); padding-bottom: 0.625rem;">
-                <button type="button" @click="h.expanded = false" class="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-foreground m-press" aria-label="Back"><i class="bi bi-arrow-left text-xl"></i></button>
+                <button type="button" @click="h.expanded = false" class="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-foreground m-press" aria-label="{{ __('shared.back') }}"><i class="bi bi-arrow-left text-xl"></i></button>
                 <span class="shrink-0">
                     <template x-if="h.partner.avatar"><img :src="h.partner.avatar" class="w-9 h-9 rounded-full object-cover" alt=""></template>
                     <template x-if="!h.partner.avatar"><span class="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-purple-400 text-white flex items-center justify-center text-sm font-bold" x-text="h.partner.initial"></span></template>
@@ -117,30 +117,30 @@
                     <p class="text-[15px] font-semibold text-foreground truncate mb-0" x-text="h.partner.name"></p>
                     <p class="text-[11px] text-muted-foreground mb-0 flex items-center gap-1">
                         <span class="w-1.5 h-1.5 rounded-full" :class="connected ? 'bg-green-500' : 'bg-gray-300'"></span>
-                        <span x-text="connected ? 'Active now' : 'Encrypted chat'"></span>
+                        <span x-text="connected ? '{{ __('nav.partials_mobile_chat_active_now') }}' : '{{ __('nav.partials_mobile_chat_encrypted_chat') }}'"></span>
                     </p>
                 </div>
                 {{-- Options menu --}}
                 <div class="relative shrink-0" x-data="{ menu:false }" @click.outside="menu=false">
-                    <button type="button" @click="menu=!menu" class="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground m-press" aria-label="Options"><i class="bi bi-three-dots-vertical text-lg"></i></button>
+                    <button type="button" @click="menu=!menu" class="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground m-press" aria-label="{{ __('nav.partials_mobile_chat_options') }}"><i class="bi bi-three-dots-vertical text-lg"></i></button>
                     <div x-show="menu" x-cloak
                          x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
-                         class="absolute right-0 top-11 z-20 w-52 bg-white rounded-xl shadow-lg border border-gray-100 py-1">
+                         class="absolute end-0 top-11 z-20 w-52 bg-white rounded-xl shadow-lg border border-gray-100 py-1">
                         <a :href="'{{ url('u') }}/' + (h.partner.slug || '')" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
-                            <i class="bi bi-person"></i> View profile
+                            <i class="bi bi-person"></i> {{ __('nav.partials_mobile_chat_view_profile') }}
                         </a>
                         <button type="button" @click="menu=false; clearHistory(h)" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
-                            <i class="bi bi-eraser"></i> Clear chat history
+                            <i class="bi bi-eraser"></i> {{ __('nav.partials_mobile_chat_clear_chat_history') }}
                         </button>
                         <button type="button" @click="menu=false; deleteChat(h)" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
-                            <i class="bi bi-trash"></i> Delete chat
+                            <i class="bi bi-trash"></i> {{ __('nav.partials_mobile_chat_delete_chat') }}
                         </button>
                         <div class="border-t border-gray-100 my-1"></div>
                         <button type="button" x-show="!h.partner.blocked" @click="menu=false; blockPartner(h)" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                            <i class="bi bi-slash-circle"></i> Block <span x-text="(h.partner.name||'').split(' ')[0]"></span>
+                            <i class="bi bi-slash-circle"></i> {{ __('nav.partials_mobile_chat_block') }} <span x-text="(h.partner.name||'').split(' ')[0]"></span>
                         </button>
                         <button type="button" x-show="h.partner.blocked" @click="menu=false; unblockPartner(h)" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
-                            <i class="bi bi-arrow-counterclockwise"></i> Unblock <span x-text="(h.partner.name||'').split(' ')[0]"></span>
+                            <i class="bi bi-arrow-counterclockwise"></i> {{ __('nav.partials_mobile_chat_unblock') }} <span x-text="(h.partner.name||'').split(' ')[0]"></span>
                         </button>
                     </div>
                 </div>
@@ -151,12 +151,12 @@
                 <template x-if="h.loadingThread">
                     <div class="space-y-2">
                         <div class="m-skeleton h-9 w-2/3 rounded-2xl"></div>
-                        <div class="m-skeleton h-9 w-1/2 rounded-2xl ml-auto"></div>
+                        <div class="m-skeleton h-9 w-1/2 rounded-2xl ms-auto"></div>
                         <div class="m-skeleton h-9 w-3/5 rounded-2xl"></div>
                     </div>
                 </template>
                 <template x-if="!h.loadingThread && h.messages.length === 0">
-                    <p class="text-center text-[12px] text-muted-foreground py-8">Say hello 👋</p>
+                    <p class="text-center text-[12px] text-muted-foreground py-8">{{ __('nav.partials_mobile_chat_say_hello') }}</p>
                 </template>
                 <template x-for="m in h.messages" :key="m.id">
                     <div class="flex gap-1.5 items-end" :class="m.mine ? 'justify-end' : 'justify-start'">
@@ -175,7 +175,7 @@
                                         : (m.mine ? 'bg-primary text-white rounded-br-md' : 'bg-white text-foreground border border-border rounded-bl-md'))
                                      + ((m.kind === 'image' || m.kind === 'video') && m.attachment && !m.deleted ? ' p-1' : ' px-3.5 py-2 text-[15px]')
                                      + (m.id === h.lastAddedId ? ' m-in-pop' : '') + (m.pending ? ' opacity-60' : '')">
-                            <p x-show="m.deleted" class="mb-0 italic flex items-center gap-1.5"><i class="bi bi-slash-circle"></i> This message was deleted</p>
+                            <p x-show="m.deleted" class="mb-0 italic flex items-center gap-1.5"><i class="bi bi-slash-circle"></i> {{ __('nav.partials_mobile_chat_message_deleted') }}</p>
                             <template x-if="!m.deleted && m.kind === 'image' && m.attachment">
                                 <a :href="m.attachment.url" target="_blank" rel="noopener" class="block"><img :src="m.attachment.url" :alt="m.attachment.name" loading="lazy" class="rounded-xl block" style="max-height:300px; max-width:100%;"></a>
                             </template>
@@ -202,7 +202,7 @@
                                         </div>
                                         <div class="flex items-center justify-between mt-0.5">
                                             <span class="text-[10px] tabular-nums opacity-80" x-text="timeLabel"></span>
-                                            <a :href="m.attachment.url" :download="m.attachment.name" class="flex items-center gap-1 text-[10px] opacity-70" title="Download">
+                                            <a :href="m.attachment.url" :download="m.attachment.name" class="flex items-center gap-1 text-[10px] opacity-70" title="{{ __('nav.partials_mobile_chat_download') }}">
                                                 <i class="bi bi-download"></i><span x-text="window.ChatAttach.humanSize(m.attachment.size)"></span>
                                             </a>
                                         </div>
@@ -218,7 +218,7 @@
                                     </span>
                                 </a>
                             </template>
-                            <p x-show="!m.deleted && m.kind && !m.attachment" class="mb-0 italic flex items-center gap-1.5"><i class="bi bi-clock-history"></i> Attachment expired</p>
+                            <p x-show="!m.deleted && m.kind && !m.attachment" class="mb-0 italic flex items-center gap-1.5"><i class="bi bi-clock-history"></i> {{ __('nav.partials_mobile_chat_attachment_expired') }}</p>
                             <template x-if="!m.deleted && !m.kind">
                                 <div>
                                     <p class="mb-0 whitespace-pre-wrap break-words" dir="auto" x-html="window.LinkPreview.linkifyHtml(m.body)"></p>
@@ -241,9 +241,9 @@
                                     </div>
                                 </div>
                             </template>
-                            <span class="block text-[10px] opacity-70 text-right" :class="((m.kind === 'image' || m.kind === 'video') && m.attachment && !m.deleted) ? 'px-1.5 pt-0.5 pb-1' : 'mt-0.5'">
-                                <span x-show="m.edited">edited · </span><span x-text="m.time"></span>
-                                <i x-show="m.pending" class="bi bi-clock ml-0.5"></i>
+                            <span class="block text-[10px] opacity-70 text-end" :class="((m.kind === 'image' || m.kind === 'video') && m.attachment && !m.deleted) ? 'px-1.5 pt-0.5 pb-1' : 'mt-0.5'">
+                                <span x-show="m.edited">{{ __('nav.partials_mobile_chat_edited_prefix') }}</span><span x-text="m.time"></span>
+                                <i x-show="m.pending" class="bi bi-clock ms-0.5"></i>
                             </span>
                         </div>
                         {{-- My own avatar (outgoing) --}}
@@ -263,17 +263,17 @@
             {{-- Editing banner --}}
             <div x-show="h.editing" x-cloak class="flex items-center gap-2 px-3 pt-2 bg-white text-xs text-primary">
                 <i class="bi bi-pencil-square"></i>
-                <span class="font-medium">Editing message</span>
-                <button type="button" @click="cancelEdit(h)" class="ml-auto text-muted-foreground"><i class="bi bi-x-lg"></i></button>
+                <span class="font-medium">{{ __('nav.partials_mobile_chat_editing_message') }}</span>
+                <button type="button" @click="cancelEdit(h)" class="ms-auto text-muted-foreground"><i class="bi bi-x-lg"></i></button>
             </div>
 
             {{-- Composer --}}
             <form class="flex items-end gap-2 px-2.5 pt-3 border-t border-border bg-white" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));" @submit.prevent="h.editing ? saveEdit(h) : send(h)">
-                <label class="w-11 h-11 shrink-0 rounded-full text-muted-foreground flex items-center justify-center m-press cursor-pointer" :class="h.editing ? 'opacity-40 pointer-events-none' : ''" aria-label="Attach file">
+                <label class="w-11 h-11 shrink-0 rounded-full text-muted-foreground flex items-center justify-center m-press cursor-pointer" :class="h.editing ? 'opacity-40 pointer-events-none' : ''" aria-label="{{ __('nav.partials_mobile_chat_attach_file') }}">
                     <i class="bi bi-paperclip text-lg"></i>
                     <input type="file" class="hidden" @change="attachFile($event, h)">
                 </label>
-                <textarea x-model="h.draft" rows="1" placeholder="Aa" dir="auto" @keydown.enter.prevent="h.editing ? saveEdit(h) : send(h)"
+                <textarea x-model="h.draft" rows="1" placeholder="{{ __('nav.partials_mobile_chat_composer_placeholder') }}" dir="auto" @keydown.enter.prevent="h.editing ? saveEdit(h) : send(h)"
                           class="flex-1 resize-none px-4 py-2.5 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-purple-500 focus:border-transparent text-[15px]" style="max-height:120px;"></textarea>
                 <button type="submit" class="w-11 h-11 shrink-0 rounded-full bg-primary text-white flex items-center justify-center m-press disabled:opacity-40" :disabled="h.sending || !(h.draft || '').trim()">
                     <i class="bi" :class="h.editing ? 'bi-check-lg' : 'bi-send-fill'"></i>
@@ -291,15 +291,15 @@
              x-transition:enter="transition ease-out duration-250" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
              x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
             <div class="w-11 h-1.5 rounded-full bg-gray-200 mx-auto my-2.5"></div>
-            <button type="button" @click="copyMsg(actionMsg)" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl m-press text-left text-[15px] text-foreground"><i class="bi bi-clipboard text-lg"></i> Copy</button>
+            <button type="button" @click="copyMsg(actionMsg)" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl m-press text-start text-[15px] text-foreground"><i class="bi bi-clipboard text-lg"></i> {{ __('nav.partials_mobile_chat_copy') }}</button>
             <template x-if="actionMsg && actionMsg.can_edit">
-                <button type="button" @click="startEdit(actionHead, actionMsg)" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl m-press text-left text-[15px] text-foreground"><i class="bi bi-pencil text-lg"></i> Edit</button>
+                <button type="button" @click="startEdit(actionHead, actionMsg)" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl m-press text-start text-[15px] text-foreground"><i class="bi bi-pencil text-lg"></i> {{ __('shared.edit') }}</button>
             </template>
-            <button type="button" @click="deleteForMe(actionHead, actionMsg)" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl m-press text-left text-[15px] text-foreground"><i class="bi bi-eye-slash text-lg"></i> Delete for me</button>
+            <button type="button" @click="deleteForMe(actionHead, actionMsg)" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl m-press text-start text-[15px] text-foreground"><i class="bi bi-eye-slash text-lg"></i> {{ __('nav.partials_mobile_chat_delete_for_me') }}</button>
             <template x-if="actionMsg && actionMsg.mine && !actionMsg.deleted">
-                <button type="button" @click="deleteMsg(actionHead, actionMsg)" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl m-press text-left text-[15px] text-red-600"><i class="bi bi-trash text-lg"></i> Delete for everyone</button>
+                <button type="button" @click="deleteMsg(actionHead, actionMsg)" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl m-press text-start text-[15px] text-red-600"><i class="bi bi-trash text-lg"></i> {{ __('nav.partials_mobile_chat_delete_for_everyone') }}</button>
             </template>
-            <button type="button" @click="actionMsg = null" class="w-full mt-1 px-4 py-3.5 rounded-2xl bg-muted/60 m-press text-[15px] font-medium text-foreground">Cancel</button>
+            <button type="button" @click="actionMsg = null" class="w-full mt-1 px-4 py-3.5 rounded-2xl bg-muted/60 m-press text-[15px] font-medium text-foreground">{{ __('shared.cancel') }}</button>
         </div>
     </div>
 
@@ -312,7 +312,7 @@
             <p class="text-base font-semibold text-foreground" x-text="chatConfirm.title"></p>
             <p class="text-sm text-muted-foreground mt-1.5" x-text="chatConfirm.message"></p>
             <div class="flex gap-2 mt-5">
-                <button type="button" @click="resolveConfirm(false)" class="m-press flex-1 py-2.5 rounded-lg bg-muted text-foreground text-sm font-semibold">Cancel</button>
+                <button type="button" @click="resolveConfirm(false)" class="m-press flex-1 py-2.5 rounded-lg bg-muted text-foreground text-sm font-semibold">{{ __('shared.cancel') }}</button>
                 <button type="button" @click="resolveConfirm(true)" class="m-press flex-1 py-2.5 rounded-lg bg-destructive text-white text-sm font-semibold" x-text="chatConfirm.confirmText"></button>
             </div>
         </div>
@@ -332,7 +332,7 @@ function mobileChatHeads() {
         connected: false,
         _tmp: 0,
         actionMsg: null, actionHead: null,
-        chatConfirm: { open: false, title: '', message: '', confirmText: 'Confirm', _resolve: null },
+        chatConfirm: { open: false, title: '', message: '', confirmText: '{{ __('nav.partials_mobile_chat_confirm') }}', _resolve: null },
 
         urls: {
             conversations: '{{ route('messages.conversations') }}',
@@ -359,9 +359,9 @@ function mobileChatHeads() {
             return new Promise((resolve) => {
                 this.chatConfirm = {
                     open: true,
-                    title: opts.title || 'Are you sure?',
+                    title: opts.title || '{{ __('nav.partials_mobile_chat_are_you_sure') }}',
                     message: opts.message || '',
-                    confirmText: opts.confirmText || 'Confirm',
+                    confirmText: opts.confirmText || '{{ __('nav.partials_mobile_chat_confirm') }}',
                     _resolve: resolve,
                 };
             });
@@ -416,57 +416,57 @@ function mobileChatHeads() {
         closeHead(h) { this.heads = this.heads.filter((x) => x.id !== h.id); },
 
         async deleteChat(h) {
-            const ok = await this.askConfirm({ title: 'Delete chat?', message: 'This chat and its history will be removed from your list. It reappears if a new message arrives.', type: 'danger', confirmText: 'Delete' });
+            const ok = await this.askConfirm({ title: '{{ __('nav.partials_mobile_chat_delete_chat_confirm_title') }}', message: '{{ __('nav.partials_mobile_chat_delete_chat_confirm_message') }}', type: 'danger', confirmText: '{{ __('shared.delete') }}' });
             if (!ok) return;
             try {
                 const r = await fetch(`${this.urls.base}/${h.id}`, { method: 'DELETE', headers: this.headers() });
                 const d = await r.json();
-                if (!d.success) { window.showToast && window.showToast('error', 'Could not delete chat.'); return; }
+                if (!d.success) { window.showToast && window.showToast('error', '{{ __('nav.partials_mobile_chat_could_not_delete_chat') }}'); return; }
                 this.chats = this.chats.filter((c) => c.id !== h.id);
                 this.closeHead(h);
-                window.showToast && window.showToast('success', 'Chat deleted');
-            } catch (e) { window.showToast && window.showToast('error', 'Could not delete chat.'); }
+                window.showToast && window.showToast('success', '{{ __('nav.partials_mobile_chat_chat_deleted') }}');
+            } catch (e) { window.showToast && window.showToast('error', '{{ __('nav.partials_mobile_chat_could_not_delete_chat') }}'); }
         },
 
         async clearHistory(h) {
-            const ok = await this.askConfirm({ title: 'Clear chat history?', message: 'All earlier messages will be permanently removed from your chat. This cannot be undone.', type: 'danger', confirmText: 'Clear' });
+            const ok = await this.askConfirm({ title: '{{ __('nav.partials_mobile_chat_clear_chat_history_confirm_title') }}', message: '{{ __('nav.partials_mobile_chat_clear_chat_history_confirm_message') }}', type: 'danger', confirmText: '{{ __('nav.partials_mobile_chat_clear') }}' });
             if (!ok) return;
             try {
                 const r = await fetch(`${this.urls.base}/${h.id}`, { method: 'DELETE', headers: this.headers() });
                 const d = await r.json();
-                if (!d.success) { window.showToast && window.showToast('error', 'Could not clear history.'); return; }
+                if (!d.success) { window.showToast && window.showToast('error', '{{ __('nav.partials_mobile_chat_could_not_clear_history') }}'); return; }
                 h.messages.splice(0, h.messages.length);   // empty the screen instantly (reactive)
                 h.loaded = true;                           // don't refetch the cleared thread
                 const c = this.chats.find((x) => x.id === h.id);
                 if (c) { c.last_body = null; c.last_at_human = null; }
-                window.showToast && window.showToast('success', 'Chat history cleared');
-            } catch (e) { window.showToast && window.showToast('error', 'Could not clear history.'); }
+                window.showToast && window.showToast('success', '{{ __('nav.partials_mobile_chat_chat_history_cleared') }}');
+            } catch (e) { window.showToast && window.showToast('error', '{{ __('nav.partials_mobile_chat_could_not_clear_history') }}'); }
         },
 
         async blockPartner(h) {
-            const name = (h.partner.name || '').split(' ')[0] || 'this person';
-            if (!h.partner.slug) { window.showToast && window.showToast('error', 'Cannot block this user.'); return; }
-            const ok = await this.askConfirm({ title: 'Block ' + name + '?', message: 'They will not be able to see your wall or interact with you, and you will not see their posts. You can unblock them from their profile.', type: 'danger', confirmText: 'Block' });
+            const name = (h.partner.name || '').split(' ')[0] || '{{ __('nav.partials_mobile_chat_this_person') }}';
+            if (!h.partner.slug) { window.showToast && window.showToast('error', '{{ __('nav.partials_mobile_chat_cannot_block_user') }}'); return; }
+            const ok = await this.askConfirm({ title: '{{ __('nav.partials_mobile_chat_block_confirm_title') }}'.replace(':name', name), message: '{{ __('nav.partials_mobile_chat_block_confirm_message') }}', type: 'danger', confirmText: '{{ __('nav.partials_mobile_chat_block') }}' });
             if (!ok) return;
             try {
                 const r = await fetch(`${this.urls.wall}/${h.partner.slug}/block`, { method: 'POST', headers: this.headers() });
                 const d = await r.json();
-                if (d.success === false) { window.showToast && window.showToast('error', d.message || 'Could not block.'); return; }
+                if (d.success === false) { window.showToast && window.showToast('error', d.message || '{{ __('nav.partials_mobile_chat_could_not_block') }}'); return; }
                 h.partner.blocked = true;
-                window.showToast && window.showToast('success', name + ' blocked');
-            } catch (e) { window.showToast && window.showToast('error', 'Could not block.'); }
+                window.showToast && window.showToast('success', '{{ __('nav.partials_mobile_chat_name_blocked') }}'.replace(':name', name));
+            } catch (e) { window.showToast && window.showToast('error', '{{ __('nav.partials_mobile_chat_could_not_block') }}'); }
         },
 
         async unblockPartner(h) {
-            const name = (h.partner.name || '').split(' ')[0] || 'this person';
+            const name = (h.partner.name || '').split(' ')[0] || '{{ __('nav.partials_mobile_chat_this_person') }}';
             if (!h.partner.slug) return;
             try {
                 const r = await fetch(`${this.urls.wall}/${h.partner.slug}/block`, { method: 'DELETE', headers: this.headers() });
                 const d = await r.json();
-                if (d.success === false) { window.showToast && window.showToast('error', d.message || 'Could not unblock.'); return; }
+                if (d.success === false) { window.showToast && window.showToast('error', d.message || '{{ __('nav.partials_mobile_chat_could_not_unblock') }}'); return; }
                 h.partner.blocked = false;
-                window.showToast && window.showToast('success', name + ' unblocked');
-            } catch (e) { window.showToast && window.showToast('error', 'Could not unblock.'); }
+                window.showToast && window.showToast('success', '{{ __('nav.partials_mobile_chat_name_unblocked') }}'.replace(':name', name));
+            } catch (e) { window.showToast && window.showToast('error', '{{ __('nav.partials_mobile_chat_could_not_unblock') }}'); }
         },
 
         async loadThread(h) {
@@ -475,7 +475,7 @@ function mobileChatHeads() {
                 const r = await fetch(`${this.urls.base}/${h.id}/thread`, { headers: { 'Accept': 'application/json' } });
                 const d = await r.json();
                 if (d.success) { h.partner = d.partner; h.messages = d.messages; h.loaded = true; this.scrollDown(h); }
-            } catch (e) { window.showToast && window.showToast('error', 'Could not load conversation.'); }
+            } catch (e) { window.showToast && window.showToast('error', '{{ __('nav.partials_mobile_chat_could_not_load_conversation') }}'); }
             finally { h.loadingThread = false; }
         },
 
@@ -502,7 +502,7 @@ function mobileChatHeads() {
             } catch (e) {
                 const idx = h.messages.findIndex((m) => m.id === tempId);
                 if (idx > -1) h.messages.splice(idx, 1);
-                window.showToast && window.showToast('error', 'Could not send.');
+                window.showToast && window.showToast('error', '{{ __('nav.partials_mobile_chat_could_not_send') }}');
             } finally { h.sending = false; }
         },
 
@@ -540,7 +540,7 @@ function mobileChatHeads() {
                     }
                 }
                 const c = this.chats.find((x) => x.id === detail.conversation_id);
-                if (c && detail.is_latest) c.last_body = detail.action === 'delete' ? 'This message was deleted' : detail.body;
+                if (c && detail.is_latest) c.last_body = detail.action === 'delete' ? '{{ __('nav.partials_mobile_chat_message_deleted') }}' : detail.body;
                 return;
             }
 
@@ -558,7 +558,7 @@ function mobileChatHeads() {
 
             // Always refresh the dropdown list preview (even when no head is open).
             const label = detail.action === 'file'
-                ? (detail.kind === 'image' ? '📷 Photo' : '📎 ' + ((detail.attachment && detail.attachment.name) || 'file'))
+                ? (detail.kind === 'image' ? '{{ __('nav.partials_mobile_chat_photo') }}' : '📎 ' + ((detail.attachment && detail.attachment.name) || '{{ __('nav.partials_mobile_chat_file_fallback') }}'))
                 : detail.body;
             this.touchChat({
                 id: detail.conversation_id,
@@ -586,7 +586,7 @@ function mobileChatHeads() {
             if (i > -1) h.messages.splice(i, 1, att); else h.messages.push(att);
             if (previewUrl) URL.revokeObjectURL(previewUrl);
             this.scrollDown(h);
-            this.touchChat({ id: h.id, partner: h.partner, last_body: att.kind === 'image' ? '📷 Photo' : '📎 ' + ((att.attachment && att.attachment.name) || 'file'), last_mine: true });
+            this.touchChat({ id: h.id, partner: h.partner, last_body: att.kind === 'image' ? '{{ __('nav.partials_mobile_chat_photo') }}' : '📎 ' + ((att.attachment && att.attachment.name) || '{{ __('nav.partials_mobile_chat_file_fallback') }}'), last_mine: true });
         },
 
         /* ── message actions (copy / edit / delete) ── */
@@ -595,8 +595,8 @@ function mobileChatHeads() {
         copyMsg(m) {
             this.actionMsg = null;
             navigator.clipboard?.writeText(m.body || '').then(
-                () => window.showToast && window.showToast('success', 'Message copied'),
-                () => window.showToast && window.showToast('error', 'Could not copy'),
+                () => window.showToast && window.showToast('success', '{{ __('nav.partials_mobile_chat_message_copied') }}'),
+                () => window.showToast && window.showToast('error', '{{ __('nav.partials_mobile_chat_could_not_copy') }}'),
             );
         },
 
@@ -614,40 +614,40 @@ function mobileChatHeads() {
             try {
                 const r = await fetch(`${this.urls.base}/${h.id}/messages/${h.editingId}`, { method: 'PATCH', headers: this.headers(), body: JSON.stringify({ body }) });
                 const d = await r.json();
-                if (!d.success) { window.showToast && window.showToast('error', d.message || 'Could not edit.'); return; }
+                if (!d.success) { window.showToast && window.showToast('error', d.message || '{{ __('nav.partials_mobile_chat_could_not_edit') }}'); return; }
                 const m = h.messages.find((x) => x.id === h.editingId);
                 if (m) { m.body = body; m.edited = true; }
                 this.cancelEdit(h);
-            } catch (e) { window.showToast && window.showToast('error', 'Could not edit.'); }
+            } catch (e) { window.showToast && window.showToast('error', '{{ __('nav.partials_mobile_chat_could_not_edit') }}'); }
             finally { h.sending = false; }
         },
 
         async deleteMsg(h, m) {
             this.actionMsg = null;
-            const ok = await this.askConfirm({ title: 'Delete for everyone?', message: 'This message will be deleted for everyone in the chat.', type: 'danger', confirmText: 'Delete' });
+            const ok = await this.askConfirm({ title: '{{ __('nav.partials_mobile_chat_delete_for_everyone_confirm_title') }}', message: '{{ __('nav.partials_mobile_chat_delete_for_everyone_confirm_message') }}', type: 'danger', confirmText: '{{ __('shared.delete') }}' });
             if (!ok) return;
             try {
                 const r = await fetch(`${this.urls.base}/${h.id}/messages/${m.id}`, { method: 'DELETE', headers: this.headers() });
                 const d = await r.json();
-                if (!d.success) { window.showToast && window.showToast('error', 'Could not delete.'); return; }
+                if (!d.success) { window.showToast && window.showToast('error', '{{ __('nav.partials_mobile_chat_could_not_delete') }}'); return; }
                 m.deleted = true; m.body = null; m.can_edit = false;
                 if (h.editingId === m.id) this.cancelEdit(h);
-            } catch (e) { window.showToast && window.showToast('error', 'Could not delete.'); }
+            } catch (e) { window.showToast && window.showToast('error', '{{ __('nav.partials_mobile_chat_could_not_delete') }}'); }
         },
 
         async deleteForMe(h, m) {
             this.actionMsg = null;
             if (!h) return;
-            const ok = await this.askConfirm({ title: 'Delete for me?', message: 'This message will be removed from your view only.', type: 'danger', confirmText: 'Delete' });
+            const ok = await this.askConfirm({ title: '{{ __('nav.partials_mobile_chat_delete_for_me_confirm_title') }}', message: '{{ __('nav.partials_mobile_chat_delete_for_me_confirm_message') }}', type: 'danger', confirmText: '{{ __('shared.delete') }}' });
             if (!ok) return;
             try {
                 const r = await fetch(`${this.urls.base}/${h.id}/messages/${m.id}/hide`, { method: 'POST', headers: this.headers() });
                 const d = await r.json();
-                if (!d.success) { window.showToast && window.showToast('error', 'Could not delete.'); return; }
+                if (!d.success) { window.showToast && window.showToast('error', '{{ __('nav.partials_mobile_chat_could_not_delete') }}'); return; }
                 const i = h.messages.findIndex((x) => x.id === m.id);
                 if (i > -1) h.messages.splice(i, 1);
                 if (h.editingId === m.id) this.cancelEdit(h);
-            } catch (e) { window.showToast && window.showToast('error', 'Could not delete.'); }
+            } catch (e) { window.showToast && window.showToast('error', '{{ __('nav.partials_mobile_chat_could_not_delete') }}'); }
         },
 
         markRead(id) { fetch(`${this.urls.base}/${id}/read`, { method: 'POST', headers: this.headers() }).catch(() => {}); },

@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\InstructorReviewRequest;
-use App\Models\InstructorReview;
 use App\Models\ClubInstructor;
+use App\Models\InstructorReview;
 use Illuminate\Support\Facades\Auth;
 
 class InstructorReviewController extends Controller
@@ -27,7 +27,7 @@ class InstructorReviewController extends Controller
         if ($existingReview) {
             return response()->json([
                 'success' => false,
-                'message' => 'You have already reviewed this instructor. Please edit your existing review.'
+                'message' => 'You have already reviewed this instructor. Please edit your existing review.',
             ], 400);
         }
 
@@ -60,7 +60,7 @@ class InstructorReviewController extends Controller
         if ($review->reviewer_user_id !== $user->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'You can only edit your own reviews.'
+                'message' => 'You can only edit your own reviews.',
             ], 403);
         }
 

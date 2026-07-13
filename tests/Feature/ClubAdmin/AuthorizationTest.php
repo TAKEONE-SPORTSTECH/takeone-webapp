@@ -13,10 +13,10 @@ class AuthorizationTest extends TestCase
     public function test_guest_cannot_access_club_admin_dashboard(): void
     {
         $owner = $this->createUser();
-        $club  = $this->createClub($owner);
+        $club = $this->createClub($owner);
 
         $this->get("/admin/club/{$club->slug}/dashboard")
-             ->assertRedirect('/login');
+            ->assertRedirect('/login');
     }
 
     // -------------------------------------------------------------------------
@@ -26,11 +26,11 @@ class AuthorizationTest extends TestCase
     public function test_unverified_user_cannot_access_club_admin_dashboard(): void
     {
         $owner = $this->createUnverifiedUser();
-        $club  = $this->createClub($owner);
+        $club = $this->createClub($owner);
 
         $this->actingAs($owner)
-             ->get("/admin/club/{$club->slug}/dashboard")
-             ->assertRedirect('/email/verify');
+            ->get("/admin/club/{$club->slug}/dashboard")
+            ->assertRedirect('/email/verify');
     }
 
     // -------------------------------------------------------------------------
@@ -40,11 +40,11 @@ class AuthorizationTest extends TestCase
     public function test_club_owner_can_access_dashboard(): void
     {
         $owner = $this->createUser();
-        $club  = $this->createClub($owner);
+        $club = $this->createClub($owner);
 
         $this->actingAs($owner)
-             ->get("/admin/club/{$club->slug}/dashboard")
-             ->assertOk();
+            ->get("/admin/club/{$club->slug}/dashboard")
+            ->assertOk();
     }
 
     // -------------------------------------------------------------------------
@@ -54,13 +54,13 @@ class AuthorizationTest extends TestCase
     public function test_club_admin_role_can_access_dashboard(): void
     {
         $owner = $this->createUser();
-        $club  = $this->createClub($owner);
+        $club = $this->createClub($owner);
         $admin = $this->createUser();
         $this->makeClubAdmin($admin, $club);
 
         $this->actingAs($admin)
-             ->get("/admin/club/{$club->slug}/dashboard")
-             ->assertOk();
+            ->get("/admin/club/{$club->slug}/dashboard")
+            ->assertOk();
     }
 
     // -------------------------------------------------------------------------
@@ -70,13 +70,13 @@ class AuthorizationTest extends TestCase
     public function test_super_admin_can_access_any_club_dashboard(): void
     {
         $owner = $this->createUser();
-        $club  = $this->createClub($owner);
+        $club = $this->createClub($owner);
         $super = $this->createUser();
         $this->makeSuperAdmin($super);
 
         $this->actingAs($super)
-             ->get("/admin/club/{$club->slug}/dashboard")
-             ->assertOk();
+            ->get("/admin/club/{$club->slug}/dashboard")
+            ->assertOk();
     }
 
     // -------------------------------------------------------------------------
@@ -85,30 +85,43 @@ class AuthorizationTest extends TestCase
 
     public function test_random_user_cannot_access_another_clubs_dashboard(): void
     {
-        $owner     = $this->createUser();
-        $club      = $this->createClub($owner);
+        $owner = $this->createUser();
+        $club = $this->createClub($owner);
         $randoUser = $this->createUser();
 
+        // Browser navigation: the 403 handler in bootstrap/app.php intentionally
+        // reroutes a denied web request to home rather than dead-ending on a raw
+        // 403 page — the user is still denied the dashboard.
         $this->actingAs($randoUser)
-             ->get("/admin/club/{$club->slug}/dashboard")
-             ->assertForbidden();
+            ->get("/admin/club/{$club->slug}/dashboard")
+            ->assertRedirect('/');
+
+        // JSON/AJAX callers get an explicit 403 from the same authorization gate.
+        $this->actingAs($randoUser)
+            ->getJson("/admin/club/{$club->slug}/dashboard")
+            ->assertForbidden();
     }
 
     public function test_club_admin_of_one_club_cannot_access_another_clubs_dashboard(): void
     {
         $owner1 = $this->createUser();
-        $club1  = $this->createClub($owner1);
+        $club1 = $this->createClub($owner1);
 
         $owner2 = $this->createUser();
-        $club2  = $this->createClub($owner2);
+        $club2 = $this->createClub($owner2);
 
         $admin = $this->createUser();
         $this->makeClubAdmin($admin, $club1);
 
-        // admin of club1 should not access club2
+        // admin of club1 should not access club2 — browser nav is rerouted home
+        // (denied), JSON path returns an explicit 403.
         $this->actingAs($admin)
-             ->get("/admin/club/{$club2->slug}/dashboard")
-             ->assertForbidden();
+            ->get("/admin/club/{$club2->slug}/dashboard")
+            ->assertRedirect('/');
+
+        $this->actingAs($admin)
+            ->getJson("/admin/club/{$club2->slug}/dashboard")
+            ->assertForbidden();
     }
 
     // -------------------------------------------------------------------------
@@ -118,19 +131,19 @@ class AuthorizationTest extends TestCase
     public function test_guest_cannot_access_club_financials(): void
     {
         $owner = $this->createUser();
-        $club  = $this->createClub($owner);
+        $club = $this->createClub($owner);
 
         $this->get("/admin/club/{$club->slug}/financials")
-             ->assertRedirect('/login');
+            ->assertRedirect('/login');
     }
 
     public function test_unverified_user_cannot_access_club_members(): void
     {
         $owner = $this->createUnverifiedUser();
-        $club  = $this->createClub($owner);
+        $club = $this->createClub($owner);
 
         $this->actingAs($owner)
-             ->get("/admin/club/{$club->slug}/members")
-             ->assertRedirect('/email/verify');
+            ->get("/admin/club/{$club->slug}/members")
+            ->assertRedirect('/email/verify');
     }
 }

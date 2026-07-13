@@ -18,7 +18,7 @@
                     @if(session('club.context.logo'))
                         <img src="{{ asset('storage/' . session('club.context.logo')) }}" alt="{{ session('club.context.name') }}" class="h-16 mx-auto rounded-xl object-contain">
                     @endif
-                    <p class="text-sm text-gray-400 mt-2">One step away from joining <span class="font-semibold text-foreground">{{ session('club.context.name') }}</span></p>
+                    <p class="text-sm text-gray-400 mt-2">{{ __('auth.auth_verify_email_one_step_away') }} <span class="font-semibold text-foreground">{{ session('club.context.name') }}</span></p>
                 @else
                     <a href="{{ url('/') }}">
                         <img src="{{ asset('images/fullLogo.png') }}" alt="TAKEONE" class="h-12 mx-auto">
@@ -36,17 +36,17 @@
                     </div>
                 </div>
 
-                <h2 class="text-center text-gray-800 text-xl font-semibold mb-2 tracking-tight">Email Verified!</h2>
+                <h2 class="text-center text-gray-800 text-xl font-semibold mb-2 tracking-tight">{{ __('auth.auth_verify_email_verified_title') }}</h2>
                 <p class="text-center text-gray-400 text-sm mb-6 leading-relaxed">
-                    Your account is now active. You will be taken to the app shortly.
+                    {{ __('auth.auth_verify_email_verified_body') }}
                 </p>
 
                 <a href="{{ session('verified_intended', route('clubs.explore')) }}" class="tf-auth-btn mb-4 block text-center">
-                    GO TO APP
+                    {{ __('auth.auth_verify_email_go_to_app') }}
                 </a>
 
                 <p class="text-center text-xs text-gray-400" x-data="{ secs: 3 }" x-init="setInterval(() => { if (secs > 0) secs--; else window.location.href = '{{ session('verified_intended', route('clubs.explore')) }}'; }, 1000)">
-                    Redirecting in <span x-text="secs"></span> second(s)…
+                    {{ __('auth.auth_verify_email_redirecting_prefix') }} <span x-text="secs"></span> {{ __('auth.auth_verify_email_redirecting_suffix') }}
                 </p>
             @else
                 {{-- ── WAITING STATE ── --}}
@@ -59,10 +59,10 @@
                     </div>
                 </div>
 
-                <h2 class="text-center text-gray-800 text-xl font-semibold mb-2 tracking-tight">Check Your Inbox</h2>
+                <h2 class="text-center text-gray-800 text-xl font-semibold mb-2 tracking-tight">{{ __('auth.auth_verify_email_check_inbox_title') }}</h2>
                 <p class="text-center text-gray-400 text-sm mb-6 leading-relaxed">
-                    We sent a verification link to your email address.<br>
-                    Click the link in the email to activate your account.
+                    {{ __('auth.auth_verify_email_check_inbox_line1') }}<br>
+                    {{ __('auth.auth_verify_email_check_inbox_line2') }}
                 </p>
 
                 @if (session('resent') || session('status') == 'verification-link-sent')
@@ -70,29 +70,29 @@
                         <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                         </svg>
-                        <span>A fresh verification link has been sent to your email address.</span>
+                        <span>{{ __('auth.auth_verify_email_fresh_link_sent') }}</span>
                     </div>
                 @endif
 
                 <div class="flex items-center gap-3 mb-5">
                     <div class="flex-1 h-px bg-gray-100"></div>
-                    <span class="text-xs text-gray-400 whitespace-nowrap">Didn't receive the email?</span>
+                    <span class="text-xs text-gray-400 whitespace-nowrap">{{ __('auth.auth_verify_email_didnt_receive') }}</span>
                     <div class="flex-1 h-px bg-gray-100"></div>
                 </div>
 
                 <form method="POST" action="{{ route('verification.send') }}">
                     @csrf
                     <button type="submit" class="tf-auth-btn mb-4">
-                        RESEND VERIFICATION EMAIL
+                        {{ __('auth.auth_verify_email_resend_button') }}
                     </button>
                 </form>
 
                 <p class="text-center text-sm text-gray-400">
-                    Wrong account?
+                    {{ __('auth.auth_verify_email_wrong_account') }}
                     <a href="{{ route('logout') }}"
                        class="tf-auth-link"
                        onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                        Sign out
+                        {{ __('auth.auth_verify_email_sign_out') }}
                     </a>
                 </p>
 

@@ -139,8 +139,10 @@ class FinancialTest extends TestCase
             'transaction_date' => '2026-03-01',
         ]);
 
+        // deleteJson mirrors the app's real AJAX write path (and keeps a clean
+        // 404; browser writes now redirect via the global not-found handler).
         $this->actingAs($owner1)
-             ->delete("/admin/club/{$club1->slug}/financials/{$transaction->id}")
+             ->deleteJson("/admin/club/{$club1->slug}/financials/{$transaction->id}")
              ->assertNotFound();
 
         $this->assertDatabaseHas('club_transactions', ['id' => $transaction->id]);

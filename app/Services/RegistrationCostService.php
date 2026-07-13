@@ -22,18 +22,26 @@ use Illuminate\Support\Collection;
 class RegistrationCostService
 {
     /**
-     * Effective registration (joining) fee for a package:
-     * the package override, else the club-wide enrollment_fee, else 0.
+     * The one-time registration fee for a first-time member joining the club —
+     * the package override, else the club-wide registration_fee. Falls back to
+     * the legacy enrollment_fee when no registration fee is configured, so older
+     * clubs keep their joining fee. The recurring package price is the member's
+     * "enrollment" and is billed separately as the package line — it is NOT added
+     * here.
      */
     public function effectiveRegistrationFee(ClubPackage $package, ?Tenant $club = null): float
     {
-        if ($package->registration_fee !== null) {
-            return (float) $package->registration_fee;
-        }
-
         $club ??= $package->tenant;
 
-        return (float) ($club?->enrollment_fee ?? 0);
+        $fee = $package->registration_fee !== null
+            ? (float) $package->registration_fee
+            : (float) ($club?->registration_fee ?? 0);
+
+        if ($fee <= 0) {
+            $fee = (float) ($club?->enrollment_fee ?? 0);
+        }
+
+        return $fee;
     }
 
     /**
@@ -98,7 +106,7 @@ class RegistrationCostService
     public function attachEquipmentToPackages(Collection $packages, int $tenantId, ?int $userId = null): void
     {
         $packages->loadMissing('activities.equipment.product.variants');
-        $owned        = $userId ? $this->ownedProductIds($tenantId, $userId) : [];
+        $owned = $userId ? $this->ownedProductIds($tenantId, $userId) : [];
         $ownedVariant = $userId ? $this->ownedVariantIds($tenantId, $userId) : [];
 
         foreach ($packages as $package) {
@@ -108,30 +116,30 @@ class RegistrationCostService
                 ->filter(fn (ClubActivityEquipment $e) => $e->product !== null)  // drop links to deleted products
                 ->unique('id')
                 ->map(function (ClubActivityEquipment $e) use ($owned, $ownedVariant) {
-                    $product  = $e->product;
+                    $product = $e->product;
                     $variants = $product->variants->where('is_active', true)->values();
                     $hasVariants = $variants->isNotEmpty();
 
                     return [
-                        'id'            => $e->id,
-                        'product_id'    => $e->club_product_id,
-                        'name'          => $product->name,
+                        'id' => $e->id,
+                        'product_id' => $e->club_product_id,
+                        'name' => $product->name,
                         // With variants the price is "from" the cheapest option;
                         // the UI charges the price of whichever variant is chosen.
-                        'price'         => $hasVariants ? (float) $variants->min('price') : (float) $product->price,
-                        'image'         => $product->image_path ? asset('storage/' . $product->image_path) : null,
-                        'is_required'   => (bool) $e->is_required,
-                        'has_variants'  => $hasVariants,
-                        'variants'      => $variants->map(fn ($v) => [
-                            'id'        => $v->id,
-                            'label'     => $v->label,
-                            'size'      => $v->size,
-                            'color'     => $v->color,
+                        'price' => $hasVariants ? (float) $variants->min('price') : (float) $product->price,
+                        'image' => $product->image_path ? asset('storage/'.$product->image_path) : null,
+                        'is_required' => (bool) $e->is_required,
+                        'has_variants' => $hasVariants,
+                        'variants' => $variants->map(fn ($v) => [
+                            'id' => $v->id,
+                            'label' => $v->label,
+                            'size' => $v->size,
+                            'color' => $v->color,
                             'color_hex' => $v->color_hex,
-                            'brand'     => $v->brand,
-                            'price'     => (float) $v->price,
-                            'in_stock'  => ! $v->isOutOfStock(),
-                            'owned'     => in_array($v->id, $ownedVariant, true),
+                            'brand' => $v->brand,
+                            'price' => (float) $v->price,
+                            'in_stock' => ! $v->isOutOfStock(),
+                            'owned' => in_array($v->id, $ownedVariant, true),
                         ])->all(),
                         // Non-variant ownership stays keyed on the product.
                         'already_owned' => ! $hasVariants && in_array($e->club_product_id, $owned, true),
@@ -148,13 +156,15 @@ class RegistrationCostService
                     $rows = json_decode($rows, true) ?: [];
                 }
                 foreach ((array) $rows as $slot) {
-                    if (!is_array($slot)) continue;
+                    if (! is_array($slot)) {
+                        continue;
+                    }
                     $schedule[] = [
-                        'activity'   => $activity->name,
-                        'day'        => $slot['day'] ?? null,
+                        'activity' => $activity->name,
+                        'day' => $slot['day'] ?? null,
                         'start_time' => $slot['start_time'] ?? null,
-                        'end_time'   => $slot['end_time'] ?? null,
-                        'facility'   => $slot['facility_name'] ?? null,
+                        'end_time' => $slot['end_time'] ?? null,
+                        'facility' => $slot['facility_name'] ?? null,
                     ];
                 }
             }
@@ -192,46 +202,48 @@ class RegistrationCostService
         $total = 0.0;
         foreach ($items as $item) {
             $product = $item->product;
-            if (!$product) continue;   // link to a deleted product — nothing to charge
+            if (! $product) {
+                continue;
+            }   // link to a deleted product — nothing to charge
 
             // When the product has variants, the price + label come from the
             // chosen variant. A variant product with no choice is skipped.
             $variant = null;
             if ($product->variants->isNotEmpty()) {
                 $chosenId = $variantMap[$item->id] ?? null;
-                $variant  = $chosenId ? $product->variants->firstWhere('id', (int) $chosenId) : null;
+                $variant = $chosenId ? $product->variants->firstWhere('id', (int) $chosenId) : null;
                 if (! $variant) {
                     continue;
                 }
             }
 
-            $name  = $variant ? ($product->name . ' — ' . $variant->label) : $product->name;
+            $name = $variant ? ($product->name.' — '.$variant->label) : $product->name;
             $price = (float) ($variant ? $variant->price : $product->price);
 
             MemberEquipment::create([
-                'tenant_id'               => $club->id,
-                'user_id'                 => $userId,
-                'activity_id'             => $item->activity_id,
-                'equipment_id'            => $item->id,
-                'club_product_id'         => $product->id,
+                'tenant_id' => $club->id,
+                'user_id' => $userId,
+                'activity_id' => $item->activity_id,
+                'equipment_id' => $item->id,
+                'club_product_id' => $product->id,
                 'club_product_variant_id' => $variant?->id,
-                'subscription_id'         => $subscription?->id,
-                'name'                    => $name,           // snapshot (frozen for accounting)
-                'variant_label'           => $variant?->label,
-                'price'                   => $price,          // snapshot
-                'status'                  => $ownershipStatus,
-                'acquired_at'             => now(),
+                'subscription_id' => $subscription?->id,
+                'name' => $name,           // snapshot (frozen for accounting)
+                'variant_label' => $variant?->label,
+                'price' => $price,          // snapshot
+                'status' => $ownershipStatus,
+                'acquired_at' => now(),
             ]);
 
             if ($recordIncome && $price > 0) {
                 ClubTransaction::create([
-                    'tenant_id'        => $club->id,
-                    'user_id'          => $userId,
-                    'subscription_id'  => $subscription?->id,
-                    'type'             => 'income',
-                    'category'         => 'equipment',
-                    'amount'           => $price,
-                    'description'      => 'Equipment: ' . $name,
+                    'tenant_id' => $club->id,
+                    'user_id' => $userId,
+                    'subscription_id' => $subscription?->id,
+                    'type' => 'income',
+                    'category' => 'equipment',
+                    'amount' => $price,
+                    'description' => 'Equipment: '.$name,
                     'transaction_date' => now(),
                 ]);
             }
@@ -268,26 +280,28 @@ class RegistrationCostService
 
         foreach ($items as $item) {
             $product = $item->product;
-            if (! $product) continue;   // link to a deleted product — nothing to remember
+            if (! $product) {
+                continue;
+            }   // link to a deleted product — nothing to remember
 
             MemberEquipment::create([
-                'tenant_id'       => $club->id,
-                'user_id'         => $userId,
-                'activity_id'     => $item->activity_id,
-                'equipment_id'    => $item->id,
+                'tenant_id' => $club->id,
+                'user_id' => $userId,
+                'activity_id' => $item->activity_id,
+                'equipment_id' => $item->id,
                 'club_product_id' => $product->id,
                 'subscription_id' => $subscription?->id,
-                'name'            => $product->name,   // snapshot
-                'price'           => 0,                // already owned — never charged
-                'status'          => 'owned',
-                'acquired_at'     => now(),
+                'name' => $product->name,   // snapshot
+                'price' => 0,                // already owned — never charged
+                'status' => 'owned',
+                'acquired_at' => now(),
             ]);
         }
     }
 
     /**
-     * Record the snapshotted registration (joining) fee as a club income
-     * transaction. The amount is already frozen onto the subscription.
+     * Record the snapshotted registration fee as a club income transaction.
+     * The amount is already frozen onto the subscription.
      */
     public function recordRegistrationFee(Tenant $club, int $userId, ?ClubMemberSubscription $subscription, float $fee, string $memberName): void
     {
@@ -296,13 +310,35 @@ class RegistrationCostService
         }
 
         ClubTransaction::create([
-            'tenant_id'        => $club->id,
-            'user_id'          => $userId,
-            'subscription_id'  => $subscription?->id,
-            'type'             => 'income',
-            'category'         => 'enrollment',
-            'amount'           => $fee,
-            'description'      => "Registration fee: {$memberName}",
+            'tenant_id' => $club->id,
+            'user_id' => $userId,
+            'subscription_id' => $subscription?->id,
+            'type' => 'income',
+            'category' => 'registration',
+            'amount' => $fee,
+            'description' => "Registration fee: {$memberName}",
+            'transaction_date' => now(),
+        ]);
+    }
+
+    /**
+     * Record the enrollment fee as a club income transaction — the second joining
+     * line item, kept separate from the registration fee.
+     */
+    public function recordEnrollmentFee(Tenant $club, int $userId, ?ClubMemberSubscription $subscription, float $fee, string $memberName): void
+    {
+        if ($fee <= 0) {
+            return;
+        }
+
+        ClubTransaction::create([
+            'tenant_id' => $club->id,
+            'user_id' => $userId,
+            'subscription_id' => $subscription?->id,
+            'type' => 'income',
+            'category' => 'enrollment',
+            'amount' => $fee,
+            'description' => "Enrollment fee: {$memberName}",
             'transaction_date' => now(),
         ]);
     }

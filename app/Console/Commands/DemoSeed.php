@@ -14,23 +14,19 @@ use App\Models\ClubMemberSubscription;
 use App\Models\ClubPackage;
 use App\Models\ClubPackageActivity;
 use App\Models\ClubProduct;
-use App\Models\ClubTransaction;
 use App\Models\ClubProductCategory;
 use App\Models\ClubTimelinePost;
 use App\Models\ClubTimelinePostComment;
 use App\Models\ClubTimelinePostLike;
+use App\Models\ClubTransaction;
 use App\Models\Duel;
 use App\Models\Membership;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\UserPost;
-use App\Models\UserPostComment;
-use App\Models\UserPostLike;
 use App\Models\UserScheduleSession;
-use App\Models\UserStory;
 use App\Support\DemoManifest;
 use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -56,7 +52,9 @@ class DemoSeed extends Command
     protected $description = 'Seed a large demo dataset (clubs, trainers, members, feeds, schedule, challenges, events, market) wired to the super admin, fully removable via demo:purge.';
 
     private DemoManifest $m;
+
     private User $admin;
+
     private array $roleIds = [];
 
     /** Sport blueprints: name, slug, slogan, icon, color, activity templates, package templates. */
@@ -128,17 +126,17 @@ class DemoSeed extends Command
 
     private function firstNames(): array
     {
-        return ['Ahmed','Fatima','Yusuf','Layla','Omar','Noor','Sara','Khalid','Mariam','Ali','Hessa','Hamad',
-            'Aisha','Rashid','Maya','Salem','Dana','Tariq','Reem','Faisal','Huda','Nasser','Lina','Saeed',
-            'Jana','Bader','Amal','Zaid','Sana','Marwan','Liam','Emma','Noah','Olivia','Ethan','Sophia',
-            'Lucas','Mia','Adam','Zara','Karim','Leen','Hadi','Ghada','Sami','Rana','Yara','Majid'];
+        return ['Ahmed', 'Fatima', 'Yusuf', 'Layla', 'Omar', 'Noor', 'Sara', 'Khalid', 'Mariam', 'Ali', 'Hessa', 'Hamad',
+            'Aisha', 'Rashid', 'Maya', 'Salem', 'Dana', 'Tariq', 'Reem', 'Faisal', 'Huda', 'Nasser', 'Lina', 'Saeed',
+            'Jana', 'Bader', 'Amal', 'Zaid', 'Sana', 'Marwan', 'Liam', 'Emma', 'Noah', 'Olivia', 'Ethan', 'Sophia',
+            'Lucas', 'Mia', 'Adam', 'Zara', 'Karim', 'Leen', 'Hadi', 'Ghada', 'Sami', 'Rana', 'Yara', 'Majid'];
     }
 
     private function lastNames(): array
     {
-        return ['Al Khalifa','Al Dosari','Hassan','Al Maktoum','Saleh','Al Sayed','Buallay','Al Naimi','Karimi',
-            'Al Mansoori','Haddad','Al Hashimi','Nasser','Al Rumaihi','Mahmood','Al Kuwari','Sharif','Al Balooshi',
-            'Yousif','Al Thani','Rashed','Al Marzooqi','Fakhro','Al Zayani','Smith','Garcia','Khan','Martinez'];
+        return ['Al Khalifa', 'Al Dosari', 'Hassan', 'Al Maktoum', 'Saleh', 'Al Sayed', 'Buallay', 'Al Naimi', 'Karimi',
+            'Al Mansoori', 'Haddad', 'Al Hashimi', 'Nasser', 'Al Rumaihi', 'Mahmood', 'Al Kuwari', 'Sharif', 'Al Balooshi',
+            'Yousif', 'Al Thani', 'Rashed', 'Al Marzooqi', 'Fakhro', 'Al Zayani', 'Smith', 'Garcia', 'Khan', 'Martinez'];
     }
 
     public function handle(): int
@@ -147,6 +145,7 @@ class DemoSeed extends Command
         $admin = User::where('email', $email)->first();
         if (! $admin) {
             $this->error("Super-admin user not found: {$email}");
+
             return self::FAILURE;
         }
         $this->admin = $admin;
@@ -157,15 +156,16 @@ class DemoSeed extends Command
         }
         if (DemoManifest::exists()) {
             $this->error('A demo manifest already exists. Run `php artisan demo:purge` first, or pass --fresh.');
+
             return self::FAILURE;
         }
 
         $this->roleIds = DB::table('roles')->pluck('id', 'slug')->all();
-        $this->m = new DemoManifest();
+        $this->m = new DemoManifest;
 
-        $clubCount   = max(1, (int) $this->option('clubs'));
-        $perClub     = max(1, (int) $this->option('members'));
-        $blueprints  = array_slice($this->blueprints(), 0, $clubCount);
+        $clubCount = max(1, (int) $this->option('clubs'));
+        $perClub = max(1, (int) $this->option('members'));
+        $blueprints = array_slice($this->blueprints(), 0, $clubCount);
 
         $this->info("Seeding demo: {$clubCount} clubs × {$perClub} members, wired to {$email}…");
 
@@ -197,11 +197,12 @@ class DemoSeed extends Command
         $this->newLine();
         $this->info('✅ Demo seeded. Summary:');
         foreach ($t as $table => $n) {
-            $this->line('   ' . str_pad($table, 28) . $n);
+            $this->line('   '.str_pad($table, 28).$n);
         }
         $this->newLine();
-        $this->info('Manifest: ' . DemoManifest::path());
+        $this->info('Manifest: '.DemoManifest::path());
         $this->info('Remove everything later with:  php artisan demo:purge');
+
         return self::SUCCESS;
     }
 
@@ -215,20 +216,20 @@ class DemoSeed extends Command
         $club = Tenant::create([
             'owner_user_id' => $this->admin->id,
             // business_id is set automatically by Tenant::creating() from the owner's approved business.
-            'club_name'     => $bp['name'],
-            'slug'          => 'demo-' . $bp['slug'],
-            'slogan'        => $bp['slogan'],
-            'description'   => "{$bp['name']} — a demo {$bp['sport']} club showcasing the TAKEONE platform.",
-            'country'       => 'BH',                 // ISO-2 code — the public club URL is /{country}/clubs/{slug} with country [a-z]{2,3}
-            'currency'      => 'BHD',
-            'timezone'      => 'Asia/Bahrain',
+            'club_name' => $bp['name'],
+            'slug' => 'demo-'.$bp['slug'],
+            'slogan' => $bp['slogan'],
+            'description' => "{$bp['name']} — a demo {$bp['sport']} club showcasing the TAKEONE platform.",
+            'country' => 'BH',                 // ISO-2 code — the public club URL is /{country}/clubs/{slug} with country [a-z]{2,3}
+            'currency' => 'BHD',
+            'timezone' => 'Asia/Bahrain',
             'enrollment_fee' => [0, 5, 10, 15][$idx % 4],
-            'email'         => 'info@demo-' . $bp['slug'] . '.test',
-            'phone'         => ['code' => '+973', 'number' => '3' . str_pad((string) (1000000 + $idx), 7, '0')],
-            'gps_lat'       => $lat,
-            'gps_long'      => $lng,
-            'address'       => 'Building ' . (100 + $idx) . ', Manama, Bahrain',
-            'status'        => 'active',             // match real live clubs (eta/lta/pta)
+            'email' => 'info@demo-'.$bp['slug'].'.test',
+            'phone' => ['code' => '+973', 'number' => '3'.str_pad((string) (1000000 + $idx), 7, '0')],
+            'gps_lat' => $lat,
+            'gps_long' => $lng,
+            'address' => 'Building '.(100 + $idx).', Manama, Bahrain',
+            'status' => 'active',             // match real live clubs (eta/lta/pta)
             'public_profile_enabled' => true,
         ]);
         $this->m->track('tenants', $club->id);
@@ -259,7 +260,7 @@ class DemoSeed extends Command
 
         // Activities
         $activities = [];
-        $days = ['saturday','sunday','monday','tuesday','wednesday','thursday'];
+        $days = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday'];
         foreach ($bp['activities'] as $ai => $aname) {
             $act = ClubActivity::create([
                 'tenant_id' => $club->id, 'name' => $aname,
@@ -287,8 +288,8 @@ class DemoSeed extends Command
                 'package_id' => $pkg->id, 'activity_id' => $act->id, 'instructor_id' => $instr->id,
             ]);
             $slotDays = array_slice($days, $pi % 3, 3);
-            $start = ['16:00','17:30','18:00','06:30','19:00','07:00'][$pi % 6];
-            $end   = date('H:i', strtotime($start) + 3600);
+            $start = ['16:00', '17:30', '18:00', '06:30', '19:00', '07:00'][$pi % 6];
+            $end = date('H:i', strtotime($start) + 3600);
             $slots = array_map(fn ($d) => [
                 'day' => $d, 'start_time' => $start, 'end_time' => $end,
                 'facility_id' => (string) $facility->id, 'facility_name' => $facility->name,
@@ -366,7 +367,7 @@ class DemoSeed extends Command
             $this->m->track('club_timeline_posts', $post->id);
 
             foreach (array_slice($members, 0, rand(1, 2)) as $cm) {
-                $c = ClubTimelinePostComment::create(['post_id' => $post->id, 'user_id' => $cm->id, 'body' => ['Love this! 🙌','So good 🔥','Counting me in!'][rand(0, 2)]]);
+                $c = ClubTimelinePostComment::create(['post_id' => $post->id, 'user_id' => $cm->id, 'body' => ['Love this! 🙌', 'So good 🔥', 'Counting me in!'][rand(0, 2)]]);
                 $this->m->track('club_timeline_post_comments', $c->id);
             }
             foreach (array_slice($members, 0, min(count($members), rand(8, 18))) as $lm) {
@@ -408,7 +409,7 @@ class DemoSeed extends Command
     {
         $defs = [
             ['Open Day & Trials', now()->addDays(10), 'open', 'social'],
-            [$bp['sport'] . ' Club Championship', now()->addDays(24), 'competition', 'competition'],
+            [$bp['sport'].' Club Championship', now()->addDays(24), 'competition', 'competition'],
             ['Summer Intensive Camp', now()->addDays(40), 'camp', 'camp'],
         ];
         foreach ($defs as [$title, $date, $type, $scope]) {
@@ -497,11 +498,13 @@ class DemoSeed extends Command
         $this->m->track('club_instructors', $ci->id);
         // Assign the admin as instructor on one of that club's package activities.
         $pa = ClubPackageActivity::where('package_id', $first['packages'][0]->id)->first();
-        if ($pa) { $pa->update(['instructor_id' => $ci->id]); }
+        if ($pa) {
+            $pa->update(['instructor_id' => $ci->id]);
+        }
 
         // 3) Personal schedule sessions.
         $sessions = [
-            ['monday', '06:00', '07:00', 'Morning Strength', 'Strength Training', 'bi-trophy', 'High', ['Legs','Core']],
+            ['monday', '06:00', '07:00', 'Morning Strength', 'Strength Training', 'bi-trophy', 'High', ['Legs', 'Core']],
             ['tuesday', '18:30', '19:30', 'Evening Run', 'Cardio', 'bi-activity', 'Moderate', ['Endurance']],
             ['thursday', '07:00', '08:00', 'Mobility Flow', 'Recovery', 'bi-flower1', 'Low', ['Flexibility']],
             ['saturday', '09:00', '10:30', 'Long Session', 'Conditioning', 'bi-fire', 'High', ['Full body']],
@@ -526,7 +529,7 @@ class DemoSeed extends Command
             $this->m->track('user_schedule_sessions', $s->id);
         }
 
-        // 4) Feed: own posts (text, highlight, poll) + stories + follow some coaches.
+        // 4) Feed: own posts (text, highlight, poll) + follow some coaches.
         $p1 = UserPost::create(['user_id' => $admin->id, 'type' => 'text', 'body' => 'Great week across all the clubs — proud of every coach and member. Onwards! 🚀']);
         $p1->forceFill(['created_at' => now()->subHours(3), 'updated_at' => now()->subHours(3)])->saveQuietly();
         $this->m->track('user_posts', $p1->id);
@@ -536,9 +539,6 @@ class DemoSeed extends Command
         $p3 = UserPost::create(['user_id' => $admin->id, 'type' => 'poll', 'body' => 'Which new class should we add platform-wide?', 'poll' => ['question' => 'Which new class should we add platform-wide?', 'options' => ['Mobility', 'Olympic lifting', 'Boxing fundamentals', 'Sunrise yoga']]]);
         $p3->forceFill(['created_at' => now()->subHours(8), 'updated_at' => now()->subHours(8)])->saveQuietly();
         $this->m->track('user_posts', $p3->id);
-
-        $st1 = UserStory::create(['user_id' => $admin->id, 'type' => 'text', 'caption' => 'On the road visiting clubs today! 🚗', 'color' => '#0ea5e9', 'icon' => 'bi-geo-alt']);
-        $this->m->track('user_stories', $st1->id);
 
         // Follow + engage with the first coaches of each club.
         foreach ($clubs as $ctx) {
@@ -577,10 +577,10 @@ class DemoSeed extends Command
         $fn = $this->firstNames()[array_rand($this->firstNames())];
         $ln = $this->lastNames()[array_rand($this->lastNames())];
         $name = "{$fn} {$ln}";
-        $handle = $kind . '.' . Str::random(10);
+        $handle = $kind.'.'.Str::random(10);
         $data = [
             'full_name' => $name, 'name' => $name,
-            'email' => $handle . '@demo.takeone.bh',
+            'email' => $handle.'@demo.takeone.bh',
             'password' => Hash::make(Str::random(24)),
             'email_verified_at' => now(),
             'gender' => rand(0, 1) ? 'm' : 'f',
@@ -596,6 +596,7 @@ class DemoSeed extends Command
         }
         $u = User::create($data);
         $this->m->track('users', $u->id);
+
         return $u;
     }
 
@@ -603,9 +604,13 @@ class DemoSeed extends Command
     private function grantRole(int $userId, string $slug, int $tenantId): void
     {
         $roleId = $this->roleIds[$slug] ?? null;
-        if (! $roleId) return;
+        if (! $roleId) {
+            return;
+        }
         $exists = DB::table('user_roles')->where(['user_id' => $userId, 'role_id' => $roleId, 'tenant_id' => $tenantId])->exists();
-        if ($exists) return;
+        if ($exists) {
+            return;
+        }
         $id = DB::table('user_roles')->insertGetId(['user_id' => $userId, 'role_id' => $roleId, 'tenant_id' => $tenantId, 'created_at' => now(), 'updated_at' => now()]);
         $this->m->track('user_roles', $id);
     }

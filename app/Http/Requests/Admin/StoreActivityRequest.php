@@ -14,26 +14,26 @@ class StoreActivityRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name'                 => 'required|string|max:255',
-            'description'          => 'nullable|string|max:2000',
-            'notes'                => 'nullable|string|max:1000',
-            'duration_minutes'     => 'nullable|integer|min:1|max:1440',
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:2000',
+            'notes' => 'nullable|string|max:1000',
+            'duration_minutes' => 'nullable|integer|min:1|max:1440',
             'existing_picture_url' => 'nullable|string',
-            'translations'         => ['nullable', 'array'],
-            'translations.*.*'     => ['nullable', 'string', 'max:2000'],
+            'translations' => ['nullable', 'array'],
+            'translations.*.*' => ['nullable', 'string', 'max:2000'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'name.required'            => 'Activity title is required.',
-            'name.max'                 => 'Activity title must not exceed 255 characters.',
-            'description.max'          => 'Description must not exceed 2000 characters.',
-            'notes.max'                => 'Additional notes must not exceed 1000 characters.',
+            'name.required' => 'Activity title is required.',
+            'name.max' => 'Activity title must not exceed 255 characters.',
+            'description.max' => 'Description must not exceed 2000 characters.',
+            'notes.max' => 'Additional notes must not exceed 1000 characters.',
             'duration_minutes.integer' => 'Duration must be a whole number of minutes.',
-            'duration_minutes.min'     => 'Duration must be at least 1 minute.',
-            'duration_minutes.max'     => 'Duration cannot exceed 1440 minutes (24 hours).',
+            'duration_minutes.min' => 'Duration must be at least 1 minute.',
+            'duration_minutes.max' => 'Duration cannot exceed 1440 minutes (24 hours).',
         ];
     }
 }

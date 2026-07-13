@@ -28,8 +28,8 @@ class BusinessDashboardController extends Controller
 
         return view($view, [
             'business' => $business,
-            'clubs'    => $data['clubs'],
-            'totals'   => $data['totals'],
+            'clubs' => $data['clubs'],
+            'totals' => $data['totals'],
         ]);
     }
 }

@@ -13,8 +13,8 @@ class EventCategory extends Model
     ];
 
     protected $casts = [
-        'podium'     => 'array',
-        'schedule'   => 'array',
+        'podium' => 'array',
+        'schedule' => 'array',
         'draw_count' => 'integer',
     ];
 

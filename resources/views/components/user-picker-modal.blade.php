@@ -1,7 +1,11 @@
 @props([
-    'title' => 'Select Club Owner',
-    'subtitle' => 'Search and select a user to be the club owner',
+    'title' => null,
+    'subtitle' => null,
 ])
+@php
+    $title = $title ?? __('shared.user_picker_modal_title');
+    $subtitle = $subtitle ?? __('shared.user_picker_modal_subtitle');
+@endphp
 <!-- User Picker Modal -->
 <div x-data="userPickerModal()" x-cloak>
     <!-- Modal Backdrop -->
@@ -45,15 +49,15 @@
                     <!-- Search Input -->
                     <div class="mb-4">
                         <div class="relative">
-                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                            <span class="absolute start-4 top-1/2 -translate-y-1/2 text-gray-400">
                                 <i class="bi bi-search"></i>
                             </span>
                             <input type="text"
                                    x-model="searchTerm"
                                    @input.debounce.300ms="filterUsers()"
                                    x-ref="searchInput"
-                                   class="w-full pl-12 pr-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none"
-                                   placeholder="Search by name, email, or phone..."
+                                   class="w-full ps-12 pe-4 py-3 text-base border-2 border-primary/20 rounded-xl bg-white transition-all duration-300 focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none"
+                                   placeholder="{{ __('shared.user_picker_modal_search_placeholder') }}"
                                    autocomplete="off">
                         </div>
                     </div>
@@ -61,11 +65,11 @@
                     <!-- Loading State -->
                     <div x-show="loading" class="text-center py-12">
                         <div class="inline-block w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-                        <p class="text-gray-500 mt-3">Searching users...</p>
+                        <p class="text-gray-500 mt-3">{{ __('shared.user_picker_modal_searching') }}</p>
                     </div>
 
                     <!-- Users List -->
-                    <div x-show="!loading && filteredUsers.length > 0" class="max-h-96 overflow-y-auto overflow-x-hidden space-y-2 pr-1">
+                    <div x-show="!loading && filteredUsers.length > 0" class="max-h-96 overflow-y-auto overflow-x-hidden space-y-2 pe-1">
                         <template x-for="user in filteredUsers" :key="user.id">
                             <div @click="selectUser(user)"
                                  class="border border-gray-200 rounded-xl p-4 cursor-pointer transition-colors duration-200 hover:bg-gray-50 hover:border-primary/30">
@@ -86,11 +90,11 @@
                                     <div class="flex-1 min-w-0">
                                         <div class="font-semibold text-gray-900 truncate" x-text="user.full_name"></div>
                                         <div class="text-sm text-gray-500 truncate">
-                                            <i class="bi bi-envelope mr-1"></i>
+                                            <i class="bi bi-envelope me-1"></i>
                                             <span x-text="user.email"></span>
                                             <template x-if="user.mobile">
-                                                <span class="ml-2">
-                                                    <i class="bi bi-phone mr-1"></i>
+                                                <span class="ms-2">
+                                                    <i class="bi bi-phone me-1"></i>
                                                     <span x-text="user.mobile"></span>
                                                 </span>
                                             </template>
@@ -109,13 +113,13 @@
                     <!-- No Results -->
                     <div x-show="!loading && filteredUsers.length === 0 && searchTerm" class="text-center py-12">
                         <i class="bi bi-person-x text-6xl text-gray-300"></i>
-                        <p class="text-gray-500 mt-3">No users found</p>
-                        <p class="text-sm text-gray-400">Try a different search term</p>
+                        <p class="text-gray-500 mt-3">{{ __('shared.user_picker_modal_no_users') }}</p>
+                        <p class="text-sm text-gray-400">{{ __('shared.user_picker_modal_try_different') }}</p>
                     </div>
 
                     <!-- Error State -->
                     <div x-show="error" class="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4">
-                        <i class="bi bi-exclamation-triangle mr-2"></i>
+                        <i class="bi bi-exclamation-triangle me-2"></i>
                         <span x-text="error"></span>
                     </div>
                 </div>
@@ -167,11 +171,11 @@ function userPickerModal() {
                     this.allUsers = await response.json();
                     this.filteredUsers = this.allUsers;
                 } else {
-                    this.error = 'Failed to load users';
+                    this.error = '{{ __("shared.user_picker_modal_load_failed") }}';
                 }
             } catch (err) {
                 console.error('Error loading users:', err);
-                this.error = 'An error occurred while loading users';
+                this.error = '{{ __("shared.user_picker_modal_load_error") }}';
             } finally {
                 this.loading = false;
             }
@@ -224,8 +228,8 @@ function userPickerModal() {
                         <div class="flex-1 min-w-0">
                             <div class="font-semibold text-gray-900">${user.full_name}</div>
                             <div class="text-sm text-gray-500">
-                                <i class="bi bi-envelope mr-1"></i>${user.email}
-                                ${user.mobile ? `<span class="ml-2"><i class="bi bi-phone mr-1"></i>${user.mobile}</span>` : ''}
+                                <i class="bi bi-envelope me-1"></i>${user.email}
+                                ${user.mobile ? `<span class="ms-2"><i class="bi bi-phone me-1"></i>${user.mobile}</span>` : ''}
                             </div>
                         </div>
                     </div>

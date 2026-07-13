@@ -38,16 +38,16 @@
                 <div class="relative flex items-start justify-between gap-3">
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.15em] text-white/70 flex items-center gap-1.5">
-                            <i class="bi bi-calendar3"></i> Transactions
+                            <i class="bi bi-calendar3"></i> {{ __('shared.transactions_modal_transactions') }}
                         </p>
                         <h3 class="text-xl sm:text-2xl font-bold tracking-tight mt-0.5" x-text="label"></h3>
                         <p class="text-xs text-white/70 mt-0.5">
-                            <span x-text="filtered.length"></span> of <span x-text="items.length"></span>
+                            <span x-text="filtered.length"></span> {{ __('shared.transactions_modal_of') }} <span x-text="items.length"></span>
                             <span x-text="items.length === 1 ? 'transaction' : 'transactions'"></span>
                         </p>
                     </div>
                     <button type="button" @click="close()"
-                            class="w-9 h-9 -mr-1 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/15 transition-colors">
+                            class="w-9 h-9 -me-1 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/15 transition-colors">
                         <i class="bi bi-x-lg"></i>
                     </button>
                 </div>
@@ -55,16 +55,16 @@
                 {{-- Summary tiles --}}
                 <div class="relative grid grid-cols-3 gap-2 mt-4">
                     <div class="rounded-xl bg-white/12 backdrop-blur px-3 py-2">
-                        <p class="text-[10px] font-semibold uppercase tracking-wide text-white/65">In</p>
+                        <p class="text-[10px] font-semibold uppercase tracking-wide text-white/65">{{ __('shared.transactions_modal_in') }}</p>
                         <p class="text-sm font-bold tabular-nums truncate"><span x-text="cur"></span> <span x-text="fmt(totals.income)"></span></p>
                     </div>
                     <div class="rounded-xl bg-white/12 backdrop-blur px-3 py-2">
-                        <p class="text-[10px] font-semibold uppercase tracking-wide text-white/65">Out</p>
+                        <p class="text-[10px] font-semibold uppercase tracking-wide text-white/65">{{ __('shared.transactions_modal_out') }}</p>
                         <p class="text-sm font-bold tabular-nums truncate"><span x-text="cur"></span> <span x-text="fmt(totals.outflow)"></span></p>
                     </div>
                     <div class="rounded-xl px-3 py-2"
                          :class="totals.net >= 0 ? 'bg-emerald-400/25' : 'bg-rose-500/30'">
-                        <p class="text-[10px] font-semibold uppercase tracking-wide text-white/75">Net</p>
+                        <p class="text-[10px] font-semibold uppercase tracking-wide text-white/75">{{ __('shared.transactions_modal_net') }}</p>
                         <p class="text-sm font-bold tabular-nums truncate">
                             <span x-text="(totals.net < 0 ? '−' : '') + cur"></span> <span x-text="fmt(Math.abs(totals.net))"></span>
                         </p>
@@ -93,7 +93,7 @@
                         <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gray-100 flex items-center justify-center">
                             <i class="bi bi-receipt text-2xl text-gray-300"></i>
                         </div>
-                        <p class="text-sm font-medium text-gray-500">No transactions to show</p>
+                        <p class="text-sm font-medium text-gray-500">{{ __('shared.transactions_modal_no_transactions') }}</p>
                     </div>
                 </template>
 
@@ -133,7 +133,7 @@
                             </div>
 
                             {{-- Amount --}}
-                            <div class="text-right shrink-0">
+                            <div class="text-end shrink-0">
                                 <p class="font-bold text-sm tabular-nums whitespace-nowrap" :class="meta(t.type).text"
                                    x-text="meta(t.type).sign + ' ' + cur + ' ' + fmt(t.amount)"></p>
                                 <span class="inline-block mt-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold capitalize"
@@ -147,14 +147,14 @@
             {{-- ── Footer ── --}}
             <div class="px-5 sm:px-6 py-3 border-t border-gray-100 flex items-center justify-between gap-3 bg-gray-50/60 shrink-0">
                 <p class="text-xs text-muted-foreground">
-                    Net for period:
+                    {{ __('shared.transactions_modal_net_for_period') }}
                     <span class="font-bold" :class="totals.net >= 0 ? 'text-emerald-600' : 'text-red-600'">
                         <span x-text="(totals.net < 0 ? '−' : '') + cur"></span> <span x-text="fmt(Math.abs(totals.net))"></span>
                     </span>
                 </p>
                 <button type="button" @click="close()"
                         class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 bg-white border border-gray-200 hover:bg-gray-100 transition-colors">
-                    Close
+                    {{ __('shared.transactions_modal_close') }}
                 </button>
             </div>
         </div>
@@ -178,16 +178,16 @@
             activeType: 'all',
 
             segments: [
-                { key: 'all',             label: 'All',             activeClass: 'bg-primary text-white' },
-                { key: 'income',          label: 'Income',          activeClass: 'bg-emerald-500 text-white' },
-                { key: 'expense',         label: 'Expenses',        activeClass: 'bg-red-500 text-white' },
-                { key: 'refund',          label: 'Refunds',         activeClass: 'bg-orange-500 text-white', always: true },
-                { key: 'cash_to_collect', label: 'Cash to Collect', activeClass: 'bg-amber-500 text-white', always: true },
+                { key: 'all',             label: '{{ __("shared.transactions_modal_all") }}',             activeClass: 'bg-primary text-white' },
+                { key: 'income',          label: '{{ __("shared.transactions_modal_income") }}',          activeClass: 'bg-emerald-500 text-white' },
+                { key: 'expense',         label: '{{ __("shared.transactions_modal_expenses") }}',        activeClass: 'bg-red-500 text-white' },
+                { key: 'refund',          label: '{{ __("shared.transactions_modal_refunds") }}',         activeClass: 'bg-orange-500 text-white', always: true },
+                { key: 'cash_to_collect', label: '{{ __("shared.transactions_modal_cash_to_collect") }}', activeClass: 'bg-amber-500 text-white', always: true },
             ],
 
             open(detail) {
                 detail = detail || {};
-                this.label = detail.label || 'Transactions';
+                this.label = detail.label || '{{ __("shared.transactions_modal_transactions") }}';
                 this.items = Array.isArray(detail.transactions) ? detail.transactions : [];
                 if (detail.currency) this.cur = detail.currency;
                 this.activeType = 'all';
@@ -228,10 +228,10 @@
             },
             meta(type) {
                 const m = {
-                    income:          { label: 'Income',          icon: 'bi-arrow-down-left',       text: 'text-emerald-600', bg: 'bg-emerald-50', chip: 'bg-emerald-100 text-emerald-700', sign: '+' },
-                    expense:         { label: 'Expense',         icon: 'bi-arrow-up-right',         text: 'text-red-600',     bg: 'bg-red-50',     chip: 'bg-red-100 text-red-700',         sign: '−' },
-                    refund:          { label: 'Refund',          icon: 'bi-arrow-counterclockwise', text: 'text-orange-600',  bg: 'bg-orange-50',  chip: 'bg-orange-100 text-orange-700',   sign: '−' },
-                    cash_to_collect: { label: 'Cash to Collect', icon: 'bi-hourglass-split',        text: 'text-amber-600',   bg: 'bg-amber-50',   chip: 'bg-amber-100 text-amber-700',     sign: '' },
+                    income:          { label: '{{ __("shared.transactions_modal_income") }}',          icon: 'bi-arrow-down-left',       text: 'text-emerald-600', bg: 'bg-emerald-50', chip: 'bg-emerald-100 text-emerald-700', sign: '+' },
+                    expense:         { label: '{{ __("shared.transactions_modal_expense") }}',         icon: 'bi-arrow-up-right',         text: 'text-red-600',     bg: 'bg-red-50',     chip: 'bg-red-100 text-red-700',         sign: '−' },
+                    refund:          { label: '{{ __("shared.transactions_modal_refund") }}',          icon: 'bi-arrow-counterclockwise', text: 'text-orange-600',  bg: 'bg-orange-50',  chip: 'bg-orange-100 text-orange-700',   sign: '−' },
+                    cash_to_collect: { label: '{{ __("shared.transactions_modal_cash_to_collect") }}', icon: 'bi-hourglass-split',        text: 'text-amber-600',   bg: 'bg-amber-50',   chip: 'bg-amber-100 text-amber-700',     sign: '' },
                 };
                 return m[type] || m.expense;
             },

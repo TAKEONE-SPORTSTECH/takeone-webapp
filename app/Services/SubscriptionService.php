@@ -7,11 +7,9 @@ use App\Models\ClubMemberSubscription;
 use App\Models\ClubPackage;
 use App\Models\ClubTransaction;
 use App\Models\Membership;
-use App\Models\SkillAcquisition;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\ClubCache;
-use Carbon\Carbon;
 
 class SubscriptionService
 {
@@ -30,10 +28,10 @@ class SubscriptionService
         }
 
         if ($package->gender && $package->gender !== 'mixed' && $gender) {
-            $match = ($package->gender === 'male'   && $gender === 'Male')
+            $match = ($package->gender === 'male' && $gender === 'Male')
                   || ($package->gender === 'female' && $gender === 'Female');
-            if (!$match) {
-                return "Package '{$package->name}' is restricted to " . ucfirst($package->gender) . " members. '{$memberName}' is not eligible.";
+            if (! $match) {
+                return "Package '{$package->name}' is restricted to ".ucfirst($package->gender)." members. '{$memberName}' is not eligible.";
             }
         }
 
@@ -66,28 +64,28 @@ class SubscriptionService
         string $notes
     ): ClubMemberSubscription {
         $subscription = ClubMemberSubscription::create([
-            'tenant_id'        => $club->id,
-            'type'             => 'regular',
-            'user_id'          => $userId,
-            'package_id'       => $package->id,
-            'start_date'       => now(),
-            'end_date'         => now()->addMonths($package->duration_months),
-            'status'           => 'pending',
-            'payment_status'   => $paymentStatus,
-            'amount_paid'      => 0,
-            'amount_due'       => $package->price,
+            'tenant_id' => $club->id,
+            'type' => 'regular',
+            'user_id' => $userId,
+            'package_id' => $package->id,
+            'start_date' => now(),
+            'end_date' => now()->addMonths($package->duration_months),
+            'status' => 'pending',
+            'payment_status' => $paymentStatus,
+            'amount_paid' => 0,
+            'amount_due' => $package->price,
             'proof_of_payment' => $proofPath,
-            'notes'            => $notes,
+            'notes' => $notes,
         ]);
 
         ClubTransaction::create([
-            'tenant_id'        => $club->id,
-            'user_id'          => $userId,
-            'subscription_id'  => $subscription->id,
-            'type'             => 'income',
-            'category'         => 'subscription',
-            'amount'           => $package->price,
-            'description'      => 'Package: ' . $package->name,
+            'tenant_id' => $club->id,
+            'user_id' => $userId,
+            'subscription_id' => $subscription->id,
+            'type' => 'income',
+            'category' => 'subscription',
+            'amount' => $package->price,
+            'description' => 'Package: '.$package->name,
             'transaction_date' => now(),
         ]);
 
@@ -113,29 +111,32 @@ class SubscriptionService
         Tenant $club,
         int $userId,
         ClubPackage $package,
-        string $transactionDescription
+        string $transactionDescription,
+        ?\Carbon\Carbon $startDate = null
     ): ClubMemberSubscription {
+        $startDate = $startDate ?? now();
+
         $subscription = ClubMemberSubscription::create([
-            'tenant_id'      => $club->id,
-            'user_id'        => $userId,
-            'package_id'     => $package->id,
-            'type'           => 'regular',
-            'status'         => 'active',
+            'tenant_id' => $club->id,
+            'user_id' => $userId,
+            'package_id' => $package->id,
+            'type' => 'regular',
+            'status' => 'active',
             'payment_status' => 'paid',
-            'amount_paid'    => $package->price,
-            'amount_due'     => 0,
-            'start_date'     => now(),
-            'end_date'       => now()->addMonths($package->duration_months),
+            'amount_paid' => $package->price,
+            'amount_due' => 0,
+            'start_date' => $startDate,
+            'end_date' => $startDate->copy()->addMonths($package->duration_months),
         ]);
 
         ClubTransaction::create([
-            'tenant_id'        => $club->id,
-            'user_id'          => $userId,
-            'subscription_id'  => $subscription->id,
-            'type'             => 'income',
-            'category'         => 'subscription',
-            'amount'           => $package->price,
-            'description'      => $transactionDescription,
+            'tenant_id' => $club->id,
+            'user_id' => $userId,
+            'subscription_id' => $subscription->id,
+            'type' => 'income',
+            'category' => 'subscription',
+            'amount' => $package->price,
+            'description' => $transactionDescription,
             'transaction_date' => now(),
         ]);
 
@@ -164,27 +165,27 @@ class SubscriptionService
         string $notes = 'Admin enrollment'
     ): ClubMemberSubscription {
         $subscription = ClubMemberSubscription::create([
-            'tenant_id'      => $club->id,
-            'user_id'        => $userId,
-            'package_id'     => $package->id,
-            'type'           => 'regular',
-            'status'         => 'active',
+            'tenant_id' => $club->id,
+            'user_id' => $userId,
+            'package_id' => $package->id,
+            'type' => 'regular',
+            'status' => 'active',
             'payment_status' => 'pending',
-            'amount_paid'    => 0,
-            'amount_due'     => $package->price,
-            'start_date'     => now(),
-            'end_date'       => now()->addMonths($package->duration_months),
-            'notes'          => $notes,
+            'amount_paid' => 0,
+            'amount_due' => $package->price,
+            'start_date' => now(),
+            'end_date' => now()->addMonths($package->duration_months),
+            'notes' => $notes,
         ]);
 
         ClubTransaction::create([
-            'tenant_id'        => $club->id,
-            'user_id'          => $userId,
-            'subscription_id'  => $subscription->id,
-            'type'             => 'income',
-            'category'         => 'subscription',
-            'amount'           => $package->price,
-            'description'      => $notes,
+            'tenant_id' => $club->id,
+            'user_id' => $userId,
+            'subscription_id' => $subscription->id,
+            'type' => 'income',
+            'category' => 'subscription',
+            'amount' => $package->price,
+            'description' => $notes,
             'transaction_date' => now(),
         ]);
 
@@ -207,9 +208,10 @@ class SubscriptionService
     public function approvePayment(ClubMemberSubscription $subscription, ?string $proofPath, User $approvedBy): void
     {
         $subscription->update([
-            'payment_status'   => 'paid',
-            'amount_paid'      => $subscription->amount_due,
-            'amount_due'       => 0,
+            'payment_status' => 'paid',
+            'settled_at' => now(),
+            'amount_paid' => $subscription->amount_due,
+            'amount_due' => 0,
             'proof_of_payment' => $proofPath ?? $subscription->proof_of_payment,
         ]);
 
@@ -220,6 +222,14 @@ class SubscriptionService
             ->log('Payment approved');
 
         ClubCache::flushFinancials($subscription->tenant_id);
+
+        // Live-update the member's payments screen (best-effort). The DB
+        // notification is pushed separately by the caller via notifyUser().
+        rescue(fn () => Realtime()->publishToUser($subscription->user_id, 'payments', [
+            'action' => 'settled',
+            'subscription_id' => $subscription->id,
+            'settled_at' => optional($subscription->settled_at)->format('d M Y'),
+        ]), null, false);
     }
 
     /**
@@ -227,7 +237,7 @@ class SubscriptionService
      * subscription to it, recalculate its date span, and sync skills from
      * the package's activities.
      */
-    private function syncAffiliation(
+    public function syncAffiliation(
         Tenant $club,
         int $userId,
         ClubMemberSubscription $subscription,
@@ -237,13 +247,13 @@ class SubscriptionService
         $affiliation = ClubAffiliation::firstOrCreate(
             ['member_id' => $userId, 'tenant_id' => $club->id],
             [
-                'club_name'   => $club->club_name,
-                'logo'        => $club->logo ?? null,
-                'location'    => $club->address ?? null,
-                'start_date'  => $subscription->start_date,
-                'end_date'    => $subscription->end_date,
+                'club_name' => $club->club_name,
+                'logo' => $club->logo ?? null,
+                'location' => $club->address ?? null,
+                'start_date' => $subscription->start_date,
+                'end_date' => $subscription->end_date,
                 'description' => null,
-                'coaches'     => [],
+                'coaches' => [],
             ]
         );
 
@@ -257,8 +267,8 @@ class SubscriptionService
             ->get();
 
         $earliestStart = $allSubs->min('start_date');
-        $hasActive     = $allSubs->whereIn('status', ['active', 'pending'])->isNotEmpty();
-        $latestEnd     = $hasActive ? null : $allSubs->max('end_date');
+        $hasActive = $allSubs->whereIn('status', ['active', 'pending'])->isNotEmpty();
+        $latestEnd = $hasActive ? null : $allSubs->max('end_date');
 
         // Pull coach names from all package activities across all subs for this club
         $packageIds = $allSubs->pluck('package_id')->unique()->filter();
@@ -272,12 +282,12 @@ class SubscriptionService
             ->toArray();
 
         $affiliation->update([
-            'club_name'  => $club->club_name,
-            'logo'       => $club->logo ?? $affiliation->logo,
-            'location'   => $club->address ?? $affiliation->location,
+            'club_name' => $club->club_name,
+            'logo' => $club->logo ?? $affiliation->logo,
+            'location' => $club->address ?? $affiliation->location,
             'start_date' => $earliestStart,
-            'end_date'   => $latestEnd,
-            'coaches'    => $coaches ?: $affiliation->coaches,
+            'end_date' => $latestEnd,
+            'coaches' => $coaches ?: $affiliation->coaches,
         ]);
 
         // Sync skills from this package's activities (skip duplicates)
@@ -289,7 +299,9 @@ class SubscriptionService
             ->toArray();
 
         foreach ($package->packageActivities as $pkgActivity) {
-            if (!$pkgActivity->activity) continue;
+            if (! $pkgActivity->activity) {
+                continue;
+            }
 
             if (array_key_exists($pkgActivity->activity_id, $existingSkillMap)) {
                 // Update instructor if it was previously NULL
@@ -298,18 +310,19 @@ class SubscriptionService
                         ->where('activity_id', $pkgActivity->activity_id)
                         ->update(['instructor_id' => $pkgActivity->instructor_id]);
                 }
+
                 continue;
             }
 
             $affiliation->skillAcquisitions()->create([
-                'skill_name'        => $pkgActivity->activity->name,
-                'icon'              => 'bi-star',
+                'skill_name' => $pkgActivity->activity->name,
+                'icon' => 'bi-star',
                 'proficiency_level' => 'beginner',
-                'start_date'        => $subscription->start_date,
-                'duration_months'   => $package->duration_months ?? 1,
-                'package_id'        => $package->id,
-                'activity_id'       => $pkgActivity->activity_id,
-                'instructor_id'     => $pkgActivity->instructor_id,
+                'start_date' => $subscription->start_date,
+                'duration_months' => $package->duration_months ?? 1,
+                'package_id' => $package->id,
+                'activity_id' => $pkgActivity->activity_id,
+                'instructor_id' => $pkgActivity->instructor_id,
             ]);
         }
     }

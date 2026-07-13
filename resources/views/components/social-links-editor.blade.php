@@ -16,10 +16,10 @@
 
 <div class="space-y-4">
     <div class="flex justify-between items-center">
-        <h5 class="form-label mb-0 font-semibold">Social Media Links</h5>
+        <h5 class="form-label mb-0 font-semibold">{{ __('shared.social_links_editor_title') }}</h5>
         <button type="button" class="btn btn-outline-primary btn-sm"
                 onclick="socialLinksEditor_{{ $containerId }}.addRow()">
-            <i class="bi bi-plus"></i> Add Link
+            <i class="bi bi-plus"></i> {{ __('shared.social_links_editor_add_link') }}
         </button>
     </div>
     <div id="{{ $containerId }}">
@@ -63,27 +63,27 @@
         const optionsHtml = Object.entries(platforms).map(([val, [icon, name]]) =>
             `<div class="tf-dropdown-item-sm"
                   @click="$el.closest('.social-link-row').querySelector('.platform-value').value = '${val}';
-                          $el.closest('.social-link-row').querySelector('button span').innerHTML = '<i class=\\'bi ${icon} mr-2\\'></i>${name}';
+                          $el.closest('.social-link-row').querySelector('button span').innerHTML = '<i class=\\'bi ${icon} me-2\\'></i>${name}';
                           open = false">
-                <i class="bi ${icon} mr-2"></i>${name}
+                <i class="bi ${icon} me-2"></i>${name}
             </div>`
         ).join('');
 
         const activePlatform = platform && platforms[platform]
-            ? `<i class="bi ${platforms[platform][0]} mr-2"></i>${platforms[platform][1]}`
-            : 'Select Platform';
+            ? `<i class="bi ${platforms[platform][0]} me-2"></i>${platforms[platform][1]}`
+            : '{{ __("shared.social_links_editor_select_platform") }}';
 
         const row = document.createElement('div');
         row.className = 'social-link-row mb-4 flex items-end gap-2';
         row.setAttribute('x-data', '{ open: false }');
         row.innerHTML = `
             <div class="flex-1">
-                <label class="tf-label">Platform</label>
+                <label class="tf-label">{{ __('shared.social_links_editor_platform') }}</label>
                 <div class="relative">
                     <button type="button"
                             @click="open = !open"
                             @click.away="open = false"
-                            class="tf-dropdown-trigger border-primary/20 focus:border-primary text-left">
+                            class="tf-dropdown-trigger border-primary/20 focus:border-primary text-start">
                         <span class="flex items-center">${activePlatform}</span>
                         <i class="bi bi-chevron-down transition-transform" :class="{ 'rotate-180': open }"></i>
                     </button>
@@ -101,7 +101,7 @@
                 </div>
             </div>
             <div class="flex-1">
-                <label class="tf-label">URL</label>
+                <label class="tf-label">{{ __('shared.social_links_editor_url') }}</label>
                 <input type="url"
                        class="tf-input"
                        name="social_links[${index}][url]"

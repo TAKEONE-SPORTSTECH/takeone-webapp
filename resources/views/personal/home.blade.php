@@ -153,59 +153,31 @@
         </div>
     </div>
 
-    {{-- ===== Stories row (functional — tap to open the story viewer) ===== --}}
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3.5">
-        <div class="flex gap-3.5 overflow-x-auto scrollbar-hide">
-            {{-- Add your story (opens the story composer) --}}
-            <button type="button" @click="addStory()"
-                    class="m-press flex-shrink-0 flex flex-col items-center gap-1.5 w-16">
-                <span class="relative w-16 h-16 rounded-full grid place-items-center bg-muted border-2 border-dashed border-gray-300">
-                    <i class="bi bi-person text-2xl text-muted-foreground"></i>
-                    <span class="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-primary text-white grid place-items-center border-2 border-white"><i class="bi bi-plus text-sm"></i></span>
-                </span>
-                <span class="text-[10px] text-foreground truncate w-full text-center">{{ __('personal.your_story') }}</span>
-            </button>
-            {{-- Everyone else's stories (reactive — new ones appear without reload) --}}
-            <template x-for="(st, i) in stories" :key="st.id ?? i">
-                <button type="button" @click="openStory(i)"
-                        class="m-press flex-shrink-0 flex flex-col items-center gap-1.5 w-16">
-                    {{-- gradient ring (dimmed when "seen") --}}
-                    <span class="w-16 h-16 rounded-full grid place-items-center p-[2.5px]"
-                          :style="`background: ${st.seen ? '#e5e7eb' : 'linear-gradient(135deg, ' + (st.color || '#7c3aed') + ', #ec4899)'}`">
-                        <span class="w-full h-full rounded-full bg-white grid place-items-center p-[2px]">
-                            <span class="w-full h-full rounded-full grid place-items-center text-white overflow-hidden" :style="`background: ${st.color || '#7c3aed'}`">
-                                <template x-if="st.image"><img :src="st.image" alt="" class="w-full h-full object-cover rounded-full"></template>
-                                <template x-if="!st.image"><i class="bi text-lg" :class="st.icon"></i></template>
-                            </span>
-                        </span>
-                    </span>
-                    <span class="text-[10px] text-foreground truncate w-full text-center" x-text="st.name"></span>
-                </button>
-            </template>
-        </div>
-    </div>
-
     {{-- ===== Feed tabs: All · Club · Following · Mine (segmented pill) ===== --}}
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-1 flex gap-1">
-        <button type="button" @click="tab='all'"
-                class="m-press flex-1 py-2 rounded-xl text-sm font-semibold transition-colors"
+        <button type="button" @click="tab='all'; seenTab('all')"
+                class="relative m-press flex-1 py-2 rounded-xl text-sm font-semibold transition-colors"
                 :class="tab==='all' ? 'bg-primary text-white' : 'text-muted-foreground'">
             {{ __('personal.all') }}
+            <span x-show="dots.all && tab!=='all'" x-cloak class="absolute top-1.5 right-2 rtl:right-auto rtl:left-2 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white"></span>
         </button>
-        <button type="button" @click="tab='club'"
-                class="m-press flex-1 py-2 rounded-xl text-sm font-semibold transition-colors"
+        <button type="button" @click="tab='club'; seenTab('club')"
+                class="relative m-press flex-1 py-2 rounded-xl text-sm font-semibold transition-colors"
                 :class="tab==='club' ? 'bg-primary text-white' : 'text-muted-foreground'">
             {{ __('personal.club') }}
+            <span x-show="dots.club && tab!=='club'" x-cloak class="absolute top-1.5 right-2 rtl:right-auto rtl:left-2 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white"></span>
         </button>
-        <button type="button" @click="tab='following'"
-                class="m-press flex-1 py-2 rounded-xl text-sm font-semibold transition-colors"
+        <button type="button" @click="tab='following'; seenTab('following')"
+                class="relative m-press flex-1 py-2 rounded-xl text-sm font-semibold transition-colors"
                 :class="tab==='following' ? 'bg-primary text-white' : 'text-muted-foreground'">
             {{ __('personal.following') }}
+            <span x-show="dots.following && tab!=='following'" x-cloak class="absolute top-1.5 right-2 rtl:right-auto rtl:left-2 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white"></span>
         </button>
-        <button type="button" @click="tab='mine'"
-                class="m-press flex-1 py-2 rounded-xl text-sm font-semibold transition-colors"
+        <button type="button" @click="tab='mine'; seenTab('mine')"
+                class="relative m-press flex-1 py-2 rounded-xl text-sm font-semibold transition-colors"
                 :class="tab==='mine' ? 'bg-primary text-white' : 'text-muted-foreground'">
             {{ __('personal.my_feeds') }}
+            <span x-show="dots.mine && tab!=='mine'" x-cloak class="absolute top-1.5 right-2 rtl:right-auto rtl:left-2 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white"></span>
         </button>
     </div>
 
@@ -446,102 +418,6 @@
         </div>
     </div>
 
-    {{-- ===== Story composer (text or photo) ===== --}}
-    <div x-show="storyCompose.open" x-cloak class="fixed inset-0 z-[66] flex flex-col"
-         x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-         :style="`background: linear-gradient(160deg, ${storyCompose.color}, #111827)`"
-         @keydown.escape.window="closeStoryCompose()">
-        <input type="file" x-ref="storyPhoto" accept="image/*" class="hidden" @change="pickStoryPhoto($event)">
-        {{-- header --}}
-        <div class="flex items-center justify-between px-4 py-3 text-white">
-            <button type="button" @click="closeStoryCompose()" class="m-press w-9 h-9 rounded-full grid place-items-center hover:bg-white/10" aria-label="{{ __('personal.close') }}">
-                <i class="bi bi-x-lg text-xl"></i>
-            </button>
-            <p class="text-sm font-bold">{{ __('personal.your_story') }}</p>
-            <button type="button" @click="submitStory()" :disabled="storyCompose.sending || (!storyCompose.caption.trim() && !storyCompose.file)"
-                    class="m-press px-4 py-1.5 rounded-full bg-white text-[13px] font-bold transition-opacity disabled:opacity-50"
-                    :style="`color: ${storyCompose.color}`">
-                <span x-show="!storyCompose.sending">{{ __('personal.share_story') }}</span>
-                <i class="bi bi-arrow-repeat animate-spin" x-show="storyCompose.sending" x-cloak></i>
-            </button>
-        </div>
-        {{-- canvas --}}
-        <div class="flex-1 relative flex flex-col items-center justify-center px-8 text-center">
-            <template x-if="storyCompose.preview">
-                <img :src="storyCompose.preview" alt="" class="absolute inset-0 w-full h-full object-contain">
-            </template>
-            <textarea x-model="storyCompose.caption" rows="3" maxlength="280"
-                      placeholder="{{ __('personal.story_caption') }}"
-                      class="relative z-[5] w-full bg-transparent text-center text-2xl font-black text-white placeholder-white/60 resize-none focus:outline-none"
-                      :class="storyCompose.preview ? 'self-end mb-8 drop-shadow-lg' : ''"></textarea>
-        </div>
-        {{-- tools --}}
-        <div class="px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 flex items-center justify-center gap-3">
-            <button type="button" @click="$refs.storyPhoto.click()"
-                    class="m-press flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/15 border border-white/25 text-white text-sm font-medium">
-                <i class="bi bi-image text-lg"></i> {{ __('personal.photo') }}
-            </button>
-            <template x-for="c in ['#7c3aed','#ec4899','#0ea5e9','#10b981','#ef4444','#f59e0b']" :key="c">
-                <button type="button" @click="storyCompose.color = c"
-                        class="m-press w-8 h-8 rounded-full border-2 transition-transform"
-                        :class="storyCompose.color === c ? 'border-white scale-110' : 'border-white/40'"
-                        :style="`background: ${c}`" aria-label="color"></button>
-            </template>
-        </div>
-    </div>
-
-    {{-- ===== Story viewer (functional — progress, tap to advance, auto-play) ===== --}}
-    <div x-show="storyView.open" x-cloak class="fixed inset-0 z-[65] flex flex-col select-none"
-         x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-         :style="`background: linear-gradient(160deg, ${story.color || '#7c3aed'}, #111827)`"
-         @keydown.escape.window="closeStory()">
-        {{-- progress bars --}}
-        <div class="flex gap-1 px-3 pt-3">
-            <template x-for="(s, i) in stories" :key="i">
-                <div class="flex-1 h-1 rounded-full bg-white/30 overflow-hidden">
-                    <div class="h-full bg-white transition-all"
-                         :style="i < storyView.i ? 'width:100%' : (i === storyView.i ? 'width:100%; transition: width 3.4s linear' : 'width:0%')"></div>
-                </div>
-            </template>
-        </div>
-
-        {{-- header --}}
-        <div class="flex items-center gap-3 px-4 py-3 text-white">
-            <span class="w-10 h-10 rounded-full grid place-items-center text-white border-2 border-white/40" :style="`background:${story.color}`">
-                <i class="bi text-lg" :class="story.icon"></i>
-            </span>
-            <div class="flex-1 min-w-0">
-                <p class="text-sm font-bold truncate" x-text="story.name"></p>
-                <p class="text-[11px] text-white/70">Just now</p>
-            </div>
-            <button type="button" @click="closeStory()" class="m-press w-9 h-9 rounded-full grid place-items-center hover:bg-white/10" aria-label="Close">
-                <i class="bi bi-x-lg text-xl"></i>
-            </button>
-        </div>
-
-        {{-- content + tap zones --}}
-        <div class="flex-1 relative flex flex-col items-center justify-center px-8 text-center text-white">
-            {{-- photo story fills the backdrop --}}
-            <template x-if="story.image">
-                <img :src="story.image" alt="" class="absolute inset-0 w-full h-full object-contain">
-            </template>
-            <button type="button" @click="storyPrev()" class="absolute left-0 inset-y-0 w-1/3 z-10" aria-label="Previous"></button>
-            <button type="button" @click="storyNext()" class="absolute right-0 inset-y-0 w-1/3 z-10" aria-label="Next"></button>
-            <template x-if="!story.image">
-                <i class="bi text-7xl m-float" :class="story.icon"></i>
-            </template>
-            <p class="relative z-[5] text-xl font-black mt-6 max-w-xs" :class="story.image ? 'self-end mb-6 drop-shadow-lg' : ''" x-text="story.caption"></p>
-        </div>
-
-        {{-- reply bar --}}
-        <div class="px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 flex items-center gap-2">
-            <input type="text" x-model="storyReply" @keydown.enter.prevent="sendStoryReply()"
-                   placeholder="Send a reply…"
-                   class="flex-1 bg-white/15 border border-white/25 rounded-full px-4 py-2.5 text-sm text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/40">
-            <button type="button" @click="sendStoryReply()" class="m-press w-10 h-10 rounded-full bg-white/20 grid place-items-center text-white"><i class="bi bi-send-fill"></i></button>
-        </div>
-    </div>
-
     {{-- ===== Fullscreen image viewer (Facebook-style lightbox) ===== --}}
     <div x-show="lightbox.open" x-cloak class="fixed inset-0 z-[60] bg-black flex flex-col"
          x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
@@ -576,18 +452,20 @@
         window.newsFeed = function () {
             return {
                 me: { name: @js($me->full_name), avatar: @js($myAvatar) },
-                stories: @js(isset($stories) ? collect($stories)->reject(fn ($s) => $s['me'] ?? false)->values() : []),
-                storyView: { open: false, i: 0 },
-                storyReply: '',
-                _storyTimer: null,
+                isSuperAdmin: @js((bool) (auth()->user()?->hasRole('super-admin'))),
                 csrf: document.querySelector('meta[name=csrf-token]')?.content || '',
                 routes: {
                     store: @js(route('me.posts.store')),
                     base:  @js(url('/me/posts')),
                     wall:  @js(url('/u')),
-                    stories: @js(route('me.stories.store')),
                 },
                 tab: 'all',
+                dots: @js($feedTabDots ?? ['all' => false, 'club' => false, 'following' => false, 'mine' => false]),
+                seenTab(t) {
+                    if (!this.dots[t]) return;
+                    this.dots[t] = false;
+                    fetch(@js(route('me.seen')), { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': this.csrf, 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ section: 'feed:' + t }) }).catch(() => {});
+                },
                 body: '',
                 attachOpen: false,
                 sending: false,
@@ -600,7 +478,6 @@
                 coverIcon: 'bi-stars',
                 coverColors: ['#7c3aed', '#ec4899', '#0ea5e9', '#10b981', '#ef4444', '#f59e0b', '#6d28d9'],
                 coverIcons: ['bi-stars', 'bi-trophy-fill', 'bi-fire', 'bi-heart-fill', 'bi-lightning-charge-fill', 'bi-flower1', 'bi-cup-straw', 'bi-award-fill', 'bi-balloon-heart-fill', 'bi-emoji-sunglasses'],
-                storyCompose: { open: false, caption: '', color: '#7c3aed', file: null, preview: null, sending: false },
                 personalPosts:  @js($personalPosts ?? []),   // My Feeds (seeded, persists)
                 followingPosts: @js($followingPosts ?? []),  // Following feed
                 allPosts:       @js($allPosts ?? []),        // All — unified, date-sorted (club + club-mates + you)
@@ -638,6 +515,28 @@
                         this.personalPosts  = this.personalPosts.filter(p => p.id !== id);
                         this.followingPosts = this.followingPosts.filter(p => p.id !== id);
                         this.allPosts       = this.allPosts.filter(p => !(p.kind === 'member' && p.id === id));
+                        return;
+                    }
+                    // Moderation: a super-admin keeps a hidden post (flagged); everyone
+                    // else drops it from their feeds live.
+                    if (d.action === 'hide') {
+                        if (this.isSuperAdmin) { this.patchHidden(id, true); }
+                        else {
+                            this.personalPosts  = this.personalPosts.filter(p => p.id !== id);
+                            this.followingPosts = this.followingPosts.filter(p => p.id !== id);
+                            this.allPosts       = this.allPosts.filter(p => !(p.kind === 'member' && p.id === id));
+                        }
+                        return;
+                    }
+                    // Unhide: super-admins just clear the flag; everyone else gets the
+                    // post re-inserted (the server sends the card).
+                    if (d.action === 'unhide') {
+                        if (this.isSuperAdmin) { this.patchHidden(id, false); return; }
+                        if (d.post) {
+                            d.post.author.isMe = false; d.post.hidden = false;
+                            if (!this.followingPosts.some(p => p.id === id)) this.followingPosts.unshift(d.post);
+                            if (!this.allPosts.some(p => p.kind === 'member' && p.id === id)) this.allPosts.unshift({ ...d.post, kind: 'member' });
+                        }
                         return;
                     }
                     // Patch member posts across every array; never touch club items
@@ -851,6 +750,61 @@
                     }
                 },
 
+                // Super-admin moderation: remove any member's post for everyone.
+                async adminDeletePost(post) {
+                    const ok = await window.confirmAction({
+                        title: @js(__('personal.admin_remove_post')),
+                        message: @js(__('personal.admin_remove_post_confirm')),
+                        type: 'danger', confirmText: @js(__('personal.delete')),
+                    });
+                    if (!ok) return;
+                    try {
+                        await this.send(`${this.routes.base}/${post.id}`, { method: 'DELETE' });
+                        this.personalPosts  = this.personalPosts.filter(p => p.id !== post.id);
+                        this.followingPosts = this.followingPosts.filter(p => p.id !== post.id);
+                        this.allPosts       = this.allPosts.filter(p => !(p.kind === 'member' && p.id === post.id));
+                        window.showToast && window.showToast('success', @js(__('personal.post_deleted')));
+                    } catch (e) {
+                        window.showToast && window.showToast('error', e.message);
+                    }
+                },
+
+                // Super-admin moderation: hide a post from everyone (reversible).
+                async hidePost(post) {
+                    const ok = await window.confirmAction({
+                        title: @js(__('personal.hide_post')),
+                        message: @js(__('personal.hide_post_confirm')),
+                        type: 'warning', confirmText: @js(__('personal.hide_confirm_btn')),
+                    });
+                    if (!ok) return;
+                    try {
+                        await this.send(`${this.routes.base}/${post.id}/hide`, { method: 'POST' });
+                        this.patchHidden(post.id, true);
+                        window.showToast && window.showToast('success', @js(__('personal.post_hidden')));
+                    } catch (e) {
+                        window.showToast && window.showToast('error', e.message);
+                    }
+                },
+
+                // Super-admin moderation: restore a hidden post for everyone.
+                async unhidePost(post) {
+                    try {
+                        await this.send(`${this.routes.base}/${post.id}/unhide`, { method: 'POST' });
+                        this.patchHidden(post.id, false);
+                        window.showToast && window.showToast('success', @js(__('personal.post_unhidden')));
+                    } catch (e) {
+                        window.showToast && window.showToast('error', e.message);
+                    }
+                },
+
+                // Flip the moderation flag on a member post across every feed array.
+                patchHidden(id, hidden) {
+                    [this.personalPosts, this.followingPosts, this.allPosts].forEach(arr => {
+                        const p = arr.find(x => x.id === id && x.kind !== 'club');
+                        if (p) p.hidden = hidden;
+                    });
+                },
+
                 // ----- Likes -----
                 async toggleLike(post) {
                     post.liked = !post.liked;
@@ -930,69 +884,6 @@
                         window.showToast && window.showToast('error', e.message);
                     }
                 },
-
-                // ----- Stories -----
-                openStory(i) {
-                    if (!this.stories.length) return;
-                    this.storyView = { open: true, i: Math.max(0, Math.min(i, this.stories.length - 1)) };
-                    this.scheduleStory();
-                },
-                scheduleStory() {
-                    clearTimeout(this._storyTimer);
-                    this._storyTimer = setTimeout(() => this.storyNext(), 3400);
-                },
-                storyNext() {
-                    if (this.storyView.i < this.stories.length - 1) { this.storyView.i++; this.scheduleStory(); }
-                    else this.closeStory();
-                },
-                storyPrev() {
-                    if (this.storyView.i > 0) { this.storyView.i--; this.scheduleStory(); }
-                    else this.scheduleStory();
-                },
-                closeStory() { this.storyView.open = false; clearTimeout(this._storyTimer); },
-                sendStoryReply() {
-                    const t = (this.storyReply || '').trim();
-                    if (!t) return;
-                    this.storyReply = '';
-                    window.showToast && window.showToast('success', 'Reply sent to ' + (this.story.name || 'them'));
-                },
-                // ----- Story composer (text or photo, 24h) -----
-                addStory() {
-                    this.storyCompose = { open: true, caption: '', color: '#7c3aed', file: null, preview: null, sending: false };
-                },
-                closeStoryCompose() {
-                    if (this.storyCompose.preview) URL.revokeObjectURL(this.storyCompose.preview);
-                    this.storyCompose.open = false;
-                },
-                pickStoryPhoto(event) {
-                    const f = (event.target.files || [])[0];
-                    event.target.value = '';
-                    if (!f || !f.type.startsWith('image/')) return;
-                    if (this.storyCompose.preview) URL.revokeObjectURL(this.storyCompose.preview);
-                    this.storyCompose.file = f;
-                    this.storyCompose.preview = URL.createObjectURL(f);
-                },
-                async submitStory() {
-                    const c = this.storyCompose;
-                    if (c.sending || (!c.caption.trim() && !c.file)) return;
-                    c.sending = true;
-                    try {
-                        const fd = new FormData();
-                        fd.append('caption', c.caption.trim());
-                        fd.append('color', c.color);
-                        fd.append('icon', c.file ? 'bi-camera' : 'bi-chat-quote');
-                        if (c.file) fd.append('image', c.file);
-                        const data = await this.send(this.routes.stories, { method: 'POST', body: fd, json: false });
-                        this.stories.unshift(data.story);
-                        this.closeStoryCompose();
-                        window.showToast && window.showToast('success', data.message || @js(__('personal.story_added')));
-                    } catch (e) {
-                        window.showToast && window.showToast('error', e.message);
-                    } finally {
-                        c.sending = false;
-                    }
-                },
-                get story() { return this.stories[this.storyView.i] || {}; },
 
                 // ----- Open the post's own page (permalink) -----
                 openPost(post) {

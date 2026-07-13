@@ -38,18 +38,18 @@ class BusinessController extends Controller
         }
 
         $validated = $request->validate([
-            'name'        => ['required', 'string', 'max:120'],
+            'name' => ['required', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:1000'],
-            'logo'        => ['nullable', 'string', 'max:2048'],
+            'logo' => ['nullable', 'string', 'max:2048'],
         ]);
 
         Business::create([
             'owner_user_id' => $user->id,
-            'name'          => $validated['name'],
-            'slug'          => $this->uniqueSlug($validated['name']),
-            'description'   => $validated['description'] ?? null,
-            'logo'          => $validated['logo'] ?? null,
-            'status'        => Business::STATUS_PENDING,
+            'name' => $validated['name'],
+            'slug' => $this->uniqueSlug($validated['name']),
+            'description' => $validated['description'] ?? null,
+            'logo' => $validated['logo'] ?? null,
+            'status' => Business::STATUS_PENDING,
         ]);
 
         return redirect()->route('business.setup')
@@ -66,10 +66,11 @@ class BusinessController extends Controller
         $user = Auth::user();
 
         if ($mode === 'business') {
-            if (!$user->hasApprovedBusiness()) {
+            if (! $user->hasApprovedBusiness()) {
                 return redirect()->route('business.setup');
             }
             session(['view_mode' => 'business']);
+
             return redirect()->route('business.dashboard');
         }
 
@@ -79,6 +80,7 @@ class BusinessController extends Controller
         if ($request->attributes->get('is_mobile')) {
             return redirect()->route('me.home');
         }
+
         return redirect()->route('clubs.explore');
     }
 
@@ -91,9 +93,10 @@ class BusinessController extends Controller
         $slug = $base;
         $i = 2;
         while (Business::where('slug', $slug)->exists()) {
-            $slug = $base . '-' . $i;
+            $slug = $base.'-'.$i;
             $i++;
         }
+
         return $slug;
     }
 }

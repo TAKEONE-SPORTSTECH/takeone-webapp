@@ -11,11 +11,19 @@ trait HandlesClubAuthorization
     private function authorizeClub(Tenant $club): void
     {
         $user = Auth::user();
-        if ($user->isSuperAdmin()) return;
-        if ($club->owner_user_id === $user->id) return;
-        if ($user->isClubAdmin($club->id)) return;
+        if ($user->isSuperAdmin()) {
+            return;
+        }
+        if ($club->owner_user_id === $user->id) {
+            return;
+        }
+        if ($user->isClubAdmin($club->id)) {
+            return;
+        }
         // Chain owners have full control over every club in their approved business.
-        if ($club->business_id && $this->ownsClubBusiness($user->id, $club->business_id)) return;
+        if ($club->business_id && $this->ownsClubBusiness($user->id, $club->business_id)) {
+            return;
+        }
         abort(403, 'Unauthorized access to this club.');
     }
 
@@ -23,11 +31,22 @@ trait HandlesClubAuthorization
     private function canManageClub(Tenant $club): bool
     {
         $user = Auth::user();
-        if (! $user) return false;
-        if ($user->isSuperAdmin()) return true;
-        if ($club->owner_user_id === $user->id) return true;
-        if ($user->isClubAdmin($club->id)) return true;
-        if ($club->business_id && $this->ownsClubBusiness($user->id, $club->business_id)) return true;
+        if (! $user) {
+            return false;
+        }
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+        if ($club->owner_user_id === $user->id) {
+            return true;
+        }
+        if ($user->isClubAdmin($club->id)) {
+            return true;
+        }
+        if ($club->business_id && $this->ownsClubBusiness($user->id, $club->business_id)) {
+            return true;
+        }
+
         return false;
     }
 

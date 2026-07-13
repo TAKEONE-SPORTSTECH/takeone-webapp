@@ -7,6 +7,8 @@ return [
     'member'          => 'member',
     'members'         => 'members',
     'under_your_care' => 'under your care',
+    'adults'          => 'Adults',
+    'minors'          => 'Minors',
     'years'           => 'yrs',
 
     // Empty state

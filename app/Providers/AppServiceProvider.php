@@ -5,7 +5,6 @@ namespace App\Providers;
 use App\Models\Tenant;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -39,6 +38,30 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->configureRateLimiters();
+        $this->pruneMissingViewPaths();
+    }
+
+    /**
+     * Drop registered view-namespace paths that don't exist on disk.
+     *
+     * `view:cache` walks every hint and throws DirectoryNotFoundException on a
+     * missing one. takeone/cropper registers `src/resources/views`, but ships its
+     * views at `resources/views` — the published copy under
+     * resources/views/vendor/takeone is what resolves at runtime.
+     */
+    private function pruneMissingViewPaths(): void
+    {
+        $this->app->booted(function () {
+            $finder = $this->app['view']->getFinder();
+
+            foreach ($finder->getHints() as $namespace => $paths) {
+                $existing = array_values(array_filter($paths, 'is_dir'));
+
+                if (count($existing) !== count($paths) && $existing !== []) {
+                    $finder->replaceNamespace($namespace, $existing);
+                }
+            }
+        });
     }
 
     private function configureRateLimiters(): void
@@ -47,7 +70,7 @@ class AppServiceProvider extends ServiceProvider
         // and 10 per minute keyed by IP alone (spray attack).
         RateLimiter::for('login', function (Request $request) {
             return [
-                Limit::perMinute(5)->by($request->input('email') . '|' . $request->ip()),
+                Limit::perMinute(5)->by($request->input('email').'|'.$request->ip()),
                 Limit::perMinute(10)->by($request->ip()),
             ];
         });
@@ -87,7 +110,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Email verification resend: 6 per minute keyed by email+IP.
         RateLimiter::for('verification', function (Request $request) {
-            return Limit::perMinute(6)->by($request->user()?->email . '|' . $request->ip());
+            return Limit::perMinute(6)->by($request->user()?->email.'|'.$request->ip());
         });
 
         // Member data writes (health records, tournaments, affiliations, goals, family):

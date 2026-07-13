@@ -15,8 +15,8 @@ class StoreSocialLinkRequest extends FormRequest
     {
         return [
             'platform' => 'required|string|max:100',
-            'url'      => 'required|string|max:500',
-            'icon'     => 'nullable|string|max:50',
+            'url' => 'required|string|max:500',
+            'icon' => 'nullable|string|max:50',
         ];
     }
 }

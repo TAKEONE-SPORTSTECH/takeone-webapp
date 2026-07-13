@@ -5,11 +5,11 @@
     <!-- Header -->
     <div class="flex flex-wrap gap-3 justify-between items-center pb-6 border-b border-gray-200">
         <div>
-            <h2 class="text-xl font-bold text-gray-900">Facilities Management</h2>
-            <p class="text-gray-500 mt-1">Manage your club's facilities, locations, and availability</p>
+            <h2 class="text-xl font-bold text-gray-900">{{ __('admin.club_facilities_index_title') }}</h2>
+            <p class="text-gray-500 mt-1">{{ __('admin.club_facilities_index_subtitle') }}</p>
         </div>
         <button class="btn btn-primary" @click="showAddFacilityModal = true">
-            <i class="bi bi-plus-lg mr-2"></i>Add Facility
+            <i class="bi bi-plus-lg me-2"></i>{{ __('admin.club_facilities_index_add_facility') }}
         </button>
     </div>
 
@@ -27,8 +27,8 @@
                      class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
                 <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
                 @if($facility->images && count($facility->images) > 1)
-                <span class="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded-full backdrop-blur-sm">
-                    <i class="bi bi-images mr-1"></i>{{ count($facility->images) }}
+                <span class="absolute bottom-2 end-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded-full backdrop-blur-sm">
+                    <i class="bi bi-images me-1"></i>{{ count($facility->images) }}
                 </span>
                 @endif
                 @else
@@ -38,20 +38,20 @@
                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                             <circle cx="12" cy="10" r="3"></circle>
                         </svg>
-                        <p class="text-xs text-gray-400">No image</p>
+                        <p class="text-xs text-gray-400">{{ __('admin.club_facilities_index_no_image') }}</p>
                     </div>
                 </div>
                 @endif
 
                 <!-- Status Badges -->
-                <div data-facility-status class="absolute top-3 left-3 flex flex-col gap-1.5">
+                <div data-facility-status class="absolute top-3 start-3 flex flex-col gap-1.5">
                     @if($facility->is_available)
                     <span class="inline-flex items-center text-xs font-semibold bg-green-500/90 text-white px-2.5 py-1 rounded-full backdrop-blur-sm shadow">
-                        ✓ Available
+                        ✓ {{ __('admin.club_facilities_index_available') }}
                     </span>
                     @else
                     <span class="inline-flex items-center text-xs font-semibold bg-red-500/90 text-white px-2.5 py-1 rounded-full backdrop-blur-sm shadow">
-                        ✕ Unavailable
+                        ✕ {{ __('admin.club_facilities_index_unavailable') }}
                     </span>
                     @endif
                 </div>
@@ -93,12 +93,12 @@
                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                             <circle cx="12" cy="10" r="3"></circle>
                         </svg>
-                        Open in Maps
+                        {{ __('admin.club_facilities_index_open_in_maps') }}
                     </a>
 
                     <button class="inline-flex items-center justify-center h-8 w-8 p-0 rounded-md border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 transition-all"
                             onclick="editFacility({{ $facility->id }})"
-                            title="Edit">
+                            title="{{ __('shared.edit') }}">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
@@ -107,7 +107,7 @@
 
                     <button class="inline-flex items-center justify-center h-8 w-8 p-0 rounded-md border border-gray-200 text-gray-500 hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-all"
                             onclick="deleteFacility({{ $facility->id }})"
-                            title="Delete">
+                            title="{{ __('shared.delete') }}">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="3 6 5 6 21 6"></polyline>
                             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -132,9 +132,9 @@
                     </svg>
                 </div>
                 <div>
-                    <h3 class="text-lg font-semibold text-gray-900 mb-2">No Facilities Yet</h3>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ __('admin.club_facilities_index_empty_title') }}</h3>
                     <p class="text-gray-500 max-w-md mx-auto">
-                        Get started by adding your first facility. Track locations, manage availability, and more.
+                        {{ __('admin.club_facilities_index_empty_body') }}
                     </p>
                 </div>
                 <button class="mt-4 inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-all shadow-md hover:shadow-lg"
@@ -143,7 +143,7 @@
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
-                    Add Your First Facility
+                    {{ __('admin.club_facilities_index_add_first') }}
                 </button>
             </div>
         </div>
@@ -165,17 +165,17 @@
                     <div id="facilityCropperCanvas" class="takeone-canvas" style="height:380px;"></div>
                     <div class="grid grid-cols-2 gap-4 mt-4">
                         <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">Zoom</label>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('admin.club_facilities_index_zoom') }}</label>
                             <input type="range" id="facilityCropperZoom" class="form-range" min="0" max="100" step="1" value="0">
                         </div>
                         <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">Rotation</label>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('admin.club_facilities_index_rotation') }}</label>
                             <input type="range" id="facilityCropperRot" class="form-range" min="-180" max="180" step="1" value="0">
                         </div>
                     </div>
                     <button type="button" id="facilityCropperSave"
                             class="btn btn-success btn-lg font-bold w-full py-3 mt-3">
-                        Crop & Add
+                        {{ __('admin.club_facilities_index_crop_add') }}
                     </button>
                 </div>
             </div>
@@ -192,9 +192,9 @@
 <script>
 function deleteFacility(id) {
     confirmAction({
-        title: 'Delete Facility',
-        message: 'This facility and its image will be permanently removed.',
-        confirmText: 'Delete',
+        title: '{{ __("admin.club_facilities_index_delete_title") }}',
+        message: '{{ __("admin.club_facilities_index_delete_confirm") }}',
+        confirmText: '{{ __("shared.delete") }}',
         type: 'danger',
     }).then(confirmed => {
         if (!confirmed) return;
@@ -211,14 +211,14 @@ function deleteFacility(id) {
             if (data.success) {
                 const card = document.getElementById(`facility-${id}`);
                 if (card) card.remove();
-                window.showToast('success', data.message || 'Facility deleted successfully.');
+                window.showToast('success', data.message || '{{ __("admin.club_facilities_index_deleted_success") }}');
             } else {
-                window.showToast('error', data.message || 'Failed to delete facility');
+                window.showToast('error', data.message || '{{ __("admin.club_facilities_index_delete_failed") }}');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            window.showToast('error', 'Failed to delete facility');
+            window.showToast('error', '{{ __("admin.club_facilities_index_delete_failed") }}');
         });
     });
 }
@@ -244,12 +244,12 @@ function editFacility(id) {
             // Use Alpine.js event to show modal
             window.dispatchEvent(new CustomEvent('open-edit-facility'));
         } else {
-            window.showToast('error', data.message || 'Failed to load facility data');
+            window.showToast('error', data.message || '{{ __("admin.club_facilities_index_load_failed") }}');
         }
     })
     .catch(error => {
         console.error('Edit facility error:', error);
-        window.showToast('error', 'Failed to load facility data: ' + error.message);
+        window.showToast('error', '{{ __("admin.club_facilities_index_load_failed") }}: ' + error.message);
     });
 }
 
@@ -283,7 +283,7 @@ function populateEditForm(facility) {
             wrap.className = 'relative group';
             wrap.innerHTML = `
                 <img src="{{ asset('storage') }}/${path}" class="w-20 h-20 object-cover rounded-lg border border-gray-200">
-                <button type="button" class="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <button type="button" class="absolute -top-1.5 -end-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <i class="bi bi-x"></i>
                 </button>`;
             wrap.querySelector('button').addEventListener('click', () => {
@@ -389,19 +389,19 @@ $(function() {
 
     $('#facilityCropperSave').on('click', function() {
         if (!facilityCropperInstance || !facilityCropperInstance.properties?.image) {
-            window.showToast('warning', 'Please select an image first.');
+            window.showToast('warning', '{{ __("admin.club_facilities_index_select_image_first") }}');
             return;
         }
         const btn = $(this);
-        btn.prop('disabled', true).text('Processing...');
+        btn.prop('disabled', true).text('{{ __("admin.club_facilities_index_processing") }}');
         facilityCropperInstance.crop({ type: 'base64' }).then(base64 => {
             facilityNewImages[facilityCropperContext].push(base64);
             renderFacilityNewThumbnails(facilityCropperContext);
             facilityCropperModal.hide();
-            btn.prop('disabled', false).text('Crop & Add');
+            btn.prop('disabled', false).text('{{ __("admin.club_facilities_index_crop_add") }}');
         }).catch(err => {
             console.error('Crop failed:', err);
-            btn.prop('disabled', false).text('Crop & Add');
+            btn.prop('disabled', false).text('{{ __("admin.club_facilities_index_crop_add") }}');
         });
     });
 });
@@ -428,7 +428,7 @@ function renderFacilityNewThumbnails(context) {
         wrap.className = 'relative group';
         wrap.innerHTML = `
             <img src="${b64}" class="w-20 h-20 object-cover rounded-lg border border-gray-200">
-            <button type="button" class="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <button type="button" class="absolute -top-1.5 -end-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <i class="bi bi-x"></i>
             </button>`;
         wrap.querySelector('button').addEventListener('click', () => {
@@ -480,8 +480,8 @@ function patchFacilityCard(facility) {
     const statusEl = card.querySelector('[data-facility-status]');
     if (statusEl) {
         statusEl.innerHTML = (facility.is_available == 1)
-            ? `<span class="inline-flex items-center text-xs font-semibold bg-green-500/90 text-white px-2.5 py-1 rounded-full backdrop-blur-sm shadow">✓ Available</span>`
-            : `<span class="inline-flex items-center text-xs font-semibold bg-red-500/90 text-white px-2.5 py-1 rounded-full backdrop-blur-sm shadow">✕ Unavailable</span>`;
+            ? `<span class="inline-flex items-center text-xs font-semibold bg-green-500/90 text-white px-2.5 py-1 rounded-full backdrop-blur-sm shadow">✓ {{ __("admin.club_facilities_index_available") }}</span>`
+            : `<span class="inline-flex items-center text-xs font-semibold bg-red-500/90 text-white px-2.5 py-1 rounded-full backdrop-blur-sm shadow">✕ {{ __("admin.club_facilities_index_unavailable") }}</span>`;
     }
 }
 
@@ -494,7 +494,7 @@ document.getElementById('editFacilityForm').addEventListener('submit', function(
     const originalText = submitBtn.innerHTML;
 
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Updating...';
+    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> {{ __("admin.club_facilities_index_updating") }}';
 
     fetch(this.action, {
         method: 'POST',
@@ -508,19 +508,19 @@ document.getElementById('editFacilityForm').addEventListener('submit', function(
     .then(data => {
         if (data.success) {
             patchFacilityCard(data.data);
-            window.showToast('success', data.message || 'Facility updated successfully.');
+            window.showToast('success', data.message || '{{ __("admin.club_facilities_index_updated_success") }}');
             window.dispatchEvent(new CustomEvent('close-edit-facility'));
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalText;
         } else {
-            window.showToast('error', data.message || 'Failed to update facility');
+            window.showToast('error', data.message || '{{ __("admin.club_facilities_index_update_failed") }}');
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalText;
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        window.showToast('error', 'Failed to update facility');
+        window.showToast('error', '{{ __("admin.club_facilities_index_update_failed") }}');
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
     });

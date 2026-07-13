@@ -80,8 +80,8 @@
         <div class="absolute bottom-0 inset-x-0 p-4 text-white">
             <div class="flex items-end gap-3">
                 @if($club->logo)
-                    <span class="w-16 h-16 rounded-2xl bg-white p-1 shadow-lg ring-1 ring-black/10 overflow-hidden flex-shrink-0">
-                        <img src="{{ asset('storage/'.$club->logo) }}" alt="" class="w-full h-full object-contain rounded-xl">
+                    <span class="w-16 h-16 flex-shrink-0">
+                        <img src="{{ asset('storage/'.$club->logo) }}" alt="" class="w-full h-full object-contain">
                     </span>
                 @endif
                 <div class="min-w-0">
@@ -287,9 +287,18 @@
                                 $achData = $achievementsJson[$i];
                                 $athleteInitials = collect($achData['athletes'])->take(4);
                             @endphp
+                            <div class="relative snap-start flex-shrink-0 w-[58%] max-w-[14rem]"
+                                 @if($i >= $achInitial) x-show="expanded" x-cloak @endif>
+                            @if($canManage)
+                                <a href="{{ route('admin.club.achievements', $club) }}?edit={{ $a->id }}"
+                                   @click.stop
+                                   class="m-press absolute top-1.5 left-1.5 z-10 w-7 h-7 rounded-full bg-black/55 backdrop-blur text-white grid place-items-center active:scale-95 transition-transform"
+                                   aria-label="{{ __('shared.edit') }}">
+                                    <i class="bi bi-pencil-fill text-[11px]"></i>
+                                </a>
+                            @endif
                             <button type="button" @click='openAch(@json($achData))'
-                                    @if($i >= $achInitial) x-show="expanded" x-cloak @endif
-                                    class="m-press m-card snap-start flex-shrink-0 w-[58%] max-w-[14rem] text-left overflow-hidden flex flex-col">
+                                    class="m-press m-card w-full text-left overflow-hidden flex flex-col">
                                 <div class="relative h-24 flex-shrink-0">
                                     @if($achData['image_url'])
                                         <img src="{{ $achData['image_url'] }}" alt="{{ $a->tr('title') }}" class="w-full h-24 object-cover">
@@ -330,6 +339,7 @@
                                     </div>
                                 </div>
                             </button>
+                            </div>
                         @endforeach
                     </div>
 

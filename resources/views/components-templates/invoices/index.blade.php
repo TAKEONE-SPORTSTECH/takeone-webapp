@@ -9,12 +9,12 @@
     {{-- ── Header ── --}}
     <div class="flex items-center justify-between gap-4 mb-6">
         <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary/70">Wallet</p>
-            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Bills &amp; Payments</h1>
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary/70">{{ __('shared.templates_invoices_index_wallet') }}</p>
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">{{ __('shared.templates_invoices_index_title') }}</h1>
         </div>
         <a href="{{ url()->previous() }}"
            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 transition-colors">
-            <i class="bi bi-arrow-left"></i> <span class="hidden sm:inline">Back</span>
+            <i class="bi bi-arrow-left"></i> <span class="hidden sm:inline">{{ __('shared.back') }}</span>
         </a>
     </div>
 
@@ -30,7 +30,7 @@
         <div class="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
             <div>
                 <p class="text-sm font-medium text-white/70 flex items-center gap-2">
-                    <i class="bi bi-wallet2"></i> Total outstanding
+                    <i class="bi bi-wallet2"></i> {{ __('shared.templates_invoices_index_total_outstanding') }}
                 </p>
                 <div class="mt-2 flex items-end gap-2">
                     <span class="text-base font-semibold text-white/80 mb-1.5">{{ $currency }}</span>
@@ -39,18 +39,18 @@
                 <div class="mt-3 flex flex-wrap items-center gap-2 text-sm">
                     @if($summary['overdue_count'] > 0)
                         <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/90 text-white font-semibold text-xs">
-                            <i class="bi bi-exclamation-octagon-fill"></i> {{ $summary['overdue_count'] }} overdue
+                            <i class="bi bi-exclamation-octagon-fill"></i> {{ $summary['overdue_count'] }} {{ __('shared.templates_invoices_index_overdue_badge') }}
                         </span>
                     @endif
                     @if($summary['next_due'])
                         <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-white/90 text-xs font-medium">
                             <i class="bi bi-calendar-event"></i>
-                            Next due {{ $summary['next_due']->due_date->format('M d') }}
+                            {{ __('shared.templates_invoices_index_next_due') }} {{ $summary['next_due']->due_date->format('M d') }}
                         </span>
                     @endif
                     @unless($hasOutstanding)
                         <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-400/90 text-emerald-950 text-xs font-semibold">
-                            <i class="bi bi-check-circle-fill"></i> All settled
+                            <i class="bi bi-check-circle-fill"></i> {{ __('shared.templates_invoices_index_all_settled') }}
                         </span>
                     @endunless
                 </div>
@@ -60,7 +60,7 @@
             <a href="{{ route('bills.pay-all') }}"
                class="group inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-white text-primary font-bold text-sm shadow-md hover:shadow-xl hover:scale-[1.02] active:scale-95 transition-all">
                 <i class="bi bi-lightning-charge-fill group-hover:scale-110 transition-transform"></i>
-                Pay all ({{ $summary['pending_count'] }})
+                {{ __('shared.templates_invoices_index_pay_all') }} ({{ $summary['pending_count'] }})
             </a>
             @endif
         </div>
@@ -70,10 +70,10 @@
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         @php
             $kpis = [
-                ['label'=>'Paid to date','value'=>$currency.' '.number_format($summary['paid_total'],2),'icon'=>'bi-check2-circle','tint'=>'emerald'],
-                ['label'=>'Pending bills','value'=>$summary['pending_count'],'icon'=>'bi-hourglass-split','tint'=>'amber'],
-                ['label'=>'Overdue','value'=>$summary['overdue_count'],'icon'=>'bi-exclamation-triangle','tint'=>'red'],
-                ['label'=>'Paid bills','value'=>$summary['paid_count'],'icon'=>'bi-receipt','tint'=>'primary'],
+                ['label'=>__('shared.templates_invoices_index_kpi_paid_to_date'),'value'=>$currency.' '.number_format($summary['paid_total'],2),'icon'=>'bi-check2-circle','tint'=>'emerald'],
+                ['label'=>__('shared.templates_invoices_index_kpi_pending_bills'),'value'=>$summary['pending_count'],'icon'=>'bi-hourglass-split','tint'=>'amber'],
+                ['label'=>__('shared.templates_invoices_index_kpi_overdue'),'value'=>$summary['overdue_count'],'icon'=>'bi-exclamation-triangle','tint'=>'red'],
+                ['label'=>__('shared.templates_invoices_index_kpi_paid_bills'),'value'=>$summary['paid_count'],'icon'=>'bi-receipt','tint'=>'primary'],
             ];
         @endphp
         @foreach($kpis as $kpi)
@@ -99,7 +99,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         {{-- Segmented status control --}}
         <div class="inline-flex p-1 rounded-xl bg-muted/70 self-start">
-            @php $segments = ['' => 'All', 'pending' => 'Pending', 'paid' => 'Paid']; @endphp
+            @php $segments = ['' => __('shared.templates_invoices_index_filter_all'), 'pending' => __('shared.templates_invoices_index_filter_pending'), 'paid' => __('shared.templates_invoices_index_filter_paid')]; @endphp
             @foreach($segments as $val => $label)
                 <button type="button"
                         @click="setStatus('{{ $val }}')"
@@ -113,18 +113,18 @@
         {{-- Date range --}}
         <div class="flex items-center gap-2">
             <div class="relative">
-                <i class="bi bi-calendar3 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+                <i class="bi bi-calendar3 absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
                 <input type="date" x-model="startDate" @change="reload()"
-                       class="pl-9 pr-2 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                       class="ps-9 pe-2 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
             </div>
             <span class="text-muted-foreground text-sm">–</span>
             <div class="relative">
-                <i class="bi bi-calendar3 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+                <i class="bi bi-calendar3 absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
                 <input type="date" x-model="endDate" @change="reload()"
-                       class="pl-9 pr-2 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                       class="ps-9 pe-2 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
             </div>
             <button type="button" x-show="startDate || endDate" @click="clearDates()"
-                    class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Clear dates">
+                    class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="{{ __('shared.templates_invoices_index_clear_dates') }}">
                 <i class="bi bi-x-lg"></i>
             </button>
         </div>
@@ -175,7 +175,7 @@
                         if (seq !== this._seq) return;   // a newer request won
                         document.getElementById('billsList').innerHTML = html;
                     })
-                    .catch(() => window.showToast?.('error', 'Could not load bills. Please try again.'))
+                    .catch(() => window.showToast?.('error', '{{ __('shared.templates_invoices_index_load_error') }}'))
                     .finally(() => { if (seq === this._seq) this.loading = false; });
             },
         };

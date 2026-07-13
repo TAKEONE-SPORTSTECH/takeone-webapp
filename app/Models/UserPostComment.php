@@ -24,12 +24,12 @@ class UserPostComment extends Model
         $u = $this->user;
 
         return [
-            'id'     => $this->id,
-            'name'   => $u?->full_name ?? 'Member',
+            'id' => $this->id,
+            'name' => $u?->full_name ?? 'Member',
             'avatar' => $u && $u->profile_picture
-                ? asset('storage/' . $u->profile_picture) . '?v=' . optional($u->updated_at)->timestamp
+                ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp
                 : null,
-            'body'   => $this->body,
+            'body' => $this->body,
         ];
     }
 }

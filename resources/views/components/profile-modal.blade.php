@@ -18,10 +18,10 @@
 
 @php
     $isCreate = $mode === 'create';
-    $modalTitle = $title ?? ($isCreate ? 'Add Family Member' : 'Edit Profile');
-    $modalSubtitle = $subtitle ?? ($isCreate ? 'Fill in the details to add a new family member' : null);
+    $modalTitle = $title ?? ($isCreate ? __('shared.components_profile_modal_add_family_member') : __('shared.components_profile_modal_edit_profile'));
+    $modalSubtitle = $subtitle ?? ($isCreate ? __('shared.components_profile_modal_create_subtitle') : null);
     $modalIcon = $icon ?? ($isCreate ? 'bi-person-plus' : 'bi-person-circle');
-    $submitText = $submitText ?? ($isCreate ? 'Add Member' : 'Update Profile');
+    $submitText = $submitText ?? ($isCreate ? __('shared.components_profile_modal_add_member') : __('shared.components_profile_modal_update_profile'));
     $submitIcon = $submitIcon ?? ($isCreate ? 'bi-person-plus' : 'bi-check-circle');
     $formId = $isCreate ? 'memberCreateForm' : 'profileEditForm';
     $alpineComponent = $isCreate ? 'memberProfileModal_create' : 'memberProfileModal_edit';
@@ -106,7 +106,7 @@
             <!-- Header -->
             <div class="flex items-center justify-between p-4 bg-primary text-white rounded-t-lg">
                 <h5 class="text-lg font-medium flex items-center">
-                    <i class="bi {{ $modalIcon }} mr-2"></i>{{ $modalTitle }}
+                    <i class="bi {{ $modalIcon }} me-2"></i>{{ $modalTitle }}
                 </h5>
                 <button type="button" @click="closeModal()" class="text-white hover:text-gray-200 text-2xl leading-none">&times;</button>
             </div>
@@ -118,23 +118,23 @@
                     <button type="button" @click="activeTab = 'photo'"
                             :class="activeTab === 'photo' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                             class="flex-1 py-3 px-4 text-center border-b-2 font-medium text-sm transition-colors">
-                        <i class="bi bi-camera mr-1"></i>Profile Photo
+                        <i class="bi bi-camera me-1"></i>{{ __('shared.components_profile_modal_tab_photo') }}
                     </button>
                     @endif
                     <button type="button" @click="activeTab = 'personal'"
                             :class="activeTab === 'personal' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                             class="flex-1 py-3 px-4 text-center border-b-2 font-medium text-sm transition-colors">
-                        <i class="bi bi-person-badge mr-1"></i>Personal Info
+                        <i class="bi bi-person-badge me-1"></i>{{ __('shared.components_profile_modal_tab_personal') }}
                     </button>
                     <button type="button" @click="activeTab = 'social'"
                             :class="activeTab === 'social' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                             class="flex-1 py-3 px-4 text-center border-b-2 font-medium text-sm transition-colors">
-                        <i class="bi bi-share mr-1"></i>Social Media
+                        <i class="bi bi-share me-1"></i>{{ __('shared.components_profile_modal_tab_social') }}
                     </button>
                     <button type="button" @click="activeTab = 'additional'"
                             :class="activeTab === 'additional' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                             class="flex-1 py-3 px-4 text-center border-b-2 font-medium text-sm transition-colors">
-                        <i class="bi bi-shield-plus mr-1"></i>Medical & Docs
+                        <i class="bi bi-shield-plus me-1"></i>{{ __('shared.components_profile_modal_tab_medical') }}
                     </button>
                 </nav>
             </div>
@@ -155,20 +155,20 @@
             <!-- Footer -->
             <div class="flex justify-between items-center p-4 bg-gray-50 border-t rounded-b-lg">
                 <div>
-                    <button type="button" class="btn btn-secondary" @click="closeModal()">Cancel</button>
+                    <button type="button" class="btn btn-secondary" @click="closeModal()">{{ __('shared.cancel') }}</button>
                 </div>
                 <div>
                     <button type="button" class="btn btn-success" id="{{ $formId }}_submitBtn" @click="submitForm()" :disabled="isSubmitting">
-                        <span x-show="!isSubmitting"><i class="bi {{ $submitIcon }} mr-1"></i>{{ $submitText }}</span>
-                        <span x-show="isSubmitting"><span class="inline-block animate-spin mr-2">&#8635;</span>{{ $isCreate ? 'Creating...' : 'Updating...' }}</span>
+                        <span x-show="!isSubmitting"><i class="bi {{ $submitIcon }} me-1"></i>{{ $submitText }}</span>
+                        <span x-show="isSubmitting"><span class="inline-block animate-spin me-2">&#8635;</span>{{ $isCreate ? __('shared.components_profile_modal_creating') : __('shared.components_profile_modal_updating') }}</span>
                     </button>
                 </div>
                 <div>
-                    <button type="button" class="btn btn-outline-secondary mr-2" x-show="activeTab !== tabs[0]" @click="prevTab()">
-                        <i class="bi bi-arrow-left mr-1"></i>Previous
+                    <button type="button" class="btn btn-outline-secondary me-2" x-show="activeTab !== tabs[0]" @click="prevTab()">
+                        <i class="bi bi-arrow-left me-1"></i>{{ __('shared.components_profile_modal_previous') }}
                     </button>
                     <button type="button" class="btn btn-primary" x-show="activeTab !== 'additional'" @click="nextTab()">
-                        Next<i class="bi bi-arrow-right ml-1"></i>
+                        {{ __('shared.components_profile_modal_next') }}<i class="bi bi-arrow-right ms-1"></i>
                     </button>
                 </div>
             </div>
@@ -267,19 +267,19 @@ function {{ $alpineComponent }}() {
                     });
                     const data = await resp.json();
                     if (!data.success) {
-                        window.showToast && window.showToast('error', data.message || 'Could not delete the file.');
+                        window.showToast && window.showToast('error', data.message || '{{ __("shared.components_profile_modal_err_delete_file") }}');
                         s.loading = false;
                         return;
                     }
                 } catch (ex) {
-                    window.showToast && window.showToast('error', 'Delete failed. Please try again.');
+                    window.showToast && window.showToast('error', '{{ __("shared.components_profile_modal_err_delete_failed") }}');
                     s.loading = false;
                     return;
                 }
             }
             this.removeDoc(s.index);
             this.docDeleteState = { open: false, index: -1, expectedNumber: '', inputValue: '', loading: false };
-            window.showToast && window.showToast('success', 'Document deleted successfully.');
+            window.showToast && window.showToast('success', '{{ __("shared.components_profile_modal_doc_deleted") }}');
         },
         handleDocDrop(e, i) { this.dragging = null; const f = e.dataTransfer.files[0]; if (f) this.uploadDoc(f, i); },
         handleDocFileSelect(e, i) { const f = e.target.files[0]; if (f) this.uploadDoc(f, i); e.target.value = ''; },
@@ -307,15 +307,15 @@ function {{ $alpineComponent }}() {
                     if (data.success) {
                         this.docs.splice(i, 1, { ...this.docs[i], file_path: data.path, file_name: data.file_name, file_url: data.url, uploaded_at: new Date().toISOString().split('T')[0] });
                     } else {
-                        window.showToast && window.showToast('error', data.message || 'Upload failed');
+                        window.showToast && window.showToast('error', data.message || '{{ __("shared.components_profile_modal_upload_failed") }}');
                     }
                 } catch (ex) {
-                    window.showToast && window.showToast('error', 'Upload failed');
+                    window.showToast && window.showToast('error', '{{ __("shared.components_profile_modal_upload_failed") }}');
                 }
                 this.uploading = { ...this.uploading, [i]: false };
             };
             xhr.onerror = () => {
-                window.showToast && window.showToast('error', 'Upload failed. Please try again.');
+                window.showToast && window.showToast('error', '{{ __("shared.components_profile_modal_upload_failed_retry") }}');
                 this.uploading = { ...this.uploading, [i]: false };
             };
             xhr.send(fd);
@@ -444,16 +444,16 @@ function {{ $alpineComponent }}() {
             // Full name
             const nameEl = document.getElementById(fid + '_full_name');
             if (!nameEl || !nameEl.value.trim()) {
-                this.showInputError(fid + '_full_name', 'Full name is required.'); valid = false;
+                this.showInputError(fid + '_full_name', '{{ __("shared.components_profile_modal_err_full_name_required") }}'); valid = false;
             } else { this.clearInputError(fid + '_full_name'); }
 
             // Email
             const emailEl = document.getElementById(fid + '_email');
             if (this.showPasswordFields) {
                 if (!emailEl || !emailEl.value.trim()) {
-                    this.showInputError(fid + '_email', 'Email address is required.'); valid = false;
+                    this.showInputError(fid + '_email', '{{ __("shared.components_profile_modal_err_email_required") }}'); valid = false;
                 } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailEl.value.trim())) {
-                    this.showInputError(fid + '_email', 'Please enter a valid email address.'); valid = false;
+                    this.showInputError(fid + '_email', '{{ __("shared.components_profile_modal_err_email_invalid") }}'); valid = false;
                 } else { this.clearInputError(fid + '_email'); }
             }
 
@@ -462,16 +462,16 @@ function {{ $alpineComponent }}() {
                 const pw1 = document.getElementById(fid + '_password');
                 const pw2 = document.getElementById(fid + '_password_confirmation');
                 if (!pw1 || !pw1.value) {
-                    this.showInputError(fid + '_password', 'Password is required.'); valid = false;
+                    this.showInputError(fid + '_password', '{{ __("shared.components_profile_modal_err_password_required") }}'); valid = false;
                 } else if (pw1.value.length < 8) {
-                    this.showInputError(fid + '_password', 'Password must be at least 8 characters.'); valid = false;
+                    this.showInputError(fid + '_password', '{{ __("shared.components_profile_modal_err_password_min") }}'); valid = false;
                 } else { this.clearInputError(fid + '_password'); }
 
                 if (pw1 && pw1.value.length >= 8) {
                     if (!pw2 || !pw2.value) {
-                        this.showInputError(fid + '_password_confirmation', 'Please confirm your password.'); valid = false;
+                        this.showInputError(fid + '_password_confirmation', '{{ __("shared.components_profile_modal_err_password_confirm") }}'); valid = false;
                     } else if (pw2.value !== pw1.value) {
-                        this.showInputError(fid + '_password_confirmation', 'Passwords do not match.'); valid = false;
+                        this.showInputError(fid + '_password_confirmation', '{{ __("shared.components_profile_modal_err_passwords_mismatch") }}'); valid = false;
                     } else { this.clearInputError(fid + '_password_confirmation'); }
                 }
             }
@@ -479,33 +479,33 @@ function {{ $alpineComponent }}() {
             // Gender (custom dropdown — hidden input)
             const genderEl = document.getElementById(fid + '_gender');
             if (!genderEl || !genderEl.value) {
-                this.showInputError(fid + '_gender', 'Please select a gender.'); valid = false;
+                this.showInputError(fid + '_gender', '{{ __("shared.components_profile_modal_err_gender_required") }}'); valid = false;
             } else { this.clearInputError(fid + '_gender'); }
 
             // Birthdate (custom dropdown — hidden input)
             const bdEl = document.getElementById(fid + '_birthdate');
             if (!bdEl || !bdEl.value) {
-                this.showInputError(fid + '_birthdate', 'Please select a date of birth.'); valid = false;
+                this.showInputError(fid + '_birthdate', '{{ __("shared.components_profile_modal_err_birthdate_required") }}'); valid = false;
             } else { this.clearInputError(fid + '_birthdate'); }
 
             // Nationality (custom dropdown — hidden input)
             const natEl = document.getElementById(fid + '_nationality');
             if (!natEl || !natEl.value) {
-                this.showInputError(fid + '_nationality', 'Please select a nationality.'); valid = false;
+                this.showInputError(fid + '_nationality', '{{ __("shared.components_profile_modal_err_nationality_required") }}'); valid = false;
             } else { this.clearInputError(fid + '_nationality'); }
 
             // Relationship type (custom dropdown — only when showRelationshipFields)
             if (this.showRelationshipFields) {
                 const relEl = document.getElementById(fid + '_relationship_type');
                 if (!relEl || !relEl.value) {
-                    this.showInputError(fid + '_relationship_type', 'Please select a relationship type.'); valid = false;
+                    this.showInputError(fid + '_relationship_type', '{{ __("shared.components_profile_modal_err_relationship_required") }}'); valid = false;
                 } else { this.clearInputError(fid + '_relationship_type'); }
             }
 
             if (!valid) {
                 this.activeTab = 'personal';
                 if (typeof Toast !== 'undefined') {
-                    Toast.error('Required Fields Missing', 'Please fill in all highlighted fields before submitting.');
+                    Toast.error('{{ __("shared.components_profile_modal_required_fields_title") }}', '{{ __("shared.components_profile_modal_required_fields_body") }}');
                 }
             }
             return valid;
@@ -531,7 +531,7 @@ function {{ $alpineComponent }}() {
             this.activeTab = 'personal';
             const count = Object.keys(errors).length;
             if (typeof Toast !== 'undefined') {
-                Toast.error('Validation Failed', `${count} error${count > 1 ? 's' : ''} — please review the highlighted fields.`);
+                Toast.error('{{ __("shared.components_profile_modal_validation_failed_title") }}', `${count} error${count > 1 ? 's' : ''} — please review the highlighted fields.`);
             }
         },
 
@@ -540,7 +540,7 @@ function {{ $alpineComponent }}() {
 
             // Block if a document file is still uploading
             if (Object.values(this.uploading).some(v => v)) {
-                window.showToast && window.showToast('warning', 'Please wait for the file upload to finish before saving.');
+                window.showToast && window.showToast('warning', '{{ __("shared.components_profile_modal_wait_upload") }}');
                 return;
             }
 
@@ -574,7 +574,7 @@ function {{ $alpineComponent }}() {
                     }
                     @endif
 
-                    window.showToast('success', data.message || '{{ $isCreate ? "Member created successfully!" : "Profile updated successfully!" }}');
+                    window.showToast('success', data.message || '{{ $isCreate ? __('shared.components_profile_modal_member_created') : __('shared.components_profile_modal_profile_updated') }}');
                     this.isSubmitting = false;
                     setTimeout(() => {
                         this.open = false;
@@ -586,15 +586,15 @@ function {{ $alpineComponent }}() {
                     this.showFieldErrors(data.errors);
                     this.isSubmitting = false;
                 } else {
-                    throw new Error(data.message || '{{ $isCreate ? "Creation failed" : "Update failed" }}');
+                    throw new Error(data.message || '{{ $isCreate ? __('shared.components_profile_modal_creation_failed') : __('shared.components_profile_modal_update_failed') }}');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
                 if (typeof window.showToast === 'function') {
-                    window.showToast('error', error.message || 'Something went wrong. Please try again.');
+                    window.showToast('error', error.message || '{{ __("shared.components_profile_modal_generic_error") }}');
                 } else {
-                    this.showAlert('danger', error.message || 'Something went wrong. Please try again.');
+                    this.showAlert('danger', error.message || '{{ __("shared.components_profile_modal_generic_error") }}');
                 }
                 this.isSubmitting = false;
             });
@@ -615,7 +615,7 @@ function {{ $alpineComponent }}() {
                 const previewContainer = placeholder.parentElement;
                 const newImg = document.createElement('img');
                 newImg.src = imageUrl + '?v=' + new Date().getTime();
-                newImg.alt = 'Profile Picture';
+                newImg.alt = '{{ __("shared.components_profile_modal_profile_picture_alt") }}';
                 newImg.id = 'profile_picture_preview';
                 newImg.className = 'mx-auto';
                 newImg.style.cssText = 'width: 300px; height: 400px; object-fit: cover; border: 3px solid #dee2e6; border-radius: 8px;';
@@ -688,7 +688,7 @@ function {{ $alpineComponent }}() {
                         }
                         const text = placeholder.querySelector('p');
                         if (text) {
-                            text.textContent = 'Default avatar will be used';
+                            text.textContent = '{{ __("shared.components_profile_modal_default_avatar") }}';
                         }
                     } else if (preview) {
                         const previewContainer = preview.parentElement;
@@ -699,7 +699,7 @@ function {{ $alpineComponent }}() {
                         newPlaceholder.innerHTML = `
                             <div class="text-center">
                                 <i class="bi bi-person-circle" style="font-size: 60px; color: ${gender === 'Female' ? '#e91e63' : '#2196f3'};"></i>
-                                <p class="text-gray-500 mt-2 mb-0">Default avatar will be used</p>
+                                <p class="text-gray-500 mt-2 mb-0">{{ __("shared.components_profile_modal_default_avatar") }}</p>
                             </div>
                         `;
                         previewContainer.appendChild(newPlaceholder);

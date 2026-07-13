@@ -26,8 +26,8 @@ class ClubEventRegistration extends Model
     protected $casts = [
         'registered_at' => 'datetime',
         'weighed_in_at' => 'datetime',
-        'paid'          => 'boolean',
-        'weight'        => 'decimal:2',
+        'paid' => 'boolean',
+        'weight' => 'decimal:2',
     ];
 
     public function event(): BelongsTo

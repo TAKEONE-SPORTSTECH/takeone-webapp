@@ -41,13 +41,49 @@ $achievementsJson = $achievements->map(function ($a) {
 });
 @endphp
 
-<div class="space-y-4 mobile-stagger" x-data="achievementsAdmin()">
+@php
+    $achCount = $achievements->count();
+    $achGold = $achievements->sum(fn ($a) => (int) ($a->medals_gold ?? 0));
+    $achMedals = $achievements->sum(fn ($a) => (int) ($a->medals_gold ?? 0) + (int) ($a->medals_silver ?? 0) + (int) ($a->medals_bronze ?? 0));
+@endphp
+<div class="-mx-4 -mt-4" x-data="achievementsAdmin()">
 
-    {{-- Add --}}
-    <button type="button" @click="openAdd()"
-            class="m-press w-full flex items-center justify-center gap-2 rounded-2xl bg-primary text-white py-3.5 font-semibold shadow-sm">
-        <i class="bi bi-plus-lg text-lg"></i>{{ __('admin.ach_add') }}
-    </button>
+    {{-- ===== Hero ===== --}}
+    <header class="m-hero px-5 pt-7 pb-6 text-white relative overflow-hidden">
+        <div class="absolute -end-8 -top-8 w-36 h-36 rounded-full bg-white/10"></div>
+        <div class="flex items-center justify-between relative z-10">
+            <div class="min-w-0">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70 truncate">{{ $club->club_name ?? __('admin.club') }}</p>
+                <h1 class="text-2xl font-black mt-0.5">{{ __('admin.nav_achievements') }}</h1>
+            </div>
+            <div class="flex items-center gap-2">
+                <button type="button" @click="openAdd()"
+                        class="m-press w-12 h-12 rounded-2xl bg-white/20 border border-white/30 backdrop-blur grid place-items-center active:scale-95 transition-transform" aria-label="{{ __('admin.ach_add') }}">
+                    <i class="bi bi-plus-lg text-xl"></i>
+                </button>
+                <div class="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center">
+                    <i class="bi bi-trophy text-xl m-float"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex gap-2 mt-5 relative z-10">
+            <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
+                <p class="text-lg font-black leading-none tabular-nums">{{ $achCount }}</p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('admin.nav_achievements') }}</p>
+            </div>
+            <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
+                <p class="text-lg font-black leading-none tabular-nums">🥇 {{ $achGold }}</p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('club.platform_show_gold') }}</p>
+            </div>
+            <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
+                <p class="text-lg font-black leading-none tabular-nums">{{ $achMedals }}</p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('admin.ach_medals') }}</p>
+            </div>
+        </div>
+    </header>
+
+    <div class="px-4 pt-5 space-y-4 mobile-stagger">
 
     @if($achievements->isEmpty())
         <div class="m-card p-8 text-center">
@@ -295,6 +331,14 @@ $achievementsJson = $achievements->map(function ($a) {
                 showIconPicker: false,
                 icons: achievementIcons,
 
+                // Deep-link: ?edit={id} (e.g. the pencil on the public club page)
+                // opens that achievement's editor straight away.
+                init() {
+                    var id = parseInt(new URLSearchParams(window.location.search).get('edit') || '', 10);
+                    var self = this;
+                    if (id) this.$nextTick(function () { self.openEdit(id); });
+                },
+
                 setAchievementTranslations(t) {
                     t = t || {};
                     var set = function (id, val) { var el = document.getElementById(id); if (el) el.value = val || ''; };
@@ -361,5 +405,6 @@ $achievementsJson = $achievements->map(function ($a) {
     document.addEventListener('DOMContentLoaded', function () { window.showToast && window.showToast('error', @json($errors->first())); });
     @endif
     </script>
+    </div>{{-- /content --}}
 </div>
 @endsection

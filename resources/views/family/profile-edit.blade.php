@@ -4,10 +4,10 @@
 <div class="tf-container">
     <x-profile-modal
         :user="$user"
-        :formAction="route('profile.update')"
+        :formAction="route('member.update', $user->id)"
         formMethod="PUT"
-        :cancelUrl="route('profile.show')"
-        :uploadUrl="route('profile.upload-picture')"
+        :cancelUrl="route('member.show', $user->uuid)"
+        :uploadUrl="route('member.upload-picture', $user->id)"
     />
 </div>
 

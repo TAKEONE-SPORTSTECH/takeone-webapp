@@ -18,10 +18,10 @@
     <header class="m-hero px-5 pt-6 pb-8 text-white relative overflow-hidden">
         <div class="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white/10"></div>
         <div class="relative z-10 flex items-center gap-3">
-            <a href="{{ route('me.market') }}" data-shell-link data-route="me.market"
-               class="m-press w-9 h-9 rounded-xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="{{ __('market.add_to_cart') }}">
+            <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('me.market') }}')"
+               class="m-press w-9 h-9 rounded-xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="{{ __('shared.back') }}">
                 <i class="bi bi-arrow-left"></i>
-            </a>
+            </button>
             <div>
                 <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">{{ __('nav.tab_market') }}</p>
                 <h1 class="text-2xl font-black">{{ __('market.my_orders') }}</h1>

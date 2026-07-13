@@ -39,24 +39,10 @@
         'specs'    => isset($product['specs'])
             ? collect($product['specs'])->map(fn ($s) => ['label' => $s[0] ?? '', 'value' => $s[1] ?? ''])->values()->all()
             : [['label' => '', 'value' => '']],
-        // Variants (size / colour / brand — each its own price + stock).
-        // Lead with variants in the club shop: ON by default for a new product
-        // (still toggleable). Editing respects the product's saved state; the
-        // general market (no fulfillment section) stays off.
+        // Variants: WooCommerce-style attributes + generated variations (managed by
+        // the shared marketVariantMatrix mixin). Lead with variants in the club shop:
+        // ON by default for a new product (still toggleable).
         'useVariants' => ! empty($product['hasVariants']) || ($mode !== 'edit' && $showFulfillment),
-        'variants'    => isset($product['variants'])
-            ? collect($product['variants'])->map(fn ($v) => [
-                'id'        => $v['id'] ?? null,
-                'brand'     => $v['brand'] ?? '',
-                'size'      => $v['size'] ?? '',
-                'color'     => $v['color'] ?? '',
-                'color_hex' => $v['color_hex'] ?? '#7c3aed',
-                'price'     => $v['price'] ?? '',
-                'old_price' => $v['old_price'] ?? '',
-                'quantity'  => $v['quantity'] ?? '',
-                'is_active' => array_key_exists('is_active', $v) ? (bool) $v['is_active'] : true,
-            ])->values()->all()
-            : [],
         // Fulfillment (club shop only)
         'fulfillment' => $product['fulfillment'] ?? 'stock',   // stock | dropship
         'quantity'    => $product['quantity']    ?? '',
@@ -72,7 +58,7 @@
     $stockChoices = ['In stock','Digital','Made to order','Out of stock'];
 @endphp
 
-<div x-data="marketProductForm({{ Illuminate\Support\Js::from($init) }}, {{ Illuminate\Support\Js::from(['action' => $action, 'method' => strtoupper($method), 'event' => $eventName, 'mode' => $mode, 'editEvent' => $editEvent]) }})"
+<div x-data="marketProductForm({{ Illuminate\Support\Js::from($init) }}, {{ Illuminate\Support\Js::from(['action' => $action, 'method' => strtoupper($method), 'event' => $eventName, 'mode' => $mode, 'editEvent' => $editEvent, 'seed' => ['attributes' => $product['attributes'] ?? [], 'variants' => $product['variants'] ?? []]]) }})"
      class="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 items-start">
 
     {{-- ============ Signature: live product-card preview ============ --}}
@@ -101,7 +87,7 @@
                 </div>
                 <div class="flex items-end justify-between mt-auto pt-2">
                     <div>
-                        <p class="text-sm font-black text-foreground"><span x-show="useVariants && totalRows()" class="text-[9px] font-semibold text-muted-foreground">{{ __('market.from_price') }} </span>BHD <span x-text="displayPrice().toFixed(2)"></span></p>
+                        <p class="text-sm font-black text-foreground"><span x-show="useVariants && rows.length" class="text-[9px] font-semibold text-muted-foreground">{{ __('market.from_price') }} </span>BHD <span x-text="displayPrice().toFixed(2)"></span></p>
                         <template x-if="old"><p class="text-[10px] text-muted-foreground line-through">BHD <span x-text="(parseFloat(old)||0).toFixed(2)"></span></p></template>
                     </div>
                     <span class="w-9 h-9 rounded-xl grid place-items-center text-white" :style="`background:${color}`"><i class="bi bi-plus-lg"></i></span>
@@ -171,7 +157,9 @@
                            placeholder="{{ __('market.product_name_ph') }}"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm">
                 </div>
-                <div>
+                {{-- Brand is a per-variation attribute for variant products, so the single
+                     product-level Brand only applies to simple (non-variant) products. --}}
+                <div x-show="!useVariants">
                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('market.brand') }}</label>
                     <input type="text" x-model="brand" name="brand" maxlength="60"
                            placeholder="{{ __('market.brand_ph') }}"
@@ -180,12 +168,7 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('market.category') }}</label>
-                <select x-model="cat" name="cat"
-                        class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm">
-                    @foreach($cats as $c)
-                        <option value="{{ $c['key'] }}">{{ $c['label'] }}</option>
-                    @endforeach
-                </select>
+                <x-select-menu model="cat" name="cat" :options="collect($cats)->map(fn($c) => ['value' => $c['key'], 'label' => $c['label']])->all()" />
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('market.description') }}</label>
@@ -250,21 +233,12 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('market.badge') }}</label>
-                    <select x-model="badge" name="badge"
-                            class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm">
-                        @foreach($badgeChoices as $b)
-                            <option value="{{ $b }}">{{ $b === '' ? __('market.no_badge') : $b }}</option>
-                        @endforeach
-                    </select>
+                    <x-select-menu model="badge" name="badge" :placeholder="__('market.no_badge')"
+                        :options="collect($badgeChoices)->map(fn($b) => ['value' => $b, 'label' => $b === '' ? __('market.no_badge') : $b])->all()" />
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('market.availability') }}</label>
-                    <select x-model="stock" name="stock"
-                            class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm">
-                        @foreach($stockChoices as $s)
-                            <option value="{{ $s }}">{{ $s }}</option>
-                        @endforeach
-                    </select>
+                    <x-select-menu model="stock" name="stock" :options="$stockChoices" />
                 </div>
             </div>
             <label class="flex items-center gap-3 pt-1 cursor-pointer">
@@ -343,101 +317,143 @@
             </div>
 
             <div x-show="useVariants" x-cloak class="space-y-4">
-                {{-- Add a named variant --}}
-                <div class="flex items-center gap-2">
-                    <input type="text" x-model="newGroup" @keydown.enter.prevent="addGroup()" maxlength="80" placeholder="{{ __('market.variant_name_ph') }}"
-                           class="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm">
-                    <button type="button" @click="addGroup()" class="px-3 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold flex items-center gap-1.5 whitespace-nowrap"><i class="bi bi-plus-lg"></i> {{ __('market.variant_add') }}</button>
-                </div>
-
-                <div x-show="groups.length === 0" class="text-sm text-muted-foreground italic">{{ __('market.variant_group_empty') }}</div>
-
-                {{-- Bulk price across every variant row --}}
-                <div x-show="totalRows() > 0" class="flex items-center justify-end gap-2">
-                    <input type="number" x-model="bulk.price" min="0" step="0.01" placeholder="{{ __('market.opt_bulk_price') }}"
-                           class="w-28 px-2.5 py-1.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-xs">
-                    <button type="button" @click="applyBulkPrice()" class="px-2.5 py-1.5 rounded-lg bg-muted text-gray-600 text-xs font-semibold hover:bg-accent">{{ __('market.opt_apply_all') }}</button>
-                </div>
-
-                {{-- One card per named variant: its own colours, sizes & price/stock grid --}}
-                <template x-for="(g, gi) in groups" :key="gi">
-                    <div class="rounded-xl border border-gray-200 overflow-hidden">
-                        <div class="flex items-center justify-between gap-2 bg-muted/40 px-3 py-2.5 border-b border-gray-200">
-                            <span class="font-semibold text-sm text-foreground flex items-center gap-1.5 min-w-0"><i class="bi bi-tag text-primary flex-shrink-0"></i> <span class="truncate" x-text="g.name"></span></span>
-                            <button type="button" @click="removeGroup(gi)" class="w-7 h-7 rounded-lg grid place-items-center text-gray-400 hover:bg-red-50 hover:text-red-600 flex-shrink-0" :title="@js(__('market.variant_remove'))"><i class="bi bi-trash"></i></button>
+                {{-- ATTRIBUTES: define each dimension (Brand / Model / Size…) + its values --}}
+                <div class="space-y-3">
+                    <template x-for="(a, ai) in attributes" :key="ai">
+                        <div class="rounded-xl border border-gray-200 overflow-hidden">
+                            <div class="flex items-center justify-between gap-2 bg-muted/40 px-3 py-2.5 border-b border-gray-200">
+                                <span class="font-semibold text-sm text-foreground flex items-center gap-1.5 min-w-0"><i class="bi bi-tag text-primary flex-shrink-0"></i> <span class="truncate" x-text="a.name"></span></span>
+                                <button type="button" @click="removeAttribute(ai)" class="w-7 h-7 rounded-lg grid place-items-center text-gray-400 hover:bg-red-50 hover:text-red-600 flex-shrink-0" :title="@js(__('market.remove_attribute'))"><i class="bi bi-trash"></i></button>
+                            </div>
+                            <div class="p-3">
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    <template x-for="(val, vi) in a.values" :key="vi">
+                                        <span class="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-full bg-white border border-gray-200 text-xs font-medium text-gray-700">
+                                            <span x-text="val"></span>
+                                            <button type="button" @click="removeValue(ai, vi)" class="w-4 h-4 rounded-full grid place-items-center text-gray-400 hover:bg-red-50 hover:text-red-600"><i class="bi bi-x text-[11px]"></i></button>
+                                        </span>
+                                    </template>
+                                    <input type="text" x-model="a.newValue" @keydown.enter.prevent="addValue(ai)" maxlength="80" placeholder="{{ __('market.attribute_value_ph') }}"
+                                           class="flex-1 min-w-[120px] px-2.5 py-1.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm bg-white">
+                                    <button type="button" @click="addValue(ai)" class="px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold">{{ __('market.opt_add') }}</button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="p-3 space-y-3">
-                            {{-- Colours (free text — not a colour picker) --}}
-                            <div class="rounded-xl border border-gray-100 bg-muted/30 p-3">
-                                <p class="text-xs font-semibold text-gray-600 mb-2">{{ __('market.opt_colors') }}</p>
-                                <div class="flex flex-wrap items-center gap-1.5">
-                                    <template x-for="(c, ci) in g.colors" :key="ci">
-                                        <span class="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-full bg-white border border-gray-200 text-xs font-medium text-gray-700">
-                                            <span x-text="c"></span>
-                                            <button type="button" @click="gRemoveColor(g, ci)" class="w-4 h-4 rounded-full grid place-items-center text-gray-400 hover:bg-red-50 hover:text-red-600"><i class="bi bi-x text-[11px]"></i></button>
-                                        </span>
-                                    </template>
-                                    <input type="text" x-model="g.newColor" @keydown.enter.prevent="gAddColor(g)" maxlength="60" placeholder="{{ __('market.variant_color_ph') }}"
-                                           class="flex-1 min-w-[120px] px-2.5 py-1.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm bg-white">
-                                    <button type="button" @click="gAddColor(g)" class="px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold">{{ __('market.opt_add') }}</button>
-                                </div>
-                            </div>
-                            {{-- Sizes --}}
-                            <div class="rounded-xl border border-gray-100 bg-muted/30 p-3">
-                                <p class="text-xs font-semibold text-gray-600 mb-2">{{ __('market.opt_sizes') }}</p>
-                                <div class="flex flex-wrap items-center gap-1.5">
-                                    <template x-for="(s, si) in g.sizes" :key="si">
-                                        <span class="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-full bg-white border border-gray-200 text-xs font-medium text-gray-700">
-                                            <span x-text="s"></span>
-                                            <button type="button" @click="gRemoveSize(g, si)" class="w-4 h-4 rounded-full grid place-items-center text-gray-400 hover:bg-red-50 hover:text-red-600"><i class="bi bi-x text-[11px]"></i></button>
-                                        </span>
-                                    </template>
-                                    <input type="text" x-model="g.newSize" @keydown.enter.prevent="gAddSize(g)" maxlength="40" placeholder="{{ __('market.variant_size_ph') }}"
-                                           class="flex-1 min-w-[120px] px-2.5 py-1.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm bg-white">
-                                    <button type="button" @click="gAddSize(g)" class="px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold">{{ __('market.opt_add') }}</button>
-                                </div>
-                            </div>
+                    </template>
 
-                            {{-- This variant's price/stock grid (colour × size) --}}
-                            <div class="overflow-x-auto rounded-xl border border-gray-100">
-                                <table class="w-full text-sm">
-                                    <thead>
-                                        <tr class="bg-muted/50 text-left text-[11px] uppercase tracking-wide text-gray-500">
-                                            <th class="px-3 py-2 font-semibold">{{ __('market.variants') }}</th>
-                                            <th class="px-3 py-2 font-semibold w-28">{{ __('market.variant_price') }}</th>
-                                            <th class="px-3 py-2 font-semibold w-24">{{ __('market.variant_qty') }}</th>
-                                            <th class="px-2 py-2 w-10"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-100">
-                                        <template x-for="(r, ri) in g.rows" :key="ri">
-                                            <tr :class="r.is_active ? '' : 'opacity-50'">
-                                                <td class="px-3 py-2"><span class="font-medium text-gray-700" x-text="rowLabel(g, r)"></span></td>
-                                                <td class="px-3 py-2">
-                                                    <input type="number" x-model="r.price" min="0" step="0.01" placeholder="0.00"
-                                                           class="w-24 px-2 py-1.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                                                           :class="(parseFloat(r.price)||0) > 0 ? 'border-gray-200' : 'border-red-300'">
-                                                </td>
-                                                <td class="px-3 py-2">
-                                                    <input type="number" x-model="r.quantity" min="0" step="1" placeholder="{{ __('market.variant_qty_ph') }}"
-                                                           class="w-20 px-2 py-1.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm">
-                                                </td>
-                                                <td class="px-2 py-2 text-center">
-                                                    <button type="button" @click="r.is_active = !r.is_active"
-                                                            class="w-7 h-7 rounded-lg grid place-items-center transition-colors"
-                                                            :class="r.is_active ? 'text-green-600 hover:bg-green-50' : 'text-gray-400 hover:bg-muted'"
-                                                            :title="r.is_active ? @js(__('market.variant_active')) : @js(__('market.out_of_stock'))">
-                                                        <i class="bi" :class="r.is_active ? 'bi-check-circle-fill' : 'bi-slash-circle'"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        </template>
-                                    </tbody>
-                                </table>
-                            </div>
+                    {{-- Add a new attribute --}}
+                    <div class="flex items-center gap-2">
+                        <input type="text" x-model="newAttrName" @keydown.enter.prevent="addAttribute()" maxlength="50" placeholder="{{ __('market.attribute_name_ph') }}"
+                               class="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm">
+                        <button type="button" @click="addAttribute()" class="px-3 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold flex items-center gap-1.5 whitespace-nowrap"><i class="bi bi-plus-lg"></i> {{ __('market.add_attribute') }}</button>
+                    </div>
+
+                    <p x-show="attributes.length === 0" class="text-sm text-muted-foreground italic">{{ __('market.no_attributes_yet') }}</p>
+                </div>
+
+                {{-- GENERATE + VARIATIONS grid --}}
+                <div x-show="attributes.length > 0" class="space-y-3">
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                        <button type="button" @click="regenerateAll()" :disabled="variationCount() === 0"
+                                class="px-3 py-2 rounded-lg bg-primary text-white text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-40">
+                            <i class="bi bi-grid-3x3-gap"></i>
+                            <span x-text="rows.length ? '{{ __('market.regenerate_variations') }}' : '{{ __('market.generate_variations') }}'"></span>
+                            <span x-show="variationCount() > 0" class="text-[11px] font-normal opacity-80" x-text="'(' + variationCount() + ')'"></span>
+                        </button>
+                        <div x-show="rows.length > 0" class="flex items-center gap-2">
+                            <input type="number" x-model="bulk.price" min="0" step="0.01" placeholder="{{ __('market.opt_bulk_price') }}"
+                                   class="w-24 px-2.5 py-1.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-xs">
+                            <button type="button" @click="applyBulkPrice()" class="px-2.5 py-1.5 rounded-lg bg-muted text-gray-600 text-xs font-semibold hover:bg-accent">{{ __('market.opt_apply_all') }}</button>
                         </div>
                     </div>
-                </template>
+
+                    {{-- Scrollable rows grid (handles large matrices, e.g. 48 combos) --}}
+                    <div x-show="rows.length > 0" class="rounded-xl border border-gray-100 overflow-hidden">
+                        <div class="max-h-80 overflow-y-auto">
+                            <table class="w-full text-sm">
+                                <thead class="sticky top-0 z-10">
+                                    <tr class="bg-muted text-left text-[11px] uppercase tracking-wide text-gray-500">
+                                        <th class="px-3 py-2 font-semibold" x-text="'{{ __('market.variant_label') }} (' + rows.length + ')'"></th>
+                                        <th class="px-3 py-2 font-semibold w-24">{{ __('market.variant_price') }}</th>
+                                        <th class="px-3 py-2 font-semibold w-28">{{ __('market.variant_qty') }}</th>
+                                        <th class="px-2 py-2 w-8"></th>
+                                        <th class="px-2 py-2 w-8"></th>
+                                        <th class="px-2 py-2 w-8"></th>
+                                    </tr>
+                                </thead>
+                                {{-- One <tbody> per variation so each can host expandable description / dropship rows (valid HTML) --}}
+                                <template x-for="(r, ri) in rows" :key="r.key">
+                                    <tbody class="border-t border-gray-100">
+                                        <tr :class="r.is_active ? '' : 'opacity-50'">
+                                            <td class="px-3 py-2"><span class="font-medium text-gray-700" x-text="rowLabel(r)"></span></td>
+                                            <td class="px-3 py-2">
+                                                <input type="number" x-model="r.price" min="0" step="0.01" placeholder="0.00"
+                                                       class="w-20 px-2 py-1.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                                                       :class="(parseFloat(r.price)||0) > 0 ? 'border-gray-200' : 'border-red-300'">
+                                            </td>
+                                            {{-- Stock qty OR a Dropship chip, with a toggle between the two --}}
+                                            <td class="px-3 py-2">
+                                                <div class="flex items-center gap-1">
+                                                    <template x-if="r.fulfillment !== 'dropship'">
+                                                        <input type="number" x-model="r.quantity" min="0" step="1" placeholder="{{ __('market.variant_qty_ph') }}"
+                                                               class="w-14 px-2 py-1.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm">
+                                                    </template>
+                                                    <template x-if="r.fulfillment === 'dropship'">
+                                                        <button type="button" @click="r._fulfillOpen = !r._fulfillOpen"
+                                                                class="px-2 py-1.5 rounded-lg text-[11px] font-semibold bg-accent/50 text-primary inline-flex items-center gap-1">
+                                                            <i class="bi bi-truck"></i> {{ __('market.dropship_mode') }}
+                                                        </button>
+                                                    </template>
+                                                    <button type="button" @click="setFulfillment(r, r.fulfillment === 'dropship' ? 'stock' : 'dropship')"
+                                                            class="w-6 h-6 flex-shrink-0 rounded-md grid place-items-center text-gray-400 hover:text-primary hover:bg-accent/40 transition-colors"
+                                                            :title="r.fulfillment === 'dropship' ? @js(__('market.in_stock_mode')) : @js(__('market.dropship_mode'))">
+                                                        <i class="bi text-xs" :class="r.fulfillment === 'dropship' ? 'bi-box-seam' : 'bi-truck'"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            <td class="px-1 py-2 text-center">
+                                                <button type="button" @click="r._descOpen = !r._descOpen"
+                                                        class="w-7 h-7 rounded-lg grid place-items-center transition-colors"
+                                                        :class="(r.description || '').trim() ? 'text-primary hover:bg-accent/40' : 'text-gray-400 hover:bg-muted'"
+                                                        :title="@js(__('market.variant_description'))">
+                                                    <i class="bi bi-card-text"></i>
+                                                </button>
+                                            </td>
+                                            <td class="px-1 py-2 text-center">
+                                                <button type="button" @click="r.is_active = !r.is_active"
+                                                        class="w-7 h-7 rounded-lg grid place-items-center transition-colors"
+                                                        :class="r.is_active ? 'text-green-600 hover:bg-green-50' : 'text-gray-400 hover:bg-muted'"
+                                                        :title="r.is_active ? @js(__('market.variant_active')) : @js(__('market.out_of_stock'))">
+                                                    <i class="bi" :class="r.is_active ? 'bi-check-circle-fill' : 'bi-slash-circle'"></i>
+                                                </button>
+                                            </td>
+                                            <td class="px-1 py-2 text-center">
+                                                <button type="button" @click="pruneRow(ri)" class="w-7 h-7 rounded-lg grid place-items-center text-gray-400 hover:bg-red-50 hover:text-red-600" :title="@js(__('market.variant_remove'))"><i class="bi bi-x-lg text-xs"></i></button>
+                                            </td>
+                                        </tr>
+                                        <tr x-show="r._descOpen" x-cloak>
+                                            <td colspan="6" class="px-3 pb-2">
+                                                <textarea x-model="r.description" rows="2" maxlength="2000" placeholder="{{ __('market.variant_description_ph') }}"
+                                                          class="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm resize-none"></textarea>
+                                            </td>
+                                        </tr>
+                                        {{-- Dropship supplier + ships-in for this variation --}}
+                                        <tr x-show="r.fulfillment === 'dropship' && r._fulfillOpen" x-cloak>
+                                            <td colspan="6" class="px-3 pb-2">
+                                                <div class="grid grid-cols-2 gap-2">
+                                                    <input type="text" x-model="r.supplier" maxlength="120" placeholder="{{ __('market.supplier') }}"
+                                                           class="px-2.5 py-1.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm">
+                                                    <input type="text" x-model="r.ships_in" maxlength="60" placeholder="{{ __('market.ships_in') }}"
+                                                           class="px-2.5 py-1.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm">
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </template>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
         @endif
@@ -517,24 +533,25 @@
     </form>
 </div>
 
+{{-- Inline (inside #shell-content) so BOTH admin shells re-run it on in-place
+     nav: the desktop navigator calls runScripts(main) and the mobile navigator
+     runScripts(swapped-content). Do NOT move this to @push('scripts')/#shell-scripts
+     — that region is re-run by the DESKTOP navigator only, so on the mobile shell
+     marketProductForm would be undefined and the whole form Alpine would die. --}}
+@include('components.market._variant-matrix')
 @once
 <script>
 window.marketProductForm = function (init, opts) {
     return {
         ...init,
+        ...window.marketVariantMatrix(),   // attributes + variations engine
         saving: false,
         mode: opts.mode || 'create',
         _action: opts.action || '',
         _method: opts.method || 'POST',
         _event: opts.event || 'market-product-saved',
         _editEvent: opts.editEvent || null,
-
-        // Named variants. Each group = one variant (e.g. Adidas) with its OWN
-        // colours + sizes, expanded into its own colour×size price/stock grid —
-        // independent of every other variant. Flattened to `variants[]` on save.
-        groups: [],
-        newGroup: '',
-        bulk: { price: '' },
+        _seed: opts.seed || { attributes: [], variants: [] },
 
         init() {
             // Edit modals reuse a single form instance: a window event hands it
@@ -542,9 +559,8 @@ window.marketProductForm = function (init, opts) {
             if (this._editEvent) {
                 window.addEventListener(this._editEvent, (e) => this.loadProduct(e.detail.product, e.detail.action));
             }
-            // Group the flat variant rows (init / edit prefill) back into
-            // named-variant groups for the builder.
-            this.groups = this.groupsFromVariants(this.variants);
+            // Seed the attribute/variation matrix (init / edit prefill).
+            this.hydrateMatrix(this._seed);
         },
 
         loadProduct(p, action) {
@@ -572,7 +588,7 @@ window.marketProductForm = function (init, opts) {
                 ? p.specs.map(s => ({ label: s[0] || '', value: s[1] || '' }))
                 : [{ label: '', value: '' }];
             this.useVariants = !!p.hasVariants;
-            this.groups = this.groupsFromVariants(Array.isArray(p.variants) ? p.variants : []);
+            this.hydrateMatrix(p);
             this.fulfillment = p.fulfillment || 'stock';
             this.quantity = p.quantity ?? '';
             this.lowStock = p.lowStock ?? '';
@@ -591,120 +607,22 @@ window.marketProductForm = function (init, opts) {
         },
         addColor(c) { if (c && !this.colors.includes(c)) this.colors.push(c); },
 
-        // ===== Named variants: groups → per-variant colour×size price/stock =====
-        // Build builder groups from flat variant rows (grouped by variant name,
-        // which lives in the `brand` column).
-        groupsFromVariants(list) {
-            const byName = {};
-            const order = [];
-            (list || []).forEach(v => {
-                const name = (v.brand || '').trim();
-                if (!byName[name]) { byName[name] = { name, colors: [], sizes: [], newColor: '', newSize: '', rows: [] }; order.push(name); }
-                const g = byName[name];
-                if (v.color && !g.colors.includes(v.color)) g.colors.push(v.color);
-                if (v.size && !g.sizes.includes(v.size)) g.sizes.push(v.size);
-                g.rows.push({
-                    id: v.id || null, color: v.color || '', size: v.size || '',
-                    price: v.price ?? '', old_price: v.old_price ?? '', quantity: v.quantity ?? '',
-                    is_active: v.is_active !== false,
-                });
-            });
-            return order.map(n => byName[n]);
-        },
-
-        addGroup() {
-            const name = (this.newGroup || '').trim();
-            if (!name) return;
-            if (this.groups.some(g => g.name.toLowerCase() === name.toLowerCase())) { this.newGroup = ''; return; }
-            const g = { name, colors: [], sizes: [], newColor: '', newSize: '', rows: [] };
-            this.groups.push(g);
-            this.newGroup = '';
-            this.rebuildGroup(g);   // seed a single row so the variant is sellable even with no colour/size
-        },
-        removeGroup(i) { this.groups.splice(i, 1); },
-
-        gAddColor(g) {
-            const v = (g.newColor || '').trim();
-            if (!v) return;
-            if (!g.colors.some(c => c.toLowerCase() === v.toLowerCase())) g.colors.push(v);
-            g.newColor = '';
-            this.rebuildGroup(g);
-        },
-        gRemoveColor(g, i) { g.colors.splice(i, 1); this.rebuildGroup(g); },
-        gAddSize(g) {
-            const v = (g.newSize || '').trim();
-            if (!v) return;
-            if (!g.sizes.some(s => s.toLowerCase() === v.toLowerCase())) g.sizes.push(v);
-            g.newSize = '';
-            this.rebuildGroup(g);
-        },
-        gRemoveSize(g, i) { g.sizes.splice(i, 1); this.rebuildGroup(g); },
-
-        // This variant's colour×size grid; preserve price/stock by colour|size.
-        rebuildGroup(g) {
-            const prev = {};
-            (g.rows || []).forEach(r => { prev[`${r.color || ''}|${r.size || ''}`] = r; });
-            const colors = g.colors.length ? g.colors : [''];
-            const sizes  = g.sizes.length  ? g.sizes  : [''];
-            const rows = [];
-            colors.forEach(c => sizes.forEach(s => {
-                const old = prev[`${c}|${s}`];
-                rows.push({
-                    id: old?.id || null, color: c, size: s,
-                    price: old?.price ?? '', old_price: old?.old_price ?? '', quantity: old?.quantity ?? '',
-                    is_active: old ? (old.is_active !== false) : true,
-                });
-            }));
-            g.rows = rows;
-        },
-
-        rowLabel(g, r) { return [g.name, r.color, r.size].filter(Boolean).join(' · '); },
-
-        applyBulkPrice() {
-            const p = parseFloat(this.bulk.price);
-            if (!(p > 0)) return;
-            this.groups.forEach(g => g.rows.forEach(r => { r.price = p; }));
-        },
-        totalRows() { return this.groups.reduce((n, g) => n + g.rows.length, 0); },
-
-        // Flatten groups → variant rows to save (variant name → `brand` column).
-        flatVariants() {
-            const out = [];
-            this.groups.forEach(g => {
-                const name = (g.name || '').trim();
-                if (!name) return;
-                g.rows.forEach(r => out.push({
-                    id: r.id || null,
-                    brand: name,
-                    color: (r.color || '').trim() || null,
-                    size: (r.size || '').trim() || null,
-                    color_hex: null,
-                    price: parseFloat(r.price) || 0,
-                    old_price: (r.old_price !== '' && r.old_price != null) ? parseFloat(r.old_price) : null,
-                    quantity: (r.quantity !== '' && r.quantity != null) ? (parseInt(r.quantity) || 0) : null,
-                    is_active: r.is_active !== false,
-                }));
-            });
-            return out;
-        },
-        // Save payload uses this (kept name for payload()).
-        cleanVariants() { return this.flatVariants(); },
+        // Variant matrix (attributes + generated variations) is provided by the
+        // shared marketVariantMatrix() mixin — see components/market/_variant-matrix.
 
         // Lowest active-variant price, for the "from X" preview.
         displayPrice() {
-            if (this.useVariants) {
-                const ps = this.flatVariants().filter(v => v.is_active).map(v => v.price).filter(p => p > 0);
-                if (ps.length) return Math.min(...ps);
+            if (this.useVariants && this.hasAttributes()) {
+                const from = this.matrixFromPrice();
+                if (from > 0) return from;
             }
             return parseFloat(this.price) || 0;
         },
 
         canSave() {
             if (this.name.trim() === '') return false;
-            if (this.useVariants) {
-                const vs = this.flatVariants();
-                // Every variant row must be priced before publishing.
-                return vs.length > 0 && vs.every(v => v.price > 0);
+            if (this.useVariants && this.hasAttributes()) {
+                return this.matrixValid();
             }
             return (parseFloat(this.price) || 0) > 0;
         },
@@ -720,14 +638,16 @@ window.marketProductForm = function (init, opts) {
         profitPct() { const c = parseFloat(this.cost) || 0; return c > 0 ? Math.round((((parseFloat(this.price) || 0) - c) / c) * 100) : 0; },
 
         payload() {
-            const variants = this.useVariants ? this.cleanVariants() : [];
-            const useVariants = variants.length > 0;
+            const useVariants = this.useVariants && this.hasAttributes();
+            const variants = useVariants ? this.matrixRows() : [];
+            const attributes = useVariants ? this.matrixPayloadAttributes() : [];
+            const hasVariants = variants.length > 0;
             // With variants, the product base price is the lowest variant price
             // ("from X" display) and stock lives on the variants, not the product.
-            const basePrice = useVariants
+            const basePrice = hasVariants
                 ? Math.min(...variants.map(v => v.price).filter(p => p > 0))
                 : (parseFloat(this.price) || 0);
-            const fulfillment = useVariants ? 'stock' : this.fulfillment;
+            const fulfillment = hasVariants ? 'stock' : this.fulfillment;
 
             return {
                 name: this.name.trim(), brand: this.brand.trim(), cat: this.cat,
@@ -740,7 +660,8 @@ window.marketProductForm = function (init, opts) {
                 color: this.color, icon: this.icon, image: this.image,
                 desc: this.desc.trim(), colors: this.colors.slice(),
                 specs: this.specs.filter(s => s.label.trim() && s.value.trim()).map(s => [s.label.trim(), s.value.trim()]),
-                useVariants: useVariants,
+                attributes: attributes,
+                useVariants: hasVariants,
                 variants: variants,
                 fulfillment: fulfillment,
                 quantity: (!useVariants && fulfillment === 'stock') ? (parseInt(this.quantity) || 0) : null,

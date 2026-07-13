@@ -66,15 +66,15 @@ class SkillAcquisition extends Model
     {
         $months = $this->duration_months;
         if ($months < 12) {
-            return $months . ' month' . ($months > 1 ? 's' : '');
+            return $months.' month'.($months > 1 ? 's' : '');
         }
 
         $years = floor($months / 12);
         $remainingMonths = $months % 12;
 
-        $result = $years . ' year' . ($years > 1 ? 's' : '');
+        $result = $years.' year'.($years > 1 ? 's' : '');
         if ($remainingMonths > 0) {
-            $result .= ' ' . $remainingMonths . ' month' . ($remainingMonths > 1 ? 's' : '');
+            $result .= ' '.$remainingMonths.' month'.($remainingMonths > 1 ? 's' : '');
         }
 
         return $result;
@@ -85,7 +85,7 @@ class SkillAcquisition extends Model
      */
     public function getProficiencyColorAttribute(): string
     {
-        return match($this->proficiency_level) {
+        return match ($this->proficiency_level) {
             'beginner' => 'text-blue-500',
             'intermediate' => 'text-yellow-500',
             'advanced' => 'text-orange-500',

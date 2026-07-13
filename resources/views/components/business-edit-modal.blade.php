@@ -24,13 +24,13 @@
                     </template>
                     <span class="absolute inset-0 bg-gray-900/55 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-0.5">
                         <i class="bi bi-camera-fill text-sm leading-none"></i>
-                        <span class="text-[9px] font-medium leading-none">Edit</span>
+                        <span class="text-[9px] font-medium leading-none">{{ __('shared.edit') }}</span>
                     </span>
                     <input type="file" accept="image/*" class="hidden" @change="onLogo($event)">
                 </label>
 
                 <div class="min-w-0 flex-1">
-                    <p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Edit business</p>
+                    <p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{{ __('shared.business_edit_modal_edit_business') }}</p>
                     <h2 class="text-lg font-bold text-foreground truncate leading-snug" x-text="form.name || 'Untitled business'"></h2>
                     <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium capitalize"
@@ -48,13 +48,13 @@
                             <span x-text="form.status"></span>
                         </span>
                         <span class="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                            <i class="bi bi-diagram-3"></i><span x-text="clubsCount"></span> club<span x-show="clubsCount !== 1">s</span>
+                            <i class="bi bi-diagram-3"></i><span x-text="clubsCount"></span> {{ __('shared.business_edit_modal_club') }}<span x-show="clubsCount !== 1">s</span>
                         </span>
                     </div>
                 </div>
 
                 <button type="button" @click="close()"
-                        class="shrink-0 -mt-1 -mr-1 w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+                        class="shrink-0 -mt-1 -me-1 w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </header>
@@ -66,11 +66,11 @@
                     {{-- Details --}}
                     <section class="space-y-4">
                         <div class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                            <i class="bi bi-card-text text-primary"></i> Details
+                            <i class="bi bi-card-text text-primary"></i> {{ __('shared.business_edit_modal_details') }}
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-foreground mb-1.5">Business name <span class="text-red-500">*</span></label>
+                            <label class="block text-sm font-medium text-foreground mb-1.5">{{ __('shared.business_edit_modal_business_name') }} <span class="text-red-500">*</span></label>
                             <input type="text" x-model="form.name" maxlength="120" required
                                    class="w-full px-3.5 py-2.5 bg-white border border-border rounded-xl text-sm focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow"
                                    :class="errors.name ? 'border-red-400 ring-2 ring-red-100' : ''">
@@ -78,8 +78,8 @@
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-foreground mb-1.5">Description</label>
-                            <textarea x-model="form.description" rows="3" maxlength="1000" placeholder="A short description of this chain…"
+                            <label class="block text-sm font-medium text-foreground mb-1.5">{{ __('shared.business_edit_modal_description') }}</label>
+                            <textarea x-model="form.description" rows="3" maxlength="1000" placeholder="{{ __('shared.business_edit_modal_description_placeholder') }}"
                                       class="w-full px-3.5 py-2.5 bg-white border border-border rounded-xl text-sm focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow resize-none"></textarea>
                             <p class="text-xs text-red-600 mt-1" x-show="errors.description" x-text="errors.description"></p>
                         </div>
@@ -88,7 +88,7 @@
                     {{-- Status --}}
                     <section class="space-y-4">
                         <div class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                            <i class="bi bi-toggle-on text-primary"></i> Status
+                            <i class="bi bi-toggle-on text-primary"></i> {{ __('shared.business_edit_modal_status') }}
                         </div>
 
                         {{-- Segmented status control --}}
@@ -109,12 +109,12 @@
 
                         <p class="flex items-start gap-1.5 text-xs text-muted-foreground" x-show="form.status === 'approved'" x-cloak>
                             <i class="bi bi-info-circle mt-0.5"></i>
-                            <span>Approving links the owner's clubs to this chain and enables the view switcher.</span>
+                            <span>{{ __('shared.business_edit_modal_approving_note') }}</span>
                         </p>
 
                         <div x-show="form.status === 'rejected'" x-cloak>
-                            <label class="block text-sm font-medium text-foreground mb-1.5">Rejection reason</label>
-                            <textarea x-model="form.rejection_reason" rows="2" maxlength="1000" placeholder="Optional — shown to the owner"
+                            <label class="block text-sm font-medium text-foreground mb-1.5">{{ __('shared.business_edit_modal_rejection_reason') }}</label>
+                            <textarea x-model="form.rejection_reason" rows="2" maxlength="1000" placeholder="{{ __('shared.business_edit_modal_rejection_placeholder') }}"
                                       class="w-full px-3.5 py-2.5 bg-white border border-border rounded-xl text-sm focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow resize-none"></textarea>
                         </div>
                     </section>
@@ -123,7 +123,7 @@
                     <section class="space-y-4">
                         <div class="flex items-center justify-between gap-2">
                             <div class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                <i class="bi bi-diagram-3 text-primary"></i> Clubs
+                                <i class="bi bi-diagram-3 text-primary"></i> {{ __('shared.business_edit_modal_clubs') }}
                                 <span class="inline-flex items-center justify-center min-w-[1.25rem] px-1.5 py-0.5 rounded-full bg-accent text-primary text-[10px]" x-text="clubs.length"></span>
                             </div>
                             <button type="button" @click="toggleAddClub()"
@@ -137,15 +137,15 @@
                              x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
                              class="rounded-xl border border-border bg-muted/40 p-3 space-y-3">
                             <div class="relative">
-                                <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                                <input type="text" x-model="clubSearch" placeholder="Search clubs by name or owner…"
-                                       class="w-full pl-9 pr-3 py-2 bg-white border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow">
+                                <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                                <input type="text" x-model="clubSearch" placeholder="{{ __('shared.business_edit_modal_search_clubs_placeholder') }}"
+                                       class="w-full ps-9 pe-3 py-2 bg-white border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow">
                             </div>
-                            <div class="max-h-56 overflow-y-auto overflow-x-hidden space-y-1.5 pr-1">
-                                <p x-show="!filteredAvailable().length" class="text-xs text-muted-foreground italic py-2 text-center">No clubs available to add.</p>
+                            <div class="max-h-56 overflow-y-auto overflow-x-hidden space-y-1.5 pe-1">
+                                <p x-show="!filteredAvailable().length" class="text-xs text-muted-foreground italic py-2 text-center">{{ __('shared.business_edit_modal_no_clubs_available') }}</p>
                                 <template x-for="c in filteredAvailable()" :key="c.id">
                                     <button type="button" @click="attachClub(c.id)" :disabled="clubBusy"
-                                            class="w-full flex items-center gap-3 text-left rounded-lg border border-border bg-white px-3 py-2 hover:border-primary/40 hover:bg-accent/30 transition-colors disabled:opacity-60">
+                                            class="w-full flex items-center gap-3 text-start rounded-lg border border-border bg-white px-3 py-2 hover:border-primary/40 hover:bg-accent/30 transition-colors disabled:opacity-60">
                                         <div class="w-8 h-8 shrink-0 rounded-lg bg-accent overflow-hidden flex items-center justify-center">
                                             <template x-if="c.logo_url"><img :src="c.logo_url" alt="" class="w-8 h-8 object-cover"></template>
                                             <template x-if="!c.logo_url"><i class="bi bi-buildings text-primary text-sm"></i></template>
@@ -163,12 +163,12 @@
                             </div>
                             <p class="text-[11px] text-muted-foreground flex items-start gap-1">
                                 <i class="bi bi-info-circle mt-0.5"></i>
-                                <span>Adding a club already in another chain will move it here.</span>
+                                <span>{{ __('shared.business_edit_modal_move_note') }}</span>
                             </p>
                         </div>
 
                         {{-- Current clubs --}}
-                        <p x-show="!clubs.length" class="text-xs text-muted-foreground italic">No clubs in this chain yet.</p>
+                        <p x-show="!clubs.length" class="text-xs text-muted-foreground italic">{{ __('shared.business_edit_modal_no_clubs_yet') }}</p>
                         <ul x-show="clubs.length" class="space-y-1.5">
                             <template x-for="c in clubs" :key="c.id">
                                 <li class="flex items-center gap-3 rounded-xl border border-border bg-white px-3 py-2">
@@ -182,7 +182,7 @@
                                     </div>
                                     <button type="button" @click="detachClub(c.id, c.name)" :disabled="clubBusy"
                                             class="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-60"
-                                            title="Remove from chain">
+                                            title="{{ __('shared.business_edit_modal_remove_from_chain') }}">
                                         <i class="bi bi-x-lg text-sm"></i>
                                     </button>
                                 </li>
@@ -193,7 +193,7 @@
                     {{-- Ownership --}}
                     <section class="space-y-4">
                         <div class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                            <i class="bi bi-person-badge text-primary"></i> Ownership
+                            <i class="bi bi-person-badge text-primary"></i> {{ __('shared.business_edit_modal_ownership') }}
                         </div>
 
                         <div class="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-3.5 py-3">
@@ -207,7 +207,7 @@
                             </div>
                             <button type="button" @click="pickOwner()"
                                     class="shrink-0 inline-flex items-center gap-1 border border-primary text-primary bg-transparent px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-primary hover:text-white transition-colors">
-                                <i class="bi bi-arrow-left-right"></i>Change
+                                <i class="bi bi-arrow-left-right"></i>{{ __('shared.business_edit_modal_change') }}
                             </button>
                         </div>
 
@@ -217,30 +217,30 @@
                              class="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
                             <div class="flex items-center gap-2 text-sm text-amber-900">
                                 <i class="bi bi-arrow-right-circle-fill text-amber-500"></i>
-                                <span>Transfer to <span class="font-semibold" x-text="pendingOwner?.full_name"></span></span>
+                                <span>{{ __('shared.business_edit_modal_transfer_to') }} <span class="font-semibold" x-text="pendingOwner?.full_name"></span></span>
                             </div>
-                            <p class="text-xs text-amber-700 -mt-1.5 pl-6 truncate" x-text="pendingOwner?.email"></p>
+                            <p class="text-xs text-amber-700 -mt-1.5 ps-6 truncate" x-text="pendingOwner?.email"></p>
 
                             <label class="flex items-start gap-2.5 text-sm text-gray-700 cursor-pointer rounded-lg bg-white/60 border border-amber-200 px-3 py-2.5">
                                 <input type="checkbox" x-model="reassignClubs" class="mt-0.5 rounded border-gray-300 text-primary focus:ring-primary">
-                                <span>Also move all <span class="font-medium" x-text="clubsCount"></span> club<span x-show="clubsCount !== 1">s</span> in this chain to the new owner.</span>
+                                <span>{{ __('shared.business_edit_modal_also_move_all') }} <span class="font-medium" x-text="clubsCount"></span> {{ __('shared.business_edit_modal_club') }}<span x-show="clubsCount !== 1">s</span> {{ __('shared.business_edit_modal_in_this_chain') }}</span>
                             </label>
-                            <textarea x-model="transferNote" rows="2" maxlength="1000" placeholder="Reason / note (optional)"
+                            <textarea x-model="transferNote" rows="2" maxlength="1000" placeholder="{{ __('shared.business_edit_modal_reason_note_placeholder') }}"
                                       class="w-full px-3.5 py-2.5 bg-white border border-amber-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/40 focus:border-primary transition-shadow resize-none"></textarea>
                             <div class="flex items-center gap-2">
                                 <button type="button" @click="confirmTransfer()" :disabled="transferring"
                                         class="inline-flex items-center bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm disabled:opacity-60">
-                                    <span x-show="!transferring"><i class="bi bi-check-lg mr-1"></i>Transfer ownership</span>
-                                    <span x-show="transferring" x-cloak><i class="bi bi-arrow-repeat mr-1 animate-spin inline-block"></i>Transferring…</span>
+                                    <span x-show="!transferring"><i class="bi bi-check-lg me-1"></i>{{ __('shared.business_edit_modal_transfer_ownership') }}</span>
+                                    <span x-show="transferring" x-cloak><i class="bi bi-arrow-repeat me-1 animate-spin inline-block"></i>{{ __('shared.business_edit_modal_transferring') }}</span>
                                 </button>
-                                <button type="button" @click="pendingOwner = null" class="text-sm text-muted-foreground px-3 py-2 hover:text-foreground transition-colors">Cancel</button>
+                                <button type="button" @click="pendingOwner = null" class="text-sm text-muted-foreground px-3 py-2 hover:text-foreground transition-colors">{{ __('shared.cancel') }}</button>
                             </div>
                         </div>
 
                         {{-- History timeline --}}
                         <div class="pt-1">
-                            <p class="text-xs font-medium text-muted-foreground mb-3">Ownership history</p>
-                            <p x-show="!history.length" class="text-xs text-muted-foreground italic">No ownership changes recorded yet.</p>
+                            <p class="text-xs font-medium text-muted-foreground mb-3">{{ __('shared.business_edit_modal_ownership_history') }}</p>
+                            <p x-show="!history.length" class="text-xs text-muted-foreground italic">{{ __('shared.business_edit_modal_no_history') }}</p>
                             <ol x-show="history.length" class="space-y-1">
                                 <template x-for="(h, i) in history" :key="i">
                                     <li class="flex gap-3">
@@ -277,11 +277,11 @@
 
                 {{-- ── Sticky footer ── --}}
                 <footer class="shrink-0 flex items-center justify-end gap-2 px-6 py-4 border-t border-border bg-muted/30">
-                    <button type="button" @click="close()" class="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">Cancel</button>
+                    <button type="button" @click="close()" class="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">{{ __('shared.cancel') }}</button>
                     <button type="submit" :disabled="saving"
                             class="inline-flex items-center bg-primary text-white px-5 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm disabled:opacity-60 shadow-sm">
-                        <span x-show="!saving"><i class="bi bi-check-lg mr-1.5"></i>Save changes</span>
-                        <span x-show="saving" x-cloak><i class="bi bi-arrow-repeat mr-1.5 animate-spin inline-block"></i>Saving…</span>
+                        <span x-show="!saving"><i class="bi bi-check-lg me-1.5"></i>{{ __('shared.business_edit_modal_save_changes') }}</span>
+                        <span x-show="saving" x-cloak><i class="bi bi-arrow-repeat me-1.5 animate-spin inline-block"></i>{{ __('shared.business_edit_modal_saving') }}</span>
                     </button>
                 </footer>
             </form>
@@ -400,10 +400,10 @@ function businessEditModal() {
         async detachClub(clubId, name) {
             if (this.clubBusy) return;
             const ok = await window.confirmAction({
-                title: 'Remove club',
-                message: `Remove “${name}” from this chain? The club itself is not deleted.`,
+                title: '{{ __("shared.business_edit_modal_remove_club") }}',
+                message: `{{ __('shared.business_edit_modal_remove_club_confirm', ['name' => '__NAME__']) }}`.replace('__NAME__', name),
                 type: 'warning',
-                confirmText: 'Remove',
+                confirmText: '{{ __("shared.business_edit_modal_remove") }}',
             });
             if (!ok) return;
             this.clubBusy = true;
@@ -433,7 +433,7 @@ function businessEditModal() {
                 body: JSON.stringify({ club_id: clubId }),
             });
             const data = await res.json();
-            if (!res.ok || !data.success) throw new Error(data.message || 'Something went wrong.');
+            if (!res.ok || !data.success) throw new Error(data.message || '{{ __("shared.business_edit_modal_something_wrong") }}');
             return data;
         },
 
@@ -460,7 +460,7 @@ function businessEditModal() {
                 window.openUserPickerModal();
             } else {
                 this.picking = false;
-                window.showToast('error', 'User picker is unavailable on this page.');
+                window.showToast('error', '{{ __("shared.business_edit_modal_picker_unavailable") }}');
             }
         },
 
@@ -483,7 +483,7 @@ function businessEditModal() {
                     }),
                 });
                 const data = await res.json();
-                if (!res.ok || !data.success) throw new Error(data.message || 'Could not transfer ownership.');
+                if (!res.ok || !data.success) throw new Error(data.message || '{{ __("shared.business_edit_modal_could_not_transfer") }}');
 
                 window.showToast('success', data.message);
                 this.owner = { id: data.business.owner_id, name: data.business.owner_name, email: data.business.owner_email };
@@ -526,7 +526,7 @@ function businessEditModal() {
                     this.saving = false;
                     return;
                 }
-                if (!res.ok || !data.success) throw new Error(data.message || 'Could not save.');
+                if (!res.ok || !data.success) throw new Error(data.message || '{{ __("shared.business_edit_modal_could_not_save") }}');
 
                 window.showToast('success', data.message);
                 window.dispatchEvent(new CustomEvent('business-saved', { detail: data.business }));

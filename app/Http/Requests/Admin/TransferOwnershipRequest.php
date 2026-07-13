@@ -21,8 +21,8 @@ class TransferOwnershipRequest extends FormRequest
 
         return [
             'full_name' => 'required|string|max:255',
-            'email'     => 'required|email|unique:users,email',
-            'password'  => 'required|string|min:8',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:8',
         ];
     }
 }

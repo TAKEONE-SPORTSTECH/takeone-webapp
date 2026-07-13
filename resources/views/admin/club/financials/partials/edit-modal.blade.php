@@ -8,9 +8,9 @@
             <div class="modal-header border-b px-6 py-4">
                 <div>
                     <h5 class="modal-title font-bold">
-                        <i class="bi bi-pencil text-primary mr-2"></i>Edit Transaction
+                        <i class="bi bi-pencil text-primary me-2"></i>{{ __('admin.partials_edit_modal_title') }}
                     </h5>
-                    <p class="text-sm text-muted-foreground mb-0">Update the transaction details below. Changes will be tracked in the history.</p>
+                    <p class="text-sm text-muted-foreground mb-0">{{ __('admin.partials_edit_modal_subtitle') }}</p>
                 </div>
                 <button type="button" class="text-muted-foreground hover:text-foreground" @click="showEditModal = false">
                     <i class="bi bi-x-lg"></i>
@@ -23,85 +23,85 @@
                     <div class="space-y-4">
                         <!-- Transaction Type -->
                         <div>
-                            <label class="form-label">Transaction Type</label>
-                            <select name="type" class="form-select" x-model="editTransaction && editTransaction.type">
-                                <option value="expense">Expense</option>
-                                <option value="refund">Refund</option>
-                                <option value="income">Income</option>
-                            </select>
+                            <label class="form-label">{{ __('admin.partials_edit_modal_transaction_type') }}</label>
+                            <x-select-menu model="(editTransaction||{}).type" name="type" :options="[
+                                ['value' => 'expense', 'label' => __('admin.partials_edit_modal_type_expense')],
+                                ['value' => 'refund',  'label' => __('admin.partials_edit_modal_type_refund')],
+                                ['value' => 'income',  'label' => __('admin.partials_edit_modal_type_income')],
+                            ]" />
                         </div>
 
                         <!-- Category -->
                         <div x-show="editTransaction && editTransaction.type === 'expense'" x-transition>
-                            <label class="form-label">Expense Category</label>
-                            <select name="category" class="form-select">
-                                <option value="">Select category</option>
-                                <option value="rent" :selected="editTransaction && editTransaction.category === 'rent'">Rent</option>
-                                <option value="utilities" :selected="editTransaction && editTransaction.category === 'utilities'">Utilities</option>
-                                <option value="equipment" :selected="editTransaction && editTransaction.category === 'equipment'">Equipment</option>
-                                <option value="salaries" :selected="editTransaction && editTransaction.category === 'salaries'">Salaries</option>
-                                <option value="maintenance" :selected="editTransaction && editTransaction.category === 'maintenance'">Maintenance</option>
-                                <option value="marketing" :selected="editTransaction && editTransaction.category === 'marketing'">Marketing</option>
-                                <option value="insurance" :selected="editTransaction && editTransaction.category === 'insurance'">Insurance</option>
-                                <option value="other" :selected="editTransaction && editTransaction.category === 'other'">Other</option>
-                            </select>
-                            <small class="text-muted-foreground">Choose the category for proper expense tracking</small>
+                            <label class="form-label">{{ __('admin.partials_edit_modal_expense_category') }}</label>
+                            <x-select-menu model="(editTransaction||{}).category" name="category"
+                                placeholder="{{ __('admin.partials_edit_modal_select_category') }}" :options="[
+                                ['value' => 'rent',        'label' => __('admin.partials_edit_modal_category_rent')],
+                                ['value' => 'utilities',   'label' => __('admin.partials_edit_modal_category_utilities')],
+                                ['value' => 'equipment',   'label' => __('admin.partials_edit_modal_category_equipment')],
+                                ['value' => 'salaries',    'label' => __('admin.partials_edit_modal_category_salaries')],
+                                ['value' => 'maintenance', 'label' => __('admin.partials_edit_modal_category_maintenance')],
+                                ['value' => 'marketing',   'label' => __('admin.partials_edit_modal_category_marketing')],
+                                ['value' => 'insurance',   'label' => __('admin.partials_edit_modal_category_insurance')],
+                                ['value' => 'other',       'label' => __('admin.partials_edit_modal_category_other')],
+                            ]" />
+                            <small class="text-muted-foreground">{{ __('admin.partials_edit_modal_category_help') }}</small>
                         </div>
 
                         <!-- Description -->
                         <div>
-                            <label class="form-label">Description <span class="text-destructive">*</span></label>
-                            <input type="text" name="description" class="form-control" :value="editTransaction ? editTransaction.description : ''" placeholder="e.g., Monthly gym rent" required>
-                            <small class="text-muted-foreground">Brief description of the transaction</small>
+                            <label class="form-label">{{ __('admin.partials_edit_modal_description') }} <span class="text-destructive">*</span></label>
+                            <input type="text" name="description" class="form-control" :value="editTransaction ? editTransaction.description : ''" placeholder="{{ __('admin.partials_edit_modal_description_placeholder') }}" required>
+                            <small class="text-muted-foreground">{{ __('admin.partials_edit_modal_description_help') }}</small>
                         </div>
 
                         <!-- Amount & Date -->
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="form-label">Amount <span class="text-destructive">*</span></label>
+                                <label class="form-label">{{ __('admin.partials_edit_modal_amount') }} <span class="text-destructive">*</span></label>
                                 <input type="number" name="amount" class="form-control" step="0.01" min="0" :value="editTransaction ? editTransaction.amount : ''" placeholder="0.00" required>
-                                <small class="text-muted-foreground">Amount before VAT</small>
+                                <small class="text-muted-foreground">{{ __('admin.partials_edit_modal_amount_help') }}</small>
                             </div>
                             <div>
-                                <label class="form-label">Date <span class="text-destructive">*</span></label>
+                                <label class="form-label">{{ __('admin.partials_edit_modal_date') }} <span class="text-destructive">*</span></label>
                                 <input type="date" name="transaction_date" class="form-control" :value="editTransaction ? editTransaction.transaction_date : ''" max="{{ date('Y-m-d') }}" required>
                             </div>
                         </div>
 
                         <!-- Payment Method -->
                         <div x-data="{ method: 'cash' }" x-init="$watch('editTransaction', val => { if(val) method = val.payment_method || 'cash' }); if(editTransaction) method = editTransaction.payment_method || 'cash'">
-                            <label class="form-label">Payment Method</label>
+                            <label class="form-label">{{ __('admin.partials_edit_modal_payment_method') }}</label>
                             <input type="hidden" name="payment_method" :value="method">
                             <div class="grid grid-cols-4 gap-2">
                                 <label class="payment-option" :class="{ 'active': method === 'cash' }" @click="method = 'cash'">
                                     <i class="bi bi-cash-stack text-lg"></i>
-                                    <span>Cash</span>
+                                    <span>{{ __('admin.partials_edit_modal_payment_cash') }}</span>
                                 </label>
                                 <label class="payment-option" :class="{ 'active': method === 'bank_transfer' }" @click="method = 'bank_transfer'">
                                     <i class="bi bi-bank text-lg"></i>
-                                    <span>Bank</span>
+                                    <span>{{ __('admin.partials_edit_modal_payment_bank') }}</span>
                                 </label>
                                 <label class="payment-option" :class="{ 'active': method === 'card' }" @click="method = 'card'">
                                     <i class="bi bi-credit-card text-lg"></i>
-                                    <span>Card</span>
+                                    <span>{{ __('admin.partials_edit_modal_payment_card') }}</span>
                                 </label>
                                 <label class="payment-option" :class="{ 'active': method === 'other' }" @click="method = 'other'">
                                     <i class="bi bi-three-dots text-lg"></i>
-                                    <span>Other</span>
+                                    <span>{{ __('admin.partials_edit_modal_payment_other') }}</span>
                                 </label>
                             </div>
                         </div>
 
                         <!-- Notes -->
                         <div>
-                            <label class="form-label">Notes (Optional)</label>
-                            <textarea name="reference_number" class="form-control" rows="2" :value="editTransaction ? editTransaction.reference_number : ''" placeholder="Additional details..."></textarea>
+                            <label class="form-label">{{ __('admin.partials_edit_modal_notes') }}</label>
+                            <textarea name="reference_number" class="form-control" rows="2" :value="editTransaction ? editTransaction.reference_number : ''" placeholder="{{ __('admin.partials_edit_modal_notes_placeholder') }}"></textarea>
                         </div>
 
                         <div class="flex justify-end gap-2 pt-4">
-                            <button type="button" class="btn btn-outline-secondary" @click="showEditModal = false">Cancel</button>
+                            <button type="button" class="btn btn-outline-secondary" @click="showEditModal = false">{{ __('shared.cancel') }}</button>
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-lg mr-2"></i>Update Transaction
+                                <i class="bi bi-check-lg me-2"></i>{{ __('admin.partials_edit_modal_update_button') }}
                             </button>
                         </div>
                     </div>

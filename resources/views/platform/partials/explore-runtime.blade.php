@@ -39,6 +39,8 @@ function exploreApp() {
             clubName: '',
             currency: 'USD',
             enrollmentFee: 0,
+            registrationFee: 0,
+            ownedMap: {},
             familyMembers: @json($familyMembers),
             selectedMemberIds: [],
             registrants: [],
@@ -86,6 +88,8 @@ function exploreApp() {
                         this.packages = data.packages || [];
                         this.currency = data.currency || 'USD';
                         this.enrollmentFee = Number(data.enrollment_fee || 0);
+                        this.registrationFee = Number(data.registration_fee || 0);
+                        this.ownedMap = data.owned || {};
                         this.vatPercentage = Number(data.vat_percentage || 0);
                         this.vatRegNumber = data.vat_reg_number || null;
                     }
@@ -121,8 +125,70 @@ function exploreApp() {
                         gender: m.gender || '',
                         dateOfBirth: m.birthdate || '',
                         avatarUrl: m.profile_picture ? '/storage/' + m.profile_picture : null,
-                        relationship: m.relationship
+                        relationship: m.relationship,
+                        isMember: m.is_member || false,
+                        equipment: []
                     }));
+            },
+
+            // Build each registrant's equipment offering from their chosen package's
+            // catalog. Required gear is ticked by default unless the member already
+            // owns it (pre-unticked from the ownership map).
+            buildEquipment() {
+                this.registrants = this.registrants.map(reg => {
+                    const pkg = this.getPackageForRegistrant(reg);
+                    const ownedFor = this.ownedMap[reg.userId] || { products: [], variants: [] };
+                    const items = (pkg?.equipment || []).map(e => {
+                        const owned = e.has_variants
+                            ? false
+                            : (e.already_owned || (ownedFor.products || []).includes(e.product_id));
+                        return {
+                            id: e.id,
+                            product_id: e.product_id,
+                            name: e.name,
+                            price: Number(e.price || 0),
+                            image: e.image || null,
+                            is_required: !!e.is_required,
+                            has_variants: !!e.has_variants,
+                            variants: e.variants || [],
+                            owned: owned,
+                            variantId: '',
+                            selected: !!e.is_required && !owned,
+                        };
+                    });
+                    return { ...reg, equipment: items };
+                });
+            },
+
+            hasAnyEquipment() {
+                return this.registrants.some(r => (r.equipment || []).length > 0);
+            },
+
+            toggleEquip(reg, item) {
+                item.selected = !item.selected;
+            },
+
+            setEquipVariant(item, variantId) {
+                item.variantId = variantId;
+                item.selected = true;   // choosing a variant implies buying it
+            },
+
+            equipItemPrice(item) {
+                if (item.has_variants && item.variantId) {
+                    const v = (item.variants || []).find(x => x.id == item.variantId);
+                    return v ? Number(v.price || 0) : 0;
+                }
+                return Number(item.price || 0);
+            },
+
+            equipmentTotal() {
+                let total = 0;
+                this.registrants.forEach(reg => {
+                    (reg.equipment || []).forEach(item => {
+                        if (item.selected) total += this.equipItemPrice(item);
+                    });
+                });
+                return total;
             },
 
             addChild() {
@@ -183,20 +249,33 @@ function exploreApp() {
                 return (subtotal + vat).toFixed(2);
             },
 
+            // Dynamic step model — equipment is only a step when there's gear to show.
+            _steps() {
+                const s = ['select-members'];
+                if (!this._preselectPackageId) s.push('package-selection');
+                if (this.hasAnyEquipment()) s.push('equipment');
+                s.push('payment-review');
+                return s;
+            },
+            stepIndex() { const i = this._steps().indexOf(this.step); return i < 0 ? 1 : i + 1; },
+            stepCount() { return this._steps().length; },
+
             goBack() {
                 if (this.step === 'select-members') {
                     this.close();
                 } else if (this.step === 'package-selection') {
                     this.step = 'select-members';
-                } else if (this.step === 'payment-review') {
+                } else if (this.step === 'equipment') {
                     this.step = 'package-selection';
+                } else if (this.step === 'payment-review') {
+                    this.step = this.hasAnyEquipment() ? 'equipment' : 'package-selection';
                 }
             },
 
             goNext() {
                 if (this.step === 'select-members') {
                     if (this.selectedMemberIds.length === 0) {
-                        Toast.warning('No Members Selected', 'Please select at least one person to register.');
+                        Toast.warning('{{ __("explore.no_members_selected_title") }}', '{{ __("explore.no_members_selected_body") }}');
                         return;
                     }
                     this.buildRegistrants();
@@ -204,7 +283,16 @@ function exploreApp() {
                 } else if (this.step === 'package-selection') {
                     const missing = this.registrants.filter(r => !r.packageId);
                     if (missing.length > 0) {
-                        Toast.warning('Packages Required', 'Please select a package for all registrants.');
+                        Toast.warning('{{ __("explore.packages_required_title") }}', '{{ __("explore.packages_required_body") }}');
+                        return;
+                    }
+                    this.buildEquipment();
+                    this.step = this.hasAnyEquipment() ? 'equipment' : 'payment-review';
+                } else if (this.step === 'equipment') {
+                    const missingVariant = this.registrants.some(r =>
+                        (r.equipment || []).some(i => i.selected && i.has_variants && !i.variantId));
+                    if (missingVariant) {
+                        Toast.warning('{{ __("explore.choose_option_title") }}', '{{ __("explore.choose_option_body") }}');
                         return;
                     }
                     this.step = 'payment-review';
@@ -215,7 +303,7 @@ function exploreApp() {
 
             async handleSubmit() {
                 if (!this.payLater && !this.paymentScreenshot) {
-                    Toast.warning('Payment Required', 'Please upload a payment screenshot or select "Pay Later".');
+                    Toast.warning('{{ __("explore.payment_required_title") }}', '{{ __("explore.payment_required_body") }}');
                     return;
                 }
                 if (this.submitting) return;
@@ -233,6 +321,18 @@ function exploreApp() {
                         formData.append(`registrants[${i}][package_id]`, reg.packageId);
                         formData.append(`registrants[${i}][gender]`, reg.gender || '');
                         if (reg.dateOfBirth) formData.append(`registrants[${i}][date_of_birth]`, reg.dateOfBirth);
+
+                        (reg.equipment || []).forEach(item => {
+                            if (item.selected) {
+                                formData.append(`registrants[${i}][equipment][]`, item.id);
+                                if (item.has_variants && item.variantId) {
+                                    formData.append(`registrants[${i}][variants][${item.id}]`, item.variantId);
+                                }
+                            } else if (item.is_required && !item.owned) {
+                                // Required gear the member says they already have.
+                                formData.append(`registrants[${i}][owned_equipment][]`, item.id);
+                            }
+                        });
                     });
 
                     if (!this.payLater) {
@@ -254,13 +354,13 @@ function exploreApp() {
                     const data = await response.json();
                     if (data.success) {
                         this.close();
-                        Toast.success('Registration Submitted', 'Your registration has been submitted successfully!');
+                        Toast.success('{{ __("explore.registration_submitted_title") }}', '{{ __("explore.registration_submitted_body") }}');
                     } else {
-                        Toast.error('Registration Failed', data.message || 'Please try again.');
+                        Toast.error('{{ __("explore.registration_failed_title") }}', data.message || '{{ __("explore.please_try_again") }}');
                     }
                 } catch (error) {
                     console.error('Registration error:', error);
-                    Toast.error('Error', 'An error occurred during registration. Please try again.');
+                    Toast.error('{{ __("shared.error") }}', '{{ __("explore.registration_error_body") }}');
                 } finally {
                     this.submitting = false;
                 }
@@ -295,13 +395,27 @@ function exploreApp() {
                 return age;
             },
 
+            // One-time registration fee for a registrant: the package override,
+            // else the club registration fee, else the legacy enrollment fee.
+            registrationFeeFor(reg) {
+                const pkg = this.getPackageForRegistrant(reg);
+                const override = pkg && pkg.registration_fee != null ? Number(pkg.registration_fee) : null;
+                let fee = override != null ? override : Number(this.registrationFee || 0);
+                if (fee <= 0) fee = Number(this.enrollmentFee || 0);
+                return fee;
+            },
+
+            registrationTotal() {
+                return this.registrants.reduce((sum, reg) =>
+                    sum + (reg.isMember ? 0 : this.registrationFeeFor(reg)), 0);
+            },
+
             calculateSubtotal() {
                 let packageTotal = this.registrants.reduce((sum, reg) => {
                     const pkg = this.packages.find(p => p.id == reg.packageId);
                     return sum + Number(pkg?.price || 0);
                 }, 0);
-                let enrollmentTotal = this.enrollmentFee * this.firstTimerCount();
-                return (packageTotal + enrollmentTotal).toFixed(2);
+                return (packageTotal + this.registrationTotal() + this.equipmentTotal()).toFixed(2);
             },
 
             calculateVat() {
@@ -311,16 +425,16 @@ function exploreApp() {
             },
 
             firstTimerCount() {
-                return this.registrants.length;
+                return this.registrants.filter(r => !r.isMember).length;
             },
 
             firstTimerNames() {
-                return this.registrants.map(r => r.name).join(', ');
+                return this.registrants.filter(r => !r.isMember).map(r => r.name).join(', ');
             },
 
             genderLabel(g) {
-                
-                
+
+
                 return g ? g.charAt(0).toUpperCase() + g.slice(1) : '';
             },
 
@@ -348,7 +462,7 @@ function exploreApp() {
             this.fetchAllClubs();
 
             if (!navigator.geolocation) {
-                this.showAlertMessage('Geolocation is not supported by your browser', 'danger');
+                this.showAlertMessage('{{ __("explore.geolocation_not_supported") }}', 'danger');
             } else {
                 this.startWatchingLocation();
             }
@@ -410,6 +524,7 @@ function exploreApp() {
         applyLocation() {
             this.closeMapModal();
             if (this.userLocation) {
+                this.updateLocationDisplay(this.userLocation.latitude, this.userLocation.longitude);
                 if (this.currentCategory === 'all') {
                     this.fetchAllClubs();
                 } else {
@@ -435,16 +550,16 @@ function exploreApp() {
                     }
                 },
                 (error) => {
-                    let errorMessage = 'Unable to get your location. ';
+                    let errorMessage = '{{ __("explore.unable_to_get_location") }}';
                     switch(error.code) {
                         case error.PERMISSION_DENIED:
-                            errorMessage += 'Location access denied.';
+                            errorMessage += '{{ __("explore.location_access_denied") }}';
                             break;
                         case error.POSITION_UNAVAILABLE:
-                            errorMessage += 'Location unavailable.';
+                            errorMessage += '{{ __("explore.location_unavailable") }}';
                             break;
                         case error.TIMEOUT:
-                            errorMessage += 'Location request timed out.';
+                            errorMessage += '{{ __("explore.location_request_timed_out") }}';
                             break;
                     }
                     this.showAlertMessage(errorMessage, 'warning');
@@ -458,8 +573,46 @@ function exploreApp() {
         },
 
         updateLocationDisplay(lat, lng) {
-            document.getElementById('currentLocation').innerHTML =
-                `<i class="bi bi-geo-alt-fill mr-1"></i>${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+            const el = document.getElementById('currentLocation');
+            if (!el) return;
+            el.innerHTML = `<i class="bi bi-geo-alt-fill me-1"></i>${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        },
+
+        // 5-star strip shown opposite the distance line on a club card.
+        // Half-stars are rounded to the nearest 0.5.
+        renderStars(rating, reviewsCount) {
+            const value = Math.round((Number(rating) || 0) * 2) / 2;
+
+            let stars = '';
+            for (let i = 1; i <= 5; i++) {
+                if (value >= i) {
+                    stars += '<i class="bi bi-star-fill"></i>';
+                } else if (value >= i - 0.5) {
+                    stars += '<i class="bi bi-star-half"></i>';
+                } else {
+                    stars += '<i class="bi bi-star"></i>';
+                }
+            }
+
+            const count = Number(reviewsCount) || 0;
+            const label = count > 0 ? `<span class="text-muted-foreground text-xs">(${count})</span>` : '';
+
+            return `<div class="flex items-center gap-1 shrink-0">
+                        <span class="flex items-center gap-0.5 text-xs ${count > 0 ? 'text-warning' : 'text-muted-foreground'}">${stars}</span>
+                        ${label}
+                    </div>`;
+        },
+
+        // Single place where a map-picked point becomes the active location:
+        // stops the geolocation watch so a late GPS fix can't overwrite the pick.
+        setPickedLocation(latlng) {
+            if (this.watchId) {
+                navigator.geolocation.clearWatch(this.watchId);
+                this.watchId = null;
+            }
+            this.userLocation = { latitude: latlng.lat, longitude: latlng.lng };
+            this.updateLocationDisplay(latlng.lat, latlng.lng);
+            this.updateModalLocation(latlng.lat, latlng.lng);
         },
 
         initMap(lat, lng) {
@@ -485,13 +638,14 @@ function exploreApp() {
             }).addTo(this.map);
 
             this.userMarker.on('drag', (event) => {
-                const position = event.target.getLatLng();
-                this.userLocation = {
-                    latitude: position.lat,
-                    longitude: position.lng
-                };
-                this.updateLocationDisplay(position.lat, position.lng);
-                this.updateModalLocation(position.lat, position.lng);
+                this.setPickedLocation(event.target.getLatLng());
+            });
+
+            // Tapping the map moves the pin there — dragging a 36px marker is
+            // fiddly on touch, so a plain tap is the primary mobile gesture.
+            this.map.on('click', (event) => {
+                this.userMarker.setLatLng(event.latlng);
+                this.setPickedLocation(event.latlng);
             });
 
             setTimeout(() => this.map.invalidateSize(), 100);
@@ -517,13 +671,13 @@ function exploreApp() {
                     this.allClubs = data.clubs;
                     this.displayClubs(this.allClubs);
                 } else {
-                    this.showAlertMessage('Failed to fetch clubs', 'danger');
+                    this.showAlertMessage('{{ __("explore.failed_to_fetch_clubs") }}', 'danger');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
                 document.getElementById('loadingSpinner').style.display = 'none';
-                this.showAlertMessage('Error fetching clubs', 'danger');
+                this.showAlertMessage('{{ __("explore.error_fetching_clubs") }}', 'danger');
             });
         },
 
@@ -552,17 +706,17 @@ function exploreApp() {
                     this.allClubs = data.clubs;
                     this.displayClubs(this.allClubs);
                 } else {
-                    this.showAlertMessage('Failed to fetch clubs', 'danger');
+                    this.showAlertMessage('{{ __("explore.failed_to_fetch_clubs") }}', 'danger');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
                 document.getElementById('loadingSpinner').style.display = 'none';
-                this.showAlertMessage('Error fetching clubs', 'danger');
+                this.showAlertMessage('{{ __("explore.error_fetching_clubs") }}', 'danger');
             });
         },
 
-        displayClubs(clubs) {
+        displayClubs(clubs, trainers = null) {
             const container = document.getElementById('clubsContainer');
             const noResultsContainer = document.getElementById('noResultsContainer');
 
@@ -572,7 +726,7 @@ function exploreApp() {
 
             // Add real trainer cards if category is 'all' or 'personal-trainers'
             if (this.currentCategory === 'all' || this.currentCategory === 'personal-trainers') {
-                this.allTrainers.forEach(trainer => {
+                (trainers ?? this.allTrainers).forEach(trainer => {
                     const coverHtml = trainer.profile_picture
                         ? `<img src="/storage/${trainer.profile_picture}" alt="${trainer.name}" loading="lazy" class="w-full h-full object-cover transition-transform duration-300">`
                         : `<div class="w-full h-full flex items-center justify-center" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
@@ -581,7 +735,7 @@ function exploreApp() {
 
                     const clubLine = trainer.club_name
                         ? `<div class="flex items-center text-muted-foreground text-sm">
-                               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1 shrink-0">
+                               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1 shrink-0">
                                    <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path>
                                    <circle cx="12" cy="10" r="3"></circle>
                                </svg>
@@ -589,10 +743,10 @@ function exploreApp() {
                            </div>`
                         : '';
 
-                    const ratingDisplay = trainer.rating > 0 ? trainer.rating : 'N/A';
+                    const ratingDisplay = trainer.rating > 0 ? trainer.rating : '{{ __("explore.na") }}';
                     const starIcon = trainer.rating > 0
-                        ? `<i class="fa-solid fa-star text-warning"></i>`
-                        : `<i class="fa-regular fa-star text-muted-foreground"></i>`;
+                        ? `<i class="bi bi-star-fill text-warning"></i>`
+                        : `<i class="bi bi-star text-muted-foreground"></i>`;
 
                     const trainerCard = document.createElement('div');
                     trainerCard.innerHTML = `
@@ -601,8 +755,8 @@ function exploreApp() {
                             <div class="relative overflow-hidden h-48">
                                 ${coverHtml}
                                 <!-- Personal Trainer Badge -->
-                                <div class="absolute top-2 left-2">
-                                    <span class="badge text-white px-3 py-1 bg-destructive rounded-full text-xs font-semibold"><i class="fa-solid fa-user mr-1"></i>Personal Trainer</span>
+                                <div class="absolute top-2 start-2">
+                                    <span class="badge text-white px-3 py-1 bg-destructive rounded-full text-xs font-semibold"><i class="bi bi-person-fill me-1"></i>{{ __('explore.personal_trainer_badge') }}</span>
                                 </div>
                             </div>
 
@@ -611,7 +765,7 @@ function exploreApp() {
                                 <div class="mb-3">
                                     <h3 class="font-semibold mb-2 club-title text-lg text-foreground">${trainer.name}</h3>
                                     <div class="flex items-center mb-1 text-sm text-primary">
-                                        <i class="fa fa-certificate mr-1"></i>
+                                        <i class="bi bi-patch-check-fill me-1"></i>
                                         <span class="font-semibold">${trainer.role}</span>
                                     </div>
                                     ${clubLine}
@@ -619,29 +773,29 @@ function exploreApp() {
 
                                 <div class="grid grid-cols-3 gap-2 text-center mb-3 text-xs">
                                     <div class="p-2 rounded bg-primary/5">
-                                        <i class="fa-solid fa-calendar mb-1 text-muted-foreground text-base"></i>
+                                        <i class="bi bi-calendar3 mb-1 text-muted-foreground text-base"></i>
                                         <p class="font-semibold mb-0 text-foreground">${trainer.experience_years}</p>
-                                        <p class="text-muted-foreground mb-0">Years Exp.</p>
+                                        <p class="text-muted-foreground mb-0">{{ __('explore.years_exp') }}</p>
                                     </div>
                                     <div class="p-2 rounded bg-primary/5">
-                                        <i class="fa-solid fa-comments mb-1 text-muted-foreground text-base"></i>
+                                        <i class="bi bi-chat-dots mb-1 text-muted-foreground text-base"></i>
                                         <p class="font-semibold mb-0 text-foreground">${trainer.reviews_count}</p>
-                                        <p class="text-muted-foreground mb-0">Reviews</p>
+                                        <p class="text-muted-foreground mb-0">{{ __('explore.reviews') }}</p>
                                     </div>
                                     <div class="p-2 rounded bg-primary/5">
                                         ${starIcon}
                                         <p class="font-semibold mb-0 text-foreground">${ratingDisplay}</p>
-                                        <p class="text-muted-foreground mb-0">Rating</p>
+                                        <p class="text-muted-foreground mb-0">{{ __('explore.rating') }}</p>
                                     </div>
                                 </div>
 
                                 <!-- Action Buttons -->
                                 <div class="flex gap-2">
                                     <a href="${trainer.url}" class="btn btn-primary flex-1 font-semibold text-sm text-center" onclick="event.stopPropagation()">
-                                        <i class="fa-solid fa-calendar-plus mr-1"></i>Book Session
+                                        <i class="bi bi-calendar-plus me-1"></i>{{ __('explore.book_session') }}
                                     </a>
                                     <a href="${trainer.url}" class="btn btn-outline-primary flex-1 font-semibold text-sm text-center" onclick="event.stopPropagation()">
-                                        View Details
+                                        {{ __('explore.view_details') }}
                                     </a>
                                 </div>
                             </div>
@@ -689,15 +843,15 @@ function exploreApp() {
                             ${coverImageHtml}
 
                             <!-- Club Logo - Bottom Left -->
-                            <div class="absolute bottom-2 left-2">
+                            <div class="absolute bottom-2 start-2">
                                 <div class="bg-white shadow border p-0.5 w-20 h-20 rounded-full">
                                     ${logoHtml}
                                 </div>
                             </div>
 
                             <!-- Sports Club Badge - Top Left -->
-                            <div class="absolute top-2 left-2">
-                                <span class="badge text-white px-3 py-1 bg-destructive rounded-full text-xs font-semibold"><i class="fa-solid fa-building mr-1"></i>Sports Club</span>
+                            <div class="absolute top-2 start-2">
+                                <span class="badge text-white px-3 py-1 bg-destructive rounded-full text-xs font-semibold"><i class="bi bi-building me-1"></i>{{ __('explore.sports_club_badge') }}</span>
                             </div>
                         </div>
 
@@ -705,18 +859,22 @@ function exploreApp() {
                         <div class="p-4 bg-white">
                             <div class="mb-3">
                                 <h3 class="font-semibold mb-2 club-title text-lg text-foreground">${club.club_name}</h3>
-                                <div class="flex items-center mb-1 text-sm text-primary">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1 shrink-0">
-                                        <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
-                                    </svg>
-                                    <span class="font-semibold">${club.distance ? club.distance + ' km away' : 'Location available'}</span>
+                                <div class="flex items-center justify-between gap-2 mb-1 text-sm">
+                                    <div class="flex items-center min-w-0 text-primary">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1 shrink-0">
+                                            <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path>
+                                            <circle cx="12" cy="10" r="3"></circle>
+                                        </svg>
+                                        <span class="font-semibold truncate">${club.distance ? club.distance + ' {{ __("explore.km_away") }}' : '{{ __("explore.location_available") }}'}</span>
+                                    </div>
+                                    ${this.renderStars(club.rating, club.reviews_count)}
                                 </div>
                                 <div class="flex items-center text-muted-foreground text-sm">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1 shrink-0">
-                                        <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path>
-                                        <circle cx="12" cy="10" r="3"></circle>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1 shrink-0">
+                                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="12" cy="7" r="4"></circle>
                                     </svg>
-                                    <span class="truncate">${club.owner_name || 'N/A'}</span>
+                                    <span class="truncate">${club.owner_name || '{{ __("explore.na") }}'}</span>
                                 </div>
                             </div>
 
@@ -730,7 +888,7 @@ function exploreApp() {
                                         <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                                     </svg>
                                     <p class="font-semibold mb-0 text-foreground">${club.members_count ?? 0}</p>
-                                    <p class="text-muted-foreground mb-0">Members</p>
+                                    <p class="text-muted-foreground mb-0">{{ __('explore.members') }}</p>
                                 </div>
                                 <div class="p-2 rounded bg-primary/5">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-1 text-primary">
@@ -741,29 +899,29 @@ function exploreApp() {
                                         <path d="M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"></path>
                                     </svg>
                                     <p class="font-semibold mb-0 text-foreground">${club.packages_count ?? 0}</p>
-                                    <p class="text-muted-foreground mb-0">Packages</p>
+                                    <p class="text-muted-foreground mb-0">{{ __('explore.packages') }}</p>
                                 </div>
                                 <div class="p-2 rounded bg-primary/5">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-1 text-primary">
                                         <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path>
                                     </svg>
                                     <p class="font-semibold mb-0 text-foreground">${club.instructors_count ?? 0}</p>
-                                    <p class="text-muted-foreground mb-0">Trainers</p>
+                                    <p class="text-muted-foreground mb-0">{{ __('explore.trainers') }}</p>
                                 </div>
                             </div>
 
                             <!-- Action Buttons -->
                             <div class="flex gap-2">
                                 <button class="btn btn-primary flex-1 font-semibold text-sm" onclick="event.stopPropagation(); event.preventDefault(); window.openJoinModal(${club.id}, '${club.slug}', '${club.club_name.replace(/'/g, "\\\\'")}', '${club.country_code}')">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1">
                                         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
                                         <circle cx="9" cy="7" r="4"></circle>
                                         <line x1="19" x2="19" y1="8" y2="14"></line>
                                         <line x1="22" x2="16" y1="11" y2="11"></line>
                                     </svg>
-                                    Join Club
+                                    {{ __('explore.join_club') }}
                                 </button>
-                                <a href="${club.url}" class="btn btn-outline-primary flex-1 font-semibold text-sm text-center">View Details</a>
+                                <a href="${club.url}" class="btn btn-outline-primary flex-1 font-semibold text-sm text-center">{{ __('explore.view_details') }}</a>
                             </div>
                         </div>
                     </div>
@@ -781,7 +939,14 @@ function exploreApp() {
                 return matchesSearch;
             });
 
-            this.displayClubs(filtered);
+            // Trainers must honour the search term too, otherwise they stay
+            // pinned above the (shrinking) club list on every keystroke.
+            const trainers = this.allTrainers.filter(trainer => {
+                return trainer.name.toLowerCase().includes(searchTerm) ||
+                       (trainer.club_name && trainer.club_name.toLowerCase().includes(searchTerm));
+            });
+
+            this.displayClubs(filtered, trainers);
         },
 
         showAlertMessage(message, type = 'danger') {

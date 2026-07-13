@@ -12,6 +12,6 @@ trait BelongsToTenant
      */
     protected static function bootBelongsToTenant(): void
     {
-        static::addGlobalScope(new TenantScope());
+        static::addGlobalScope(new TenantScope);
     }
 }

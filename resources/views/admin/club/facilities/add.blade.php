@@ -17,7 +17,7 @@
         <div class="modal-content border-0 shadow-lg w-full max-w-3xl relative rounded-xl overflow-hidden" @click.stop>
             <!-- Header -->
             <div class="modal-header border-b border-gray-200 px-6 py-4">
-                <h5 class="modal-title text-lg font-semibold" id="addFacilityModalLabel">Add New Facility</h5>
+                <h5 class="modal-title text-lg font-semibold" id="addFacilityModalLabel">{{ __('admin.club_facilities_add_title') }}</h5>
                 <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" @click="showAddFacilityModal = false">
                     <i class="bi bi-x-lg"></i>
                 </button>
@@ -31,19 +31,19 @@
                     <div class="space-y-6">
                         <!-- Basic Info Section -->
                         <div class="space-y-4">
-                            <h6 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Basic Information</h6>
+                            <h6 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">{{ __('admin.club_facilities_add_basic_information') }}</h6>
 
                             <x-lang-toggle class="mb-4" />
 
                             <!-- Facility Name -->
                             <div class="space-y-2">
-                                <label for="facilityName" class="block text-sm font-medium text-gray-700">Facility Name <span class="text-red-500">*</span></label>
+                                <label for="facilityName" class="block text-sm font-medium text-gray-700">{{ __('admin.club_facilities_add_facility_name') }} <span class="text-red-500">*</span></label>
                                 <input type="text"
                                        id="facilityName"
                                        name="name"
                                        required
                                        x-show="lang==='en'"
-                                       placeholder="e.g., Main Swimming Pool"
+                                       placeholder="{{ __('admin.club_facilities_add_name_placeholder') }}"
                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                                        oninput="clearAddFacilityError('name')">
                                 <input type="text"
@@ -59,11 +59,11 @@
 
                             <!-- Description -->
                             <div class="space-y-2">
-                                <label for="facilityDescription" class="block text-sm font-medium text-gray-700">Description</label>
+                                <label for="facilityDescription" class="block text-sm font-medium text-gray-700">{{ __('admin.club_facilities_add_description') }}</label>
                                 <textarea id="facilityDescription"
                                           name="description"
                                           rows="3"
-                                          placeholder="Describe the facility, its features and amenities..."
+                                          placeholder="{{ __('admin.club_facilities_add_description_placeholder') }}"
                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
                             </div>
                         </div>
@@ -72,7 +72,7 @@
                         <div class="space-y-4">
                             <h6 class="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
                                 <i class="bi bi-geo-alt"></i>
-                                Location
+                                {{ __('admin.club_facilities_add_location') }}
                             </h6>
                             <x-location-map
                                 id="addFacility"
@@ -96,12 +96,12 @@
                             </div>
                             <input type="hidden" id="facilityMapZoom" name="map_zoom" value="13">
                             <div class="space-y-1">
-                                <label class="block text-sm font-medium text-gray-700">Google Maps URL</label>
+                                <label class="block text-sm font-medium text-gray-700">{{ __('admin.club_facilities_add_google_maps_url') }}</label>
                                 <input type="url" id="facilityMapsUrl" name="maps_url" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                                        placeholder="https://maps.google.com/..."
                                        oninput="clearAddFacilityError('maps_url')">
                                 <span id="addFacilityError_maps_url" class="text-red-500 text-xs hidden block"></span>
-                                <p class="text-xs text-gray-500">Paste a Google Maps share link for members to navigate directly to this facility.</p>
+                                <p class="text-xs text-gray-500">{{ __('admin.club_facilities_add_maps_url_hint') }}</p>
                             </div>
                         </div>
 
@@ -110,38 +110,38 @@
                             <div class="flex items-center justify-between">
                                 <h6 class="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
                                     <i class="bi bi-clock"></i>
-                                    Operating Hours <span class="text-red-500">*</span>
+                                    {{ __('admin.club_facilities_add_operating_hours') }} <span class="text-red-500">*</span>
                                 </h6>
                                 <button type="button" id="addOperatingHourBtn" class="px-3 py-1.5 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-1">
-                                    <i class="bi bi-plus"></i> Add
+                                    <i class="bi bi-plus"></i> {{ __('admin.club_facilities_add_add_button') }}
                                 </button>
                             </div>
                             <div id="operatingHoursContainer" class="space-y-3">
                                 <!-- Operating hours will be added here dynamically -->
                             </div>
                             <p id="noOperatingHoursMsg" class="text-sm text-gray-500 text-center py-4 border-2 border-dashed border-gray-200 rounded-lg">
-                                No operating hours added yet. Click "Add" to set your hours.
+                                {{ __('admin.club_facilities_add_no_operating_hours') }}
                             </p>
                         </div>
 
                         <!-- Availability Options -->
                         <div class="space-y-4">
-                            <h6 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Availability</h6>
+                            <h6 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">{{ __('admin.club_facilities_add_availability') }}</h6>
 
                             <div class="grid grid-cols-2 gap-4">
                                 <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                                     <input type="checkbox" id="isAvailable" name="is_available" value="1" checked class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary">
                                     <div>
-                                        <span class="block text-sm font-medium text-gray-700">Currently Available</span>
-                                        <span class="text-xs text-gray-500">Facility is open for use</span>
+                                        <span class="block text-sm font-medium text-gray-700">{{ __('admin.club_facilities_add_currently_available') }}</span>
+                                        <span class="text-xs text-gray-500">{{ __('admin.club_facilities_add_currently_available_hint') }}</span>
                                     </div>
                                 </label>
 
                                 <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                                     <input type="checkbox" id="isRentable" name="is_rentable" value="1" class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary">
                                     <div>
-                                        <span class="block text-sm font-medium text-gray-700">Available for Rent</span>
-                                        <span class="text-xs text-gray-500">Can be booked privately</span>
+                                        <span class="block text-sm font-medium text-gray-700">{{ __('admin.club_facilities_add_available_for_rent') }}</span>
+                                        <span class="text-xs text-gray-500">{{ __('admin.club_facilities_add_available_for_rent_hint') }}</span>
                                     </div>
                                 </label>
                             </div>
@@ -152,17 +152,17 @@
                             <div class="flex items-center justify-between">
                                 <h6 class="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
                                     <i class="bi bi-calendar-check"></i>
-                                    Rentable Times <span class="text-red-500">*</span>
+                                    {{ __('admin.club_facilities_add_rentable_times') }} <span class="text-red-500">*</span>
                                 </h6>
                                 <button type="button" id="addRentableTimeBtn" class="px-3 py-1.5 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-1">
-                                    <i class="bi bi-plus"></i> Add
+                                    <i class="bi bi-plus"></i> {{ __('admin.club_facilities_add_add_button') }}
                                 </button>
                             </div>
                             <div id="rentableTimesContainer" class="space-y-3">
                                 <!-- Rentable times will be added here dynamically -->
                             </div>
                             <p id="noRentableTimesMsg" class="text-sm text-gray-500 text-center py-4 border-2 border-dashed border-gray-200 rounded-lg">
-                                No rentable times added yet. Click "Add" to set rental availability.
+                                {{ __('admin.club_facilities_add_no_rentable_times') }}
                             </p>
                         </div>
 
@@ -170,13 +170,13 @@
                         <div class="space-y-3">
                             <h6 class="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
                                 <i class="bi bi-images"></i>
-                                Facility Images
+                                {{ __('admin.club_facilities_add_facility_images') }}
                             </h6>
                             <div id="addFacilityImagePreviews" class="flex flex-wrap gap-2"></div>
                             <div id="addFacilityBase64Inputs"></div>
                             <button type="button" onclick="openFacilityCropper('add')"
                                     class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-2">
-                                <i class="bi bi-camera"></i> Add Image
+                                <i class="bi bi-camera"></i> {{ __('admin.club_facilities_add_add_image') }}
                             </button>
                         </div>
                     </div>
@@ -188,14 +188,14 @@
                 <button type="button"
                         class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                         @click="showAddFacilityModal = false">
-                    Cancel
+                    {{ __('shared.cancel') }}
                 </button>
                 <button type="submit"
                         form="addFacilityForm"
                         id="submitFacilityBtn"
                         class="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2">
                     <i class="bi bi-plus-lg"></i>
-                    <span>Create Facility</span>
+                    <span>{{ __('admin.club_facilities_add_create_facility') }}</span>
                 </button>
             </div>
         </div>
@@ -273,17 +273,17 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             <div class="grid grid-cols-2 gap-3">
                 <div class="space-y-1">
-                    <label class="block text-xs font-medium text-gray-500">Start Time</label>
+                    <label class="block text-xs font-medium text-gray-500">{{ __('admin.club_facilities_add_start_time') }}</label>
                     <input type="time" name="${prefix}[${index}][start_time]" value="08:00" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                 </div>
                 <div class="space-y-1">
-                    <label class="block text-xs font-medium text-gray-500">End Time</label>
+                    <label class="block text-xs font-medium text-gray-500">{{ __('admin.club_facilities_add_end_time') }}</label>
                     <input type="time" name="${prefix}[${index}][end_time]" value="22:00" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                 </div>
             </div>
             <div class="flex justify-end">
                 <button type="button" class="remove-time-slot text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 transition-colors flex items-center gap-1">
-                    <i class="bi bi-x-lg"></i> Remove
+                    <i class="bi bi-x-lg"></i> {{ __('admin.club_facilities_add_remove') }}
                 </button>
             </div>
         `;
@@ -324,21 +324,21 @@ document.addEventListener('DOMContentLoaded', function() {
         let valid = true;
         const nameVal = document.getElementById('facilityName').value.trim();
         if (!nameVal) {
-            showAddFacilityError('name', 'Facility name is required.');
+            showAddFacilityError('name', '{{ __("admin.club_facilities_add_name_required") }}');
             document.getElementById('facilityName').classList.add('border-red-400');
             valid = false;
         }
 
         const mapsUrlVal = document.getElementById('facilityMapsUrl')?.value.trim();
         if (mapsUrlVal && !/^https?:\/\/.+/.test(mapsUrlVal)) {
-            showAddFacilityError('maps_url', 'Please enter a valid URL (must start with http:// or https://).');
+            showAddFacilityError('maps_url', '{{ __("admin.club_facilities_add_invalid_url") }}');
             document.getElementById('facilityMapsUrl').classList.add('border-red-400');
             valid = false;
         }
 
         if (!valid) {
             if (typeof Toast !== 'undefined') {
-                Toast.error('Validation Error', 'Please fix the highlighted fields before submitting.');
+                Toast.error('{{ __("admin.club_facilities_add_validation_error_title") }}', '{{ __("admin.club_facilities_add_validation_error_body") }}');
             }
             return;
         }
@@ -346,7 +346,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const submitBtn = document.getElementById('submitFacilityBtn');
         const originalHtml = submitBtn.innerHTML;
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> <span>Creating...</span>';
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> <span>{{ __("admin.club_facilities_add_creating") }}</span>';
 
         fetch(this.action, {
             method: 'POST',
@@ -360,7 +360,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
             if (response.ok && data.success) {
                 if (typeof Toast !== 'undefined') {
-                    Toast.success('Facility Added', data.message || 'Facility added successfully.');
+                    Toast.success('{{ __("admin.club_facilities_add_added_title") }}', data.message || '{{ __("admin.club_facilities_add_added_body") }}');
                 }
                 // Genuine navigation: return to the facilities index so the new
                 // record renders with its correct server-side markup (handles the
@@ -391,13 +391,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 const count = Object.keys(data.errors).length;
                 if (typeof Toast !== 'undefined') {
-                    Toast.error('Validation Failed', `${count} error${count > 1 ? 's' : ''} — please review the highlighted fields.`);
+                    Toast.error('{{ __("admin.club_facilities_add_validation_failed_title") }}', `${count} error${count > 1 ? 's' : ''} — please review the highlighted fields.`);
                 }
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalHtml;
             } else {
                 if (typeof Toast !== 'undefined') {
-                    Toast.error('Error', data.message || 'Failed to add facility. Please try again.');
+                    Toast.error('{{ __("admin.club_facilities_add_error_title") }}', data.message || '{{ __("admin.club_facilities_add_failed_body") }}');
                 }
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalHtml;
@@ -405,7 +405,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(() => {
             if (typeof Toast !== 'undefined') {
-                Toast.error('Error', 'An unexpected error occurred. Please try again.');
+                Toast.error('{{ __("admin.club_facilities_add_error_title") }}', '{{ __("admin.club_facilities_add_unexpected_error") }}');
             }
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalHtml;

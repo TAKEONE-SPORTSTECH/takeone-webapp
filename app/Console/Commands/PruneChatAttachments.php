@@ -14,7 +14,7 @@ class PruneChatAttachments extends Command
 
     public function handle(): int
     {
-        $disk  = 'local';
+        $disk = 'local';
         $count = 0;
 
         Message::query()

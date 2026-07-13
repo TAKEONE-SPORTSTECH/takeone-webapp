@@ -9,11 +9,11 @@
 }">
     <div class="flex justify-between items-center mb-4">
         <div>
-            <h2 class="tf-section-title">Activities</h2>
-            <p class="text-sm text-gray-500 mt-1">Manage club activities and classes</p>
+            <h2 class="tf-section-title">{{ __('admin.club_activities_index_title') }}</h2>
+            <p class="text-sm text-gray-500 mt-1">{{ __('admin.club_activities_index_subtitle') }}</p>
         </div>
         <button class="btn btn-primary" @click="showAddModal = true; duplicateData = null">
-            <i class="bi bi-plus-lg mr-2"></i>Add Activity
+            <i class="bi bi-plus-lg me-2"></i>{{ __('admin.club_activities_index_add_activity') }}
         </button>
     </div>
 
@@ -39,7 +39,7 @@
                 <div class="flex justify-between items-start">
                     <h5 class="card-title font-semibold mb-0">{{ $activity->name }}</h5>
                     <div class="flex gap-1">
-                        <button class="btn btn-sm btn-outline-secondary" title="Duplicate Activity"
+                        <button class="btn btn-sm btn-outline-secondary" title="{{ __('admin.club_activities_index_duplicate_activity') }}"
                                 @click="duplicateData = {
                                     name: '{{ addslashes($activity->name) }}',
                                     description: '{{ addslashes($activity->description) }}',
@@ -48,11 +48,11 @@
                                 }; showAddModal = true">
                             <i class="bi bi-copy"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-secondary" title="Equipment"
+                        <button class="btn btn-sm btn-outline-secondary" title="{{ __('admin.club_activities_index_equipment') }}"
                                 @click="window.dispatchEvent(new CustomEvent('open-equipment-manager', { detail: { id: {{ $activity->id }}, name: '{{ addslashes($activity->name) }}' } }))">
                             <i class="bi bi-box-seam"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-primary" title="Edit Activity"
+                        <button class="btn btn-sm btn-outline-primary" title="{{ __('admin.club_activities_index_edit_activity') }}"
                                 @click="editData = {
                                     id: {{ $activity->id }},
                                     name: '{{ addslashes($activity->name) }}',
@@ -65,10 +65,10 @@
                             <i class="bi bi-pencil"></i>
                         </button>
                         <form action="{{ route('admin.club.activities.destroy', [$club->slug, $activity->id]) }}" method="POST" class="inline"
-                              onsubmit="event.preventDefault(); const f = this; confirmAction({ title: 'Delete Activity', message: 'This activity will be permanently removed.', confirmText: 'Delete', type: 'danger' }).then(ok => { if (ok) f.submit(); });">
+                              onsubmit="event.preventDefault(); const f = this; confirmAction({ title: '{{ __('admin.club_activities_index_delete_activity') }}', message: '{{ __('admin.club_activities_index_delete_confirm') }}', confirmText: '{{ __('shared.delete') }}', type: 'danger' }).then(ok => { if (ok) f.submit(); });">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Activity">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="{{ __('admin.club_activities_index_delete_activity') }}">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </form>
@@ -94,7 +94,7 @@
                 <div class="flex flex-wrap gap-2 mt-3">
                     @if($activity->facility)
                     <span class="badge bg-muted/30 text-foreground border border-border">
-                        <i class="bi bi-geo-alt mr-1"></i>{{ $activity->facility->name }}
+                        <i class="bi bi-geo-alt me-1"></i>{{ $activity->facility->name }}
                     </span>
                     @endif
                 </div>
@@ -107,10 +107,10 @@
     <div id="activitiesEmptyState" class="card border-0 shadow-sm {{ (isset($activities) && count($activities) > 0) ? 'hidden' : '' }}">
         <div class="card-body text-center py-12">
             <i class="bi bi-activity text-muted-foreground text-6xl"></i>
-            <h5 class="mt-3 mb-2">No activities yet</h5>
-            <p class="text-muted-foreground mb-3">Add activities and classes for your members</p>
+            <h5 class="mt-3 mb-2">{{ __('admin.club_activities_index_empty_title') }}</h5>
+            <p class="text-muted-foreground mb-3">{{ __('admin.club_activities_index_empty_subtitle') }}</p>
             <button class="btn btn-primary" @click="showAddModal = true">
-                <i class="bi bi-plus-lg mr-2"></i>Add Activity
+                <i class="bi bi-plus-lg me-2"></i>{{ __('admin.club_activities_index_add_activity') }}
             </button>
         </div>
     </div>
@@ -130,20 +130,20 @@
                 <div class="flex justify-between items-start">
                     <h5 data-name class="card-title font-semibold mb-0"></h5>
                     <div class="flex gap-1">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" data-act="duplicate" title="Duplicate Activity">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-act="duplicate" title="{{ __('admin.club_activities_index_duplicate_activity') }}">
                             <i class="bi bi-copy"></i>
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" data-act="equipment" title="Equipment">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-act="equipment" title="{{ __('admin.club_activities_index_equipment') }}">
                             <i class="bi bi-box-seam"></i>
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-primary" data-act="edit" title="Edit Activity">
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-act="edit" title="{{ __('admin.club_activities_index_edit_activity') }}">
                             <i class="bi bi-pencil"></i>
                         </button>
                         <form data-act="destroy" method="POST" class="inline"
-                              onsubmit="event.preventDefault(); const f = this; confirmAction({ title: 'Delete Activity', message: 'This activity will be permanently removed.', confirmText: 'Delete', type: 'danger' }).then(ok => { if (ok) f.submit(); });">
+                              onsubmit="event.preventDefault(); const f = this; confirmAction({ title: '{{ __('admin.club_activities_index_delete_activity') }}', message: '{{ __('admin.club_activities_index_delete_confirm') }}', confirmText: '{{ __('shared.delete') }}', type: 'danger' }).then(ok => { if (ok) f.submit(); });">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Activity">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="{{ __('admin.club_activities_index_delete_activity') }}">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </form>
@@ -158,7 +158,7 @@
                 </div>
                 <div class="flex flex-wrap gap-2 mt-3">
                     <span data-facility-wrap class="badge bg-muted/30 text-foreground border border-border hidden">
-                        <i class="bi bi-geo-alt mr-1"></i><span data-facility></span>
+                        <i class="bi bi-geo-alt me-1"></i><span data-facility></span>
                     </span>
                 </div>
             </div>

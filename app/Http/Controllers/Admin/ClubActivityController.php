@@ -21,9 +21,10 @@ class ClubActivityController extends Controller
     public function activities(Tenant $club)
     {
         $this->authorizeClub($club);
-        $clubId     = $club->id;
+        $clubId = $club->id;
         $activities = ClubActivity::where('tenant_id', $clubId)->with('facility')->get();
         $facilities = ClubFacility::where('tenant_id', $clubId)->get();
+
         return view(\App\Support\ClubView::pick('activities'), compact('club', 'activities', 'facilities'));
     }
 
@@ -32,18 +33,18 @@ class ClubActivityController extends Controller
         $this->authorizeClub($club);
         $clubId = $club->id;
 
-        $data              = $request->only(['name', 'description', 'notes', 'duration_minutes']);
+        $data = $request->only(['name', 'description', 'notes', 'duration_minutes']);
         $data['tenant_id'] = $clubId;
 
         if ($request->filled('picture') && str_starts_with($request->input('picture'), 'data:image')) {
-            $data['picture_url'] = $this->storeBase64Image($request->input('picture'), 'clubs/' . $clubId . '/activities', 'activity_' . time());
+            $data['picture_url'] = $this->storeBase64Image($request->input('picture'), 'clubs/'.$clubId.'/activities', 'activity_'.time());
         } elseif ($request->hasFile('picture')) {
-            $data['picture_url'] = $request->file('picture')->store('clubs/' . $clubId . '/activities', 'public');
+            $data['picture_url'] = $request->file('picture')->store('clubs/'.$clubId.'/activities', 'public');
         } elseif ($request->filled('existing_picture_url')) {
-            $storagePath = str_replace(asset('storage') . '/', '', $request->existing_picture_url);
+            $storagePath = str_replace(asset('storage').'/', '', $request->existing_picture_url);
             if (Storage::disk('public')->exists($storagePath)) {
-                $extension           = pathinfo($storagePath, PATHINFO_EXTENSION);
-                $newPath             = 'clubs/' . $clubId . '/activities/activity_' . time() . '.' . $extension;
+                $extension = pathinfo($storagePath, PATHINFO_EXTENSION);
+                $newPath = 'clubs/'.$clubId.'/activities/activity_'.time().'.'.$extension;
                 Storage::disk('public')->copy($storagePath, $newPath);
                 $data['picture_url'] = $newPath;
             }
@@ -55,8 +56,8 @@ class ClubActivityController extends Controller
 
         if ($request->wantsJson()) {
             return response()->json([
-                'success'  => true,
-                'message'  => 'Activity added successfully.',
+                'success' => true,
+                'message' => 'Activity added successfully.',
                 'activity' => $this->activityPayload($activity),
             ]);
         }
@@ -67,7 +68,7 @@ class ClubActivityController extends Controller
     public function updateActivity(UpdateActivityRequest $request, Tenant $club, $activityId)
     {
         $this->authorizeClub($club);
-        $clubId   = $club->id;
+        $clubId = $club->id;
         $activity = ClubActivity::where('tenant_id', $clubId)->findOrFail($activityId);
 
         $data = $request->only(['name', 'description', 'notes', 'duration_minutes']);
@@ -76,12 +77,12 @@ class ClubActivityController extends Controller
             if ($activity->picture_url && Storage::disk('public')->exists($activity->picture_url)) {
                 Storage::disk('public')->delete($activity->picture_url);
             }
-            $data['picture_url'] = $this->storeBase64Image($request->input('picture'), 'clubs/' . $clubId . '/activities', 'activity_' . $activityId . '_' . time());
+            $data['picture_url'] = $this->storeBase64Image($request->input('picture'), 'clubs/'.$clubId.'/activities', 'activity_'.$activityId.'_'.time());
         } elseif ($request->hasFile('picture')) {
             if ($activity->picture_url && Storage::disk('public')->exists($activity->picture_url)) {
                 Storage::disk('public')->delete($activity->picture_url);
             }
-            $data['picture_url'] = $request->file('picture')->store('clubs/' . $clubId . '/activities', 'public');
+            $data['picture_url'] = $request->file('picture')->store('clubs/'.$clubId.'/activities', 'public');
         }
 
         $activity->update($data);
@@ -90,8 +91,8 @@ class ClubActivityController extends Controller
 
         if ($request->wantsJson()) {
             return response()->json([
-                'success'  => true,
-                'message'  => 'Activity updated successfully.',
+                'success' => true,
+                'message' => 'Activity updated successfully.',
                 'activity' => $this->activityPayload($activity),
             ]);
         }
@@ -107,20 +108,20 @@ class ClubActivityController extends Controller
         $activity->loadMissing('facility');
 
         return [
-            'id'              => $activity->id,
-            'name'            => $activity->name,
-            'description'     => $activity->description,
-            'translations'    => $activity->translations,
-            'notes'           => $activity->notes,
+            'id' => $activity->id,
+            'name' => $activity->name,
+            'description' => $activity->description,
+            'translations' => $activity->translations,
+            'notes' => $activity->notes,
             'duration_minutes' => $activity->duration_minutes,
-            'picture_url'     => $activity->picture_url,
-            'picture_src'     => $activity->picture_url ? asset('storage/' . $activity->picture_url) : null,
-            'facility'        => $activity->facility ? ['id' => $activity->facility->id, 'name' => $activity->facility->name] : null,
-            'updated_at'      => optional($activity->updated_at)->timestamp,
+            'picture_url' => $activity->picture_url,
+            'picture_src' => $activity->picture_url ? asset('storage/'.$activity->picture_url) : null,
+            'facility' => $activity->facility ? ['id' => $activity->facility->id, 'name' => $activity->facility->name] : null,
+            'updated_at' => optional($activity->updated_at)->timestamp,
         ];
     }
 
-    public function destroyActivity(Tenant $club, $activityId)
+    public function destroyActivity(\Illuminate\Http\Request $request, Tenant $club, $activityId)
     {
         $this->authorizeClub($club);
         $activity = ClubActivity::where('tenant_id', $club->id)->findOrFail($activityId);
@@ -130,6 +131,10 @@ class ClubActivityController extends Controller
         }
 
         $activity->delete();
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Activity deleted successfully.']);
+        }
 
         return back()->with('success', 'Activity deleted successfully.');
     }
@@ -155,16 +160,16 @@ class ClubActivityController extends Controller
             ->orderBy('name')
             ->get()
             ->map(fn ($p) => [
-                'id'    => $p->id,
-                'name'  => $p->name,
+                'id' => $p->id,
+                'name' => $p->name,
                 'price' => (float) $p->price,
-                'image' => $p->image_path ? asset('storage/' . $p->image_path) : null,
+                'image' => $p->image_path ? asset('storage/'.$p->image_path) : null,
             ]);
 
         return response()->json([
-            'success'   => true,
+            'success' => true,
             'equipment' => $items,
-            'products'  => $products,
+            'products' => $products,
         ]);
     }
 
@@ -177,22 +182,22 @@ class ClubActivityController extends Controller
 
         // One activity links a given product once.
         $equipment = ClubActivityEquipment::firstOrNew([
-            'activity_id'     => $activity->id,
+            'activity_id' => $activity->id,
             'club_product_id' => $data['club_product_id'],
         ]);
         $equipment->fill([
-            'tenant_id'   => $club->id,
+            'tenant_id' => $club->id,
             'is_required' => $data['is_required'],
-            'is_active'   => $data['is_active'],
+            'is_active' => $data['is_active'],
         ]);
-        if (!$equipment->exists) {
+        if (! $equipment->exists) {
             $equipment->sort_order = ClubActivityEquipment::where('activity_id', $activity->id)->max('sort_order') + 1;
         }
         $equipment->save();
 
         return response()->json([
-            'success'   => true,
-            'message'   => 'Equipment added.',
+            'success' => true,
+            'message' => 'Equipment added.',
             'equipment' => $this->equipmentPayload($equipment->load('product')),
         ]);
     }
@@ -208,12 +213,12 @@ class ClubActivityController extends Controller
         // (name/price/image) is managed in the shop.
         $equipment->update([
             'is_required' => $request->boolean('is_required'),
-            'is_active'   => $request->boolean('is_active', true),
+            'is_active' => $request->boolean('is_active', true),
         ]);
 
         return response()->json([
-            'success'   => true,
-            'message'   => 'Equipment updated.',
+            'success' => true,
+            'message' => 'Equipment updated.',
             'equipment' => $this->equipmentPayload($equipment->load('product')),
         ]);
     }
@@ -238,26 +243,26 @@ class ClubActivityController extends Controller
                 \Illuminate\Validation\Rule::exists('club_products', 'id')->where('tenant_id', $club->id),
             ],
             'is_required' => ['nullable', 'boolean'],
-            'is_active'   => ['nullable', 'boolean'],
+            'is_active' => ['nullable', 'boolean'],
         ]);
 
         return [
             'club_product_id' => (int) $request->input('club_product_id'),
-            'is_required'     => $request->boolean('is_required'),
-            'is_active'       => $request->boolean('is_active', true),
+            'is_required' => $request->boolean('is_required'),
+            'is_active' => $request->boolean('is_active', true),
         ];
     }
 
     private function equipmentPayload(ClubActivityEquipment $e): array
     {
         return [
-            'id'          => $e->id,
-            'product_id'  => $e->club_product_id,
-            'name'        => $e->product?->name,
-            'price'       => (float) ($e->product?->price ?? 0),
-            'image'       => $e->product?->image_path ? asset('storage/' . $e->product->image_path) : null,
+            'id' => $e->id,
+            'product_id' => $e->club_product_id,
+            'name' => $e->product?->name,
+            'price' => (float) ($e->product?->price ?? 0),
+            'image' => $e->product?->image_path ? asset('storage/'.$e->product->image_path) : null,
             'is_required' => (bool) $e->is_required,
-            'is_active'   => (bool) $e->is_active,
+            'is_active' => (bool) $e->is_active,
         ];
     }
 }

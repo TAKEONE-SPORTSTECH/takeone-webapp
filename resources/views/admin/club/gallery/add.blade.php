@@ -18,7 +18,7 @@
              @click.stop>
             <!-- Header -->
             <div class="modal-header border-b border-border px-6 py-4">
-                <h5 class="modal-title text-lg font-semibold">Add to Gallery</h5>
+                <h5 class="modal-title text-lg font-semibold">{{ __('admin.club_gallery_add_title') }}</h5>
                 <button type="button" class="text-muted-foreground hover:text-foreground transition-colors" @click="showUploadModal = false">
                     <i class="bi bi-x-lg"></i>
                 </button>
@@ -34,21 +34,21 @@
                                 :class="currentTab === 'file' ? 'bg-white shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'"
                                 @click="currentTab = 'file'">
                             <i class="bi bi-image"></i>
-                            Upload File
+                            {{ __('admin.club_gallery_add_tab_upload_file') }}
                         </button>
                         <button type="button"
                                 class="flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-all"
                                 :class="currentTab === 'url' ? 'bg-white shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'"
                                 @click="currentTab = 'url'">
                             <i class="bi bi-link-45deg"></i>
-                            Image URL
+                            {{ __('admin.club_gallery_add_tab_image_url') }}
                         </button>
                         <button type="button"
                                 class="flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-all"
                                 :class="currentTab === 'video' ? 'bg-white shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'"
                                 @click="currentTab = 'video'">
                             <i class="bi bi-youtube"></i>
-                            Video URL
+                            {{ __('admin.club_gallery_add_tab_video_url') }}
                         </button>
                     </div>
                 </div>
@@ -61,7 +61,7 @@
 
                         <div class="space-y-4">
                             <div class="space-y-2">
-                                <label class="block text-sm font-medium text-foreground">Select & Crop Image</label>
+                                <label class="block text-sm font-medium text-foreground">{{ __('admin.club_gallery_add_select_crop_image') }}</label>
                                 <x-takeone-cropper
                                     id="galleryImageCropper"
                                     :width="800"
@@ -73,22 +73,22 @@
                                     :filename="'gallery_' . time()"
                                     :previewWidth="300"
                                     :previewHeight="169"
-                                    buttonText="Select & Crop Image"
+                                    buttonText="{{ __('admin.club_gallery_add_select_crop_image') }}"
                                     buttonClass="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
                                     :canvasHeight="520"
                                 />
                                 <p class="text-xs text-muted-foreground">
-                                    Supported formats: JPEG, PNG, GIF, WebP. Recommended ratio: 16:9
+                                    {{ __('admin.club_gallery_add_supported_formats') }}
                                 </p>
                             </div>
 
                             <!-- Caption -->
                             <div class="space-y-2">
-                                <label for="fileCaption" class="block text-sm font-medium text-foreground">Caption (optional)</label>
+                                <label for="fileCaption" class="block text-sm font-medium text-foreground">{{ __('admin.club_gallery_add_caption_optional') }}</label>
                                 <input type="text"
                                        id="fileCaption"
                                        name="caption"
-                                       placeholder="Enter caption..."
+                                       placeholder="{{ __('admin.club_gallery_add_caption_placeholder') }}"
                                        class="form-control">
                             </div>
                         </div>
@@ -101,7 +101,7 @@
                         @csrf
                         <div class="space-y-4">
                             <div class="space-y-2">
-                                <label for="youtubeUrl" class="block text-sm font-medium text-foreground">YouTube Video URL</label>
+                                <label for="youtubeUrl" class="block text-sm font-medium text-foreground">{{ __('admin.club_gallery_add_youtube_url_label') }}</label>
                                 <input type="url"
                                        id="youtubeUrl"
                                        name="youtube_url"
@@ -109,18 +109,18 @@
                                        value="{{ $club->youtube_url ?? '' }}"
                                        class="form-control">
                                 <p class="text-xs text-muted-foreground">
-                                    This video will autoplay muted in the banner when visitors hover over it.
+                                    {{ __('admin.club_gallery_add_youtube_hint') }}
                                 </p>
                             </div>
                             <div id="videoPreviewSection" class="hidden space-y-2">
-                                <label class="block text-sm font-medium text-foreground">Preview</label>
-                                <img id="videoThumbImg" src="" alt="Video thumbnail" class="w-full h-36 object-cover rounded-lg border border-border">
+                                <label class="block text-sm font-medium text-foreground">{{ __('admin.club_gallery_add_preview') }}</label>
+                                <img id="videoThumbImg" src="" alt="{{ __('admin.club_gallery_add_video_thumbnail_alt') }}" class="w-full h-36 object-cover rounded-lg border border-border">
                             </div>
                             @if($club->youtube_url)
                             <div class="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                                 <i class="bi bi-check-circle-fill text-green-600"></i>
                                 <span class="text-sm text-green-700 flex-1 truncate">{{ $club->youtube_url }}</span>
-                                <button type="button" id="removeVideoBtn" class="text-xs text-red-500 hover:text-red-700 font-medium shrink-0">Remove</button>
+                                <button type="button" id="removeVideoBtn" class="text-xs text-red-500 hover:text-red-700 font-medium shrink-0">{{ __('admin.club_gallery_add_remove') }}</button>
                             </div>
                             @endif
                         </div>
@@ -135,7 +135,7 @@
 
                         <div class="space-y-4">
                             <div class="space-y-2">
-                                <label for="imageUrl" class="block text-sm font-medium text-foreground">Image URL</label>
+                                <label for="imageUrl" class="block text-sm font-medium text-foreground">{{ __('admin.club_gallery_add_tab_image_url') }}</label>
                                 <input type="url"
                                        id="imageUrl"
                                        name="image_url"
@@ -145,20 +145,20 @@
 
                             <!-- URL Preview Section -->
                             <div id="urlPreviewSection" class="space-y-2 hidden">
-                                <label class="block text-sm font-medium text-foreground">Preview</label>
+                                <label class="block text-sm font-medium text-foreground">{{ __('admin.club_gallery_add_preview') }}</label>
                                 <img id="urlPreviewImage"
                                      src=""
-                                     alt="Preview"
+                                     alt="{{ __('admin.club_gallery_add_preview') }}"
                                      class="w-full h-48 object-cover rounded-md border border-border">
                             </div>
 
                             <!-- Caption -->
                             <div class="space-y-2">
-                                <label for="urlCaption" class="block text-sm font-medium text-foreground">Caption (optional)</label>
+                                <label for="urlCaption" class="block text-sm font-medium text-foreground">{{ __('admin.club_gallery_add_caption_optional') }}</label>
                                 <input type="text"
                                        id="urlCaption"
                                        name="caption"
-                                       placeholder="Enter caption..."
+                                       placeholder="{{ __('admin.club_gallery_add_caption_placeholder') }}"
                                        class="form-control">
                             </div>
                         </div>
@@ -171,14 +171,14 @@
                 <button type="button"
                         class="btn btn-outline-secondary"
                         @click="showUploadModal = false">
-                    Cancel
+                    {{ __('shared.cancel') }}
                 </button>
                 <button type="button"
                         id="submitUploadBtn"
                         class="btn btn-primary flex items-center gap-2"
                         disabled>
                     <i class="bi bi-upload" id="uploadIcon"></i>
-                    <span id="uploadBtnText">Upload</span>
+                    <span id="uploadBtnText">{{ __('admin.club_gallery_add_upload') }}</span>
                 </button>
             </div>
         </div>
@@ -269,13 +269,13 @@ document.addEventListener('DOMContentLoaded', function() {
         let isValid = false;
         if (currentTab === 'file') {
             isValid = (document.getElementById('hiddenInput_galleryImageCropper')?.value || '').length > 0;
-            uploadBtnText.textContent = 'Upload';
+            uploadBtnText.textContent = '{{ __("admin.club_gallery_add_upload") }}';
         } else if (currentTab === 'url') {
             isValid = urlInput?.value.trim() !== '';
-            uploadBtnText.textContent = 'Add Picture';
+            uploadBtnText.textContent = '{{ __("admin.club_gallery_add_add_picture") }}';
         } else {
             isValid = true;
-            uploadBtnText.textContent = 'Save Video';
+            uploadBtnText.textContent = '{{ __("admin.club_gallery_add_save_video") }}';
         }
         submitBtn.disabled = !isValid;
     }
@@ -293,9 +293,9 @@ document.addEventListener('DOMContentLoaded', function() {
         this.disabled = true;
         uploadIcon.classList.add('bi-arrow-repeat', 'animate-spin');
         uploadIcon.classList.remove('bi-upload');
-        if (currentTab === 'file') uploadBtnText.textContent = 'Uploading...';
-        else if (currentTab === 'url') uploadBtnText.textContent = 'Adding...';
-        else uploadBtnText.textContent = 'Saving...';
+        if (currentTab === 'file') uploadBtnText.textContent = '{{ __("admin.club_gallery_add_uploading") }}';
+        else if (currentTab === 'url') uploadBtnText.textContent = '{{ __("admin.club_gallery_add_adding") }}';
+        else uploadBtnText.textContent = '{{ __("admin.club_gallery_add_saving") }}';
 
         form.submit();
     });

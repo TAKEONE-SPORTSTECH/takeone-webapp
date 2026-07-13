@@ -116,45 +116,45 @@
                          else is tucked behind "More options" so the sheet stays clean. --}}
                     <button type="button" @click="share()"
                             class="m-press w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors mt-4">
-                        <i class="bi bi-share-fill"></i> Share
+                        <i class="bi bi-share-fill"></i> {{ __('shared.components_qr_code_share') }}
                     </button>
 
                     <button type="button" @click="more = !more"
                             class="m-press w-full inline-flex items-center justify-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors mt-2.5">
-                        <span x-text="more ? 'Hide options' : 'More options'"></span>
+                        <span x-text="more ? '{{ __('shared.components_qr_code_hide_options') }}' : '{{ __('shared.components_qr_code_more_options') }}'"></span>
                         <i class="bi text-[10px]" :class="more ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
                     </button>
 
                     <div x-show="more" x-cloak x-collapse class="grid grid-cols-2 gap-2 mt-2">
                         <button type="button" @click="downloadPng()" class="m-press inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-gray-200 text-foreground text-sm font-medium hover:bg-muted transition-colors">
-                            <i class="bi bi-download"></i> PNG
+                            <i class="bi bi-download"></i> {{ __('shared.components_qr_code_png') }}
                         </button>
                         <button type="button" @click="downloadSvg()" class="m-press inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-gray-200 text-foreground text-sm font-medium hover:bg-muted transition-colors">
-                            <i class="bi bi-filetype-svg"></i> SVG
+                            <i class="bi bi-filetype-svg"></i> {{ __('shared.components_qr_code_svg') }}
                         </button>
                         <button type="button" @click="copyLink()" class="m-press inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-gray-200 text-foreground text-sm font-medium hover:bg-muted transition-colors" :class="cur.poster ? '' : 'col-span-2'">
-                            <i class="bi bi-link-45deg"></i> Copy link
+                            <i class="bi bi-link-45deg"></i> {{ __('shared.components_qr_code_copy_link') }}
                         </button>
                         <a x-show="cur.poster" :href="cur.poster" target="_blank" rel="noopener" class="m-press inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-gray-200 text-foreground text-sm font-medium hover:bg-muted transition-colors">
-                            <i class="bi bi-printer"></i> Poster
+                            <i class="bi bi-printer"></i> {{ __('shared.components_qr_code_poster') }}
                         </a>
                         <button type="button" @click="toggleChat()" class="m-press col-span-2 inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-accent text-primary text-sm font-semibold hover:bg-accent/80 transition-colors">
-                            <i class="bi bi-chat-dots-fill"></i> Send in chat
+                            <i class="bi bi-chat-dots-fill"></i> {{ __('shared.components_qr_code_send_in_chat') }}
                         </button>
                     </div>
 
                     {{-- Internal chat picker --}}
                     <div x-show="chat.open" x-cloak class="mt-4 pt-4 border-t border-gray-100">
                         <div class="relative">
-                            <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                            <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                             <input type="text" x-model="chat.q" @input.debounce.300ms="searchChat()" x-ref="chatSearch"
-                                   placeholder="Search a person to send to…"
-                                   class="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                   placeholder="{{ __('shared.components_qr_code_search_placeholder') }}"
+                                   class="w-full ps-9 pe-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                         </div>
                         <div class="mt-2 max-h-52 overflow-y-auto space-y-1">
                             <template x-for="u in chat.results" :key="u.id">
                                 <button type="button" @click="sendToChat(u)" :disabled="chat.sending"
-                                        class="m-press w-full text-left rounded-xl p-2 flex items-center gap-2.5 hover:bg-muted transition-colors disabled:opacity-50">
+                                        class="m-press w-full text-start rounded-xl p-2 flex items-center gap-2.5 hover:bg-muted transition-colors disabled:opacity-50">
                                     <span class="w-9 h-9 rounded-full overflow-hidden bg-muted grid place-items-center flex-shrink-0">
                                         <template x-if="u.avatar"><img :src="u.avatar" alt="" class="w-9 h-9 object-cover"></template>
                                         <template x-if="!u.avatar"><span class="text-[11px] font-bold text-muted-foreground" x-text="u.initial"></span></template>
@@ -163,9 +163,9 @@
                                     <i class="bi" :class="chat.sending ? 'bi-arrow-repeat animate-spin' : 'bi-send'"></i>
                                 </button>
                             </template>
-                            <p x-show="chat.q.length>0 && !chat.searching && chat.results.length===0" x-cloak class="text-center text-xs text-muted-foreground py-6">No one found you can message.</p>
-                            <p x-show="chat.searching" x-cloak class="text-center text-xs text-muted-foreground py-4"><i class="bi bi-arrow-repeat animate-spin"></i> Searching…</p>
-                            <p x-show="!chat.q" x-cloak class="text-center text-xs text-muted-foreground py-4">Search club-mates or connections to share with.</p>
+                            <p x-show="chat.q.length>0 && !chat.searching && chat.results.length===0" x-cloak class="text-center text-xs text-muted-foreground py-6">{{ __('shared.components_qr_code_no_one_found') }}</p>
+                            <p x-show="chat.searching" x-cloak class="text-center text-xs text-muted-foreground py-4"><i class="bi bi-arrow-repeat animate-spin"></i> {{ __('shared.components_qr_code_searching') }}</p>
+                            <p x-show="!chat.q" x-cloak class="text-center text-xs text-muted-foreground py-4">{{ __('shared.components_qr_code_search_hint') }}</p>
                         </div>
                     </div>
                 </div>
@@ -237,15 +237,15 @@
                     var h = { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this._csrf(), 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' };
                     var s = await fetch(this.messagesBase + '/start/' + u.id, { method: 'POST', headers: h, credentials: 'same-origin', body: '{}' });
                     var sd = await s.json().catch(() => ({}));
-                    if (!s.ok || !sd.success || !sd.conversation_id) { window.showToast && window.showToast('error', sd.message || 'Could not start the chat.'); return; }
+                    if (!s.ok || !sd.success || !sd.conversation_id) { window.showToast && window.showToast('error', sd.message || '{{ __('shared.components_qr_code_could_not_start_chat') }}'); return; }
                     var r = await fetch(this.messagesBase + '/' + sd.conversation_id + '/send', {
                         method: 'POST', headers: h, credentials: 'same-origin', body: JSON.stringify({ body: this.shareText() }),
                     });
                     var rd = await r.json().catch(() => ({}));
-                    if (!r.ok || !rd.success) { window.showToast && window.showToast('error', rd.message || 'Could not send.'); return; }
-                    window.showToast && window.showToast('success', 'Sent to ' + (u.name || 'chat'));
+                    if (!r.ok || !rd.success) { window.showToast && window.showToast('error', rd.message || '{{ __('shared.components_qr_code_could_not_send') }}'); return; }
+                    window.showToast && window.showToast('success', '{{ __('shared.components_qr_code_sent_to') }} ' + (u.name || '{{ __('shared.components_qr_code_chat') }}'));
                     this.chat.open = false; this.chat.q = ''; this.chat.results = [];
-                } catch (e) { window.showToast && window.showToast('error', 'Network error — please try again.'); }
+                } catch (e) { window.showToast && window.showToast('error', '{{ __('shared.components_qr_code_network_error') }}'); }
                 finally { this.chat.sending = false; }
             },
 
@@ -288,11 +288,11 @@
                 var self = this;
                 this._pngBlob()
                     .then(function (b) { self._save(URL.createObjectURL(b), self.cur.filename + '.png'); })
-                    .catch(function () { window.showToast && window.showToast('error', 'Could not export PNG.'); });
+                    .catch(function () { window.showToast && window.showToast('error', '{{ __('shared.components_qr_code_could_not_export_png') }}'); });
             },
             async copyLink() {
-                try { await navigator.clipboard.writeText(this.cur.link); window.showToast && window.showToast('success', 'Link copied'); }
-                catch (e) { window.showToast && window.showToast('error', 'Could not copy link'); }
+                try { await navigator.clipboard.writeText(this.cur.link); window.showToast && window.showToast('success', '{{ __('shared.components_qr_code_link_copied') }}'); }
+                catch (e) { window.showToast && window.showToast('error', '{{ __('shared.components_qr_code_could_not_copy_link') }}'); }
             },
             _save(href, name) {
                 var a = document.createElement('a');

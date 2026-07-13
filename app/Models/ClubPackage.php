@@ -14,7 +14,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class ClubPackage extends Model
 {
-    use HasFactory, BelongsToTenant, LogsActivity, HasTranslations;
+    use BelongsToTenant, HasFactory, HasTranslations, LogsActivity;
 
     /** Fields a club admin can provide an Arabic (or other-locale) version of. */
     protected array $translatable = ['name', 'description'];
@@ -85,8 +85,8 @@ class ClubPackage extends Model
     public function activities(): BelongsToMany
     {
         return $this->belongsToMany(ClubActivity::class, 'club_package_activities', 'package_id', 'activity_id')
-                    ->withPivot('instructor_id', 'schedule')
-                    ->withTimestamps();
+            ->withPivot('instructor_id', 'schedule')
+            ->withTimestamps();
     }
 
     /**
@@ -103,7 +103,7 @@ class ClubPackage extends Model
     public function activeSubscriptions(): HasMany
     {
         return $this->hasMany(ClubMemberSubscription::class, 'package_id')
-                    ->where('status', 'active');
+            ->where('status', 'active');
     }
 
     /**

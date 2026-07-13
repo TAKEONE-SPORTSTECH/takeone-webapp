@@ -58,21 +58,13 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-[11px] font-medium text-muted-foreground mb-1">{{ __('platform.channel') }}</label>
-                    <select name="log_name" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white">
-                        <option value="">{{ __('platform.filter_all') }}</option>
-                        @foreach($logNames as $name)
-                            <option value="{{ $name }}" @selected($logName === $name)>{{ ucfirst($name) }}</option>
-                        @endforeach
-                    </select>
+                    <x-select-menu name="log_name" :value="$logName ?? ''" :placeholder="__('platform.filter_all')"
+                                   :options="collect($logNames)->map(fn($n) => ['value' => $n, 'label' => ucfirst($n)])->all()" />
                 </div>
                 <div>
                     <label class="block text-[11px] font-medium text-muted-foreground mb-1">{{ __('platform.event') }}</label>
-                    <select name="event" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white">
-                        <option value="">{{ __('platform.filter_all') }}</option>
-                        @foreach(['created','updated','deleted'] as $ev)
-                            <option value="{{ $ev }}" @selected($event === $ev)>{{ ucfirst($ev) }}</option>
-                        @endforeach
-                    </select>
+                    <x-select-menu name="event" :value="$event ?? ''" :placeholder="__('platform.filter_all')"
+                                   :options="[['value' => 'created', 'label' => 'Created'], ['value' => 'updated', 'label' => 'Updated'], ['value' => 'deleted', 'label' => 'Deleted']]" />
                 </div>
                 <div>
                     <label class="block text-[11px] font-medium text-muted-foreground mb-1">{{ __('platform.from') }}</label>

@@ -2,12 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
-use App\Models\ClubAffiliation;
-use App\Models\ClubMemberSubscription;
-use App\Models\Invoice;
 use App\Models\Attendance;
-use Illuminate\Http\Request;
+use App\Models\Invoice;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 class AffiliationController extends Controller
@@ -57,13 +54,13 @@ class AffiliationController extends Controller
         $totalMembershipDuration = $affiliations->sum('duration_in_months');
 
         // Count total subscriptions and paid/pending invoices
-        $totalSubscriptions = $affiliations->sum(function($affiliation) {
+        $totalSubscriptions = $affiliations->sum(function ($affiliation) {
             return $affiliation->subscriptions->count();
         });
-        
+
         $totalPayments = $invoices->where('status', 'paid')->sum('amount');
         $pendingPayments = $invoices->where('status', 'pending')->sum('amount');
-        
+
         // Total attendance
         $totalSessions = $attendanceRecords->count();
         $completedSessions = $attendanceRecords->where('status', 'completed')->count();
@@ -123,7 +120,7 @@ class AffiliationController extends Controller
             ->get();
 
         // Get transactions from subscriptions
-        $transactions = $affiliation->subscriptions->flatMap(function($sub) {
+        $transactions = $affiliation->subscriptions->flatMap(function ($sub) {
             return $sub->transactions ?? [];
         });
 
@@ -136,4 +133,3 @@ class AffiliationController extends Controller
         ]);
     }
 }
-

@@ -56,14 +56,14 @@
 
         <div class="qr">{!! $svg !!}</div>
 
-        <p class="cta">{{ $cta ?? 'Scan to open' }}</p>
+        <p class="cta">{{ $cta ?? __('shared.qr_poster_scan_to_open') }}</p>
         @if(!empty($hint))<p class="hint">{{ $hint }}</p>@endif
         <p class="url">{{ $url }}</p>
 
         <div class="actions">
-            <button class="btn" onclick="window.print()"><i class="bi bi-printer"></i> Print this poster</button>
+            <button class="btn" onclick="window.print()"><i class="bi bi-printer"></i> {{ __('shared.qr_poster_print') }}</button>
         </div>
-        <p class="foot">Point your phone camera at the code.</p>
+        <p class="foot">{{ __('shared.qr_poster_camera_hint') }}</p>
     </div>
 </body>
 </html>

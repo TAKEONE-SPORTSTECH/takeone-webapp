@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Storage;
 
 class ClubGalleryController extends Controller
 {
+    use \App\Traits\StoresBase64Images;
     use HandlesClubAuthorization;
 
     public function gallery(Tenant $club)
@@ -20,6 +21,7 @@ class ClubGalleryController extends Controller
         $this->authorizeClub($club);
         $clubId = $club->id;
         $images = ClubGalleryImage::where('tenant_id', $clubId)->orderBy('display_order')->orderBy('id')->get();
+
         return view(\App\Support\ClubView::pick('gallery'), compact('club', 'images'));
     }
 
@@ -32,35 +34,34 @@ class ClubGalleryController extends Controller
 
         // Handle base64 image from cropper (form mode)
         if ($request->filled('image_data') && str_starts_with($request->image_data, 'data:image')) {
-            $imageData    = $request->image_data;
-            $imageParts   = explode(';base64,', $imageData);
-            $imageTypeAux = explode('image/', $imageParts[0]);
-            $extension    = $imageTypeAux[1];
-            $imageBinary  = base64_decode($imageParts[1]);
-
-            $folder   = 'clubs/' . $clubId . '/gallery';
-            $filename = 'gallery_' . time() . '_' . uniqid() . '.' . $extension;
-            $fullPath = $folder . '/' . $filename;
-
-            Storage::disk('public')->put($fullPath, $imageBinary);
+            // Validate + store the base64 image with a server-assigned extension
+            // (real MIME sniffed from the bytes; PHP/HTML/SVG rejected).
+            $fullPath = $this->storeBase64Image(
+                $request->image_data,
+                'clubs/'.$clubId.'/gallery',
+                'gallery_'.time().'_'.uniqid()
+            );
+            if ($fullPath === null) {
+                return back()->withErrors(['image_data' => 'Invalid or unsupported image.']);
+            }
 
             ClubGalleryImage::create([
-                'tenant_id'     => $clubId,
-                'image_path'    => $fullPath,
-                'caption'       => $request->caption,
-                'uploaded_by'   => auth()->id(),
+                'tenant_id' => $clubId,
+                'image_path' => $fullPath,
+                'caption' => $request->caption,
+                'uploaded_by' => auth()->id(),
                 'display_order' => $nextOrder,
             ]);
         }
         // Handle traditional file upload (fallback)
         elseif ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
-                $path = $image->store('clubs/' . $clubId . '/gallery', 'public');
+                $path = $image->store('clubs/'.$clubId.'/gallery', 'public');
                 ClubGalleryImage::create([
-                    'tenant_id'     => $clubId,
-                    'image_path'    => $path,
-                    'caption'       => $request->caption,
-                    'uploaded_by'   => auth()->id(),
+                    'tenant_id' => $clubId,
+                    'image_path' => $path,
+                    'caption' => $request->caption,
+                    'uploaded_by' => auth()->id(),
                     'display_order' => $nextOrder++,
                 ]);
             }
@@ -95,7 +96,7 @@ class ClubGalleryController extends Controller
     {
         $this->authorizeClub($club);
         $clubId = $club->id;
-        $image  = ClubGalleryImage::where('tenant_id', $clubId)->findOrFail($imageId);
+        $image = ClubGalleryImage::where('tenant_id', $clubId)->findOrFail($imageId);
 
         if ($image->image_path && Storage::disk('public')->exists($image->image_path)) {
             Storage::disk('public')->delete($image->image_path);

@@ -14,7 +14,7 @@ class ReorderGalleryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'order'   => 'required|array',
+            'order' => 'required|array',
             'order.*' => 'integer',
         ];
     }

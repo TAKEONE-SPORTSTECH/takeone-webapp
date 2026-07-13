@@ -4,11 +4,11 @@
 <div x-data="messagesApp()" x-init="init()">
     <div class="flex flex-wrap gap-3 items-center justify-between mb-4">
         <div>
-            <h2 class="tf-section-title">Messages</h2>
-            <p class="text-sm text-gray-500 mt-1">Communicate with your members</p>
+            <h2 class="tf-section-title">{{ __('admin.club_messages_index_title') }}</h2>
+            <p class="text-sm text-gray-500 mt-1">{{ __('admin.club_messages_index_subtitle') }}</p>
         </div>
         <button class="btn btn-primary" @click="showNewMessageModal = true">
-            <i class="bi bi-plus-lg mr-2"></i>New Message
+            <i class="bi bi-plus-lg me-2"></i>{{ __('admin.club_messages_index_new_message') }}
         </button>
     </div>
 
@@ -17,7 +17,7 @@
         <div class="lg:col-span-1">
             <div class="card border-0 shadow-sm h-full">
                 <div class="card-header bg-white border-0">
-                    <input type="text" class="form-control" placeholder="Search conversations..."
+                    <input type="text" class="form-control" placeholder="{{ __('admin.club_messages_index_search_placeholder') }}"
                            x-model="search">
                 </div>
                 <div class="card-body p-0 max-h-[560px] overflow-y-auto" id="conversation-list">
@@ -25,7 +25,7 @@
                         @php $cu = $conversation->user; @endphp
                         <div class="flex items-center gap-3 p-3 border-b border-border conversation-item cursor-pointer hover:bg-muted/50 transition-colors {{ $conversation->unread ? 'bg-muted/30' : '' }}"
                              data-conv-id="{{ $conversation->user_id }}"
-                             data-name="{{ $cu->full_name ?? 'Unknown' }}"
+                             data-name="{{ $cu->full_name ?? __('admin.club_messages_index_unknown') }}"
                              data-name-search="{{ Str::lower($cu->full_name ?? 'unknown') }}"
                              data-avatar="{{ $cu && $cu->profile_picture ? asset('storage/'.$cu->profile_picture) : '' }}"
                              @click="openConversation({{ $conversation->user_id }})"
@@ -39,8 +39,8 @@
                             @endif
                             <div class="flex-1 min-w-0">
                                 <div class="flex justify-between items-center">
-                                    <p class="font-semibold mb-0 truncate">{{ $cu->full_name ?? 'Unknown' }}</p>
-                                    <small class="text-muted-foreground shrink-0 ml-2 conv-time">{{ $conversation->last_message_at?->diffForHumans(null, true) }}</small>
+                                    <p class="font-semibold mb-0 truncate">{{ $cu->full_name ?? __('admin.club_messages_index_unknown') }}</p>
+                                    <small class="text-muted-foreground shrink-0 me-2 conv-time">{{ $conversation->last_message_at?->diffForHumans(null, true) }}</small>
                                 </div>
                                 <p class="text-muted-foreground text-sm mb-0 truncate conv-preview">{{ Str::limit($conversation->last_message, 38) }}</p>
                             </div>
@@ -51,7 +51,7 @@
 
                     <div id="conversation-empty" class="text-center py-12 {{ count($conversations) ? 'hidden' : '' }}">
                         <i class="bi bi-chat-dots text-muted-foreground text-5xl"></i>
-                        <p class="text-muted-foreground mt-2 mb-0">No conversations yet</p>
+                        <p class="text-muted-foreground mt-2 mb-0">{{ __('admin.club_messages_index_no_conversations') }}</p>
                     </div>
                 </div>
             </div>
@@ -64,8 +64,8 @@
                 <div class="card-body flex flex-col min-h-[560px]" x-show="activeUserId === null">
                     <div class="text-center my-auto">
                         <i class="bi bi-chat-square-text text-muted-foreground text-6xl"></i>
-                        <h5 class="mt-3 mb-2">Select a conversation</h5>
-                        <p class="text-muted-foreground">Choose a conversation from the list to start messaging</p>
+                        <h5 class="mt-3 mb-2">{{ __('admin.club_messages_index_select_conversation') }}</h5>
+                        <p class="text-muted-foreground">{{ __('admin.club_messages_index_select_conversation_hint') }}</p>
                     </div>
                 </div>
 
@@ -83,7 +83,7 @@
                         </template>
                         <div class="min-w-0">
                             <p class="font-semibold mb-0 truncate" x-text="activeUser.name"></p>
-                            <p class="text-xs text-muted-foreground mb-0" x-text="connected ? 'Online · realtime' : 'Messages deliver instantly'"></p>
+                            <p class="text-xs text-muted-foreground mb-0" x-text="connected ? '{{ __('admin.club_messages_index_online_realtime') }}' : '{{ __('admin.club_messages_index_deliver_instantly') }}'"></p>
                         </div>
                     </div>
 
@@ -91,7 +91,7 @@
                     <div class="flex-1 overflow-y-auto px-4 py-4 space-y-2 bg-muted/20" id="thread-scroll">
                         <template x-if="loadingThread">
                             <div class="text-center text-muted-foreground text-sm py-8">
-                                <i class="bi bi-arrow-repeat"></i> Loading…
+                                <i class="bi bi-arrow-repeat"></i> {{ __('admin.club_messages_index_loading') }}
                             </div>
                         </template>
                         <template x-for="m in messages" :key="m.id">
@@ -107,7 +107,7 @@
 
                     <!-- Composer -->
                     <form class="flex items-end gap-2 px-3 py-3 border-t border-border" @submit.prevent="send()">
-                        <textarea x-model="draft" rows="1" placeholder="Type a message…"
+                        <textarea x-model="draft" rows="1" placeholder="{{ __('admin.club_messages_index_type_message_placeholder') }}"
                                   @keydown.enter.prevent="send()"
                                   class="form-control flex-1 resize-none" style="max-height:120px;"></textarea>
                         <button type="submit" class="btn btn-primary shrink-0" :disabled="sending || !draft.trim()">
@@ -132,28 +132,28 @@
         <div class="flex min-h-full items-center justify-center p-4">
             <div class="modal-content border-0 shadow-lg w-full max-w-md relative" @click.stop>
                 <div class="modal-header border-0 px-6 py-4">
-                    <h5 class="modal-title font-bold">New Message</h5>
+                    <h5 class="modal-title font-bold">{{ __('admin.club_messages_index_new_message') }}</h5>
                     <button type="button" class="btn-close" @click="showNewMessageModal = false"></button>
                 </div>
                 <div class="modal-body px-6 pb-6">
                     <form @submit.prevent="sendNew()">
                         <div class="mb-4">
-                            <label class="form-label">To</label>
+                            <label class="form-label">{{ __('admin.club_messages_index_to_label') }}</label>
                             <select x-model="newRecipient" class="form-select" required>
-                                <option value="">Select member...</option>
+                                <option value="">{{ __('admin.club_messages_index_select_member') }}</option>
                                 @foreach($members ?? [] as $member)
                                     @if($member->user)
-                                        <option value="{{ $member->user_id }}">{{ $member->user->full_name ?? 'Unknown' }}</option>
+                                        <option value="{{ $member->user_id }}">{{ $member->user->full_name ?? __('admin.club_messages_index_unknown') }}</option>
                                     @endif
                                 @endforeach
                             </select>
                         </div>
                         <div class="mb-4">
-                            <label class="form-label">Message</label>
+                            <label class="form-label">{{ __('admin.club_messages_index_message_label') }}</label>
                             <textarea x-model="newBody" class="form-control" rows="4" required></textarea>
                         </div>
                         <button type="submit" class="btn btn-primary w-full" :disabled="sending">
-                            <span x-text="sending ? 'Sending…' : 'Send Message'"></span>
+                            <span x-text="sending ? '{{ __('admin.club_messages_index_sending') }}' : '{{ __('admin.club_messages_index_send_message') }}'"></span>
                         </button>
                     </form>
                 </div>
@@ -202,7 +202,7 @@ function messagesApp() {
 
             const row = document.querySelector(`.conversation-item[data-conv-id="${userId}"]`);
             this.activeUser = {
-                name:    row?.dataset.name || 'Member',
+                name:    row?.dataset.name || '{{ __('admin.club_messages_index_member_fallback') }}',
                 avatar:  row?.dataset.avatar || null,
                 initial: (row?.dataset.name || 'M').charAt(0).toUpperCase(),
             };
@@ -217,7 +217,7 @@ function messagesApp() {
                     this.scrollDown();
                 }
             } catch (e) {
-                window.showToast('error', 'Could not load conversation.');
+                window.showToast('error', '{{ __('admin.club_messages_index_toast_load_failed') }}');
             } finally {
                 this.loadingThread = false;
             }
@@ -250,7 +250,7 @@ function messagesApp() {
                     this.showNewMessageModal = false;
                     this.newBody = '';
                     this.newRecipient = '';
-                    window.showToast('success', 'Message sent.');
+                    window.showToast('success', '{{ __('admin.club_messages_index_toast_sent') }}');
                     this.ensureConversationRow(recipient);
                     this.openConversation(recipient);
                 }
@@ -272,7 +272,7 @@ function messagesApp() {
                 });
                 return await res.json();
             } catch (e) {
-                window.showToast('error', 'Could not send message.');
+                window.showToast('error', '{{ __('admin.club_messages_index_toast_send_failed') }}');
                 return { success: false };
             }
         },
@@ -298,7 +298,7 @@ function messagesApp() {
             // Fall back to the member <select> label when no name is supplied.
             if (!name) {
                 const opt = [...document.querySelectorAll('select option')].find(o => o.value == userId);
-                name = opt ? opt.textContent.trim() : 'Member';
+                name = opt ? opt.textContent.trim() : '{{ __('admin.club_messages_index_member_fallback') }}';
             }
             document.getElementById('conversation-empty')?.classList.add('hidden');
             const list = document.getElementById('conversation-list');
@@ -317,7 +317,7 @@ function messagesApp() {
                     ? `<img src="${esc(avatar)}" class="rounded-full w-11 h-11 object-cover shrink-0" alt="">`
                     : `<div class="rounded-full bg-primary flex items-center justify-center w-11 h-11 shrink-0"><span class="text-white font-bold">${initial}</span></div>`) +
                 '<div class="flex-1 min-w-0"><div class="flex justify-between items-center">' +
-                `<p class="font-semibold mb-0 truncate">${esc(name)}</p><small class="text-muted-foreground shrink-0 ml-2 conv-time">now</small></div>` +
+                `<p class="font-semibold mb-0 truncate">${esc(name)}</p><small class="text-muted-foreground shrink-0 me-2 conv-time">{{ __('admin.club_messages_index_now') }}</small></div>` +
                 '<p class="text-muted-foreground text-sm mb-0 truncate conv-preview"></p></div>' +
                 '<span class="badge bg-primary rounded-full conv-unread hidden">0</span>';
             row.addEventListener('click', () => this.openConversation(userId));
@@ -328,9 +328,9 @@ function messagesApp() {
             const row = document.querySelector(`.conversation-item[data-conv-id="${userId}"]`);
             if (!row) return;
             const preview = row.querySelector('.conv-preview');
-            if (preview) preview.textContent = (incoming ? '' : 'You: ') + text;
+            if (preview) preview.textContent = (incoming ? '' : '{{ __('admin.club_messages_index_you_prefix') }}') + text;
             const time = row.querySelector('.conv-time');
-            if (time) time.textContent = 'now';
+            if (time) time.textContent = '{{ __('admin.club_messages_index_now') }}';
             document.getElementById('conversation-list')?.prepend(row);
         },
 

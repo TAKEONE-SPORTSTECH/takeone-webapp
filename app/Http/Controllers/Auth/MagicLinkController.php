@@ -27,7 +27,7 @@ class MagicLinkController extends Controller
             try {
                 Mail::to($user->email)->queue(new MagicLoginLink($user, $this->safeIntended($request->input('intended'))));
             } catch (\Throwable $e) {
-                \Log::error('Magic login link send failed: ' . $e->getMessage());
+                \Log::error('Magic login link send failed: '.$e->getMessage());
             }
         }
 

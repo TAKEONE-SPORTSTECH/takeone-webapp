@@ -69,7 +69,7 @@
     </div>
 
     {{-- ===== Content ===== --}}
-    <main id="shell-content" data-route="{{ $currentRoute }}" data-title="{{ __('business.dashboard') }}" class="mobile-stagger px-4 py-4 pb-24 min-h-[60vh]">
+    <main id="shell-content" data-shell-id="business" data-route="{{ $currentRoute }}" data-title="{{ __('business.dashboard') }}" class="mobile-stagger px-4 py-4 pb-24 min-h-[60vh]">
         @yield('chain-content')
     </main>
 

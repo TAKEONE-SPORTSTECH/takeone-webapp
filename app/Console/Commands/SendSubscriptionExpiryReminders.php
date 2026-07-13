@@ -27,21 +27,22 @@ class SendSubscriptionExpiryReminders extends Command
 
         if ($subscriptions->isEmpty()) {
             $this->info('No subscriptions expiring in 3 days.');
+
             return 0;
         }
 
         $count = 0;
 
         foreach ($subscriptions as $subscription) {
-            $user   = $subscription->user;
+            $user = $subscription->user;
             $tenant = $subscription->tenant;
-            $owner  = $tenant->owner;
+            $owner = $tenant->owner;
 
             if (! $user || ! $tenant || ! $owner) {
                 continue;
             }
 
-            $isPaid  = $subscription->payment_status === 'paid';
+            $isPaid = $subscription->payment_status === 'paid';
             $subject = $isPaid
                 ? 'Your package expires in 3 days — Renew now'
                 : 'Your package expires in 3 days — Renew & complete payment';
@@ -52,20 +53,20 @@ class SendSubscriptionExpiryReminders extends Command
 
             // Create bell notification
             $notification = ClubNotification::create([
-                'tenant_id'      => $tenant->id,
+                'tenant_id' => $tenant->id,
                 'sender_user_id' => $owner->id,
-                'subject'        => $subject,
-                'message'        => $message,
+                'subject' => $subject,
+                'message' => $message,
                 'recipient_type' => 'selected',
                 'recipient_count' => 1,
-                'sent_at'        => now(),
+                'sent_at' => now(),
             ]);
 
             UserNotification::create([
                 'club_notification_id' => $notification->id,
-                'user_id'              => $user->id,
-                'tenant_id'            => $tenant->id,
-                'is_read'              => false,
+                'user_id' => $user->id,
+                'tenant_id' => $tenant->id,
+                'is_read' => false,
             ]);
 
             // Queue email

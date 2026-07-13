@@ -5,7 +5,7 @@
     Reuses mobile motion vocabulary; links into the duel detail page.
 --}}
 @php
-    $typeLabel = $d['type'] === 'fight' ? 'Fight' : 'Athletic';
+    $typeLabel = $d['type'] === 'fight' ? __('challenge.partials_duel_card_type_fight') : __('challenge.partials_duel_card_type_athletic');
     $typeIcon  = $d['type'] === 'fight' ? 'bi-trophy' : 'bi-lightning-charge-fill';
 @endphp
 <div class="m-card rounded-2xl overflow-hidden" x-data="{
@@ -24,7 +24,7 @@
                     credentials: 'same-origin',
                 });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok || !data.success) throw new Error(data.message || 'Action failed');
+                if (!res.ok || !data.success) throw new Error(data.message || '{{ __("challenge.partials_duel_card_action_failed") }}');
                 this.resolved = kind === 'accept' ? 'accepted' : 'declined';
                 window.showToast(kind === 'accept' ? 'success' : 'info', data.message);
             } catch (e) {
@@ -48,11 +48,11 @@
                 {{-- me --}}
                 <div class="flex flex-col items-center w-1/3">
                     @if(!empty($d['me']['avatar']))
-                        <img src="{{ $d['me']['avatar'] }}" alt="You" class="w-14 h-14 rounded-full object-cover border-2 border-white shadow">
+                        <img src="{{ $d['me']['avatar'] }}" alt="{{ __('challenge.partials_duel_card_you') }}" class="w-14 h-14 rounded-full object-cover border-2 border-white shadow">
                     @else
                         <x-gender-avatar :gender="$d['me']['gender'] ?? null" bg="hsl(250 55% 60%)" class="w-14 h-14 rounded-full border-2 border-white shadow" />
                     @endif
-                    <p class="text-xs font-bold text-foreground mt-1.5">You</p>
+                    <p class="text-xs font-bold text-foreground mt-1.5">{{ __('challenge.partials_duel_card_you') }}</p>
                     @if(isset($d['me']['score']))
                         <p class="text-sm font-black" style="color: {{ $d['color'] }};">{{ $d['me']['score'] }}</p>
                     @else
@@ -64,7 +64,7 @@
                 <div class="flex flex-col items-center">
                     <div class="w-10 h-10 rounded-full grid place-items-center text-white font-black text-xs shadow-md m-float" style="background: linear-gradient(135deg, {{ $d['color'] }}, #1f2937);">VS</div>
                     @if($variant === 'active' && isset($d['leading']))
-                        <span class="mt-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-green-50 text-green-600">{{ $d['leading']==='me' ? 'Leading' : 'Behind' }}</span>
+                        <span class="mt-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-green-50 text-green-600">{{ $d['leading']==='me' ? __('challenge.partials_duel_card_leading') : __('challenge.partials_duel_card_behind') }}</span>
                     @endif
                 </div>
 
@@ -98,19 +98,19 @@
             <p class="text-xs text-muted-foreground italic text-center mb-3">“{{ $d['message'] }}”</p>
             <div class="flex items-center gap-2" x-show="resolved===''" x-transition>
                 <button type="button" @click="act('decline')" :disabled="busy"
-                        class="m-press flex-1 py-2.5 rounded-xl border border-gray-200 text-muted-foreground text-sm font-bold disabled:opacity-50">Decline</button>
+                        class="m-press flex-1 py-2.5 rounded-xl border border-gray-200 text-muted-foreground text-sm font-bold disabled:opacity-50">{{ __('challenge.partials_duel_card_decline') }}</button>
                 <button type="button" @click="act('accept')" :disabled="busy"
                         class="m-press flex-1 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-50" style="background: {{ $d['color'] }};">
-                    <i class="bi bi-check2-circle"></i> Accept
+                    <i class="bi bi-check2-circle"></i> {{ __('challenge.partials_duel_card_accept') }}
                 </button>
             </div>
-            <div x-show="resolved==='accepted'" x-cloak x-transition class="text-center py-2 text-sm font-bold text-green-600"><i class="bi bi-check2-circle"></i> Accepted</div>
-            <div x-show="resolved==='declined'" x-cloak x-transition class="text-center py-2 text-sm font-bold text-muted-foreground"><i class="bi bi-x-circle"></i> Declined</div>
+            <div x-show="resolved==='accepted'" x-cloak x-transition class="text-center py-2 text-sm font-bold text-green-600"><i class="bi bi-check2-circle"></i> {{ __('challenge.partials_duel_card_accepted') }}</div>
+            <div x-show="resolved==='declined'" x-cloak x-transition class="text-center py-2 text-sm font-bold text-muted-foreground"><i class="bi bi-x-circle"></i> {{ __('challenge.partials_duel_card_declined') }}</div>
         </div>
     @elseif($variant === 'active')
         <div class="px-4 pb-4">
             <div class="flex items-center justify-between text-[11px] mb-1.5">
-                <span class="font-semibold" style="color: {{ $d['color'] }};">You {{ $d['me']['pct'] ?? 0 }}%</span>
+                <span class="font-semibold" style="color: {{ $d['color'] }};">{{ __('challenge.partials_duel_card_you') }} {{ $d['me']['pct'] ?? 0 }}%</span>
                 <span class="text-muted-foreground">{{ $d['deadline'] }}</span>
                 <span class="font-semibold text-muted-foreground">{{ $d['opponent']['name'] }} {{ $d['opponent']['pct'] ?? 0 }}%</span>
             </div>
@@ -120,13 +120,13 @@
             </div>
             <a href="{{ route('me.challenge.duel', $d['id']) }}" data-shell-link data-route="me.challenge"
                class="m-press mt-3 w-full py-2 rounded-xl bg-accent text-primary text-xs font-bold flex items-center justify-center gap-1.5">
-                <i class="bi bi-clipboard-data"></i> Log my result
+                <i class="bi bi-clipboard-data"></i> {{ __('challenge.partials_duel_card_log_my_result') }}
             </a>
         </div>
     @elseif($variant === 'sent')
         <div class="px-4 pb-4 flex items-center justify-between">
             <span class="text-[11px] text-muted-foreground inline-flex items-center gap-1.5"><i class="bi bi-hourglass-split"></i>{{ $d['deadline'] }}</span>
-            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-600">Waiting for reply</span>
+            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-600">{{ __('challenge.partials_duel_card_waiting_for_reply') }}</span>
         </div>
     @endif
 </div>

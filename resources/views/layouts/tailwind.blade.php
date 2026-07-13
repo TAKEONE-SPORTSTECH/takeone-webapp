@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ config('locales.' . app()->getLocale() . '.dir', 'ltr') }}">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>{{ config('app.name', 'TakeOne') }}</title>
@@ -42,38 +42,38 @@
                         <x-impersonation-banner />
 
                         <!-- Explore Button -->
-                        <a href="{{ route('clubs.explore') }}" class="p-2 rounded-full hover:bg-gray-200 transition-all hover:scale-110" title="Explore">
+                        <a href="{{ route('clubs.explore') }}" class="p-2 rounded-full hover:bg-gray-200 transition-all hover:scale-110" title="{{ __('nav.layouts_tailwind_explore') }}">
                             <i class="bi bi-compass text-xl"></i>
                         </a>
 
                         <!-- Messages Dropdown -->
                         <div class="relative" x-data="{ open: false }">
-                            <button @click="open = !open" class="p-2 rounded-full hover:bg-gray-200 transition-all hover:scale-110" title="Messages">
+                            <button @click="open = !open" class="p-2 rounded-full hover:bg-gray-200 transition-all hover:scale-110" title="{{ __('nav.layouts_tailwind_messages') }}">
                                 <i class="bi bi-chat text-xl"></i>
                             </button>
                             <div x-show="open" @click.away="open = false" x-transition
-                                 class="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                                <h6 class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">Messages</h6>
+                                 class="absolute end-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                                <h6 class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">{{ __('nav.layouts_tailwind_messages') }}</h6>
                                 <hr class="border-gray-200">
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-600 hover:bg-primary hover:text-white transition-colors">No new messages</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-600 hover:bg-primary hover:text-white transition-colors">{{ __('nav.layouts_tailwind_no_new_messages') }}</a>
                             </div>
                         </div>
 
                         <!-- Notifications Dropdown -->
                         <div class="relative" x-data="{ open: false }">
-                            <button @click="open = !open" class="relative p-2 rounded-full hover:bg-gray-200 transition-all hover:scale-110" title="Notifications">
+                            <button @click="open = !open" class="relative p-2 rounded-full hover:bg-gray-200 transition-all hover:scale-110" title="{{ __('nav.layouts_tailwind_notifications') }}">
                                 <i class="bi bi-bell text-xl"></i>
-                                <span class="absolute top-0 right-0 w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">3</span>
+                                <span class="absolute top-0 end-0 w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">3</span>
                             </button>
                             <div x-show="open" @click.away="open = false" x-transition
-                                 class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-[400px] overflow-y-auto">
-                                <h6 class="px-4 py-3 text-sm font-semibold border-b border-gray-200">Notifications</h6>
+                                 class="absolute end-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-[400px] overflow-y-auto">
+                                <h6 class="px-4 py-3 text-sm font-semibold border-b border-gray-200">{{ __('nav.layouts_tailwind_notifications') }}</h6>
                                 <div class="hover:bg-primary hover:text-white transition-colors cursor-pointer border-b border-gray-200">
                                     <div class="px-4 py-3">
                                         <div class="flex justify-between items-start">
                                             <div>
-                                                <p class="font-semibold text-sm">New Family Member</p>
-                                                <p class="text-xs text-gray-500 group-hover:text-white/80">John Doe joined your family</p>
+                                                <p class="font-semibold text-sm">{{ __('nav.layouts_tailwind_notif_new_family_member') }}</p>
+                                                <p class="text-xs text-gray-500 group-hover:text-white/80">{{ __('nav.layouts_tailwind_notif_family_joined') }}</p>
                                             </div>
                                             <span class="text-xs text-gray-400">2m</span>
                                         </div>
@@ -83,8 +83,8 @@
                                     <div class="px-4 py-3">
                                         <div class="flex justify-between items-start">
                                             <div>
-                                                <p class="font-semibold text-sm">Invoice Due</p>
-                                                <p class="text-xs text-gray-500">Payment due in 3 days</p>
+                                                <p class="font-semibold text-sm">{{ __('nav.layouts_tailwind_notif_invoice_due') }}</p>
+                                                <p class="text-xs text-gray-500">{{ __('nav.layouts_tailwind_notif_payment_due') }}</p>
                                             </div>
                                             <span class="text-xs text-gray-400">1h</span>
                                         </div>
@@ -94,14 +94,14 @@
                                     <div class="px-4 py-3">
                                         <div class="flex justify-between items-start">
                                             <div>
-                                                <p class="font-semibold text-sm">Welcome!</p>
-                                                <p class="text-xs text-gray-500">Thanks for joining TAKEONE</p>
+                                                <p class="font-semibold text-sm">{{ __('nav.layouts_tailwind_notif_welcome') }}</p>
+                                                <p class="text-xs text-gray-500">{{ __('nav.layouts_tailwind_notif_thanks_joining') }}</p>
                                             </div>
                                             <span class="text-xs text-gray-400">2d</span>
                                         </div>
                                     </div>
                                 </div>
-                                <a href="#" class="block px-4 py-2 text-sm text-center text-primary hover:bg-gray-50 transition-colors">View All Notifications</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-center text-primary hover:bg-gray-50 transition-colors">{{ __('nav.layouts_tailwind_view_all_notifications') }}</a>
                             </div>
                         </div>
 
@@ -116,54 +116,54 @@
                                             {{ mb_strtoupper(mb_substr(Auth::user()->full_name, 0, 1, 'UTF-8'), 'UTF-8') }}
                                         </span>
                                     @endif
-                                    <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>
+                                    <span class="absolute -bottom-0.5 -end-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>
                                 </div>
                             </button>
                             <div x-show="open" @click.away="open = false" x-transition
-                                 class="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                                 class="absolute end-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
                                 <div class="px-4 py-3 border-b border-gray-200">
                                     <p class="font-semibold text-sm">{{ Auth::user()->full_name }}</p>
                                     <p class="text-xs text-gray-500">{{ Auth::user()->email }}</p>
                                 </div>
                                 <a href="{{ route('member.show', Auth::user()->uuid) }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-primary hover:text-white transition-colors">
-                                    <i class="bi bi-person"></i>Profile
+                                    <i class="bi bi-person"></i>{{ __('nav.layouts_tailwind_profile') }}
                                 </a>
                                 <a href="{{ route('member.show', Auth::user()->uuid) }}#affiliations" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-primary hover:text-white transition-colors">
-                                    <i class="bi bi-diagram-3"></i>Affiliations
+                                    <i class="bi bi-diagram-3"></i>{{ __('nav.layouts_tailwind_affiliations') }}
                                 </a>
                                 <a href="#" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-primary hover:text-white transition-colors">
-                                    <i class="bi bi-calendar-event"></i>Sessions
+                                    <i class="bi bi-calendar-event"></i>{{ __('nav.layouts_tailwind_sessions') }}
                                 </a>
                                 <a href="{{ route('members.index') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-primary hover:text-white transition-colors">
-                                    <i class="bi bi-people"></i>Family
+                                    <i class="bi bi-people"></i>{{ __('nav.layouts_tailwind_family') }}
                                 </a>
                                 <a href="{{ route('bills.index') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-primary hover:text-white transition-colors">
-                                    <i class="bi bi-receipt"></i>Payments & Subscriptions
+                                    <i class="bi bi-receipt"></i>{{ __('nav.layouts_tailwind_payments_subscriptions') }}
                                 </a>
                                 <a href="#" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-primary hover:text-white transition-colors">
-                                    <i class="bi bi-gear"></i>Manage Business
+                                    <i class="bi bi-gear"></i>{{ __('nav.layouts_tailwind_manage_business') }}
                                 </a>
                                 <hr class="my-1 border-gray-200">
                                 @if(Auth::user()->isSuperAdmin())
                                 <a href="{{ route('admin.platform.index') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-primary hover:text-white transition-colors">
-                                    <i class="bi bi-shield-check"></i>Admin Panel
+                                    <i class="bi bi-shield-check"></i>{{ __('nav.layouts_tailwind_admin_panel') }}
                                 </a>
                                 <hr class="my-1 border-gray-200">
                                 @endif
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
                                     <button type="submit" class="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                                        <i class="bi bi-box-arrow-right"></i>Sign Out
+                                        <i class="bi bi-box-arrow-right"></i>{{ __('nav.layouts_tailwind_sign_out') }}
                                     </button>
                                 </form>
                             </div>
                         </div>
                     @else
                         <a href="{{ route('login') }}" class="text-sm font-medium hover:text-primary transition-colors">
-                            Login
+                            {{ __('nav.layouts_tailwind_login') }}
                         </a>
                         <a href="{{ route('register') }}" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">
-                            Register
+                            {{ __('nav.layouts_tailwind_register') }}
                         </a>
                     @endauth
                 </div>
@@ -175,7 +175,7 @@
     <div class="container mx-auto px-4 md:px-6 pt-4">
         <a href="{{ url()->previous() }}" class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
             <i class="bi bi-arrow-left"></i>
-            Back
+            {{ __('shared.back') }}
         </a>
     </div>
 
@@ -187,7 +187,7 @@
     <!-- Footer -->
     <footer class="bg-muted border-t border-border mt-12 py-8">
         <div class="container mx-auto px-4 md:px-6 text-center text-sm text-muted-foreground">
-            <p>&copy; {{ date('Y') }} TakeOne. All rights reserved.</p>
+            <p>&copy; {{ date('Y') }} TakeOne. {{ __('nav.layouts_tailwind_all_rights_reserved') }}</p>
         </div>
     </footer>
 
@@ -195,5 +195,6 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     @stack('scripts')
+    @include('partials.locale-bfcache-guard')
 </body>
 </html>

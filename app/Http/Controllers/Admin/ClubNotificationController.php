@@ -51,13 +51,13 @@ class ClubNotificationController extends Controller
 
         // Create notification log
         $notification = ClubNotification::create([
-            'tenant_id'        => $club->id,
-            'sender_user_id'   => Auth::id(),
-            'subject'          => $request->subject,
-            'message'          => $request->message,
-            'recipient_type'   => $request->recipient_type,
-            'recipient_count'  => $recipients->count(),
-            'sent_at'          => now(),
+            'tenant_id' => $club->id,
+            'sender_user_id' => Auth::id(),
+            'subject' => $request->subject,
+            'message' => $request->message,
+            'recipient_type' => $request->recipient_type,
+            'recipient_count' => $recipients->count(),
+            'sent_at' => now(),
         ]);
 
         // Dispatch job
@@ -65,7 +65,7 @@ class ClubNotificationController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Notification queued for ' . $recipients->count() . ' recipient(s).',
+            'message' => 'Notification queued for '.$recipients->count().' recipient(s).',
         ]);
     }
 

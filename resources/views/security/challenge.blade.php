@@ -19,8 +19,8 @@
                 <div class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
                     <i class="bi bi-shield-lock text-primary" style="font-size:1.6rem;"></i>
                 </div>
-                <h2 class="text-xl font-semibold text-foreground">Two-Factor Authentication</h2>
-                <p class="text-sm text-gray-500 mt-1">Enter the code from your authenticator app.</p>
+                <h2 class="text-xl font-semibold text-foreground">{{ __('security.security_challenge_title') }}</h2>
+                <p class="text-sm text-gray-500 mt-1">{{ __('security.security_challenge_subtitle') }}</p>
             </div>
 
             <form method="POST" action="{{ route('two-factor.verify') }}" x-data="{ useRecovery: false }">
@@ -37,11 +37,11 @@
                         @enderror
                     </div>
                     <button type="submit" class="tf-auth-btn mb-4">
-                        VERIFY
+                        {{ __('security.security_challenge_verify') }}
                     </button>
                     <p class="text-center text-sm text-gray-500">
                         <button type="button" class="tf-auth-link" @click="useRecovery = true">
-                            Use a recovery code
+                            {{ __('security.security_challenge_use_recovery') }}
                         </button>
                     </p>
                 </div>
@@ -54,14 +54,14 @@
                         @error('code')
                             <span class="tf-error" role="alert"><strong>{{ $message }}</strong></span>
                         @enderror
-                        <p class="text-xs text-gray-400 mt-1 text-center">Enter one of your 8-character backup codes.</p>
+                        <p class="text-xs text-gray-400 mt-1 text-center">{{ __('security.security_challenge_backup_hint') }}</p>
                     </div>
                     <button type="submit" class="tf-auth-btn mb-4">
-                        VERIFY
+                        {{ __('security.security_challenge_verify') }}
                     </button>
                     <p class="text-center text-sm text-gray-500">
                         <button type="button" class="tf-auth-link" @click="useRecovery = false">
-                            Use authenticator app instead
+                            {{ __('security.security_challenge_use_authenticator') }}
                         </button>
                     </p>
                 </div>
@@ -69,7 +69,7 @@
 
             <div class="text-center mt-4">
                 <a href="{{ route('login') }}" class="text-sm text-gray-400 hover:text-gray-600">
-                    <i class="bi bi-arrow-left mr-1"></i>Back to login
+                    <i class="bi bi-arrow-left me-1"></i>{{ __('security.security_challenge_back_to_login') }}
                 </a>
             </div>
         </div>

@@ -77,8 +77,8 @@
                         <i class="bi" :class="form.icon || 'bi-calendar-check'"></i>
                     </div>
                     <div class="min-w-0">
-                        <h2 class="text-base font-black leading-tight truncate" x-text="clubMode ? 'Edit class' : (mode==='edit' ? 'Edit session' : 'New session')"></h2>
-                        <p class="text-[11px] text-white/80 truncate" x-text="form.title || (clubMode ? 'Class details' : 'Add it to your week')"></p>
+                        <h2 class="text-base font-black leading-tight truncate" x-text="clubMode ? '{{ __('shared.schedule_session_modal_edit_class') }}' : (mode==='edit' ? '{{ __('shared.schedule_session_modal_edit_session') }}' : '{{ __('shared.schedule_session_modal_new_session') }}')"></h2>
+                        <p class="text-[11px] text-white/80 truncate" x-text="form.title || (clubMode ? '{{ __('shared.schedule_session_modal_class_details') }}' : '{{ __('shared.schedule_session_modal_add_to_week') }}')"></p>
                     </div>
                 </div>
                 <button type="button" @click="close()" class="m-press w-9 h-9 rounded-full bg-white/20 border border-white/30 grid place-items-center text-white flex-shrink-0">
@@ -94,18 +94,18 @@
             <template x-if="clubMode">
                 <div class="rounded-xl p-3 flex items-center gap-2.5" :style="`background:${form.color}14`">
                     <i class="bi bi-buildings text-lg" :style="`color:${form.color}`"></i>
-                    <p class="text-xs text-muted-foreground">Editing the club class<span x-show="clubName"> · <span class="font-semibold text-foreground" x-text="clubName"></span></span>. Changes apply to everyone enrolled.</p>
+                    <p class="text-xs text-muted-foreground">{{ __('shared.schedule_session_modal_editing_club_class') }}<span x-show="clubName"> · <span class="font-semibold text-foreground" x-text="clubName"></span></span>{{ __('shared.schedule_session_modal_changes_apply') }}</p>
                 </div>
             </template>
 
             {{-- Who is this for (personal only) --}}
             <template x-if="!clubMode && subjects.length > 1">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Who's it for?</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('shared.schedule_session_modal_whos_it_for') }}</label>
                     <div class="flex gap-2 overflow-x-auto pb-1">
                         <template x-for="m in subjects" :key="m.key">
                             <button type="button" @click="form.subject = m.key"
-                                    class="m-press flex items-center gap-2 rounded-full border pl-1.5 pr-3 py-1.5 flex-shrink-0 transition-colors"
+                                    class="m-press flex items-center gap-2 rounded-full border ps-1.5 pe-3 py-1.5 flex-shrink-0 transition-colors"
                                     :class="form.subject===m.key ? 'border-primary bg-accent' : 'border-border bg-white'">
                                 <span class="w-7 h-7 rounded-full grid place-items-center text-white text-[10px] font-bold" :style="`background:${m.color}`" x-text="m.initials"></span>
                                 <span class="text-xs font-semibold text-foreground" x-text="m.name"></span>
@@ -118,25 +118,25 @@
             {{-- Title + discipline --}}
             <div class="grid grid-cols-1 gap-3">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Title <span class="text-red-500">*</span></label>
-                    <input type="text" x-model="form.title" maxlength="120" placeholder="e.g. Strength & Power"
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('shared.schedule_session_modal_title') }} <span class="text-red-500">*</span></label>
+                    <input type="text" x-model="form.title" maxlength="120" placeholder="{{ __('shared.schedule_session_modal_title_placeholder') }}"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Discipline</label>
-                    <input type="text" x-model="form.discipline" maxlength="120" placeholder="e.g. Weight Training"
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('shared.schedule_session_modal_discipline') }}</label>
+                    <input type="text" x-model="form.discipline" maxlength="120" placeholder="{{ __('shared.schedule_session_modal_discipline_placeholder') }}"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                 </div>
             </div>
 
             {{-- Day --}}
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Day <span class="text-red-500">*</span></label>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('shared.schedule_session_modal_day') }} <span class="text-red-500">*</span></label>
                 <div class="grid grid-cols-7 gap-1">
                     @foreach($dayChoices as $val => $short)
                         <button type="button" @click="form.day='{{ $val }}'"
                                 class="m-press py-2 rounded-lg text-[11px] font-bold border transition-colors"
-                                :class="form.day==='{{ $val }}' ? 'bg-primary border-primary text-white' : 'bg-white border-gray-200 text-foreground'">{{ $short }}</button>
+                                :class="form.day==='{{ $val }}' ? 'bg-primary border-primary text-white' : 'bg-white border-gray-200 text-foreground'">{{ __('shared.schedule_session_modal_day_'.$val) }}</button>
                     @endforeach
                 </div>
             </div>
@@ -144,12 +144,12 @@
             {{-- Time --}}
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Start</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('shared.schedule_session_modal_start') }}</label>
                     <input type="time" x-model="form.start_time"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">End</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('shared.schedule_session_modal_end') }}</label>
                     <input type="time" x-model="form.end_time"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                 </div>
@@ -157,7 +157,7 @@
 
             {{-- Coach — searchable instructor dropdown for club classes, free text otherwise --}}
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Coach</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('shared.schedule_session_modal_coach') }}</label>
 
                 {{-- Club: pick from the club's instructors --}}
                 <template x-if="instructors.length">
@@ -170,24 +170,24 @@
                                     <template x-if="!coachAvatar(form.coach)"><span class="text-[10px] font-bold text-muted-foreground" x-text="coachInitials(form.coach)"></span></template>
                                 </span>
                             </template>
-                            <span class="truncate flex-1" :class="form.coach ? 'text-foreground' : 'text-gray-400'" x-text="form.coach || 'Select a coach…'"></span>
+                            <span class="truncate flex-1" :class="form.coach ? 'text-foreground' : 'text-gray-400'" x-text="form.coach || '{{ __('shared.schedule_session_modal_select_coach') }}'"></span>
                             <i class="bi bi-chevron-down text-gray-400 flex-shrink-0"></i>
                         </button>
                         <div x-show="coachOpen" x-cloak x-transition.opacity
                              class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-hidden flex flex-col">
                             <div class="p-2 border-b border-gray-100">
                                 <div class="relative">
-                                    <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                                    <input type="text" x-model="coachQuery" x-ref="coachSearch" placeholder="Search instructors…"
-                                           class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                    <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                                    <input type="text" x-model="coachQuery" x-ref="coachSearch" placeholder="{{ __('shared.schedule_session_modal_search_instructors') }}"
+                                           class="w-full ps-9 pe-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                                 </div>
                             </div>
                             <div class="overflow-y-auto">
                                 <button type="button" @click="form.coach=''; coachOpen=false"
-                                        class="w-full text-left px-3 py-2 text-sm text-muted-foreground hover:bg-muted">No coach</button>
+                                        class="w-full text-start px-3 py-2 text-sm text-muted-foreground hover:bg-muted">{{ __('shared.schedule_session_modal_no_coach') }}</button>
                                 <template x-for="ins in filteredCoaches()" :key="ins.name">
                                     <button type="button" @click="form.coach=ins.name; coachOpen=false"
-                                            class="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2.5"
+                                            class="w-full text-start px-3 py-2 text-sm hover:bg-muted flex items-center gap-2.5"
                                             :class="form.coach===ins.name ? 'bg-accent' : ''">
                                         <span class="w-8 h-8 rounded-full overflow-hidden bg-muted grid place-items-center flex-shrink-0">
                                             <template x-if="ins.avatar"><img :src="ins.avatar" alt="" class="w-8 h-8 object-cover"></template>
@@ -197,7 +197,7 @@
                                         <i x-show="form.coach===ins.name" class="bi bi-check-lg text-primary flex-shrink-0"></i>
                                     </button>
                                 </template>
-                                <p x-show="filteredCoaches().length===0" class="px-3 py-3 text-xs text-muted-foreground text-center">No instructor found.</p>
+                                <p x-show="filteredCoaches().length===0" class="px-3 py-3 text-xs text-muted-foreground text-center">{{ __('shared.schedule_session_modal_no_instructor_found') }}</p>
                             </div>
                         </div>
                     </div>
@@ -205,26 +205,26 @@
 
                 {{-- Personal: free text --}}
                 <template x-if="!instructors.length">
-                    <input type="text" x-model="form.coach" maxlength="120" placeholder="e.g. Coach Adam"
+                    <input type="text" x-model="form.coach" maxlength="120" placeholder="{{ __('shared.schedule_session_modal_coach_placeholder') }}"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                 </template>
             </div>
 
             {{-- Location — 3 modes: facility (club only) / map pin / text --}}
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Location</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('shared.schedule_session_modal_location') }}</label>
                 <div class="flex gap-1 p-1 rounded-xl bg-muted mb-3">
                     <template x-if="facilities.length">
-                        <button type="button" @click="setLocType('facility')" class="m-press flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors" :class="form.loc_type==='facility' ? 'bg-white shadow text-foreground' : 'text-muted-foreground'"><i class="bi bi-building"></i> Facility</button>
+                        <button type="button" @click="setLocType('facility')" class="m-press flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors" :class="form.loc_type==='facility' ? 'bg-white shadow text-foreground' : 'text-muted-foreground'"><i class="bi bi-building"></i> {{ __('shared.schedule_session_modal_loc_facility') }}</button>
                     </template>
-                    <button type="button" @click="setLocType('map')" class="m-press flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors" :class="form.loc_type==='map' ? 'bg-white shadow text-foreground' : 'text-muted-foreground'"><i class="bi bi-geo-alt"></i> Map</button>
-                    <button type="button" @click="setLocType('text')" class="m-press flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors" :class="form.loc_type==='text' ? 'bg-white shadow text-foreground' : 'text-muted-foreground'"><i class="bi bi-type"></i> Text</button>
+                    <button type="button" @click="setLocType('map')" class="m-press flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors" :class="form.loc_type==='map' ? 'bg-white shadow text-foreground' : 'text-muted-foreground'"><i class="bi bi-geo-alt"></i> {{ __('shared.schedule_session_modal_loc_map') }}</button>
+                    <button type="button" @click="setLocType('text')" class="m-press flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors" :class="form.loc_type==='text' ? 'bg-white shadow text-foreground' : 'text-muted-foreground'"><i class="bi bi-type"></i> {{ __('shared.schedule_session_modal_loc_text') }}</button>
                 </div>
 
                 {{-- Facility dropdown --}}
                 <div x-show="form.loc_type==='facility'" x-cloak>
                     <select x-model="form.facility_id" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                        <option value="">Select a facility…</option>
+                        <option value="">{{ __('shared.schedule_session_modal_select_facility') }}</option>
                         <template x-for="f in facilities" :key="f.id">
                             <option :value="f.id" x-text="f.name"></option>
                         </template>
@@ -241,26 +241,26 @@
 
                 {{-- Free text --}}
                 <div x-show="form.loc_type==='text'" x-cloak>
-                    <input type="text" x-model="form.location" maxlength="160" placeholder="e.g. Gym Floor 1"
+                    <input type="text" x-model="form.location" maxlength="160" placeholder="{{ __('shared.schedule_session_modal_location_placeholder') }}"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                 </div>
             </div>
 
             {{-- Intensity --}}
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Intensity</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('shared.schedule_session_modal_intensity') }}</label>
                 <div class="grid grid-cols-3 gap-2">
                     @foreach(['Low','Moderate','High'] as $lvl)
                         <button type="button" @click="form.intensity='{{ $lvl }}'"
                                 class="m-press py-2 rounded-lg text-xs font-bold border transition-colors"
-                                :class="form.intensity==='{{ $lvl }}' ? 'bg-primary border-primary text-white' : 'bg-white border-gray-200 text-foreground'">{{ $lvl }}</button>
+                                :class="form.intensity==='{{ $lvl }}' ? 'bg-primary border-primary text-white' : 'bg-white border-gray-200 text-foreground'">{{ __('shared.schedule_session_modal_intensity_'.strtolower($lvl)) }}</button>
                     @endforeach
                 </div>
             </div>
 
             {{-- Icon + colour --}}
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Icon</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('shared.schedule_session_modal_icon') }}</label>
                 <div class="flex flex-wrap gap-2">
                     <template x-for="ic in icons" :key="ic">
                         <button type="button" @click="form.icon=ic"
@@ -273,7 +273,7 @@
                 </div>
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Colour</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('shared.schedule_session_modal_colour') }}</label>
                 <div class="flex flex-wrap gap-2.5">
                     <template x-for="c in colors" :key="c">
                         <button type="button" @click="form.color=c"
@@ -286,7 +286,7 @@
 
             {{-- Focus chips --}}
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Focus</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('shared.schedule_session_modal_focus') }}</label>
                 <div class="flex flex-wrap gap-2 mb-2" x-show="form.focus.length">
                     <template x-for="(f, i) in form.focus" :key="i">
                         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium"
@@ -297,7 +297,7 @@
                     </template>
                 </div>
                 <div class="flex gap-2">
-                    <input type="text" x-model="focusInput" @keydown.enter.prevent="addFocus()" maxlength="40" placeholder="Add focus area…"
+                    <input type="text" x-model="focusInput" @keydown.enter.prevent="addFocus()" maxlength="40" placeholder="{{ __('shared.schedule_session_modal_focus_placeholder') }}"
                            class="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                     <button type="button" @click="addFocus()" class="m-press px-3 rounded-lg bg-accent text-primary font-bold"><i class="bi bi-plus-lg"></i></button>
                 </div>
@@ -305,64 +305,64 @@
 
             {{-- Coach note --}}
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Class details</label>
-                <textarea x-model="form.notes" rows="2" maxlength="2000" placeholder="Anything to remember for this session…"
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('shared.schedule_session_modal_class_details') }}</label>
+                <textarea x-model="form.notes" rows="2" maxlength="2000" placeholder="{{ __('shared.schedule_session_modal_notes_placeholder') }}"
                           class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"></textarea>
             </div>
 
             {{-- ===== Workout builder ===== --}}
             <div class="rounded-2xl border border-border bg-white p-3.5 space-y-4">
                 <p class="text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                    <i class="bi bi-clipboard-check text-primary"></i> Workout
+                    <i class="bi bi-clipboard-check text-primary"></i> {{ __('shared.schedule_session_modal_workout') }}
                 </p>
 
                 {{-- Warm-up --}}
                 <div>
-                    <p class="text-sm font-bold text-foreground flex items-center gap-2 mb-2"><i class="bi bi-fire text-amber-500"></i> Warm-up</p>
+                    <p class="text-sm font-bold text-foreground flex items-center gap-2 mb-2"><i class="bi bi-fire text-amber-500"></i> {{ __('shared.schedule_session_modal_warmup') }}</p>
                     <template x-for="(w, i) in form.warmup" :key="'w'+i">
                         <div class="flex gap-2 mb-2">
-                            <input type="text" x-model="form.warmup[i]" maxlength="200" placeholder="e.g. 5 min row, easy"
+                            <input type="text" x-model="form.warmup[i]" maxlength="200" placeholder="{{ __('shared.schedule_session_modal_warmup_placeholder') }}"
                                    class="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                             <button type="button" @click="form.warmup.splice(i,1)" class="m-press w-9 rounded-lg bg-red-50 text-red-500 grid place-items-center"><i class="bi bi-trash"></i></button>
                         </div>
                     </template>
-                    <button type="button" @click="form.warmup.push('')" class="m-press text-xs font-bold text-primary flex items-center gap-1"><i class="bi bi-plus-circle"></i> Add warm-up step</button>
+                    <button type="button" @click="form.warmup.push('')" class="m-press text-xs font-bold text-primary flex items-center gap-1"><i class="bi bi-plus-circle"></i> {{ __('shared.schedule_session_modal_add_warmup') }}</button>
                 </div>
 
                 {{-- Main exercises --}}
                 <div class="pt-3 border-t border-border">
-                    <p class="text-sm font-bold text-foreground flex items-center gap-2 mb-2"><i class="bi bi-clipboard-check text-primary"></i> Main</p>
+                    <p class="text-sm font-bold text-foreground flex items-center gap-2 mb-2"><i class="bi bi-clipboard-check text-primary"></i> {{ __('shared.schedule_session_modal_main') }}</p>
                     <template x-for="(ex, i) in form.main" :key="'m'+i">
                         <div class="rounded-xl border border-gray-100 bg-background p-2.5 mb-2 space-y-2">
                             <div class="flex gap-2">
-                                <input type="text" x-model="ex.name" maxlength="120" placeholder="Exercise name"
+                                <input type="text" x-model="ex.name" maxlength="120" placeholder="{{ __('shared.schedule_session_modal_exercise_name') }}"
                                        class="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                                 <button type="button" @click="form.main.splice(i,1)" class="m-press w-9 rounded-lg bg-red-50 text-red-500 grid place-items-center"><i class="bi bi-trash"></i></button>
                             </div>
                             <div class="grid grid-cols-3 gap-2">
-                                <input type="text" x-model="ex.sets" maxlength="20" placeholder="Sets"
+                                <input type="text" x-model="ex.sets" maxlength="20" placeholder="{{ __('shared.schedule_session_modal_sets') }}"
                                        class="px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                                <input type="text" x-model="ex.reps" maxlength="40" placeholder="Reps"
+                                <input type="text" x-model="ex.reps" maxlength="40" placeholder="{{ __('shared.schedule_session_modal_reps') }}"
                                        class="px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                                <input type="text" x-model="ex.note" maxlength="120" placeholder="Note"
+                                <input type="text" x-model="ex.note" maxlength="120" placeholder="{{ __('shared.schedule_session_modal_note') }}"
                                        class="px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                             </div>
                         </div>
                     </template>
-                    <button type="button" @click="form.main.push({name:'',sets:'',reps:'',note:''})" class="m-press text-xs font-bold text-primary flex items-center gap-1"><i class="bi bi-plus-circle"></i> Add exercise</button>
+                    <button type="button" @click="form.main.push({name:'',sets:'',reps:'',note:''})" class="m-press text-xs font-bold text-primary flex items-center gap-1"><i class="bi bi-plus-circle"></i> {{ __('shared.schedule_session_modal_add_exercise') }}</button>
                 </div>
 
                 {{-- Cool-down --}}
                 <div class="pt-3 border-t border-border">
-                    <p class="text-sm font-bold text-foreground flex items-center gap-2 mb-2"><i class="bi bi-snow text-sky-500"></i> Cool-down</p>
+                    <p class="text-sm font-bold text-foreground flex items-center gap-2 mb-2"><i class="bi bi-snow text-sky-500"></i> {{ __('shared.schedule_session_modal_cooldown') }}</p>
                     <template x-for="(c, i) in form.cooldown" :key="'c'+i">
                         <div class="flex gap-2 mb-2">
-                            <input type="text" x-model="form.cooldown[i]" maxlength="200" placeholder="e.g. Foam roll quads"
+                            <input type="text" x-model="form.cooldown[i]" maxlength="200" placeholder="{{ __('shared.schedule_session_modal_cooldown_placeholder') }}"
                                    class="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                             <button type="button" @click="form.cooldown.splice(i,1)" class="m-press w-9 rounded-lg bg-red-50 text-red-500 grid place-items-center"><i class="bi bi-trash"></i></button>
                         </div>
                     </template>
-                    <button type="button" @click="form.cooldown.push('')" class="m-press text-xs font-bold text-primary flex items-center gap-1"><i class="bi bi-plus-circle"></i> Add cool-down step</button>
+                    <button type="button" @click="form.cooldown.push('')" class="m-press text-xs font-bold text-primary flex items-center gap-1"><i class="bi bi-plus-circle"></i> {{ __('shared.schedule_session_modal_add_cooldown') }}</button>
                 </div>
             </div>
 
@@ -382,7 +382,7 @@
                     class="m-press flex-1 h-12 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
                     :style="`background:${form.color}`">
                 <i class="bi" :class="saving ? 'bi-arrow-repeat animate-spin' : 'bi-check2-circle'"></i>
-                <span x-text="mode==='edit' ? 'Save changes' : 'Add session'"></span>
+                <span x-text="mode==='edit' ? '{{ __('shared.schedule_session_modal_save_changes') }}' : '{{ __('shared.schedule_session_modal_add_session') }}'"></span>
             </button>
         </div>
     </div>
@@ -520,8 +520,8 @@ function scheduleSessionForm(cfg) {
         },
 
         async save() {
-            if (!this.form.title.trim()) { window.showToast('error', 'Add a title.'); return; }
-            if (!this.form.day) { window.showToast('error', 'Pick a day.'); return; }
+            if (!this.form.title.trim()) { window.showToast('error', '{{ __('shared.schedule_session_modal_toast_add_title') }}'); return; }
+            if (!this.form.day) { window.showToast('error', '{{ __('shared.schedule_session_modal_toast_pick_day') }}'); return; }
             this.saving = true;
             const url = this.clubMode
                 ? this.clubUrl
@@ -536,7 +536,7 @@ function scheduleSessionForm(cfg) {
                 lat = parseFloat((document.getElementById('schedFormMapLat') || {}).value) || null;
                 lng = parseFloat((document.getElementById('schedFormMapLng') || {}).value) || null;
                 addr = (document.getElementById('schedFormMapAddress') || {}).value || null;
-                if (lat === null || lng === null) { window.showToast('error', 'Drop a pin on the map first.'); this.saving = false; return; }
+                if (lat === null || lng === null) { window.showToast('error', '{{ __('shared.schedule_session_modal_toast_drop_pin') }}'); this.saving = false; return; }
             }
 
             const payload = {
@@ -573,15 +573,15 @@ function scheduleSessionForm(cfg) {
                 });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok || !data.success) {
-                    window.showToast('error', data.message || 'Could not save the session.');
+                    window.showToast('error', data.message || '{{ __('shared.schedule_session_modal_toast_could_not_save') }}');
                     this.saving = false;
                     return;
                 }
-                window.showToast('success', data.message || 'Saved.');
+                window.showToast('success', data.message || '{{ __('shared.schedule_session_modal_toast_saved') }}');
                 window.dispatchEvent(new CustomEvent('schedule-session-saved', { detail: { session: data.session, mode: this.mode } }));
                 this.close();
             } catch (e) {
-                window.showToast('error', 'Network error — please try again.');
+                window.showToast('error', '{{ __('shared.schedule_session_modal_toast_network_error') }}');
             } finally {
                 this.saving = false;
             }
@@ -591,7 +591,7 @@ function scheduleSessionForm(cfg) {
         // destroy() method on teardown, which fired this dialog on navigation.
         async removeSession() {
             if (!this.form.id) return;
-            const ok = await window.confirmAction({ title: 'Delete session?', message: 'This personal session will be removed from your schedule.', type: 'danger', confirmText: 'Delete' });
+            const ok = await window.confirmAction({ title: '{{ __('shared.schedule_session_modal_delete_confirm_title') }}', message: '{{ __('shared.schedule_session_modal_delete_confirm_message') }}', type: 'danger', confirmText: '{{ __('shared.delete') }}' });
             if (!ok) return;
             this.saving = true;
             try {
@@ -601,12 +601,12 @@ function scheduleSessionForm(cfg) {
                     credentials: 'same-origin',
                 });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok || !data.success) { window.showToast('error', data.message || 'Could not delete.'); this.saving = false; return; }
-                window.showToast('success', data.message || 'Removed.');
+                if (!res.ok || !data.success) { window.showToast('error', data.message || '{{ __('shared.schedule_session_modal_toast_could_not_delete') }}'); this.saving = false; return; }
+                window.showToast('success', data.message || '{{ __('shared.schedule_session_modal_toast_removed') }}');
                 window.dispatchEvent(new CustomEvent('schedule-session-deleted', { detail: { id: this.form.id } }));
                 this.close();
             } catch (e) {
-                window.showToast('error', 'Network error — please try again.');
+                window.showToast('error', '{{ __('shared.schedule_session_modal_toast_network_error') }}');
             } finally {
                 this.saving = false;
             }

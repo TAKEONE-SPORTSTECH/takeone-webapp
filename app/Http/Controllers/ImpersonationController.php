@@ -15,7 +15,7 @@ class ImpersonationController extends Controller
     {
         $admin = Auth::user();
 
-        if (!$admin || !$admin->isSuperAdmin()) {
+        if (! $admin || ! $admin->isSuperAdmin()) {
             abort(403);
         }
 
@@ -42,7 +42,7 @@ class ImpersonationController extends Controller
 
         // Land on the impersonated user's own wall / home feed.
         return redirect()->route('me.home')
-            ->with('success', 'You are now viewing the platform as ' . ($user->full_name ?? $user->name) . '.');
+            ->with('success', 'You are now viewing the platform as '.($user->full_name ?? $user->name).'.');
     }
 
     /**
@@ -52,14 +52,15 @@ class ImpersonationController extends Controller
     {
         $originalId = session()->pull('impersonate.original_id');
 
-        if (!$originalId) {
+        if (! $originalId) {
             return redirect()->route('clubs.explore');
         }
 
         $admin = User::find($originalId);
 
-        if (!$admin) {
+        if (! $admin) {
             Auth::logout();
+
             return redirect()->route('login');
         }
 

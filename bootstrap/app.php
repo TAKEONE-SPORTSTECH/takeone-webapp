@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\DetectDevice::class,
             \App\Http\Middleware\SetLocale::class,
+            \App\Http\Middleware\NoStoreAuthenticatedPages::class,
         ]);
         // Exiting impersonation is a safe escape hatch — it only restores the
         // original admin from the session. Exempt it from CSRF so a stale token
@@ -86,6 +87,38 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return redirect()->guest(route('login'))->with('error', 'Please sign in to continue.');
+        });
+
+        // Gracefully handle "not found" (404) for signed-in web navigation instead
+        // of dead-ending on a 404 page. Covers a missing route AND a bound-model
+        // miss (firstOrFail on a record the user can't see — e.g. another member's
+        // gated full profile). Bounce back with a toast; the flashed `error` is
+        // auto-rendered by the layout. Mirrors the 403 handler above.
+        $exceptions->render(function (Throwable $e, \Illuminate\Http\Request $request) {
+            $isNotFound = $e instanceof \Illuminate\Database\Eloquent\ModelNotFoundException
+                || ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface
+                    && $e->getStatusCode() === 404);
+
+            if (! $isNotFound) {
+                return null; // not a 404 → let Laravel handle it normally
+            }
+
+            // AJAX / API callers get real JSON 404 so their code can react.
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Not found.'], 404);
+            }
+
+            // Guests fall through to Laravel's default 404 page — there's no
+            // sensible "back" for them and no session to flash a toast into.
+            if (! $request->user()) {
+                return null;
+            }
+
+            // back() resolves to the referer; fall back to home for a direct hit
+            // (no referer). The fallback also prevents a redirect loop if the
+            // missing URL were somehow its own referer.
+            return redirect()->back(fallback: '/')
+                ->with('error', "That page doesn't exist or is no longer available.");
         });
 
         $exceptions->reportable(function (Throwable $e): void {

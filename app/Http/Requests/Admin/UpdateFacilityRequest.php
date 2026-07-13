@@ -14,16 +14,16 @@ class UpdateFacilityRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name'              => 'required|string|max:255',
-            'address'           => 'nullable|string',
-            'gps_lat'           => 'nullable|numeric',
-            'gps_long'          => 'nullable|numeric',
-            'maps_url'          => 'nullable|url|max:500',
-            'is_available'      => 'nullable|boolean',
-            'facility_images'   => 'nullable|array',
+            'name' => 'required|string|max:255',
+            'address' => 'nullable|string',
+            'gps_lat' => 'nullable|numeric',
+            'gps_long' => 'nullable|numeric',
+            'maps_url' => 'nullable|url|max:500',
+            'is_available' => 'nullable|boolean',
+            'facility_images' => 'nullable|array',
             'facility_images.*' => 'image|max:4096',
-            'translations'      => ['nullable', 'array'],
-            'translations.*.*'  => ['nullable', 'string', 'max:2000'],
+            'translations' => ['nullable', 'array'],
+            'translations.*.*' => ['nullable', 'string', 'max:2000'],
         ];
     }
 }

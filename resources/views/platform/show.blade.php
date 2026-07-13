@@ -59,6 +59,14 @@
         </div>
         @endif
 
+        @if($canManage)
+        {{-- Owner: edit the club itself (reuses the admin club modal) --}}
+        <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-club-modal', { detail: {} }))"
+                class="absolute top-4 end-4 z-30 inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/90 backdrop-blur text-gray-800 text-sm font-semibold shadow-sm hover:bg-white transition-colors">
+            <i class="bi bi-pencil-square"></i> {{ __('Edit club') }}
+        </button>
+        @endif
+
         {{-- Banner Top: Logo only --}}
         <div class="banner-top">
             <div>
@@ -75,29 +83,29 @@
             <h1 class="text-2xl md:text-4xl font-extrabold text-white mb-2 uppercase">{{ $club->tr('club_name') }}</h1>
             <p class="text-white/50 text-lg">
                 @if($club->tr('address'))
-                <i class="bi bi-geo-alt-fill mr-2 text-primary"></i>{{ $club->tr('address') }}
+                <i class="bi bi-geo-alt-fill me-2 text-primary"></i>{{ $club->tr('address') }}
                 @endif
                 @if($club->established_date)
-                <i class="bi bi-fire ml-3 mr-2 text-primary"></i>
-                <span>Since {{ \Carbon\Carbon::parse($club->established_date)->format('Y') }} &middot; {{ round(\Carbon\Carbon::parse($club->established_date)->diffInYears(now()), 1) }} years</span>
+                <i class="bi bi-fire ms-3 me-2 text-primary"></i>
+                <span>{{ __('club.platform_show_since') }} {{ \Carbon\Carbon::parse($club->established_date)->format('Y') }} &middot; {{ round(\Carbon\Carbon::parse($club->established_date)->diffInYears(now()), 1) }} {{ __('club.platform_show_years') }}</span>
                 @endif
             </p>
             <div class="stats-row mt-4">
                 <div class="stat-item">
                     <h3>{{ number_format($averageRating, 1) }}/5</h3>
-                    <span>Rating</span>
+                    <span>{{ __('club.platform_show_rating') }}</span>
                 </div>
                 <div class="stat-item">
                     <h3>{{ $accessStat }}</h3>
-                    <span>Access</span>
+                    <span>{{ __('club.platform_show_access') }}</span>
                 </div>
                 <div class="stat-item">
                     <h3>{{ $distinctClassCount }}+</h3>
-                    <span>Classes</span>
+                    <span>{{ __('club.platform_show_classes') }}</span>
                 </div>
                 <div class="stat-item">
                     <h3>{{ $activeMembersCount }}+</h3>
-                    <span>Active Members</span>
+                    <span>{{ __('club.platform_show_active_members') }}</span>
                 </div>
             </div>
         </div>
@@ -128,7 +136,7 @@
         @endforeach
         @if($club->phone)
         <a href="tel:{{ is_array($club->phone) ? (($club->phone['code'] ?? '') . ($club->phone['number'] ?? '')) : $club->phone }}"
-           class="social-strip-link" title="Call">
+           class="social-strip-link" title="{{ __('club.platform_show_call') }}">
             <i class="bi bi-telephone"></i>
         </a>
         @endif
@@ -139,12 +147,12 @@
     <div class="content-card">
         {{-- Tab Navigation --}}
         <ul class="nav nav-pills nav-fill" id="mainTabs">
-            <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-overview">Overview</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-packages">Packages</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-scheduled">Schedule</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-events">Events</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-stats">Statistics</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-timeline">Timeline</button></li>
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-overview">{{ __('club.platform_show_tab_overview') }}</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-packages">{{ __('club.platform_show_tab_packages') }}</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-scheduled">{{ __('club.platform_show_tab_schedule') }}</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-events">{{ __('club.platform_show_tab_events') }}</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-stats">{{ __('club.platform_show_tab_statistics') }}</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-timeline">{{ __('club.platform_show_tab_timeline') }}</button></li>
         </ul>
 
         <div class="tab-content">
@@ -158,8 +166,8 @@
                 <div class="mb-12">
                     <div class="flex justify-between items-end mb-4">
                         <div>
-                            <h4 class="text-xl font-extrabold mb-1">Member Exclusive Perks</h4>
-                            <p class="text-muted-foreground text-sm">Partnering businesses and offers available when you register.</p>
+                            <h4 class="text-xl font-extrabold mb-1">{{ __('club.platform_show_perks_title') }}</h4>
+                            <p class="text-muted-foreground text-sm">{{ __('club.platform_show_perks_subtitle') }}</p>
                         </div>
                     </div>
                     <div class="perks-grid grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -201,8 +209,8 @@
                     <div>
                         <div class="flex justify-between items-end mb-4">
                             <div>
-                                <h4 class="text-xl font-extrabold mb-1">Meet The Experts</h4>
-                                <p class="text-muted-foreground text-sm">Our trainers with exceptional expertise</p>
+                                <h4 class="text-xl font-extrabold mb-1">{{ __('club.platform_show_trainers_title') }}</h4>
+                                <p class="text-muted-foreground text-sm">{{ __('club.platform_show_trainers_subtitle') }}</p>
                             </div>
                         </div>
 
@@ -215,9 +223,9 @@
                             <div class="mini-pfp-placeholder">{{ mb_strtoupper(mb_substr($trainerUser->name ?? 'T', 0, 1, 'UTF-8'), 'UTF-8') }}</div>
                             @endif
                             <div>
-                                <h6 class="font-bold mb-1">{{ $trainerUser->full_name ?? $trainerUser->name ?? 'Trainer' }}</h6>
+                                <h6 class="font-bold mb-1">{{ $trainerUser->full_name ?? $trainerUser->name ?? __('club.platform_show_trainer_default') }}</h6>
                                 <div class="flex items-center mb-1" style="font-size:11px;">
-                                    <span class="mr-1 text-yellow-400">
+                                    <span class="me-1 text-yellow-400">
                                         @php $rating = $instructor->reviews->avg('rating') ?? 0; @endphp
                                         @for($i = 1; $i <= 5; $i++)
                                             @if($i <= floor($rating))
@@ -229,7 +237,7 @@
                                             @endif
                                         @endfor
                                     </span>
-                                    <span class="text-muted-foreground">{{ number_format($rating, 1) }} &middot; {{ $instructor->reviews->count() }} reviews</span>
+                                    <span class="text-muted-foreground">{{ number_format($rating, 1) }} &middot; {{ $instructor->reviews->count() }} {{ __('club.platform_show_reviews') }}</span>
                                 </div>
                                 @if($instructor->role && $instructor->role !== 'Instructor')
                                 <p class="text-muted-foreground text-sm mb-0">{{ $instructor->tr('role') }}</p>
@@ -239,7 +247,7 @@
                             </div>
                         </a>
                         @empty
-                        <p class="text-muted-foreground text-center py-8">No trainers listed yet</p>
+                        <p class="text-muted-foreground text-center py-8">{{ __('club.platform_show_no_trainers') }}</p>
                         @endforelse
                     </div>
 
@@ -247,17 +255,36 @@
                     <div>
                         <div class="flex justify-between items-end mb-4">
                             <div>
-                                <h4 class="text-xl font-extrabold mb-1">Elite Facilities</h4>
-                                <p class="text-muted-foreground text-sm">State-of-the-art training environments</p>
+                                <h4 class="text-xl font-extrabold mb-1">{{ __('club.platform_show_facilities_title') }}</h4>
+                                <p class="text-muted-foreground text-sm">{{ __('club.platform_show_facilities_subtitle') }}</p>
                             </div>
+                            @if($canManage)
+                            <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-facility-modal'))"
+                                    class="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-sm font-semibold hover:bg-primary hover:text-white transition-colors">
+                                <i class="bi bi-plus-lg"></i> {{ __('Add') }}
+                            </button>
+                            @endif
                         </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            @forelse($club->facilities as $facility)
+                        <div id="facilities-grid" class="grid grid-cols-2 gap-3">
+                            @forelse($club->facilities->filter(fn($f) => $canManage || $f->is_available) as $facility)
                             @php
                                 $facImages = collect($facility->images ?? [])->map(fn($p) => asset('storage/'.$p))->values()->toArray();
                                 if (empty($facImages) && $facility->photo) $facImages = [asset('storage/'.$facility->photo)];
                             @endphp
-                            <div>
+                            <div data-owner-card id="facility-card-{{ $facility->id }}" @class(['owner-hidden' => $canManage && !$facility->is_available])>
+                                @if($canManage)
+                                <div class="absolute top-2 end-2 z-20">
+                                    <x-owner-actions :id="$facility->id"
+                                        :delete-url="route('admin.club.facilities.destroy', [$club, $facility->id])"
+                                        :hide-url="route('admin.club.facilities.toggle', [$club, $facility->id])"
+                                        :hidden="!$facility->is_available"
+                                        edit-event="edit-facility-modal"
+                                        :label="__('facility')" />
+                                </div>
+                                @if(!$facility->is_available)
+                                <span data-owner-hidden-badge class="absolute top-2 start-2 z-20 inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full"><i class="bi bi-eye-slash"></i> {{ __('Hidden') }}</span>
+                                @endif
+                                @endif
                                 @if(count($facImages))
                                 <div class="fac-slideshow" data-images="{{ json_encode($facImages) }}">
                                     <img src="{{ $facImages[0] }}" class="fac-preview" alt="{{ $facility->tr('name') }}">
@@ -274,14 +301,12 @@
                                     <i class="bi bi-building text-white text-3xl"></i>
                                 </div>
                                 @endif
-                                <h6 class="font-bold mb-1 mt-2">{{ $facility->tr('name') }}</h6>
-                                @if($facility->description)
-                                <p class="text-muted-foreground text-xs">{{ Str::limit($facility->description, 50) }}</p>
-                                @endif
+                                <h6 class="font-bold mb-1 mt-2" data-fac-name>{{ $facility->tr('name') }}</h6>
+                                <p class="text-muted-foreground text-xs" data-fac-desc>{{ $facility->description ? Str::limit($facility->description, 50) : '' }}</p>
                             </div>
                             @empty
                             <div class="col-span-2 text-center py-8">
-                                <p class="text-muted-foreground">No facilities listed yet</p>
+                                <p class="text-muted-foreground">{{ __('club.platform_show_no_facilities') }}</p>
                             </div>
                             @endforelse
                         </div>
@@ -305,9 +330,9 @@
                     )));
                     $combinedUrls = collect($combined)->map(fn($p) => asset('storage/' . $p))->values()->toArray();
                     $medals = [];
-                    if ($a->medals_gold)   $medals[] = $a->medals_gold . ' Gold';
-                    if ($a->medals_silver) $medals[] = $a->medals_silver . ' Silver';
-                    if ($a->medals_bronze) $medals[] = $a->medals_bronze . ' Bronze';
+                    if ($a->medals_gold)   $medals[] = $a->medals_gold . ' ' . __('club.platform_show_gold');
+                    if ($a->medals_silver) $medals[] = $a->medals_silver . ' ' . __('club.platform_show_silver');
+                    if ($a->medals_bronze) $medals[] = $a->medals_bronze . ' ' . __('club.platform_show_bronze');
                     return [
                         'id'           => $a->id,
                         'title'        => $a->tr('title'),
@@ -337,8 +362,8 @@
                      x-data="{ showAchDetail: false, achDetail: null }">
                     <div class="flex justify-between items-end mb-4">
                         <div>
-                            <h4 class="text-xl font-extrabold mb-1">Latest Achievements</h4>
-                            <p class="text-muted-foreground text-sm">Celebrating our champions and club milestones.</p>
+                            <h4 class="text-xl font-extrabold mb-1">{{ __('club.platform_show_achievements_title') }}</h4>
+                            <p class="text-muted-foreground text-sm">{{ __('club.platform_show_achievements_subtitle') }}</p>
                         </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -353,9 +378,9 @@
                         @php
                             $athletes  = is_array($achievement->athletes) ? array_slice($achievement->athletes, 0, 4) : [];
                             $medals    = [];
-                            if ($achievement->medals_gold)   $medals[] = $achievement->medals_gold . ' Gold';
-                            if ($achievement->medals_silver) $medals[] = $achievement->medals_silver . ' Silver';
-                            if ($achievement->medals_bronze) $medals[] = $achievement->medals_bronze . ' Bronze';
+                            if ($achievement->medals_gold)   $medals[] = $achievement->medals_gold . ' ' . __('club.platform_show_gold');
+                            if ($achievement->medals_silver) $medals[] = $achievement->medals_silver . ' ' . __('club.platform_show_silver');
+                            if ($achievement->medals_bronze) $medals[] = $achievement->medals_bronze . ' ' . __('club.platform_show_bronze');
                             $medalStr  = implode(' • ', $medals) ?: $achievement->tag;
                         @endphp
                         <article class="achievement-card h-full cursor-pointer"
@@ -364,6 +389,11 @@
                             {{-- #2 achievement-media (180px) --}}
                             <div class="achievement-media" style="position:relative;height:180px;overflow:hidden;"
                                  @if(count($achImages) > 1) data-images="{{ json_encode($achImages) }}" @endif>
+                                @if($canManage)
+                                    <a href="{{ route('admin.club.achievements', $club) }}?edit={{ $achievement->id }}" @click.stop
+                                       style="position:absolute;top:10px;left:10px;z-index:2;width:30px;height:30px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px);"
+                                       aria-label="{{ __('shared.edit') }}"><i class="bi bi-pencil-fill" style="font-size:12px;"></i></a>
+                                @endif
                                 @if(count($achImages))
                                     <img src="{{ $achImages[0] }}" class="ach-preview" alt="{{ $achievement->tr('title') }}">
                                     @if(count($achImages) > 1)
@@ -408,12 +438,12 @@
                                             @endforeach
                                         @endif
                                     </div>
-                                    <div style="font-size:.75rem;color:var(--color-muted-foreground, #9ca3af);">{{ implode(' | ', array_filter([count($athletes) ? count($athletes).' athlete'.(count($athletes)>1?'s':'') : '', $achievement->bouts_count ? $achievement->bouts_count.' bouts' : ''])) }}</div>
+                                    <div style="font-size:.75rem;color:var(--color-muted-foreground, #9ca3af);">{{ implode(' | ', array_filter([count($athletes) ? count($athletes).' '.(count($athletes)>1 ? __('club.platform_show_athletes') : __('club.platform_show_athlete')) : '', $achievement->bouts_count ? $achievement->bouts_count.' '.__('club.platform_show_bouts') : ''])) }}</div>
                                 </div>
                                 <div style="display:flex;justify-content:space-between;align-items:center;font-size:.76rem;margin-top:4px;">
-                                    <div style="display:inline-flex;align-items:center;gap:6px;color:var(--color-muted-foreground, #9ca3af);"><span>Tap to view story</span></div>
+                                    <div style="display:inline-flex;align-items:center;gap:6px;color:var(--color-muted-foreground, #9ca3af);"><span>{{ __('club.platform_show_tap_to_view_story') }}</span></div>
                                     <div style="display:inline-flex;align-items:center;gap:6px;color:var(--color-primary);font-weight:600;">
-                                        <span>Full recap</span>
+                                        <span>{{ __('club.platform_show_full_recap') }}</span>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20" fill="none">
                                             <path d="M7 4L13 10L7 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                         </svg>
@@ -438,7 +468,7 @@
                         <div class="achievement-detail-shell" @click.stop>
 
                             <button type="button" class="ach-close-pill" @click.stop="showAchDetail = false">
-                                ⨉ Close <span class="ach-key">Esc</span>
+                                ⨉ {{ __('club.platform_show_close') }} <span class="ach-key">Esc</span>
                             </button>
 
                             {{-- Left: media + chips --}}
@@ -491,7 +521,7 @@
                                     </div>
                                     <div class="ach-chip" x-show="achDetail.bouts_count">
                                         <span>📊</span>
-                                        <span x-text="achDetail.bouts_count+' Bouts'+(achDetail.wins_count?' • '+achDetail.wins_count+' Wins':'')"></span>
+                                        <span x-text="achDetail.bouts_count+' {{ __('club.platform_show_bouts_word') }}'+(achDetail.wins_count?' • '+achDetail.wins_count+' {{ __('club.platform_show_wins_word') }}':'')"></span>
                                     </div>
                                 </div>
                             </div>
@@ -509,12 +539,12 @@
                                 </div>
                                 <div class="ach-detail-divider"></div>
                                 <section>
-                                    <div class="ach-detail-section-label">Achievement story</div>
+                                    <div class="ach-detail-section-label">{{ __('club.platform_show_achievement_story') }}</div>
                                     <p class="ach-detail-description" x-show="achDetail.description" x-text="achDetail.description"></p>
-                                    <p class="ach-detail-description" x-show="!achDetail.description" style="opacity:.5;font-style:italic;">No description provided.</p>
+                                    <p class="ach-detail-description" x-show="!achDetail.description" style="opacity:.5;font-style:italic;">{{ __('club.platform_show_no_description') }}</p>
                                 </section>
                                 <section x-show="achDetail.athletes && achDetail.athletes.length">
-                                    <div class="ach-detail-section-label">Athletes</div>
+                                    <div class="ach-detail-section-label">{{ __('club.platform_show_athletes_label') }}</div>
                                     <div class="ach-detail-athlete-grid">
                                         <template x-for="ath in achDetail.athletes" :key="ath.name">
                                             <a class="ach-detail-athlete-card" :href="ath.profile_url" :style="ath.profile_url ? 'cursor:pointer' : 'cursor:default'" style="text-decoration:none;color:inherit;display:block;">
@@ -527,11 +557,11 @@
                                 <div class="ach-detail-divider"></div>
                                 <div class="ach-detail-actions">
                                     <div class="ach-detail-actions-left">
-                                        <button type="button" class="ach-ghost-btn">📷 View gallery</button>
-                                        <button type="button" class="ach-ghost-btn">📄 Download summary</button>
+                                        <button type="button" class="ach-ghost-btn">📷 {{ __('club.platform_show_view_gallery') }}</button>
+                                        <button type="button" class="ach-ghost-btn">📄 {{ __('club.platform_show_download_summary') }}</button>
                                     </div>
                                     <div class="ach-detail-actions-right">
-                                        <button type="button" class="ach-primary-btn">🔗 Share highlight</button>
+                                        <button type="button" class="ach-primary-btn">🔗 {{ __('club.platform_show_share_highlight') }}</button>
                                     </div>
                                 </div>
                             </div>
@@ -550,7 +580,7 @@
                         return [$instructor->id => [
                             'id'      => $instructor->id,
                             'user_id' => $instructor->user_id,
-                            'name'    => $instructor->user?->full_name ?? $instructor->user?->name ?? 'Unknown',
+                            'name'    => $instructor->user?->full_name ?? $instructor->user?->name ?? __('club.platform_show_unknown'),
                             'image'   => $instructor->user?->profile_picture ?? null,
                         ]];
                     })->toArray();
@@ -565,17 +595,17 @@
                             <button
                                 onclick="openSelectPackageModal({{ $package->id }})"
                                 class="w-full bg-primary text-white font-bold py-2 shadow-sm rounded-xl hover:bg-primary/90 transition-colors">
-                                Select Package
+                                {{ __('club.platform_show_select_package') }}
                             </button>
                             @if(($club->enrollment_fee ?? 0) > 0)
-                            <p class="text-xs text-center text-muted-foreground mt-1.5">+ {{ $club->currency ?? 'BHD' }} {{ number_format($club->enrollment_fee, 2) }} enrollment fee (first-time)</p>
+                            <p class="text-xs text-center text-muted-foreground mt-1.5">+ {{ $club->currency ?? 'BHD' }} {{ number_format($club->enrollment_fee, 2) }} {{ __('club.platform_show_enrollment_fee_first_time') }}</p>
                             @endif
                             @else
                             <button disabled
                                 class="w-full bg-gray-100 text-gray-400 font-bold py-2 rounded-xl cursor-not-allowed flex items-center justify-center gap-1.5">
-                                <i class="bi bi-lock"></i> Not eligible
+                                <i class="bi bi-lock"></i> {{ __('club.platform_show_not_eligible') }}
                             </button>
-                            <p class="text-xs text-center text-muted-foreground mt-1.5">No one in your family fits this package’s age/gender.</p>
+                            <p class="text-xs text-center text-muted-foreground mt-1.5">{{ __('club.platform_show_no_family_fit') }}</p>
                             @endif
                         </x-slot:footer>
                     </x-package-card>
@@ -585,8 +615,8 @@
                 @else
                 <div class="text-center py-16">
                     <i class="bi bi-box text-muted-foreground text-5xl"></i>
-                    <p class="text-lg font-medium mt-4">No packages available</p>
-                    <p class="text-sm text-muted-foreground mt-2">Check back later for available packages</p>
+                    <p class="text-lg font-medium mt-4">{{ __('club.platform_show_no_packages') }}</p>
+                    <p class="text-sm text-muted-foreground mt-2">{{ __('club.platform_show_no_packages_sub') }}</p>
                 </div>
                 @endif
             </div>
@@ -594,7 +624,7 @@
             {{-- ==================== SCHEDULE TAB ==================== --}}
             @php
                 $dayOrder    = ['saturday','sunday','monday','tuesday','wednesday','thursday','friday'];
-                $dayAbbr     = ['saturday'=>'Sat','sunday'=>'Sun','monday'=>'Mon','tuesday'=>'Tue','wednesday'=>'Wed','thursday'=>'Thu','friday'=>'Fri'];
+                $dayAbbr     = ['saturday'=>__('club.platform_show_day_sat'),'sunday'=>__('club.platform_show_day_sun'),'monday'=>__('club.platform_show_day_mon'),'tuesday'=>__('club.platform_show_day_tue'),'wednesday'=>__('club.platform_show_day_wed'),'thursday'=>__('club.platform_show_day_thu'),'friday'=>__('club.platform_show_day_fri')];
                 $todayKey    = strtolower(now()->format('l')); // e.g. 'monday'
                 $todayIndex  = array_search($todayKey, $dayOrder);
                 $visibleDays = array_slice($dayOrder, $todayIndex !== false ? $todayIndex : 0);
@@ -709,12 +739,12 @@
                                 <div>
                                     <h6 class="text-base font-bold mb-0">{{ $slot['activity_name'] }}</h6>
                                     <div class="class-meta text-muted-foreground flex items-center gap-x-4 mt-0.5 text-sm">
-                                        <span><i class="bi bi-clock mr-1"></i>{{ \Carbon\Carbon::parse($slot['start'])->format('g:i A') }} – {{ \Carbon\Carbon::parse($slot['end'])->format('g:i A') }}</span>
-                                        <span class="flex items-center gap-1 ml-2"><i class="bi bi-stopwatch"></i>{{ $slot['duration'] }} min</span>
+                                        <span><i class="bi bi-clock me-1"></i>{{ \Carbon\Carbon::parse($slot['start'])->format('g:i A') }} – {{ \Carbon\Carbon::parse($slot['end'])->format('g:i A') }}</span>
+                                        <span class="flex items-center gap-1 ms-2"><i class="bi bi-stopwatch"></i>{{ $slot['duration'] }} {{ __('club.platform_show_min') }}</span>
                                     </div>
                                     @if($slot['facility_name'])
                                     <div class="text-sm text-muted-foreground mt-0.5">
-                                        <i class="bi bi-geo-alt mr-1"></i>{{ $slot['facility_name'] }}
+                                        <i class="bi bi-geo-alt me-1"></i>{{ $slot['facility_name'] }}
                                     </div>
                                     @endif
                                 </div>
@@ -722,13 +752,13 @@
                                 <div class="flex flex-col items-end gap-2 shrink-0">
                                     <div x-show="activeDay === '{{ $todayKey }}'">
                                         <span x-show="getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') === 'live'" class="status-chip status-ongoing">
-                                            <span class="live-dot"></span> Ongoing
+                                            <span class="live-dot"></span> {{ __('club.platform_show_ongoing') }}
                                         </span>
                                         <span x-show="getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') === 'upcoming'" class="status-chip status-bookable">
-                                            <i class="bi bi-clock-fill"></i> Upcoming
+                                            <i class="bi bi-clock-fill"></i> {{ __('club.platform_show_upcoming') }}
                                         </span>
                                         <span x-show="getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') === 'finished'" class="status-chip status-finished">
-                                            <i class="bi bi-check-circle-fill"></i> Finished
+                                            <i class="bi bi-check-circle-fill"></i> {{ __('club.platform_show_finished') }}
                                         </span>
                                     </div>
                                     @if($slot['instructor_name'])
@@ -761,15 +791,15 @@
                     <div x-show="!@js(collect($scheduleSlots)->map(fn($s) => $s['days'])->flatten()->unique()->values()->toArray()).includes(activeDay)"
                          class="text-center py-16">
                         <i class="bi bi-calendar-x text-muted-foreground text-5xl"></i>
-                        <p class="text-lg font-medium mt-4">No classes on this day</p>
-                        <p class="text-sm text-muted-foreground mt-2">Try selecting a different day</p>
+                        <p class="text-lg font-medium mt-4">{{ __('club.platform_show_no_classes_day') }}</p>
+                        <p class="text-sm text-muted-foreground mt-2">{{ __('club.platform_show_try_another_day') }}</p>
                     </div>
                 </div>
                 @else
                 <div class="text-center py-16">
                     <i class="bi bi-calendar-x text-muted-foreground text-5xl"></i>
-                    <p class="text-lg font-medium mt-4">No classes scheduled</p>
-                    <p class="text-sm text-muted-foreground mt-2">Check back later for available sessions</p>
+                    <p class="text-lg font-medium mt-4">{{ __('club.platform_show_no_classes') }}</p>
+                    <p class="text-sm text-muted-foreground mt-2">{{ __('club.platform_show_no_classes_sub') }}</p>
                 </div>
                 @endif
             </div>
@@ -784,24 +814,24 @@
                 @endphp
                 <div class="flex justify-between items-center mb-4">
                     <div>
-                        <h4 class="text-xl font-extrabold mb-1">Upcoming Events</h4>
-                        <p class="text-muted-foreground text-sm">Open to everyone. Reserve your spot before it sells out.</p>
+                        <h4 class="text-xl font-extrabold mb-1">{{ __('club.platform_show_upcoming_events') }}</h4>
+                        <p class="text-muted-foreground text-sm">{{ __('club.platform_show_events_subtitle') }}</p>
                     </div>
                     <div class="flex items-center gap-2">
                         @if($archivedEvents->isNotEmpty())
                         <button class="border border-gray-300 text-muted-foreground text-sm font-semibold rounded-full px-3 py-1" data-bs-toggle="modal" data-bs-target="#archivedEventsModal">
-                            <i class="bi bi-archive mr-1"></i> Archived
+                            <i class="bi bi-archive me-1"></i> {{ __('club.platform_show_archived') }}
                         </button>
                         @endif
                         <button class="border border-gray-800 text-sm font-semibold rounded-full px-3 py-1">
-                            <i class="bi bi-calendar-plus mr-1"></i> Event Calendar
+                            <i class="bi bi-calendar-plus me-1"></i> {{ __('club.platform_show_event_calendar') }}
                         </button>
                     </div>
                 </div>
                 @if($activeEvents->isEmpty())
                 <div class="text-center py-16 text-muted-foreground">
                     <i class="bi bi-calendar-x" style="font-size:2.5rem;opacity:.3;"></i>
-                    <p class="mt-3">No upcoming events at the moment. Check back soon!</p>
+                    <p class="mt-3">{{ __('club.platform_show_no_events') }}</p>
                 </div>
                 @else
                 <div class="events-lane">
@@ -811,7 +841,7 @@
                         $tagsArr     = is_array($event->tags) ? $event->tags : [];
                         $capacityPct = $event->max_capacity ? min(100, round($event->spots_taken / $event->max_capacity * 100)) : null;
                         $isFull      = $event->max_capacity && $event->spots_taken >= $event->max_capacity;
-                        $ctaText     = $event->cta_text ?: 'Join Event';
+                        $ctaText     = $event->cta_text ?: __('club.platform_show_join_event');
                         $isJoined    = in_array($event->id, $joinedEventIds ?? []);
                         $canLeave    = false;
                         if ($isJoined && isset($joinedEventRegistrations[$event->id])) {
@@ -849,13 +879,13 @@
                                 <div class="event-title flex items-center gap-2">
                                     {{ $event->title }}
                                     @if($event->isOngoing())
-                                        <span class="status-chip status-ongoing"><span class="live-dot"></span> Ongoing</span>
+                                        <span class="status-chip status-ongoing"><span class="live-dot"></span> {{ __('club.platform_show_ongoing') }}</span>
                                     @endif
                                 </div>
                                 <div class="event-meta mb-1">
-                                    <span class="mr-3"><i class="bi bi-calendar"></i> {{ $event->date->format('d M Y') }}{{ $event->end_date ? ' – ' . $event->end_date->format('d M Y') : '' }}</span>
-                                    <span class="mr-3"><i class="bi bi-clock"></i> {{ \Carbon\Carbon::parse($event->start_time)->format('g:i A') }}{{ $event->end_time ? ' – ' . \Carbon\Carbon::parse($event->end_time)->format('g:i A') : '' }}</span>
-                                    @if($event->location)<span class="mr-3"><i class="bi bi-geo-alt"></i> {{ $event->location }}</span>@endif
+                                    <span class="me-3"><i class="bi bi-calendar"></i> {{ $event->date->format('d M Y') }}{{ $event->end_date ? ' – ' . $event->end_date->format('d M Y') : '' }}</span>
+                                    <span class="me-3"><i class="bi bi-clock"></i> {{ \Carbon\Carbon::parse($event->start_time)->format('g:i A') }}{{ $event->end_time ? ' – ' . \Carbon\Carbon::parse($event->end_time)->format('g:i A') : '' }}</span>
+                                    @if($event->location)<span class="me-3"><i class="bi bi-geo-alt"></i> {{ $event->location }}</span>@endif
                                     @if($event->level)<span><i class="bi bi-bar-chart"></i> {{ $event->level }}</span>@endif
                                 </div>
                                 @if($event->description)
@@ -874,34 +904,34 @@
                             <div class="event-capacity">
                                 @if($event->max_capacity)
                                     <i class="bi bi-people"></i>
-                                    <span>{{ $isFull ? 'Full · Waitlist only' : $event->spots_taken . ' / ' . $event->max_capacity . ' spots taken' }}</span>
+                                    <span>{{ $isFull ? __('club.platform_show_waitlist_only') : $event->spots_taken . ' / ' . $event->max_capacity . ' ' . __('club.platform_show_spots_taken') }}</span>
                                     @if($capacityPct !== null)
                                     <div class="capacity-bar"><div class="capacity-fill" style="width:{{ $capacityPct }}%;"></div></div>
                                     @endif
                                 @else
                                     <i class="bi bi-infinity"></i>
-                                    <span>Unlimited guests</span>
+                                    <span>{{ __('club.platform_show_unlimited_guests') }}</span>
                                 @endif
                             </div>
                             @auth
                                 @if($isJoined)
                                 <div class="flex items-center gap-2">
-                                    <span class="event-cta-joined" style="background:{{ $pillColor }};"><i class="bi bi-check-circle-fill"></i> Joined</span>
+                                    <span class="event-cta-joined" style="background:{{ $pillColor }};"><i class="bi bi-check-circle-fill"></i> {{ __('club.platform_show_joined') }}</span>
                                     @if($canLeave)
                                     <form method="POST" action="{{ route('clubs.events.leave', [$club->country_code, $club->slug, $event->id]) }}">
                                         @csrf @method('DELETE')
-                                        <button type="submit" class="event-cta-leave">Leave</button>
+                                        <button type="submit" class="event-cta-leave">{{ __('club.platform_show_leave') }}</button>
                                     </form>
                                     @else
-                                    <span class="event-cta-leave opacity-50 cursor-not-allowed" title="Cancellation window closed ({{ $event->cancel_within_days }} day{{ $event->cancel_within_days > 1 ? 's' : '' }} after joining)">
-                                        <i class="bi bi-lock-fill"></i> Leave
+                                    <span class="event-cta-leave opacity-50 cursor-not-allowed" title="{{ __('club.platform_show_cancel_window_closed', ['count' => $event->cancel_within_days, 'unit' => $event->cancel_within_days > 1 ? __('club.platform_show_days') : __('club.platform_show_day')]) }}">
+                                        <i class="bi bi-lock-fill"></i> {{ __('club.platform_show_leave') }}
                                     </span>
                                     @endif
                                 </div>
                                 @elseif($isFull)
                                 <form method="POST" action="{{ route('clubs.events.join', [$club->country_code, $club->slug, $event->id]) }}">
                                     @csrf
-                                    <button type="submit" class="event-cta-wait" style="background:{{ $pillColor }};"><i class="bi bi-clock-history"></i> Join Waitlist</button>
+                                    <button type="submit" class="event-cta-wait" style="background:{{ $pillColor }};"><i class="bi bi-clock-history"></i> {{ __('club.platform_show_join_waitlist') }}</button>
                                 </form>
                                 @else
                                 <form method="POST" action="{{ route('clubs.events.join', [$club->country_code, $club->slug, $event->id]) }}">
@@ -911,7 +941,7 @@
                                 @endif
                             @else
                                 @if($isFull)
-                                <button class="event-cta-wait" style="background:{{ $pillColor }};"><i class="bi bi-clock-history"></i> Join Waitlist</button>
+                                <button class="event-cta-wait" style="background:{{ $pillColor }};"><i class="bi bi-clock-history"></i> {{ __('club.platform_show_join_waitlist') }}</button>
                                 @else
                                 <button class="event-cta-open" style="background:{{ $pillColor }};"><i class="bi bi-ticket"></i> {{ $ctaText }}</button>
                                 @endif
@@ -929,7 +959,7 @@
                         <div class="modal-content">
                             <div class="modal-header border-b border-border px-4 py-3">
                                 <h5 class="modal-title font-semibold flex items-center gap-2">
-                                    <i class="bi bi-archive"></i> Archived Events
+                                    <i class="bi bi-archive"></i> {{ __('club.platform_show_archived_events') }}
                                 </h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                             </div>
@@ -946,8 +976,8 @@
                                     <div class="flex-1 min-w-0">
                                         <p class="font-semibold text-sm mb-0.5">{{ $event->title }}</p>
                                         <p class="text-xs text-muted-foreground mb-0">
-                                            <i class="bi bi-clock mr-1"></i>{{ \Carbon\Carbon::parse($event->start_time)->format('g:i A') }}
-                                            @if($event->location) &middot; <i class="bi bi-geo-alt mr-1"></i>{{ $event->location }}@endif
+                                            <i class="bi bi-clock me-1"></i>{{ \Carbon\Carbon::parse($event->start_time)->format('g:i A') }}
+                                            @if($event->location) &middot; <i class="bi bi-geo-alt me-1"></i>{{ $event->location }}@endif
                                         </p>
                                         @if($event->description)
                                         <p class="text-xs text-muted-foreground mt-1 mb-0">{{ $event->description }}</p>
@@ -1009,7 +1039,7 @@
                                             </template>
                                         </div>
                                         <button @mousedown.stop @click.stop="showDetail = false"
-                                                class="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-black/50 hover:bg-black/75 text-white flex items-center justify-center transition-colors z-10">
+                                                class="absolute top-2.5 end-2.5 w-8 h-8 rounded-full bg-black/50 hover:bg-black/75 text-white flex items-center justify-center transition-colors z-10">
                                             <i class="bi bi-x-lg text-xs"></i>
                                         </button>
                                     </div>
@@ -1036,10 +1066,10 @@
 
                                     {{-- Meta --}}
                                     <div class="px-6 py-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground border-b border-border">
-                                        <span><i class="bi bi-clock mr-1"></i><span x-text="detailEvent.time_label"></span></span>
-                                        <span x-show="detailEvent.location"><i class="bi bi-geo-alt mr-1"></i><span x-text="detailEvent.location"></span></span>
-                                        <span x-show="detailEvent.level"><i class="bi bi-bar-chart mr-1"></i><span x-text="detailEvent.level"></span></span>
-                                        <span x-show="detailEvent.max_capacity"><i class="bi bi-people mr-1"></i><span x-text="detailEvent.max_capacity + ' spots'"></span></span>
+                                        <span><i class="bi bi-clock me-1"></i><span x-text="detailEvent.time_label"></span></span>
+                                        <span x-show="detailEvent.location"><i class="bi bi-geo-alt me-1"></i><span x-text="detailEvent.location"></span></span>
+                                        <span x-show="detailEvent.level"><i class="bi bi-bar-chart me-1"></i><span x-text="detailEvent.level"></span></span>
+                                        <span x-show="detailEvent.max_capacity"><i class="bi bi-people me-1"></i><span x-text="detailEvent.max_capacity + ' {{ __('club.platform_show_spots') }}'"></span></span>
                                     </div>
 
                                     {{-- Description --}}
@@ -1056,7 +1086,7 @@
 
                                     {{-- Footer --}}
                                     <div class="px-6 py-4 border-t border-border flex justify-end">
-                                        <button type="button" class="btn btn-outline-secondary btn-sm" @click="showDetail = false">Close</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" @click="showDetail = false">{{ __('club.platform_show_close') }}</button>
                                     </div>
                                 </div>
                             </template>
@@ -1070,12 +1100,12 @@
             <div class="tab-pane fade" id="tab-stats">
                 <div class="flex justify-between items-center mb-4">
                     <div>
-                        <h4 class="text-xl font-extrabold mb-1">Club Statistics</h4>
-                        <p class="text-muted-foreground text-sm">Who trains with us, how they train, and how the club is growing.</p>
+                        <h4 class="text-xl font-extrabold mb-1">{{ __('club.platform_show_statistics_title') }}</h4>
+                        <p class="text-muted-foreground text-sm">{{ __('club.platform_show_statistics_subtitle') }}</p>
                     </div>
                     <span class="bg-gray-900 text-white text-xs font-semibold rounded-full px-3 py-2 flex items-center gap-2">
                         <i class="bi bi-bar-chart text-yellow-400"></i>
-                        Live snapshot &middot; {{ now()->format('M Y') }}
+                        {{ __('club.platform_show_live_snapshot') }} &middot; {{ now()->format('M Y') }}
                     </span>
                 </div>
 
@@ -1084,8 +1114,8 @@
                     {{-- Nationality --}}
                     <div class="stat-card">
                         <div class="stat-card-header">
-                            <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">Nationality</span>
-                            <span class="inline-flex items-center gap-1 text-xs text-gray-400"><i class="bi bi-globe2 text-primary"></i> Top 4</span>
+                            <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">{{ __('club.platform_show_nationality') }}</span>
+                            <span class="inline-flex items-center gap-1 text-xs text-gray-400"><i class="bi bi-globe2 text-primary"></i> {{ __('club.platform_show_top_4') }}</span>
                         </div>
                         <div class="stat-card-body">
                             <div class="relative"><canvas id="donutNationalities" height="160"></canvas></div>
@@ -1105,8 +1135,8 @@
                     {{-- Age Groups --}}
                     <div class="stat-card">
                         <div class="stat-card-header">
-                            <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">Age Groups</span>
-                            <span class="inline-flex items-center gap-1 text-xs text-gray-400"><i class="bi bi-people text-primary"></i> Active</span>
+                            <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">{{ __('club.platform_show_age_groups') }}</span>
+                            <span class="inline-flex items-center gap-1 text-xs text-gray-400"><i class="bi bi-people text-primary"></i> {{ __('club.platform_show_active') }}</span>
                         </div>
                         <div class="stat-card-body">
                             <div class="relative"><canvas id="donutAgeGroups" height="160"></canvas></div>
@@ -1126,8 +1156,8 @@
                     {{-- Gender --}}
                     <div class="stat-card">
                         <div class="stat-card-header">
-                            <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">Gender Ratio</span>
-                            <span class="inline-flex items-center gap-1 text-xs text-gray-400"><i class="bi bi-gender-ambiguous text-primary"></i> All</span>
+                            <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">{{ __('club.platform_show_gender_ratio') }}</span>
+                            <span class="inline-flex items-center gap-1 text-xs text-gray-400"><i class="bi bi-gender-ambiguous text-primary"></i> {{ __('club.platform_show_all') }}</span>
                         </div>
                         <div class="stat-card-body">
                             <div class="relative"><canvas id="donutGender" height="160"></canvas></div>
@@ -1135,7 +1165,7 @@
                                 @php $genderP = ['#0284c7','#be185d','#64748b']; $gi = 0; @endphp
                                 @foreach($genderStats as $gender => $count)
                                 <li>
-                                    <span><span class="legend-dot" style="background:{{ $genderP[$gi % 3] }};"></span> {{ ucfirst($gender ?: 'Unknown') }}</span>
+                                    <span><span class="legend-dot" style="background:{{ $genderP[$gi % 3] }};"></span> {{ ucfirst($gender ?: __('club.platform_show_unknown')) }}</span>
                                     <span>{{ $totalMembers > 0 ? round($count / $totalMembers * 100) : 0 }}%</span>
                                 </li>
                                 @php $gi++; @endphp
@@ -1150,8 +1180,8 @@
                     {{-- Horoscope --}}
                     <div class="stat-card">
                         <div class="stat-card-header">
-                            <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">Horoscope</span>
-                            <span class="inline-flex items-center gap-1 text-xs text-gray-400"><i class="bi bi-stars text-primary"></i> For fun</span>
+                            <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">{{ __('club.platform_show_horoscope') }}</span>
+                            <span class="inline-flex items-center gap-1 text-xs text-gray-400"><i class="bi bi-stars text-primary"></i> {{ __('club.platform_show_for_fun') }}</span>
                         </div>
                         <div class="stat-card-body">
                             <div class="relative"><canvas id="donutHoroscope" height="160"></canvas></div>
@@ -1171,8 +1201,8 @@
                     {{-- Blood Type --}}
                     <div class="stat-card">
                         <div class="stat-card-header">
-                            <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">Blood Type</span>
-                            <span class="inline-flex items-center gap-1 text-xs text-gray-400"><i class="bi bi-droplet-half text-primary"></i> Self-reported</span>
+                            <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">{{ __('club.platform_show_blood_type') }}</span>
+                            <span class="inline-flex items-center gap-1 text-xs text-gray-400"><i class="bi bi-droplet-half text-primary"></i> {{ __('club.platform_show_self_reported') }}</span>
                         </div>
                         <div class="stat-card-body">
                             <div class="relative"><canvas id="donutBloodType" height="160"></canvas></div>
@@ -1192,8 +1222,8 @@
                     {{-- Member Goals --}}
                     <div class="stat-card">
                         <div class="stat-card-header">
-                            <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">Goal Status</span>
-                            <span class="inline-flex items-center gap-1 text-xs text-gray-400"><i class="bi bi-bullseye text-primary"></i> Progress</span>
+                            <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">{{ __('club.platform_show_goal_status') }}</span>
+                            <span class="inline-flex items-center gap-1 text-xs text-gray-400"><i class="bi bi-bullseye text-primary"></i> {{ __('club.platform_show_progress') }}</span>
                         </div>
                         <div class="stat-card-body">
                             <div class="relative"><canvas id="donutGoals" height="160"></canvas></div>
@@ -1215,8 +1245,8 @@
                 <div class="grid grid-cols-1 gap-3">
                     <div class="stat-card">
                         <div class="stat-card-header">
-                            <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">New Members — Last 12 Months</span>
-                            <span class="inline-flex items-center gap-1 text-xs text-gray-400"><i class="bi bi-graph-up text-primary"></i> 12-month trend</span>
+                            <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">{{ __('club.platform_show_new_members_12mo') }}</span>
+                            <span class="inline-flex items-center gap-1 text-xs text-gray-400"><i class="bi bi-graph-up text-primary"></i> {{ __('club.platform_show_12_month_trend') }}</span>
                         </div>
                         <div class="stat-card-body">
                             <div class="bar-wrapper-fixed">
@@ -1231,10 +1261,10 @@
 
                     {{-- Header bar --}}
                     <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50/60">
-                        <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">Member Reviews</span>
+                        <span class="text-xs font-semibold uppercase tracking-widest text-gray-400">{{ __('club.platform_show_member_reviews') }}</span>
                         <span class="inline-flex items-center gap-1.5 text-xs text-gray-400">
                             <i class="bi bi-patch-check-fill text-primary"></i>
-                            Verified members only
+                            {{ __('club.platform_show_verified_members_only') }}
                         </span>
                     </div>
 
@@ -1257,11 +1287,11 @@
                                 @endfor
                             </div>
                             <p class="text-xs text-gray-400 text-center leading-snug">
-                                Based on <span class="font-semibold text-gray-600">{{ $reviews->count() }}</span> verified reviews
+                                {{ __('club.platform_show_based_on') }} <span class="font-semibold text-gray-600">{{ $reviews->count() }}</span> {{ __('club.platform_show_verified_reviews') }}
                             </p>
                             <div class="mt-1 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-600 text-xs font-semibold">
                                 <i class="bi bi-graph-up-arrow text-emerald-500"></i>
-                                +0.2 vs last year
+                                {{ __('club.platform_show_vs_last_year') }}
                             </div>
                         </div>
 
@@ -1269,11 +1299,11 @@
                         <div class="flex flex-col justify-center gap-3.5 px-6 py-5 bg-white">
                             @php
                                 $aspects = [
-                                    ['icon' => 'bi-person-check',  'color' => 'text-violet-500',  'label' => 'Trainers',        'pct' => min($averageRating * 20, 100),              'score' => number_format($averageRating, 1)],
-                                    ['icon' => 'bi-droplet',       'color' => 'text-sky-500',     'label' => 'Cleanliness',     'pct' => min(($averageRating - 0.1) * 20, 100),      'score' => number_format(max($averageRating - 0.1, 0), 1)],
-                                    ['icon' => 'bi-house',         'color' => 'text-indigo-400',  'label' => 'Comfort',         'pct' => min(($averageRating - 0.2) * 20, 100),      'score' => number_format(max($averageRating - 0.2, 0), 1)],
-                                    ['icon' => 'bi-bullseye',      'color' => 'text-amber-400',   'label' => 'Keeps on track',  'pct' => min(($averageRating - 0.1) * 20, 100),      'score' => number_format(max($averageRating - 0.1, 0), 1)],
-                                    ['icon' => 'bi-heart',         'color' => 'text-rose-400',    'label' => 'Community vibe',  'pct' => min($averageRating * 20, 100),              'score' => number_format($averageRating, 1)],
+                                    ['icon' => 'bi-person-check',  'color' => 'text-violet-500',  'label' => __('club.platform_show_aspect_trainers'),        'pct' => min($averageRating * 20, 100),              'score' => number_format($averageRating, 1)],
+                                    ['icon' => 'bi-droplet',       'color' => 'text-sky-500',     'label' => __('club.platform_show_aspect_cleanliness'),     'pct' => min(($averageRating - 0.1) * 20, 100),      'score' => number_format(max($averageRating - 0.1, 0), 1)],
+                                    ['icon' => 'bi-house',         'color' => 'text-indigo-400',  'label' => __('club.platform_show_aspect_comfort'),         'pct' => min(($averageRating - 0.2) * 20, 100),      'score' => number_format(max($averageRating - 0.2, 0), 1)],
+                                    ['icon' => 'bi-bullseye',      'color' => 'text-amber-400',   'label' => __('club.platform_show_aspect_keeps_on_track'),  'pct' => min(($averageRating - 0.1) * 20, 100),      'score' => number_format(max($averageRating - 0.1, 0), 1)],
+                                    ['icon' => 'bi-heart',         'color' => 'text-rose-400',    'label' => __('club.platform_show_aspect_community_vibe'),  'pct' => min($averageRating * 20, 100),              'score' => number_format($averageRating, 1)],
                                 ];
                             @endphp
                             @foreach($aspects as $a)
@@ -1284,7 +1314,7 @@
                                     <div class="h-full rounded-full bg-primary transition-all duration-500"
                                          style="width: {{ max($a['pct'], 0) }}%"></div>
                                 </div>
-                                <span class="text-xs font-semibold text-gray-700 w-6 text-right flex-shrink-0">{{ $a['score'] }}</span>
+                                <span class="text-xs font-semibold text-gray-700 w-6 text-end flex-shrink-0">{{ $a['score'] }}</span>
                             </div>
                             @endforeach
                         </div>
@@ -1297,7 +1327,7 @@
                                 </div>
                                 <div>
                                     <div class="text-sm font-bold text-gray-800">9.7 / 10</div>
-                                    <div class="text-xs text-gray-400">Enjoyment score</div>
+                                    <div class="text-xs text-gray-400">{{ __('club.platform_show_enjoyment_score') }}</div>
                                 </div>
                             </div>
                             <div class="flex items-center gap-3 p-3 rounded-xl bg-emerald-50 border border-emerald-100">
@@ -1305,8 +1335,8 @@
                                     <i class="bi bi-shield-check text-emerald-500 text-base"></i>
                                 </div>
                                 <div>
-                                    <div class="text-sm font-bold text-gray-800">Members feel safe</div>
-                                    <div class="text-xs text-gray-400">Safe environment</div>
+                                    <div class="text-sm font-bold text-gray-800">{{ __('club.platform_show_members_feel_safe') }}</div>
+                                    <div class="text-xs text-gray-400">{{ __('club.platform_show_safe_environment') }}</div>
                                 </div>
                             </div>
                             <div class="flex items-center gap-3 p-3 rounded-xl bg-sky-50 border border-sky-100">
@@ -1314,8 +1344,8 @@
                                     <i class="bi bi-stopwatch text-sky-500 text-base"></i>
                                 </div>
                                 <div>
-                                    <div class="text-sm font-bold text-gray-800">92% improvement</div>
-                                    <div class="text-xs text-gray-400">Better discipline</div>
+                                    <div class="text-sm font-bold text-gray-800">{{ __('club.platform_show_92_improvement') }}</div>
+                                    <div class="text-xs text-gray-400">{{ __('club.platform_show_better_discipline') }}</div>
                                 </div>
                             </div>
                         </div>
@@ -1328,20 +1358,20 @@
             <div class="tab-pane fade" id="tab-timeline">
                 <div class="flex justify-between items-center mb-4">
                     <div>
-                        <h4 class="text-xl font-extrabold mb-1">Club Timeline</h4>
-                        <p class="text-muted-foreground text-sm">Daily moments, announcements, and highlights.</p>
+                        <h4 class="text-xl font-extrabold mb-1">{{ __('club.platform_show_timeline_title') }}</h4>
+                        <p class="text-muted-foreground text-sm">{{ __('club.platform_show_timeline_subtitle') }}</p>
                     </div>
                 </div>
 
                 @php
                     $publishedPosts = $club->timelinePosts->where('status', 'published');
-                    $groupedPosts   = $publishedPosts->groupBy(fn($p) => $p->posted_at?->format('d M Y') ?? 'Undated');
+                    $groupedPosts   = $publishedPosts->groupBy(fn($p) => $p->posted_at?->format('d M Y') ?? __('club.platform_show_undated'));
                 @endphp
 
                 @if($publishedPosts->isEmpty())
                 <div class="text-center py-16 text-muted-foreground">
                     <i class="bi bi-newspaper" style="font-size:2.5rem;opacity:.3;"></i>
-                    <p class="mt-3">No posts yet. Check back soon!</p>
+                    <p class="mt-3">{{ __('club.platform_show_no_posts') }}</p>
                 </div>
                 @else
                 <div class="news-timeline">
@@ -1373,7 +1403,7 @@
                         </div>
                         <div class="news-content">
                             @if($post->image_path)
-                            <img class="news-img" src="{{ asset('storage/' . $post->image_path) }}" alt="Post image">
+                            <img class="news-img" src="{{ asset('storage/' . $post->image_path) }}" alt="{{ __('club.platform_show_post_image') }}">
                             @endif
                             <p class="mb-2 text-sm">{{ $post->body }}</p>
                             <div class="news-actions">
@@ -1408,7 +1438,7 @@
                                 {{-- Share --}}
                                 <button class="news-action share-btn"
                                         data-url="{{ $club->url }}#post-{{ $post->id }}">
-                                    <i class="bi bi-share"></i> Share
+                                    <i class="bi bi-share"></i> {{ __('club.platform_show_share') }}
                                 </button>
                             </div>
                         </div>
@@ -1435,7 +1465,7 @@
                                             &middot; <button class="comment-delete-btn text-red-400"
                                                             data-comment-id="{{ $comment->id }}"
                                                             data-url="{{ route('clubs.timeline.comment.delete', [$club->country_code, $club->slug, $post->id, $comment->id]) }}"
-                                                            data-csrf="{{ csrf_token() }}">Delete</button>
+                                                            data-csrf="{{ csrf_token() }}">{{ __('shared.delete') }}</button>
                                             @endif
                                         </div>
                                     </div>
@@ -1452,7 +1482,7 @@
                                 </div>
                                 <form class="comment-form flex-1" data-post-id="{{ $post->id }}"
                                       data-url="{{ $commentUrl }}" data-csrf="{{ csrf_token() }}">
-                                    <input type="text" class="comment-input" placeholder="Write a comment…" required>
+                                    <input type="text" class="comment-input" placeholder="{{ __('club.platform_show_write_comment') }}" required>
                                     <button type="submit" class="comment-submit"><i class="bi bi-send-fill"></i></button>
                                 </form>
                             </div>
@@ -1474,6 +1504,49 @@
     @include('platform.partials.join-club-modal')
     <x-toast-notification />
 </div>
+
+@if($canManage)
+{{-- ===== Owner inline management: club editor + per-section modals + controls JS ===== --}}
+<x-club-modal mode="edit" :club="$club" />
+<x-facility-modal :club="$club" />
+<x-confirm-dialog />
+@include('platform.partials.owner-controls')
+<script>
+// Patch the facilities grid in place after an inline add/edit (no reload).
+window.addEventListener('facility-saved', function (e) {
+    const d = e.detail || {}; const f = d.facility || {};
+    if (d.mode === 'edit') {
+        const card = document.getElementById('facility-card-' + d.id);
+        if (card) {
+            const n = card.querySelector('[data-fac-name]'); if (n) n.textContent = f.name || n.textContent;
+            const ds = card.querySelector('[data-fac-desc]'); if (ds) ds.textContent = (f.description || '').slice(0, 50);
+        }
+        return;
+    }
+    // Create: append a fresh card (image or placeholder) with its owner actions.
+    const grid = document.getElementById('facilities-grid');
+    if (!grid) return;
+    const empty = grid.querySelector('.col-span-2.text-center'); if (empty) empty.remove();
+    const imgs = (f.images || []).map(p => '/storage/' + p);
+    const media = imgs.length
+        ? `<div class="fac-slideshow" data-images='${JSON.stringify(imgs)}'><img src="${imgs[0]}" class="fac-preview" alt=""></div>`
+        : `<div class="fac-placeholder"><i class="bi bi-building text-white text-3xl"></i></div>`;
+    const el = document.createElement('div');
+    el.setAttribute('data-owner-card', '');
+    el.id = 'facility-card-' + f.id;
+    el.innerHTML = `
+        <div class="absolute top-2 end-2 z-20" x-data="ownerActions({ id: ${f.id}, deleteUrl: '${@js(route('admin.club.facilities.store', $club))}/${f.id}', hideUrl: '${@js(route('admin.club.facilities.store', $club))}/${f.id}/toggle', editEvent: 'edit-facility-modal', hidden: false, label: @js(__('facility')) })" @keydown.escape.window="open=false">
+            <button type="button" @click.stop.prevent="toggle($el)" class="w-7 h-7 rounded-full bg-white/90 backdrop-blur shadow-sm border border-gray-100 flex items-center justify-center text-gray-600 hover:bg-white transition-colors"><i class="bi bi-three-dots text-sm"></i></button>
+            <template x-teleport="body"><div x-show="open" x-cloak><div class="fixed inset-0 z-[65]" @click="open=false"></div><div x-show="open" :style="\`top:\${y}px; right:\${r}px;\`" class="fixed z-[70] w-40 bg-white rounded-xl shadow-lg border border-gray-100 py-1"><button type="button" @click="edit()" class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><i class="bi bi-pencil"></i> ${@js(__('Edit'))}</button><button type="button" @click="toggleHide()" class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-amber-700 hover:bg-amber-50"><i class="bi" :class="hidden ? 'bi-eye' : 'bi-eye-slash'"></i> <span x-text="hidden ? @js(__('Show')) : @js(__('Hide'))"></span></button><button type="button" @click="remove()" class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50"><i class="bi bi-trash"></i> ${@js(__('Delete'))}</button></div></div></template>
+        </div>
+        ${media}
+        <h6 class="font-bold mb-1 mt-2" data-fac-name>${(f.name || '').replace(/</g,'&lt;')}</h6>
+        <p class="text-muted-foreground text-xs" data-fac-desc>${(f.description || '').slice(0,50).replace(/</g,'&lt;')}</p>`;
+    grid.appendChild(el);
+    if (window.initFacilitySlideshows) window.initFacilitySlideshows();
+});
+</script>
+@endif
 
 @endsection
 
@@ -1613,7 +1686,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const nationalityData = @json($nationalityStats->values()->toArray());
     const ageLabels = @json(array_keys($ageGroups));
     const ageData = @json(array_values($ageGroups));
-    const genderLabels = @json($genderStats->keys()->map(fn($g) => ucfirst($g ?: 'Unknown'))->toArray());
+    const genderLabels = @json($genderStats->keys()->map(fn($g) => ucfirst($g ?: __('club.platform_show_unknown')))->toArray());
     const genderData = @json($genderStats->values()->toArray());
     const horoscopeLabels = @json(array_keys($horoscopeGroups));
     const horoscopeData = @json(array_values($horoscopeGroups));
@@ -1736,7 +1809,7 @@ document.addEventListener('DOMContentLoaded', function() {
             data: {
                 labels: monthlyLabels,
                 datasets: [{
-                    label: 'Members',
+                    label: '{{ __("club.platform_show_members_legend") }}',
                     data: monthlyData,
                     backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim(),
                     borderWidth: 0,
@@ -1845,7 +1918,7 @@ document.addEventListener('DOMContentLoaded', function () {
             ? `<img src="${c.avatar}" alt="">`
             : `<div class="comment-avatar-placeholder">${(c.user_name || '?')[0].toUpperCase()}</div>`;
         const deleteBtn = c.is_owner
-            ? `&middot; <button class="comment-delete-btn text-red-400" data-comment-id="${c.id}" data-url="${c.delete_url}" data-csrf="{{ csrf_token() }}">Delete</button>`
+            ? `&middot; <button class="comment-delete-btn text-red-400" data-comment-id="${c.id}" data-url="${c.delete_url}" data-csrf="{{ csrf_token() }}">{{ __('shared.delete') }}</button>`
             : '';
         return `
         <div class="comment-item" id="comment-${c.id}">
@@ -1895,7 +1968,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 navigator.clipboard.writeText(url).then(() => {
                     const orig = this.innerHTML;
-                    this.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+                    this.innerHTML = '<i class="bi bi-check-lg"></i> {{ __("club.platform_show_copied") }}';
                     setTimeout(() => { this.innerHTML = orig; }, 2000);
                 });
             }
@@ -1988,7 +2061,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (data.members_only) {
                 modalContent.innerHTML = `
                     <div class="mb-4"><i class="bi bi-lock-fill text-4xl text-primary"></i></div>
-                    <h5 class="font-bold text-lg mb-2">Members Only</h5>
+                    <h5 class="font-bold text-lg mb-2">{{ __("club.platform_show_members_only") }}</h5>
                     <p class="text-muted-foreground text-sm">${escapeHtml(data.message)}</p>`;
                 return;
             }
@@ -1996,8 +2069,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (data.already_collected) {
                 modalContent.innerHTML = `
                     <div class="mb-4"><i class="bi bi-check-circle-fill text-4xl text-green-500"></i></div>
-                    <h5 class="font-bold text-lg mb-2">Already Collected</h5>
-                    <p class="text-muted-foreground text-sm">This perk was already collected on <strong>${escapeHtml(data.collected_at)}</strong>.</p>`;
+                    <h5 class="font-bold text-lg mb-2">{{ __("club.platform_show_already_collected_title") }}</h5>
+                    <p class="text-muted-foreground text-sm">{{ __("club.platform_show_perk_collected_on") }} <strong>${escapeHtml(data.collected_at)}</strong>.</p>`;
                 return;
             }
 
@@ -2007,14 +2080,14 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (!data.success) {
-                modalContent.innerHTML = `<p class="text-red-500 text-sm">${escapeHtml(data.message || 'Something went wrong.')}</p>`;
+                modalContent.innerHTML = `<p class="text-red-500 text-sm">${escapeHtml(data.message || '{{ __("club.platform_show_something_wrong") }}')}</p>`;
                 return;
             }
 
             showPerkValue(data);
         })
         .catch(() => {
-            modalContent.innerHTML = `<p class="text-red-500 text-sm">Something went wrong. Please try again.</p>`;
+            modalContent.innerHTML = `<p class="text-red-500 text-sm">{{ __("club.platform_show_something_wrong_retry") }}</p>`;
         });
     }
 
@@ -2028,30 +2101,30 @@ document.addEventListener('DOMContentLoaded', function () {
             if (m.already_collected) {
                 return `<div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 opacity-60 cursor-not-allowed select-none">
                     ${avatar}
-                    <div class="flex-1 text-left">
+                    <div class="flex-1 text-start">
                         <div class="font-semibold text-sm text-gray-700">${escapeHtml(m.name)}</div>
                         <div class="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
-                            <i class="bi bi-check-circle-fill text-green-500"></i> Already collected
+                            <i class="bi bi-check-circle-fill text-green-500"></i> {{ __("club.platform_show_already_collected") }}
                         </div>
                     </div>
                 </div>`;
             }
 
-            return `<button class="perk-member-pick w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 hover:border-primary hover:bg-primary/5 transition-all text-left"
+            return `<button class="perk-member-pick w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 hover:border-primary hover:bg-primary/5 transition-all text-start"
                         data-member-id="${m.id}" data-collect-url="${escapeHtml(collectUrl)}" data-csrf="${escapeHtml(csrf)}">
                 ${avatar}
                 <div class="flex-1">
                     <div class="font-semibold text-sm">${escapeHtml(m.name)}</div>
-                    <div class="text-xs text-muted-foreground mt-0.5">Tap to collect perk</div>
+                    <div class="text-xs text-muted-foreground mt-0.5">{{ __("club.platform_show_tap_collect_perk") }}</div>
                 </div>
                 <i class="bi bi-chevron-right text-gray-400 text-xs"></i>
             </button>`;
         }).join('');
 
         modalContent.innerHTML = `
-            <div class="mb-4 text-left">
-                <h5 class="font-bold text-lg mb-1">Who is this perk for?</h5>
-                <p class="text-muted-foreground text-sm">Select a family member to collect this perk for.</p>
+            <div class="mb-4 text-start">
+                <h5 class="font-bold text-lg mb-1">{{ __("club.platform_show_perk_for_who") }}</h5>
+                <p class="text-muted-foreground text-sm">{{ __("club.platform_show_perk_select_family") }}</p>
             </div>
             <div class="flex flex-col gap-2">${rows}</div>`;
 
@@ -2068,14 +2141,14 @@ document.addEventListener('DOMContentLoaded', function () {
             modalContent.innerHTML = `
                 <div class="mb-4"><i class="bi bi-ticket-perforated-fill text-4xl text-primary"></i></div>
                 <h5 class="font-bold text-lg mb-1">${escapeHtml(data.title)}</h5>
-                <p class="text-muted-foreground text-sm mb-4">Show or copy this code at the partner.</p>
+                <p class="text-muted-foreground text-sm mb-4">{{ __("club.platform_show_perk_show_code") }}</p>
                 <div class="flex items-center gap-2 bg-gray-50 border border-dashed border-gray-300 rounded-xl px-4 py-3 mb-3">
                     <span id="perkCode" class="font-mono font-extrabold text-xl tracking-widest flex-1 text-center text-primary">${escapeHtml(data.perk_value)}</span>
-                    <button id="copyPerkCode" class="text-gray-400 hover:text-primary transition-colors" title="Copy">
+                    <button id="copyPerkCode" class="text-gray-400 hover:text-primary transition-colors" title="{{ __("club.platform_show_copy") }}">
                         <i class="bi bi-copy"></i>
                     </button>
                 </div>
-                <p id="copiedMsg" class="text-green-500 text-xs" style="display:none;">Copied to clipboard!</p>`;
+                <p id="copiedMsg" class="text-green-500 text-xs" style="display:none;">{{ __("club.platform_show_copied_clipboard") }}</p>`;
 
             document.getElementById('copyPerkCode').addEventListener('click', () => {
                 navigator.clipboard.writeText(data.perk_value).then(() => {
@@ -2087,7 +2160,7 @@ document.addEventListener('DOMContentLoaded', function () {
             modalContent.innerHTML = `
                 <div class="mb-3"><i class="bi bi-qr-code-scan text-3xl text-primary"></i></div>
                 <h5 class="font-bold text-lg mb-1">${escapeHtml(data.title)}</h5>
-                <p class="text-muted-foreground text-sm mb-4">Show this QR code at the partner location.</p>
+                <p class="text-muted-foreground text-sm mb-4">{{ __("club.platform_show_perk_show_qr") }}</p>
                 <div id="perkQr" class="flex justify-center mb-2"></div>`;
 
             new QRCode(document.getElementById('perkQr'), {
@@ -2100,7 +2173,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function showPerkLoading() {
-        modalContent.innerHTML = '<div class="text-center py-6"><div class="spinner-border text-primary" role="status"></div><p class="mt-3 text-muted-foreground text-sm">Loading your perk...</p></div>';
+        modalContent.innerHTML = '<div class="text-center py-6"><div class="spinner-border text-primary" role="status"></div><p class="mt-3 text-muted-foreground text-sm">{{ __("club.platform_show_loading_perk") }}</p></div>';
     }
 
     function escapeHtml(str) {
@@ -2200,7 +2273,7 @@ function selectPackageApp() {
                 });
 
                 if (eligible.length === 0) {
-                    Toast.warning('Not Eligible', 'None of your family members are eligible for this package.');
+                    Toast.warning('{{ __("club.platform_show_not_eligible_title") }}', '{{ __("club.platform_show_not_eligible_msg") }}');
                     return;
                 }
 
@@ -2288,7 +2361,7 @@ function selectPackageApp() {
             goNext() {
                 if (this.step === 'select-members') {
                     if (this.selectedMemberIds.length === 0) {
-                        Toast.warning('No Members Selected', 'Please select at least one person to register.');
+                        Toast.warning('{{ __("club.platform_show_no_members_title") }}', '{{ __("club.platform_show_no_members_msg") }}');
                         return;
                     }
                     this.buildRegistrants();
@@ -2297,7 +2370,7 @@ function selectPackageApp() {
                 } else if (this.step === 'package-selection') {
                     const missing = this.registrants.filter(r => !r.packageId);
                     if (missing.length > 0) {
-                        Toast.warning('Packages Required', 'Please select a package for all registrants.');
+                        Toast.warning('{{ __("club.platform_show_packages_required_title") }}', '{{ __("club.platform_show_packages_required_msg") }}');
                         return;
                     }
                     this.step = 'payment-review';
@@ -2308,7 +2381,7 @@ function selectPackageApp() {
 
             async handleSubmit() {
                 if (!this.payLater && !this.paymentScreenshot) {
-                    Toast.warning('Payment Required', 'Please upload a payment screenshot or select "Pay Later".');
+                    Toast.warning('{{ __("club.platform_show_payment_required_title") }}', '{{ __("club.platform_show_payment_required_msg") }}');
                     return;
                 }
                 if (this.submitting) return;
@@ -2345,13 +2418,13 @@ function selectPackageApp() {
                     const data = await response.json();
                     if (data.success) {
                         this.close();
-                        Toast.success('Registration Submitted', 'Your registration has been submitted successfully!');
+                        Toast.success('{{ __("club.platform_show_registration_submitted_title") }}', '{{ __("club.platform_show_registration_submitted_msg") }}');
                     } else {
-                        Toast.error('Registration Failed', data.message || 'Please try again.');
+                        Toast.error('{{ __("club.platform_show_registration_failed_title") }}', data.message || '{{ __("club.platform_show_please_try_again") }}');
                     }
                 } catch (error) {
                     console.error('Registration error:', error);
-                    Toast.error('Error', 'An error occurred during registration. Please try again.');
+                    Toast.error('{{ __("shared.error") }}', '{{ __("club.platform_show_registration_error_msg") }}');
                 } finally {
                     this.submitting = false;
                 }

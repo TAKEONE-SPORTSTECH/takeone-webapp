@@ -14,11 +14,11 @@ class TimelinePostRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'body'      => 'required|string',
-            'category'  => 'required|string|max:100',
-            'image'     => 'nullable|image|max:5120',
+            'body' => 'required|string',
+            'category' => 'required|string|max:100',
+            'image' => 'nullable|image|max:5120',
             'posted_at' => 'required|date',
-            'status'    => 'required|in:published,draft',
+            'status' => 'required|in:published,draft',
         ];
     }
 }

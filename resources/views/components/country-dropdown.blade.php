@@ -85,33 +85,6 @@
                         this.selectedLabel = match.name;
                         this.selectedFlag = match.flag;
                     }
-                } else {
-                    // No preset value — auto-detect the visitor's country via geolocation
-                    this.detectGeoCountry();
-                }
-            },
-
-            // Detect the visitor's country from their IP and pre-select it.
-            // Best-effort: silently no-ops on failure so the user can still pick manually.
-            async detectGeoCountry() {
-                try {
-                    const controller = new AbortController();
-                    const timer = setTimeout(() => controller.abort(), 4000);
-                    const res = await fetch('https://ipapi.co/json/', { signal: controller.signal });
-                    clearTimeout(timer);
-                    if (!res.ok) return;
-
-                    const geo = await res.json();
-                    const code = (geo.country_code || geo.country || '').toUpperCase();
-                    if (!code) return;
-
-                    // Don't override a selection the user made while detection was in flight
-                    if (this.selectedValue) return;
-
-                    const match = this.items.find(c => (c.iso2 || '').toUpperCase() === code);
-                    if (match) this.selectItem(match);
-                } catch (e) {
-                    // Geolocation unavailable — leave the dropdown empty for manual selection
                 }
             },
 

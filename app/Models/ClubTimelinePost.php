@@ -25,7 +25,7 @@ class ClubTimelinePost extends Model
 
     protected $casts = [
         'posted_at' => 'datetime',
-        'cover'     => 'array',
+        'cover' => 'array',
     ];
 
     public function tenant(): BelongsTo

@@ -2,134 +2,131 @@
 
 @section('admin-content')
 <div>
-    <!-- Page Header -->
-    <div class="mb-4">
-        <h1 class="text-2xl font-bold mb-2">Database Backup & Restore</h1>
-        <p class="text-muted-foreground">Manage platform database backups</p>
-    </div>
+    <x-admin-hero :eyebrow="__('platform.backup_index_eyebrow_system')" :title="__('platform.backup_index_title')" icon="bi-database"
+                  :subtitle="__('platform.backup_index_subtitle')" />
 
     <!-- Warning Message -->
-    <div class="alert alert-warning flex items-center mb-4" role="alert">
-        <i class="bi bi-exclamation-triangle-fill mr-3 text-2xl"></i>
-        <div>
-            <strong>Important:</strong> Database backup and restore operations are powerful tools. Always test backups in a safe environment before using them in production.
+    <div class="flex items-start gap-3 mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800" role="alert">
+        <i class="bi bi-exclamation-triangle-fill text-xl mt-0.5"></i>
+        <div class="text-sm">
+            <strong>{{ __('platform.backup_index_important_label') }}</strong> {{ __('platform.backup_index_warning_body') }}
         </div>
     </div>
 
     <!-- Operations Grid -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <!-- Download Backup -->
-        <div class="card border-0 shadow-sm h-full">
-            <div class="card-body text-center">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 h-full">
+            <div class="p-6 text-center">
                 <div class="mb-3">
                     <i class="bi bi-download text-primary text-5xl"></i>
                 </div>
-                <h5 class="card-title">Download Backup</h5>
+                <h5 class="text-base font-bold text-gray-900 mb-1">{{ __('platform.backup_index_download_title') }}</h5>
                 <p class="text-muted-foreground text-sm mb-4">
-                    Export the complete database as a JSON file. This includes all tables from the public schema.
+                    {{ __('platform.backup_index_download_desc') }}
                 </p>
-                <a href="{{ route('admin.platform.backup.download') }}" class="btn btn-primary w-full" onclick="event.preventDefault(); (async (href) => { const ok = await window.confirmAction({ title: 'Download Backup', message: 'This will download a complete backup of the database. Continue?', type: 'info', confirmText: 'Download' }); if (ok) window.location.href = href; })(this.href); return false;">
-                    <i class="bi bi-download mr-2"></i>Download Full Backup
+                <a href="{{ route('admin.platform.backup.download') }}" class="btn btn-primary w-full" onclick="event.preventDefault(); (async (href) => { const ok = await window.confirmAction({ title: '{{ __("platform.backup_index_download_title") }}', message: '{{ __("platform.backup_index_download_confirm_message") }}', type: 'info', confirmText: '{{ __("platform.backup_index_download_confirm_button") }}' }); if (ok) window.location.href = href; })(this.href); return false;">
+                    <i class="bi bi-download me-2"></i>{{ __('platform.backup_index_download_button') }}
                 </a>
                 <small class="text-muted-foreground block mt-3">
-                    <i class="bi bi-info-circle mr-1"></i>File format: JSON
+                    <i class="bi bi-info-circle me-1"></i>{{ __('platform.backup_index_file_format_json') }}
                 </small>
             </div>
         </div>
 
         <!-- Restore Database -->
-        <div class="card border-0 shadow-sm h-full border-destructive">
-            <div class="card-body text-center">
+        <div class="bg-white rounded-xl shadow-sm border border-red-200 h-full">
+            <div class="p-6 text-center">
                 <div class="mb-3">
                     <i class="bi bi-arrow-clockwise text-destructive text-5xl"></i>
                 </div>
-                <h5 class="card-title text-destructive">Restore Database</h5>
+                <h5 class="text-base font-bold text-red-600 mb-1">{{ __('platform.backup_index_restore_title') }}</h5>
                 <p class="text-muted-foreground text-sm mb-4">
-                    Upload a JSON backup file to restore the database. <strong class="text-destructive">This will overwrite all existing data!</strong>
+                    {{ __('platform.backup_index_restore_desc') }} <strong class="text-destructive">{{ __('platform.backup_index_restore_desc_warning') }}</strong>
                 </p>
                 <button type="button" class="btn btn-danger w-full" data-bs-toggle="modal" data-bs-target="#restoreModal">
-                    <i class="bi bi-arrow-clockwise mr-2"></i>Restore from Backup
+                    <i class="bi bi-arrow-clockwise me-2"></i>{{ __('platform.backup_index_restore_button') }}
                 </button>
                 <small class="text-destructive block mt-3">
-                    <i class="bi bi-exclamation-triangle mr-1"></i>Use with extreme caution
+                    <i class="bi bi-exclamation-triangle me-1"></i>{{ __('platform.backup_index_restore_caution') }}
                 </small>
             </div>
         </div>
 
         <!-- Export Auth Users -->
-        <div class="card border-0 shadow-sm h-full">
-            <div class="card-body text-center">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 h-full">
+            <div class="p-6 text-center">
                 <div class="mb-3">
                     <i class="bi bi-people text-success text-5xl"></i>
                 </div>
-                <h5 class="card-title">Export Auth Users</h5>
+                <h5 class="text-base font-bold text-gray-900 mb-1">{{ __('platform.backup_index_export_title') }}</h5>
                 <p class="text-muted-foreground text-sm mb-4">
-                    Download all authentication users with encrypted passwords for migration purposes.
+                    {{ __('platform.backup_index_export_desc') }}
                 </p>
-                <a href="{{ route('admin.platform.backup.export-users') }}" class="btn btn-success w-full">
-                    <i class="bi bi-download mr-2"></i>Export Users
+                <a href="{{ route('admin.platform.backup.export-users') }}" class="btn btn-success w-full" data-no-shell download>
+                    <i class="bi bi-download me-2"></i>{{ __('platform.backup_index_export_button') }}
                 </a>
                 <small class="text-muted-foreground block mt-3">
-                    <i class="bi bi-info-circle mr-1"></i>Includes encrypted passwords
+                    <i class="bi bi-info-circle me-1"></i>{{ __('platform.backup_index_export_note') }}
                 </small>
             </div>
         </div>
     </div>
 
     <!-- Best Practices -->
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-card border-0">
-            <h5 class="mb-0"><i class="bi bi-lightbulb mr-2"></i>Best Practices</h5>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-4">
+        <div class="px-5 pt-5 pb-3 border-b border-gray-100">
+            <h5 class="text-base font-bold text-gray-900 mb-0"><i class="bi bi-lightbulb me-2 text-primary"></i>{{ __('platform.backup_index_best_practices') }}</h5>
         </div>
-        <div class="card-body">
+        <div class="p-5">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <h6 class="text-primary mb-3">Backup Guidelines</h6>
+                    <h6 class="text-primary mb-3">{{ __('platform.backup_index_backup_guidelines') }}</h6>
                     <ul class="list-none space-y-2">
                         <li>
-                            <i class="bi bi-check-circle text-success mr-2"></i>
-                            Schedule regular automated backups (daily recommended)
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            {{ __('platform.backup_index_guideline_1') }}
                         </li>
                         <li>
-                            <i class="bi bi-check-circle text-success mr-2"></i>
-                            Store backups in multiple secure locations
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            {{ __('platform.backup_index_guideline_2') }}
                         </li>
                         <li>
-                            <i class="bi bi-check-circle text-success mr-2"></i>
-                            Test backup restoration in a staging environment
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            {{ __('platform.backup_index_guideline_3') }}
                         </li>
                         <li>
-                            <i class="bi bi-check-circle text-success mr-2"></i>
-                            Keep backups for at least 30 days
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            {{ __('platform.backup_index_guideline_4') }}
                         </li>
                         <li>
-                            <i class="bi bi-check-circle text-success mr-2"></i>
-                            Document your backup and restore procedures
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            {{ __('platform.backup_index_guideline_5') }}
                         </li>
                     </ul>
                 </div>
                 <div>
-                    <h6 class="text-destructive mb-3">Restore Warnings</h6>
+                    <h6 class="text-destructive mb-3">{{ __('platform.backup_index_restore_warnings') }}</h6>
                     <ul class="list-none space-y-2">
                         <li>
-                            <i class="bi bi-exclamation-triangle text-destructive mr-2"></i>
-                            Always backup current data before restoring
+                            <i class="bi bi-exclamation-triangle text-destructive me-2"></i>
+                            {{ __('platform.backup_index_warning_1') }}
                         </li>
                         <li>
-                            <i class="bi bi-exclamation-triangle text-destructive mr-2"></i>
-                            Verify backup file integrity before restoration
+                            <i class="bi bi-exclamation-triangle text-destructive me-2"></i>
+                            {{ __('platform.backup_index_warning_2') }}
                         </li>
                         <li>
-                            <i class="bi bi-exclamation-triangle text-destructive mr-2"></i>
-                            Test restore in staging environment first
+                            <i class="bi bi-exclamation-triangle text-destructive me-2"></i>
+                            {{ __('platform.backup_index_warning_3') }}
                         </li>
                         <li>
-                            <i class="bi bi-exclamation-triangle text-destructive mr-2"></i>
-                            Notify all users before performing restore
+                            <i class="bi bi-exclamation-triangle text-destructive me-2"></i>
+                            {{ __('platform.backup_index_warning_4') }}
                         </li>
                         <li>
-                            <i class="bi bi-exclamation-triangle text-destructive mr-2"></i>
-                            Restoration will overwrite ALL existing data
+                            <i class="bi bi-exclamation-triangle text-destructive me-2"></i>
+                            {{ __('platform.backup_index_warning_5') }}
                         </li>
                     </ul>
                 </div>
@@ -144,34 +141,34 @@
         <div class="modal-content">
             <div class="modal-header bg-destructive text-white">
                 <h5 class="modal-title" id="restoreModalLabel">
-                    <i class="bi bi-exclamation-triangle mr-2"></i>Restore Database
+                    <i class="bi bi-exclamation-triangle me-2"></i>{{ __('platform.backup_index_restore_title') }}
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ __('platform.backup_index_close') }}"></button>
             </div>
             <form action="{{ route('admin.platform.backup.restore') }}" method="POST" enctype="multipart/form-data" onsubmit="event.preventDefault(); confirmRestore(this); return false;">
                 @csrf
                 <div class="modal-body">
-                    <div class="alert alert-danger">
-                        <strong>Warning:</strong> This action will permanently delete all current data and replace it with the backup file contents. This cannot be undone!
+                    <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 mb-3">
+                        <strong>{{ __('platform.backup_index_warning_word') }}</strong> {{ __('platform.backup_index_restore_modal_warning') }}
                     </div>
 
                     <div class="mb-3">
-                        <label for="backup_file" class="form-label">Select Backup File (JSON)</label>
-                        <input type="file" class="form-control" id="backup_file" name="backup_file" accept=".json" required>
-                        <small class="text-muted-foreground">Only JSON backup files are accepted</small>
+                        <label for="backup_file" class="block text-sm font-medium text-gray-700 mb-1">{{ __('platform.backup_index_select_file_label') }}</label>
+                        <input type="file" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" id="backup_file" name="backup_file" accept=".json" required>
+                        <small class="text-muted-foreground">{{ __('platform.backup_index_file_accept_note') }}</small>
                     </div>
 
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="confirmRestore" required>
                         <label class="form-check-label" for="confirmRestore">
-                            I understand that this will overwrite all existing data
+                            {{ __('platform.backup_index_confirm_checkbox') }}
                         </label>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('shared.cancel') }}</button>
                     <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-arrow-clockwise mr-2"></i>Restore Database
+                        <i class="bi bi-arrow-clockwise me-2"></i>{{ __('platform.backup_index_restore_title') }}
                     </button>
                 </div>
             </form>
@@ -182,7 +179,7 @@
 @push('scripts')
 <script>
 async function confirmRestore(form) {
-    const ok = await window.confirmAction({ title: 'Restore Database', message: 'FINAL WARNING: Are you absolutely sure you want to restore the database? This will delete ALL current data!', type: 'danger', confirmText: 'Restore' });
+    const ok = await window.confirmAction({ title: '{{ __("platform.backup_index_restore_title") }}', message: '{{ __("platform.backup_index_restore_final_warning") }}', type: 'danger', confirmText: '{{ __("platform.backup_index_restore_confirm_button") }}' });
     if (ok) form.submit();
 }
 </script>

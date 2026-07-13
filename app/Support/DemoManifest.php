@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 class DemoManifest
 {
     public const DISK = 'local';
+
     public const FILE = 'demo/manifest.json';
 
     /** @var array<string, array<int, int>> table => list of ids */
@@ -41,6 +42,7 @@ class DemoManifest
             $out[$t] = count($ids);
         }
         ksort($out);
+
         return $out;
     }
 
@@ -48,8 +50,8 @@ class DemoManifest
     {
         $payload = [
             'seeded_at' => now()->toIso8601String(),
-            'tables'    => array_map('array_values', $this->tables),
-            'files'     => $this->files,
+            'tables' => array_map('array_values', $this->tables),
+            'files' => $this->files,
         ];
         Storage::disk(self::DISK)->put(self::FILE, json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
     }
@@ -64,6 +66,7 @@ class DemoManifest
         if (! self::exists()) {
             return null;
         }
+
         return json_decode(Storage::disk(self::DISK)->get(self::FILE), true);
     }
 

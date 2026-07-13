@@ -37,6 +37,12 @@
             <p id="shell-title" class="text-base font-bold text-primary leading-tight truncate">{{ $shellTitle ?? '' }}</p>
         </div>
 
+        {{-- Page actions — a page fills this with @push('header-actions'). The shell
+             navigator swaps it on AJAX nav, so it never goes stale. Keep the buttons
+             self-contained: anything bound to the page's own Alpine x-data (e.g. a
+             search input using x-model) belongs in the content, not up here. --}}
+        <div id="shell-actions" class="flex items-center gap-1">@stack('header-actions')</div>
+
         {{-- Notifications --}}
         <div class="relative" x-data="mobileNotifs()" @click.outside="open=false">
             <button type="button" @click="open=!open" class="relative w-9 h-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground flex-shrink-0" aria-label="{{ __('header.notifications') }}">

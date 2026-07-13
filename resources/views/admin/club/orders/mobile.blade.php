@@ -13,22 +13,45 @@
     ])->values();
     $cur = $club->currency ?: 'BHD';
 @endphp
-<div x-data="clubOrdersM({{ Illuminate\Support\Js::from($ordersJs) }})" class="space-y-4 mobile-stagger">
+<div x-data="clubOrdersM({{ Illuminate\Support\Js::from($ordersJs) }})" class="-mx-4 -mt-4">
 
-    {{-- Stat chips --}}
-    <div class="grid grid-cols-4 gap-2">
-        <div class="m-card rounded-2xl p-2.5 text-center"><p class="text-lg font-black text-amber-600">{{ $stats['pending'] }}</p><p class="text-[9px] text-muted-foreground">{{ __('market.stat_pending') }}</p></div>
-        <div class="m-card rounded-2xl p-2.5 text-center"><p class="text-lg font-black text-blue-600">{{ $stats['confirmed'] }}</p><p class="text-[9px] text-muted-foreground">{{ __('market.stat_confirmed') }}</p></div>
-        <div class="m-card rounded-2xl p-2.5 text-center"><p class="text-lg font-black text-green-600">{{ $stats['fulfilled'] }}</p><p class="text-[9px] text-muted-foreground">{{ __('market.stat_fulfilled') }}</p></div>
-        <div class="m-card rounded-2xl p-2.5 text-center"><p class="text-sm font-black text-foreground mt-1">{{ number_format($stats['revenue'], 0) }}</p><p class="text-[9px] text-muted-foreground">{{ $cur }}</p></div>
-    </div>
+    {{-- ===== Hero ===== --}}
+    <header class="m-hero px-5 pt-7 pb-12 text-white relative overflow-hidden">
+        <div class="absolute -end-8 -top-8 w-36 h-36 rounded-full bg-white/10"></div>
+        <div class="flex items-center justify-between relative z-10">
+            <div>
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">{{ $club->club_name ?? __('admin.club') }}</p>
+                <h1 class="text-2xl font-black mt-0.5">{{ __('admin.nav_orders') }}</h1>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center">
+                <i class="bi bi-bag-check-fill text-xl m-float"></i>
+            </div>
+        </div>
 
-    {{-- Filter --}}
-    <div class="flex gap-2 overflow-x-auto scrollbar-hide">
+        <div class="flex gap-2 mt-5 relative z-10">
+            <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
+                <p class="text-lg font-black leading-none">{{ $stats['pending'] }}</p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('market.stat_pending') }}</p>
+            </div>
+            <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
+                <p class="text-lg font-black leading-none">{{ $stats['fulfilled'] }}</p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('market.stat_fulfilled') }}</p>
+            </div>
+            <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
+                <p class="text-lg font-black leading-none">{{ number_format($stats['revenue'], 0) }}<span class="text-[10px] font-bold ml-0.5">{{ $cur }}</span></p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('market.stat_revenue') }}</p>
+            </div>
+        </div>
+    </header>
+
+    <div class="px-4 -mt-6 relative z-10 space-y-4 mobile-stagger">
+
+    {{-- Filter (segmented) --}}
+    <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-1 flex">
         <template x-for="f in filters" :key="f">
-            <button type="button" @click="filter = f"
-                    class="m-press px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors"
-                    :class="filter === f ? 'bg-primary text-white' : 'bg-white border border-gray-100 text-muted-foreground'"
+            <button type="button" @click="setFilter(f)"
+                    class="m-press flex-1 py-2.5 rounded-xl text-xs font-bold transition-colors"
+                    :class="filter === f ? 'bg-primary text-white' : 'text-muted-foreground'"
                     x-text="label(f)"></button>
         </template>
     </div>
@@ -37,7 +60,7 @@
         <div class="m-card p-8 text-center"><i class="bi bi-bag-check text-3xl text-gray-300 m-float"></i><p class="text-sm text-muted-foreground mt-2">{{ __('market.no_orders_club') }}</p></div>
     </template>
 
-    <template x-for="o in shown" :key="o.id">
+    <template x-for="o in visible" :key="o.id">
         <div class="m-card rounded-2xl p-4">
             <div class="flex items-center justify-between gap-2">
                 <div class="min-w-0">
@@ -69,12 +92,19 @@
             <div class="mt-2.5 pt-2.5 border-t border-gray-100 flex items-center justify-between">
                 <span class="text-base font-black text-foreground" x-text="o.currency + ' ' + o.total.toFixed(2)"></span>
                 <div class="flex gap-2 items-center">
-                    <button type="button" x-show="o.status !== 'fulfilled' && o.status !== 'cancelled'" @click="confirmFulfill(o)" class="m-press px-3 py-1.5 rounded-lg text-[11px] font-bold bg-green-600 text-white">{{ __('market.mark_fulfilled') }}</button>
-                    <button type="button" x-show="o.status !== 'cancelled' && o.status !== 'fulfilled'" @click="setStatus(o,'cancelled')" class="m-press px-3 py-1.5 rounded-lg text-[11px] font-bold border border-red-200 text-red-600">{{ __('shared.cancel') }}</button>
+                    <button type="button" x-show="o.status === 'pending' || o.status === 'confirmed'" @click="confirmFulfill(o)" class="m-press px-3 py-1.5 rounded-lg text-[11px] font-bold bg-green-600 text-white">{{ __('market.mark_fulfilled') }}</button>
+                    <button type="button" x-show="o.status === 'pending' || o.status === 'confirmed'" @click="setStatus(o,'cancelled')" class="m-press px-3 py-1.5 rounded-lg text-[11px] font-bold border border-red-200 text-red-600">{{ __('shared.cancel') }}</button>
                 </div>
             </div>
         </div>
     </template>
+
+    {{-- Show more --}}
+    <button type="button" x-show="shown.length > limit" @click="limit += perPage"
+            class="m-press w-full flex items-center justify-center gap-1.5 rounded-xl border border-primary/30 text-primary text-sm font-semibold py-2.5">
+        <span x-text="'{{ __('market.show_more') }}' + ' (' + (shown.length - limit) + ')'"></span><i class="bi bi-chevron-down"></i>
+    </button>
+    </div>{{-- /content --}}
 
     {{-- Proof viewer (teleported so the fixed overlay escapes the shell transform) --}}
     <template x-teleport="body">
@@ -95,17 +125,22 @@
 <script>
 function clubOrdersM(orders) {
     return {
-        orders: orders, filter: 'all',
-        filters: ['all', 'pending', 'confirmed', 'fulfilled', 'cancelled'],
+        orders: orders, filter: 'pending',
+        filters: ['pending', 'confirmed', 'fulfilled', 'cancelled'],
+        perPage: 8, limit: 8,
+        setFilter(f) { this.filter = f; this.limit = this.perPage; },
         statusBase: @js(url('/admin/club/'.$club->slug.'/orders')),
         csrf: document.querySelector('meta[name=csrf-token]')?.content || '',
-        labels: { all: @js(__('admin.all')), pending: @js(__('market.status_pending')), confirmed: @js(__('market.status_confirmed')), fulfilled: @js(__('market.status_fulfilled')), cancelled: @js(__('market.status_cancelled')) },
+        labels: { all: @js(__('admin.all')), pending: @js(__('market.status_pending')), confirmed: @js(__('market.status_confirmed')), fulfilled: @js(__('market.status_fulfilled')), received: @js(__('market.status_received')), cancelled: @js(__('market.status_cancelled')) },
         label(s) { return this.labels[s] || s; },
-        get shown() { return this.filter === 'all' ? this.orders : this.orders.filter(o => o.status === this.filter); },
+        {{-- "Fulfilled" (sold) also covers orders the buyer has since confirmed
+             received — receipt is a customer-side step, not a separate seller stage. --}}
+        get shown() { return this.orders.filter(o => this.filter === 'fulfilled' ? (o.status === 'fulfilled' || o.status === 'received') : o.status === this.filter); },
+        get visible() { return this.shown.slice(0, this.limit); },
         proofView: null,
         openProof(url) { this.proofView = url; },
         closeProof() { this.proofView = null; },
-        badgeClass(s) { return ({ pending: 'bg-amber-50 text-amber-700', confirmed: 'bg-blue-50 text-blue-700', fulfilled: 'bg-green-50 text-green-700', cancelled: 'bg-gray-100 text-gray-500' })[s] || 'bg-muted'; },
+        badgeClass(s) { return ({ pending: 'bg-amber-50 text-amber-700', confirmed: 'bg-blue-50 text-blue-700', fulfilled: 'bg-green-50 text-green-700', received: 'bg-green-50 text-green-700', cancelled: 'bg-gray-100 text-gray-500' })[s] || 'bg-muted'; },
         async confirmFulfill(o) {
             const ok = await window.confirmAction({
                 title: @js(__('market.confirm_fulfill_title')),

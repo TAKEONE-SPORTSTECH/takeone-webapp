@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', $business->name . ' · Dashboard')
+@section('title', $business->name . ' · ' . __('business.business_desktop_dashboard_title'))
 
 @section('content')
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -17,7 +17,7 @@
             </span>
             <div>
                 <h1 class="text-2xl font-bold text-gray-900">{{ $business->name }}</h1>
-                <p class="text-sm text-muted-foreground">Chain performance across {{ $totals['clubs'] }} {{ Str::plural('club', $totals['clubs']) }}</p>
+                <p class="text-sm text-muted-foreground">{{ __('business.business_desktop_dashboard_chain_performance', ['count' => $totals['clubs'], 'clubs' => Str::plural('club', $totals['clubs'])]) }}</p>
             </div>
         </div>
     </div>
@@ -26,50 +26,50 @@
     @php $cur = $totals['currency']; @endphp
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-            <div class="flex items-center gap-2 text-muted-foreground text-xs font-medium uppercase tracking-wide"><i class="bi bi-people"></i> Members</div>
+            <div class="flex items-center gap-2 text-muted-foreground text-xs font-medium uppercase tracking-wide"><i class="bi bi-people"></i> {{ __('business.business_desktop_dashboard_members') }}</div>
             <p class="text-2xl font-bold text-gray-900 mt-2">{{ number_format($totals['members']) }}</p>
-            <p class="text-xs text-muted-foreground mt-1">{{ number_format($totals['active_subs']) }} active subscriptions</p>
+            <p class="text-xs text-muted-foreground mt-1">{{ number_format($totals['active_subs']) }} {{ __('business.business_desktop_dashboard_active_subscriptions') }}</p>
         </div>
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-            <div class="flex items-center gap-2 text-muted-foreground text-xs font-medium uppercase tracking-wide"><i class="bi bi-cash-stack"></i> Revenue</div>
+            <div class="flex items-center gap-2 text-muted-foreground text-xs font-medium uppercase tracking-wide"><i class="bi bi-cash-stack"></i> {{ __('business.business_desktop_dashboard_revenue') }}</div>
             <p class="text-2xl font-bold text-gray-900 mt-2">{{ $cur }} {{ number_format($totals['revenue'], 2) }}</p>
-            <p class="text-xs text-muted-foreground mt-1">Expenses {{ $cur }} {{ number_format($totals['expenses'], 2) }}</p>
+            <p class="text-xs text-muted-foreground mt-1">{{ __('business.business_desktop_dashboard_expenses') }} {{ $cur }} {{ number_format($totals['expenses'], 2) }}</p>
         </div>
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-            <div class="flex items-center gap-2 text-muted-foreground text-xs font-medium uppercase tracking-wide"><i class="bi bi-graph-up-arrow"></i> Net</div>
+            <div class="flex items-center gap-2 text-muted-foreground text-xs font-medium uppercase tracking-wide"><i class="bi bi-graph-up-arrow"></i> {{ __('business.business_desktop_dashboard_net') }}</div>
             <p class="text-2xl font-bold {{ $totals['net'] >= 0 ? 'text-green-600' : 'text-red-600' }} mt-2">{{ $cur }} {{ number_format($totals['net'], 2) }}</p>
-            <p class="text-xs text-muted-foreground mt-1">Income minus expenses</p>
+            <p class="text-xs text-muted-foreground mt-1">{{ __('business.business_desktop_dashboard_income_minus_expenses') }}</p>
         </div>
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-            <div class="flex items-center gap-2 text-muted-foreground text-xs font-medium uppercase tracking-wide"><i class="bi bi-hourglass-split"></i> Cash to Collect</div>
+            <div class="flex items-center gap-2 text-muted-foreground text-xs font-medium uppercase tracking-wide"><i class="bi bi-hourglass-split"></i> {{ __('business.business_desktop_dashboard_cash_to_collect') }}</div>
             <p class="text-2xl font-bold text-amber-600 mt-2">{{ $cur }} {{ number_format($totals['cash_to_collect'], 2) }}</p>
-            <p class="text-xs text-muted-foreground mt-1">Unpaid &amp; pending</p>
+            <p class="text-xs text-muted-foreground mt-1">{{ __('business.business_desktop_dashboard_unpaid_pending') }}</p>
         </div>
     </div>
 
     {{-- Per-club breakdown --}}
     <div id="clubs" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="px-5 py-4 border-b border-gray-100">
-            <h2 class="font-semibold text-foreground">Clubs</h2>
-            <p class="text-sm text-muted-foreground">Select a club to manage it.</p>
+            <h2 class="font-semibold text-foreground">{{ __('business.business_desktop_dashboard_clubs') }}</h2>
+            <p class="text-sm text-muted-foreground">{{ __('business.business_desktop_dashboard_select_club') }}</p>
         </div>
 
         @if($clubs->isEmpty())
             <div class="p-10 text-center">
                 <i class="bi bi-diagram-3 text-4xl text-gray-300"></i>
-                <p class="text-sm text-muted-foreground mt-3">No clubs are linked to this business yet.</p>
+                <p class="text-sm text-muted-foreground mt-3">{{ __('business.business_desktop_dashboard_no_clubs') }}</p>
             </div>
         @else
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead>
-                        <tr class="text-left text-xs text-muted-foreground uppercase tracking-wide border-b border-gray-100">
-                            <th class="px-5 py-3 font-medium">Club</th>
-                            <th class="px-5 py-3 font-medium text-right">Members</th>
-                            <th class="px-5 py-3 font-medium text-right">Active subs</th>
-                            <th class="px-5 py-3 font-medium text-right">Revenue</th>
-                            <th class="px-5 py-3 font-medium text-right">Cash to collect</th>
-                            <th class="px-5 py-3 font-medium text-right"></th>
+                        <tr class="text-start text-xs text-muted-foreground uppercase tracking-wide border-b border-gray-100">
+                            <th class="px-5 py-3 font-medium">{{ __('business.business_desktop_dashboard_col_club') }}</th>
+                            <th class="px-5 py-3 font-medium text-end">{{ __('business.business_desktop_dashboard_col_members') }}</th>
+                            <th class="px-5 py-3 font-medium text-end">{{ __('business.business_desktop_dashboard_col_active_subs') }}</th>
+                            <th class="px-5 py-3 font-medium text-end">{{ __('business.business_desktop_dashboard_col_revenue') }}</th>
+                            <th class="px-5 py-3 font-medium text-end">{{ __('business.business_desktop_dashboard_col_cash_to_collect') }}</th>
+                            <th class="px-5 py-3 font-medium text-end"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -87,14 +87,14 @@
                                         <span class="font-medium text-foreground">{{ $club['name'] }}</span>
                                     </div>
                                 </td>
-                                <td class="px-5 py-3 text-right">{{ number_format($club['members']) }}</td>
-                                <td class="px-5 py-3 text-right">{{ number_format($club['active_subs']) }}</td>
-                                <td class="px-5 py-3 text-right">{{ $club['currency'] }} {{ number_format($club['revenue'], 2) }}</td>
-                                <td class="px-5 py-3 text-right {{ $club['cash_to_collect'] > 0 ? 'text-amber-600' : '' }}">{{ $club['currency'] }} {{ number_format($club['cash_to_collect'], 2) }}</td>
-                                <td class="px-5 py-3 text-right">
+                                <td class="px-5 py-3 text-end">{{ number_format($club['members']) }}</td>
+                                <td class="px-5 py-3 text-end">{{ number_format($club['active_subs']) }}</td>
+                                <td class="px-5 py-3 text-end">{{ $club['currency'] }} {{ number_format($club['revenue'], 2) }}</td>
+                                <td class="px-5 py-3 text-end {{ $club['cash_to_collect'] > 0 ? 'text-amber-600' : '' }}">{{ $club['currency'] }} {{ number_format($club['cash_to_collect'], 2) }}</td>
+                                <td class="px-5 py-3 text-end">
                                     <a href="{{ route('admin.club.dashboard', $club['slug']) }}"
                                        class="inline-flex items-center gap-1 border border-primary text-primary bg-transparent px-3 py-1.5 rounded-md text-sm font-medium hover:bg-primary hover:text-white transition-colors">
-                                        Open <i class="bi bi-arrow-right"></i>
+                                        {{ __('business.business_desktop_dashboard_open') }} <i class="bi bi-arrow-right"></i>
                                     </a>
                                 </td>
                             </tr>

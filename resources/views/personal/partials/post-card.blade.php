@@ -1,7 +1,9 @@
 {{-- Alpine post card. Expects `post` in scope (an x-for item) and the parent
      newsFeed()/wall() component for the action methods. Author-aware: shows
-     Edit/Delete only on your own posts, otherwise a wall link + Block. --}}
-<article x-init="recordPostView(post, $el)" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+     Edit/Delete only on your own posts, otherwise a wall link + Block.
+     Pass `bare => true` (single-post page) for an edge-to-edge card with no
+     rounding/shadow/border. --}}
+<article x-init="recordPostView(post, $el)" class="bg-white overflow-hidden {{ ($bare ?? false) ? '' : 'rounded-2xl shadow-sm border border-gray-100' }}">
     {{-- Header --}}
     <div class="flex items-start justify-between px-4 pt-3">
         <div class="flex items-center gap-3 min-w-0">
@@ -14,41 +16,70 @@
             <div class="min-w-0">
                 <a :href="post.author.url"><p class="font-semibold text-sm text-foreground truncate hover:underline" x-text="post.author.name"></p></a>
                 {{-- Timestamp = permalink to the post's own page --}}
-                <button type="button" @click="openPost(post)" class="text-[11px] text-gray-500 flex items-center gap-1 hover:underline">
-                    <span x-text="(post.edited ? @js(__('personal.edited_prefix')) : '') + post.time"></span><i class="bi bi-globe2"></i>
-                </button>
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    <button type="button" @click="openPost(post)" class="text-[11px] text-gray-500 flex items-center gap-1 hover:underline">
+                        <span x-text="(post.edited ? @js(__('personal.edited_prefix')) : '') + post.time"></span><i class="bi bi-globe2"></i>
+                    </button>
+                    {{-- Moderation flag — only super-admins ever receive a hidden post --}}
+                    <span x-show="post.hidden" x-cloak class="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full">
+                        <i class="bi bi-eye-slash"></i> {{ __('personal.hidden_badge') }}
+                    </span>
+                </div>
             </div>
         </div>
-        <div class="relative flex-shrink-0" x-data="{ menu:false }" @click.outside="menu=false">
-            <button type="button" @click="menu=!menu"
+        {{-- Post menu. The panel is teleported to <body> so the card's
+             overflow-hidden (needed to round images) never clips it. --}}
+        <div class="flex-shrink-0"
+             x-data="{ open:false, y:0, r:0, toggle(btn){ if(!this.open){ const rect=btn.getBoundingClientRect(); this.y=Math.round(rect.bottom+6); this.r=Math.round(window.innerWidth-rect.right); } this.open=!this.open; }, close(){ this.open=false; } }"
+             @keydown.escape.window="close()">
+            <button type="button" @click="toggle($el)"
                     class="m-press w-8 h-8 -mr-1 flex items-center justify-center rounded-full text-gray-500 hover:bg-muted transition-colors">
                 <i class="bi bi-three-dots"></i>
             </button>
-            <div x-show="menu" x-cloak @click="menu=false"
-                 x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
-                 class="absolute right-0 top-9 z-30 w-44 bg-white rounded-xl shadow-lg border border-gray-100 py-1"
-                 style="max-width: calc(100vw - 1.5rem); transform-origin: top right;">
-                <template x-if="post.author.isMe">
-                    <div>
-                        <button type="button" @click="startEdit(post)" class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors">
-                            <i class="bi bi-pencil"></i> {{ __('personal.edit_post') }}
-                        </button>
-                        <button type="button" @click="deletePost(post)" class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                            <i class="bi bi-trash"></i> {{ __('personal.delete_post') }}
-                        </button>
+            <template x-teleport="body">
+                <div x-show="open" x-cloak>
+                    <div class="fixed inset-0 z-[65]" @click="close()"></div>
+                    <div x-show="open"
+                         x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                         :style="`top:${y}px; right:${r}px; transform-origin: top right; max-width: calc(100vw - 1.5rem);`"
+                         class="fixed z-[70] w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1">
+                        <template x-if="post.author.isMe">
+                            <div>
+                                <button type="button" @click="close(); startEdit(post)" class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors">
+                                    <i class="bi bi-pencil"></i> {{ __('personal.edit_post') }}
+                                </button>
+                                <button type="button" @click="close(); deletePost(post)" class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                    <i class="bi bi-trash"></i> {{ __('personal.delete_post') }}
+                                </button>
+                            </div>
+                        </template>
+                        <template x-if="!post.author.isMe">
+                            <div>
+                                <a :href="post.author.url" class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors">
+                                    <i class="bi bi-person-lines-fill"></i> {{ __('personal.view_wall') }}
+                                </a>
+                                <button type="button" @click="close(); blockAuthor(post)" class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                    <i class="bi bi-slash-circle"></i> {{ __('personal.block') }} <span x-text="post.author.name.split(' ')[0]"></span>
+                                </button>
+                            </div>
+                        </template>
+                        {{-- Super-admin moderation: hide (reversible) or delete any post --}}
+                        <template x-if="isSuperAdmin">
+                            <div class="border-t border-gray-100 mt-1 pt-1">
+                                <button type="button" x-show="!post.hidden" @click="close(); hidePost(post)" class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-amber-700 hover:bg-amber-50 transition-colors">
+                                    <i class="bi bi-eye-slash"></i> {{ __('personal.hide_post') }}
+                                </button>
+                                <button type="button" x-show="post.hidden" @click="close(); unhidePost(post)" class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-green-700 hover:bg-green-50 transition-colors">
+                                    <i class="bi bi-eye"></i> {{ __('personal.unhide_post') }}
+                                </button>
+                                <button type="button" x-show="!post.author.isMe" @click="close(); adminDeletePost(post)" class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                    <i class="bi bi-shield-fill-exclamation"></i> {{ __('personal.admin_remove_post') }}
+                                </button>
+                            </div>
+                        </template>
                     </div>
-                </template>
-                <template x-if="!post.author.isMe">
-                    <div>
-                        <a :href="post.author.url" class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors">
-                            <i class="bi bi-person-lines-fill"></i> {{ __('personal.view_wall') }}
-                        </a>
-                        <button type="button" @click="blockAuthor(post)" class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                            <i class="bi bi-slash-circle"></i> {{ __('personal.block') }} <span x-text="post.author.name.split(' ')[0]"></span>
-                        </button>
-                    </div>
-                </template>
-            </div>
+                </div>
+            </template>
         </div>
     </div>
 

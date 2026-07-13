@@ -5,17 +5,18 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreClubRequest;
 use App\Http\Requests\Admin\UpdateClubApiRequest;
+use App\Models\ClubBankAccount;
+use App\Models\ClubSocialLink;
 use App\Models\Tenant;
 use App\Models\User;
-use App\Models\ClubSocialLink;
-use App\Models\ClubBankAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator;
 
 class ClubApiController extends Controller
 {
+    use \App\Traits\StoresBase64Images;
+
     /**
      * Get all users for user picker.
      */
@@ -31,7 +32,7 @@ class ClubApiController extends Controller
                     'email' => $user->email,
                     'mobile' => $user->mobile_formatted,
                     'profile_picture' => $user->profile_picture
-                        ? asset('storage/' . $user->profile_picture)
+                        ? asset('storage/'.$user->profile_picture)
                         : null,
                 ];
             });
@@ -78,7 +79,7 @@ class ClubApiController extends Controller
                 'email' => $club->owner->email,
                 'mobile' => $club->owner->mobile_formatted,
                 'profile_picture' => $club->owner->profile_picture
-                    ? asset('storage/' . $club->owner->profile_picture)
+                    ? asset('storage/'.$club->owner->profile_picture)
                     : null,
             ] : null,
             'social_links' => $club->socialLinks->map(function ($link) {
@@ -117,8 +118,8 @@ class ClubApiController extends Controller
         $exists = $query->exists();
 
         return response()->json([
-            'available' => !$exists,
-            'message' => $exists ? 'This slug is already taken' : 'Slug is available'
+            'available' => ! $exists,
+            'message' => $exists ? 'This slug is already taken' : 'Slug is available',
         ]);
     }
 
@@ -141,12 +142,12 @@ class ClubApiController extends Controller
 
             // Handle logo upload
             if ($request->filled('logo') && str_starts_with($request->logo, 'data:image')) {
-                $data['logo'] = $this->handleBase64Image($request->logo, 'clubs/logos', 'logo_' . time());
+                $data['logo'] = $this->handleBase64Image($request->logo, 'clubs/logos', 'logo_'.time());
             }
 
             // Handle cover image upload
             if ($request->filled('cover_image') && str_starts_with($request->cover_image, 'data:image')) {
-                $data['cover_image'] = $this->handleBase64Image($request->cover_image, 'clubs/covers', 'cover_' . time());
+                $data['cover_image'] = $this->handleBase64Image($request->cover_image, 'clubs/covers', 'cover_'.time());
             }
 
             // Set status
@@ -159,7 +160,7 @@ class ClubApiController extends Controller
             // Handle social links
             if ($request->has('social_links')) {
                 foreach ($request->social_links as $index => $link) {
-                    if (!empty($link['platform']) && !empty($link['url'])) {
+                    if (! empty($link['platform']) && ! empty($link['url'])) {
                         ClubSocialLink::create([
                             'tenant_id' => $club->id,
                             'platform' => $link['platform'],
@@ -173,7 +174,7 @@ class ClubApiController extends Controller
             // Handle bank accounts
             if ($request->has('bank_accounts')) {
                 foreach ($request->bank_accounts as $account) {
-                    if (!empty($account['bank_name']) && !empty($account['account_name'])) {
+                    if (! empty($account['bank_name']) && ! empty($account['account_name'])) {
                         ClubBankAccount::create([
                             'tenant_id' => $club->id,
                             'bank_name' => $account['bank_name'],
@@ -196,13 +197,14 @@ class ClubApiController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Club created successfully!',
-                'club' => $club
+                'club' => $club,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create club: ' . $e->getMessage()
+                'message' => 'Failed to create club: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -229,7 +231,7 @@ class ClubApiController extends Controller
                 if ($club->logo) {
                     Storage::disk('public')->delete($club->logo);
                 }
-                $data['logo'] = $this->handleBase64Image($request->logo, 'clubs/logos', 'logo_' . time());
+                $data['logo'] = $this->handleBase64Image($request->logo, 'clubs/logos', 'logo_'.time());
             }
 
             // Handle cover image upload
@@ -237,7 +239,7 @@ class ClubApiController extends Controller
                 if ($club->cover_image) {
                     Storage::disk('public')->delete($club->cover_image);
                 }
-                $data['cover_image'] = $this->handleBase64Image($request->cover_image, 'clubs/covers', 'cover_' . time());
+                $data['cover_image'] = $this->handleBase64Image($request->cover_image, 'clubs/covers', 'cover_'.time());
             }
 
             // Set status
@@ -251,7 +253,7 @@ class ClubApiController extends Controller
             $club->socialLinks()->delete();
             if ($request->has('social_links')) {
                 foreach ($request->social_links as $index => $link) {
-                    if (!empty($link['platform']) && !empty($link['url'])) {
+                    if (! empty($link['platform']) && ! empty($link['url'])) {
                         ClubSocialLink::create([
                             'tenant_id' => $club->id,
                             'platform' => $link['platform'],
@@ -266,7 +268,7 @@ class ClubApiController extends Controller
             $club->bankAccounts()->delete();
             if ($request->has('bank_accounts')) {
                 foreach ($request->bank_accounts as $account) {
-                    if (!empty($account['bank_name']) && !empty($account['account_name'])) {
+                    if (! empty($account['bank_name']) && ! empty($account['account_name'])) {
                         ClubBankAccount::create([
                             'tenant_id' => $club->id,
                             'bank_name' => $account['bank_name'],
@@ -285,13 +287,14 @@ class ClubApiController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Club updated successfully!',
-                'club' => $club
+                'club' => $club,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update club: ' . $e->getMessage()
+                'message' => 'Failed to update club: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -301,13 +304,12 @@ class ClubApiController extends Controller
      */
     private function handleBase64Image($base64String, $folder, $filename)
     {
-        $imageParts = explode(";base64,", $base64String);
-        $imageTypeAux = explode("image/", $imageParts[0]);
-        $extension = $imageTypeAux[1];
-        $imageBinary = base64_decode($imageParts[1]);
-
-        $fullPath = $folder . '/' . $filename . '.' . $extension;
-        Storage::disk('public')->put($fullPath, $imageBinary);
+        // Validate content + assign a safe extension server-side; reject anything
+        // that isn't a real whitelisted image (was: client-controlled extension).
+        $fullPath = $this->storeBase64Image($base64String, $folder, $filename);
+        if ($fullPath === null) {
+            throw new \RuntimeException('Invalid or unsupported image.');
+        }
 
         return $fullPath;
     }

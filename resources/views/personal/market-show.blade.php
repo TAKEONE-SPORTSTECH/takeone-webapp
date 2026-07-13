@@ -13,6 +13,11 @@
 @endphp
 
 @section('personal-content')
+<style>
+    @keyframes cart-pop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+    .cart-pop { animation: cart-pop .4s ease; }
+    @media (prefers-reduced-motion: reduce) { .cart-pop { animation: none; } }
+</style>
 <div x-data="{
         qty: 1,
         color: @js($p['colors'][0] ?? $p['color']),
@@ -23,65 +28,91 @@
         pid: {{ (int) $p['id'] }},
         pname: @js($p['name']),
         basePrice: {{ $p['price'] }},
+        productDesc: @js($p['desc'] ?? ''),
         hasVariants: {{ !empty($p['hasVariants']) ? 'true' : 'false' }},
         variants: @js(collect($p['variants'] ?? [])->where('is_active', true)->values()->all()),
-        optBrand: null, optColor: null, optSize: null,
+        attributes: @js($p['attributes'] ?? []),
+        selected: {},   // { AttrName: chosenValue }
         placeRoute: @js(route('me.orders.store')),
         ordersRoute: @js(route('me.orders')),
         csrf: document.querySelector('meta[name=csrf-token]')?.content || '',
-        init() {},
-        // Distinct option values across the variants (the AliExpress selectors).
-        brands() { return [...new Set(this.variants.map(v => v.brand).filter(Boolean))]; },
-        sizes()  { return [...new Set(this.variants.map(v => v.size).filter(Boolean))]; },
-        colors() {
-            const seen = {}, out = [];
-            this.variants.forEach(v => { if (v.color && !seen[v.color]) { seen[v.color] = 1; out.push({ name: v.color, hex: v.color_hex }); } });
-            return out;
+        cart: [],
+        justAdded: false,
+        init() { this.syncCart(); },
+        syncCart() { try { this.cart = JSON.parse(localStorage.getItem('takeone_cart') || '[]'); } catch (e) { this.cart = []; } },
+        // Is the currently-selected variant already in the cart?
+        get inCart() {
+            const vId = this.sel ? this.sel.id : null;
+            return (this.cart || []).some(i => i.id === this.pid && (i.variantId || null) === (vId || null));
+        },
+        get cartQty() {
+            const vId = this.sel ? this.sel.id : null;
+            const l = (this.cart || []).find(i => i.id === this.pid && (i.variantId || null) === (vId || null));
+            return l ? l.qty : 0;
+        },
+        // The product's variant dimensions (name + values). Only dimensions with
+        // ≥1 value are offered as selectors.
+        dims() { return (this.attributes || []).filter(a => a && a.values && a.values.length); },
+        // A variant's value for an attribute — from its options map, falling back
+        // to the legacy brand/color/size columns for un-migrated rows.
+        vopt(v, name) {
+            if (v.options && v.options[name] != null) return v.options[name];
+            const legacy = v[String(name).toLowerCase()];
+            return legacy != null ? legacy : null;
+        },
+        // Effective choice for a dimension: the picked value, or the sole value of a
+        // single-option dimension (so the buyer need only pick the dimensions that vary).
+        effVal(name) {
+            if (this.selected[name] != null) return this.selected[name];
+            const a = this.dims().find(d => d.name === name);
+            return (a && a.values.length === 1) ? a.values[0] : null;
         },
         // Price range across variants — shown until a full combination is picked.
         priceMin() { return this.variants.length ? Math.min(...this.variants.map(v => v.price)) : this.basePrice; },
         priceMax() { return this.variants.length ? Math.max(...this.variants.map(v => v.price)) : this.basePrice; },
         priceVaries() { return this.hasVariants && this.priceMin() !== this.priceMax(); },
-        // The variant matching every selected dimension that the product uses.
+        // The variant matching every dimension the product uses.
         get sel() {
             if (!this.hasVariants) return null;
-            return this.variants.find(v =>
-                (this.brands().length === 0 || v.brand === this.optBrand) &&
-                (this.colors().length === 0 || v.color === this.optColor) &&
-                (this.sizes().length  === 0 || v.size  === this.optSize)
-            ) || null;
+            const dims = this.dims();
+            if (!dims.length) return null;
+            return this.variants.find(v => dims.every(d => {
+                const ev = this.effVal(d.name);
+                return ev != null && this.vopt(v, d.name) === ev;
+            })) || null;
         },
         get unitPrice() { return this.sel ? this.sel.price : this.basePrice; },
-        pickOpt(dim, val) {
-            if (dim === "brand") this.optBrand = val;
-            else if (dim === "color") this.optColor = val;
-            else if (dim === "size") this.optSize = val;
-        },
-        optSelected(dim, val) {
-            return (dim === "brand" && this.optBrand === val) || (dim === "color" && this.optColor === val) || (dim === "size" && this.optSize === val);
-        },
-        // Cheapest price reachable for an option value given the other choices —
-        // lets each tile show its own price, AliExpress style.
-        optPrice(dim, val) {
-            const m = this.variants.filter(v => {
-                if (v[dim] !== val) return false;
-                if (dim !== "brand" && this.brands().length && this.optBrand != null && v.brand !== this.optBrand) return false;
-                if (dim !== "color" && this.colors().length && this.optColor != null && v.color !== this.optColor) return false;
-                if (dim !== "size"  && this.sizes().length  && this.optSize  != null && v.size  !== this.optSize)  return false;
-                return true;
+        pickOpt(name, val) { this.selected = { ...this.selected, [name]: val }; },
+        optSelected(name, val) { return this.selected[name] === val; },
+        // Does variant v match every OTHER chosen dimension (used for price/availability)?
+        _matchesExcept(v, exceptName) {
+            return this.dims().every(d => {
+                if (d.name === exceptName) return true;
+                const ev = this.effVal(d.name);
+                return ev == null || this.vopt(v, d.name) === ev;
             });
+        },
+        // Cheapest price reachable for a value given the other choices (per-tile price).
+        optPrice(name, val) {
+            const m = this.variants.filter(v => this.vopt(v, name) === val && this._matchesExcept(v, name));
             return m.length ? Math.min(...m.map(v => v.price)) : null;
         },
-        // A value is available if some in-stock variant has it together with the
-        // other dimensions already chosen.
-        optAvailable(dim, val) {
-            return this.variants.some(v => {
-                if (!v.in_stock || v[dim] !== val) return false;
-                if (dim !== "brand" && this.brands().length && this.optBrand != null && v.brand !== this.optBrand) return false;
-                if (dim !== "color" && this.colors().length && this.optColor != null && v.color !== this.optColor) return false;
-                if (dim !== "size"  && this.sizes().length  && this.optSize  != null && v.size  !== this.optSize)  return false;
-                return true;
-            });
+        // A value is available if some in-stock variant has it with the other chosen dims.
+        optAvailable(name, val) {
+            return this.variants.some(v => v.in_stock && this.vopt(v, name) === val && this._matchesExcept(v, name));
+        },
+        // Swatch colour for a value, if any variant carries a hex for it (Colour dims).
+        dimHex(name, val) {
+            const v = this.variants.find(x => this.vopt(x, name) === val && x.color_hex);
+            return v ? v.color_hex : null;
+        },
+        // Description shown: the chosen variation's own, else the product's, else the
+        // first variation that has one.
+        descText() {
+            if (this.sel && (this.sel.description || '').trim()) return this.sel.description;
+            if ((this.productDesc || '').trim()) return this.productDesc;
+            const withDesc = this.variants.find(v => (v.description || '').trim());
+            return withDesc ? withDesc.description : '';
         },
         inc() { this.qty++; },
         dec() { if (this.qty > 1) this.qty--; },
@@ -96,6 +127,8 @@
             if (ex) ex.qty += this.qty;
             else cart.push({ id: this.pid, name: this.pname, price: this.unitPrice, color: this.sel ? this.sel.color_hex : this.color, icon: @js($p['icon']), qty: this.qty, variantId: vId, variantLabel: this.sel ? this.sel.label : null });
             try { localStorage.setItem('takeone_cart', JSON.stringify(cart)); } catch (e) {}
+            this.syncCart();
+            this.justAdded = true; setTimeout(() => { this.justAdded = false; }, 700);
             window.showToast('success', @js(__('market.added_to_cart')).replace(':name', this.pname));
         },
         buyNow() {
@@ -140,10 +173,10 @@
     {{-- ===== Product hero ===== --}}
     <header class="px-5 pt-5 pb-8 relative overflow-hidden" style="background: linear-gradient(160deg, {{ $p['color'] }}1f, {{ $p['color'] }}08);">
         <div class="flex items-center justify-between relative z-10">
-            <a href="{{ route('me.market') }}" data-shell-link data-route="me.market"
-               class="m-press w-10 h-10 rounded-full bg-white shadow-sm grid place-items-center text-foreground" aria-label="Back">
+            <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('me.market') }}')"
+               class="m-press w-10 h-10 rounded-full bg-white shadow-sm grid place-items-center text-foreground" aria-label="{{ __('shared.back') }}">
                 <i class="bi bi-arrow-left text-lg"></i>
-            </a>
+            </button>
             <button type="button" @click="liked=!liked"
                     class="m-press w-10 h-10 rounded-full bg-white shadow-sm grid place-items-center"
                     :class="liked ? 'text-red-500' : 'text-muted-foreground'">
@@ -152,136 +185,129 @@
         </div>
 
         <div class="grid place-items-center py-6 relative">
-            <div class="absolute w-44 h-44 rounded-full" style="background: {{ $p['color'] }}14;"></div>
-            <i class="bi {{ $p['icon'] }} text-8xl m-float relative" style="color: {{ $p['color'] }};"></i>
+            @if(!empty($p['image']))
+                <img src="{{ $p['image'] }}" alt="{{ $p['name'] }}" class="relative w-48 h-48 object-contain m-float drop-shadow-md">
+            @else
+                <div class="absolute w-44 h-44 rounded-full" style="background: {{ $p['color'] }}14;"></div>
+                <i class="bi {{ $p['icon'] }} text-8xl m-float relative" style="color: {{ $p['color'] }};"></i>
+            @endif
         </div>
 
         @if($p['badge'])
-            <span class="absolute top-20 left-5 px-2.5 py-1 rounded-full text-[10px] font-bold text-white"
+            <span class="absolute top-20 start-5 px-2.5 py-1 rounded-full text-[10px] font-bold text-white"
                   style="background: {{ $p['badge']==='Sale' ? '#ef4444' : ($p['badge']==='New' ? '#10b981' : $p['color']) }};">{{ $p['badge'] }}</span>
         @endif
     </header>
 
-    {{-- ===== Info card ===== --}}
-    <div class="px-4 -mt-4 relative z-10">
-        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-5">
-            <p class="text-[11px] text-muted-foreground uppercase tracking-wide">{{ $p['brand'] }}</p>
-            <h1 class="text-xl font-black text-foreground mt-0.5 leading-tight">{{ $p['name'] }}</h1>
-
-            <div class="flex items-center gap-2 mt-2">
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-600">
-                    <i class="bi bi-star-fill text-[10px]"></i> {{ $p['rating'] }}
-                </span>
-                <span class="text-xs text-muted-foreground">{{ $p['reviews'] }} reviews</span>
-                <span class="ml-auto inline-flex items-center gap-1 text-[11px] font-semibold text-green-600"><i class="bi bi-check-circle-fill"></i> {{ $p['stock'] }}</span>
+    {{-- ===== Info card (compact) ===== --}}
+    <div class="px-4 -mt-5 relative z-10">
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-4">
+            {{-- Title + price on one line --}}
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    @if($p['brand'])<p class="text-[10px] text-muted-foreground uppercase tracking-wider truncate">{{ $p['brand'] }}</p>@endif
+                    <h1 class="text-lg font-black text-foreground leading-tight">{{ $p['name'] }}</h1>
+                    <div class="flex items-center flex-wrap gap-x-2 gap-y-0.5 mt-1">
+                        @if(($p['reviews'] ?? 0) > 0)
+                            <span class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-500"><i class="bi bi-star-fill text-[9px]"></i> {{ $p['rating'] }}</span>
+                            <span class="text-[11px] text-muted-foreground">· {{ $p['reviews'] }} {{ __('market.personal_market_show_reviews_label') }}</span>
+                        @endif
+                        <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-green-600"><i class="bi bi-check-circle-fill text-[9px]"></i> {{ $p['stock'] }}</span>
+                    </div>
+                </div>
+                <div class="text-end flex-shrink-0">
+                    {{-- Exact price once the combination is picked (or no variants) --}}
+                    <p class="text-xl font-black text-foreground whitespace-nowrap leading-none" x-show="!hasVariants || sel">BHD <span x-text="unitPrice.toFixed(2)">{{ number_format($p['price'], 2) }}</span></p>
+                    {{-- 'From' price until every option is chosen --}}
+                    <p class="text-xl font-black text-foreground whitespace-nowrap leading-none" x-show="hasVariants && !sel" x-cloak>BHD <span x-text="priceMin().toFixed(2)"></span><template x-if="priceVaries()"><span class="text-sm font-bold text-muted-foreground">+</span></template></p>
+                    @if($p['old'])
+                        <p class="mt-1 flex items-center justify-end gap-1.5">
+                            <span class="text-xs text-muted-foreground line-through">BHD {{ number_format($p['old'], 2) }}</span>
+                            <span class="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-50 text-red-500">-{{ $off }}%</span>
+                        </p>
+                    @endif
+                </div>
             </div>
 
-            <div class="flex items-end gap-2 mt-4">
-                {{-- Exact price once the combination is picked (or no variants) --}}
-                <span class="text-2xl font-black text-foreground" x-show="!hasVariants || sel">BHD <span x-text="unitPrice.toFixed(2)">{{ number_format($p['price'], 2) }}</span></span>
-                {{-- Price range until the buyer has chosen every option --}}
-                <span class="text-2xl font-black text-foreground" x-show="hasVariants && !sel" x-cloak>BHD <span x-text="priceMin().toFixed(2)"></span><template x-if="priceVaries()"><span> – <span x-text="priceMax().toFixed(2)"></span></span></template></span>
-                @if($p['old'])
-                    <span class="text-sm text-muted-foreground line-through mb-0.5">BHD {{ number_format($p['old'], 2) }}</span>
-                    <span class="mb-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-500">-{{ $off }}%</span>
-                @endif
-            </div>
-
-            {{-- variants (per-dimension option selectors, AliExpress style) --}}
+            {{-- variants: one compact selector block per attribute (Brand / Model / Size…) --}}
             @if(!empty($p['hasVariants']))
-                {{-- Brand --}}
-                <div class="mt-4" x-show="brands().length">
-                    <p class="text-xs font-semibold text-foreground mb-2">{{ __('market.opt_brands') }}</p>
-                    <div class="flex flex-wrap gap-2">
-                        <template x-for="b in brands()" :key="b">
-                            <button type="button" @click="pickOpt('brand', b)" :disabled="!optAvailable('brand', b)"
-                                    class="m-press px-3.5 py-2 rounded-xl border-2 text-xs font-semibold transition-colors flex flex-col items-center leading-tight"
-                                    :class="optSelected('brand', b) ? 'border-primary bg-accent/40 text-primary' : 'border-gray-200 text-foreground'"
-                                    :style="!optAvailable('brand', b) ? 'opacity:.4;text-decoration:line-through;cursor:not-allowed' : ''">
-                                <span x-text="b"></span>
-                                <span x-show="priceVaries() && optPrice('brand', b) !== null" class="text-[10px] font-normal text-muted-foreground" x-text="'BHD ' + (optPrice('brand', b) || 0).toFixed(2)"></span>
-                            </button>
-                        </template>
-                    </div>
+                <div class="mt-3 space-y-2.5">
+                    <template x-for="a in dims()" :key="a.name">
+                        <div>
+                            <p class="text-[11px] font-semibold text-muted-foreground mb-1.5" x-text="a.name"></p>
+                            <div class="flex flex-wrap gap-1.5">
+                                <template x-for="val in a.values" :key="val">
+                                    <button type="button" @click="pickOpt(a.name, val)" :disabled="!optAvailable(a.name, val)"
+                                            class="m-press px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors inline-flex items-center gap-1.5 leading-tight"
+                                            :class="optSelected(a.name, val) ? 'border-primary bg-accent/50 text-primary' : 'border-gray-200 text-foreground'"
+                                            :style="!optAvailable(a.name, val) ? 'opacity:.4;text-decoration:line-through;cursor:not-allowed' : ''">
+                                        <template x-if="dimHex(a.name, val)">
+                                            <span class="w-3 h-3 rounded-full border border-gray-200" :style="`background:${dimHex(a.name, val)}`"></span>
+                                        </template>
+                                        <span x-text="val"></span>
+                                        <span x-show="priceVaries() && optPrice(a.name, val) !== null" class="text-[10px] font-normal opacity-70" x-text="optPrice(a.name, val).toFixed(2)"></span>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                    <p x-show="!sel" class="text-[11px] text-red-500">{{ __('market.select_variant') }}</p>
+                    <p x-show="sel && !sel.in_stock" class="text-[11px] text-red-500">{{ __('market.out_of_stock') }}</p>
+                    {{-- Dropshipped variation: shows its ships-in estimate --}}
+                    <p x-show="sel && sel.fulfillment === 'dropship'" x-cloak class="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                        <i class="bi bi-truck text-primary"></i>
+                        <span x-text="sel && sel.ships_in ? ('{{ __('market.ships_in') }}: ' + sel.ships_in) : '{{ __('market.dropship_desc') }}'"></span>
+                    </p>
                 </div>
-                {{-- Colour --}}
-                <div class="mt-4" x-show="colors().length">
-                    <p class="text-xs font-semibold text-foreground mb-2">{{ __('market.opt_colors') }}</p>
-                    <div class="flex flex-wrap gap-2">
-                        <template x-for="c in colors()" :key="c.name">
-                            <button type="button" @click="pickOpt('color', c.name)" :disabled="!optAvailable('color', c.name)"
-                                    class="m-press px-3 py-2 rounded-xl border-2 text-xs font-semibold transition-colors inline-flex items-center gap-1.5"
-                                    :class="optSelected('color', c.name) ? 'border-primary bg-accent/40 text-primary' : 'border-gray-200 text-foreground'"
-                                    :style="!optAvailable('color', c.name) ? 'opacity:.4;text-decoration:line-through;cursor:not-allowed' : ''">
-                                <span class="w-3.5 h-3.5 rounded-full border border-gray-200" :style="`background:${c.hex}`"></span>
-                                <span class="flex flex-col items-start leading-tight">
-                                    <span x-text="c.name"></span>
-                                    <span x-show="priceVaries() && optPrice('color', c.name) !== null" class="text-[10px] font-normal text-muted-foreground" x-text="'BHD ' + (optPrice('color', c.name) || 0).toFixed(2)"></span>
-                                </span>
-                            </button>
-                        </template>
-                    </div>
-                </div>
-                {{-- Size --}}
-                <div class="mt-4" x-show="sizes().length">
-                    <p class="text-xs font-semibold text-foreground mb-2">{{ __('market.opt_sizes') }}</p>
-                    <div class="flex flex-wrap gap-2">
-                        <template x-for="s in sizes()" :key="s">
-                            <button type="button" @click="pickOpt('size', s)" :disabled="!optAvailable('size', s)"
-                                    class="m-press min-w-[2.75rem] px-3.5 py-2 rounded-xl border-2 text-xs font-semibold transition-colors flex flex-col items-center leading-tight"
-                                    :class="optSelected('size', s) ? 'border-primary bg-accent/40 text-primary' : 'border-gray-200 text-foreground'"
-                                    :style="!optAvailable('size', s) ? 'opacity:.4;text-decoration:line-through;cursor:not-allowed' : ''">
-                                <span x-text="s"></span>
-                                <span x-show="priceVaries() && optPrice('size', s) !== null" class="text-[10px] font-normal text-muted-foreground" x-text="'BHD ' + (optPrice('size', s) || 0).toFixed(2)"></span>
-                            </button>
-                        </template>
-                    </div>
-                </div>
-                <p x-show="!sel" class="text-[11px] text-red-500 mt-2">{{ __('market.select_variant') }}</p>
-                <p x-show="sel && !sel.in_stock" class="text-[11px] text-red-500 mt-2">{{ __('market.out_of_stock') }}</p>
             @elseif(count($p['colors']) > 1)
                 {{-- colours --}}
-                <div class="mt-4">
-                    <p class="text-xs font-semibold text-foreground mb-2">Colour</p>
+                <div class="mt-3">
+                    <p class="text-[11px] font-semibold text-muted-foreground mb-1.5">{{ __('market.personal_market_show_colour') }}</p>
                     <div class="flex gap-2.5">
                         @foreach($p['colors'] as $col)
                             <button type="button" @click="color='{{ $col }}'"
-                                    class="m-press w-8 h-8 rounded-full border-2 grid place-items-center transition-transform"
+                                    class="m-press w-7 h-7 rounded-full border-2 grid place-items-center transition-transform"
                                     :class="color==='{{ $col }}' ? 'scale-110' : 'border-transparent'"
                                     :style="color==='{{ $col }}' ? 'border-color: {{ $col }}' : ''">
-                                <span class="w-6 h-6 rounded-full" style="background: {{ $col }};"></span>
+                                <span class="w-5 h-5 rounded-full" style="background: {{ $col }};"></span>
                             </button>
                         @endforeach
                     </div>
                 </div>
             @endif
 
-            {{-- quantity --}}
-            <div class="flex items-center justify-between mt-4">
-                <p class="text-xs font-semibold text-foreground">Quantity</p>
-                <div class="flex items-center gap-3">
-                    <button type="button" @click="dec()" class="m-press w-9 h-9 rounded-xl bg-muted grid place-items-center"><i class="bi bi-dash"></i></button>
-                    <span class="w-6 text-center text-base font-black" x-text="qty">1</span>
-                    <button type="button" @click="inc()" class="m-press w-9 h-9 rounded-xl text-white grid place-items-center" style="background: {{ $p['color'] }};"><i class="bi bi-plus"></i></button>
+            {{-- quantity — compact pill stepper --}}
+            <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                <span class="text-xs font-semibold text-muted-foreground">{{ __('market.personal_market_show_quantity') }}</span>
+                <div class="flex items-center gap-0.5 bg-muted rounded-xl p-0.5">
+                    <button type="button" @click="dec()" class="m-press w-8 h-8 rounded-lg bg-white shadow-sm grid place-items-center text-foreground disabled:opacity-40" :disabled="qty <= 1"><i class="bi bi-dash text-sm"></i></button>
+                    <span class="w-7 text-center text-sm font-black tabular-nums" x-text="qty">1</span>
+                    <button type="button" @click="inc()" class="m-press w-8 h-8 rounded-lg text-white shadow-sm grid place-items-center" style="background: {{ $p['color'] }};"><i class="bi bi-plus text-sm"></i></button>
                 </div>
             </div>
         </div>
     </div>
 
-    {{-- ===== Description ===== --}}
-    <div class="px-4 mt-4">
+    {{-- ===== Description (variation's own, falling back to the product's) ===== --}}
+    <div class="px-4 mt-4" x-show="descText()" x-cloak>
         <div class="m-card rounded-2xl p-4">
-            <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-card-text text-primary"></i> Description</h2>
-            <p class="text-sm text-muted-foreground leading-relaxed mt-2">{{ $p['desc'] }}</p>
+            <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-card-text text-primary"></i> {{ __('market.personal_market_show_description') }}</h2>
+            <p class="text-sm text-muted-foreground leading-relaxed mt-2 whitespace-pre-line" x-text="descText()"></p>
         </div>
     </div>
 
-    {{-- ===== Specs ===== --}}
+    {{-- ===== Specs (hidden when the product has none) ===== --}}
+    @php
+        $specs = collect($p['specs'] ?? [])
+            ->filter(fn ($s) => trim($s[0] ?? '') !== '' || trim($s[1] ?? '') !== '')
+            ->values();
+    @endphp
+    @if($specs->isNotEmpty())
     <div class="px-4 mt-4">
         <div class="m-card rounded-2xl p-4">
-            <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-list-ul text-primary"></i> Specifications</h2>
+            <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-list-ul text-primary"></i> {{ __('market.personal_market_show_specifications') }}</h2>
             <div class="mt-3 divide-y divide-gray-50">
-                @foreach($p['specs'] as $spec)
+                @foreach($specs as $spec)
                     <div class="flex items-center justify-between py-2">
                         <span class="text-xs text-muted-foreground">{{ $spec[0] }}</span>
                         <span class="text-xs font-bold text-foreground">{{ $spec[1] }}</span>
@@ -290,13 +316,14 @@
             </div>
         </div>
     </div>
+    @endif
 
-    {{-- ===== Ratings &amp; reviews (real) ===== --}}
+    {{-- ===== Ratings &amp; reviews (real) — hidden until the product has reviews ===== --}}
+    @if(($p['reviews'] ?? 0) > 0)
     <div class="px-4 mt-4">
         <div class="m-card rounded-2xl p-4">
             <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-star text-primary"></i> {{ __('market.ratings_reviews') }}</h2>
 
-            @if(($p['reviews'] ?? 0) > 0)
                 <div class="flex items-center gap-4 mt-3">
                     <div class="text-center">
                         <p class="text-3xl font-black text-foreground">{{ number_format($p['rating'], 1) }}</p>
@@ -330,7 +357,7 @@
                                 <div class="flex items-center gap-2">
                                     <p class="text-xs font-bold text-foreground truncate">{{ $rev['name'] }}</p>
                                     <span class="flex gap-0.5 text-amber-400 text-[9px]">@for($i=1;$i<=5;$i++)<i class="bi {{ $i <= $rev['rating'] ? 'bi-star-fill' : 'bi-star' }}"></i>@endfor</span>
-                                    <span class="text-[10px] text-muted-foreground ml-auto flex-shrink-0">{{ $rev['time'] }}</span>
+                                    <span class="text-[10px] text-muted-foreground ms-auto flex-shrink-0">{{ $rev['time'] }}</span>
                                 </div>
                                 @if(!empty($rev['comment']))
                                     <p class="text-xs text-muted-foreground mt-0.5">{{ $rev['comment'] }}</p>
@@ -339,26 +366,27 @@
                         </div>
                     @endforeach
                 </div>
-            @else
-                <div class="text-center py-6">
-                    <i class="bi bi-star text-3xl text-gray-300"></i>
-                    <p class="text-sm text-muted-foreground mt-2">{{ __('market.no_reviews_yet') }}</p>
-                </div>
-            @endif
         </div>
     </div>
+    @endif
 
     {{-- ===== Related ===== --}}
     @if(!empty($related))
         <div class="mt-5">
-            <h2 class="px-4 text-sm font-black text-foreground flex items-center gap-2 mb-3"><i class="bi bi-collection text-primary"></i> You might also like</h2>
+            <h2 class="px-4 text-sm font-black text-foreground flex items-center gap-2 mb-3"><i class="bi bi-collection text-primary"></i> {{ __('market.personal_market_show_you_might_also_like') }}</h2>
             <div class="flex gap-3 overflow-x-auto scrollbar-hide px-4 pb-1">
                 @foreach($related as $r)
                     <a href="{{ route('me.market.show', $r['id']) }}" data-shell-link data-route="me.market"
                        class="m-press flex-shrink-0 w-36 m-card rounded-2xl overflow-hidden">
-                        <div class="aspect-square grid place-items-center" style="background: linear-gradient(160deg, {{ $r['color'] }}18, {{ $r['color'] }}08);">
-                            <i class="bi {{ $r['icon'] }} text-4xl" style="color: {{ $r['color'] }};"></i>
-                        </div>
+                        @if(!empty($r['image']))
+                            <div class="aspect-square">
+                                <img src="{{ $r['image'] }}" alt="{{ $r['name'] }}" loading="lazy" class="w-full h-full object-cover">
+                            </div>
+                        @else
+                            <div class="aspect-square grid place-items-center" style="background: linear-gradient(160deg, {{ $r['color'] }}18, {{ $r['color'] }}08);">
+                                <i class="bi {{ $r['icon'] }} text-4xl" style="color: {{ $r['color'] }};"></i>
+                            </div>
+                        @endif
                         <div class="p-2.5">
                             <p class="text-xs font-bold text-foreground truncate">{{ $r['name'] }}</p>
                             <p class="text-sm font-black text-foreground mt-0.5">BHD {{ number_format($r['price'], 2) }}</p>
@@ -370,19 +398,29 @@
     @endif
 
     {{-- ===== Add-to-cart action ===== --}}
-    <div class="px-4 mt-5">
-        <div class="m-card rounded-2xl p-4 flex items-center gap-3">
-            <div class="leading-tight">
-                <p class="text-[10px] text-muted-foreground uppercase tracking-wide">Total</p>
-                <p class="text-base font-black text-foreground">BHD <span x-text="line.toFixed(2)">{{ number_format($p['price'], 2) }}</span></p>
+    <div class="px-4 mt-4">
+        <div class="m-card rounded-2xl p-3 flex items-center gap-2.5">
+            <div class="leading-tight pe-0.5">
+                <p class="text-[9px] text-muted-foreground uppercase tracking-wide">{{ __('market.personal_market_show_total') }}</p>
+                <p class="text-base font-black text-foreground whitespace-nowrap">BHD <span x-text="line.toFixed(2)">{{ number_format($p['price'], 2) }}</span></p>
             </div>
+            {{-- Add to cart — switches to an 'Added' state once this variant is in the cart --}}
             <button type="button" @click="addToCart()"
-                    class="m-press flex-1 py-3 rounded-2xl border-2 font-bold text-sm flex items-center justify-center gap-2"
-                    style="border-color: {{ $p['color'] }}; color: {{ $p['color'] }};">
-                <i class="bi bi-bag-plus"></i> {{ __('market.add_to_cart') }}
+                    class="m-press flex-1 py-3 rounded-2xl border-2 font-bold text-sm flex items-center justify-center gap-1.5 transition-all duration-300"
+                    :class="inCart ? 'cart-added border-transparent bg-green-500 text-white' : ''"
+                    :style="inCart ? '' : 'border-color: {{ $p['color'] }}; color: {{ $p['color'] }};'">
+                <template x-if="!inCart">
+                    <span class="flex items-center gap-1.5"><i class="bi bi-bag-plus"></i> {{ __('market.add_to_cart') }}</span>
+                </template>
+                <template x-if="inCart">
+                    <span class="flex items-center gap-1.5" :class="justAdded ? 'cart-pop' : ''">
+                        <i class="bi bi-bag-check-fill"></i> {{ __('market.in_cart') }}
+                        <span class="min-w-[1.15rem] h-[1.15rem] px-1 rounded-full bg-white/25 text-[11px] grid place-items-center tabular-nums" x-text="cartQty"></span>
+                    </span>
+                </template>
             </button>
             <button type="button" @click="buyNow()"
-                    class="m-press flex-1 py-3 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2"
+                    class="m-press flex-1 py-3 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-1.5"
                     style="background: {{ $p['color'] }};">
                 <i class="bi bi-lightning-charge-fill"></i> {{ __('market.buy_now') }}
             </button>

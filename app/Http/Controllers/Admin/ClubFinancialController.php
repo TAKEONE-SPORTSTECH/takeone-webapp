@@ -19,9 +19,9 @@ class ClubFinancialController extends Controller
     {
         $this->authorizeClub($club);
 
-        $transactions      = ClubTransaction::where('tenant_id', $club->id)->with(['subscription.user'])->latest('transaction_date')->get();
-        $summary           = $financials->getSummary($club->id, $transactions);
-        $monthlyData       = $financials->getMonthlyData($transactions, $club->id);
+        $transactions = ClubTransaction::where('tenant_id', $club->id)->with(['subscription.user'])->latest('transaction_date')->get();
+        $summary = $financials->getSummary($club->id, $transactions);
+        $monthlyData = $financials->getMonthlyData($transactions, $club->id);
         $pendingSubscriptions = $financials->getCashToCollect($club->id);
         $expenseCategories = $financials->getExpenseBreakdown($transactions);
         $recurringExpenses = ClubRecurringExpense::where('tenant_id', $club->id)->orderBy('day_of_month')->get();
@@ -34,11 +34,11 @@ class ClubFinancialController extends Controller
         $this->authorizeClub($club);
 
         $financials->recordTransaction($club, [
-            'description'      => $request->description,
-            'amount'           => $request->amount,
-            'type'             => 'income',
-            'category'         => $request->category,
-            'payment_method'   => $request->payment_method ?? 'cash',
+            'description' => $request->description,
+            'amount' => $request->amount,
+            'type' => 'income',
+            'category' => $request->category,
+            'payment_method' => $request->payment_method ?? 'cash',
             'reference_number' => $request->reference_number,
             'transaction_date' => $request->transaction_date,
         ]);
@@ -51,11 +51,11 @@ class ClubFinancialController extends Controller
         $this->authorizeClub($club);
 
         $financials->recordTransaction($club, [
-            'description'      => $request->description,
-            'amount'           => $request->amount,
-            'type'             => 'expense',
-            'category'         => $request->category,
-            'payment_method'   => $request->payment_method ?? 'cash',
+            'description' => $request->description,
+            'amount' => $request->amount,
+            'type' => 'expense',
+            'category' => $request->category,
+            'payment_method' => $request->payment_method ?? 'cash',
             'reference_number' => $request->reference_number,
             'transaction_date' => $request->transaction_date,
         ]);
@@ -90,23 +90,23 @@ class ClubFinancialController extends Controller
         $this->authorizeClub($club);
 
         $data = request()->validate([
-            'description'    => 'required|string|max:255',
-            'amount'         => 'required|numeric|min:0',
-            'category'       => 'nullable|string|max:255',
+            'description' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:0',
+            'category' => 'nullable|string|max:255',
             'payment_method' => 'nullable|in:cash,card,bank_transfer,online,other',
             'recurring_date' => 'required|date',
-            'notes'          => 'nullable|string|max:255',
+            'notes' => 'nullable|string|max:255',
         ]);
 
         ClubRecurringExpense::create([
-            'tenant_id'      => $club->id,
-            'description'    => $data['description'],
-            'amount'         => $data['amount'],
-            'category'       => $data['category'] ?? null,
+            'tenant_id' => $club->id,
+            'description' => $data['description'],
+            'amount' => $data['amount'],
+            'category' => $data['category'] ?? null,
             'payment_method' => $data['payment_method'] ?? 'bank_transfer',
-            'day_of_month'   => \Carbon\Carbon::parse($data['recurring_date'])->day,
-            'notes'          => $data['notes'] ?? null,
-            'is_active'      => true,
+            'day_of_month' => \Carbon\Carbon::parse($data['recurring_date'])->day,
+            'notes' => $data['notes'] ?? null,
+            'is_active' => true,
         ]);
 
         return back()->with('success', 'Recurring expense added successfully.');
@@ -118,21 +118,21 @@ class ClubFinancialController extends Controller
         abort_if($recurringExpense->tenant_id !== $club->id, 403);
 
         $data = request()->validate([
-            'description'    => 'required|string|max:255',
-            'amount'         => 'required|numeric|min:0',
-            'category'       => 'nullable|string|max:255',
+            'description' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:0',
+            'category' => 'nullable|string|max:255',
             'payment_method' => 'nullable|in:cash,card,bank_transfer,online,other',
             'recurring_date' => 'required|date',
-            'notes'          => 'nullable|string|max:255',
+            'notes' => 'nullable|string|max:255',
         ]);
 
         $recurringExpense->update([
-            'description'    => $data['description'],
-            'amount'         => $data['amount'],
-            'category'       => $data['category'] ?? null,
+            'description' => $data['description'],
+            'amount' => $data['amount'],
+            'category' => $data['category'] ?? null,
             'payment_method' => $data['payment_method'] ?? 'bank_transfer',
-            'day_of_month'   => \Carbon\Carbon::parse($data['recurring_date'])->day,
-            'notes'          => $data['notes'] ?? null,
+            'day_of_month' => \Carbon\Carbon::parse($data['recurring_date'])->day,
+            'notes' => $data['notes'] ?? null,
         ]);
 
         return back()->with('success', 'Recurring expense updated successfully.');
@@ -155,6 +155,6 @@ class ClubFinancialController extends Controller
 
         $recurringExpense->update(['is_active' => ! $recurringExpense->is_active]);
 
-        return back()->with('success', 'Recurring expense ' . ($recurringExpense->is_active ? 'activated' : 'paused') . '.');
+        return back()->with('success', 'Recurring expense '.($recurringExpense->is_active ? 'activated' : 'paused').'.');
     }
 }

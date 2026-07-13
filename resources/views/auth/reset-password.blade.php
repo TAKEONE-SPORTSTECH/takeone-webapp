@@ -18,7 +18,7 @@
                 </a>
             </div>
 
-            <p class="text-center text-gray-500 text-lg mb-8 tracking-tight">Reset Password</p>
+            <p class="text-center text-gray-500 text-lg mb-8 tracking-tight">{{ __('auth.auth_reset_password_title') }}</p>
 
             <form method="POST" action="{{ route('password.update') }}">
                 @csrf
@@ -28,7 +28,7 @@
 
                 <!-- Email Address -->
                 <div class="mb-4">
-                    <label for="email" class="tf-label">Email Address</label>
+                    <label for="email" class="tf-label">{{ __('auth.auth_reset_password_email_label') }}</label>
                     <input id="email" type="email"
                            class="tf-input @error('email') border-red-500 @enderror"
                            name="email"
@@ -44,7 +44,7 @@
 
                 <!-- Password -->
                 <div class="mb-4">
-                    <label for="password" class="tf-label">New Password</label>
+                    <label for="password" class="tf-label">{{ __('auth.auth_reset_password_new_password_label') }}</label>
                     <input id="password" type="password"
                            class="tf-input @error('password') border-red-500 @enderror"
                            name="password"
@@ -58,7 +58,7 @@
 
                 <!-- Confirm Password -->
                 <div class="mb-4">
-                    <label for="password-confirm" class="tf-label">Confirm Password</label>
+                    <label for="password-confirm" class="tf-label">{{ __('auth.auth_reset_password_confirm_password_label') }}</label>
                     <input id="password-confirm" type="password"
                            class="tf-input"
                            name="password_confirmation"
@@ -67,14 +67,14 @@
 
                 <!-- Reset Password Button -->
                 <button type="submit" class="tf-auth-btn mt-2 mb-6">
-                    RESET PASSWORD
+                    {{ __('auth.auth_reset_password_submit') }}
                 </button>
             </form>
 
             <!-- Back to login link -->
             <p class="text-center text-sm text-gray-500">
                 <a href="{{ route('login') }}" class="tf-auth-link">
-                    Back to Login
+                    {{ __('auth.auth_reset_password_back_to_login') }}
                 </a>
             </p>
         </div>

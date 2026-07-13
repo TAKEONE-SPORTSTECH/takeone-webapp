@@ -25,8 +25,8 @@ class ClubRecurringExpense extends Model
     ];
 
     protected $casts = [
-        'amount'      => 'decimal:2',
-        'is_active'   => 'boolean',
+        'amount' => 'decimal:2',
+        'is_active' => 'boolean',
         'last_run_at' => 'date',
     ];
 

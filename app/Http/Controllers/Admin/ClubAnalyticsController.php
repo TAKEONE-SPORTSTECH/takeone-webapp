@@ -19,17 +19,17 @@ class ClubAnalyticsController extends Controller
         $clubId = $club->id;
 
         $analytics = [
-            'new_members'       => 0,
-            'new_members_change'=> 0,
-            'retention_rate'    => 0,
-            'retention_change'  => 0,
-            'avg_revenue'       => 0,
-            'total_checkins'    => 0,
-            'checkins_change'   => 0,
-            'monthly_members'   => array_fill(0, 12, 0),
-            'activity_labels'   => ['No data'],
-            'activity_data'     => [100],
-            'hourly_checkins'   => array_fill(0, 9, 0),
+            'new_members' => 0,
+            'new_members_change' => 0,
+            'retention_rate' => 0,
+            'retention_change' => 0,
+            'avg_revenue' => 0,
+            'total_checkins' => 0,
+            'checkins_change' => 0,
+            'monthly_members' => array_fill(0, 12, 0),
+            'activity_labels' => ['No data'],
+            'activity_data' => [100],
+            'hourly_checkins' => array_fill(0, 9, 0),
         ];
 
         $popularPackages = Cache::remember(ClubCache::analyticsPopularPackages($clubId), ClubCache::TTL_ANALYTICS, function () use ($clubId) {

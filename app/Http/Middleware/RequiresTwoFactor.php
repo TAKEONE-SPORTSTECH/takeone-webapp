@@ -20,9 +20,9 @@ class RequiresTwoFactor
     {
         $user = Auth::user();
 
-        if ($user && $user->hasTwoFactorEnabled() && !$request->session()->get('two_factor.verified')) {
+        if ($user && $user->hasTwoFactorEnabled() && ! $request->session()->get('two_factor.verified')) {
             // Store intended destination so we can redirect after challenge.
-            if (!$request->expectsJson()) {
+            if (! $request->expectsJson()) {
                 $request->session()->put('url.intended', $request->url());
             }
 

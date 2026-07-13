@@ -14,9 +14,9 @@ class NearbyClubsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'latitude'  => 'required|numeric|between:-90,90',
+            'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
-            'radius'    => 'nullable|numeric|min:1|max:100',
+            'radius' => 'nullable|numeric|min:1|max:100',
         ];
     }
 }

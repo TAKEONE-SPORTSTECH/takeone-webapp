@@ -47,10 +47,6 @@ class WelcomeEmail extends Mailable implements ShouldQueue
     /**
      * Create a new message instance.
      *
-     * @param \App\Models\User $user
-     * @param \App\Models\User|null $guardian
-     * @param \App\Models\UserRelationship|null $relationship
-     * @param string|null $intended
      * @return void
      */
     public function __construct(User $user, ?User $guardian = null, ?UserRelationship $relationship = null, ?string $intended = null)
@@ -69,7 +65,7 @@ class WelcomeEmail extends Mailable implements ShouldQueue
     public function envelope()
     {
         return new Envelope(
-            subject: 'Welcome to ' . config('app.name', 'Club SaaS') . ' - ' . $this->user->full_name,
+            subject: 'Welcome to '.config('app.name', 'Club SaaS').' - '.$this->user->full_name,
         );
     }
 

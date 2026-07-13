@@ -22,12 +22,12 @@ class StructuredLogging
 
         Log::shareContext([
             'request_id' => $requestId,
-            'ip'         => $request->ip(),
-            'method'     => $request->method(),
-            'url'        => $request->fullUrl(),
-            'route'      => $request->route()?->getName(),
+            'ip' => $request->ip(),
+            'method' => $request->method(),
+            'url' => $request->fullUrl(),
+            'route' => $request->route()?->getName(),
             'user_agent' => $request->userAgent(),
-            'user_id'    => Auth::id(),
+            'user_id' => Auth::id(),
         ]);
 
         $response = $next($request);

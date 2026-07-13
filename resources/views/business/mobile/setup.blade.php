@@ -18,20 +18,21 @@
     </header>
 
     {{-- ===== Hero ===== --}}
-    <div class="px-4 pt-4">
-        <div class="m-hero relative overflow-hidden rounded-3xl p-6 text-white shadow-sm">
-            <div class="relative z-10">
-                <span class="inline-flex w-12 h-12 rounded-2xl bg-white/20 backdrop-blur items-center justify-center mb-3">
-                    <i class="bi bi-buildings text-2xl"></i>
-                </span>
-                <h1 class="text-2xl font-extrabold leading-tight">{{ __('business.business_chain') }}</h1>
+    <header class="m-hero px-5 pt-7 pb-6 text-white relative overflow-hidden">
+        <div class="absolute -end-8 -top-8 w-36 h-36 rounded-full bg-white/10"></div>
+        <div class="flex items-start justify-between gap-3 relative z-10">
+            <div class="min-w-0">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">{{ $business ? __('business.your_business') : __('business.create_business') }}</p>
+                <h1 class="text-2xl font-black mt-0.5 leading-tight">{{ __('business.business_chain') }}</h1>
                 <p class="mt-1.5 text-sm text-white/85">{{ __('business.business_chain_desc') }}</p>
             </div>
-            <i class="bi bi-diagram-3 absolute -right-4 -bottom-4 text-[7rem] text-white/15 m-float"></i>
+            <div class="w-12 h-12 shrink-0 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center">
+                <i class="bi bi-buildings text-xl m-float"></i>
+            </div>
         </div>
-    </div>
+    </header>
 
-    <div class="px-4 mt-5 space-y-5 mobile-stagger">
+    <div class="px-4 pt-5 relative z-10 space-y-5 mobile-stagger">
 
         @if(!$business)
             {{-- ===== Benefits ===== --}}

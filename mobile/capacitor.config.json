@@ -1,0 +1,28 @@
+{
+    "appId": "bh.takeone.app",
+    "appName": "TAKEONE",
+    "webDir": "www",
+    "server": {
+        "url": "https://takeone.bh",
+        "androidScheme": "https",
+        "allowNavigation": ["takeone.bh", "*.takeone.bh"]
+    },
+    "backgroundColor": "#7F6CE0",
+    "android": {
+        "backgroundColor": "#7F6CE0"
+    },
+    "plugins": {
+        "SplashScreen": {
+            "launchShowDuration": 1200,
+            "backgroundColor": "#7F6CE0",
+            "showSpinner": false,
+            "androidSplashResourceName": "splash",
+            "androidScaleType": "CENTER_CROP"
+        },
+        "StatusBar": {
+            "style": "LIGHT",
+            "backgroundColor": "#7F6CE0",
+            "overlaysWebView": false
+        }
+    }
+}

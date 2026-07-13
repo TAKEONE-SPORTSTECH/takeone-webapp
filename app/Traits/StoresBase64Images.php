@@ -13,8 +13,8 @@ trait StoresBase64Images
      */
     private const ALLOWED_IMAGE_TYPES = [
         'image/jpeg' => 'jpg',
-        'image/png'  => 'png',
-        'image/gif'  => 'gif',
+        'image/png' => 'png',
+        'image/gif' => 'gif',
         'image/webp' => 'webp',
     ];
 
@@ -28,7 +28,7 @@ trait StoresBase64Images
     private function storeBase64Image(string $base64, string $folder, string $filenameBase, string $disk = 'public'): ?string
     {
         // Must look like a data URI before we do anything else.
-        if (!str_starts_with($base64, 'data:image')) {
+        if (! str_starts_with($base64, 'data:image')) {
             return null;
         }
 
@@ -46,18 +46,18 @@ trait StoresBase64Images
 
         // Inspect the actual bytes, not the client-supplied header.
         // finfo is bundled with PHP 8+ and always available.
-        $finfo    = new \finfo(FILEINFO_MIME_TYPE);
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
         $mimeType = $finfo->buffer($binary);
 
         // Reject anything not in the whitelist — this stops PHP/HTML/SVG/EXE
         // files even if they claim to be images in their data-URI header.
-        if (!array_key_exists($mimeType, self::ALLOWED_IMAGE_TYPES)) {
+        if (! array_key_exists($mimeType, self::ALLOWED_IMAGE_TYPES)) {
             return null;
         }
 
         // Extension comes from our map, never from client input.
         $extension = self::ALLOWED_IMAGE_TYPES[$mimeType];
-        $fullPath  = trim($folder, '/') . '/' . $filenameBase . '.' . $extension;
+        $fullPath = trim($folder, '/').'/'.$filenameBase.'.'.$extension;
 
         Storage::disk($disk)->put($fullPath, $binary);
 

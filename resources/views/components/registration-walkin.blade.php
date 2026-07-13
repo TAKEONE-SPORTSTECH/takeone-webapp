@@ -31,7 +31,7 @@
             <!-- Header -->
             <div class="flex-shrink-0 px-5 sm:px-6 py-4 border-b border-gray-100">
                 <h3 class="text-lg sm:text-xl font-bold text-gray-900" x-text="registrantType === 'child' ? 'Register Child' : 'Walk-In Registration'"></h3>
-                <p class="text-sm text-gray-500 mt-1">Step <span x-text="currentStepIndex"></span> of <span x-text="visibleSteps.length"></span>: <span x-text="currentStepLabel"></span></p>
+                <p class="text-sm text-gray-500 mt-1">{{ __('shared.components_registration_walkin_step') }} <span x-text="currentStepIndex"></span> {{ __('shared.components_registration_walkin_of') }} <span x-text="visibleSteps.length"></span>: <span x-text="currentStepLabel"></span></p>
             </div>
 
             <!-- Step Indicator (driven by visibleSteps so the Child flow skips the children step) -->
@@ -63,67 +63,44 @@
                         </h4>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div class="sm:col-span-2">
-                                <label class="block text-sm font-medium text-gray-700 mb-1.5">Full Name <span class="text-red-500">*</span></label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('shared.components_registration_walkin_full_name') }} <span class="text-red-500">*</span></label>
                                 <input type="text" x-model="data.guardian.name" @input="errors.name = ''"
                                        :class="errors.name ? 'border-red-400 ring-2 ring-red-100' : 'border-gray-200'"
-                                       class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="John Doe">
+                                       class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="{{ __('shared.components_registration_walkin_ph_john_doe') }}">
                                 <span x-show="errors.name" x-text="errors.name" class="text-red-500 text-xs mt-1 block"></span>
                             </div>
                             <div x-show="registrantType === 'guardian'">
-                                <label class="block text-sm font-medium text-gray-700 mb-1.5">Email <span class="text-red-500">*</span></label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('shared.components_registration_walkin_email') }} <span class="text-gray-400">{{ __('shared.components_registration_walkin_optional') }}</span></label>
                                 <input type="email" x-model="data.guardian.email" @input="errors.email = ''"
                                        :class="errors.email ? 'border-red-400 ring-2 ring-red-100' : 'border-gray-200'"
-                                       class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="member@example.com">
+                                       class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="{{ __('shared.components_registration_walkin_ph_member_email') }}">
+                                <p class="text-xs text-gray-400 mt-1">{{ __('shared.components_registration_walkin_email_claim_hint') }}</p>
                                 <span x-show="errors.email" x-text="errors.email" class="text-red-500 text-xs mt-1 block"></span>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1.5">Phone Number <span class="text-red-500">*</span></label>
-                                <x-country-code-dropdown name="walkIn_countryCode" id="walkIn_countryCode" value="+973" :required="true">
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('shared.components_registration_walkin_phone_number') }} <span class="text-red-500">*</span></label>
+                                <x-country-code-dropdown name="walkIn_countryCode" id="walkIn_countryCode" value="+973" :required="true" :syncWithCountry="false">
                                     <input type="text" id="walkIn_phone" x-model="data.guardian.phone" @input="errors.phone = ''"
                                            :class="errors.phone ? 'ring-2 ring-red-100' : ''"
-                                           class="w-full px-4 py-3 text-base bg-transparent focus:outline-none" placeholder="Phone number">
+                                           class="w-full px-4 py-3 text-base bg-transparent focus:outline-none" placeholder="{{ __('shared.components_registration_walkin_ph_phone_number') }}">
                                 </x-country-code-dropdown>
                                 <span x-show="errors.phone" x-text="errors.phone" class="text-red-500 text-xs mt-1 block"></span>
                             </div>
-                            <div x-show="registrantType === 'guardian'">
-                                <label class="block text-sm font-medium text-gray-700 mb-1.5">Password <span class="text-red-500">*</span></label>
-                                <div class="relative">
-                                    <input :type="showPassword ? 'text' : 'password'" x-model="data.guardian.password" @input="errors.password = ''"
-                                           :class="errors.password ? 'border-red-400 ring-2 ring-red-100' : 'border-gray-200'"
-                                           class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-10" placeholder="Minimum 8 characters">
-                                    <button type="button" @click="showPassword = !showPassword" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                                        <i class="bi" :class="showPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
-                                    </button>
-                                </div>
-                                <span x-show="errors.password" x-text="errors.password" class="text-red-500 text-xs mt-1 block"></span>
-                            </div>
-                            <div x-show="registrantType === 'guardian'">
-                                <label class="block text-sm font-medium text-gray-700 mb-1.5">Confirm Password <span class="text-red-500">*</span></label>
-                                <div class="relative">
-                                    <input :type="showConfirmPassword ? 'text' : 'password'" x-model="passwordConfirmation" @input="errors.confirmPassword = ''"
-                                           :class="errors.confirmPassword ? 'border-red-400 ring-2 ring-red-100' : 'border-gray-200'"
-                                           class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-10" placeholder="Re-enter password">
-                                    <button type="button" @click="showConfirmPassword = !showConfirmPassword" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                                        <i class="bi" :class="showConfirmPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
-                                    </button>
-                                </div>
-                                <span x-show="errors.confirmPassword" x-text="errors.confirmPassword" class="text-red-500 text-xs mt-1 block"></span>
-                            </div>
                             <div class="sm:col-span-2">
-                                <x-birthdate-dropdown name="walkIn_dob" id="walkIn_dob" label="Date of Birth" :required="true" :minAge="3" :maxAge="100" />
+                                <x-birthdate-dropdown name="walkIn_dob" id="walkIn_dob" label="{{ __('shared.components_registration_walkin_date_of_birth') }}" :required="true" :minAge="3" :maxAge="100" />
                                 <span x-show="errors.dob" x-text="errors.dob" class="text-red-500 text-xs mt-1 block"></span>
                             </div>
                             <div>
-                                <x-gender-dropdown name="walkIn_gender" id="walkIn_gender" label="Gender" :required="true" />
+                                <x-gender-dropdown name="walkIn_gender" id="walkIn_gender" label="{{ __('shared.components_registration_walkin_gender') }}" :required="true" />
                                 <span x-show="errors.gender" x-text="errors.gender" class="text-red-500 text-xs mt-1 block"></span>
                             </div>
                             <div>
-                                <x-country-dropdown name="walkIn_nationality" id="walkIn_nationality" label="Nationality" :required="true" />
+                                <x-country-dropdown name="walkIn_nationality" id="walkIn_nationality" label="{{ __('shared.components_registration_walkin_nationality') }}" :required="false" />
                                 <span x-show="errors.nationality" x-text="errors.nationality" class="text-red-500 text-xs mt-1 block"></span>
                             </div>
                             <div class="sm:col-span-2">
-                                <label class="block text-sm font-medium text-gray-700 mb-1.5">Address (Optional)</label>
-                                <input type="text" x-model="data.guardian.address" class="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Street address">
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('shared.components_registration_walkin_address_optional') }}</label>
+                                <input type="text" x-model="data.guardian.address" class="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="{{ __('shared.components_registration_walkin_ph_street_address') }}">
                             </div>
                         </div>
                     </div>
@@ -132,19 +109,19 @@
                 <!-- Step 2: Guardian & Children -->
                 <div x-show="step === 2" class="p-4 sm:p-6 space-y-5 sm:space-y-6">
                     <div>
-                        <h4 class="text-lg font-semibold text-gray-900 mb-4">Are you registering family members?</h4>
+                        <h4 class="text-lg font-semibold text-gray-900 mb-4">{{ __('shared.components_registration_walkin_registering_family_question') }}</h4>
                         <div class="grid grid-cols-2 gap-4">
                             <button type="button" @click="setIsGuardian(true)"
                                     class="px-4 py-3 border-2 rounded-lg font-medium text-gray-700 hover:border-purple-400 transition-colors flex items-center justify-center gap-2"
                                     :class="data.isGuardian === true ? 'border-purple-500 bg-purple-50' : 'border-gray-200'">
                                 <svg x-show="data.isGuardian === true" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                Yes, I'm a guardian
+                                {{ __('shared.components_registration_walkin_yes_guardian') }}
                             </button>
                             <button type="button" @click="setIsGuardian(false)"
                                     class="px-4 py-3 border-2 rounded-lg font-medium text-gray-700 hover:border-purple-400 transition-colors flex items-center justify-center gap-2"
                                     :class="data.isGuardian === false ? 'border-purple-500 bg-purple-50' : 'border-gray-200'">
                                 <svg x-show="data.isGuardian === false" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                No, just myself
+                                {{ __('shared.components_registration_walkin_no_just_myself') }}
                             </button>
                         </div>
                     </div>
@@ -152,9 +129,9 @@
                     <!-- Children Section -->
                     <div x-show="data.isGuardian === true" class="space-y-4">
                         <div class="flex items-center justify-between">
-                            <h4 class="font-semibold text-gray-900">Family Members</h4>
+                            <h4 class="font-semibold text-gray-900">{{ __('shared.components_registration_walkin_family_members') }}</h4>
                             <button type="button" @click="addChild()" class="inline-flex items-center px-3 py-1.5 bg-purple-500 text-white text-sm font-medium rounded-lg hover:bg-purple-600 transition-colors">
-                                <i class="bi bi-plus mr-1"></i> Add Member
+                                <i class="bi bi-plus me-1"></i> {{ __('shared.components_registration_walkin_add_member') }}
                             </button>
                         </div>
                         <template x-for="(child, index) in data.children" :key="child.id">
@@ -166,7 +143,7 @@
                                     </button>
                                 </div>
                                 <div class="mb-4">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Relationship <span class="text-red-500">*</span></label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('shared.components_registration_walkin_relationship') }} <span class="text-red-500">*</span></label>
                                     <div class="flex flex-wrap gap-2">
                                         <template x-for="rel in relationshipOptions" :key="rel.value">
                                             <button type="button" @click="setChildRelationship(child, rel.value)"
@@ -179,47 +156,51 @@
                                 </div>
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
-                                        <input type="text" x-model="child.name" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500" placeholder="Family member's name">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('shared.components_registration_walkin_name') }} <span class="text-red-500">*</span></label>
+                                        <input type="text" x-model="child.name" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500" placeholder="{{ __('shared.components_registration_walkin_ph_family_member_name') }}">
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Date of Birth <span class="text-red-500">*</span></label>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('shared.components_registration_walkin_date_of_birth') }} <span class="text-red-500">*</span></label>
                                         <input type="date" x-model="child.dob" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500">
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Gender <span class="text-red-500">*</span></label>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('shared.components_registration_walkin_gender') }} <span class="text-red-500">*</span></label>
                                         <x-gender-toggle model="child.gender" />
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Nationality <span class="text-red-500">*</span></label>
-                                        <select x-model="child.nationality" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500">
-                                            <option value="">Select</option>
-                                            <option value="Bahrain">Bahrain</option>
-                                            <option value="Saudi Arabia">Saudi Arabia</option>
-                                            <option value="UAE">UAE</option>
-                                            <option value="Kuwait">Kuwait</option>
-                                            <option value="India">India</option>
-                                            <option value="Pakistan">Pakistan</option>
-                                        </select>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('shared.components_registration_walkin_nationality') }} <span class="text-gray-400">{{ __('shared.components_registration_walkin_optional') }}</span></label>
+                                        <x-select-menu model="child.nationality"
+                                            placeholder="{{ __('shared.components_registration_walkin_select') }}"
+                                            :options="[
+                                                ['value' => 'Bahrain', 'label' => __('shared.components_registration_walkin_bahrain')],
+                                                ['value' => 'Saudi Arabia', 'label' => __('shared.components_registration_walkin_saudi_arabia')],
+                                                ['value' => 'UAE', 'label' => __('shared.components_registration_walkin_uae')],
+                                                ['value' => 'Kuwait', 'label' => __('shared.components_registration_walkin_kuwait')],
+                                                ['value' => 'India', 'label' => __('shared.components_registration_walkin_india')],
+                                                ['value' => 'Pakistan', 'label' => __('shared.components_registration_walkin_pakistan')],
+                                            ]" />
                                     </div>
                                     {{-- A child needs no email/password — just a phone number for contact. --}}
                                     <div class="col-span-2">
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number <span class="text-red-500">*</span></label>
-                                        <div class="flex">
-                                            <select x-model="child.countryCode" class="px-2 py-2 border border-r-0 border-gray-200 rounded-l-lg text-sm bg-gray-50 focus:ring-2 focus:ring-purple-500">
-                                                <option value="+973">🇧🇭 +973</option>
-                                                <option value="+966">🇸🇦 +966</option>
-                                                <option value="+971">🇦🇪 +971</option>
-                                                <option value="+965">🇰🇼 +965</option>
-                                                <option value="+974">🇶🇦 +974</option>
-                                                <option value="+968">🇴🇲 +968</option>
-                                                <option value="+1">+1</option>
-                                                <option value="+44">+44</option>
-                                                <option value="+91">+91</option>
-                                                <option value="+92">+92</option>
-                                            </select>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('shared.components_registration_walkin_phone_number') }} <span class="text-red-500">*</span></label>
+                                        <div class="flex gap-2">
+                                            <div class="w-28 flex-shrink-0">
+                                                <x-select-menu model="child.countryCode"
+                                                    :options="[
+                                                        ['value' => '+973', 'label' => '🇧🇭 +973'],
+                                                        ['value' => '+966', 'label' => '🇸🇦 +966'],
+                                                        ['value' => '+971', 'label' => '🇦🇪 +971'],
+                                                        ['value' => '+965', 'label' => '🇰🇼 +965'],
+                                                        ['value' => '+974', 'label' => '🇶🇦 +974'],
+                                                        ['value' => '+968', 'label' => '🇴🇲 +968'],
+                                                        ['value' => '+1', 'label' => '+1'],
+                                                        ['value' => '+44', 'label' => '+44'],
+                                                        ['value' => '+91', 'label' => '+91'],
+                                                        ['value' => '+92', 'label' => '+92'],
+                                                    ]" />
+                                            </div>
                                             <input type="tel" x-model="child.phone" inputmode="tel"
-                                                   class="flex-1 px-3 py-2 border border-gray-200 rounded-r-lg text-sm focus:ring-2 focus:ring-purple-500" placeholder="Phone number">
+                                                   class="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500" placeholder="{{ __('shared.components_registration_walkin_ph_phone_number') }}">
                                         </div>
                                     </div>
                                 </div>
@@ -231,8 +212,8 @@
                 <!-- Step 3: Package Selection -->
                 <div x-show="step === 3" class="p-4 sm:p-6 space-y-5 sm:space-y-6">
                     <div>
-                        <h4 class="text-lg font-semibold text-gray-900 mb-2">Select Packages for Each Person</h4>
-                        <p class="text-sm text-gray-500">Package selection is optional. You can register members without selecting packages.</p>
+                        <h4 class="text-lg font-semibold text-gray-900 mb-2">{{ __('shared.components_registration_walkin_select_packages_each_person') }}</h4>
+                        <p class="text-sm text-gray-500">{{ __('shared.components_registration_walkin_package_selection_optional') }}</p>
                     </div>
 
                     <div class="space-y-4 max-h-80 overflow-y-auto">
@@ -245,16 +226,25 @@
                                             <h5 class="font-semibold text-gray-900" x-text="person.name"></h5>
                                             <p class="text-sm text-gray-500">
                                                 <span x-text="person.type === 'guardian' ? 'Guardian' : 'Child'"></span> &bull;
-                                                Age <span x-text="calculateAge(person.dob)"></span> &bull;
+                                                {{ __('shared.components_registration_walkin_age') }} <span x-text="calculateAge(person.dob)"></span> &bull;
                                                 <span x-text="person.gender"></span>
                                             </p>
                                         </div>
                                     </div>
                                 </div>
-                                <div x-show="person.isJoining" class="pl-8 space-y-2">
-                                    <p class="text-sm font-medium text-gray-700 mb-2">Select Packages (optional):</p>
+                                <div x-show="person.isJoining" class="ps-8 space-y-2">
+                                    {{-- Waive the one-time joining fee for existing/legacy members who
+                                         predate the system (they already paid the club long ago). --}}
+                                    <label class="flex items-start gap-2.5 mb-3 p-2.5 rounded-lg bg-gray-50 border border-gray-100 cursor-pointer select-none">
+                                        <input type="checkbox" x-model="person.waiveRegFee" class="mt-0.5 w-4 h-4 text-purple-500 rounded border-gray-300 focus:ring-purple-500">
+                                        <span class="flex-1">
+                                            <span class="block text-sm font-medium text-gray-700">{{ __('shared.components_registration_walkin_waive_reg_fee') }}</span>
+                                            <span class="block text-xs text-gray-400">{{ __('shared.components_registration_walkin_waive_reg_fee_hint') }}</span>
+                                        </span>
+                                    </label>
+                                    <p class="text-sm font-medium text-gray-700 mb-2">{{ __('shared.components_registration_walkin_select_packages_optional') }}</p>
                                     <template x-if="getEligiblePackages(person).length === 0">
-                                        <p class="text-sm text-gray-500 italic">No packages available for this age/gender</p>
+                                        <p class="text-sm text-gray-500 italic">{{ __('shared.components_registration_walkin_no_packages_age_gender') }}</p>
                                     </template>
                                     <template x-for="pkg in getEligiblePackages(person)" :key="pkg.id">
                                         <div>
@@ -273,9 +263,9 @@
 
                                             {{-- Equipment chips for this package (shown when the package is selected). --}}
                                             <div x-show="person.selectedPackageIds.includes(pkg.id) && (pkg.equipment || []).length > 0"
-                                                 class="mt-2 ml-7 p-3 rounded-lg bg-gray-50 border border-gray-100">
+                                                 class="mt-2 ms-7 p-3 rounded-lg bg-gray-50 border border-gray-100">
                                                 <p class="text-xs font-medium text-gray-500 mb-2 flex items-center gap-1.5">
-                                                    <i class="bi bi-box-seam text-purple-500"></i> Equipment for this activity
+                                                    <i class="bi bi-box-seam text-purple-500"></i> {{ __('shared.components_registration_walkin_equipment_for_activity') }}
                                                 </p>
                                                 <div class="space-y-2.5">
                                                     <template x-for="eq in (pkg.equipment || [])" :key="eq.id">
@@ -287,7 +277,7 @@
                                                                        @change="toggleEquipmentForPerson(person.id, eq.id)"
                                                                        class="w-4 h-4 text-purple-500 rounded border-gray-300 focus:ring-purple-500">
                                                                 <span class="flex-1 text-sm text-gray-700" :class="isEquipmentOwned(person, eq.id) ? 'line-through' : ''" x-text="eq.name"></span>
-                                                                <span x-show="eq.is_required && !isEquipmentOwned(person, eq.id)" class="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">Required</span>
+                                                                <span x-show="eq.is_required && !isEquipmentOwned(person, eq.id)" class="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">{{ __('shared.components_registration_walkin_required') }}</span>
                                                                 <span class="text-sm font-medium text-gray-600" x-text="currencySymbol + ' ' + parseFloat(eq.price).toFixed(2)"></span>
                                                             </label>
 
@@ -295,7 +285,7 @@
                                                             <div x-show="eq.has_variants">
                                                                 <div class="flex items-center gap-2 mb-1.5">
                                                                     <span class="flex-1 text-sm font-medium text-gray-700" :class="isEquipmentOwned(person, eq.id) ? 'line-through' : ''" x-text="eq.name"></span>
-                                                                    <span x-show="eq.is_required && !isEquipmentOwned(person, eq.id)" class="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">Required</span>
+                                                                    <span x-show="eq.is_required && !isEquipmentOwned(person, eq.id)" class="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">{{ __('shared.components_registration_walkin_required') }}</span>
                                                                 </div>
                                                                 <div class="flex flex-wrap gap-1.5" x-show="!isEquipmentOwned(person, eq.id)">
                                                                     <template x-for="v in (eq.variants || [])" :key="v.id">
@@ -309,24 +299,24 @@
                                                                             <span x-show="v.color_hex" class="w-2.5 h-2.5 rounded-full border border-gray-200" :style="`background:${v.color_hex}`"></span>
                                                                             <span x-text="v.label"></span>
                                                                             <span class="text-gray-400 font-normal" x-text="'· ' + parseFloat(v.price).toFixed(2)"></span>
-                                                                            <span x-show="v.owned" class="text-[9px] px-1 py-0.5 rounded-full bg-green-100 text-green-700">Owned</span>
+                                                                            <span x-show="v.owned" class="text-[9px] px-1 py-0.5 rounded-full bg-green-100 text-green-700">{{ __('shared.components_registration_walkin_owned') }}</span>
                                                                         </button>
                                                                     </template>
                                                                 </div>
                                                             </div>
 
                                                             {{-- "I already have it" — removes the item from the bill --}}
-                                                            <label class="flex items-center gap-2 cursor-pointer select-none mt-1.5 pl-0.5">
+                                                            <label class="flex items-center gap-2 cursor-pointer select-none mt-1.5 ps-0.5">
                                                                 <input type="checkbox" :checked="isEquipmentOwned(person, eq.id)"
                                                                        @change="toggleOwnedForPerson(person.id, eq)"
                                                                        class="w-3.5 h-3.5 text-green-600 rounded border-gray-300 focus:ring-green-500">
-                                                                <span class="text-[11px] font-medium" :class="isEquipmentOwned(person, eq.id) ? 'text-green-700' : 'text-gray-500'">I already have it</span>
+                                                                <span class="text-[11px] font-medium" :class="isEquipmentOwned(person, eq.id) ? 'text-green-700' : 'text-gray-500'">{{ __('shared.components_registration_walkin_i_already_have_it') }}</span>
                                                             </label>
                                                         </div>
                                                     </template>
                                                     <p class="text-[11px] text-gray-500 mt-2.5 flex items-start gap-1.5">
                                                         <i class="bi bi-info-circle text-purple-500 mt-0.5"></i>
-                                                        <span>Trains elsewhere already? Tick anything they already own to remove it from the bill.</span>
+                                                        <span>{{ __('shared.components_registration_walkin_trains_elsewhere_hint') }}</span>
                                                     </p>
                                                 </div>
                                             </div>
@@ -339,26 +329,26 @@
 
                     <!-- Cost Summary -->
                     <div class="bg-gray-50 rounded-xl p-4">
-                        <h4 class="font-semibold text-gray-900 mb-3">Cost Summary</h4>
+                        <h4 class="font-semibold text-gray-900 mb-3">{{ __('shared.components_registration_walkin_cost_summary') }}</h4>
                         <div class="space-y-2 text-sm">
                             <div class="flex justify-between">
-                                <span class="text-gray-600">Registration Fee (<span x-text="totals.memberCount"></span> members)</span>
+                                <span class="text-gray-600">{{ __('shared.components_registration_walkin_registration_fee') }} (<span x-text="totals.memberCount"></span> {{ __('shared.components_registration_walkin_members') }})</span>
                                 <span x-text="currencySymbol + ' ' + totals.enrollmentTotal.toFixed(2)"></span>
                             </div>
                             <div class="flex justify-between">
-                                <span class="text-gray-600">Packages Total</span>
+                                <span class="text-gray-600">{{ __('shared.components_registration_walkin_packages_total') }}</span>
                                 <span x-text="currencySymbol + ' ' + totals.packagesTotal.toFixed(2)"></span>
                             </div>
                             <div class="flex justify-between" x-show="totals.equipmentTotal > 0">
-                                <span class="text-gray-600">Equipment Total</span>
+                                <span class="text-gray-600">{{ __('shared.components_registration_walkin_equipment_total') }}</span>
                                 <span x-text="currencySymbol + ' ' + totals.equipmentTotal.toFixed(2)"></span>
                             </div>
                             <div class="flex justify-between font-medium pt-2 border-t border-gray-200">
-                                <span>Subtotal</span>
+                                <span>{{ __('shared.components_registration_walkin_subtotal') }}</span>
                                 <span x-text="currencySymbol + ' ' + totals.subtotal.toFixed(2)"></span>
                             </div>
                             <div class="pt-2">
-                                <label class="text-xs text-gray-500">Discount (Optional)</label>
+                                <label class="text-xs text-gray-500">{{ __('shared.components_registration_walkin_discount_optional') }}</label>
                                 <div class="flex gap-2 mt-1">
                                     <button type="button" @click="data.discountType = 'percentage'"
                                             class="px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-medium transition-colors"
@@ -370,17 +360,17 @@
                                 </div>
                             </div>
                             <div x-show="totals.discount > 0" class="flex justify-between text-green-600">
-                                <span>Discount</span>
+                                <span>{{ __('shared.components_registration_walkin_discount') }}</span>
                                 <span x-text="'-' + currencySymbol + ' ' + totals.discount.toFixed(2)"></span>
                             </div>
                             @if($vatPercentage > 0)
                             <div class="flex justify-between">
-                                <span class="text-gray-600">VAT ({{ $vatPercentage }}%)</span>
+                                <span class="text-gray-600">{{ __('shared.components_registration_walkin_vat') }} ({{ $vatPercentage }}%)</span>
                                 <span x-text="currencySymbol + ' ' + totals.vat.toFixed(2)"></span>
                             </div>
                             @endif
                             <div class="flex justify-between font-bold text-lg pt-3 border-t border-gray-200">
-                                <span>Total Amount</span>
+                                <span>{{ __('shared.components_registration_walkin_total_amount') }}</span>
                                 <span class="text-purple-600" x-text="currencySymbol + ' ' + totals.grandTotal.toFixed(2)"></span>
                             </div>
                         </div>
@@ -390,17 +380,17 @@
                 <!-- Step 4: Payment Confirmation -->
                 <div x-show="step === 4" class="p-4 sm:p-6 space-y-5 sm:space-y-6">
                     <div>
-                        <h4 class="text-lg font-semibold text-gray-900 mb-2">Payment Confirmation</h4>
-                        <p class="text-sm text-gray-500">Please collect the payment and confirm to complete registration.</p>
+                        <h4 class="text-lg font-semibold text-gray-900 mb-2">{{ __('shared.components_registration_walkin_payment_confirmation') }}</h4>
+                        <p class="text-sm text-gray-500">{{ __('shared.components_registration_walkin_collect_payment_confirm') }}</p>
                     </div>
 
                     <div class="bg-purple-50 rounded-xl p-6 text-center">
-                        <p class="text-sm text-gray-600 mb-2">Total Amount to Collect</p>
+                        <p class="text-sm text-gray-600 mb-2">{{ __('shared.components_registration_walkin_total_amount_to_collect') }}</p>
                         <p class="text-4xl font-bold text-purple-600" x-text="currencySymbol + ' ' + totals.grandTotal.toFixed(2)"></p>
                     </div>
 
                     <div class="bg-white border border-gray-200 rounded-xl p-4">
-                        <h5 class="font-semibold text-gray-900 mb-3">Registration Summary</h5>
+                        <h5 class="font-semibold text-gray-900 mb-3">{{ __('shared.components_registration_walkin_registration_summary') }}</h5>
                         <div class="space-y-4">
                             <template x-for="person in joiningPeople" :key="person.id">
                                 <div class="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
@@ -411,13 +401,13 @@
                                         </div>
                                         <p class="font-semibold text-gray-900" x-text="currencySymbol + ' ' + getPersonTotal(person).toFixed(2)"></p>
                                     </div>
-                                    <div class="pl-4 space-y-1 text-sm">
+                                    <div class="ps-4 space-y-1 text-sm">
                                         <div class="flex justify-between text-gray-500" x-show="getPersonRegFee(person) > 0">
-                                            <span>Registration Fee</span>
+                                            <span>{{ __('shared.components_registration_walkin_registration_fee') }}</span>
                                             <span x-text="currencySymbol + ' ' + getPersonRegFee(person).toFixed(2)"></span>
                                         </div>
                                         <template x-if="getPersonPackages(person).length === 0">
-                                            <p class="text-gray-400 italic">No packages selected</p>
+                                            <p class="text-gray-400 italic">{{ __('shared.components_registration_walkin_no_packages_selected') }}</p>
                                         </template>
                                         <template x-for="pkg in getPersonPackages(person)" :key="pkg.id">
                                             <div class="flex justify-between text-gray-500">
@@ -443,15 +433,15 @@
             <div class="flex-shrink-0 px-5 sm:px-6 py-4 border-t border-gray-100 flex justify-between gap-3 bg-white"
                  style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
                 <button type="button" @click="prevStep()" x-show="step > 1" class="px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">
-                    <i class="bi bi-arrow-left mr-2"></i>Back
+                    <i class="bi bi-arrow-left me-2"></i>{{ __('shared.back') }}
                 </button>
-                <button type="button" @click="closeWalkIn()" x-show="step === 1" class="px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+                <button type="button" @click="closeWalkIn()" x-show="step === 1" class="px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">{{ __('shared.cancel') }}</button>
                 <button type="button" @click="nextStep()" x-show="step < 4" class="px-6 py-2.5 bg-purple-500 text-white font-medium rounded-lg hover:bg-purple-600 transition-colors">
-                    Next<i class="bi bi-arrow-right ml-2"></i>
+                    {{ __('shared.components_registration_walkin_next') }}<i class="bi bi-arrow-right ms-2"></i>
                 </button>
                 <button type="button" @click="submitRegistration()" x-show="step === 4" :disabled="isSubmitting" class="px-6 py-2.5 bg-green-500 text-white font-medium rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50">
-                    <span x-show="!isSubmitting"><i class="bi bi-check-lg mr-2"></i>Confirm & Register</span>
-                    <span x-show="isSubmitting"><span class="inline-block animate-spin mr-2">&#8635;</span>Processing...</span>
+                    <span x-show="!isSubmitting"><i class="bi bi-check-lg me-2"></i>{{ __('shared.components_registration_walkin_confirm_register') }}</span>
+                    <span x-show="isSubmitting"><span class="inline-block animate-spin me-2">&#8635;</span>{{ __('shared.components_registration_walkin_processing') }}</span>
                 </button>
             </div>
         </div>
@@ -468,9 +458,6 @@ function walkInRegistration() {
         step: 1,
         registrantType: 'guardian',   // 'guardian' (account) | 'child' (standalone, phone only)
         isSubmitting: false,
-        showPassword: false,
-        showConfirmPassword: false,
-        passwordConfirmation: '',
         currencySymbol: '{{ $currency }}',
         enrollmentFeeAmount: {{ $enrollmentFee }},
         vatPercentageAmount: {{ $vatPercentage }},
@@ -478,14 +465,14 @@ function walkInRegistration() {
         availablePackages: @json($packages),
 
         relationshipOptions: [
-            { value: 'son',      label: 'Son',      icon: 'bi-person',        gender: 'Male'   },
-            { value: 'daughter', label: 'Daughter', icon: 'bi-person-heart',  gender: 'Female' },
-            { value: 'spouse',   label: 'Spouse',   icon: 'bi-heart',         gender: ''       },
-            { value: 'other',    label: 'Other',    icon: 'bi-people',        gender: ''       },
+            { value: 'son',      label: '{{ __("shared.components_registration_walkin_son") }}',      icon: 'bi-person',        gender: 'Male'   },
+            { value: 'daughter', label: '{{ __("shared.components_registration_walkin_daughter") }}', icon: 'bi-person-heart',  gender: 'Female' },
+            { value: 'spouse',   label: '{{ __("shared.components_registration_walkin_spouse") }}',   icon: 'bi-heart',         gender: ''       },
+            { value: 'other',    label: '{{ __("shared.components_registration_walkin_other") }}',    icon: 'bi-people',        gender: ''       },
         ],
         relationshipLabel(val) {
             const r = this.relationshipOptions.find(o => o.value === val);
-            return r ? r.label : 'Member';
+            return r ? r.label : '{{ __("shared.components_registration_walkin_member") }}';
         },
         setChildRelationship(child, val) {
             child.relationship = val;
@@ -497,8 +484,8 @@ function walkInRegistration() {
         // `step` stays tied to the markup numbers (1 details · 2 children · 3 packages · 4 payment).
         get visibleSteps() {
             return this.registrantType === 'child'
-                ? [{ step: 1, label: 'Child Details' }, { step: 3, label: 'Package Selection' }, { step: 4, label: 'Payment Confirmation' }]
-                : [{ step: 1, label: 'Personal Information' }, { step: 2, label: 'Guardian & Children' }, { step: 3, label: 'Package Selection' }, { step: 4, label: 'Payment Confirmation' }];
+                ? [{ step: 1, label: '{{ __("shared.components_registration_walkin_child_details") }}' }, { step: 3, label: '{{ __("shared.components_registration_walkin_package_selection") }}' }, { step: 4, label: '{{ __("shared.components_registration_walkin_payment_confirmation") }}' }]
+                : [{ step: 1, label: '{{ __("shared.components_registration_walkin_personal_information") }}' }, { step: 2, label: '{!! __("shared.components_registration_walkin_guardian_and_children") !!}' }, { step: 3, label: '{{ __("shared.components_registration_walkin_package_selection") }}' }, { step: 4, label: '{{ __("shared.components_registration_walkin_payment_confirmation") }}' }];
         },
         get currentStepLabel() {
             const s = this.visibleSteps.find(v => v.step === this.step);
@@ -510,7 +497,7 @@ function walkInRegistration() {
         },
 
         data: {
-            guardian: { name: '', email: '', password: '', phone: '', countryCode: '+973', dob: '', gender: '', nationality: '', address: '' },
+            guardian: { name: '', email: '', phone: '', countryCode: '+973', dob: '', gender: '', nationality: '', address: '' },
             isGuardian: null,
             children: [],
             people: [],
@@ -519,7 +506,7 @@ function walkInRegistration() {
         },
 
         errors: {
-            name: '', email: '', phone: '', password: '', confirmPassword: '', dob: '', gender: '', nationality: ''
+            name: '', email: '', phone: '', dob: '', gender: '', nationality: ''
         },
 
         totals: {
@@ -557,12 +544,9 @@ function walkInRegistration() {
             this.step = 1;
             this.registrantType = 'guardian';
             this.isSubmitting = false;
-            this.showPassword = false;
-            this.showConfirmPassword = false;
-            this.passwordConfirmation = '';
-            this.errors = { name: '', email: '', phone: '', password: '', confirmPassword: '', dob: '', gender: '', nationality: '' };
+            this.errors = { name: '', email: '', phone: '', dob: '', gender: '', nationality: '' };
             this.data = {
-                guardian: { name: '', email: '', password: '', phone: '', countryCode: '+973', dob: '', gender: '', nationality: '', address: '' },
+                guardian: { name: '', email: '', phone: '', countryCode: '+973', dob: '', gender: '', nationality: '', address: '' },
                 isGuardian: null,
                 children: [],
                 people: [],
@@ -633,6 +617,7 @@ function walkInRegistration() {
                     type: 'child',
                     relationship: 'other',
                     isJoining: true,   // single person — auto-selected for packages/payment
+                    waiveRegFee: false,
                     selectedPackageIds: [],
                     selectedEquipmentIds: [],
                     selectedVariants: {},
@@ -650,6 +635,7 @@ function walkInRegistration() {
                     nationality: this.data.guardian.nationality,
                     type: 'guardian',
                     isJoining: false,
+                    waiveRegFee: false,
                     selectedPackageIds: [],
                     selectedEquipmentIds: [],
                     selectedVariants: {},
@@ -669,6 +655,7 @@ function walkInRegistration() {
                         type: 'child',
                         relationship: child.relationship || 'son',
                         isJoining: false,
+                        waiveRegFee: false,
                         selectedPackageIds: [],
                         selectedEquipmentIds: [],
                     selectedVariants: {},
@@ -828,6 +815,8 @@ function walkInRegistration() {
         // Effective per-person registration fee: the first selected package's
         // override, else the club default. Mirrors the server-side resolver.
         getPersonRegFee(person) {
+            // Existing/legacy members already paid their joining fee — waive it.
+            if (person.waiveRegFee) return 0;
             const ids = person.selectedPackageIds || [];
             if (ids.length > 0) {
                 const pkg = this.availablePackages.find(p => p.id == ids[0]);
@@ -904,53 +893,35 @@ function walkInRegistration() {
             g.nationality = document.getElementById('walkIn_nationality')?.value || '';
 
             // Reset errors
-            this.errors = { name: '', email: '', phone: '', password: '', confirmPassword: '', dob: '', gender: '', nationality: '' };
+            this.errors = { name: '', email: '', phone: '', dob: '', gender: '', nationality: '' };
 
             let valid = true;
 
             if (!g.name.trim()) {
-                this.errors.name = 'Full name is required.'; valid = false;
+                this.errors.name = '{{ __("shared.components_registration_walkin_full_name_required") }}'; valid = false;
             }
 
-            // Email + password only apply to a Guardian/Adult account. A Child needs just a phone.
-            if (this.registrantType === 'guardian') {
-                if (!g.email.trim()) {
-                    this.errors.email = 'Email address is required.'; valid = false;
-                } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(g.email.trim())) {
-                    this.errors.email = 'Please enter a valid email address.'; valid = false;
-                }
-
-                if (!g.password) {
-                    this.errors.password = 'Password is required.'; valid = false;
-                } else if (g.password.length < 8) {
-                    this.errors.password = 'Password must be at least 8 characters.'; valid = false;
-                }
-
-                if (!this.passwordConfirmation) {
-                    this.errors.confirmPassword = 'Please confirm your password.'; valid = false;
-                } else if (g.password !== this.passwordConfirmation) {
-                    this.errors.confirmPassword = 'Passwords do not match.'; valid = false;
-                }
+            // Email is optional. If provided (Guardian/Adult only), it must be a valid address —
+            // it's the handle the member uses to claim their account later. No password is collected;
+            // the member sets one on first login via email link.
+            if (this.registrantType === 'guardian' && g.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(g.email.trim())) {
+                this.errors.email = '{{ __("shared.components_registration_walkin_valid_email") }}'; valid = false;
             }
 
             if (!g.phone.trim()) {
-                this.errors.phone = 'Phone number is required.'; valid = false;
+                this.errors.phone = '{{ __("shared.components_registration_walkin_phone_required") }}'; valid = false;
             }
 
             if (!g.dob) {
-                this.errors.dob = 'Date of birth is required.'; valid = false;
+                this.errors.dob = '{{ __("shared.components_registration_walkin_dob_required") }}'; valid = false;
             }
 
             if (!g.gender) {
-                this.errors.gender = 'Please select a gender.'; valid = false;
-            }
-
-            if (!g.nationality) {
-                this.errors.nationality = 'Please select a nationality.'; valid = false;
+                this.errors.gender = '{{ __("shared.components_registration_walkin_select_gender") }}'; valid = false;
             }
 
             if (!valid) {
-                this.toast('Please fill in all required fields before continuing.', 'warning');
+                this.toast('{{ __("shared.components_registration_walkin_fill_required_fields") }}', 'warning');
             }
 
             return valid;
@@ -958,28 +929,27 @@ function walkInRegistration() {
 
         validateStep2() {
             if (this.data.isGuardian === null) {
-                this.toast('Please select whether you are registering children.', 'warning');
+                this.toast('{{ __("shared.components_registration_walkin_select_registering_children") }}', 'warning');
                 return false;
             }
             if (this.data.isGuardian && this.data.children.length === 0) {
-                this.toast('Please add at least one child, or select "No, just myself".', 'warning');
+                this.toast('{!! __("shared.components_registration_walkin_add_child_or_myself") !!}', 'warning');
                 return false;
             }
             for (let i = 0; i < this.data.children.length; i++) {
                 const child = this.data.children[i];
                 const n = i + 1;
-                if (!child.name.trim())            { this.toast(`Child ${n}: Name is required.`, 'warning'); return false; }
-                if (!child.dob)                    { this.toast(`Child ${n}: Date of birth is required.`, 'warning'); return false; }
-                if (!child.gender)                 { this.toast(`Child ${n}: Please select a gender.`, 'warning'); return false; }
-                if (!child.nationality)            { this.toast(`Child ${n}: Please select a nationality.`, 'warning'); return false; }
-                if (!child.phone || !child.phone.trim()) { this.toast(`Child ${n}: Phone number is required.`, 'warning'); return false; }
+                if (!child.name.trim())            { this.toast(`{{ __("shared.components_registration_walkin_child_label") }} ${n}: {{ __("shared.components_registration_walkin_name_required") }}`, 'warning'); return false; }
+                if (!child.dob)                    { this.toast(`{{ __("shared.components_registration_walkin_child_label") }} ${n}: {{ __("shared.components_registration_walkin_dob_required") }}`, 'warning'); return false; }
+                if (!child.gender)                 { this.toast(`{{ __("shared.components_registration_walkin_child_label") }} ${n}: {{ __("shared.components_registration_walkin_select_gender") }}`, 'warning'); return false; }
+                if (!child.phone || !child.phone.trim()) { this.toast(`{{ __("shared.components_registration_walkin_child_label") }} ${n}: {{ __("shared.components_registration_walkin_phone_required") }}`, 'warning'); return false; }
             }
             return true;
         },
 
         validateStep3() {
             if (this.data.people.filter(p => p.isJoining).length === 0) {
-                this.toast('Please select at least one person to register.', 'warning');
+                this.toast('{{ __("shared.components_registration_walkin_select_person_to_register") }}', 'warning');
                 return false;
             }
             return true;
@@ -1037,7 +1007,7 @@ function walkInRegistration() {
                 const data = await res.json();
 
                 if (res.ok && data.success) {
-                    this.toast('Walk-in registration completed successfully!', 'success');
+                    this.toast('{{ __("shared.components_registration_walkin_walkin_success") }}', 'success');
                     this.open = false;
                     // Refresh the members grid in place (no page reload) if available on this page.
                     if (typeof window.reloadMemberCards === 'function') {
@@ -1051,7 +1021,6 @@ function walkInRegistration() {
                         'guardian.name':        'name',
                         'guardian.email':       'email',
                         'guardian.phone':       'phone',
-                        'guardian.password':    'password',
                         'guardian.dob':         'dob',
                         'guardian.gender':      'gender',
                         'guardian.nationality': 'nationality',
@@ -1062,12 +1031,12 @@ function walkInRegistration() {
                         if (key) { this.errors[key] = data.errors[field][0]; shown = true; }
                     });
                     this.step = 1; // navigate back to step 1 for field errors
-                    this.toast(shown ? 'Please review the highlighted fields.' : (data.message || 'Validation failed.'), 'warning');
+                    this.toast(shown ? '{{ __("shared.components_registration_walkin_review_highlighted") }}' : (data.message || '{{ __("shared.components_registration_walkin_validation_failed") }}'), 'warning');
                 } else {
-                    this.toast(data.message || 'Registration failed. Please try again.', 'error');
+                    this.toast(data.message || '{{ __("shared.components_registration_walkin_registration_failed") }}', 'error');
                 }
             } catch (error) {
-                this.toast('An unexpected error occurred. Please try again.', 'error');
+                this.toast('{{ __("shared.components_registration_walkin_unexpected_error") }}', 'error');
             } finally {
                 this.isSubmitting = false;
             }

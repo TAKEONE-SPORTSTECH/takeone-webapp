@@ -34,10 +34,10 @@
 
             @if(session('club.context'))
                 <p class="text-center text-gray-500 text-lg mb-8 tracking-tight">
-                    Registering to join <span class="font-semibold text-foreground">{{ session('club.context.name') }}</span>
+                    {{ __('auth.auth_register_joining_club') }} <span class="font-semibold text-foreground">{{ session('club.context.name') }}</span>
                 </p>
             @else
-                <p class="text-center text-gray-500 text-lg mb-8 tracking-tight">Register a new membership</p>
+                <p class="text-center text-gray-500 text-lg mb-8 tracking-tight">{{ __('auth.auth_register_subtitle') }}</p>
             @endif
 
             <form method="POST" action="{{ route('register') }}" id="registrationForm">
@@ -45,7 +45,7 @@
 
                 <!-- Full Name -->
                 <div class="mb-4">
-                    <label for="full_name" class="tf-label">Full Name</label>
+                    <label for="full_name" class="tf-label">{{ __('auth.auth_register_full_name') }}</label>
                     <input id="full_name" type="text"
                            class="tf-input @error('full_name') border-red-500 @enderror"
                            name="full_name"
@@ -60,7 +60,7 @@
 
                 <!-- Email Address -->
                 <div class="mb-4">
-                    <label for="email" class="tf-label">Email Address</label>
+                    <label for="email" class="tf-label">{{ __('auth.auth_register_email') }}</label>
                     <input id="email" type="email"
                            class="tf-input @error('email') border-red-500 @enderror"
                            name="email"
@@ -75,7 +75,7 @@
 
                 <!-- Password -->
                 <div class="mb-4">
-                    <label for="password" class="tf-label">Password</label>
+                    <label for="password" class="tf-label">{{ __('auth.auth_register_password') }}</label>
                     <input id="password" type="password"
                            class="tf-input @error('password') border-red-500 @enderror"
                            name="password"
@@ -89,7 +89,7 @@
 
                 <!-- Confirm Password -->
                 <div class="mb-4">
-                    <label for="password-confirm" class="tf-label">Confirm Password</label>
+                    <label for="password-confirm" class="tf-label">{{ __('auth.auth_register_confirm_password') }}</label>
                     <input id="password-confirm" type="password"
                            class="tf-input"
                            name="password_confirmation"
@@ -98,7 +98,7 @@
 
                 <!-- Mobile Number with Country Code -->
                 <div class="mb-4">
-                    <label for="mobile_number" class="tf-label">Mobile Number</label>
+                    <label for="mobile_number" class="tf-label">{{ __('auth.auth_register_mobile_number') }}</label>
                     <x-country-code-dropdown
                         name="country_code"
                         id="country_code"
@@ -130,7 +130,7 @@
                 <x-birthdate-dropdown
                     name="birthdate"
                     id="birthdate"
-                    label="Birthdate"
+                    :label="__('auth.auth_register_birthdate')"
                     :value="old('birthdate')"
                     :required="true"
                     :min-age="10"
@@ -142,7 +142,7 @@
                     <x-country-dropdown
                         name="nationality"
                         id="nationality"
-                        label="Nationality"
+                        :label="__('auth.auth_register_nationality')"
                         :value="old('nationality', 'BH')"
                         :required="true"
                         :error="$errors->first('nationality')" />
@@ -150,7 +150,7 @@
 
                 <!-- Register Button -->
                 <button type="submit" id="registerButton" class="tf-auth-btn mt-2">
-                    REGISTER
+                    {{ __('auth.auth_register_submit') }}
                 </button>
             </form>
         </div>

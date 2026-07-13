@@ -14,12 +14,12 @@ class CreateOwnerRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'full_name'   => 'required|string|max:255',
-            'email'       => 'nullable|email',
-            'gender'      => 'required|in:Male,Female',
-            'birthdate'   => 'required|date',
+            'full_name' => 'required|string|max:255',
+            'email' => 'nullable|email',
+            'gender' => 'required|in:Male,Female',
+            'birthdate' => 'required|date',
             'nationality' => 'required|string|max:100',
-            'password'    => 'required|string|min:8',
+            'password' => 'required|string|min:8',
         ];
     }
 }

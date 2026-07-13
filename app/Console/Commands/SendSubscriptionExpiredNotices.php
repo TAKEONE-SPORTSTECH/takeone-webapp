@@ -29,15 +29,16 @@ class SendSubscriptionExpiredNotices extends Command
 
         if ($subscriptions->isEmpty()) {
             $this->info('No subscriptions expired yesterday.');
+
             return 0;
         }
 
         $count = 0;
 
         foreach ($subscriptions as $subscription) {
-            $user   = $subscription->user;
+            $user = $subscription->user;
             $tenant = $subscription->tenant;
-            $owner  = $tenant?->owner;
+            $owner = $tenant?->owner;
 
             if (! $user || ! $tenant || ! $owner) {
                 continue;
@@ -47,24 +48,24 @@ class SendSubscriptionExpiredNotices extends Command
 
             $subject = 'Your membership has expired — Renew now';
             $message = "Your \"{$packageName}\" subscription at {$tenant->club_name} expired on "
-                . "{$subscription->end_date->format('F j, Y')}. Renew now to keep your access.";
+                ."{$subscription->end_date->format('F j, Y')}. Renew now to keep your access.";
 
             $notification = ClubNotification::create([
-                'tenant_id'       => $tenant->id,
-                'sender_user_id'  => $owner->id,
-                'subject'         => $subject,
-                'message'         => $message,
-                'action_url'      => route('bills.index'),
-                'recipient_type'  => 'selected',
+                'tenant_id' => $tenant->id,
+                'sender_user_id' => $owner->id,
+                'subject' => $subject,
+                'message' => $message,
+                'action_url' => route('bills.index'),
+                'recipient_type' => 'selected',
                 'recipient_count' => 1,
-                'sent_at'         => now(),
+                'sent_at' => now(),
             ]);
 
             UserNotification::create([
                 'club_notification_id' => $notification->id,
-                'user_id'              => $user->id,
-                'tenant_id'            => $tenant->id,
-                'is_read'              => false,
+                'user_id' => $user->id,
+                'tenant_id' => $tenant->id,
+                'is_read' => false,
             ]);
 
             $count++;

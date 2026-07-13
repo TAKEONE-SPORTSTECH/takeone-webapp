@@ -23,9 +23,9 @@ class ClubAchievement extends Model
     ];
 
     protected $casts = [
-        'images'           => 'array',
-        'chips'            => 'array',
-        'athletes'         => 'array',
+        'images' => 'array',
+        'chips' => 'array',
+        'athletes' => 'array',
         'achievement_date' => 'date',
     ];
 

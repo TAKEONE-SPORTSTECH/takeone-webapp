@@ -21,7 +21,7 @@
         complete() {
             this.done = true;
             for (let i = 0; i < {{ $mainCount }}; i++) this.checked[i] = true;
-            window.showToast('success', 'Session complete — nice work! 💪');
+            window.showToast('success', '{{ __("personal.personal_schedule_show_session_complete") }}');
         }
      }"
      class="-mx-4 -mt-4 pb-4">
@@ -33,10 +33,10 @@
         <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
 
         <div class="flex items-center justify-between relative z-10">
-            <a href="{{ route('me.schedule', ['day' => $s['day'] ?? null]) }}" data-shell-link data-route="me.schedule"
-               class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="Back">
+            <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('me.schedule', ['day' => $s['day'] ?? null]) }}')"
+               class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="{{ __('shared.back') }}">
                 <i class="bi bi-arrow-left text-lg"></i>
-            </a>
+            </button>
             <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
                 <i class="bi {{ $s['icon'] }}"></i> {{ $s['discipline'] }}
             </span>
@@ -65,7 +65,7 @@
                 <div>
                     <div class="w-10 h-10 mx-auto rounded-xl bg-accent text-primary grid place-items-center"><i class="bi bi-speedometer2"></i></div>
                     <p class="text-xs font-bold text-foreground mt-1.5">{{ $s['intensity'] }}</p>
-                    <p class="text-[10px] text-muted-foreground">Intensity</p>
+                    <p class="text-[10px] text-muted-foreground">{{ __('personal.personal_schedule_show_intensity') }}</p>
                 </div>
                 {{-- Coach → instructor page (or substitute's profile) when resolvable --}}
                 @php $coachTag = !empty($coachLink) ? 'a' : 'div'; @endphp
@@ -77,7 +77,7 @@
                         <div class="w-10 h-10 mx-auto rounded-xl bg-accent text-primary grid place-items-center"><i class="bi bi-person-badge"></i></div>
                     @endif
                     <p class="text-xs font-bold {{ !empty($coachLink) ? 'text-primary' : 'text-foreground' }} mt-1.5 truncate px-1">{{ $s['coach'] ?: '—' }}</p>
-                    <p class="text-[10px] text-muted-foreground">{{ ($coachLink['type'] ?? '') === 'profile' ? 'Substitute' : 'Coach' }}</p>
+                    <p class="text-[10px] text-muted-foreground">{{ ($coachLink['type'] ?? '') === 'profile' ? __('personal.personal_schedule_show_substitute') : __('personal.personal_schedule_show_coach') }}</p>
                 </{{ $coachTag }}>
                 {{-- Where → Google Maps directions --}}
                 @php $whereTag = !empty($location['maps_url']) ? 'a' : 'div'; @endphp
@@ -85,14 +85,14 @@
                     @if(!empty($location['maps_url'])) href="{{ $location['maps_url'] }}" target="_blank" rel="noopener" @endif>
                     <div class="w-10 h-10 mx-auto rounded-xl bg-accent text-primary grid place-items-center"><i class="bi bi-geo-alt"></i></div>
                     <p class="text-xs font-bold {{ !empty($location['maps_url']) ? 'text-primary' : 'text-foreground' }} mt-1.5 truncate px-1">{{ ($location['label'] ?? null) ?: ($s['location'] ?: '—') }}</p>
-                    <p class="text-[10px] text-muted-foreground">Where</p>
+                    <p class="text-[10px] text-muted-foreground">{{ __('personal.personal_schedule_show_where') }}</p>
                 </{{ $whereTag }}>
             </div>
 
             {{-- focus chips --}}
             @if(!empty($s['focus']))
                 <div class="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100">
-                    <span class="text-[11px] font-semibold text-muted-foreground mr-1 self-center">Focus:</span>
+                    <span class="text-[11px] font-semibold text-muted-foreground me-1 self-center">{{ __('personal.personal_schedule_show_focus_label') }}</span>
                     @foreach($s['focus'] as $f)
                         <span class="px-2.5 py-1 rounded-full text-[11px] font-medium" style="background: {{ $s['color'] }}1a; color: {{ $s['color'] }};">{{ $f }}</span>
                     @endforeach
@@ -107,28 +107,28 @@
             $banners = [];
             if (!empty($cancelled)) {
                 $banners[] = ['icon' => 'bi-calendar-x-fill', 'iconBg' => 'bg-destructive', 'bg' => 'bg-red-50', 'border' => 'border-red-100',
-                    'title' => 'Cancelled for ' . ($occurrenceLabel ?? 'this session'),
-                    'subtitle' => (!empty($cancelReason) ? $cancelReason . ' · ' : '') . (!empty($cancelCreditable) ? 'Members were credited a make-up.' : 'No make-up credit for this one.')];
+                    'title' => __('personal.personal_schedule_show_cancelled_for', ['label' => $occurrenceLabel ?? __('personal.personal_schedule_show_this_session')]),
+                    'subtitle' => (!empty($cancelReason) ? $cancelReason . ' · ' : '') . (!empty($cancelCreditable) ? __('personal.personal_schedule_show_members_credited') : __('personal.personal_schedule_show_no_makeup_credit'))];
             }
             if (!empty($substitute) && empty($cancelled)) {
                 $banners[] = ['icon' => 'bi-person-check-fill', 'iconBg' => 'bg-amber-500', 'bg' => 'bg-amber-50', 'border' => 'border-amber-100',
-                    'title' => 'Substitute: ' . $substitute['name'], 'subtitle' => 'Covering this class on ' . ($occurrenceLabel ?? '') . '.'];
+                    'title' => __('personal.personal_schedule_show_substitute_name', ['name' => $substitute['name']]), 'subtitle' => __('personal.personal_schedule_show_covering_on', ['label' => $occurrenceLabel ?? ''])];
             }
             if (!empty($myCredits)) {
                 $banners[] = ['icon' => 'bi-ticket-detailed-fill', 'iconBg' => 'bg-green-500', 'bg' => 'bg-green-50', 'border' => 'border-green-100',
-                    'title' => 'You have ' . $myCredits . ' make-up session' . ($myCredits === 1 ? '' : 's'),
-                    'subtitle' => 'Drop into any upcoming session to use it — your subscription was extended.'];
+                    'title' => trans_choice('personal.personal_schedule_show_makeup_credits', $myCredits, ['count' => $myCredits]),
+                    'subtitle' => __('personal.personal_schedule_show_drop_in')];
             }
             $isTeaching = ($s['source'] ?? '') === 'teaching'; $isCovering = ($s['source'] ?? '') === 'substituting';
             if ($isCovering) {
                 $banners[] = ['icon' => 'bi-person-check-fill', 'iconBg' => 'bg-green-500', 'bg' => 'bg-green-50', 'border' => 'border-green-100',
-                    'title' => 'You’re covering this class', 'subtitle' => 'You’re the substitute trainer at ' . ($s['club'] ?? 'the club') . '.'];
+                    'title' => __('personal.personal_schedule_show_youre_covering'), 'subtitle' => __('personal.personal_schedule_show_covering_subtitle', ['club' => $s['club'] ?? __('personal.personal_schedule_show_the_club')])];
             } elseif ($isTeaching) {
                 $banners[] = ['icon' => 'bi-person-video3', 'iconBg' => 'bg-amber-500', 'bg' => 'bg-amber-50', 'border' => 'border-amber-100',
-                    'title' => 'You teach this class', 'subtitle' => 'Your class at ' . ($s['club'] ?? 'your club') . ' — edits apply to all members.'];
+                    'title' => __('personal.personal_schedule_show_you_teach'), 'subtitle' => __('personal.personal_schedule_show_teach_subtitle', ['club' => $s['club'] ?? __('personal.personal_schedule_show_your_club')])];
             } else {
                 $banners[] = ['icon' => 'bi-arrow-repeat', 'iconBg' => 'bg-sky-500', 'bg' => 'bg-sky-50', 'border' => 'border-sky-100',
-                    'title' => 'Synced from ' . ($s['club'] ?? 'your club'), 'subtitle' => 'From a package you’re enrolled in · managed by the club.'];
+                    'title' => __('personal.personal_schedule_show_synced_from', ['club' => $s['club'] ?? __('personal.personal_schedule_show_your_club')]), 'subtitle' => __('personal.personal_schedule_show_synced_subtitle')];
             }
             $bannerCount = count($banners);
         @endphp
@@ -139,7 +139,7 @@
                         <div x-show="i==={{ $k }}" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
                              class="rounded-2xl p-4 flex items-center gap-3 {{ $b['bg'] }} border {{ $b['border'] }}">
                             <div class="w-10 h-10 rounded-xl {{ $b['iconBg'] }} text-white grid place-items-center flex-shrink-0"><i class="bi {{ $b['icon'] }}"></i></div>
-                            <div class="min-w-0 flex-1 {{ $bannerCount > 1 ? 'pr-7' : '' }}">
+                            <div class="min-w-0 flex-1 {{ $bannerCount > 1 ? 'pe-7' : '' }}">
                                 <p class="text-sm font-bold text-foreground truncate">{{ $b['title'] }}</p>
                                 <p class="text-xs text-muted-foreground truncate">{{ $b['subtitle'] }}</p>
                             </div>
@@ -147,7 +147,7 @@
                     @endforeach
                     @if($bannerCount > 1)
                         <button type="button" @click="next()"
-                                class="m-press absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/60 backdrop-blur grid place-items-center text-foreground/70 shadow-sm">
+                                class="m-press absolute end-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/60 backdrop-blur grid place-items-center text-foreground/70 shadow-sm">
                             <i class="bi bi-chevron-right text-sm"></i>
                         </button>
                     @endif
@@ -184,9 +184,9 @@
                         <span class="w-8 h-8 rounded-xl grid place-items-center flex-shrink-0" style="background: {{ $s['color'] }}1a;">
                             <i class="bi bi-megaphone-fill" style="color: {{ $s['color'] }};"></i>
                         </span>
-                        <h2 class="text-sm font-bold text-foreground">Class details</h2>
-                        <span class="ml-auto text-[9px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-full"
-                              style="background: {{ $s['color'] }}1a; color: {{ $s['color'] }};">Important</span>
+                        <h2 class="text-sm font-bold text-foreground">{{ __('personal.personal_schedule_show_class_details') }}</h2>
+                        <span class="ms-auto text-[9px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-full"
+                              style="background: {{ $s['color'] }}1a; color: {{ $s['color'] }};">{{ __('personal.personal_schedule_show_important') }}</span>
                     </div>
                     <p class="text-[15px] leading-relaxed font-semibold text-foreground mt-3">{{ $s['notes'] }}</p>
                 </div>
@@ -198,7 +198,7 @@
     @if(!empty($s['workout']['warmup']))
     <div class="px-4 mt-4">
         <div class="m-card rounded-2xl p-4">
-            <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-fire text-amber-500"></i> Warm-up</h2>
+            <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-fire text-amber-500"></i> {{ __('personal.personal_schedule_show_warmup') }}</h2>
             <ul class="mt-3 space-y-2">
                 @foreach($s['workout']['warmup'] as $w)
                     <li class="flex items-start gap-2.5 text-sm text-muted-foreground">
@@ -215,8 +215,8 @@
     <div class="px-4 mt-4">
         <div class="m-card rounded-2xl p-4">
             <div class="flex items-center justify-between">
-                <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-clipboard-check text-primary"></i> Workout</h2>
-                <span class="text-[11px] font-semibold text-muted-foreground"><span x-text="doneCount">0</span>/{{ $mainCount }} done</span>
+                <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-clipboard-check text-primary"></i> {{ __('personal.personal_schedule_show_workout') }}</h2>
+                <span class="text-[11px] font-semibold text-muted-foreground"><span x-text="doneCount">0</span>/{{ $mainCount }} {{ __('personal.personal_schedule_show_done_count') }}</span>
             </div>
             <div class="mt-3 space-y-2.5">
                 @foreach($s['workout']['main'] as $i => $ex)
@@ -231,9 +231,9 @@
                             <p class="text-sm font-bold text-foreground" :class="checked[{{ $i }}] ? 'line-through opacity-60' : ''">{{ $ex['name'] }}</p>
                             @if(!empty($ex['note']))<p class="text-[11px] text-muted-foreground">{{ $ex['note'] }}</p>@endif
                         </div>
-                        <div class="text-right flex-shrink-0">
+                        <div class="text-end flex-shrink-0">
                             <p class="text-sm font-black" style="color: {{ $s['color'] }};">{{ $ex['sets'] }}×{{ $ex['reps'] }}</p>
-                            <p class="text-[10px] text-muted-foreground">sets × reps</p>
+                            <p class="text-[10px] text-muted-foreground">{{ __('personal.personal_schedule_show_sets_reps') }}</p>
                         </div>
                     </button>
                 @endforeach
@@ -246,7 +246,7 @@
     @if(!empty($s['workout']['cooldown']))
     <div class="px-4 mt-4">
         <div class="m-card rounded-2xl p-4">
-            <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-snow text-sky-500"></i> Cool-down</h2>
+            <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-snow text-sky-500"></i> {{ __('personal.personal_schedule_show_cooldown') }}</h2>
             <ul class="mt-3 space-y-2">
                 @foreach($s['workout']['cooldown'] as $c)
                     <li class="flex items-start gap-2.5 text-sm text-muted-foreground">
@@ -292,15 +292,15 @@
              })">
             <div class="m-card rounded-2xl p-4">
                 <div class="flex items-center justify-between">
-                    <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-people-fill text-primary"></i> People in this class</h2>
+                    <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-people-fill text-primary"></i> {{ __('personal.personal_schedule_show_people_in_class') }}</h2>
                     <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-accent text-primary">{{ $memberCount }}</span>
                 </div>
                 @if($memberCount > 0)
                     <p class="text-[11px] text-muted-foreground mt-1">
-                        Attendance for {{ $occurrenceLabel }} · <span class="font-semibold text-foreground"><span x-text="presentCount">0</span>/{{ $memberCount }}</span> present
+                        {{ __('personal.personal_schedule_show_attendance_for') }} {{ $occurrenceLabel }} · <span class="font-semibold text-foreground"><span x-text="presentCount">0</span>/{{ $memberCount }}</span> {{ __('personal.personal_schedule_show_present_lower') }}
                     </p>
-                    <p x-show="notStarted" x-cloak class="text-[11px] text-amber-600 mt-1 inline-flex items-center gap-1"><i class="bi bi-hourglass-split"></i> Attendance opens when the class starts.</p>
-                    <p x-show="isOver" x-cloak class="text-[11px] text-amber-600 mt-1 inline-flex items-center gap-1"><i class="bi bi-lock-fill"></i> This class is over — attendance is closed.</p>
+                    <p x-show="notStarted" x-cloak class="text-[11px] text-amber-600 mt-1 inline-flex items-center gap-1"><i class="bi bi-hourglass-split"></i> {{ __('personal.personal_schedule_show_attendance_opens') }}</p>
+                    <p x-show="isOver" x-cloak class="text-[11px] text-amber-600 mt-1 inline-flex items-center gap-1"><i class="bi bi-lock-fill"></i> {{ __('personal.personal_schedule_show_attendance_closed') }}</p>
                 @endif
 
                 <div class="mt-3 divide-y divide-gray-50">
@@ -333,7 +333,7 @@
                                         class="m-press flex items-center gap-1.5 flex-shrink-0"
                                         :aria-pressed="att[{{ $person['id'] }}] ? 'true' : 'false'">
                                     <span class="text-[10px] font-semibold" :class="att[{{ $person['id'] }}] ? 'text-green-600' : 'text-muted-foreground'"
-                                          x-text="att[{{ $person['id'] }}] ? 'Present' : 'Mark'"></span>
+                                          x-text="att[{{ $person['id'] }}] ? '{{ __("personal.personal_schedule_show_present_cap") }}' : '{{ __("personal.personal_schedule_show_mark") }}'"></span>
                                     <span class="w-7 h-7 rounded-lg border-2 grid place-items-center transition-colors"
                                           :class="att[{{ $person['id'] }}] ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 text-transparent'">
                                         <i class="bi bi-check-lg text-sm"></i>
@@ -341,13 +341,13 @@
                                 </button>
                                 {{-- Before the class starts → locked (avoids marking by mistake) --}}
                                 <span x-show="notStarted" x-cloak class="flex items-center gap-1.5 flex-shrink-0">
-                                    <span class="text-[10px] font-semibold text-muted-foreground">Not started</span>
+                                    <span class="text-[10px] font-semibold text-muted-foreground">{{ __('personal.personal_schedule_show_not_started') }}</span>
                                     <span class="w-7 h-7 rounded-lg grid place-items-center bg-gray-100 text-gray-400"><i class="bi bi-lock text-sm"></i></span>
                                 </span>
                                 {{-- Once the class is over → read-only state --}}
                                 <span x-show="isOver" x-cloak class="flex items-center gap-1.5 flex-shrink-0">
                                     <span class="text-[10px] font-semibold" :class="att[{{ $person['id'] }}] ? 'text-green-600' : 'text-muted-foreground'"
-                                          x-text="att[{{ $person['id'] }}] ? 'Present' : 'Absent'"></span>
+                                          x-text="att[{{ $person['id'] }}] ? '{{ __("personal.personal_schedule_show_present_cap") }}' : '{{ __("personal.personal_schedule_show_absent") }}'"></span>
                                     <span class="w-7 h-7 rounded-lg grid place-items-center"
                                           :class="att[{{ $person['id'] }}] ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'">
                                         <i class="bi text-sm" :class="att[{{ $person['id'] }}] ? 'bi-check-lg' : 'bi-dash-lg'"></i>
@@ -357,7 +357,7 @@
                                 {{-- Read-only attendance (cancelled / no permission) --}}
                                 <span class="flex items-center gap-1.5 flex-shrink-0">
                                     <span class="text-[10px] font-semibold" :class="att[{{ $person['id'] }}] ? 'text-green-600' : 'text-muted-foreground'"
-                                          x-text="att[{{ $person['id'] }}] ? 'Present' : 'Absent'"></span>
+                                          x-text="att[{{ $person['id'] }}] ? '{{ __("personal.personal_schedule_show_present_cap") }}' : '{{ __("personal.personal_schedule_show_absent") }}'"></span>
                                     <span class="w-7 h-7 rounded-lg grid place-items-center"
                                           :class="att[{{ $person['id'] }}] ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'">
                                         <i class="bi text-sm" :class="att[{{ $person['id'] }}] ? 'bi-check-lg' : 'bi-dash-lg'"></i>
@@ -368,7 +368,7 @@
                     @endforeach
                 </div>
                 @if($memberCount === 0)
-                    <p class="mt-3 pt-3 border-t border-gray-50 text-xs text-muted-foreground text-center">No members are enrolled in this class yet.</p>
+                    <p class="mt-3 pt-3 border-t border-gray-50 text-xs text-muted-foreground text-center">{{ __('personal.personal_schedule_show_no_members_enrolled') }}</p>
                 @endif
             </div>
 
@@ -385,7 +385,7 @@
                         <div class="flex items-center justify-between mt-3" x-show="bd">
                             <div class="min-w-0">
                                 <h2 class="text-base font-black text-foreground truncate" x-text="bd && bd.name"></h2>
-                                <p class="text-xs text-muted-foreground"><span class="font-bold text-foreground" x-text="bd && (bd.attended + '/' + bd.total)"></span> classes attended</p>
+                                <p class="text-xs text-muted-foreground"><span class="font-bold text-foreground" x-text="bd && (bd.attended + '/' + bd.total)"></span> {{ __('personal.personal_schedule_show_classes_attended') }}</p>
                             </div>
                             <button type="button" @click="bd=null" class="m-press w-9 h-9 rounded-full bg-muted grid place-items-center flex-shrink-0"><i class="bi bi-x-lg"></i></button>
                         </div>
@@ -398,7 +398,7 @@
                                     <i class="bi" :class="o.attended ? 'bi-check-lg' : 'bi-x-lg'"></i>
                                 </span>
                                 <span class="text-sm font-medium text-foreground flex-1" x-text="o.label"></span>
-                                <span class="text-[11px] font-bold" :class="o.attended ? 'text-green-600' : 'text-red-500'" x-text="o.attended ? 'Attended' : 'Missed'"></span>
+                                <span class="text-[11px] font-bold" :class="o.attended ? 'text-green-600' : 'text-red-500'" x-text="o.attended ? '{{ __("personal.personal_schedule_show_attended") }}' : '{{ __("personal.personal_schedule_show_missed") }}'"></span>
                             </div>
                         </template>
                     </div>
@@ -462,8 +462,8 @@
                 get presentCount() { return Object.values(this.att).filter(Boolean).length; },
                 async toggle(id) {
                     if (this.busy[id]) return;
-                    if (this.notStarted) { window.showToast('info', 'This class hasn’t started yet — attendance opens when it begins.'); return; }
-                    if (this.isOver) { window.showToast('info', 'This class is over — attendance is closed.'); return; }
+                    if (this.notStarted) { window.showToast('info', '{{ __("personal.personal_schedule_show_not_started_toast") }}'); return; }
+                    if (this.isOver) { window.showToast('info', '{{ __("personal.personal_schedule_show_attendance_closed") }}'); return; }
                     const next = !this.att[id];
                     this.att[id] = next;          // optimistic
                     this.busy[id] = true;
@@ -475,11 +475,11 @@
                             body: JSON.stringify({ user_id: id, date: cfg.date }),
                         });
                         const data = await res.json().catch(() => ({}));
-                        if (!res.ok || !data.success) { this.att[id] = !next; window.showToast('error', data.message || 'Could not update attendance.'); }
+                        if (!res.ok || !data.success) { this.att[id] = !next; window.showToast('error', data.message || '{{ __("personal.personal_schedule_show_could_not_attendance") }}'); }
                         else { this.att[id] = !!data.attended; this.syncRate(id, !!data.attended); }
                     } catch (e) {
                         this.att[id] = !next;
-                        window.showToast('error', 'Network error — please try again.');
+                        window.showToast('error', '{{ __("personal.personal_schedule_show_network_error") }}');
                     } finally {
                         this.busy[id] = false;
                     }
@@ -530,9 +530,9 @@
                         {{-- Transparent overlay makes the whole (static) map tappable → Google Maps.
                              z-[700] sits above leaflet's tile/marker panes but below the attribution control (z-1000), so it stays clickable. --}}
                         <a href="{{ $mapsLink }}" target="_blank" rel="noopener"
-                           class="absolute inset-0 z-[700] block group rounded-lg" aria-label="Open “{{ $location['label'] }}” in Google Maps">
-                            <span class="absolute top-2 right-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/95 shadow-sm text-[11px] font-bold text-primary group-hover:bg-white group-active:scale-95 transition-all">
-                                <i class="bi bi-box-arrow-up-right"></i> Open in Maps
+                           class="absolute inset-0 z-[700] block group rounded-lg" aria-label="{{ __('personal.personal_schedule_show_open_in_gmaps', ['label' => $location['label']]) }}">
+                            <span class="absolute top-2 end-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/95 shadow-sm text-[11px] font-bold text-primary group-hover:bg-white group-active:scale-95 transition-all">
+                                <i class="bi bi-box-arrow-up-right"></i> {{ __('personal.personal_schedule_show_open_in_maps') }}
                             </span>
                         </a>
                     </div>
@@ -566,8 +566,8 @@
              @class-reviews-updated.window="patch($event.detail)">
             <div class="m-card rounded-2xl p-4">
                 <div class="flex items-center justify-between gap-2">
-                    <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-star-half text-primary"></i> Trainee reviews</h2>
-                    <span x-show="count>0" x-cloak class="text-[11px] text-muted-foreground"><span x-text="count"></span> <span x-text="count===1 ? 'rating' : 'ratings'"></span></span>
+                    <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-star-half text-primary"></i> {{ __('personal.personal_schedule_show_trainee_reviews') }}</h2>
+                    <span x-show="count>0" x-cloak class="text-[11px] text-muted-foreground"><span x-text="count"></span> <span x-text="count===1 ? '{{ __("personal.personal_schedule_show_rating") }}' : '{{ __("personal.personal_schedule_show_ratings") }}'"></span></span>
                 </div>
 
                 {{-- Summary: big average + stars + per-star distribution --}}
@@ -583,12 +583,12 @@
                     <div class="flex-1 min-w-0 space-y-1 self-center">
                         <template x-for="n in [5,4,3,2,1]" :key="'bar'+n">
                             <div class="flex items-center gap-2">
-                                <span class="text-[10px] font-semibold text-muted-foreground w-2.5 text-right" x-text="n"></span>
+                                <span class="text-[10px] font-semibold text-muted-foreground w-2.5 text-end" x-text="n"></span>
                                 <i class="bi bi-star-fill text-amber-400 text-[9px]"></i>
                                 <div class="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
                                     <div class="h-full rounded-full bg-amber-400 m-bar-fill" :style="`width:${count ? Math.round((dist[n]||0)/count*100) : 0}%`"></div>
                                 </div>
-                                <span class="text-[10px] text-muted-foreground w-4 text-right" x-text="dist[n]||0"></span>
+                                <span class="text-[10px] text-muted-foreground w-4 text-end" x-text="dist[n]||0"></span>
                             </div>
                         </template>
                     </div>
@@ -597,7 +597,7 @@
                 {{-- Empty state (for non-enrolled viewers; enrolled trainees get the "Be the first" button instead) --}}
                 @empty($canEngage)
                 <p x-show="count===0" x-cloak class="text-xs text-muted-foreground mt-2">
-                    {{ !empty($canEditClub) ? 'No trainee reviews yet — members’ ratings and comments about this class will show here.' : 'No reviews yet.' }}
+                    {{ !empty($canEditClub) ? __('personal.personal_schedule_show_no_reviews_admin') : __('personal.personal_schedule_show_no_reviews_yet') }}
                 </p>
                 @endempty
 
@@ -605,10 +605,10 @@
                 <div x-show="hasReview" x-cloak class="mt-4 pt-4 border-t border-gray-100">
                     <div class="rounded-2xl p-3 border border-primary/30 bg-accent/40 flex items-start gap-3">
                         <span class="w-9 h-9 rounded-full bg-primary text-white grid place-items-center text-xs font-bold flex-shrink-0"><i class="bi bi-person-fill"></i></span>
-                        <button type="button" @click="editMine()" class="m-press min-w-0 flex-1 text-left">
+                        <button type="button" @click="editMine()" class="m-press min-w-0 flex-1 text-start">
                             <span class="flex items-center gap-2">
-                                <span class="text-xs font-bold text-primary">Your review</span>
-                                <span class="text-[11px] text-primary inline-flex items-center gap-1 flex-shrink-0"><i class="bi bi-pencil"></i> Tap to revise</span>
+                                <span class="text-xs font-bold text-primary">{{ __('personal.personal_schedule_show_your_review') }}</span>
+                                <span class="text-[11px] text-primary inline-flex items-center gap-1 flex-shrink-0"><i class="bi bi-pencil"></i> {{ __('personal.personal_schedule_show_tap_to_revise') }}</span>
                             </span>
                             <span class="flex items-center gap-0.5 mt-1">
                                 <template x-for="n in 5" :key="'my'+n">
@@ -616,10 +616,10 @@
                                 </template>
                             </span>
                             <span class="block text-sm text-foreground mt-1 whitespace-pre-line" x-show="myComment" x-text="myComment"></span>
-                            <span class="block text-[11px] text-muted-foreground italic mt-1" x-show="!myComment">No written comment yet — tap to add one.</span>
+                            <span class="block text-[11px] text-muted-foreground italic mt-1" x-show="!myComment">{{ __('personal.personal_schedule_show_no_comment_yet') }}</span>
                         </button>
                         <button type="button" @click="deleteMine()" :disabled="deleting"
-                                class="m-press w-8 h-8 rounded-lg grid place-items-center text-red-500 hover:bg-red-50 flex-shrink-0 disabled:opacity-50" title="Delete review">
+                                class="m-press w-8 h-8 rounded-lg grid place-items-center text-red-500 hover:bg-red-50 flex-shrink-0 disabled:opacity-50" title="{{ __('personal.personal_schedule_show_delete_review') }}">
                             <i class="bi" :class="deleting ? 'bi-arrow-repeat animate-spin' : 'bi-trash'"></i>
                         </button>
                     </div>
@@ -632,7 +632,7 @@
                             class="m-press w-full py-3 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2"
                             style="background: {{ $s['color'] }};">
                         <i class="bi bi-star-fill"></i>
-                        <span x-text="count===0 ? 'Be the first to review' : 'Add your review'"></span>
+                        <span x-text="count===0 ? '{{ __("personal.personal_schedule_show_be_first_review") }}' : '{{ __("personal.personal_schedule_show_add_your_review") }}'"></span>
                     </button>
                 </div>
                 @elseif(!empty($canEngage))
@@ -642,8 +642,8 @@
                         <i class="bi bi-info-circle text-muted-foreground mt-0.5 flex-shrink-0"></i>
                         <p class="text-xs text-muted-foreground">
                             {{ empty($iAttendedAny)
-                                ? 'You can review this class once you’ve attended a session of it.'
-                                : 'You can review this class once it has started.' }}
+                                ? __('personal.personal_schedule_show_review_after_attend')
+                                : __('personal.personal_schedule_show_review_after_start') }}
                         </p>
                     </div>
                 </div>
@@ -677,7 +677,7 @@
 
                 {{-- Ratings exist but none (from others) had a written comment --}}
                 <p x-show="count>0 && !othersReviews.length && !hasReview" x-cloak class="text-[11px] text-muted-foreground mt-3 pt-3 border-t border-gray-100">
-                    Ratings without a written comment aren’t shown here.
+                    {{ __('personal.personal_schedule_show_ratings_no_comment') }}
                 </p>
             </div>
         </div>
@@ -705,11 +705,11 @@
                 // Already reviewed → confirm first, then open the form pre-filled to edit.
                 async editMine() {
                     const ok = await window.confirmAction({
-                        title: 'Revise your review?',
-                        message: 'Update your star rating and what you think about this class.',
+                        title: '{{ __("personal.personal_schedule_show_revise_title") }}',
+                        message: '{{ __("personal.personal_schedule_show_revise_message") }}',
                         type: 'info',
-                        confirmText: 'Edit review',
-                        cancelText: 'Keep as is',
+                        confirmText: '{{ __("personal.personal_schedule_show_edit_review") }}',
+                        cancelText: '{{ __("personal.personal_schedule_show_keep_as_is") }}',
                     });
                     if (ok) window.dispatchEvent(new CustomEvent('open-review-form'));
                 },
@@ -717,11 +717,11 @@
                 async deleteMine() {
                     if (this.deleting) return;
                     const ok = await window.confirmAction({
-                        title: 'Delete your review?',
-                        message: 'This removes your rating and comment for this class.',
+                        title: '{{ __("personal.personal_schedule_show_delete_title") }}',
+                        message: '{{ __("personal.personal_schedule_show_delete_message") }}',
                         type: 'danger',
-                        confirmText: 'Delete',
-                        cancelText: 'Cancel',
+                        confirmText: '{{ __("shared.delete") }}',
+                        cancelText: '{{ __("shared.cancel") }}',
                     });
                     if (!ok) return;
                     this.deleting = true;
@@ -732,14 +732,14 @@
                             credentials: 'same-origin',
                         });
                         const data = await res.json().catch(() => ({}));
-                        if (!res.ok || !data.success) { window.showToast('error', data.message || 'Could not delete your review.'); return; }
+                        if (!res.ok || !data.success) { window.showToast('error', data.message || '{{ __("personal.personal_schedule_show_could_not_delete_review") }}'); return; }
                         this.avg = (data.average ?? null); this.count = data.count || 0;
                         this.reviews = data.comments || []; this.dist = data.distribution || {};
                         this.myRating = 0; this.myComment = '';
                         // Reset the form's state too, so reopening it starts fresh.
                         window.dispatchEvent(new CustomEvent('class-review-deleted', { detail: { average: (data.average ?? null), count: data.count || 0 } }));
-                        window.showToast('success', data.message || 'Your review was deleted.');
-                    } catch (e) { window.showToast('error', 'Network error — please try again.'); }
+                        window.showToast('success', data.message || '{{ __("personal.personal_schedule_show_review_deleted") }}');
+                    } catch (e) { window.showToast('error', '{{ __("personal.personal_schedule_show_network_error") }}'); }
                     finally { this.deleting = false; }
                 },
                 // Live patch when the current user submits/updates their class rating.
@@ -794,7 +794,7 @@
                         <div class="flex-shrink-0 px-4 pt-3 pb-3 border-b border-gray-100">
                             <div class="w-10 h-1.5 bg-gray-300 rounded-full mx-auto mb-3"></div>
                             <div class="flex items-center justify-between">
-                                <h2 class="text-base font-bold text-foreground flex items-center gap-2"><i class="bi bi-emoji-smile text-primary"></i> Enjoyed the class?</h2>
+                                <h2 class="text-base font-bold text-foreground flex items-center gap-2"><i class="bi bi-emoji-smile text-primary"></i> {{ __('personal.personal_schedule_show_enjoyed_class') }}</h2>
                                 <button type="button" @click="panel = false" class="w-8 h-8 grid place-items-center rounded-full hover:bg-muted text-muted-foreground"><i class="bi bi-x-lg"></i></button>
                             </div>
                         </div>
@@ -809,7 +809,7 @@
                                             :class="mine==='{{ $e }}' ? 'bg-accent ring-2 ring-primary' : 'hover:bg-muted'">
                                         <span class="text-2xl leading-none">{{ $e }}</span>
                                         <span x-show="counts['{{ $e }}']" x-cloak
-                                              class="absolute -bottom-1 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-white shadow text-[10px] font-bold text-foreground grid place-items-center"
+                                              class="absolute -bottom-1 -end-0.5 min-w-4 h-4 px-1 rounded-full bg-white shadow text-[10px] font-bold text-foreground grid place-items-center"
                                               x-text="counts['{{ $e }}']"></span>
                                     </button>
                                 @endforeach
@@ -818,9 +818,9 @@
                             {{-- Rate the class itself --}}
                             <div class="mt-4 pt-4 border-t border-gray-100">
                                 <div class="flex items-center justify-between gap-2">
-                                    <p class="text-sm font-semibold text-foreground">Rate this class</p>
+                                    <p class="text-sm font-semibold text-foreground">{{ __('personal.personal_schedule_show_rate_this_class') }}</p>
                                     <span x-show="classAvg !== null" x-cloak class="text-[11px] text-muted-foreground">
-                                        <i class="bi bi-star-fill text-amber-400"></i> <span x-text="classAvg"></span> avg · <span x-text="classCount"></span>
+                                        <i class="bi bi-star-fill text-amber-400"></i> <span x-text="classAvg"></span> {{ __('personal.personal_schedule_show_avg') }} · <span x-text="classCount"></span>
                                     </span>
                                 </div>
                                 <div class="flex items-center gap-1.5 mt-2">
@@ -833,9 +833,9 @@
                                 </div>
                                 <div class="mt-3" x-show="classRating>0" x-cloak x-transition>
                                     <textarea x-model="classComment" rows="2" maxlength="500"
-                                              placeholder="How was the class? Share a few words (optional)…"
+                                              placeholder="{{ __('personal.personal_schedule_show_class_comment_ph') }}"
                                               class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"></textarea>
-                                    <p class="text-[11px] text-muted-foreground mt-1">Shared with everyone in this class.</p>
+                                    <p class="text-[11px] text-muted-foreground mt-1">{{ __('personal.personal_schedule_show_shared_everyone') }}</p>
                                 </div>
                             </div>
 
@@ -843,9 +843,9 @@
                             @if(!empty($rateInstructorId))
                                 <div class="mt-4 pt-4 border-t border-gray-100">
                                     <div class="flex items-center justify-between gap-2">
-                                        <p class="text-sm font-semibold text-foreground">Rate {{ $coachRatingName }}</p>
+                                        <p class="text-sm font-semibold text-foreground">{{ __('personal.personal_schedule_show_rate_name', ['name' => $coachRatingName]) }}</p>
                                         @if(!empty($coachRatingAvg))
-                                            <span class="text-[11px] text-muted-foreground"><i class="bi bi-star-fill text-amber-400"></i> {{ number_format($coachRatingAvg, 1) }} avg</span>
+                                            <span class="text-[11px] text-muted-foreground"><i class="bi bi-star-fill text-amber-400"></i> {{ number_format($coachRatingAvg, 1) }} {{ __('personal.personal_schedule_show_avg') }}</span>
                                         @endif
                                     </div>
                                     <div class="flex items-center gap-1.5 mt-2">
@@ -858,9 +858,9 @@
                                     </div>
                                     <div class="mt-3" x-show="rating>0" x-cloak x-transition>
                                         <textarea x-model="comment" rows="2" maxlength="500"
-                                                  placeholder="Write a few words about the coach (optional)…"
+                                                  placeholder="{{ __('personal.personal_schedule_show_coach_comment_ph') }}"
                                                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"></textarea>
-                                        <p class="text-[11px] text-muted-foreground mt-1">Shows on the trainer’s profile.</p>
+                                        <p class="text-[11px] text-muted-foreground mt-1">{{ __('personal.personal_schedule_show_shows_on_profile') }}</p>
                                     </div>
                                 </div>
                             @endif
@@ -872,7 +872,7 @@
                                     class="m-press w-full py-3.5 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50"
                                     style="background: {{ $s['color'] }};">
                                 <i class="bi" :class="savingAll ? 'bi-arrow-repeat animate-spin' : 'bi-check2-circle'"></i>
-                                <span x-text="savingAll ? 'Saving…' : 'Submit rating'"></span>
+                                <span x-text="savingAll ? '{{ __("personal.personal_schedule_show_saving") }}' : '{{ __("personal.personal_schedule_show_submit_rating") }}'"></span>
                             </button>
                         </div>
                     </div>
@@ -896,9 +896,9 @@
                             credentials: 'same-origin', body: JSON.stringify({ emoji: emoji, date: cfg.date }),
                         });
                         const data = await res.json().catch(() => ({}));
-                        if (!res.ok || !data.success) { window.showToast('error', data.message || 'Could not react.'); return; }
+                        if (!res.ok || !data.success) { window.showToast('error', data.message || '{{ __("personal.personal_schedule_show_could_not_react") }}'); return; }
                         this.counts = data.counts || {}; this.mine = data.mine || null;
-                    } catch (e) { window.showToast('error', 'Network error — please try again.'); }
+                    } catch (e) { window.showToast('error', '{{ __("personal.personal_schedule_show_network_error") }}'); }
                 },
                 rate(n) { this.rating = n; },           // select locally; saved on submit
                 rateClass(n) { this.classRating = n; }, // select locally; saved on submit
@@ -918,9 +918,9 @@
                             }}));
                         });
                         if (this.rating > 0) await this._post(cfg.rateUrl, { rating: this.rating, comment: this.comment || null, date: cfg.date });
-                        window.showToast('success', 'Thanks — your rating was saved.');
+                        window.showToast('success', '{{ __("personal.personal_schedule_show_rating_saved") }}');
                         this.panel = false;
-                    } catch (e) { window.showToast('error', e.message || 'Could not save rating.'); }
+                    } catch (e) { window.showToast('error', e.message || '{{ __("personal.personal_schedule_show_could_not_save_rating") }}'); }
                     finally { this.savingAll = false; }
                 },
                 async _post(url, body, onOk) {
@@ -930,7 +930,7 @@
                         credentials: 'same-origin', body: JSON.stringify(body),
                     });
                     const data = await res.json().catch(() => ({}));
-                    if (!res.ok || !data.success) throw new Error(data.message || 'Could not save rating.');
+                    if (!res.ok || !data.success) throw new Error(data.message || '{{ __("personal.personal_schedule_show_could_not_save_rating") }}');
                     if (onOk) onOk(data);
                     return data;
                 },
@@ -945,12 +945,12 @@
         <button type="button" @click="complete()" x-show="!done"
                 class="m-press w-full py-3.5 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2"
                 style="background: {{ $s['color'] }};">
-            <i class="bi bi-play-circle-fill"></i> Start &amp; complete session
+            <i class="bi bi-play-circle-fill"></i> {{ __('personal.personal_schedule_show_start_complete') }}
         </button>
         <div x-show="done" x-cloak class="m-card rounded-2xl p-4 text-center">
             <div class="w-14 h-14 mx-auto rounded-2xl grid place-items-center text-white m-float" style="background: #10b981;"><i class="bi bi-check2-circle text-2xl"></i></div>
-            <p class="text-sm font-bold text-green-600 mt-2">Session completed</p>
-            <p class="text-xs text-muted-foreground mt-0.5">Logged to {{ $member['name'] }}’s training history.</p>
+            <p class="text-sm font-bold text-green-600 mt-2">{{ __('personal.personal_schedule_show_session_completed') }}</p>
+            <p class="text-xs text-muted-foreground mt-0.5">{{ __('personal.personal_schedule_show_logged_to', ['name' => $member['name']]) }}</p>
         </div>
     </div>
     @endif
@@ -961,7 +961,7 @@
             <button type="button"
                     onclick="window.dispatchEvent(new CustomEvent('open-schedule-form', { detail: window.__schedSession }))"
                     class="m-press flex-1 py-3 rounded-2xl border border-border bg-white text-foreground font-bold text-sm flex items-center justify-center gap-2">
-                <i class="bi bi-pencil"></i> Edit
+                <i class="bi bi-pencil"></i> {{ __('shared.edit') }}
             </button>
         </div>
     @endif
@@ -998,16 +998,16 @@
             {{-- Single entry point --}}
             <div class="rounded-2xl p-4 bg-white border border-border transition-opacity" :class="isOver ? 'opacity-60' : ''">
                 <p class="text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                    <i class="bi {{ $isTeaching ? 'bi-person-video3' : 'bi-shield-lock' }} text-primary"></i> {{ $isTeaching ? 'Coach tools' : 'Club management' }}
+                    <i class="bi {{ $isTeaching ? 'bi-person-video3' : 'bi-shield-lock' }} text-primary"></i> {{ $isTeaching ? __('personal.personal_schedule_show_coach_tools') : __('personal.personal_schedule_show_club_management') }}
                 </p>
-                <p class="text-sm text-muted-foreground mt-1">{{ $isTeaching ? 'You coach' : 'You manage' }} <span class="font-semibold text-foreground">{{ $clubName }}</span>. Edit the class, assign a substitute or cancel it — all in one place.</p>
+                <p class="text-sm text-muted-foreground mt-1">{{ $isTeaching ? __('personal.personal_schedule_show_you_coach') : __('personal.personal_schedule_show_you_manage') }} <span class="font-semibold text-foreground">{{ $clubName }}</span>. {{ __('personal.personal_schedule_show_manage_desc') }}</p>
                 <button type="button" @click="if (!isOver) menuOpen = true" :disabled="isOver"
                         class="m-press w-full mt-3 py-3 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2"
                         :class="isOver ? 'cursor-not-allowed' : ''"
                         style="background: {{ $s['color'] }};">
-                    <i class="bi bi-sliders2"></i> Manage class
+                    <i class="bi bi-sliders2"></i> {{ __('personal.personal_schedule_show_manage_class') }}
                 </button>
-                <p x-show="isOver" x-cloak class="text-[11px] text-amber-600 mt-2 inline-flex items-center gap-1"><i class="bi bi-lock-fill"></i> This class is over — managing is closed.</p>
+                <p x-show="isOver" x-cloak class="text-[11px] text-amber-600 mt-2 inline-flex items-center gap-1"><i class="bi bi-lock-fill"></i> {{ __('personal.personal_schedule_show_managing_closed') }}</p>
             </div>
 
             {{-- Combined action menu (teleported bottom-sheet) --}}
@@ -1022,7 +1022,7 @@
                         <div class="w-10 h-1.5 rounded-full bg-white/40 mx-auto"></div>
                         <div class="flex items-center justify-between mt-3">
                             <div class="min-w-0">
-                                <h2 class="text-base font-black leading-tight truncate">Manage class</h2>
+                                <h2 class="text-base font-black leading-tight truncate">{{ __('personal.personal_schedule_show_manage_class') }}</h2>
                                 <p class="text-[11px] text-white/80 truncate">{{ $s['title'] ?? $clubName }}{{ !empty($occurrenceLabel) ? ' · '.$occurrenceLabel : '' }}</p>
                             </div>
                             <button type="button" @click="menuOpen=false" class="m-press w-9 h-9 rounded-full bg-white/20 border border-white/30 grid place-items-center flex-shrink-0"><i class="bi bi-x-lg"></i></button>
@@ -1032,11 +1032,11 @@
                         {{-- Edit class --}}
                         <button type="button"
                                 @click="menuOpen=false; window.dispatchEvent(new CustomEvent('open-schedule-form', { detail: window.__schedClass }))"
-                                class="m-press w-full text-left rounded-2xl p-4 flex items-center gap-3 bg-white border border-border">
+                                class="m-press w-full text-start rounded-2xl p-4 flex items-center gap-3 bg-white border border-border">
                             <span class="w-11 h-11 rounded-xl grid place-items-center text-white flex-shrink-0" style="background: {{ $s['color'] }};"><i class="bi bi-pencil-square text-lg"></i></span>
                             <span class="min-w-0 flex-1">
-                                <span class="block text-sm font-bold text-foreground">Edit class</span>
-                                <span class="block text-[11px] text-muted-foreground">Intensity, focus, the workout and more — for everyone enrolled.</span>
+                                <span class="block text-sm font-bold text-foreground">{{ __('personal.personal_schedule_show_edit_class') }}</span>
+                                <span class="block text-[11px] text-muted-foreground">{{ __('personal.personal_schedule_show_edit_class_desc') }}</span>
                             </span>
                             <i class="bi bi-chevron-right text-gray-300"></i>
                         </button>
@@ -1044,15 +1044,15 @@
                         {{-- Assign / change substitute --}}
                         <button type="button"
                                 @click="menuOpen=false; window.dispatchEvent(new CustomEvent('open-substitute-sheet'))"
-                                class="m-press w-full text-left rounded-2xl p-4 flex items-center gap-3 bg-white border border-border">
+                                class="m-press w-full text-start rounded-2xl p-4 flex items-center gap-3 bg-white border border-border">
                             <span class="w-11 h-11 rounded-xl grid place-items-center text-white flex-shrink-0 bg-amber-500"><i class="bi bi-arrow-left-right text-lg"></i></span>
                             <span class="min-w-0 flex-1">
-                                <span class="block text-sm font-bold text-foreground">{{ $substitute ? 'Change substitute' : 'Assign a substitute' }}</span>
+                                <span class="block text-sm font-bold text-foreground">{{ $substitute ? __('personal.personal_schedule_show_change_substitute') : __('personal.personal_schedule_show_assign_substitute') }}</span>
                                 <span class="block text-[11px] text-muted-foreground">
                                     @if($substitute)
-                                        Currently <span class="font-semibold text-foreground">{{ $substitute['name'] ?? 'someone' }}</span> is covering{{ !empty($occurrenceLabel) ? ' on '.$occurrenceLabel : '' }}.
+                                        {{ __('personal.personal_schedule_show_currently') }} <span class="font-semibold text-foreground">{{ $substitute['name'] ?? __('personal.personal_schedule_show_someone') }}</span> {{ __('personal.personal_schedule_show_is_covering') }}{{ !empty($occurrenceLabel) ? ' '.__('personal.personal_schedule_show_on').' '.$occurrenceLabel : '' }}.
                                     @else
-                                        Assign someone to cover this class — from your club or anyone on the platform.
+                                        {{ __('personal.personal_schedule_show_assign_substitute_desc') }}
                                     @endif
                                 </span>
                             </span>
@@ -1063,11 +1063,11 @@
                         @if($substitute)
                         <button type="button"
                                 @click="menuOpen=false; window.dispatchEvent(new CustomEvent('remove-substitute'))"
-                                class="m-press w-full text-left rounded-2xl p-4 flex items-center gap-3 bg-white border border-red-200">
+                                class="m-press w-full text-start rounded-2xl p-4 flex items-center gap-3 bg-white border border-red-200">
                             <span class="w-11 h-11 rounded-xl grid place-items-center text-red-500 flex-shrink-0 bg-red-50"><i class="bi bi-person-dash text-lg"></i></span>
                             <span class="min-w-0 flex-1">
-                                <span class="block text-sm font-bold text-foreground">Remove substitute</span>
-                                <span class="block text-[11px] text-muted-foreground">You’ll be back as the trainer for this class.</span>
+                                <span class="block text-sm font-bold text-foreground">{{ __('personal.personal_schedule_show_remove_substitute') }}</span>
+                                <span class="block text-[11px] text-muted-foreground">{{ __('personal.personal_schedule_show_remove_substitute_desc') }}</span>
                             </span>
                             <i class="bi bi-chevron-right text-gray-300"></i>
                         </button>
@@ -1077,22 +1077,22 @@
                         @if(!empty($cancelled))
                         <button type="button"
                                 @click="menuOpen=false; window.dispatchEvent(new CustomEvent('restore-class'))"
-                                class="m-press w-full text-left rounded-2xl p-4 flex items-center gap-3 bg-white border border-border">
+                                class="m-press w-full text-start rounded-2xl p-4 flex items-center gap-3 bg-white border border-border">
                             <span class="w-11 h-11 rounded-xl grid place-items-center text-white flex-shrink-0 bg-green-600"><i class="bi bi-arrow-counterclockwise text-lg"></i></span>
                             <span class="min-w-0 flex-1">
-                                <span class="block text-sm font-bold text-foreground">Restore class</span>
-                                <span class="block text-[11px] text-muted-foreground">This session is cancelled. Put it back and remove the make-up credits.</span>
+                                <span class="block text-sm font-bold text-foreground">{{ __('personal.personal_schedule_show_restore_class') }}</span>
+                                <span class="block text-[11px] text-muted-foreground">{{ __('personal.personal_schedule_show_restore_class_desc') }}</span>
                             </span>
                             <i class="bi bi-chevron-right text-gray-300"></i>
                         </button>
                         @else
                         <button type="button"
                                 @click="menuOpen=false; window.dispatchEvent(new CustomEvent('open-cancel-sheet'))"
-                                class="m-press w-full text-left rounded-2xl p-4 flex items-center gap-3 bg-white border border-red-200">
+                                class="m-press w-full text-start rounded-2xl p-4 flex items-center gap-3 bg-white border border-red-200">
                             <span class="w-11 h-11 rounded-xl grid place-items-center text-white flex-shrink-0 bg-destructive"><i class="bi bi-calendar-x text-lg"></i></span>
                             <span class="min-w-0 flex-1">
-                                <span class="block text-sm font-bold text-destructive">Cancel class</span>
-                                <span class="block text-[11px] text-muted-foreground">Members are credited a make-up and their subscription extended.</span>
+                                <span class="block text-sm font-bold text-destructive">{{ __('personal.personal_schedule_show_cancel_class') }}</span>
+                                <span class="block text-[11px] text-muted-foreground">{{ __('personal.personal_schedule_show_cancel_class_desc') }}</span>
                             </span>
                             <i class="bi bi-chevron-right text-gray-300"></i>
                         </button>
@@ -1138,44 +1138,44 @@
                     <div class="flex-shrink-0 px-5 pt-3 pb-3 border-b border-border/70 rounded-t-3xl bg-destructive text-white">
                         <div class="w-10 h-1.5 rounded-full bg-white/40 mx-auto"></div>
                         <div class="flex items-center justify-between mt-3">
-                            <div class="min-w-0"><h2 class="text-base font-black leading-tight">Cancel class</h2><p class="text-[11px] text-white/80">Members get an automatic make-up credit</p></div>
+                            <div class="min-w-0"><h2 class="text-base font-black leading-tight">{{ __('personal.personal_schedule_show_cancel_class') }}</h2><p class="text-[11px] text-white/80">{{ __('personal.personal_schedule_show_auto_makeup_credit') }}</p></div>
                             <button type="button" @click="open=false" class="m-press w-9 h-9 rounded-full bg-white/20 border border-white/30 grid place-items-center flex-shrink-0"><i class="bi bi-x-lg"></i></button>
                         </div>
                     </div>
                     <div class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">From</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('personal.personal_schedule_show_from') }}</label>
                                 <input type="date" x-model="form.from" :min="todayStr" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">To <span class="text-muted-foreground font-normal">(optional)</span></label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('personal.personal_schedule_show_to') }} <span class="text-muted-foreground font-normal">{{ __('personal.personal_schedule_show_optional') }}</span></label>
                                 <input type="date" x-model="form.to" :min="form.from" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                             </div>
                         </div>
-                        <p class="text-[11px] text-muted-foreground">Leave “To” empty to cancel a single day. A range cancels every occurrence of this class within it.</p>
+                        <p class="text-[11px] text-muted-foreground">{{ __('personal.personal_schedule_show_range_hint') }}</p>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Reason <span class="text-muted-foreground font-normal">(optional)</span></label>
-                            <textarea x-model="form.reason" rows="2" maxlength="300" placeholder="e.g. Coach travelling / public holiday" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"></textarea>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('personal.personal_schedule_show_reason') }} <span class="text-muted-foreground font-normal">{{ __('personal.personal_schedule_show_optional') }}</span></label>
+                            <textarea x-model="form.reason" rows="2" maxlength="300" placeholder="{{ __('personal.personal_schedule_show_reason_ph') }}" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"></textarea>
                         </div>
 
                         {{-- Creditable toggle --}}
                         <button type="button" @click="form.credit = !form.credit"
-                                class="m-press w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-colors"
+                                class="m-press w-full flex items-center gap-3 rounded-xl border p-3 text-start transition-colors"
                                 :class="form.credit ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-white'">
                             <span class="w-10 h-6 rounded-full flex items-center transition-colors flex-shrink-0" :class="form.credit ? 'bg-green-500 justify-end' : 'bg-gray-300 justify-start'">
                                 <span class="w-5 h-5 rounded-full bg-white shadow mx-0.5"></span>
                             </span>
                             <span class="min-w-0">
-                                <span class="block text-sm font-semibold text-foreground">Credit members a make-up</span>
-                                <span class="block text-[11px] text-muted-foreground" x-text="form.credit ? 'Each enrolled member gets a make-up + their subscription is extended.' : 'No credit — members just lose this session.'"></span>
+                                <span class="block text-sm font-semibold text-foreground">{{ __('personal.personal_schedule_show_credit_makeup') }}</span>
+                                <span class="block text-[11px] text-muted-foreground" x-text="form.credit ? '{{ __("personal.personal_schedule_show_credit_on") }}' : '{{ __("personal.personal_schedule_show_credit_off") }}'"></span>
                             </span>
                         </button>
                     </div>
                     <div class="flex-shrink-0 px-4 py-3 border-t border-border bg-white" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
                         <button type="button" @click="submit()" :disabled="busy"
                                 class="m-press w-full h-12 rounded-xl bg-destructive text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60">
-                            <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-calendar-x'"></i> Cancel class
+                            <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-calendar-x'"></i> {{ __('personal.personal_schedule_show_cancel_class') }}
                         </button>
                     </div>
                 </div>
@@ -1190,7 +1190,7 @@
                 todayStr: new Date().toISOString().slice(0, 10),
                 form: { from: cfg.date, to: '', reason: '', credit: true },
                 async submit() {
-                    if (!this.form.from) { window.showToast('error', 'Pick a date.'); return; }
+                    if (!this.form.from) { window.showToast('error', '{{ __("personal.personal_schedule_show_pick_date") }}'); return; }
                     this.busy = true;
                     try {
                         const res = await fetch(cfg.cancelUrl, {
@@ -1200,10 +1200,10 @@
                             body: JSON.stringify({ from: this.form.from, to: this.form.to || null, reason: this.form.reason || null, credit: this.form.credit }),
                         });
                         const data = await res.json().catch(() => ({}));
-                        if (!res.ok || !data.success) { window.showToast('error', data.message || 'Could not cancel.'); this.busy = false; return; }
-                        window.showToast('success', data.message || 'Class cancelled.');
+                        if (!res.ok || !data.success) { window.showToast('error', data.message || '{{ __("personal.personal_schedule_show_could_not_cancel") }}'); this.busy = false; return; }
+                        window.showToast('success', data.message || '{{ __("personal.personal_schedule_show_class_cancelled") }}');
                         this.open = false; this._back();
-                    } catch (e) { window.showToast('error', 'Network error — please try again.'); }
+                    } catch (e) { window.showToast('error', '{{ __("personal.personal_schedule_show_network_error") }}'); }
                     finally { this.busy = false; }
                 },
                 async restore() {
@@ -1216,10 +1216,10 @@
                             body: JSON.stringify({ date: cfg.date }),
                         });
                         const data = await res.json().catch(() => ({}));
-                        if (!res.ok || !data.success) { window.showToast('error', data.message || 'Could not restore.'); this.busy = false; return; }
-                        window.showToast('success', data.message || 'Class restored.');
+                        if (!res.ok || !data.success) { window.showToast('error', data.message || '{{ __("personal.personal_schedule_show_could_not_restore") }}'); this.busy = false; return; }
+                        window.showToast('success', data.message || '{{ __("personal.personal_schedule_show_class_restored") }}');
                         this._back();
-                    } catch (e) { window.showToast('error', 'Network error — please try again.'); }
+                    } catch (e) { window.showToast('error', '{{ __("personal.personal_schedule_show_network_error") }}'); }
                     finally { this.busy = false; }
                 },
                 _back() {

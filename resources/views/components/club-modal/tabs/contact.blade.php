@@ -5,12 +5,12 @@
 @endphp
 
 <div class="px-0">
-    <h5 class="font-bold mb-3">Contact Information</h5>
-    <p class="text-muted-foreground mb-4">Set up how members can reach your club</p>
+    <h5 class="font-bold mb-3">{{ __('shared.modal_tabs_contact_title') }}</h5>
+    <p class="text-muted-foreground mb-4">{{ __('shared.modal_tabs_contact_subtitle') }}</p>
 
     <!-- Club Email -->
     <div class="mb-4">
-        <label class="form-label">Club Email</label>
+        <label class="form-label">{{ __('shared.modal_tabs_contact_club_email') }}</label>
 
         <!-- Toggle: Use Owner Email or Custom -->
         <div class="form-check mb-3">
@@ -21,7 +21,7 @@
                    value="owner"
                    {{ (!$isEdit || !$club->email) ? 'checked' : '' }}>
             <label class="form-check-label" for="email_option_owner">
-                Use Club Owner's Email
+                {{ __('shared.modal_tabs_contact_use_owner_email') }}
             </label>
         </div>
 
@@ -33,7 +33,7 @@
                    value="custom"
                    {{ ($isEdit && $club->email) ? 'checked' : '' }}>
             <label class="form-check-label" for="email_option_custom">
-                Use Custom Email
+                {{ __('shared.modal_tabs_contact_use_custom_email') }}
             </label>
         </div>
 
@@ -45,7 +45,7 @@
                     @if($isEdit && $club->owner)
                         {{ $club->owner->email }}
                     @else
-                        Select a club owner first
+                        {{ __('shared.modal_tabs_contact_select_owner_first') }}
                     @endif
                 </span>
             </div>
@@ -58,14 +58,14 @@
                    id="email"
                    name="email"
                    value="{{ $club->email ?? old('email') }}"
-                   placeholder="club@example.com">
-            <small class="text-muted-foreground">A dedicated email address for club communications</small>
+                   placeholder="{{ __('shared.modal_tabs_contact_email_placeholder') }}">
+            <small class="text-muted-foreground">{{ __('shared.modal_tabs_contact_email_hint') }}</small>
         </div>
     </div>
 
     <!-- Club Phone -->
     <div class="mb-4">
-        <label class="form-label">Club Phone Number</label>
+        <label class="form-label">{{ __('shared.modal_tabs_contact_club_phone') }}</label>
 
         <!-- Toggle: Use Owner Phone or Custom -->
         <div class="form-check mb-3">
@@ -76,7 +76,7 @@
                    value="owner"
                    {{ (!$isEdit || !$club->phone) ? 'checked' : '' }}>
             <label class="form-check-label" for="phone_option_owner">
-                Use Club Owner's Phone
+                {{ __('shared.modal_tabs_contact_use_owner_phone') }}
             </label>
         </div>
 
@@ -88,7 +88,7 @@
                    value="custom"
                    {{ ($isEdit && $club->phone) ? 'checked' : '' }}>
             <label class="form-check-label" for="phone_option_custom">
-                Use Custom Phone Number
+                {{ __('shared.modal_tabs_contact_use_custom_phone') }}
             </label>
         </div>
 
@@ -100,7 +100,7 @@
                     @if($isEdit && $club->owner && $club->owner->mobile)
                         {{ $club->owner->mobile_formatted }}
                     @else
-                        Select a club owner first
+                        {{ __('shared.modal_tabs_contact_select_owner_first') }}
                     @endif
                 </span>
             </div>
@@ -121,14 +121,14 @@
                        value="{{ $isEdit && $club->phone ? ($club->phone['number'] ?? '') : old('phone_number') }}"
                        placeholder="12345678">
             </x-country-code-dropdown>
-            <small class="text-muted-foreground">A dedicated phone number for club inquiries</small>
+            <small class="text-muted-foreground">{{ __('shared.modal_tabs_contact_phone_hint') }}</small>
         </div>
     </div>
 
     <!-- Additional Contact Info (Optional) -->
     <div class="alert alert-info" role="alert">
-        <i class="bi bi-info-circle mr-2"></i>
-        <strong>Tip:</strong> You can add more contact methods (WhatsApp, social media, website) in the <strong>Identity & Branding</strong> tab under Social Media Links.
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>{{ __('shared.modal_tabs_contact_tip_label') }}</strong> {!! __('shared.modal_tabs_contact_tip_text') !!}
     </div>
 </div>
 

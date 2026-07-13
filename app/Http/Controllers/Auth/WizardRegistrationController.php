@@ -21,7 +21,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rules;
 
 class WizardRegistrationController extends Controller
 {
@@ -31,16 +30,16 @@ class WizardRegistrationController extends Controller
     {
         $request->validate([
             'club_slug' => 'required|string',
-            'birthdate'  => 'required|date',
-            'gender'     => 'required|in:Male,Female',
+            'birthdate' => 'required|date',
+            'gender' => 'required|in:Male,Female',
         ]);
 
         $tenant = Tenant::where('slug', $request->club_slug)->firstOrFail();
         // Parse from the birthdate direction so the result is always a positive age.
-        $age    = \Carbon\Carbon::parse($request->birthdate)->age;
+        $age = \Carbon\Carbon::parse($request->birthdate)->age;
 
         // Map single-char codes used by the wizard ('m'/'f') to the full words stored in the DB.
-        $genderValue = match($request->gender) {
+        $genderValue = match ($request->gender) {
             'm' => 'male',
             'f' => 'female',
             default => $request->gender,
@@ -59,8 +58,8 @@ class WizardRegistrationController extends Controller
                 // mixed  → open to all genders
                 // male / female → specific gender only
                 $q->whereNull('gender')
-                  ->orWhere('gender', 'mixed')
-                  ->orWhere('gender', $genderValue);
+                    ->orWhere('gender', 'mixed')
+                    ->orWhere('gender', $genderValue);
             })
             ->with('activities.equipment')
             ->get(['id', 'tenant_id', 'name', 'price', 'registration_fee', 'duration_months', 'description', 'type', 'gender', 'age_min', 'age_max', 'updated_at']);
@@ -74,9 +73,10 @@ class WizardRegistrationController extends Controller
         app(\App\Services\RegistrationCostService::class)->attachEquipmentToPackages($packages, $tenant->id, $userId);
 
         return response()->json([
-            'packages'       => $packages,
+            'packages' => $packages,
             'enrollment_fee' => (float) ($tenant->enrollment_fee ?? 0),
-            'currency'       => $tenant->currency,
+            'registration_fee' => (float) ($tenant->registration_fee ?? 0),
+            'currency' => $tenant->currency,
         ]);
     }
 
@@ -88,16 +88,16 @@ class WizardRegistrationController extends Controller
         ]);
 
         $sessionId = session()->getId();
-        $dir       = "temp/wizard/{$sessionId}";
-        $ext       = $request->file('file')->getClientOriginalExtension();
-        $filename  = Str::uuid() . '.' . $ext;
+        $dir = "temp/wizard/{$sessionId}";
+        $ext = $request->file('file')->getClientOriginalExtension();
+        $filename = Str::uuid().'.'.$ext;
 
         $request->file('file')->storeAs($dir, $filename, 'public');
 
         return response()->json([
             'success' => true,
-            'path'    => "{$dir}/{$filename}",
-            'url'     => Storage::disk('public')->url("{$dir}/{$filename}"),
+            'path' => "{$dir}/{$filename}",
+            'url' => Storage::disk('public')->url("{$dir}/{$filename}"),
         ]);
     }
 
@@ -118,10 +118,10 @@ class WizardRegistrationController extends Controller
     public function lookup(Request $request)
     {
         $request->validate([
-            'email'         => 'nullable|email',
-            'mobile_code'   => 'nullable|string|max:10',
+            'email' => 'nullable|email',
+            'mobile_code' => 'nullable|string|max:10',
             'mobile_number' => 'nullable|string|max:20',
-            'club_slug'     => 'nullable|string',
+            'club_slug' => 'nullable|string',
         ]);
 
         $user = $this->findExistingUser($request->email, $request->mobile_code, $request->mobile_number);
@@ -140,15 +140,16 @@ class WizardRegistrationController extends Controller
         try {
             Mail::to($user->email)->queue(new WizardOtpMail($code, $user));
         } catch (\Exception $e) {
-            \Log::error('Wizard OTP email failed: ' . $e->getMessage());
+            \Log::error('Wizard OTP email failed: '.$e->getMessage());
+
             // Don't leak that the account exists if we couldn't send — fail closed.
             return response()->json(['found' => false]);
         }
 
         return response()->json([
-            'found'                 => true,
+            'found' => true,
             'verification_required' => true,
-            'email_hint'            => $this->maskEmail($user->email),
+            'email_hint' => $this->maskEmail($user->email),
         ]);
     }
 
@@ -159,11 +160,11 @@ class WizardRegistrationController extends Controller
     public function verifyOtp(Request $request)
     {
         $request->validate([
-            'email'         => 'nullable|email',
-            'mobile_code'   => 'nullable|string|max:10',
+            'email' => 'nullable|email',
+            'mobile_code' => 'nullable|string|max:10',
             'mobile_number' => 'nullable|string|max:20',
-            'code'          => 'required|string|max:10',
-            'club_slug'     => 'nullable|string',
+            'code' => 'required|string|max:10',
+            'club_slug' => 'nullable|string',
         ]);
 
         $user = $this->findExistingUser($request->email, $request->mobile_code, $request->mobile_number);
@@ -171,18 +172,20 @@ class WizardRegistrationController extends Controller
             return response()->json(['verified' => false, 'message' => 'Verification failed.'], 422);
         }
 
-        $key   = $this->otpKey($user->id);
+        $key = $this->otpKey($user->id);
         $entry = Cache::get($key);
         if (! $entry) {
             return response()->json(['verified' => false, 'message' => 'Your code expired. Please request a new one.'], 422);
         }
         if (($entry['attempts'] ?? 0) >= 5) {
             Cache::forget($key);
+
             return response()->json(['verified' => false, 'message' => 'Too many attempts. Please request a new code.'], 429);
         }
         if (! hash_equals((string) $entry['code'], trim($request->code))) {
             $entry['attempts'] = ($entry['attempts'] ?? 0) + 1;
             Cache::put($key, $entry, now()->addMinutes(10));
+
             return response()->json(['verified' => false, 'message' => 'Incorrect code. Please try again.'], 422);
         }
 
@@ -202,7 +205,9 @@ class WizardRegistrationController extends Controller
             ->get()
             ->map(function ($rel) use ($tenant) {
                 $d = $rel->dependent;
-                if (! $d) return null;
+                if (! $d) {
+                    return null;
+                }
 
                 $alreadyMember = $tenant
                     ? ClubMemberSubscription::where('tenant_id', $tenant->id)
@@ -212,20 +217,20 @@ class WizardRegistrationController extends Controller
                     : false;
 
                 return [
-                    'id'                => $d->id,
-                    'full_name'         => $d->full_name ?: $d->name,
-                    'gender'            => $d->gender,
-                    'birthdate'         => $d->birthdate?->format('Y-m-d'),
+                    'id' => $d->id,
+                    'full_name' => $d->full_name ?: $d->name,
+                    'gender' => $d->gender,
+                    'birthdate' => $d->birthdate?->format('Y-m-d'),
                     'relationship_type' => $rel->relationship_type,
-                    'already_member'    => $alreadyMember,
+                    'already_member' => $alreadyMember,
                 ];
             })
             ->filter()
             ->values();
 
         return response()->json([
-            'verified'   => true,
-            'name'       => $user->full_name ?: $user->name,
+            'verified' => true,
+            'name' => $user->full_name ?: $user->name,
             'dependents' => $dependents,
         ]);
     }
@@ -233,13 +238,14 @@ class WizardRegistrationController extends Controller
     /** Per-session cache key for an account's pending OTP. */
     private function otpKey(int $userId): string
     {
-        return 'wizard_otp:' . session()->getId() . ':' . $userId;
+        return 'wizard_otp:'.session()->getId().':'.$userId;
     }
 
     /** Whether THIS session has proven control of the given account (within TTL). */
     private function sessionHasVerified(int $userId): bool
     {
         $ts = session('wizard.verified', [])[$userId] ?? null;
+
         return $ts && (now()->timestamp - $ts) < 1800;   // 30 min
     }
 
@@ -247,8 +253,9 @@ class WizardRegistrationController extends Controller
     private function maskEmail(string $email): string
     {
         [$name, $domain] = array_pad(explode('@', $email, 2), 2, '');
-        $masked = mb_substr($name, 0, 1) . str_repeat('*', max(1, mb_strlen($name) - 1));
-        return $masked . '@' . $domain;
+        $masked = mb_substr($name, 0, 1).str_repeat('*', max(1, mb_strlen($name) - 1));
+
+        return $masked.'@'.$domain;
     }
 
     /**
@@ -278,45 +285,45 @@ class WizardRegistrationController extends Controller
         // Unified flow: the registrant creates (or, if returning, reuses) their own
         // account + profile, then OPTIONALLY adds children. Packages are optional.
         $request->validate([
-            'full_name'                => 'required|string|max:255',
-            'email'                    => ['required', 'email', 'max:255'],
-            'mobile_code'              => 'required|string|max:10',
-            'mobile_number'            => 'required|string|max:20',
-            'nationality'              => 'required|string|max:255',
-            'club_slug'                => 'required|string',
-            'lang'                     => 'nullable|in:en,ar',
-            'self_gender'              => 'required|in:Male,Female',
-            'self_birthdate'           => 'required|date|before:today',
-            'self_packages'            => 'nullable|array',
-            'self_equipment'           => 'nullable|array',
-            'self_equipment.*'         => 'integer|exists:club_activity_equipment,id',
-            'self_equipment_variants'  => 'nullable|array',
+            'full_name' => 'required|string|max:255',
+            'email' => ['required', 'email', 'max:255'],
+            'mobile_code' => 'required|string|max:10',
+            'mobile_number' => 'required|string|max:20',
+            'nationality' => 'required|string|max:255',
+            'club_slug' => 'required|string',
+            'lang' => 'nullable|in:en,ar',
+            'self_gender' => 'required|in:Male,Female',
+            'self_birthdate' => 'required|date|before:today',
+            'self_packages' => 'nullable|array',
+            'self_equipment' => 'nullable|array',
+            'self_equipment.*' => 'integer|exists:club_activity_equipment,id',
+            'self_equipment_variants' => 'nullable|array',
             'self_equipment_variants.*' => 'nullable|integer|exists:club_product_variants,id',
-            'self_owned_equipment'     => 'nullable|array',
-            'self_owned_equipment.*'   => 'integer|exists:club_activity_equipment,id',
-            'children'                 => 'nullable|array',
-            'children.*.full_name'     => 'required|string|max:255',
-            'children.*.gender'        => 'required|in:Male,Female',
-            'children.*.birthdate'     => 'required|date|before:today',
-            'children.*.relationship'  => 'nullable|in:son,daughter,spouse,sponsor,other',
-            'children.*.packages'      => 'nullable|array',
-            'children.*.equipment'     => 'nullable|array',
-            'children.*.equipment.*'   => 'integer|exists:club_activity_equipment,id',
-            'children.*.equipment_variants'   => 'nullable|array',
+            'self_owned_equipment' => 'nullable|array',
+            'self_owned_equipment.*' => 'integer|exists:club_activity_equipment,id',
+            'children' => 'nullable|array',
+            'children.*.full_name' => 'required|string|max:255',
+            'children.*.gender' => 'required|in:Male,Female',
+            'children.*.birthdate' => 'required|date|before:today',
+            'children.*.relationship' => 'nullable|in:son,daughter,spouse,sponsor,other',
+            'children.*.packages' => 'nullable|array',
+            'children.*.equipment' => 'nullable|array',
+            'children.*.equipment.*' => 'integer|exists:club_activity_equipment,id',
+            'children.*.equipment_variants' => 'nullable|array',
             'children.*.equipment_variants.*' => 'nullable|integer|exists:club_product_variants,id',
-            'children.*.owned_equipment'      => 'nullable|array',
-            'children.*.owned_equipment.*'    => 'integer|exists:club_activity_equipment,id',
-            'existing_dependents'             => 'nullable|array',
-            'existing_dependents.*.id'        => 'required|integer',
-            'existing_dependents.*.packages'  => 'nullable|array',
+            'children.*.owned_equipment' => 'nullable|array',
+            'children.*.owned_equipment.*' => 'integer|exists:club_activity_equipment,id',
+            'existing_dependents' => 'nullable|array',
+            'existing_dependents.*.id' => 'required|integer',
+            'existing_dependents.*.packages' => 'nullable|array',
             'existing_dependents.*.equipment' => 'nullable|array',
             'existing_dependents.*.equipment.*' => 'integer|exists:club_activity_equipment,id',
-            'existing_dependents.*.equipment_variants'   => 'nullable|array',
+            'existing_dependents.*.equipment_variants' => 'nullable|array',
             'existing_dependents.*.equipment_variants.*' => 'nullable|integer|exists:club_product_variants,id',
-            'existing_dependents.*.owned_equipment'      => 'nullable|array',
-            'existing_dependents.*.owned_equipment.*'    => 'integer|exists:club_activity_equipment,id',
-            'pay_later'                => 'nullable|boolean',
-            'payment_proof_base64'     => 'nullable|string',
+            'existing_dependents.*.owned_equipment' => 'nullable|array',
+            'existing_dependents.*.owned_equipment.*' => 'integer|exists:club_activity_equipment,id',
+            'pay_later' => 'nullable|boolean',
+            'payment_proof_base64' => 'nullable|string',
         ]);
 
         // SECURITY: an existing account may only be reused when THIS session has
@@ -326,9 +333,9 @@ class WizardRegistrationController extends Controller
         $existingUser = $this->findExistingUser($request->email, $request->mobile_code, $request->mobile_number);
         if ($existingUser && ! $this->sessionHasVerified($existingUser->id)) {
             return response()->json([
-                'success'          => false,
+                'success' => false,
                 'existing_account' => true,
-                'message'          => 'An account with this email already exists. Please verify it or log in to continue.',
+                'message' => 'An account with this email already exists. Please verify it or log in to continue.',
             ], 422);
         }
 
@@ -344,18 +351,18 @@ class WizardRegistrationController extends Controller
         // Payment proof is uploaded at the end of registration. The member may
         // instead tick "I'll pay later" and continue — in which case the
         // subscriptions stay 'unpaid' until the club collects payment.
-        $payLater  = $request->boolean('pay_later');
+        $payLater = $request->boolean('pay_later');
         $proofPath = null;
-        if (!$payLater && $request->filled('payment_proof_base64')) {
+        if (! $payLater && $request->filled('payment_proof_base64')) {
             // Private disk — proof of payment must never be publicly accessible.
             $proofPath = $this->storeBase64Image(
                 $request->input('payment_proof_base64'),
                 'payment-proofs',
-                'proof_' . time() . '_' . uniqid(),
+                'proof_'.time().'_'.uniqid(),
                 'local'
             );
         }
-        $paymentStatus = (!$payLater && $proofPath) ? 'pending_approval' : 'unpaid';
+        $paymentStatus = (! $payLater && $proofPath) ? 'pending_approval' : 'unpaid';
 
         DB::beginTransaction();
         try {
@@ -367,21 +374,21 @@ class WizardRegistrationController extends Controller
                 $parentUser = $existingUser;
             } else {
                 $parentUser = User::create([
-                    'name'        => $request->full_name,
-                    'full_name'   => $request->full_name,
-                    'email'       => $request->email,
+                    'name' => $request->full_name,
+                    'full_name' => $request->full_name,
+                    'email' => $request->email,
                     // Passwordless: no password is collected — accounts authenticate via
                     // email verification + magic login links. Store a random unusable hash
                     // to satisfy the NOT NULL column.
-                    'password'    => Hash::make(Str::random(40)),
-                    'mobile'      => ['code' => $request->mobile_code, 'number' => $request->mobile_number],
+                    'password' => Hash::make(Str::random(40)),
+                    'mobile' => ['code' => $request->mobile_code, 'number' => $request->mobile_number],
                     'nationality' => $request->nationality,
-                    'gender'      => $request->self_gender,
-                    'birthdate'   => $request->self_birthdate,
+                    'gender' => $request->self_gender,
+                    'birthdate' => $request->self_birthdate,
                     'health_conditions' => $this->parseHealthConditions($request->self_health_conditions),
                     // Persist the language chosen in the wizard so the whole system
                     // (after they verify / log in via the email link) is in that locale.
-                    'locale'      => $request->input('lang') ?: 'en',
+                    'locale' => $request->input('lang') ?: 'en',
                 ]);
             }
 
@@ -402,8 +409,12 @@ class WizardRegistrationController extends Controller
                     ->all();
 
                 foreach ($request->input('existing_dependents') as $dep) {
-                    if (! in_array($dep['id'], $ownDependentIds)) continue;       // not theirs → ignore
-                    if (empty($dep['packages'])) continue;
+                    if (! in_array($dep['id'], $ownDependentIds)) {
+                        continue;
+                    }       // not theirs → ignore
+                    if (empty($dep['packages'])) {
+                        continue;
+                    }
                     $depUser = User::find($dep['id']);
                     if ($depUser) {
                         $this->createSubscriptions($tenant, $depUser, $dep['packages'], $paymentStatus, $proofPath, $dep['equipment'] ?? [], $groupId, $dep['equipment_variants'] ?? [], $dep['owned_equipment'] ?? []);
@@ -414,24 +425,24 @@ class WizardRegistrationController extends Controller
             // Optionally register NEW children as dependents under this account.
             foreach (($request->children ?? []) as $childData) {
                 $child = User::create([
-                    'name'              => $childData['full_name'],
-                    'full_name'         => $childData['full_name'],
-                    'email'             => null,
-                    'password'          => Hash::make(Str::random(32)),
-                    'gender'            => $childData['gender'],
-                    'birthdate'         => $childData['birthdate'],
-                    'nationality'       => $childData['nationality'] ?? null,
+                    'name' => $childData['full_name'],
+                    'full_name' => $childData['full_name'],
+                    'email' => null,
+                    'password' => Hash::make(Str::random(32)),
+                    'gender' => $childData['gender'],
+                    'birthdate' => $childData['birthdate'],
+                    'nationality' => $childData['nationality'] ?? null,
                     'health_conditions' => $this->parseHealthConditions($childData['health_conditions'] ?? null),
                 ]);
 
                 UserRelationship::create([
-                    'guardian_user_id'  => $parentUser->id,
+                    'guardian_user_id' => $parentUser->id,
                     'dependent_user_id' => $child->id,
                     'relationship_type' => $childData['relationship'] ?? 'parent',
                     'is_billing_contact' => true,
                 ]);
 
-                if (!empty($childData['packages'])) {
+                if (! empty($childData['packages'])) {
                     $this->createSubscriptions($tenant, $child, $childData['packages'], $paymentStatus, $proofPath, $childData['equipment'] ?? [], $groupId, $childData['equipment_variants'] ?? [], $childData['owned_equipment'] ?? []);
                 }
             }
@@ -457,24 +468,25 @@ class WizardRegistrationController extends Controller
                 try {
                     Mail::to($parentUser->email)->queue(new WelcomeEmail($parentUser, $parentUser, null, $intended));
                 } catch (\Exception $e) {
-                    \Log::error('Wizard welcome email failed: ' . $e->getMessage());
+                    \Log::error('Wizard welcome email failed: '.$e->getMessage());
                 }
             }
 
             DB::commit();
 
-            Storage::disk('public')->deleteDirectory("temp/wizard/" . session()->getId());
+            Storage::disk('public')->deleteDirectory('temp/wizard/'.session()->getId());
             session()->forget('wizard.verified');   // one-time: consume the proof
 
             return response()->json([
-                'success'   => true,
+                'success' => true,
                 'returning' => $isReturning,
-                'redirect'  => $redirect,
+                'redirect' => $redirect,
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Wizard registration failed: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            \Log::error('Wizard registration failed: '.$e->getMessage()."\n".$e->getTraceAsString());
+
             return response()->json(['success' => false, 'message' => 'Registration failed. Please try again.'], 500);
         }
     }
@@ -506,7 +518,7 @@ class WizardRegistrationController extends Controller
         $costSvc = app(\App\Services\RegistrationCostService::class);
 
         // Capture first-time status BEFORE the membership row exists.
-        $isFirstTime = !$costSvc->isReturningMember($tenant->id, $user->id);
+        $isFirstTime = ! $costSvc->isReturningMember($tenant->id, $user->id);
 
         // Membership starts 'inactive' — the club activates it on approval.
         // (The memberships.status CHECK constraint only allows active/inactive;
@@ -519,7 +531,9 @@ class WizardRegistrationController extends Controller
         $firstSub = null;
         foreach ($packageIds as $packageId) {
             $package = ClubPackage::where('id', $packageId)->where('tenant_id', $tenant->id)->first();
-            if (!$package) continue;
+            if (! $package) {
+                continue;
+            }
 
             // Returning members may already hold this package — never double-enrol.
             $alreadyEnrolled = ClubMemberSubscription::where('tenant_id', $tenant->id)
@@ -527,24 +541,26 @@ class WizardRegistrationController extends Controller
                 ->where('package_id', $package->id)
                 ->whereIn('status', ['active', 'pending'])
                 ->exists();
-            if ($alreadyEnrolled) continue;
+            if ($alreadyEnrolled) {
+                continue;
+            }
 
             $sub = ClubMemberSubscription::create([
-                'tenant_id'             => $tenant->id,
-                'user_id'               => $user->id,
-                'package_id'            => $package->id,
-                'status'                => 'pending',
-                'payment_status'        => $paymentStatus,
-                'amount_due'            => $package->price,
-                'amount_paid'           => 0,
-                'start_date'            => now()->toDateString(),
-                'proof_of_payment'      => $proofPath,
+                'tenant_id' => $tenant->id,
+                'user_id' => $user->id,
+                'package_id' => $package->id,
+                'status' => 'pending',
+                'payment_status' => $paymentStatus,
+                'amount_due' => $package->price,
+                'amount_paid' => 0,
+                'start_date' => now()->toDateString(),
+                'proof_of_payment' => $proofPath,
                 'registration_group_id' => $groupId,
             ]);
             $firstSub ??= $sub;
         }
 
-        if (!$firstSub) {
+        if (! $firstSub) {
             return;   // nothing enrolled (no valid/new packages) → no fee or gear
         }
 
@@ -562,23 +578,23 @@ class WizardRegistrationController extends Controller
         // Gear the registrant ticked "I already have it" — recorded as owned,
         // never billed. Exclude anything that is also on the charged list.
         $charged = array_map('intval', $equipmentIds);
-        $owned   = array_values(array_diff(array_map('intval', $ownedEquipmentIds), $charged));
+        $owned = array_values(array_diff(array_map('intval', $ownedEquipmentIds), $charged));
         $costSvc->recordOwnedEquipment($tenant, $user->id, $firstSub, $owned);
 
-        // First-time registration (joining) fee, resolved from the first package.
-        $fee = 0.0;
+        // One-time registration fee (the package price is the enrollment).
+        $regFee = 0.0;
         if ($isFirstTime) {
             $firstPkg = ClubPackage::find($packageIds[0] ?? null);
-            $fee = $firstPkg ? $costSvc->effectiveRegistrationFee($firstPkg, $tenant) : (float) ($tenant->enrollment_fee ?? 0);
+            $regFee = $firstPkg ? $costSvc->effectiveRegistrationFee($firstPkg, $tenant) : 0.0;
         }
 
-        // Fold the joining fee + equipment into what's owed; keep the fee itself
-        // snapshotted for the itemised breakdown.
-        $extra = $fee + $equipTotal;
-        if ($extra > 0 || $fee > 0) {
+        // Fold the joining fee + equipment into what's owed; keep the registration
+        // fee snapshotted on the subscription for the itemised breakdown.
+        $extra = $regFee + $equipTotal;
+        if ($extra > 0) {
             $firstSub->update([
-                'registration_fee' => $fee,
-                'amount_due'       => (float) $firstSub->amount_due + $extra,
+                'registration_fee' => $regFee,
+                'amount_due' => (float) $firstSub->amount_due + $extra,
             ]);
         }
     }
@@ -587,15 +603,15 @@ class WizardRegistrationController extends Controller
     {
         // The path must be one this session uploaded via uploadTemp() — never
         // trust a client-supplied path that could traverse out of temp/wizard.
-        $expectedPrefix = 'temp/wizard/' . session()->getId() . '/';
+        $expectedPrefix = 'temp/wizard/'.session()->getId().'/';
         if (! str_starts_with($tempPath, $expectedPrefix)
             || str_contains($tempPath, '..')
             || str_contains($tempPath, '\\')) {
             abort(422, 'Invalid upload reference.');
         }
 
-        $ext      = strtolower(pathinfo($tempPath, PATHINFO_EXTENSION));
-        $filename = Str::uuid() . '.' . $ext;
+        $ext = strtolower(pathinfo($tempPath, PATHINFO_EXTENSION));
+        $filename = Str::uuid().'.'.$ext;
         $destPath = "{$destDir}/{$filename}";
 
         if (Storage::disk('public')->exists($tempPath)) {
@@ -607,7 +623,10 @@ class WizardRegistrationController extends Controller
 
     private function parseHealthConditions(?string $text): ?array
     {
-        if (empty(trim($text ?? ''))) return null;
+        if (empty(trim($text ?? ''))) {
+            return null;
+        }
+
         return [['condition' => trim($text), 'notes' => '']];
     }
 }

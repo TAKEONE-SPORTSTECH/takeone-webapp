@@ -14,12 +14,13 @@ use Illuminate\Support\Str;
  */
 class UserPost extends Model
 {
-    protected $fillable = ['user_id', 'type', 'body', 'images', 'poll', 'cover'];
+    protected $fillable = ['user_id', 'type', 'body', 'images', 'poll', 'cover', 'hidden_at', 'hidden_by'];
 
     protected $casts = [
         'images' => 'array',
-        'poll'   => 'array',
-        'cover'  => 'array',
+        'poll' => 'array',
+        'cover' => 'array',
+        'hidden_at' => 'datetime',
     ];
 
     /** Auto-assign an unguessable token so each post gets a shareable permalink. */
@@ -66,6 +67,26 @@ class UserPost extends Model
         return $this->hasMany(UserPostView::class);
     }
 
+    /** Has a super-admin hidden this post from public view (moderation)? */
+    public function isHidden(): bool
+    {
+        return ! is_null($this->hidden_at);
+    }
+
+    /**
+     * Limit a query to posts the viewer may see. Hidden (moderated) posts are
+     * invisible to everyone EXCEPT super-admins, who keep seeing them — flagged —
+     * so they can review and, if appropriate, unhide them.
+     */
+    public function scopeVisibleTo($query, ?User $viewer)
+    {
+        if ($viewer && $viewer->hasRole('super-admin')) {
+            return $query;
+        }
+
+        return $query->whereNull('hidden_at');
+    }
+
     /**
      * Poll data shaped for the feed: each option with its live vote count, the
      * total, and which option (if any) the viewer picked. Null for non-polls.
@@ -95,14 +116,14 @@ class UserPost extends Model
         }
 
         return [
-            'question'   => $this->poll['question'] ?? '',
-            'options'    => array_map(
+            'question' => $this->poll['question'] ?? '',
+            'options' => array_map(
                 fn ($text, $i) => ['text' => $text, 'votes' => $counts[$i]],
                 $options,
                 array_keys($options)
             ),
             'totalVotes' => array_sum($counts),
-            'myVote'     => $myVote,
+            'myVote' => $myVote,
         ];
     }
 
@@ -123,40 +144,45 @@ class UserPost extends Model
         $author = $this->user;
 
         return [
-            'id'            => $this->id,
-            'type'          => $this->type ?? 'text',
-            'poll'          => $this->pollFeedData($viewer),
-            'cover'         => $this->cover,
-            'url'           => $this->permalink(),
-            'author'        => [
-                'id'     => $this->user_id,
-                'slug'   => $author?->slug,
-                'name'   => $author?->full_name ?? 'Member',
+            'id' => $this->id,
+            'type' => $this->type ?? 'text',
+            'poll' => $this->pollFeedData($viewer),
+            'cover' => $this->cover,
+            'url' => $this->permalink(),
+            'author' => [
+                'id' => $this->user_id,
+                'slug' => $author?->slug,
+                'name' => $author?->full_name ?? 'Member',
                 'avatar' => $author && $author->profile_picture
-                    ? asset('storage/' . $author->profile_picture) . '?v=' . optional($author->updated_at)->timestamp
+                    ? asset('storage/'.$author->profile_picture).'?v='.optional($author->updated_at)->timestamp
                     : null,
-                'url'    => $author ? route('wall.show', $author) : '#',
-                'isMe'   => $this->user_id === $viewer->id,
+                'url' => $author ? route('wall.show', $author) : '#',
+                'isMe' => $this->user_id === $viewer->id,
             ],
-            'body'          => $this->body ?? '',
-            'images'        => collect($this->images ?? [])
-                ->map(fn ($path) => ['url' => asset('storage/' . $path)])
+            'body' => $this->body ?? '',
+            'images' => collect($this->images ?? [])
+                ->map(fn ($path) => ['url' => asset('storage/'.$path)])
                 ->values()->all(),
-            'liked'         => $this->relationLoaded('likes')
+            'liked' => $this->relationLoaded('likes')
                 ? $this->likes->contains('user_id', $viewer->id)
                 : $this->likes()->where('user_id', $viewer->id)->exists(),
-            'likes'         => $this->likes_count ?? $this->likes()->count(),
-            'comments'      => $this->relationLoaded('comments')
-                ? $this->comments->map(fn ($c) => $c->toFeedArray())->values()->all()
+            'likes' => $this->likes_count ?? $this->likes()->count(),
+            'comments' => $this->relationLoaded('comments')
+                ? $this->comments
+                    ->reject(fn ($c) => $viewer->blockedEitherWay($c->user_id))
+                    ->map(fn ($c) => $c->toFeedArray())->values()->all()
                 : [],
-            'showComments'  => false,
-            'editing'       => false,
-            'draft'         => '',
-            'commentDraft'  => '',
-            'edited'        => $this->updated_at->gt($this->created_at),
-            'time'          => $this->created_at->diffForHumans(),
-            'ts'            => $this->created_at->timestamp,
-            'views'         => $this->views_count ?? ($this->relationLoaded('views') ? $this->views->count() : $this->views()->count()),
+            'showComments' => false,
+            'editing' => false,
+            'draft' => '',
+            'commentDraft' => '',
+            'edited' => $this->updated_at->gt($this->created_at),
+            'time' => $this->created_at->diffForHumans(),
+            'ts' => $this->created_at->timestamp,
+            'views' => $this->views_count ?? ($this->relationLoaded('views') ? $this->views->count() : $this->views()->count()),
+            // Moderation: true when a super-admin has hidden this post. Only
+            // super-admins ever receive hidden posts, so the card can badge them.
+            'hidden' => (bool) $this->hidden_at,
         ];
     }
 }

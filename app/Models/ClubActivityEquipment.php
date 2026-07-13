@@ -18,7 +18,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
  */
 class ClubActivityEquipment extends Model
 {
-    use HasFactory, BelongsToTenant, LogsActivity;
+    use BelongsToTenant, HasFactory, LogsActivity;
 
     protected $table = 'club_activity_equipment';
 
@@ -33,8 +33,8 @@ class ClubActivityEquipment extends Model
 
     protected $casts = [
         'is_required' => 'boolean',
-        'is_active'   => 'boolean',
-        'sort_order'  => 'integer',
+        'is_active' => 'boolean',
+        'sort_order' => 'integer',
     ];
 
     public function getActivitylogOptions(): LogOptions

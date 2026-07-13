@@ -25,11 +25,11 @@ class ConnectionController extends Controller
         $follow = UserFollow::firstOrCreate(['follower_id' => $me->id, 'followee_id' => $user->id]);
 
         if ($follow->wasRecentlyCreated) {
-            \App\Models\UserNotification::notifyUser($user->id, 'follow', $me->full_name . ' started following you', [
-                'actor_id'   => $me->id,
-                'action_url' => route('wall.show', $me),
-                'icon'       => 'bi-person-plus-fill',
-                'context'    => $me->full_name,
+            \App\Models\UserNotification::notifyUser($user->id, 'follow', $me->full_name.' started following you', [
+                'actor_id' => $me->id,
+                'action_url' => route('people.show', $me->uuid),
+                'icon' => 'bi-person-plus-fill',
+                'context' => $me->full_name,
             ]);
         }
 
@@ -52,7 +52,7 @@ class ConnectionController extends Controller
             // Sever every existing relationship in both directions.
             UserFollow::where(function ($q) use ($me, $user) {
                 $q->where(['follower_id' => $me->id, 'followee_id' => $user->id])
-                  ->orWhere(['follower_id' => $user->id, 'followee_id' => $me->id]);
+                    ->orWhere(['follower_id' => $user->id, 'followee_id' => $me->id]);
             })->delete();
             UserConnection::betweenUsers($me->id, $user->id)->delete();
             UserBlock::firstOrCreate(['blocker_id' => $me->id, 'blocked_id' => $user->id]);
@@ -79,10 +79,10 @@ class ConnectionController extends Controller
     private function state(User $me, User $user, ?string $message = null): JsonResponse
     {
         return response()->json([
-            'success'      => true,
-            'message'      => $message,
+            'success' => true,
+            'message' => $message,
             'relationship' => $me->fresh()->relationshipWith($user),
-            'canView'      => $me->fresh()->canViewWall($user),
+            'canView' => $me->fresh()->canViewWall($user),
         ]);
     }
 }

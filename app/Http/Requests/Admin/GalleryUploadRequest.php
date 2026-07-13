@@ -14,7 +14,7 @@ class GalleryUploadRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'caption'  => 'nullable|string|max:255',
+            'caption' => 'nullable|string|max:255',
             'images.*' => 'required|image|max:5120',
         ];
     }

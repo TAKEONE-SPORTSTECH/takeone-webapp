@@ -27,8 +27,8 @@
             {{-- Modal Header --}}
             <div class="flex items-center justify-between px-6 py-5 border-b border-border/50 shrink-0 bg-gradient-to-r from-primary/5 to-transparent">
                 <div>
-                    <h5 class="text-xl font-bold text-foreground" x-text="joinModal.clubName ? 'Join ' + joinModal.clubName : 'Join Club'"></h5>
-                    <p class="text-sm text-muted-foreground mt-0.5">Select who you want to enroll and choose a package</p>
+                    <h5 class="text-xl font-bold text-foreground" x-text="joinModal.clubName ? @js(__('club.join_club_modal_join')) + ' ' + joinModal.clubName : @js(__('club.join_club_modal_join_club'))"></h5>
+                    <p class="text-sm text-muted-foreground mt-0.5">{{ __('club.join_club_modal_header_subtitle') }}</p>
                 </div>
                 <button type="button" class="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-gray-100 transition-all" @click="joinModal.close()">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -38,43 +38,29 @@
             {{-- Modal Body (scrollable) --}}
             <div class="flex-1 overflow-y-auto px-6 py-6">
 
-                {{-- Progress Steps --}}
+                {{-- Progress Steps (dynamic — equipment appears only when there's gear) --}}
                 <div class="flex items-center justify-center mb-8">
                     <div class="flex items-center">
-                        {{-- Step 1 --}}
-                        <div class="flex items-center gap-2">
-                            <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 shadow-sm"
-                                 :class="joinModal.step === 'select-members' ? 'bg-primary text-white shadow-primary/30' : (joinModal.step !== 'select-members' ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400')">
-                                <template x-if="joinModal.step !== 'select-members' && joinModal.step !== 'select-members'">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                </template>
-                                <template x-if="joinModal.step === 'select-members'">
-                                    <span>1</span>
-                                </template>
+                        <template x-for="(s, idx) in joinModal._steps()" :key="s">
+                            <div class="flex items-center">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 shadow-sm"
+                                         :class="(idx+1) < joinModal.stepIndex() ? 'bg-green-500 text-white' : ((idx+1) === joinModal.stepIndex() ? 'bg-primary text-white shadow-primary/30' : 'bg-gray-100 text-gray-400')">
+                                        <template x-if="(idx+1) < joinModal.stepIndex()">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                        </template>
+                                        <template x-if="(idx+1) >= joinModal.stepIndex()">
+                                            <span x-text="idx + 1"></span>
+                                        </template>
+                                    </div>
+                                    <span class="text-xs font-medium hidden sm:inline"
+                                          :class="(idx+1) === joinModal.stepIndex() ? 'text-primary' : 'text-muted-foreground'"
+                                          x-text="({'select-members': @js(__('club.step_who')), 'package-selection': @js(__('club.step_packages')), 'equipment': @js(__('club.step_equipment')), 'payment-review': @js(__('club.step_payment'))})[s]"></span>
+                                </div>
+                                <div x-show="idx < joinModal.stepCount() - 1" class="w-12 sm:w-20 h-0.5 mx-2 transition-colors duration-300"
+                                     :class="(idx+1) < joinModal.stepIndex() ? 'bg-primary' : 'bg-gray-200'"></div>
                             </div>
-                            <span class="text-xs font-medium hidden sm:inline" :class="joinModal.step === 'select-members' ? 'text-primary' : 'text-muted-foreground'">Members</span>
-                        </div>
-                        <div class="w-12 sm:w-20 h-0.5 mx-2 transition-colors duration-300" :class="joinModal.step !== 'select-members' ? 'bg-primary' : 'bg-gray-200'"></div>
-                        {{-- Step 2 --}}
-                        <div class="flex items-center gap-2">
-                            <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 shadow-sm"
-                                 :class="joinModal.step === 'package-selection' ? 'bg-primary text-white shadow-primary/30' : (joinModal.step === 'payment-review' ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400')">
-                                <template x-if="joinModal.step === 'payment-review'">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                </template>
-                                <template x-if="joinModal.step !== 'payment-review'">
-                                    <span>2</span>
-                                </template>
-                            </div>
-                            <span class="text-xs font-medium hidden sm:inline" :class="joinModal.step === 'package-selection' ? 'text-primary' : 'text-muted-foreground'">Packages</span>
-                        </div>
-                        <div class="w-12 sm:w-20 h-0.5 mx-2 transition-colors duration-300" :class="joinModal.step === 'payment-review' ? 'bg-primary' : 'bg-gray-200'"></div>
-                        {{-- Step 3 --}}
-                        <div class="flex items-center gap-2">
-                            <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 shadow-sm"
-                                 :class="joinModal.step === 'payment-review' ? 'bg-primary text-white shadow-primary/30' : 'bg-gray-100 text-gray-400'">3</div>
-                            <span class="text-xs font-medium hidden sm:inline" :class="joinModal.step === 'payment-review' ? 'text-primary' : 'text-muted-foreground'">Payment</span>
-                        </div>
+                        </template>
                     </div>
                 </div>
 
@@ -84,17 +70,17 @@
                         <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 mb-4">
                             <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                         </div>
-                        <h2 class="tf-section-title">Who would you like to register?</h2>
-                        <p class="text-muted-foreground text-sm">Tick the family members you want to enroll in this club</p>
+                        <h2 class="tf-section-title">{{ __('club.join_club_modal_who_register') }}</h2>
+                        <p class="text-muted-foreground text-sm">{{ __('club.join_club_modal_tick_members') }}</p>
                     </div>
 
                     {{-- Family Members Checklist --}}
                     <div class="max-w-2xl mx-auto">
                         <div class="flex items-center justify-between mb-3 px-1">
-                            <h4 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Your Family</h4>
+                            <h4 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{{ __('club.join_club_modal_your_family') }}</h4>
                             <span class="text-xs font-medium px-2.5 py-1 rounded-full transition-colors"
                                   :class="joinModal.selectedMemberIds.length > 0 ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-500'"
-                                  x-text="joinModal.selectedMemberIds.length + ' selected'"></span>
+                                  x-text="joinModal.selectedMemberIds.length + ' ' + @js(__('club.join_club_modal_selected'))"></span>
                         </div>
 
                         <div class="space-y-2">
@@ -135,13 +121,13 @@
                                         <div class="flex items-center gap-2">
                                             <p class="font-semibold text-sm truncate" x-text="member.name"></p>
                                             <template x-if="member.type === 'guardian'">
-                                                <span class="inline-block bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide shrink-0">You</span>
+                                                <span class="inline-block bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide shrink-0">{{ __('club.join_club_modal_you_badge') }}</span>
                                             </template>
                                         </div>
                                         <div class="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
                                             <span x-text="member.relationship" class="capitalize"></span>
                                             <template x-if="member.age !== null">
-                                                <span>&middot; <span x-text="member.age + ' yrs'"></span></span>
+                                                <span>&middot; <span x-text="member.age + ' ' + @js(__('club.join_club_modal_yrs'))"></span></span>
                                             </template>
                                             <template x-if="member.gender">
                                                 <span>&middot; <span x-text="joinModal.genderLabel(member.gender)"></span></span>
@@ -158,8 +144,8 @@
                                 <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="opacity-40"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                                 </div>
-                                <p class="font-medium">No family members found</p>
-                                <p class="text-sm mt-1">Add family members from your profile to register them</p>
+                                <p class="font-medium">{{ __('club.join_club_modal_no_family') }}</p>
+                                <p class="text-sm mt-1">{{ __('club.join_club_modal_add_family_hint') }}</p>
                             </div>
                         </template>
                     </div>
@@ -171,15 +157,15 @@
                         <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 mb-4">
                             <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M14.4 14.4 9.6 9.6"/><path d="M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"/><path d="m21.5 21.5-1.4-1.4"/><path d="M3.9 3.9 2.5 2.5"/><path d="M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"/></svg>
                         </div>
-                        <h2 class="tf-section-title">Select Packages</h2>
-                        <p class="text-muted-foreground text-sm">Choose a package for each registrant</p>
+                        <h2 class="tf-section-title">{{ __('club.join_club_modal_select_packages') }}</h2>
+                        <p class="text-muted-foreground text-sm">{{ __('club.join_club_modal_choose_package') }}</p>
                     </div>
 
                     {{-- Loading --}}
                     <template x-if="joinModal.loadingPackages">
                         <div class="text-center py-16">
                             <div class="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent mx-auto mb-4"></div>
-                            <p class="text-muted-foreground text-sm">Loading packages...</p>
+                            <p class="text-muted-foreground text-sm">{{ __('club.join_club_modal_loading_packages') }}</p>
                         </div>
                     </template>
 
@@ -204,7 +190,7 @@
                                                     <span x-text="reg.relationship"></span>
                                                 </template>
                                                 <template x-if="reg.dateOfBirth">
-                                                    <span> &middot; <span x-text="joinModal.calculateAge(reg.dateOfBirth) + ' yrs'"></span></span>
+                                                    <span> &middot; <span x-text="joinModal.calculateAge(reg.dateOfBirth) + ' ' + @js(__('club.join_club_modal_yrs'))"></span></span>
                                                 </template>
                                                 <template x-if="reg.gender">
                                                     <span> &middot; <span x-text="joinModal.genderLabel(reg.gender)"></span></span>
@@ -218,7 +204,7 @@
                                         <template x-if="joinModal.getEligiblePackages(reg).length === 0">
                                             <div class="flex items-start gap-2 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                                                <span>No eligible packages found for this member's age or gender.</span>
+                                                <span>{{ __('club.join_club_modal_no_eligible_packages') }}</span>
                                             </div>
                                         </template>
 
@@ -237,20 +223,20 @@
                                                                         <template x-if="reg.packageId == pkg.id">
                                                                             <span class="inline-flex items-center gap-1 bg-primary text-white px-2 py-0.5 rounded-full text-[10px] font-bold">
                                                                                 <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                                                                Selected
+                                                                                {{ __('club.join_club_modal_selected_badge') }}
                                                                             </span>
                                                                         </template>
                                                                     </div>
                                                                     <p class="text-xs text-muted-foreground">
-                                                                        <span x-text="pkg.duration_months"></span> months
+                                                                        <span x-text="pkg.duration_months"></span> {{ __('club.join_club_modal_months') }}
                                                                         <template x-if="pkg.activity_type">
                                                                             <span> &middot; <span x-text="pkg.activity_type"></span></span>
                                                                         </template>
                                                                     </p>
                                                                 </div>
-                                                                <div class="text-right shrink-0">
+                                                                <div class="text-end shrink-0">
                                                                     <div class="text-xl font-bold text-primary" x-text="joinModal.formatCurrency(pkg.price)"></div>
-                                                                    <div class="text-[10px] text-muted-foreground">per month</div>
+                                                                    <div class="text-[10px] text-muted-foreground">{{ __('club.join_club_modal_per_month') }}</div>
                                                                 </div>
                                                             </div>
 
@@ -259,9 +245,9 @@
                                                                 <div class="pt-3 border-t border-border/50">
                                                                     <div class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1.5">
                                                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                                                                        Schedule
+                                                                        {{ __('club.join_club_modal_schedule') }}
                                                                     </div>
-                                                                    <div class="space-y-0.5 pl-4">
+                                                                    <div class="space-y-0.5 ps-4">
                                                                         <template x-for="(sched, si) in pkg.schedules" :key="si">
                                                                             <div class="text-xs text-muted-foreground" x-text="sched.days + ': ' + sched.time"></div>
                                                                         </template>
@@ -274,9 +260,9 @@
                                                                 <div class="pt-3 border-t border-border/50">
                                                                     <div class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1.5">
                                                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                                                                        Instructors
+                                                                        {{ __('club.join_club_modal_instructors') }}
                                                                     </div>
-                                                                    <div class="flex flex-wrap gap-2 pl-4">
+                                                                    <div class="flex flex-wrap gap-2 ps-4">
                                                                         <template x-for="(inst, ii) in pkg.instructors" :key="ii">
                                                                             <div class="flex items-center gap-1.5 bg-gray-50 rounded-full px-2 py-1">
                                                                                 <template x-if="inst.image_url">
@@ -294,11 +280,11 @@
                                                                 <div class="flex flex-wrap gap-1.5">
                                                                     <template x-if="pkg.age_min || pkg.age_max">
                                                                         <span class="inline-block bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-[10px] font-medium">
-                                                                            Ages <span x-text="pkg.age_min || '0'"></span>-<span x-text="pkg.age_max || '∞'"></span>
+                                                                            {{ __('club.join_club_modal_ages') }} <span x-text="pkg.age_min || '0'"></span>-<span x-text="pkg.age_max || '∞'"></span>
                                                                         </span>
                                                                     </template>
                                                                     <span class="inline-block bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-[10px] font-medium"
-                                                                          x-text="(pkg.gender && pkg.gender !== 'mixed') ? pkg.gender.charAt(0).toUpperCase() + pkg.gender.slice(1) + ' only' : 'Mixed'"></span>
+                                                                          x-text="(pkg.gender && pkg.gender !== 'mixed') ? pkg.gender.charAt(0).toUpperCase() + pkg.gender.slice(1) + ' ' + @js(__('club.join_club_modal_gender_only')) : @js(__('club.join_club_modal_mixed'))"></span>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -313,14 +299,73 @@
                     </template>
                 </div>
 
+                {{-- ==================== STEP: Equipment ==================== --}}
+                <div x-show="joinModal.step === 'equipment'" x-transition>
+                    <div class="text-center mb-8">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                        </div>
+                        <h2 class="tf-section-title">{{ __('club.equipment_title') }}</h2>
+                        <p class="text-muted-foreground text-sm">{{ __('club.equipment_subtitle') }}</p>
+                    </div>
+
+                    <div class="max-w-2xl mx-auto space-y-6">
+                        <template x-for="reg in joinModal.registrants" :key="'eq-' + reg.id">
+                            <div x-show="(reg.equipment || []).length > 0">
+                                <div class="flex items-center gap-2.5 mb-3">
+                                    <template x-if="reg.avatarUrl"><img :src="reg.avatarUrl" class="w-8 h-8 rounded-full object-cover" alt=""></template>
+                                    <template x-if="!reg.avatarUrl"><span class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs" x-text="reg.name.charAt(0).toUpperCase()"></span></template>
+                                    <span class="text-sm font-bold" x-text="reg.name"></span>
+                                </div>
+                                <div class="space-y-2">
+                                    <template x-for="item in reg.equipment" :key="item.id">
+                                        <div class="rounded-xl border-2 p-4 transition-all"
+                                             :class="item.selected ? 'border-primary bg-primary/5' : 'border-border bg-white hover:border-gray-300'">
+                                            <div class="flex items-center gap-3">
+                                                <button type="button" @click="joinModal.toggleEquip(reg, item)"
+                                                        class="shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all"
+                                                        :class="item.selected ? 'bg-primary border-primary' : 'border-gray-300'">
+                                                    <svg x-show="item.selected" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                                </button>
+                                                <template x-if="item.image"><img :src="item.image" class="w-11 h-11 rounded-lg object-cover shrink-0" alt=""></template>
+                                                <template x-if="!item.image"><span class="w-11 h-11 rounded-lg bg-gray-100 flex items-center justify-center text-muted-foreground shrink-0"><i class="bi bi-box-seam"></i></span></template>
+                                                <div class="min-w-0 flex-1 cursor-pointer" @click="joinModal.toggleEquip(reg, item)">
+                                                    <div class="flex items-center gap-2 flex-wrap">
+                                                        <span class="font-semibold text-sm" x-text="item.name"></span>
+                                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase"
+                                                              :class="item.is_required ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'"
+                                                              x-text="item.is_required ? @js(__('club.required_badge')) : @js(__('club.optional_badge'))"></span>
+                                                        <span x-show="item.owned" class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-green-100 text-green-700">{{ __('club.owned_badge') }}</span>
+                                                    </div>
+                                                    <p class="text-xs text-muted-foreground mt-0.5"
+                                                       x-text="item.selected ? joinModal.formatCurrency(joinModal.equipItemPrice(item)) : (item.is_required ? @js(__('club.already_have_it')) : joinModal.formatCurrency(item.price))"></p>
+                                                </div>
+                                            </div>
+                                            <div x-show="item.has_variants && item.selected" class="mt-3 flex flex-wrap gap-2 ps-9">
+                                                <template x-for="v in item.variants" :key="v.id">
+                                                    <button type="button" @click="joinModal.setEquipVariant(item, v.id)" :disabled="!v.in_stock"
+                                                            class="px-3 py-1.5 rounded-lg border text-xs font-medium transition-all"
+                                                            :class="item.variantId == v.id ? 'border-primary bg-primary text-white' : (v.in_stock ? 'border-border text-foreground bg-white hover:border-gray-300' : 'border-gray-100 text-gray-300 line-through')">
+                                                        <span x-text="v.label"></span> · <span x-text="joinModal.formatCurrency(v.price)"></span>
+                                                    </button>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
                 {{-- ==================== STEP 3: Review & Payment ==================== --}}
                 <div x-show="joinModal.step === 'payment-review'" x-transition>
                     <div class="text-center mb-8">
                         <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 mb-4">
                             <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                         </div>
-                        <h2 class="tf-section-title">Review & Payment</h2>
-                        <p class="text-muted-foreground text-sm">Review your selection and upload payment proof</p>
+                        <h2 class="tf-section-title">{{ __('club.join_club_modal_review_payment') }}</h2>
+                        <p class="text-muted-foreground text-sm">{{ __('club.join_club_modal_review_subtitle') }}</p>
                     </div>
 
                     {{-- Registrants Summary --}}
@@ -338,9 +383,9 @@
                                     <div>
                                         <div class="font-semibold text-sm" x-text="reg.name"></div>
                                         <div class="text-xs text-muted-foreground">
-                                            <span x-text="joinModal.getPackageForRegistrant(reg)?.name || 'No package'"></span>
+                                            <span x-text="joinModal.getPackageForRegistrant(reg)?.name || @js(__('club.join_club_modal_no_package'))"></span>
                                             <template x-if="joinModal.getPackageForRegistrant(reg)?.duration_months">
-                                                <span> &middot; <span x-text="joinModal.getPackageForRegistrant(reg)?.duration_months"></span> mo</span>
+                                                <span> &middot; <span x-text="joinModal.getPackageForRegistrant(reg)?.duration_months"></span> {{ __('club.join_club_modal_mo') }}</span>
                                             </template>
                                         </div>
                                     </div>
@@ -354,7 +399,7 @@
                     <div class="border rounded-xl overflow-hidden mb-6">
                         <div class="px-5 py-3.5 bg-gray-50 border-b border-border flex items-center gap-2">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                            <h4 class="font-semibold text-sm">Billing Summary</h4>
+                            <h4 class="font-semibold text-sm">{{ __('club.join_club_modal_billing_summary') }}</h4>
                         </div>
                         <div class="p-5 space-y-3">
                             <template x-for="reg in joinModal.registrants" :key="'bill-' + reg.id">
@@ -369,24 +414,31 @@
                                 </template>
                             </template>
 
-                            <template x-if="joinModal.enrollmentFee > 0 && joinModal.firstTimerCount() > 0">
+                            <template x-if="joinModal.registrationTotal() > 0">
                                 <div class="flex justify-between items-center text-sm py-2 px-3 bg-blue-50 rounded-lg -mx-1">
                                     <div>
-                                        <span class="font-medium">Enrollment Fee</span>
-                                        <span class="text-muted-foreground text-xs"> (<span x-text="joinModal.firstTimerCount()"></span> member<span x-text="joinModal.firstTimerCount() > 1 ? 's' : ''"></span>)</span>
+                                        <span class="font-medium">{{ __('club.registration_fee') }}</span>
+                                        <span class="text-muted-foreground text-xs"> (<span x-text="joinModal.firstTimerCount()"></span> {{ __('club.join_club_modal_member') }}<span x-text="joinModal.firstTimerCount() > 1 ? 's' : ''"></span>)</span>
                                     </div>
-                                    <span class="font-medium" x-text="(joinModal.enrollmentFee * joinModal.firstTimerCount()).toFixed(2) + ' ' + joinModal.currency"></span>
+                                    <span class="font-medium" x-text="joinModal.registrationTotal().toFixed(2) + ' ' + joinModal.currency"></span>
+                                </div>
+                            </template>
+
+                            <template x-if="joinModal.equipmentTotal() > 0">
+                                <div class="flex justify-between items-center text-sm py-2 px-3 bg-blue-50 rounded-lg -mx-1">
+                                    <span class="font-medium">{{ __('club.equipment_line') }}</span>
+                                    <span class="font-medium" x-text="joinModal.equipmentTotal().toFixed(2) + ' ' + joinModal.currency"></span>
                                 </div>
                             </template>
 
                             <div class="border-t border-border pt-3 mt-3">
                                 <div class="flex justify-between items-center text-sm">
-                                    <span class="text-muted-foreground">Subtotal</span>
+                                    <span class="text-muted-foreground">{{ __('club.join_club_modal_subtotal') }}</span>
                                     <span class="font-medium" x-text="joinModal.calculateSubtotal() + ' ' + joinModal.currency"></span>
                                 </div>
                                 <template x-if="joinModal.vatRegNumber && joinModal.vatPercentage > 0">
                                     <div class="flex justify-between items-center text-sm mt-1">
-                                        <span class="text-muted-foreground">VAT (<span x-text="joinModal.vatPercentage"></span>%)</span>
+                                        <span class="text-muted-foreground">{{ __('club.join_club_modal_vat') }} (<span x-text="joinModal.vatPercentage"></span>%)</span>
                                         <span class="font-medium" x-text="joinModal.calculateVat() + ' ' + joinModal.currency"></span>
                                     </div>
                                 </template>
@@ -394,7 +446,7 @@
 
                             <div class="border-t-2 border-primary pt-3">
                                 <div class="flex justify-between items-center">
-                                    <span class="text-lg font-bold">Total</span>
+                                    <span class="text-lg font-bold">{{ __('club.join_club_modal_total') }}</span>
                                     <span class="text-2xl font-bold text-primary" x-text="joinModal.calculateTotal() + ' ' + joinModal.currency"></span>
                                 </div>
                             </div>
@@ -405,15 +457,15 @@
                     <div class="border rounded-xl overflow-hidden">
                         <div class="px-5 py-3.5 bg-gray-50 border-b border-border flex items-center gap-2">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                            <h4 class="font-semibold text-sm">Payment Proof</h4>
+                            <h4 class="font-semibold text-sm">{{ __('club.join_club_modal_payment_proof') }}</h4>
                         </div>
                         <div class="p-5 space-y-4">
                             <label class="flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors" :class="joinModal.payLater ? 'bg-primary/5' : 'bg-gray-50 hover:bg-gray-100'">
                                 <input type="checkbox" class="mt-0.5 rounded border-gray-300 text-primary focus:ring-primary"
                                        x-model="joinModal.payLater" @change="if(joinModal.payLater) { joinModal.paymentScreenshot = false; if(typeof removeImage_joinPaymentProofCropper === 'function') removeImage_joinPaymentProofCropper(); }">
                                 <div>
-                                    <span class="font-medium text-sm">I'll pay later</span>
-                                    <p class="text-xs text-muted-foreground mt-0.5">The club owner will review your registration and send a payment proposal</p>
+                                    <span class="font-medium text-sm">{{ __('club.join_club_modal_pay_later') }}</span>
+                                    <p class="text-xs text-muted-foreground mt-0.5">{{ __('club.join_club_modal_pay_later_hint') }}</p>
                                 </div>
                             </label>
 
@@ -421,7 +473,7 @@
                                 <div class="space-y-3">
                                     <div class="flex items-start gap-2 p-3 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                                        <span>Upload a screenshot of your payment. Registration completes after admin verification.</span>
+                                        <span>{{ __('club.join_club_modal_upload_hint') }}</span>
                                     </div>
                                     <x-takeone-cropper
                                         id="joinPaymentProofCropper"
@@ -435,12 +487,12 @@
                                         :filename="'proof_' . time()"
                                         :previewWidth="360"
                                         :previewHeight="220"
-                                        buttonText="Upload Payment Screenshot"
+                                        buttonText="{{ __('club.join_club_modal_upload_button') }}"
                                         buttonClass="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 bg-white"
                                     />
                                     <div x-show="joinModal.paymentScreenshot" class="flex items-center gap-1.5 text-xs text-green-600 font-medium">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                                        Screenshot uploaded — pending admin approval
+                                        {{ __('club.join_club_modal_screenshot_uploaded') }}
                                     </div>
                                 </div>
                             </template>
@@ -453,15 +505,15 @@
             {{-- Modal Footer --}}
             <div class="flex items-center justify-between px-6 py-4 border-t border-border/50 bg-gray-50/80 shrink-0">
                 <button class="px-5 py-2.5 rounded-lg border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-gray-100 transition-colors" @click="joinModal.goBack()">
-                    <span x-text="joinModal.step === 'select-members' ? 'Cancel' : 'Back'"></span>
+                    <span x-text="joinModal.step === 'select-members' ? @js(__('shared.cancel')) : @js(__('shared.back'))"></span>
                 </button>
                 <button class="btn btn-primary px-6 py-2.5 rounded-lg text-sm font-semibold shadow-sm"
                         @click="joinModal.goNext()"
                         :disabled="(joinModal.step === 'select-members' && joinModal.selectedMemberIds.length === 0) || (joinModal.step === 'payment-review' && !joinModal.payLater && !joinModal.paymentScreenshot)"
                         :class="{ 'opacity-50 cursor-not-allowed': (joinModal.step === 'select-members' && joinModal.selectedMemberIds.length === 0) || (joinModal.step === 'payment-review' && !joinModal.payLater && !joinModal.paymentScreenshot) }">
-                    <span x-text="joinModal.step === 'payment-review' ? (joinModal.payLater ? 'Complete Registration' : 'Complete Registration') : 'Continue'"></span>
+                    <span x-text="joinModal.step === 'payment-review' ? (joinModal.payLater ? @js(__('club.join_club_modal_complete_registration')) : @js(__('club.join_club_modal_complete_registration'))) : @js(__('club.join_club_modal_continue'))"></span>
                     <template x-if="joinModal.step !== 'payment-review'">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ml-1.5 inline-block"><polyline points="9 18 15 12 9 6"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ms-1.5 inline-block"><polyline points="9 18 15 12 9 6"/></svg>
                     </template>
                 </button>
             </div>

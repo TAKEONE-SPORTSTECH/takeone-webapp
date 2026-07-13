@@ -1,6 +1,6 @@
 @extends('layouts.personal-mobile')
 
-@section('title', 'Brackets')
+@section('title', __('personal.personal_event_bracket_title'))
 
 {{--
     Tournament brackets — mobile. DUMMY content from PersonalMobileController@eventBracket.
@@ -44,7 +44,7 @@
         removePodium(i) { this.editPodium.splice(i, 1); },
         generateDraw() {
             const r = (this.editRoster || []).filter(Boolean);
-            if (r.length < 2) { window.showToast('warning', 'Add entrants to the division first'); return; }
+            if (r.length < 2) { window.showToast('warning', '{{ __('personal.personal_event_bracket_add_entrants') }}'); return; }
             const size = r.length;
             const roundName = size > 8 ? 'Round of ' + size : (size > 4 ? 'Quarter-finals' : (size > 2 ? 'Semi-finals' : 'Final'));
             const ms = [];
@@ -52,7 +52,7 @@
                 ms.push({ round: roundName, a_name: r[i] || '', a_seed: i + 1, a_score: '', b_name: r[i + 1] || 'Bye', b_seed: i + 2, b_score: '', winner: '', court: '', time: '', status: 'upcoming' });
             }
             this.editMatches = ms;
-            window.showToast('success', 'Round drawn from ' + r.length + ' entrants — fill the rest as it progresses');
+            window.showToast('success', '{{ __('personal.personal_event_bracket_round_drawn') }}'.replace(':count', r.length));
         },
         async saveDraw() {
             if (this.busy) return; this.busy = true;
@@ -69,7 +69,7 @@
                     credentials: 'same-origin', body: JSON.stringify(payload),
                 });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok || !data.success) throw new Error(data.message || 'Could not save draw');
+                if (!res.ok || !data.success) throw new Error(data.message || '{{ __('personal.personal_event_bracket_could_not_save') }}');
                 window.showToast('success', data.message);
                 setTimeout(() => { window.location.href = data.redirect || window.location.href; }, 500);
             } catch (e) { window.showToast('error', e.message); }
@@ -79,9 +79,9 @@
         async generateNewDraw() {
             if (this.busy) return;
             const ok = await window.confirmAction({
-                title: 'Generate draw?',
-                message: 'Rebuilds the brackets and match numbers for every weight class from the current entrants. Before weigh-in this is the provisional (imaginary) draw; once the event has started it locks the final draw (paid + weighed-in only).',
-                type: 'primary', confirmText: 'Generate',
+                title: '{{ __('personal.personal_event_bracket_generate_draw_title') }}',
+                message: '{{ __('personal.personal_event_bracket_generate_draw_message') }}',
+                type: 'primary', confirmText: '{{ __('personal.personal_event_bracket_generate_confirm') }}',
             });
             if (!ok) return;
             this.busy = true;
@@ -92,7 +92,7 @@
                     credentials: 'same-origin',
                 });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok || !data.success) throw new Error(data.message || 'Could not generate draw');
+                if (!res.ok || !data.success) throw new Error(data.message || '{{ __('personal.personal_event_bracket_could_not_generate') }}');
                 window.showToast('success', data.message);
                 setTimeout(() => { window.location.href = data.redirect || window.location.href; }, 500);
             } catch (e) { window.showToast('error', e.message); }
@@ -103,19 +103,19 @@
     {{-- ===== Header ===== --}}
     <header class="m-hero px-5 pt-5 pb-12 text-white relative overflow-hidden"
             style="background: linear-gradient(150deg, {{ $color }}, #1f2937);">
-        <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+        <div class="absolute -end-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
         <div class="flex items-center justify-between relative z-10">
-            <a href="{{ route('me.events.show', $e['key']) }}" data-shell-link data-route="me.events"
-               class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="Back">
+            <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('me.events.show', $e['key']) }}')"
+               class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="{{ __('shared.back') }}">
                 <i class="bi bi-arrow-left text-lg"></i>
-            </a>
+            </button>
             <span class="px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur inline-flex items-center gap-1.5">
-                <i class="bi bi-diagram-3-fill"></i> Brackets
+                <i class="bi bi-diagram-3-fill"></i> {{ __('personal.personal_event_bracket_title') }}
             </span>
         </div>
         <div class="relative z-10 mt-4">
             <h1 class="text-xl font-black leading-tight">{{ $e['title'] }}</h1>
-            <p class="text-sm text-white/85 mt-1 flex items-center gap-1.5"><i class="bi bi-diagram-3"></i> {{ count($categories) }} weight categories</p>
+            <p class="text-sm text-white/85 mt-1 flex items-center gap-1.5"><i class="bi bi-diagram-3"></i> {{ count($categories) }} {{ __('personal.personal_event_bracket_weight_categories') }}</p>
         </div>
     </header>
 
@@ -142,15 +142,15 @@
             @if($e['started'] ?? false)
                 <div class="rounded-xl border border-gray-200 bg-muted/40 p-3 flex items-center gap-2 text-[12px] text-muted-foreground">
                     <i class="bi bi-lock-fill text-foreground"></i>
-                    <span><span class="font-bold text-foreground">Draw is final.</span> The event has started — the bracket is locked and can’t be regenerated.</span>
+                    <span><span class="font-bold text-foreground">{{ __('personal.personal_event_bracket_draw_is_final') }}</span> {{ __('personal.personal_event_bracket_draw_locked') }}</span>
                 </div>
             @else
                 <button type="button" @click="generateNewDraw()" :disabled="busy"
                         class="m-press w-full py-2.5 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60" style="background: {{ $color }};">
                     <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-shuffle'"></i>
-                    <span>Generate draw &amp; match numbers</span>
+                    <span>{{ __('personal.personal_event_bracket_generate_draw_match_numbers') }}</span>
                 </button>
-                <p class="text-[11px] text-muted-foreground text-center mt-1.5">Provisional (imaginary) draw — regenerate freely until the event starts, then it locks.</p>
+                <p class="text-[11px] text-muted-foreground text-center mt-1.5">{{ __('personal.personal_event_bracket_provisional_draw_hint') }}</p>
             @endif
         </div>
     @endif
@@ -169,9 +169,9 @@
                     </div>
                     @php
                         $badge = match($c['status']) {
-                            'live' => ['Live now', 'bg-red-50 text-red-600'],
-                            'completed' => ['Completed', 'bg-green-50 text-green-600'],
-                            default => ['Enrolling', 'bg-amber-50 text-amber-600'],
+                            'live' => [__('personal.personal_event_bracket_live_now'), 'bg-red-50 text-red-600'],
+                            'completed' => [__('personal.personal_event_bracket_completed'), 'bg-green-50 text-green-600'],
+                            default => [__('personal.personal_event_bracket_enrolling'), 'bg-amber-50 text-amber-600'],
                         };
                     @endphp
                     <span class="px-2.5 py-1 rounded-full text-[10px] font-bold {{ $badge[1] }}">{{ $badge[0] }}</span>
@@ -179,8 +179,8 @@
 
                 {{-- joined / open slots --}}
                 <div class="flex items-center justify-between text-[11px] mt-3 mb-1.5">
-                    <span class="font-semibold text-foreground">{{ $c['joined'] }} joined</span>
-                    <span class="text-muted-foreground">{{ is_null($c['cap']) ? 'No cap' : ($c['open'] . ' ' . ($c['open'] === 1 ? 'slot' : 'slots') . ' open') }}</span>
+                    <span class="font-semibold text-foreground">{{ $c['joined'] }} {{ __('personal.personal_event_bracket_joined') }}</span>
+                    <span class="text-muted-foreground">{{ is_null($c['cap']) ? __('personal.personal_event_bracket_no_cap') : ($c['open'] . ' ' . ($c['open'] === 1 ? __('personal.personal_event_bracket_slot') : __('personal.personal_event_bracket_slots')) . ' ' . __('personal.personal_event_bracket_slots_open_suffix')) }}</span>
                 </div>
                 @if(!is_null($c['cap']) && $c['cap'] > 0)
                     <div class="h-2 rounded-full bg-muted overflow-hidden flex">
@@ -195,7 +195,7 @@
                 @if(($canManage ?? false) && !($e['ended'] ?? false))
                     <button type="button" @click="openEditor({{ $c['id'] }})"
                             class="m-press mt-3 w-full py-2.5 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2" style="background: {{ $color }};">
-                        <i class="bi bi-diagram-3-fill"></i> {{ empty($c['matches_flat']) ? 'Set the draw / bracket' : 'Manage draw' }}
+                        <i class="bi bi-diagram-3-fill"></i> {{ empty($c['matches_flat']) ? __('personal.personal_event_bracket_set_draw_bracket') : __('personal.personal_event_bracket_manage_draw') }}
                     </button>
                 @endif
             </div>
@@ -206,8 +206,8 @@
                 <div class="rounded-2xl border border-dashed border-amber-300 bg-amber-50 p-3 flex items-start gap-2">
                     <i class="bi bi-hourglass-split text-amber-500 mt-0.5"></i>
                     <p class="text-[11px] text-amber-700 leading-relaxed">
-                        <span class="font-bold">Provisional draw.</span>
-                        {{ $c['unpaid_count'] }} {{ \Illuminate\Support\Str::plural('entry', $c['unpaid_count']) }} {{ $c['unpaid_count'] === 1 ? 'is' : 'are' }} held as a placeholder. When the event starts, anyone <span class="font-semibold">unpaid or not weighed in</span> is removed and the bracket is re-drawn from confirmed athletes only.
+                        <span class="font-bold">{{ __('personal.personal_event_bracket_provisional_draw') }}</span>
+                        {{ $c['unpaid_count'] }} {{ $c['unpaid_count'] === 1 ? __('personal.personal_event_bracket_entry') : __('personal.personal_event_bracket_entries') }} {{ $c['unpaid_count'] === 1 ? __('personal.personal_event_bracket_is') : __('personal.personal_event_bracket_are') }} {{ __('personal.personal_event_bracket_held_placeholder') }} <span class="font-semibold">{{ __('personal.personal_event_bracket_unpaid_or_not_weighed') }}</span> {{ __('personal.personal_event_bracket_removed_redrawn') }}
                     </p>
                 </div>
             @endif
@@ -215,7 +215,7 @@
             {{-- ===== Completed → podium & prizes ===== --}}
             @if($c['status'] === 'completed' && !empty($c['podium']))
                 <div class="m-card rounded-2xl p-4">
-                    <h3 class="text-sm font-bold text-foreground flex items-center gap-2 mb-3"><i class="bi bi-award-fill text-amber-500"></i> Podium &amp; prizes</h3>
+                    <h3 class="text-sm font-bold text-foreground flex items-center gap-2 mb-3"><i class="bi bi-award-fill text-amber-500"></i> {{ __('personal.personal_event_bracket_podium_prizes') }}</h3>
                     <div class="space-y-2">
                         @foreach($c['podium'] as $p)
                             @php $medal = [1 => ['#f59e0b','🥇'], 2 => ['#9ca3af','🥈'], 3 => ['#b45309','🥉']][$p['place']]; @endphp
@@ -223,7 +223,7 @@
                                 <div class="w-9 h-9 grid place-items-center text-2xl flex-shrink-0 leading-none">{{ $medal[1] }}</div>
                                 <div class="min-w-0 flex-1">
                                     <p class="text-sm font-bold text-foreground truncate">{{ $p['name'] }} <span class="text-[10px] font-semibold text-muted-foreground">{{ $p['country'] }}</span></p>
-                                    <p class="text-[11px] text-muted-foreground">{{ $p['place'] === 1 ? 'Champion' : ($p['place'] === 2 ? 'Runner-up' : '3rd place') }}</p>
+                                    <p class="text-[11px] text-muted-foreground">{{ $p['place'] === 1 ? __('personal.personal_event_bracket_champion') : ($p['place'] === 2 ? __('personal.personal_event_bracket_runner_up') : __('personal.personal_event_bracket_third_place')) }}</p>
                                 </div>
                                 <span class="text-[11px] font-black flex-shrink-0" style="color: {{ $medal[0] }};">{{ $p['prize'] }}</span>
                             </div>
@@ -240,12 +240,12 @@
                             <h3 class="text-sm font-bold text-foreground flex items-center gap-2">
                                 <i class="bi bi-diagram-2 text-primary"></i> {{ $round['name'] }}
                                 @if($round['name'] === 'Final')
-                                    <span class="text-lg leading-none" title="Decides gold &amp; silver">🥇 🥈</span>
+                                    <span class="text-lg leading-none" title="{{ __('personal.personal_event_bracket_decides_gold_silver') }}">🥇 🥈</span>
                                 @elseif($round['name'] === 'Semifinal')
-                                    <span class="text-lg leading-none" title="Decides the two bronze medals">🥉 🥉</span>
+                                    <span class="text-lg leading-none" title="{{ __('personal.personal_event_bracket_decides_bronze') }}">🥉 🥉</span>
                                 @endif
                             </h3>
-                            <span class="text-[11px] text-muted-foreground">{{ count($round['matches']) }} {{ count($round['matches']) === 1 ? 'bout' : 'bouts' }}</span>
+                            <span class="text-[11px] text-muted-foreground">{{ count($round['matches']) }} {{ count($round['matches']) === 1 ? __('personal.personal_event_bracket_bout') : __('personal.personal_event_bracket_bouts') }}</span>
                         </div>
                         <div class="space-y-3">
                             @foreach($round['matches'] as $m)
@@ -257,7 +257,7 @@
                                             $lose = $m['winner'] && $m['winner'] !== $side;
                                             $prov = !empty($ath['provisional']);
                                             $nm = $ath['name'] ?: null;
-                                            $placeholder = $m['winner'] ? 'Bye' : 'TBD';
+                                            $placeholder = $m['winner'] ? __('personal.personal_event_bracket_bye') : __('personal.personal_event_bracket_tbd');
                                         @endphp
                                         <div class="flex items-center gap-2.5 px-3 py-2.5 {{ $side === 'a' ? 'border-b border-gray-50' : '' }}"
                                              style="{{ $win ? 'background: '.$color.'0d;' : '' }}">
@@ -271,11 +271,11 @@
                                                 <p class="text-sm font-bold {{ $nm ? 'text-foreground' : 'text-muted-foreground' }} truncate flex items-center gap-1.5 {{ $prov ? 'italic' : '' }}">
                                                     {{ $nm ?? $placeholder }}
                                                     @if($win)<i class="bi bi-check-circle-fill text-[11px]" style="color: {{ $color }};"></i>@endif
-                                                    @if($prov)<span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 not-italic flex-shrink-0"><i class="bi bi-hourglass-split"></i> unpaid</span>@endif
+                                                    @if($prov)<span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 not-italic flex-shrink-0"><i class="bi bi-hourglass-split"></i> {{ __('personal.personal_event_bracket_unpaid') }}</span>@endif
                                                 </p>
                                                 <p class="text-[10px] text-muted-foreground">
-                                                    @if($prov)Provisional — removed at start if unpaid / not weighed in@elseif($ath['country']){{ $ath['country'] }}@endif
-                                                    @if($ath['seed']) · #{{ $ath['seed'] }} seed @endif
+                                                    @if($prov){{ __('personal.personal_event_bracket_provisional_removed') }}@elseif($ath['country']){{ $ath['country'] }}@endif
+                                                    @if($ath['seed']) · #{{ $ath['seed'] }} {{ __('personal.personal_event_bracket_seed') }} @endif
                                                 </p>
                                             </div>
                                             <span class="text-base font-black flex-shrink-0 {{ $win ? '' : 'text-muted-foreground' }}" style="{{ $win ? 'color: '.$color : '' }}">{{ $ath['score'] }}</span>
@@ -285,7 +285,7 @@
                                     <div class="flex items-center justify-between px-3 py-1.5 bg-muted/40 text-[10px] text-muted-foreground">
                                         <span class="flex items-center gap-2 flex-wrap">
                                             @if(!empty($m['code']))
-                                                <span class="font-bold text-foreground bg-white border border-gray-200 rounded px-1.5 py-0.5" title="{{ $m['court'] }} · Bout {{ $m['no'] }}">
+                                                <span class="font-bold text-foreground bg-white border border-gray-200 rounded px-1.5 py-0.5" title="{{ $m['court'] }} · {{ __('personal.personal_event_bracket_bout_word') }} {{ $m['no'] }}">
                                                     <i class="bi bi-hash"></i>{{ $m['code'] }}
                                                 </span>
                                             @endif
@@ -297,11 +297,11 @@
                                             @endif
                                         </span>
                                         @if($m['status'] === 'done')
-                                            <span class="font-bold text-green-600"><i class="bi bi-check2"></i> Final</span>
+                                            <span class="font-bold text-green-600"><i class="bi bi-check2"></i> {{ __('personal.personal_event_bracket_final_status') }}</span>
                                         @elseif($m['status'] === 'live')
-                                            <span class="font-bold text-red-600 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span> LIVE</span>
+                                            <span class="font-bold text-red-600 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span> {{ __('personal.personal_event_bracket_live_status') }}</span>
                                         @else
-                                            <span class="font-semibold">Upcoming</span>
+                                            <span class="font-semibold">{{ __('personal.personal_event_bracket_upcoming') }}</span>
                                         @endif
                                     </div>
                                 </div>
@@ -326,15 +326,15 @@
                                     body: JSON.stringify({ category_id: {{ $c['id'] }} }),
                                 });
                                 const data = await res.json().catch(() => ({}));
-                                if (!res.ok || !data.success) throw new Error(data.message || 'Could not enter');
+                                if (!res.ok || !data.success) throw new Error(data.message || '{{ __('personal.personal_event_bracket_could_not_enter') }}');
                                 this.joined = true;
                                 window.showToast('success', data.message);
                             } catch (e) { window.showToast('error', e.message); }
                             finally { this.busy = false; }
                         }
                      }">
-                    <h3 class="text-sm font-bold text-foreground flex items-center gap-2 mb-1"><i class="bi bi-people text-primary"></i> Registered athletes</h3>
-                    <p class="text-[11px] text-muted-foreground mb-3"><i class="bi bi-clock-history"></i> Bracket &amp; seeding generated after the weigh-in.</p>
+                    <h3 class="text-sm font-bold text-foreground flex items-center gap-2 mb-1"><i class="bi bi-people text-primary"></i> {{ __('personal.personal_event_bracket_registered_athletes') }}</h3>
+                    <p class="text-[11px] text-muted-foreground mb-3"><i class="bi bi-clock-history"></i> {{ __('personal.personal_event_bracket_bracket_seeding_after_weighin') }}</p>
                     <div class="space-y-2">
                         @foreach($c['roster'] as $i => $r)
                             <div class="flex items-center gap-3">
@@ -343,7 +343,7 @@
                                     <p class="text-sm font-semibold text-foreground truncate">{{ $r['name'] }}</p>
                                     <p class="text-[10px] text-muted-foreground">{{ $r['country'] }}</p>
                                 </div>
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-50 text-green-600"><i class="bi bi-check2"></i> In</span>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-50 text-green-600"><i class="bi bi-check2"></i> {{ __('personal.personal_event_bracket_in_badge') }}</span>
                             </div>
                         @endforeach
 
@@ -352,10 +352,10 @@
                             <div class="flex items-center gap-3">
                                 <div class="w-9 h-9 rounded-full grid place-items-center text-gray-300 border-2 border-dashed border-gray-200 flex-shrink-0"><i class="bi bi-person-plus"></i></div>
                                 <div class="min-w-0 flex-1">
-                                    <p class="text-sm font-semibold text-muted-foreground">Open slot</p>
-                                    <p class="text-[10px] text-gray-400">Awaiting entry</p>
+                                    <p class="text-sm font-semibold text-muted-foreground">{{ __('personal.personal_event_bracket_open_slot') }}</p>
+                                    <p class="text-[10px] text-gray-400">{{ __('personal.personal_event_bracket_awaiting_entry') }}</p>
                                 </div>
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">Open</span>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{{ __('personal.personal_event_bracket_open') }}</span>
                             </div>
                         @endfor
                     </div>
@@ -363,9 +363,9 @@
                     @if(!($e['ended'] ?? false))
                         <button type="button" x-show="!joined" @click="enter()" :disabled="busy"
                                 class="m-press mt-4 w-full py-3 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60" style="background: {{ $color }};">
-                            <i class="bi bi-plus-circle"></i> Enter this category · {{ $e['participant_fee'] }}
+                            <i class="bi bi-plus-circle"></i> {{ __('personal.personal_event_bracket_enter_category') }} · {{ $e['participant_fee'] }}
                         </button>
-                        <div x-show="joined" x-cloak class="mt-4 rounded-2xl bg-green-50 text-green-700 py-3 text-center text-sm font-bold"><i class="bi bi-check2-circle"></i> You're entered — see you at weigh-in</div>
+                        <div x-show="joined" x-cloak class="mt-4 rounded-2xl bg-green-50 text-green-700 py-3 text-center text-sm font-bold"><i class="bi bi-check2-circle"></i> {{ __('personal.personal_event_bracket_youre_entered') }}</div>
                     @endif
                 </div>
             @endif
@@ -382,8 +382,8 @@
                  x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
                 <div class="p-4 border-b border-gray-100 flex items-center justify-between">
                     <div class="min-w-0">
-                        <h3 class="font-black text-foreground flex items-center gap-2 truncate"><i class="bi bi-diagram-3-fill" style="color: {{ $color }};"></i> <span x-text="editName">Draw</span></h3>
-                        <p class="text-[11px] text-muted-foreground">Set the bracket, results &amp; podium</p>
+                        <h3 class="font-black text-foreground flex items-center gap-2 truncate"><i class="bi bi-diagram-3-fill" style="color: {{ $color }};"></i> <span x-text="editName">{{ __('personal.personal_event_bracket_draw_fallback') }}</span></h3>
+                        <p class="text-[11px] text-muted-foreground">{{ __('personal.personal_event_bracket_set_bracket_results_podium') }}</p>
                     </div>
                     <button type="button" @click="editing=null" class="m-press w-8 h-8 rounded-full bg-muted grid place-items-center flex-shrink-0"><i class="bi bi-x-lg text-xs"></i></button>
                 </div>
@@ -391,72 +391,70 @@
                 <div class="flex-1 overflow-y-auto p-4 space-y-4">
                     {{-- status --}}
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Stage</label>
-                        <select x-model="editStatus" class="app-select w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                            <option value="enrolling">Enrolling — bracket not drawn yet</option>
-                            <option value="live">Live — matches in progress</option>
-                            <option value="completed">Completed — results final</option>
-                        </select>
-                        <input x-model="editNote" type="text" placeholder="Note — e.g. Semi-finals on Mat 1"
+                        <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.personal_event_bracket_stage') }}</label>
+                        <x-select-menu model="editStatus"
+                                       :options="[['value' => 'enrolling', 'label' => __('personal.personal_event_bracket_opt_enrolling')], ['value' => 'live', 'label' => __('personal.personal_event_bracket_opt_live')], ['value' => 'completed', 'label' => __('personal.personal_event_bracket_opt_completed')]]" />
+                        <input x-model="editNote" type="text" placeholder="{{ __('personal.personal_event_bracket_note_placeholder') }}"
                                class="w-full mt-2 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                     </div>
 
                     {{-- matches --}}
                     <div>
                         <div class="flex items-center justify-between mb-2">
-                            <p class="text-sm font-bold text-foreground">Matches</p>
-                            <button type="button" @click="generateDraw()" class="m-press text-[11px] font-bold text-primary"><i class="bi bi-magic"></i> Draw from entrants</button>
+                            <p class="text-sm font-bold text-foreground">{{ __('personal.personal_event_bracket_matches') }}</p>
+                            <button type="button" @click="generateDraw()" class="m-press text-[11px] font-bold text-primary"><i class="bi bi-magic"></i> {{ __('personal.personal_event_bracket_draw_from_entrants') }}</button>
                         </div>
                         <div class="space-y-3">
                             <template x-for="(m, i) in editMatches" :key="i">
                                 <div class="rounded-2xl border border-gray-100 p-3 space-y-2">
                                     <div class="flex items-center gap-2">
-                                        <input x-model="m.round" type="text" placeholder="Round — e.g. Final" class="flex-1 min-w-0 px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
-                                        <select x-model="m.status" class="app-select w-28 px-2 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 outline-none">
-                                            <option value="upcoming">Upcoming</option><option value="live">Live</option><option value="done">Done</option>
-                                        </select>
+                                        <input x-model="m.round" type="text" placeholder="{{ __('personal.personal_event_bracket_round_placeholder') }}" class="flex-1 min-w-0 px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                                        <div class="w-28 flex-shrink-0">
+                                            <x-select-menu model="m.status"
+                                                           :options="[['value' => 'upcoming', 'label' => __('personal.personal_event_bracket_upcoming')], ['value' => 'live', 'label' => __('personal.personal_event_bracket_status_live')], ['value' => 'done', 'label' => __('personal.personal_event_bracket_status_done')]]" />
+                                        </div>
                                         <button type="button" @click="removeMatch(i)" class="m-press w-8 h-8 rounded-lg bg-muted grid place-items-center text-red-500 flex-shrink-0"><i class="bi bi-trash text-xs"></i></button>
                                     </div>
                                     {{-- competitor A --}}
                                     <div class="flex items-center gap-2">
                                         <button type="button" @click="m.winner = m.winner==='a' ? '' : 'a'" class="m-press w-7 h-7 rounded-full grid place-items-center flex-shrink-0 border-2" :class="m.winner==='a' ? 'text-white' : 'text-gray-300 border-gray-200'" :style="m.winner==='a' ? 'background:{{ $color }};border-color:{{ $color }}' : ''"><i class="bi bi-check-lg text-xs"></i></button>
-                                        <input x-model="m.a_name" type="text" placeholder="Competitor A" class="flex-1 min-w-0 px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                                        <input x-model="m.a_name" type="text" placeholder="{{ __('personal.personal_event_bracket_competitor_a') }}" class="flex-1 min-w-0 px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
                                         <input x-model="m.a_seed" type="number" min="1" placeholder="#" class="w-12 px-1 py-2 text-center border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
-                                        <input x-model="m.a_score" type="text" placeholder="Score" class="w-16 px-2 py-2 text-center border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                                        <input x-model="m.a_score" type="text" placeholder="{{ __('personal.personal_event_bracket_score') }}" class="w-16 px-2 py-2 text-center border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
                                     </div>
                                     {{-- competitor B --}}
                                     <div class="flex items-center gap-2">
                                         <button type="button" @click="m.winner = m.winner==='b' ? '' : 'b'" class="m-press w-7 h-7 rounded-full grid place-items-center flex-shrink-0 border-2" :class="m.winner==='b' ? 'text-white' : 'text-gray-300 border-gray-200'" :style="m.winner==='b' ? 'background:{{ $color }};border-color:{{ $color }}' : ''"><i class="bi bi-check-lg text-xs"></i></button>
-                                        <input x-model="m.b_name" type="text" placeholder="Competitor B" class="flex-1 min-w-0 px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                                        <input x-model="m.b_name" type="text" placeholder="{{ __('personal.personal_event_bracket_competitor_b') }}" class="flex-1 min-w-0 px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
                                         <input x-model="m.b_seed" type="number" min="1" placeholder="#" class="w-12 px-1 py-2 text-center border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
-                                        <input x-model="m.b_score" type="text" placeholder="Score" class="w-16 px-2 py-2 text-center border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                                        <input x-model="m.b_score" type="text" placeholder="{{ __('personal.personal_event_bracket_score') }}" class="w-16 px-2 py-2 text-center border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
                                     </div>
                                     <div class="flex items-center gap-2">
-                                        <input x-model="m.court" type="text" placeholder="Court / mat" class="flex-1 px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
-                                        <input x-model="m.time" type="text" placeholder="Time" class="w-24 px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                                        <input x-model="m.court" type="text" placeholder="{{ __('personal.personal_event_bracket_court_mat') }}" class="flex-1 px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                                        <input x-model="m.time" type="text" placeholder="{{ __('personal.personal_event_bracket_time') }}" class="w-24 px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
                                     </div>
-                                    <p class="text-[10px] text-muted-foreground">Tap the ✓ next to a competitor to mark them the winner.</p>
+                                    <p class="text-[10px] text-muted-foreground">{{ __('personal.personal_event_bracket_tap_check_winner') }}</p>
                                 </div>
                             </template>
                         </div>
-                        <button type="button" @click="addMatch()" class="m-press mt-2 w-full py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground"><i class="bi bi-plus-lg"></i> Add match</button>
+                        <button type="button" @click="addMatch()" class="m-press mt-2 w-full py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground"><i class="bi bi-plus-lg"></i> {{ __('personal.personal_event_bracket_add_match') }}</button>
                     </div>
 
                     {{-- podium --}}
                     <div>
-                        <p class="text-sm font-bold text-foreground mb-2"><i class="bi bi-award-fill text-amber-500"></i> Podium &amp; prizes</p>
+                        <p class="text-sm font-bold text-foreground mb-2"><i class="bi bi-award-fill text-amber-500"></i> {{ __('personal.personal_event_bracket_podium_prizes') }}</p>
                         <div class="space-y-2">
                             <template x-for="(p, i) in editPodium" :key="i">
                                 <div class="flex items-center gap-2">
                                     <input x-model="p.place" type="number" min="1" class="w-12 px-1 py-2 text-center border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
-                                    <input x-model="p.name" type="text" placeholder="Name" class="flex-1 min-w-0 px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
-                                    <input x-model="p.country" type="text" placeholder="Ctry" class="w-14 px-1 py-2 text-center border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
-                                    <input x-model="p.prize" type="text" placeholder="Prize" class="w-24 px-2 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                                    <input x-model="p.name" type="text" placeholder="{{ __('personal.personal_event_bracket_name') }}" class="flex-1 min-w-0 px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                                    <input x-model="p.country" type="text" placeholder="{{ __('personal.personal_event_bracket_ctry') }}" class="w-14 px-1 py-2 text-center border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                                    <input x-model="p.prize" type="text" placeholder="{{ __('personal.personal_event_bracket_prize') }}" class="w-24 px-2 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
                                     <button type="button" @click="removePodium(i)" class="m-press w-8 h-8 rounded-lg bg-muted grid place-items-center text-red-500 flex-shrink-0"><i class="bi bi-x-lg text-xs"></i></button>
                                 </div>
                             </template>
                         </div>
-                        <button type="button" @click="addPodium()" class="m-press mt-2 w-full py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground"><i class="bi bi-plus-lg"></i> Add place</button>
+                        <button type="button" @click="addPodium()" class="m-press mt-2 w-full py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground"><i class="bi bi-plus-lg"></i> {{ __('personal.personal_event_bracket_add_place') }}</button>
                     </div>
                 </div>
 
@@ -464,7 +462,7 @@
                     <button type="button" @click="saveDraw()" :disabled="busy"
                             class="m-press w-full py-3.5 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60" style="background: {{ $color }};">
                         <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-check2-circle'"></i>
-                        <span x-text="busy ? 'Saving…' : 'Save draw'"></span>
+                        <span x-text="busy ? '{{ __('personal.personal_event_bracket_saving') }}' : '{{ __('personal.personal_event_bracket_save_draw') }}'"></span>
                     </button>
                 </div>
             </div>

@@ -15,6 +15,7 @@ class WizardOtpMail extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     public string $code;
+
     public User $user;
 
     public function __construct(string $code, User $user)
@@ -26,7 +27,7 @@ class WizardOtpMail extends Mailable implements ShouldQueue
     public function envelope()
     {
         return new Envelope(
-            subject: 'Your verification code: ' . $this->code,
+            subject: 'Your verification code: '.$this->code,
         );
     }
 

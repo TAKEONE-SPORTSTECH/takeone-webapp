@@ -44,7 +44,7 @@
                 <div class="flex justify-between items-start mb-3">
                     <div>
                         <h4 class="text-xl font-bold mb-1" x-text="mode === 'edit' ? 'Edit Club' : 'Create New Club'"></h4>
-                        <p class="text-muted-foreground text-sm mb-0">Fill in the information across all tabs</p>
+                        <p class="text-muted-foreground text-sm mb-0">{{ __('shared.components_club_modal_subtitle') }}</p>
                     </div>
                     <button @click="closeModal()" class="text-muted-foreground hover:text-foreground transition-colors">
                         <i class="bi bi-x-lg text-xl"></i>
@@ -115,22 +115,21 @@
                 <button x-show="currentTab > 0"
                         @click="goToTab(currentTab - 1)"
                         class="btn btn-secondary">
-                    <i class="bi bi-arrow-left mr-2"></i>Back
+                    <i class="bi bi-arrow-left me-2"></i>{{ __('shared.back') }}
                 </button>
-                <button @click="closeModal()" class="btn btn-secondary">Cancel</button>
+                <button @click="closeModal()" class="btn btn-secondary">{{ __('shared.cancel') }}</button>
                 <button x-show="currentTab < tabs.length - 1"
                         @click="goToTab(currentTab + 1)"
                         class="btn btn-primary">
-                    Next<i class="bi bi-arrow-right ml-2"></i>
+                    {{ __('shared.components_club_modal_next') }}<i class="bi bi-arrow-right ms-2"></i>
                 </button>
                 <button x-show="currentTab === tabs.length - 1"
                         @click="handleSubmit()"
                         :disabled="isSubmitting"
-                        class="btn text-white"
-                        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        class="btn btn-primary">
                     <template x-if="isSubmitting">
                         <span class="flex items-center">
-                            <span class="spinner-border mr-2"></span>Saving...
+                            <span class="spinner-border me-2"></span>{{ __('shared.components_club_modal_saving') }}
                         </span>
                     </template>
                     <template x-if="!isSubmitting">
@@ -217,8 +216,8 @@
                     <div class="flex-1">
                         <div class="font-semibold">${user.full_name}</div>
                         <div class="text-sm text-muted-foreground">
-                            <i class="bi bi-envelope mr-1"></i>${user.email}
-                            ${user.mobile_formatted ? `<span class="ml-2"><i class="bi bi-phone mr-1"></i>${user.mobile_formatted}</span>` : ''}
+                            <i class="bi bi-envelope me-1"></i>${user.email}
+                            ${user.mobile_formatted ? `<span class="ms-2"><i class="bi bi-phone me-1"></i>${user.mobile_formatted}</span>` : ''}
                         </div>
                     </div>
                 </div>
@@ -244,8 +243,8 @@
                     <div class="flex-1">
                         <div class="font-semibold">${name}</div>
                         <div class="text-sm text-muted-foreground">
-                            <i class="bi bi-envelope mr-1"></i>${email}
-                            ${mobile ? `<span class="ml-2"><i class="bi bi-phone mr-1"></i>${mobile}</span>` : ''}
+                            <i class="bi bi-envelope me-1"></i>${email}
+                            ${mobile ? `<span class="ms-2"><i class="bi bi-phone me-1"></i>${mobile}</span>` : ''}
                         </div>
                     </div>
                 </div>
@@ -337,11 +336,11 @@
                         const club = await response.json();
                         this.populateForm(club);
                     } else {
-                        this.showToast('Failed to load club data', 'error');
+                        this.showToast('{{ __("shared.components_club_modal_failed_load_club") }}', 'error');
                     }
                 } catch (error) {
                     console.error('Error loading club data:', error);
-                    this.showToast('Error loading club data', 'error');
+                    this.showToast('{{ __("shared.components_club_modal_error_load_club") }}', 'error');
                 }
             },
 
@@ -451,8 +450,8 @@
                             <div class="flex-1">
                                 <div class="font-semibold">${owner.full_name}</div>
                                 <div class="text-sm text-muted-foreground">
-                                    <i class="bi bi-envelope mr-1"></i>${owner.email}
-                                    ${owner.mobile ? `<span class="ml-2"><i class="bi bi-phone mr-1"></i>${owner.mobile}</span>` : ''}
+                                    <i class="bi bi-envelope me-1"></i>${owner.email}
+                                    ${owner.mobile ? `<span class="ms-2"><i class="bi bi-phone me-1"></i>${owner.mobile}</span>` : ''}
                                 </div>
                             </div>
                         </div>
@@ -476,7 +475,7 @@
                 // Reset owner display
                 const ownerDisplay = document.getElementById('ownerDisplay');
                 if (ownerDisplay) {
-                    ownerDisplay.innerHTML = `<div class="text-center text-muted-foreground py-3" id="noOwnerSelected"><i class="bi bi-person-plus text-3xl mb-2 block"></i><p class="mb-0">No owner selected</p></div>`;
+                    ownerDisplay.innerHTML = `<div class="text-center text-muted-foreground py-3" id="noOwnerSelected"><i class="bi bi-person-plus text-3xl mb-2 block"></i><p class="mb-0">{{ __("shared.components_club_modal_no_owner_selected") }}</p></div>`;
                 }
             },
 
@@ -539,12 +538,12 @@
                         const slugError = slugInput.closest('.mb-4')?.querySelector('.invalid-feedback');
                         if (!slugInput.value.trim()) {
                             slugInput.classList.add('is-invalid');
-                            if (slugError) { slugError.textContent = 'Slug is required.'; slugError.style.display = 'block'; }
+                            if (slugError) { slugError.textContent = '{{ __("shared.components_club_modal_slug_required") }}'; slugError.style.display = 'block'; }
                             isValid = false;
                             errorCount++;
                         } else if (!/^[a-z0-9-]+$/.test(slugInput.value)) {
                             slugInput.classList.add('is-invalid');
-                            if (slugError) { slugError.textContent = 'Slug must only contain lowercase letters, numbers, and hyphens.'; slugError.style.display = 'block'; }
+                            if (slugError) { slugError.textContent = '{{ __("shared.components_club_modal_slug_format") }}'; slugError.style.display = 'block'; }
                             isValid = false;
                             errorCount++;
                         } else {
@@ -589,8 +588,8 @@
                             wrapper.parentNode.insertBefore(errorDiv, wrapper.nextSibling);
                         }
                         errorDiv.textContent = isInvalidEmail
-                            ? 'Please enter a valid email address.'
-                            : (input.dataset.errorMessage || 'This field is required.');
+                            ? '{{ __("shared.components_club_modal_valid_email") }}'
+                            : (input.dataset.errorMessage || '{{ __("shared.components_club_modal_field_required") }}');
                         errorDiv.style.display = 'block';
                     } else {
                         input.classList.remove('is-invalid');
@@ -710,7 +709,7 @@
                     const data = await response.json();
 
                     if (response.ok && data.success) {
-                        this.showToast(data.message || 'Club saved successfully!', 'success');
+                        this.showToast(data.message || '{{ __("shared.components_club_modal_saved_success") }}', 'success');
                         this.clearDraft();
                         this.closeModal();
 
@@ -729,13 +728,13 @@
                         if (response.status === 422 && data.errors) {
                             this.showFieldErrors(data.errors);
                         } else {
-                            this.showToast(data.message || 'An error occurred', 'error');
+                            this.showToast(data.message || '{{ __("shared.components_club_modal_error_occurred") }}', 'error');
                         }
                         this.isSubmitting = false;
                     }
                 } catch (error) {
                     console.error('Error:', error);
-                    this.showToast('An error occurred while saving', 'error');
+                    this.showToast('{{ __("shared.components_club_modal_error_saving") }}', 'error');
                     this.isSubmitting = false;
                 }
             },

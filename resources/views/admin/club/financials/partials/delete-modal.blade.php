@@ -7,7 +7,7 @@
         <div class="modal-content border-0 shadow-lg w-full max-w-sm relative rounded-lg overflow-hidden" @click.stop>
             <div class="modal-header border-b border-destructive/30 px-6 py-4">
                 <h5 class="modal-title text-destructive font-semibold">
-                    <i class="bi bi-exclamation-triangle mr-2"></i>Delete Transaction
+                    <i class="bi bi-exclamation-triangle me-2"></i>{{ __('admin.partials_delete_modal_title') }}
                 </h5>
                 <button type="button" class="text-muted-foreground hover:text-foreground" @click="showDeleteModal = false">
                     <i class="bi bi-x-lg"></i>
@@ -17,16 +17,16 @@
                 @csrf
                 @method('DELETE')
                 <div class="modal-body px-6 py-4">
-                    <p class="mb-2">Are you sure you want to delete this transaction?</p>
+                    <p class="mb-2">{{ __('admin.partials_delete_modal_confirm') }}</p>
                     <p class="font-semibold text-sm" x-text="deleteTransactionRef"></p>
                     <div class="alert alert-danger mt-3 text-sm">
-                        <i class="bi bi-exclamation-triangle mr-1"></i>This action cannot be undone.
+                        <i class="bi bi-exclamation-triangle me-1"></i>{{ __('admin.partials_delete_modal_undone') }}
                     </div>
                 </div>
                 <div class="modal-footer border-t border-border px-6 py-4 flex justify-end gap-3">
-                    <button type="button" class="btn btn-secondary" @click="showDeleteModal = false">Cancel</button>
+                    <button type="button" class="btn btn-secondary" @click="showDeleteModal = false">{{ __('shared.cancel') }}</button>
                     <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-trash mr-1"></i>Delete
+                        <i class="bi bi-trash me-1"></i>{{ __('shared.delete') }}
                     </button>
                 </div>
             </form>

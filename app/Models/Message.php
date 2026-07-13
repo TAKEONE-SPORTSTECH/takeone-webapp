@@ -16,9 +16,9 @@ class Message extends Model
     protected $casts = [
         // Encrypted at rest (AES-256-GCM via APP_KEY). Transparent to the app:
         // reads decrypt, writes encrypt. A raw DB dump exposes only ciphertext.
-        'body'                  => 'encrypted',
-        'edited_at'             => 'datetime',
-        'deleted_at'            => 'datetime',
+        'body' => 'encrypted',
+        'edited_at' => 'datetime',
+        'deleted_at' => 'datetime',
         'attachment_expires_at' => 'datetime',
     ];
 

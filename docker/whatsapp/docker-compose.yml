@@ -1,0 +1,57 @@
+# TAKEONE WhatsApp — self-hosted OpenWA gateway (github.com/rmyndharis/OpenWA)
+#
+#   docker compose up -d
+#
+# Exposes:
+#   2785   Plain HTTP — REST API + bundled dashboard
+#          (http://127.0.0.1:2785, http://192.168.0.37:2785)
+#
+# Public/remote browser access to the dashboard goes through a Cloudflare Zero
+# Trust Tunnel (cloudflared), configured on the Cloudflare side with a public
+# hostname route (wa.takeone.bh) pointing at the origin service
+# http://192.168.0.37:2785 — Cloudflare's edge terminates real TLS, so OpenWA's
+# `upgrade-insecure-requests` CSP (which blanks the dashboard when loaded over
+# plain HTTP directly) is a non-issue: the browser only ever sees https://wa.takeone.bh.
+#
+# On first boot OpenWA seeds an admin API key, printed to the container log and
+# written to ./data/.api-key. Use it (or a scoped key minted from it) as the
+# X-API-Key for the app's WhatsApp integration settings (/admin/settings), and to
+# log into the dashboard above.
+# Single-container SQLite setup — no Postgres/Redis/MinIO profiles needed for one session.
+services:
+  openwa:
+    image: ghcr.io/rmyndharis/openwa:latest
+    container_name: takeone-openwa
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:2785:2785"
+      - "192.168.0.37:2785:2785"
+    environment:
+      - NODE_ENV=production
+      - PORT=2785
+      - HOME=/tmp
+      - XDG_CONFIG_HOME=/tmp/.config
+      - XDG_CACHE_HOME=/tmp/.cache
+      - LOG_LEVEL=info
+      - DATABASE_TYPE=sqlite
+      - DATABASE_SYNCHRONIZE=true
+      - SESSION_DATA_PATH=/app/data/sessions
+      - PUPPETEER_HEADLESS=true
+      - PUPPETEER_ARGS=--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage,--disable-gpu
+      - STORAGE_TYPE=local
+      - STORAGE_LOCAL_PATH=/app/data/media
+      - PLUGINS_DIR=/app/data/plugins
+      - WEBHOOK_TIMEOUT=10000
+      - WEBHOOK_MAX_RETRIES=3
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:2785/api/health/ready', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+networks:
+  default:
+    name: openwa-network

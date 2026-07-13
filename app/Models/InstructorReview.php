@@ -50,8 +50,9 @@ class InstructorReview extends Model
     public function getFormattedDateAttribute(): string
     {
         if ($this->wasUpdated()) {
-            return 'Updated ' . $this->updated_at->diffForHumans();
+            return 'Updated '.$this->updated_at->diffForHumans();
         }
+
         return $this->reviewed_at->diffForHumans();
     }
 }

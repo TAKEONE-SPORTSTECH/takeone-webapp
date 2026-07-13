@@ -2,11 +2,33 @@
      that needs the "Select Package" → register modal. Requires $club + $familyMembers
      in scope. Exposes window function openSelectPackageModal(packageId). --}}
 @php
-    $packagesForJs = $club->packages->map(function ($p) {
+    // Equipment catalog per package (computed on a separate collection so the
+    // schedule/instructor mapping below keeps its own relations intact).
+    $joinCostSvc = app(\App\Services\RegistrationCostService::class);
+    $eqPackages  = \App\Models\ClubPackage::where('tenant_id', $club->id)->get();
+    $joinCostSvc->attachEquipmentToPackages($eqPackages, $club->id, null);
+    $equipmentByPkg = $eqPackages->pluck('equipment', 'id');
+
+    $joinOwnedMap = [];
+    if (auth()->check()) {
+        $joinMemberIds = collect([auth()->id()])
+            ->merge(\App\Models\UserRelationship::where('guardian_user_id', auth()->id())->pluck('dependent_user_id'))
+            ->unique();
+        foreach ($joinMemberIds as $mid) {
+            $joinOwnedMap[$mid] = [
+                'products' => $joinCostSvc->ownedProductIds($club->id, $mid),
+                'variants' => $joinCostSvc->ownedVariantIds($club->id, $mid),
+            ];
+        }
+    }
+
+    $packagesForJs = $club->packages->map(function ($p) use ($equipmentByPkg) {
         return [
             'id'              => $p->id,
             'name'            => $p->name,
             'price'           => $p->price,
+            'registration_fee'=> $p->registration_fee,
+            'equipment'       => $equipmentByPkg[$p->id] ?? [],
             'duration_months' => $p->duration_months,
             'age_min'         => $p->age_min,
             'age_max'         => $p->age_max,
@@ -50,6 +72,8 @@ function selectPackageApp() {
             clubCountry: '{{ $club->country_code ?? "bh" }}',
             currency: @json($club->currency ?? 'BHD'),
             enrollmentFee: {{ $club->enrollment_fee ?? 0 }},
+            registrationFee: {{ $club->registration_fee ?? 0 }},
+            ownedMap: @json($joinOwnedMap),
             vatPercentage: {{ $club->vat_percentage ?? 0 }},
             vatRegNumber: @json($club->vat_reg_number ?? null),
             familyMembers: @json($familyMembers),
@@ -120,7 +144,52 @@ function selectPackageApp() {
                         name: m.name, gender: m.gender || '', dateOfBirth: m.birthdate || '',
                         avatarUrl: m.profile_picture ? '/storage/' + m.profile_picture : null,
                         relationship: m.relationship, isMember: m.is_member || false,
+                        equipment: [],
                     }));
+            },
+
+            // Equipment offering per registrant — required gear ticked unless owned.
+            buildEquipment() {
+                this.registrants = this.registrants.map(reg => {
+                    const pkg = this.getPackageForRegistrant(reg);
+                    const ownedFor = this.ownedMap[reg.userId] || { products: [], variants: [] };
+                    const items = (pkg?.equipment || []).map(e => {
+                        const owned = e.has_variants ? false : (e.already_owned || (ownedFor.products || []).includes(e.product_id));
+                        return {
+                            id: e.id, product_id: e.product_id, name: e.name,
+                            price: Number(e.price || 0), image: e.image || null,
+                            is_required: !!e.is_required, has_variants: !!e.has_variants,
+                            variants: e.variants || [], owned: owned, variantId: '',
+                            selected: !!e.is_required && !owned,
+                        };
+                    });
+                    return { ...reg, equipment: items };
+                });
+            },
+            hasAnyEquipment() { return this.registrants.some(r => (r.equipment || []).length > 0); },
+            toggleEquip(reg, item) { item.selected = !item.selected; },
+            setEquipVariant(item, variantId) { item.variantId = variantId; item.selected = true; },
+            equipItemPrice(item) {
+                if (item.has_variants && item.variantId) {
+                    const v = (item.variants || []).find(x => x.id == item.variantId);
+                    return v ? Number(v.price || 0) : 0;
+                }
+                return Number(item.price || 0);
+            },
+            equipmentTotal() {
+                let total = 0;
+                this.registrants.forEach(reg => (reg.equipment || []).forEach(item => { if (item.selected) total += this.equipItemPrice(item); }));
+                return total;
+            },
+            registrationFeeFor(reg) {
+                const pkg = this.getPackageForRegistrant(reg);
+                const override = pkg && pkg.registration_fee != null ? Number(pkg.registration_fee) : null;
+                let fee = override != null ? override : Number(this.registrationFee || 0);
+                if (fee <= 0) fee = Number(this.enrollmentFee || 0);
+                return fee;
+            },
+            registrationTotal() {
+                return this.registrants.reduce((s, reg) => s + (reg.isMember ? 0 : this.registrationFeeFor(reg)), 0);
             },
 
             selectPackage(registrantId, packageId) {
@@ -141,19 +210,36 @@ function selectPackageApp() {
                 });
             },
 
+            _steps() {
+                const s = ['select-members'];
+                if (!this._preselectPackageId) s.push('package-selection');
+                if (this.hasAnyEquipment()) s.push('equipment');
+                s.push('payment-review');
+                return s;
+            },
+            stepIndex() { const i = this._steps().indexOf(this.step); return i < 0 ? 1 : i + 1; },
+            stepCount() { return this._steps().length; },
+
             goBack() {
                 if (this.step === 'select-members') this.close();
                 else if (this.step === 'package-selection') this.step = 'select-members';
-                else if (this.step === 'payment-review') this.step = this._preselectPackageId ? 'select-members' : 'package-selection';
+                else if (this.step === 'equipment') this.step = this._preselectPackageId ? 'select-members' : 'package-selection';
+                else if (this.step === 'payment-review') this.step = this.hasAnyEquipment() ? 'equipment' : (this._preselectPackageId ? 'select-members' : 'package-selection');
             },
             goNext() {
                 if (this.step === 'select-members') {
                     if (this.selectedMemberIds.length === 0) { Toast.warning('No Members Selected', 'Please select at least one person to register.'); return; }
                     this.buildRegistrants();
-                    this.step = this._preselectPackageId ? 'payment-review' : 'package-selection';
+                    this.buildEquipment();
+                    this.step = this.hasAnyEquipment() ? 'equipment' : (this._preselectPackageId ? 'payment-review' : 'package-selection');
                 } else if (this.step === 'package-selection') {
                     const missing = this.registrants.filter(r => !r.packageId);
                     if (missing.length > 0) { Toast.warning('Packages Required', 'Please select a package for all registrants.'); return; }
+                    this.buildEquipment();
+                    this.step = this.hasAnyEquipment() ? 'equipment' : 'payment-review';
+                } else if (this.step === 'equipment') {
+                    const missingVariant = this.registrants.some(r => (r.equipment || []).some(i => i.selected && i.has_variants && !i.variantId));
+                    if (missingVariant) { Toast.warning('Choose an option', 'Please pick a size/variant for each selected item.'); return; }
                     this.step = 'payment-review';
                 } else if (this.step === 'payment-review') { this.handleSubmit(); }
             },
@@ -173,6 +259,14 @@ function selectPackageApp() {
                         formData.append(`registrants[${i}][package_id]`, reg.packageId);
                         formData.append(`registrants[${i}][gender]`, reg.gender || '');
                         if (reg.dateOfBirth) formData.append(`registrants[${i}][date_of_birth]`, reg.dateOfBirth);
+                        (reg.equipment || []).forEach(item => {
+                            if (item.selected) {
+                                formData.append(`registrants[${i}][equipment][]`, item.id);
+                                if (item.has_variants && item.variantId) formData.append(`registrants[${i}][variants][${item.id}]`, item.variantId);
+                            } else if (item.is_required && !item.owned) {
+                                formData.append(`registrants[${i}][owned_equipment][]`, item.id);
+                            }
+                        });
                     });
                     if (!this.payLater) {
                         const proofBase64 = document.getElementById('hiddenInput_joinPaymentProofCropper')?.value;
@@ -200,8 +294,7 @@ function selectPackageApp() {
             },
             calculateSubtotal() {
                 const packageTotal = this.registrants.reduce((sum, reg) => { const pkg = this.packages.find(p => p.id == reg.packageId); return sum + Number(pkg?.price || 0); }, 0);
-                const enrollmentTotal = this.enrollmentFee * this.registrants.length;
-                return (packageTotal + enrollmentTotal).toFixed(2);
+                return (packageTotal + this.registrationTotal() + this.equipmentTotal()).toFixed(2);
             },
             calculateVat() { if (!this.vatPercentage || this.vatPercentage <= 0) return '0.00'; return (parseFloat(this.calculateSubtotal()) * this.vatPercentage / 100).toFixed(2); },
             calculateTotal() { return (parseFloat(this.calculateSubtotal()) + parseFloat(this.calculateVat())).toFixed(2); },

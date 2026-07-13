@@ -17,7 +17,7 @@ class EnsureHasBusiness
     {
         $business = Auth::user()?->ownedBusiness;
 
-        if (!$business || !$business->isApproved()) {
+        if (! $business || ! $business->isApproved()) {
             return redirect()->route('business.setup');
         }
 

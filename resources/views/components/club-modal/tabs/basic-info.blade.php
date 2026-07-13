@@ -5,13 +5,13 @@
 @endphp
 
 <div class="px-0">
-    <h5 class="font-bold mb-3">Basic Information</h5>
-    <p class="text-muted-foreground mb-4">Core details about the club</p>
+    <h5 class="font-bold mb-3">{{ __('shared.tabs_basic_info_title') }}</h5>
+    <p class="text-muted-foreground mb-4">{{ __('shared.tabs_basic_info_subtitle') }}</p>
 
     <!-- Club Name -->
     <div class="mb-4">
         <label for="club_name" class="form-label">
-            Club Name <span class="text-destructive">*</span>
+            {{ __('shared.tabs_basic_info_club_name_label') }} <span class="text-destructive">*</span>
         </label>
         <input type="text"
                class="form-control"
@@ -19,15 +19,15 @@
                name="club_name"
                value="{{ $club->club_name ?? old('club_name') }}"
                required
-               data-error-message="Club name is required"
-               placeholder="e.g., Bahrain Taekwondo Academy">
-        <div class="invalid-feedback">Club name is required.</div>
+               data-error-message="{{ __('shared.tabs_basic_info_club_name_error') }}"
+               placeholder="{{ __('shared.tabs_basic_info_club_name_placeholder') }}">
+        <div class="invalid-feedback">{{ __('shared.tabs_basic_info_club_name_error_feedback') }}</div>
     </div>
 
     <!-- Club Owner -->
     <div class="mb-4">
         <label class="form-label">
-            Club Owner <span class="text-destructive">*</span>
+            {{ __('shared.tabs_basic_info_club_owner_label') }} <span class="text-destructive">*</span>
         </label>
         <input type="hidden" id="owner_user_id" name="owner_user_id" value="{{ $club->owner_user_id ?? old('owner_user_id') }}" required>
 
@@ -46,9 +46,9 @@
                     <div class="flex-1">
                         <div class="font-semibold">{{ $club->owner->full_name }}</div>
                         <div class="text-sm text-muted-foreground">
-                            <i class="bi bi-envelope mr-1"></i>{{ $club->owner->email }}
+                            <i class="bi bi-envelope me-1"></i>{{ $club->owner->email }}
                             @if($club->owner->mobile)
-                                <span class="ml-2"><i class="bi bi-phone mr-1"></i>{{ $club->owner->mobile_formatted }}</span>
+                                <span class="me-2"><i class="bi bi-phone me-1"></i>{{ $club->owner->mobile_formatted }}</span>
                             @endif
                         </div>
                     </div>
@@ -56,16 +56,16 @@
             @else
                 <div class="text-center text-muted-foreground py-3" id="noOwnerSelected">
                     <i class="bi bi-person-plus text-3xl mb-2 block"></i>
-                    <p class="mb-0">No owner selected</p>
+                    <p class="mb-0">{{ __('shared.tabs_basic_info_no_owner') }}</p>
                 </div>
             @endif
         </div>
 
         <button type="button" class="btn btn-outline-primary btn-sm" onclick="showUserPicker()">
-            <i class="bi bi-search mr-2"></i>Select Club Owner
+            <i class="bi bi-search me-2"></i>{{ __('shared.tabs_basic_info_select_owner') }}
         </button>
         <div class="invalid-feedback block" id="ownerError" style="display: none !important;">
-            Please select a club owner.
+            {{ __('shared.tabs_basic_info_select_owner_error') }}
         </div>
     </div>
 
@@ -74,8 +74,8 @@
         <div class="user-picker-panel">
             <div class="user-picker-header flex justify-between items-start p-4 border-b border-border">
                 <div>
-                    <h5 class="font-bold mb-1">Select Club Owner</h5>
-                    <p class="text-muted-foreground text-sm mb-0">Search and select a user to be the club owner</p>
+                    <h5 class="font-bold mb-1">{{ __('shared.tabs_basic_info_select_owner') }}</h5>
+                    <p class="text-muted-foreground text-sm mb-0">{{ __('shared.tabs_basic_info_owner_search_hint') }}</p>
                 </div>
                 <button type="button" class="btn-close" onclick="hideUserPicker()"></button>
             </div>
@@ -89,24 +89,24 @@
                         <input type="text"
                                class="form-control"
                                id="userSearchInputInternal"
-                               placeholder="Search by name, email, or phone..."
+                               placeholder="{{ __('shared.tabs_basic_info_owner_search_placeholder') }}"
                                autocomplete="off">
                     </div>
                 </div>
 
                 <div id="userPickerLoadingInternal" class="text-center py-5" style="display: none;">
                     <div class="spinner-border text-primary" role="status">
-                        <span class="sr-only">Loading...</span>
+                        <span class="sr-only">{{ __('shared.loading') }}</span>
                     </div>
-                    <p class="text-muted-foreground mt-2">Searching users...</p>
+                    <p class="text-muted-foreground mt-2">{{ __('shared.tabs_basic_info_searching_users') }}</p>
                 </div>
 
                 <div id="userPickerResultsInternal" style="max-height: 400px; overflow-y: auto;"></div>
 
                 <div id="userPickerNoResultsInternal" class="text-center py-5" style="display: none;">
                     <i class="bi bi-person-x text-4xl text-muted-foreground mb-3 block"></i>
-                    <p class="text-muted-foreground mb-0">No users found</p>
-                    <small class="text-muted-foreground">Try a different search term</small>
+                    <p class="text-muted-foreground mb-0">{{ __('shared.tabs_basic_info_no_users') }}</p>
+                    <small class="text-muted-foreground">{{ __('shared.tabs_basic_info_try_different_search') }}</small>
                 </div>
             </div>
         </div>
@@ -115,7 +115,7 @@
     <!-- Established Date -->
     <div class="mb-4">
         <label for="established_date" class="form-label">
-            Established Date
+            {{ __('shared.tabs_basic_info_established_date_label') }}
         </label>
         <input type="date"
                class="form-control"
@@ -123,37 +123,37 @@
                name="established_date"
                value="{{ $club->established_date ?? old('established_date') }}"
                max="{{ date('Y-m-d') }}">
-        <small class="text-muted-foreground">When was the club founded?</small>
+        <small class="text-muted-foreground">{{ __('shared.tabs_basic_info_established_hint') }}</small>
     </div>
 
     <!-- Slogan -->
     <div class="mb-4">
         <label for="slogan" class="form-label">
-            Slogan
+            {{ __('shared.tabs_basic_info_slogan_label') }}
         </label>
         <input type="text"
                class="form-control"
                id="slogan"
                name="slogan"
                value="{{ $club->slogan ?? old('slogan') }}"
-               placeholder="e.g., Excellence in Martial Arts"
+               placeholder="{{ __('shared.tabs_basic_info_slogan_placeholder') }}"
                maxlength="100">
-        <small class="text-muted-foreground">A short, memorable tagline (max 100 characters)</small>
+        <small class="text-muted-foreground">{{ __('shared.tabs_basic_info_slogan_hint') }}</small>
     </div>
 
     <!-- Description -->
     <div class="mb-4">
         <label for="description" class="form-label">
-            Description
+            {{ __('shared.tabs_basic_info_description_label') }}
         </label>
         <textarea class="form-control"
                   id="description"
                   name="description"
                   rows="4"
-                  placeholder="Describe your club, its mission, and what makes it unique..."
+                  placeholder="{{ __('shared.tabs_basic_info_description_placeholder') }}"
                   maxlength="1000">{{ $club->description ?? old('description') }}</textarea>
         <small class="text-muted-foreground">
-            <span id="descriptionCount">0</span>/1000 characters
+            <span id="descriptionCount">0</span>{{ __('shared.tabs_basic_info_characters_suffix') }}
         </small>
     </div>
 
@@ -164,14 +164,14 @@
     @endphp
     <div class="mb-4" x-data="{ lang: 'en' }">
         <div class="flex items-center justify-between mb-3">
-            <h6 class="font-semibold mb-0">Self-registration content</h6>
+            <h6 class="font-semibold mb-0">{{ __('shared.tabs_basic_info_self_reg_content') }}</h6>
             <x-lang-toggle />
         </div>
-        <p class="text-muted-foreground text-sm mb-4">Shown on the Terms step of the self-registration wizard. Provide each language — registrants see the version matching their chosen language. Format with the toolbar (headings, bold, lists).</p>
+        <p class="text-muted-foreground text-sm mb-4">{{ __('shared.tabs_basic_info_self_reg_hint') }}</p>
 
         {{-- Registration requirements --}}
         <div class="mb-4">
-            <label class="form-label">Registration requirements</label>
+            <label class="form-label">{{ __('shared.tabs_basic_info_reg_requirements_label') }}</label>
             <div x-show="lang==='en'">
                 <x-rich-text-editor name="registration_requirements" :value="$club->registration_requirements ?? ''"
                     placeholder="What members need to register — e.g. valid CPR/ID, recent photo, proof of payment, minimum age…" />
@@ -180,12 +180,12 @@
                 <x-rich-text-editor name="translations[registration_requirements][ar]" :value="$reqAr" dir="rtl"
                     placeholder="ما يحتاجه الأعضاء للتسجيل — مثل بطاقة هوية سارية، صورة حديثة، إثبات دفع، الحد الأدنى للعمر…" />
             </div>
-            <small class="text-muted-foreground">Leave blank to hide this section.</small>
+            <small class="text-muted-foreground">{{ __('shared.tabs_basic_info_leave_blank_hide') }}</small>
         </div>
 
         {{-- Registration terms & conditions --}}
         <div class="mb-2">
-            <label class="form-label">Registration terms &amp; conditions</label>
+            <label class="form-label">{{ __('shared.tabs_basic_info_reg_terms_label') }}</label>
             <div x-show="lang==='en'">
                 <x-rich-text-editor name="registration_terms" :value="$club->registration_terms ?? ''" min-height="200px"
                     placeholder="Your club's terms &amp; conditions for joining. Leave blank to use the platform default." />
@@ -194,7 +194,7 @@
                 <x-rich-text-editor name="translations[registration_terms][ar]" :value="$termsAr" dir="rtl" min-height="200px"
                     placeholder="شروط وأحكام النادي للانضمام. اتركه فارغًا لاستخدام الشروط الافتراضية." />
             </div>
-            <small class="text-muted-foreground">Leave blank to use the default terms.</small>
+            <small class="text-muted-foreground">{{ __('shared.tabs_basic_info_leave_blank_default') }}</small>
         </div>
     </div>
 
@@ -202,26 +202,26 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
             <label for="commercial_reg_number" class="form-label">
-                Commercial Registration Number
+                {{ __('shared.tabs_basic_info_commercial_reg_label') }}
             </label>
             <input type="text"
                    class="form-control"
                    id="commercial_reg_number"
                    name="commercial_reg_number"
                    value="{{ $club->commercial_reg_number ?? old('commercial_reg_number') }}"
-                   placeholder="e.g., CR-123456">
-            <small class="text-muted-foreground">Official business registration number</small>
+                   placeholder="{{ __('shared.tabs_basic_info_commercial_reg_placeholder') }}">
+            <small class="text-muted-foreground">{{ __('shared.tabs_basic_info_commercial_reg_hint') }}</small>
         </div>
         <div>
             <label for="commercial_reg_file" class="form-label">
-                Registration Document
+                {{ __('shared.tabs_basic_info_reg_document_label') }}
             </label>
             <input type="file"
                    class="form-control"
                    id="commercial_reg_file"
                    name="commercial_reg_file"
                    accept=".pdf,.jpg,.jpeg,.png">
-            <small class="text-muted-foreground">Upload registration certificate (optional)</small>
+            <small class="text-muted-foreground">{{ __('shared.tabs_basic_info_reg_document_hint') }}</small>
         </div>
     </div>
 
@@ -229,19 +229,19 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
             <label for="vat_reg_number" class="form-label">
-                VAT Registration Number
+                {{ __('shared.tabs_basic_info_vat_reg_label') }}
             </label>
             <input type="text"
                    class="form-control"
                    id="vat_reg_number"
                    name="vat_reg_number"
                    value="{{ $club->vat_reg_number ?? old('vat_reg_number') }}"
-                   placeholder="e.g., VAT-123456789">
-            <small class="text-muted-foreground">Tax registration number (if applicable)</small>
+                   placeholder="{{ __('shared.tabs_basic_info_vat_reg_placeholder') }}">
+            <small class="text-muted-foreground">{{ __('shared.tabs_basic_info_vat_reg_hint') }}</small>
         </div>
         <div>
             <label for="vat_percentage" class="form-label">
-                VAT Percentage (%)
+                {{ __('shared.tabs_basic_info_vat_pct_label') }}
             </label>
             <input type="number"
                    class="form-control"
@@ -251,22 +251,22 @@
                    min="0"
                    max="100"
                    step="0.01"
-                   placeholder="e.g., 5.00">
-            <small class="text-muted-foreground">Default VAT rate for invoices</small>
+                   placeholder="{{ __('shared.tabs_basic_info_vat_pct_placeholder') }}">
+            <small class="text-muted-foreground">{{ __('shared.tabs_basic_info_vat_pct_hint') }}</small>
         </div>
     </div>
 
     <!-- VAT Certificate Upload -->
     <div class="mb-4">
         <label for="vat_certificate_file" class="form-label">
-            VAT Certificate
+            {{ __('shared.tabs_basic_info_vat_cert_label') }}
         </label>
         <input type="file"
                class="form-control"
                id="vat_certificate_file"
                name="vat_certificate_file"
                accept=".pdf,.jpg,.jpeg,.png">
-        <small class="text-muted-foreground">Upload VAT registration certificate (optional)</small>
+        <small class="text-muted-foreground">{{ __('shared.tabs_basic_info_vat_cert_hint') }}</small>
     </div>
 </div>
 

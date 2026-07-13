@@ -36,7 +36,7 @@ class ClubMemberAdminController extends Controller
         $enrolledUserIds = ClubMemberSubscription::where('tenant_id', $clubId)
             ->whereIn('user_id', function ($q) use ($clubId) {
                 $q->select('user_id')->from('memberships')
-                  ->where('tenant_id', $clubId)->where('status', 'active');
+                    ->where('tenant_id', $clubId)->where('status', 'active');
             })
             ->where(fn ($q) => $q->where('type', 'owner')
                 ->orWhere(fn ($q2) => $q2->where('type', 'regular')->whereIn('status', ['active', 'pending']))
@@ -53,14 +53,14 @@ class ClubMemberAdminController extends Controller
             ")
             ->first();
 
-        $allCount       = (int) ($counts->all_active ?? 0);
-        $formerCount    = (int) ($counts->former_count ?? 0);
-        $activeCount    = Membership::where('tenant_id', $clubId)
-                            ->where('status', 'active')
-                            ->whereIn('user_id', $enrolledUserIds)
-                            ->count();
+        $allCount = (int) ($counts->all_active ?? 0);
+        $formerCount = (int) ($counts->former_count ?? 0);
+        $activeCount = Membership::where('tenant_id', $clubId)
+            ->where('status', 'active')
+            ->whereIn('user_id', $enrolledUserIds)
+            ->count();
         $notActiveCount = $allCount - $activeCount;
-        $statusCounts   = ['all' => $allCount, 'active' => $activeCount, 'not_active' => $notActiveCount];
+        $statusCounts = ['all' => $allCount, 'active' => $activeCount, 'not_active' => $notActiveCount];
 
         // Demographics — gender + birthdate only
         $activeUsers = DB::table('memberships as m')
@@ -69,18 +69,26 @@ class ClubMemberAdminController extends Controller
             ->select('u.gender', 'u.birthdate')
             ->get();
 
-        $maleCount   = $activeUsers->filter(fn ($u) => strtolower($u->gender ?? '') === 'male')->count();
+        $maleCount = $activeUsers->filter(fn ($u) => strtolower($u->gender ?? '') === 'male')->count();
         $femaleCount = $activeUsers->filter(fn ($u) => strtolower($u->gender ?? '') === 'female')->count();
 
         $ageGroupCounts = ['Kids' => 0, 'Cadet' => 0, 'Junior' => 0, 'Senior' => 0, 'Masters' => 0];
         foreach ($activeUsers as $u) {
-            if (!$u->birthdate) continue;
+            if (! $u->birthdate) {
+                continue;
+            }
             $age = \Carbon\Carbon::parse($u->birthdate)->age;
-            if      ($age >= 6  && $age < 12) $ageGroupCounts['Kids']++;
-            elseif  ($age >= 12 && $age < 15) $ageGroupCounts['Cadet']++;
-            elseif  ($age >= 15 && $age < 18) $ageGroupCounts['Junior']++;
-            elseif  ($age >= 18 && $age < 31) $ageGroupCounts['Senior']++;
-            elseif  ($age >= 31)              $ageGroupCounts['Masters']++;
+            if ($age >= 6 && $age < 12) {
+                $ageGroupCounts['Kids']++;
+            } elseif ($age >= 12 && $age < 15) {
+                $ageGroupCounts['Cadet']++;
+            } elseif ($age >= 15 && $age < 18) {
+                $ageGroupCounts['Junior']++;
+            } elseif ($age >= 18 && $age < 31) {
+                $ageGroupCounts['Senior']++;
+            } elseif ($age >= 31) {
+                $ageGroupCounts['Masters']++;
+            }
         }
 
         $packages = ClubPackage::where('tenant_id', $clubId)->with('activities.equipment')->get();
@@ -101,34 +109,46 @@ class ClubMemberAdminController extends Controller
             $key = now()->subMonths($i)->format('Y-m');
             $monthlyLabels[] = now()->subMonths($i)->format('M Y');
             $slots[$key] = ['total' => 0, 'male' => 0, 'female' => 0,
-                            'Kids' => 0, 'Cadet' => 0, 'Junior' => 0, 'Senior' => 0, 'Masters' => 0];
+                'Kids' => 0, 'Cadet' => 0, 'Junior' => 0, 'Senior' => 0, 'Masters' => 0];
         }
 
         foreach ($recentMembers as $row) {
             $ym = $row->ym;
-            if (!isset($slots[$ym])) continue;
+            if (! isset($slots[$ym])) {
+                continue;
+            }
             $slots[$ym]['total']++;
             $g = strtolower($row->gender ?? '');
-            if ($g === 'male')   $slots[$ym]['male']++;
-            if ($g === 'female') $slots[$ym]['female']++;
+            if ($g === 'male') {
+                $slots[$ym]['male']++;
+            }
+            if ($g === 'female') {
+                $slots[$ym]['female']++;
+            }
             if ($row->birthdate) {
                 $age = \Carbon\Carbon::parse($row->birthdate)->age;
-                if      ($age >= 6  && $age < 12) $slots[$ym]['Kids']++;
-                elseif  ($age >= 12 && $age < 15) $slots[$ym]['Cadet']++;
-                elseif  ($age >= 15 && $age < 18) $slots[$ym]['Junior']++;
-                elseif  ($age >= 18 && $age < 31) $slots[$ym]['Senior']++;
-                elseif  ($age >= 31)              $slots[$ym]['Masters']++;
+                if ($age >= 6 && $age < 12) {
+                    $slots[$ym]['Kids']++;
+                } elseif ($age >= 12 && $age < 15) {
+                    $slots[$ym]['Cadet']++;
+                } elseif ($age >= 15 && $age < 18) {
+                    $slots[$ym]['Junior']++;
+                } elseif ($age >= 18 && $age < 31) {
+                    $slots[$ym]['Senior']++;
+                } elseif ($age >= 31) {
+                    $slots[$ym]['Masters']++;
+                }
             }
         }
 
-        $monthlyNewMembers  = array_column(array_values($slots), 'total');
-        $monthlyMale        = array_column(array_values($slots), 'male');
-        $monthlyFemale      = array_column(array_values($slots), 'female');
-        $monthlyKids        = array_column(array_values($slots), 'Kids');
-        $monthlyCadet       = array_column(array_values($slots), 'Cadet');
-        $monthlyJunior      = array_column(array_values($slots), 'Junior');
-        $monthlySenior      = array_column(array_values($slots), 'Senior');
-        $monthlyMasters     = array_column(array_values($slots), 'Masters');
+        $monthlyNewMembers = array_column(array_values($slots), 'total');
+        $monthlyMale = array_column(array_values($slots), 'male');
+        $monthlyFemale = array_column(array_values($slots), 'female');
+        $monthlyKids = array_column(array_values($slots), 'Kids');
+        $monthlyCadet = array_column(array_values($slots), 'Cadet');
+        $monthlyJunior = array_column(array_values($slots), 'Junior');
+        $monthlySenior = array_column(array_values($slots), 'Senior');
+        $monthlyMasters = array_column(array_values($slots), 'Masters');
 
         // On mobile we render the roster server-side (desktop loads it via AJAX).
         $mobileMembers = collect();
@@ -196,7 +216,7 @@ class ClubMemberAdminController extends Controller
         $enrolledUserIds = ClubMemberSubscription::where('tenant_id', $clubId)
             ->whereIn('user_id', function ($q) use ($clubId) {
                 $q->select('user_id')->from('memberships')
-                  ->where('tenant_id', $clubId)->where('status', 'active');
+                    ->where('tenant_id', $clubId)->where('status', 'active');
             })
             ->where(fn ($q) => $q->where('type', 'owner')
                 ->orWhere(fn ($q2) => $q2->where('type', 'regular')->whereIn('status', ['active', 'pending']))
@@ -258,51 +278,81 @@ class ClubMemberAdminController extends Controller
             ->get()
             ->map(function ($sub) use ($club) {
                 return [
-                    'id'             => $sub->id,
-                    'package'        => $sub->package?->name ?? 'N/A',
-                    'currency'       => $sub->package?->currency ?? 'BHD',
-                    'start_date'     => $sub->start_date?->format('M d, Y') ?? 'N/A',
-                    'end_date'       => $sub->end_date?->format('M d, Y') ?? 'Ongoing',
+                    'id' => $sub->id,
+                    'package' => $sub->package?->name ?? 'N/A',
+                    'currency' => $sub->package?->currency ?? 'BHD',
+                    'start_date' => $sub->start_date?->format('M d, Y') ?? 'N/A',
+                    'end_date' => $sub->end_date?->format('M d, Y') ?? 'Ongoing',
                     'payment_status' => $sub->payment_status ?? 'pending',
-                    'amount_due'     => number_format((float) ($sub->amount_due ?? 0), 2),
-                    'amount_paid'    => number_format((float) ($sub->amount_paid ?? 0), 2),
-                    'status'         => $sub->status,
-                    'is_active'      => in_array($sub->status, ['active', 'pending']),
-                    'has_proof'      => (bool) $sub->proof_of_payment,
-                    'approve_url'    => route('admin.club.subscriptions.approve-payment', [$club->slug, $sub->id]),
-                    'proof_url'      => $sub->proof_of_payment
+                    'amount_due' => number_format((float) ($sub->amount_due ?? 0), 2),
+                    'amount_paid' => number_format((float) ($sub->amount_paid ?? 0), 2),
+                    'status' => $sub->status,
+                    'is_active' => in_array($sub->status, ['active', 'pending']),
+                    'has_proof' => (bool) $sub->proof_of_payment,
+                    'approve_url' => route('admin.club.subscriptions.approve-payment', [$club->slug, $sub->id]),
+                    'proof_url' => $sub->proof_of_payment
                         ? route('admin.club.subscriptions.payment-proof', [$club->slug, $sub->id])
                         : null,
                 ];
             });
 
         $phone = is_array($user->mobile)
-            ? trim(($user->mobile['code'] ?? '') . ' ' . ($user->mobile['number'] ?? ''))
+            ? trim(($user->mobile['code'] ?? '').' '.($user->mobile['number'] ?? ''))
             : ($user->mobile ?? '');
 
         return response()->json([
-            'id'          => $user->id,
-            'name'        => $user->full_name,
-            'initial'     => mb_strtoupper(mb_substr($user->full_name ?? 'M', 0, 1, 'UTF-8'), 'UTF-8'),
+            'id' => $user->id,
+            'name' => $user->full_name,
+            'initial' => mb_strtoupper(mb_substr($user->full_name ?? 'M', 0, 1, 'UTF-8'), 'UTF-8'),
             'has_picture' => (bool) $user->profile_picture,
             'picture_url' => $user->profile_picture
-                ? asset('storage/' . $user->profile_picture) . '?v=' . $user->updated_at->timestamp
+                ? asset('storage/'.$user->profile_picture).'?v='.$user->updated_at->timestamp
                 : null,
-            'gender'        => $user->gender ?? 'Male',
-            'phone'         => $phone ?: 'N/A',
-            'email'         => $user->email ?? 'N/A',
-            'age'           => $user->age ? $user->age . ' years' : 'N/A',
-            'since'         => $membership->created_at->format('d/m/Y'),
-            'profile_url'         => route('member.show', $user->uuid),
+            'gender' => $user->gender ?? 'Male',
+            'phone' => $phone ?: 'N/A',
+            'email' => $user->email ?? 'N/A',
+            'age' => $user->age ? $user->age.' years' : 'N/A',
+            'since' => $membership->created_at->format('d/m/Y'),
+            'profile_url' => route('member.show', $user->uuid),
             // Admin popup QR points to the member's management profile, not the public wall.
-            'qr_url'              => route('member.show', $user->uuid),
-            'qr_svg_url'         => route('qr.member.svg', ['user' => $user->id, 'target' => 'manage']),
-            'qr_poster_url'       => route('qr.member', ['user' => $user->id, 'club' => $club->id, 'target' => 'manage']),
-            'remove_url'          => route('admin.club.members.remove', [$club->slug, $user->id]),
-            'subscriptions'       => $subscriptions,
-            'context'             => 'club',
+            'qr_url' => route('member.show', $user->uuid),
+            'qr_svg_url' => route('qr.member.svg', ['user' => $user->id, 'target' => 'manage']),
+            'qr_poster_url' => route('qr.member', ['user' => $user->id, 'club' => $club->id, 'target' => 'manage']),
+            'remove_url' => route('admin.club.members.remove', [$club->slug, $user->id]),
+            'subscriptions' => $subscriptions,
+            'context' => 'club',
             'enroll_packages_url' => route('admin.club.members.enroll-packages', [$club->slug, $user->id]),
-            'enroll_url'          => route('admin.club.members.enroll', [$club->slug, $user->id]),
+            'enroll_url' => route('admin.club.members.enroll', [$club->slug, $user->id]),
+            // Manual email verification — club admins can verify their own members.
+            'verified' => $user->hasVerifiedEmail(),
+            'verify_email_url' => route('admin.club.members.verify-email', [$club->slug, $user->id]),
+        ]);
+    }
+
+    /**
+     * Manually mark a club member's email as verified so they can log in without
+     * the email link. Authorized as a club admin of this club (authorizeClub).
+     */
+    public function verifyMemberEmail(Tenant $club, User $user)
+    {
+        $this->authorizeClub($club);
+
+        // The user must actually be a member of THIS club — otherwise a club admin
+        // could verify arbitrary users (IDOR). Scope to this club's membership.
+        abort_unless(
+            Membership::where('tenant_id', $club->id)->where('user_id', $user->id)->exists(),
+            404
+        );
+
+        if ($user->hasVerifiedEmail()) {
+            return response()->json(['success' => true, 'message' => $user->full_name.' is already verified.']);
+        }
+
+        $user->markEmailAsVerified();
+
+        return response()->json([
+            'success' => true,
+            'message' => $user->full_name.' has been verified and can now log in.',
         ]);
     }
 
@@ -310,7 +360,7 @@ class ClubMemberAdminController extends Controller
     {
         $this->authorizeClub($club);
 
-        $age    = $user->age;
+        $age = $user->age;
         $gender = $user->gender;
 
         $activePackageIds = ClubMemberSubscription::where('tenant_id', $club->id)
@@ -323,23 +373,30 @@ class ClubMemberAdminController extends Controller
             ->whereNotIn('id', $activePackageIds)
             ->get()
             ->filter(function ($pkg) use ($age, $gender) {
-                if ($pkg->age_min !== null && $age !== null && $age < $pkg->age_min) return false;
-                if ($pkg->age_max !== null && $age !== null && $age > $pkg->age_max) return false;
+                if ($pkg->age_min !== null && $age !== null && $age < $pkg->age_min) {
+                    return false;
+                }
+                if ($pkg->age_max !== null && $age !== null && $age > $pkg->age_max) {
+                    return false;
+                }
                 if ($pkg->gender && $pkg->gender !== 'mixed' && $gender) {
                     $match = ($pkg->gender === 'male' && $gender === 'Male')
                           || ($pkg->gender === 'female' && $gender === 'Female');
-                    if (!$match) return false;
+                    if (! $match) {
+                        return false;
+                    }
                 }
+
                 return true;
             })
             ->values()
-            ->map(fn($pkg) => [
-                'id'              => $pkg->id,
-                'name'            => $pkg->name,
-                'price'           => number_format((float) $pkg->price, 2),
-                'currency'        => $club->currency ?? 'BHD',
+            ->map(fn ($pkg) => [
+                'id' => $pkg->id,
+                'name' => $pkg->name,
+                'price' => number_format((float) $pkg->price, 2),
+                'currency' => $club->currency ?? 'BHD',
                 'duration_months' => $pkg->duration_months,
-                'description'     => $pkg->description,
+                'description' => $pkg->description,
             ]);
 
         return response()->json(['packages' => $packages]);
@@ -375,6 +432,97 @@ class ClubMemberAdminController extends Controller
         return response()->json(['success' => true, 'message' => 'Member enrolled successfully.']);
     }
 
+    public function enrollBatch(Request $request, Tenant $club, SubscriptionService $subscriptions)
+    {
+        $this->authorizeClub($club);
+
+        $request->validate([
+            'member_ids' => 'required|array|min:1',
+            'member_ids.*' => 'integer|exists:users,id',
+            'package_id' => 'required|integer',
+            'start_date' => 'nullable|date',
+        ]);
+
+        $package = ClubPackage::where('tenant_id', $club->id)
+            ->where('id', $request->package_id)
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        $startDate = $request->filled('start_date')
+            ? \Carbon\Carbon::parse($request->start_date)
+            : null;
+
+        $memberUserIds = Membership::where('tenant_id', $club->id)
+            ->where('status', 'active')
+            ->whereIn('user_id', $request->member_ids)
+            ->pluck('user_id')
+            ->all();
+
+        $enrolledIds = [];
+        $skipped = [];
+
+        DB::beginTransaction();
+        try {
+            foreach ($request->member_ids as $userId) {
+                $user = User::find($userId);
+                if (! $user) {
+                    $skipped[] = ['user_id' => $userId, 'name' => null, 'reason' => 'Member not found.'];
+
+                    continue;
+                }
+
+                if (! in_array($userId, $memberUserIds, true)) {
+                    $skipped[] = ['user_id' => $userId, 'name' => $user->full_name, 'reason' => 'Not an active member of this club.'];
+
+                    continue;
+                }
+
+                if ($subscriptions->isDuplicate($club->id, $userId, $package->id)) {
+                    $skipped[] = ['user_id' => $userId, 'name' => $user->full_name, 'reason' => 'Already enrolled in this package.'];
+
+                    continue;
+                }
+
+                $error = $subscriptions->checkEligibility($package, $user->full_name, $user->age, $user->gender);
+                if ($error) {
+                    $skipped[] = ['user_id' => $userId, 'name' => $user->full_name, 'reason' => $error];
+
+                    continue;
+                }
+
+                $subscriptions->createActive(
+                    $club,
+                    $userId,
+                    $package,
+                    "Batch enrollment: {$user->full_name} — {$package->name}",
+                    $startDate
+                );
+
+                $enrolledIds[] = $userId;
+            }
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json(['success' => false, 'message' => 'Batch enrollment failed: '.$e->getMessage()], 500);
+        }
+
+        $message = count($enrolledIds).' member(s) enrolled in '.$package->name.'.';
+        if ($skipped) {
+            $message .= ' '.count($skipped).' skipped.';
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'enrolled_ids' => $enrolledIds,
+            'enrolled_count' => count($enrolledIds),
+            'skipped' => $skipped,
+            'package' => ['id' => $package->id, 'name' => $package->name],
+        ]);
+    }
+
     public function storeMember(StoreMembersRequest $request, Tenant $club)
     {
         $this->authorizeClub($club);
@@ -384,7 +532,7 @@ class ClubMemberAdminController extends Controller
         foreach ($request->user_ids as $userId) {
             $existingMembership = Membership::where('tenant_id', $clubId)->where('user_id', $userId)->first();
 
-            if (!$existingMembership) {
+            if (! $existingMembership) {
                 Membership::create(['tenant_id' => $clubId, 'user_id' => $userId, 'status' => 'active']);
                 $addedCount++;
             }
@@ -394,6 +542,7 @@ class ClubMemberAdminController extends Controller
             if ($addedCount > 0) {
                 return response()->json(['success' => true, 'message' => "{$addedCount} member(s) added successfully.", 'count' => $addedCount]);
             }
+
             return response()->json(['success' => true, 'message' => 'Selected users are already members of this club.', 'count' => 0]);
         }
 
@@ -417,21 +566,27 @@ class ClubMemberAdminController extends Controller
         DB::beginTransaction();
         try {
             $g = $request->guardian;
+            $guardianEmail = ! empty($g['email']) ? $g['email'] : null;
 
             $guardianData = [
-                'full_name'         => $g['name'],
-                'name'              => $g['name'],
-                'email'             => $g['email'],
-                'password'          => Hash::make($g['password']),
-                'gender'            => $g['gender'],
-                'birthdate'         => $g['dob'],
-                'nationality'       => $g['nationality'],
-                'mobile'            => ['code' => $g['countryCode'] ?? '+973', 'number' => $g['phone']],
+                'full_name' => $g['name'],
+                'name' => $g['name'],
+                'email' => $guardianEmail,
+                // No password is collected at the desk — the member sets one later via an
+                // email link (magic-link / password reset). Seed a random one meanwhile.
+                'password' => Hash::make(Str::random(32)),
+                'gender' => $g['gender'],
+                'birthdate' => $g['dob'],
+                'nationality' => $g['nationality'] ?? null,
+                'mobile' => ['code' => $g['countryCode'] ?? '+973', 'number' => $g['phone']],
                 // Admin-created accounts are trusted — mark verified, no email step.
                 'email_verified_at' => now(),
             ];
 
-            $softDeletedGuardian = User::withTrashed()->where('email', $g['email'])->whereNotNull('deleted_at')->first();
+            // Only an email-bearing account can collide with a soft-deleted one worth reviving.
+            $softDeletedGuardian = $guardianEmail
+                ? User::withTrashed()->where('email', $guardianEmail)->whereNotNull('deleted_at')->first()
+                : null;
             if ($softDeletedGuardian) {
                 $softDeletedGuardian->restore();
                 $softDeletedGuardian->update($guardianData);
@@ -440,25 +595,31 @@ class ClubMemberAdminController extends Controller
                 $guardianUser = User::create($guardianData);
             }
 
+            // Optional club role chosen during registration — grants admin/staff permissions.
+            $roleSlug = $g['role'] ?? null;
+            if ($roleSlug && in_array($roleSlug, ['club-admin', 'instructor', 'staff', 'moderator'], true)) {
+                $guardianUser->assignRole($roleSlug, $club->id);
+            }
+
             $childUsers = [];
             foreach ($request->people as $person) {
                 if ($person['type'] === 'child') {
                     // A child has no email/password of their own — just a contact phone.
                     $childPhone = trim($person['phone'] ?? '');
                     $childUser = User::create([
-                        'full_name'   => $person['name'],
-                        'name'        => $person['name'],
-                        'gender'      => $person['gender'],
-                        'birthdate'   => $person['dob'],
+                        'full_name' => $person['name'],
+                        'name' => $person['name'],
+                        'gender' => $person['gender'],
+                        'birthdate' => $person['dob'],
                         'nationality' => $person['nationality'] ?? null,
-                        'mobile'      => $childPhone !== ''
+                        'mobile' => $childPhone !== ''
                             ? ['code' => $person['countryCode'] ?? '+973', 'number' => $childPhone]
                             : null,
-                        'password'    => Hash::make(Str::random(16)),
+                        'password' => Hash::make(Str::random(16)),
                         'email_verified_at' => now(),
                     ]);
                     UserRelationship::create([
-                        'guardian_user_id'  => $guardianUser->id,
+                        'guardian_user_id' => $guardianUser->id,
                         'dependent_user_id' => $childUser->id,
                         'relationship_type' => $person['relationship'] ?? 'child',
                     ]);
@@ -467,19 +628,21 @@ class ClubMemberAdminController extends Controller
             }
 
             $validPkgIds = ClubPackage::where('tenant_id', $club->id)->pluck('id')->flip();
-            $childIdx    = 0;
-            $groupId     = (string) Str::uuid();
-            $costSvc     = app(\App\Services\RegistrationCostService::class);
-            $subSvc      = app(SubscriptionService::class);
+            $childIdx = 0;
+            $groupId = (string) Str::uuid();
+            $costSvc = app(\App\Services\RegistrationCostService::class);
+            $subSvc = app(SubscriptionService::class);
 
             foreach ($request->people as $person) {
                 $user = $person['type'] === 'guardian'
                     ? $guardianUser
                     : ($childUsers[$childIdx++] ?? null);
-                if (!$user) continue;
+                if (! $user) {
+                    continue;
+                }
 
                 // Capture first-time status BEFORE creating the membership row.
-                $isFirstTime = !$costSvc->isReturningMember($club->id, $user->id);
+                $isFirstTime = ! $costSvc->isReturningMember($club->id, $user->id);
 
                 Membership::firstOrCreate(
                     ['tenant_id' => $club->id, 'user_id' => $user->id],
@@ -492,11 +655,17 @@ class ClubMemberAdminController extends Controller
                 $firstSub = null;
 
                 foreach ($selectedPkgIds as $pkgId) {
-                    if (!isset($validPkgIds[$pkgId])) continue;
+                    if (! isset($validPkgIds[$pkgId])) {
+                        continue;
+                    }
                     $package = ClubPackage::find($pkgId);
-                    if (!$package) continue;
+                    if (! $package) {
+                        continue;
+                    }
 
-                    if ($subSvc->isDuplicate($club->id, $user->id, $pkgId)) continue;
+                    if ($subSvc->isDuplicate($club->id, $user->id, $pkgId)) {
+                        continue;
+                    }
 
                     $sub = $subSvc->createActive(
                         $club,
@@ -508,15 +677,14 @@ class ClubMemberAdminController extends Controller
                     $firstSub ??= $sub;
                 }
 
-                // Registration (joining) fee — only the first time this member joins.
-                if ($isFirstTime) {
-                    $fee = (float) ($club->enrollment_fee ?? 0);
-                    if (!empty($selectedPkgIds) && ($firstPkg = ClubPackage::find($selectedPkgIds[0]))) {
-                        $fee = $costSvc->effectiveRegistrationFee($firstPkg, $club);
-                    }
-                    if ($fee > 0) {
-                        $firstSub?->update(['registration_fee' => $fee]);
-                        $costSvc->recordRegistrationFee($club, $user->id, $firstSub, $fee, $user->full_name);
+                // One-time registration fee — only the first time this member joins,
+                // and unless the admin waived it for an existing/legacy member.
+                if ($isFirstTime && empty($person['waiveRegFee'])) {
+                    $firstPkg = ! empty($selectedPkgIds) ? ClubPackage::find($selectedPkgIds[0]) : null;
+                    $regFee = $firstPkg ? $costSvc->effectiveRegistrationFee($firstPkg, $club) : 0.0;
+                    if ($regFee > 0) {
+                        $firstSub?->update(['registration_fee' => $regFee]);
+                        $costSvc->recordRegistrationFee($club, $user->id, $firstSub, $regFee, $user->full_name);
                     }
                 }
 
@@ -550,6 +718,7 @@ class ClubMemberAdminController extends Controller
             return response()->json(['success' => true, 'message' => 'Walk-in registration completed successfully!']);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json(['success' => false, 'message' => 'Registration failed. Please try again.'], 500);
         }
     }
@@ -561,22 +730,22 @@ class ClubMemberAdminController extends Controller
      */
     private function registerStandaloneChild(WalkInRegistrationRequest $request, Tenant $club)
     {
-        $g      = $request->guardian;          // the child's own details
+        $g = $request->guardian;          // the child's own details
         $person = $request->people[0] ?? [];   // single person carrying the package selection
-        $phone  = trim($g['phone'] ?? '');
+        $phone = trim($g['phone'] ?? '');
 
         DB::beginTransaction();
         try {
             $childUser = User::create([
-                'full_name'   => $g['name'],
-                'name'        => $g['name'],
-                'gender'      => $g['gender'],
-                'birthdate'   => $g['dob'],
+                'full_name' => $g['name'],
+                'name' => $g['name'],
+                'gender' => $g['gender'],
+                'birthdate' => $g['dob'],
                 'nationality' => $g['nationality'] ?? null,
-                'mobile'      => $phone !== ''
+                'mobile' => $phone !== ''
                     ? ['code' => $g['countryCode'] ?? '+973', 'number' => $phone]
                     : null,
-                'password'    => Hash::make(Str::random(16)),
+                'password' => Hash::make(Str::random(16)),
                 'email_verified_at' => now(),
             ]);
 
@@ -585,19 +754,25 @@ class ClubMemberAdminController extends Controller
                 ['status' => 'active']
             );
 
-            $costSvc     = app(\App\Services\RegistrationCostService::class);
-            $subSvc      = app(SubscriptionService::class);
-            $groupId     = (string) Str::uuid();
+            $costSvc = app(\App\Services\RegistrationCostService::class);
+            $subSvc = app(SubscriptionService::class);
+            $groupId = (string) Str::uuid();
             $validPkgIds = ClubPackage::where('tenant_id', $club->id)->pluck('id')->flip();
 
             $selectedPkgIds = $person['selectedPackageIds'] ?? [];
             $firstSub = null;
 
             foreach ($selectedPkgIds as $pkgId) {
-                if (!isset($validPkgIds[$pkgId])) continue;
+                if (! isset($validPkgIds[$pkgId])) {
+                    continue;
+                }
                 $package = ClubPackage::find($pkgId);
-                if (!$package) continue;
-                if ($subSvc->isDuplicate($club->id, $childUser->id, $pkgId)) continue;
+                if (! $package) {
+                    continue;
+                }
+                if ($subSvc->isDuplicate($club->id, $childUser->id, $pkgId)) {
+                    continue;
+                }
 
                 $sub = $subSvc->createActive(
                     $club,
@@ -609,14 +784,13 @@ class ClubMemberAdminController extends Controller
                 $firstSub ??= $sub;
             }
 
-            // Registration (joining) fee — standalone child is always first-time here.
-            $fee = (float) ($club->enrollment_fee ?? 0);
-            if (!empty($selectedPkgIds) && ($firstPkg = ClubPackage::find($selectedPkgIds[0]))) {
-                $fee = $costSvc->effectiveRegistrationFee($firstPkg, $club);
-            }
-            if ($fee > 0) {
-                $firstSub?->update(['registration_fee' => $fee]);
-                $costSvc->recordRegistrationFee($club, $childUser->id, $firstSub, $fee, $childUser->full_name);
+            // One-time registration fee — standalone child is always first-time here,
+            // unless the admin waived it for an existing/legacy member.
+            $firstPkg = ! empty($selectedPkgIds) ? ClubPackage::find($selectedPkgIds[0]) : null;
+            $regFee = (! empty($person['waiveRegFee']) || ! $firstPkg) ? 0.0 : $costSvc->effectiveRegistrationFee($firstPkg, $club);
+            if ($regFee > 0) {
+                $firstSub?->update(['registration_fee' => $regFee]);
+                $costSvc->recordRegistrationFee($club, $childUser->id, $firstSub, $regFee, $childUser->full_name);
             }
 
             // Equipment snapshot.
@@ -648,6 +822,7 @@ class ClubMemberAdminController extends Controller
             return response()->json(['success' => true, 'message' => 'Child registered successfully!']);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json(['success' => false, 'message' => 'Registration failed. Please try again.'], 500);
         }
     }
@@ -656,7 +831,7 @@ class ClubMemberAdminController extends Controller
     {
         $this->authorizeClub($club);
         $clubId = $club->id;
-        $query  = $request->input('query');
+        $query = $request->input('query');
 
         if (empty($query) || strlen($query) < 2) {
             return response()->json(['users' => []]);
@@ -664,53 +839,55 @@ class ClubMemberAdminController extends Controller
 
         $users = User::where(function ($q) use ($query) {
             $q->where('email', 'like', "%{$query}%")
-              ->orWhere('name', 'like', "%{$query}%")
-              ->orWhere('full_name', 'like', "%{$query}%")
-              ->orWhere('mobile', 'like', "%{$query}%");
+                ->orWhere('name', 'like', "%{$query}%")
+                ->orWhere('full_name', 'like', "%{$query}%")
+                ->orWhere('mobile', 'like', "%{$query}%");
         })
         // Restrict to this club's members when requested (e.g. the achievement athlete picker).
-        ->when($request->boolean('club_only'), fn ($q) => $q->whereIn('id',
-            Membership::where('tenant_id', $clubId)->select('user_id')))
-        ->limit(20)
-        ->get()
-        ->map(function ($user) use ($clubId) {
-            $isMember = Membership::where('tenant_id', $clubId)->where('user_id', $user->id)->exists();
+            ->when($request->boolean('club_only'), fn ($q) => $q->whereIn('id',
+                Membership::where('tenant_id', $clubId)->select('user_id')))
+            ->limit(20)
+            ->get()
+            ->map(function ($user) use ($clubId) {
+                $isMember = Membership::where('tenant_id', $clubId)->where('user_id', $user->id)->exists();
 
-            $dependents = $user->dependents()->with('dependent')->get()->map(function ($relationship) use ($clubId, $user) {
-                $dep = $relationship->dependent;
-                if (!$dep) return null;
+                $dependents = $user->dependents()->with('dependent')->get()->map(function ($relationship) use ($clubId, $user) {
+                    $dep = $relationship->dependent;
+                    if (! $dep) {
+                        return null;
+                    }
 
-                $isDepMember      = Membership::where('tenant_id', $clubId)->where('user_id', $dep->id)->exists();
-                $relationshipType = $relationship->relationship_type;
-                $isChild          = in_array($relationshipType, ['son', 'daughter', 'child']);
+                    $isDepMember = Membership::where('tenant_id', $clubId)->where('user_id', $dep->id)->exists();
+                    $relationshipType = $relationship->relationship_type;
+                    $isChild = in_array($relationshipType, ['son', 'daughter', 'child']);
+
+                    return [
+                        'id' => $dep->id,
+                        'name' => $dep->full_name ?? $dep->name,
+                        'profile_picture' => $dep->profile_picture ? asset('storage/'.$dep->profile_picture) : null,
+                        'gender' => $dep->gender,
+                        'age' => $dep->birthdate ? \Carbon\Carbon::parse($dep->birthdate)->age : null,
+                        'is_member' => $isDepMember,
+                        'relationship_type' => ucfirst($relationshipType),
+                        'is_child' => $isChild,
+                        'guardian_name' => $isChild ? ($user->full_name ?? $user->name) : null,
+                        'email' => $dep->email ?: ($isChild ? $user->email : null),
+                        'mobile' => $dep->mobile ?: ($isChild ? $user->mobile : null),
+                    ];
+                })->filter();
 
                 return [
-                    'id'                => $dep->id,
-                    'name'              => $dep->full_name ?? $dep->name,
-                    'profile_picture'   => $dep->profile_picture ? asset('storage/' . $dep->profile_picture) : null,
-                    'gender'            => $dep->gender,
-                    'age'               => $dep->birthdate ? \Carbon\Carbon::parse($dep->birthdate)->age : null,
-                    'is_member'         => $isDepMember,
-                    'relationship_type' => ucfirst($relationshipType),
-                    'is_child'          => $isChild,
-                    'guardian_name'     => $isChild ? ($user->full_name ?? $user->name) : null,
-                    'email'             => $dep->email ?: ($isChild ? $user->email : null),
-                    'mobile'            => $dep->mobile ?: ($isChild ? $user->mobile : null),
+                    'id' => $user->id,
+                    'name' => $user->full_name ?? $user->name,
+                    'email' => $user->email,
+                    'mobile' => $user->mobile,
+                    'profile_picture' => $user->profile_picture ? asset('storage/'.$user->profile_picture) : null,
+                    'gender' => $user->gender,
+                    'age' => $user->birthdate ? \Carbon\Carbon::parse($user->birthdate)->age : null,
+                    'is_member' => $isMember,
+                    'dependents' => $dependents,
                 ];
-            })->filter();
-
-            return [
-                'id'              => $user->id,
-                'name'            => $user->full_name ?? $user->name,
-                'email'           => $user->email,
-                'mobile'          => $user->mobile,
-                'profile_picture' => $user->profile_picture ? asset('storage/' . $user->profile_picture) : null,
-                'gender'          => $user->gender,
-                'age'             => $user->birthdate ? \Carbon\Carbon::parse($user->birthdate)->age : null,
-                'is_member'       => $isMember,
-                'dependents'      => $dependents,
-            ];
-        });
+            });
 
         return response()->json(['users' => $users]);
     }
@@ -735,7 +912,7 @@ class ClubMemberAdminController extends Controller
         $idx = array_search('u', $segments, true);
         $identifier = $idx !== false ? ($segments[$idx + 1] ?? null) : end($segments);
 
-        if (!$identifier) {
+        if (! $identifier) {
             return response()->json(['success' => false, 'message' => "That QR code isn't a member profile."], 404);
         }
 
@@ -743,7 +920,7 @@ class ClubMemberAdminController extends Controller
             ? User::find((int) $identifier)
             : User::where('slug', $identifier)->first();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['success' => false, 'message' => "Couldn't find a member for that QR code."], 404);
         }
 
@@ -751,14 +928,14 @@ class ClubMemberAdminController extends Controller
 
         return response()->json([
             'success' => true,
-            'user'    => [
-                'id'              => $user->id,
-                'name'            => $user->full_name ?? $user->name,
-                'email'           => $user->email,
-                'profile_picture' => $user->profile_picture ? asset('storage/' . $user->profile_picture) : null,
-                'gender'          => $user->gender,
-                'age'             => $user->birthdate ? \Carbon\Carbon::parse($user->birthdate)->age : null,
-                'is_member'       => $isMember,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->full_name ?? $user->name,
+                'email' => $user->email,
+                'profile_picture' => $user->profile_picture ? asset('storage/'.$user->profile_picture) : null,
+                'gender' => $user->gender,
+                'age' => $user->birthdate ? \Carbon\Carbon::parse($user->birthdate)->age : null,
+                'is_member' => $isMember,
             ],
         ]);
     }
@@ -776,7 +953,7 @@ class ClubMemberAdminController extends Controller
             $proofPath = $this->storeBase64Image(
                 $request->input('admin_proof_base64'),
                 'payment-proofs',
-                'admin_proof_' . $subscription->id . '_' . time(),
+                'admin_proof_'.$subscription->id.'_'.time(),
                 'local'
             );
         }
@@ -784,19 +961,19 @@ class ClubMemberAdminController extends Controller
         $subscriptions->approvePayment($subscription, $proofPath, auth()->user());
 
         \App\Models\UserNotification::notifyUser($subscription->user_id, 'payment_approved', 'Payment approved', [
-            'tenant_id'  => $club->id,
+            'tenant_id' => $club->id,
             'action_url' => route('bills.index'),
-            'icon'       => 'bi-check-circle-fill',
-            'context'    => $club->club_name,
-            'body'       => 'Your payment for "' . ($subscription->package?->name ?? 'your membership') . '" at ' . $club->club_name . ' was approved.',
+            'icon' => 'bi-check-circle-fill',
+            'context' => $club->club_name,
+            'body' => 'Your payment for "'.($subscription->package?->name ?? 'your membership').'" at '.$club->club_name.' was approved.',
         ]);
 
         return response()->json([
-            'success'         => true,
-            'message'         => 'Payment approved successfully.',
+            'success' => true,
+            'message' => 'Payment approved successfully.',
             'subscription_id' => $subscription->id,
-            'payment_status'  => $subscription->fresh()->payment_status,
-            'financials'      => $this->financialsPayload($club, $financials),
+            'payment_status' => $subscription->fresh()->payment_status,
+            'financials' => $this->financialsPayload($club, $financials),
         ]);
     }
 
@@ -817,13 +994,13 @@ class ClubMemberAdminController extends Controller
     {
         $this->authorizeClub($club);
 
-        if ($subscription->tenant_id !== $club->id || !$subscription->proof_of_payment) {
+        if ($subscription->tenant_id !== $club->id || ! $subscription->proof_of_payment) {
             abort(404);
         }
 
         $path = $subscription->proof_of_payment;
 
-        if (!Storage::disk('local')->exists($path)) {
+        if (! Storage::disk('local')->exists($path)) {
             abort(404);
         }
 
@@ -850,50 +1027,50 @@ class ClubMemberAdminController extends Controller
             $refundProofPath = $this->storeBase64Image(
                 $request->input('refund_proof_base64'),
                 'payment-proofs',
-                'refund_proof_' . $subscription->id . '_' . time(),
+                'refund_proof_'.$subscription->id.'_'.time(),
                 'local'
             );
         }
 
         $refundTxn = $financials->recordTransaction($club, [
-            'type'             => 'refund',
-            'amount'           => $subscription->amount_paid,
-            'description'      => 'Refund - ' . ($subscription->package?->name ?? 'Subscription'),
-            'category'         => 'refund',
-            'payment_method'   => 'bank_transfer',
+            'type' => 'refund',
+            'amount' => $subscription->amount_paid,
+            'description' => 'Refund - '.($subscription->package?->name ?? 'Subscription'),
+            'category' => 'refund',
+            'payment_method' => 'bank_transfer',
             'transaction_date' => now()->toDateString(),
-            'subscription_id'  => $subscription->id,
+            'subscription_id' => $subscription->id,
         ]);
 
         $subscription->update([
             'payment_status' => 'refunded',
-            'refund_proof'   => $refundProofPath,
+            'refund_proof' => $refundProofPath,
         ]);
 
         \App\Models\UserNotification::notifyUser($subscription->user_id, 'payment_refunded', 'Payment refunded', [
-            'tenant_id'  => $club->id,
+            'tenant_id' => $club->id,
             'action_url' => route('bills.index'),
-            'icon'       => 'bi-arrow-counterclockwise',
-            'context'    => $club->club_name,
-            'body'       => 'A refund of ' . number_format((float) $subscription->amount_paid, 3) . ' for "' . ($subscription->package?->name ?? 'your membership') . '" was processed by ' . $club->club_name . '.',
+            'icon' => 'bi-arrow-counterclockwise',
+            'context' => $club->club_name,
+            'body' => 'A refund of '.number_format((float) $subscription->amount_paid, 3).' for "'.($subscription->package?->name ?? 'your membership').'" was processed by '.$club->club_name.'.',
         ]);
 
         return response()->json([
-            'success'         => true,
-            'message'         => 'Refund processed successfully.',
+            'success' => true,
+            'message' => 'Refund processed successfully.',
             'subscription_id' => $subscription->id,
-            'payment_status'  => 'refunded',
-            'transaction'     => [
-                'id'               => $refundTxn->id,
-                'type'             => 'refund',
-                'description'      => $refundTxn->description,
-                'category'         => $refundTxn->category,
-                'amount'           => (float) $refundTxn->amount,
-                'payment_method'   => $refundTxn->payment_method,
+            'payment_status' => 'refunded',
+            'transaction' => [
+                'id' => $refundTxn->id,
+                'type' => 'refund',
+                'description' => $refundTxn->description,
+                'category' => $refundTxn->category,
+                'amount' => (float) $refundTxn->amount,
+                'payment_method' => $refundTxn->payment_method,
                 'reference_number' => $refundTxn->reference_number,
                 'transaction_date' => $refundTxn->transaction_date?->format('d M Y'),
             ],
-            'financials'      => $this->financialsPayload($club, $financials),
+            'financials' => $this->financialsPayload($club, $financials),
         ]);
     }
 
@@ -901,13 +1078,13 @@ class ClubMemberAdminController extends Controller
     {
         $this->authorizeClub($club);
 
-        if ($subscription->tenant_id !== $club->id || !$subscription->refund_proof) {
+        if ($subscription->tenant_id !== $club->id || ! $subscription->refund_proof) {
             abort(404);
         }
 
         $path = $subscription->refund_proof;
 
-        if (!Storage::disk('local')->exists($path)) {
+        if (! Storage::disk('local')->exists($path)) {
             abort(404);
         }
 
@@ -927,7 +1104,7 @@ class ClubMemberAdminController extends Controller
             ->where('status', 'active')
             ->first();
 
-        if (!$membership) {
+        if (! $membership) {
             return response()->json(['success' => false, 'message' => 'Member not found in this club.'], 404);
         }
 
@@ -938,7 +1115,7 @@ class ClubMemberAdminController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => $user->full_name . '\'s membership has been ended. Their profile and history are preserved.',
+            'message' => $user->full_name.'\'s membership has been ended. Their profile and history are preserved.',
         ]);
     }
 
@@ -952,7 +1129,7 @@ class ClubMemberAdminController extends Controller
 
         $templatePath = public_path('files/member-import-template.xlsx');
 
-        if (!file_exists($templatePath)) {
+        if (! file_exists($templatePath)) {
             abort(404, 'Import template not found. Please contact support.');
         }
 
@@ -977,24 +1154,24 @@ class ClubMemberAdminController extends Controller
             return response()->json(['success' => false, 'message' => 'Could not read the file. Please use the provided template.']);
         }
 
-        $sheet      = $spreadsheet->getActiveSheet();
+        $sheet = $spreadsheet->getActiveSheet();
         $highestRow = $sheet->getHighestDataRow();
 
         // Detect header row (row 3 in the template, but allow row 1 for plain CSV)
-        $headerRow  = $this->detectImportHeaderRow($sheet);
+        $headerRow = $this->detectImportHeaderRow($sheet);
         if ($headerRow === null) {
             return response()->json(['success' => false, 'message' => 'Could not find the header row. Please use the official import template.']);
         }
 
         $colMap = $this->mapImportColumns($sheet, $headerRow);
 
-        if (!isset($colMap['first_name']) || !isset($colMap['last_name'])) {
+        if (! isset($colMap['first_name']) || ! isset($colMap['last_name'])) {
             return response()->json(['success' => false, 'message' => 'Required columns "First Name" and "Last Name" not found. Please use the official import template.']);
         }
 
         $imported = 0;
-        $skipped  = 0;
-        $errors   = [];
+        $skipped = 0;
+        $errors = [];
 
         DB::beginTransaction();
         try {
@@ -1020,17 +1197,19 @@ class ClubMemberAdminController extends Controller
                         $missing[] = $req;
                     }
                 }
-                if (!empty($missing)) {
-                    $errors[] = "Row $row skipped — missing: " . implode(', ', $missing);
+                if (! empty($missing)) {
+                    $errors[] = "Row $row skipped — missing: ".implode(', ', $missing);
                     $skipped++;
+
                     continue;
                 }
 
                 // Validate gender
                 $gender = ucfirst(strtolower($data['gender'] ?? ''));
-                if (!in_array($gender, ['Male', 'Female'])) {
+                if (! in_array($gender, ['Male', 'Female'])) {
                     $errors[] = "Row $row skipped — invalid gender '{$data['gender']}' (use Male or Female).";
                     $skipped++;
+
                     continue;
                 }
 
@@ -1043,19 +1222,19 @@ class ClubMemberAdminController extends Controller
 
                 // Parse phone
                 $rawPhone = preg_replace('/\s+/', '', $data['phone'] ?? '');
-                $phoneCode   = '+973';
+                $phoneCode = '+973';
                 $phoneNumber = $rawPhone;
                 if (preg_match('/^(\+\d{1,4})(\d{6,})$/', $rawPhone, $pm)) {
-                    $phoneCode   = $pm[1];
+                    $phoneCode = $pm[1];
                     $phoneNumber = $pm[2];
                 } elseif (preg_match('/^(00\d{1,4})(\d{6,})$/', $rawPhone, $pm)) {
-                    $phoneCode   = '+' . ltrim($pm[1], '0');
+                    $phoneCode = '+'.ltrim($pm[1], '0');
                     $phoneNumber = $pm[2];
                 }
 
                 // Parse DOB
                 $dob = null;
-                if (!empty($data['date_of_birth'])) {
+                if (! empty($data['date_of_birth'])) {
                     try {
                         $dob = \Carbon\Carbon::parse($data['date_of_birth'])->format('Y-m-d');
                     } catch (\Throwable) {
@@ -1064,7 +1243,7 @@ class ClubMemberAdminController extends Controller
                 }
 
                 // Duplicate check by email
-                $email = !empty($data['email']) ? strtolower(trim($data['email'])) : null;
+                $email = ! empty($data['email']) ? strtolower(trim($data['email'])) : null;
                 if ($email) {
                     $existing = User::where('email', $email)->first();
                     if ($existing) {
@@ -1074,6 +1253,7 @@ class ClubMemberAdminController extends Controller
                             ['status' => 'active']
                         );
                         $imported++;
+
                         continue;
                     }
                 }
@@ -1081,16 +1261,16 @@ class ClubMemberAdminController extends Controller
                 // Create user
                 $userData = [
                     'full_name' => $fullName,
-                    'name'      => $fullName,
-                    'gender'    => $gender,
-                    'email'     => $email,
+                    'name' => $fullName,
+                    'gender' => $gender,
+                    'email' => $email,
                     'birthdate' => $dob,
-                    'mobile'    => ['code' => $phoneCode, 'number' => $phoneNumber],
-                    'password'  => Hash::make(Str::random(16)),
+                    'mobile' => ['code' => $phoneCode, 'number' => $phoneNumber],
+                    'password' => Hash::make(Str::random(16)),
                     'email_verified_at' => now(),
                 ];
 
-                if (!empty($data['cpr_id'])) {
+                if (! empty($data['cpr_id'])) {
                     // Store CPR in address notes — adapt if there's a dedicated field
                 }
 
@@ -1099,16 +1279,16 @@ class ClubMemberAdminController extends Controller
                 // Create membership
                 Membership::create([
                     'tenant_id' => $club->id,
-                    'user_id'   => $user->id,
-                    'status'    => 'active',
+                    'user_id' => $user->id,
+                    'status' => 'active',
                 ]);
 
                 // Enroll in package if specified
-                if (!empty($data['package_name'])) {
+                if (! empty($data['package_name'])) {
                     $package = ClubPackage::where('tenant_id', $club->id)
                         ->whereRaw('LOWER(name) = ?', [strtolower($data['package_name'])])
                         ->first();
-                    if ($package && !app(SubscriptionService::class)->isDuplicate($club->id, $user->id, $package->id)) {
+                    if ($package && ! app(SubscriptionService::class)->isDuplicate($club->id, $user->id, $package->id)) {
                         app(SubscriptionService::class)->createActive($club, $user->id, $package, "Bulk import: {$user->full_name}");
                     }
                 }
@@ -1119,7 +1299,8 @@ class ClubMemberAdminController extends Controller
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
-            return response()->json(['success' => false, 'message' => 'Import failed: ' . $e->getMessage()]);
+
+            return response()->json(['success' => false, 'message' => 'Import failed: '.$e->getMessage()]);
         }
 
         $message = "Import complete — $imported member(s) added.";
@@ -1128,11 +1309,11 @@ class ClubMemberAdminController extends Controller
         }
 
         return response()->json([
-            'success'  => true,
-            'message'  => $message,
+            'success' => true,
+            'message' => $message,
             'imported' => $imported,
-            'skipped'  => $skipped,
-            'errors'   => array_slice($errors, 0, 10), // cap at 10 to avoid huge payloads
+            'skipped' => $skipped,
+            'errors' => array_slice($errors, 0, 10), // cap at 10 to avoid huge payloads
         ]);
     }
 
@@ -1150,6 +1331,7 @@ class ClubMemberAdminController extends Controller
                 }
             }
         }
+
         return null;
     }
 
@@ -1160,20 +1342,20 @@ class ClubMemberAdminController extends Controller
         $lastIdx = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highest);
 
         $keyMap = [
-            'first_name'    => ['first name', 'first'],
-            'middle_name'   => ['middle name', 'middle'],
-            'last_name'     => ['last name', 'last'],
-            'gender'        => ['gender'],
+            'first_name' => ['first name', 'first'],
+            'middle_name' => ['middle name', 'middle'],
+            'last_name' => ['last name', 'last'],
+            'gender' => ['gender'],
             'date_of_birth' => ['date of birth', 'dob', 'birth', 'birthdate'],
-            'phone'         => ['phone', 'mobile', 'telephone', 'tel'],
-            'email'         => ['email'],
-            'cpr_id'        => ['cpr', 'id number', 'cpr / id', 'cpr/id'],
-            'height_cm'     => ['height'],
-            'weight_kg'     => ['weight'],
-            'health_notes'  => ['health', 'condition', 'health condition'],
-            'emergency_1'   => ['emergency contact 1', 'emergency 1', 'emergency number 1'],
-            'emergency_2'   => ['emergency contact 2', 'emergency 2', 'emergency number 2'],
-            'package_name'  => ['package', 'package name'],
+            'phone' => ['phone', 'mobile', 'telephone', 'tel'],
+            'email' => ['email'],
+            'cpr_id' => ['cpr', 'id number', 'cpr / id', 'cpr/id'],
+            'height_cm' => ['height'],
+            'weight_kg' => ['weight'],
+            'health_notes' => ['health', 'condition', 'health condition'],
+            'emergency_1' => ['emergency contact 1', 'emergency 1', 'emergency number 1'],
+            'emergency_2' => ['emergency contact 2', 'emergency 2', 'emergency number 2'],
+            'package_name' => ['package', 'package name'],
         ];
 
         for ($c = 1; $c <= $lastIdx; $c++) {
@@ -1182,7 +1364,9 @@ class ClubMemberAdminController extends Controller
             $header = trim($header);
 
             foreach ($keyMap as $field => $variants) {
-                if (isset($map[$field])) continue;
+                if (isset($map[$field])) {
+                    continue;
+                }
                 foreach ($variants as $variant) {
                     if (str_contains($header, $variant)) {
                         $map[$field] = $c;

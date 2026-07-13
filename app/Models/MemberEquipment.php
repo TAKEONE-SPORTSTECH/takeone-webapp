@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class MemberEquipment extends Model
 {
-    use HasFactory, BelongsToTenant;
+    use BelongsToTenant, HasFactory;
 
     protected $table = 'member_equipment';
 
@@ -34,7 +34,7 @@ class MemberEquipment extends Model
     ];
 
     protected $casts = [
-        'price'       => 'decimal:2',
+        'price' => 'decimal:2',
         'acquired_at' => 'datetime',
     ];
 

@@ -14,7 +14,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class ClubInstructor extends Model
 {
-    use HasFactory, BelongsToTenant, LogsActivity, HasTranslations;
+    use BelongsToTenant, HasFactory, HasTranslations, LogsActivity;
 
     /** Only the club-specific role is translatable; person name/bio live on User. */
     protected array $translatable = ['role'];
@@ -49,6 +49,7 @@ class ClubInstructor extends Model
         'compensation_type',
         'wage_amount',
         'wage_period',
+        'is_active',
     ];
 
     /**
@@ -59,9 +60,11 @@ class ClubInstructor extends Model
     protected $casts = [
         'rating' => 'decimal:2',
         'wage_amount' => 'decimal:2',
+        'is_active' => 'boolean',
     ];
 
     public const COMPENSATION_VOLUNTEER = 'volunteer';
+
     public const COMPENSATION_PAID = 'paid';
 
     public function isPaid(): bool
@@ -104,7 +107,7 @@ class ClubInstructor extends Model
     public function packages(): BelongsToMany
     {
         return $this->belongsToMany(ClubPackage::class, 'club_package_activities', 'instructor_id', 'package_id')
-                    ->withTimestamps();
+            ->withTimestamps();
     }
 
     /**
@@ -113,7 +116,7 @@ class ClubInstructor extends Model
     public function activities(): BelongsToMany
     {
         return $this->belongsToMany(ClubActivity::class, 'club_activity_instructor', 'instructor_id', 'activity_id')
-                    ->withTimestamps();
+            ->withTimestamps();
     }
 
     /**

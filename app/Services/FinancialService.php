@@ -18,6 +18,7 @@ class FinancialService
     {
         $transaction = ClubTransaction::create(array_merge($data, ['tenant_id' => $club->id]));
         ClubCache::flushFinancials($club->id);
+
         return $transaction;
     }
 
@@ -27,17 +28,17 @@ class FinancialService
      */
     public function getSummary(int $clubId, Collection $transactions): array
     {
-        $byType        = $transactions->groupBy('type');
-        $totalIncome   = (float) $byType->get('income',  collect())->sum('amount');
+        $byType = $transactions->groupBy('type');
+        $totalIncome = (float) $byType->get('income', collect())->sum('amount');
         $totalExpenses = (float) $byType->get('expense', collect())->sum('amount');
-        $totalRefunds  = (float) $byType->get('refund',  collect())->sum('amount');
+        $totalRefunds = (float) $byType->get('refund', collect())->sum('amount');
 
         return [
-            'total_income'   => $totalIncome,
+            'total_income' => $totalIncome,
             'total_expenses' => $totalExpenses,
-            'refunds'        => $totalRefunds,
-            'net_profit'     => $totalIncome - $totalExpenses - $totalRefunds,
-            'pending'        => (float) ClubMemberSubscription::where('tenant_id', $clubId)
+            'refunds' => $totalRefunds,
+            'net_profit' => $totalIncome - $totalExpenses - $totalRefunds,
+            'pending' => (float) ClubMemberSubscription::where('tenant_id', $clubId)
                 ->whereIn('payment_status', ['unpaid', 'pending_approval'])
                 ->sum('amount_due'),
         ];
@@ -48,39 +49,39 @@ class FinancialService
      */
     public function getMonthlyData(Collection $transactions, int $clubId): array
     {
-        $cutoff  = now()->subMonths(11)->startOfMonth();
+        $cutoff = now()->subMonths(11)->startOfMonth();
         $byMonth = $transactions
-            ->filter(fn($t) => Carbon::parse($t->transaction_date)->gte($cutoff))
-            ->groupBy(fn($t) => Carbon::parse($t->transaction_date)->format('Y-m'));
+            ->filter(fn ($t) => Carbon::parse($t->transaction_date)->gte($cutoff))
+            ->groupBy(fn ($t) => Carbon::parse($t->transaction_date)->format('Y-m'));
 
         // Monthly cash to collect: unpaid subscriptions grouped by start_date month (PHP-side, DB-agnostic)
         $pendingByMonth = ClubMemberSubscription::where('tenant_id', $clubId)
             ->whereIn('payment_status', ['unpaid', 'pending_approval'])
             ->where('start_date', '>=', $cutoff)
             ->get(['start_date', 'amount_due'])
-            ->groupBy(fn($s) => Carbon::parse($s->start_date)->format('Y-m'))
-            ->map(fn($items) => $items->sum('amount_due'));
+            ->groupBy(fn ($s) => Carbon::parse($s->start_date)->format('Y-m'))
+            ->map(fn ($items) => $items->sum('amount_due'));
 
         $monthlyData = [];
         for ($i = 11; $i >= 0; $i--) {
-            $date    = now()->copy()->subMonths($i);
-            $month   = $byMonth->get($date->format('Y-m'), collect());
-            $income  = (float) $month->where('type', 'income')->sum('amount');
+            $date = now()->copy()->subMonths($i);
+            $month = $byMonth->get($date->format('Y-m'), collect());
+            $income = (float) $month->where('type', 'income')->sum('amount');
             $expense = (float) $month->where('type', 'expense')->sum('amount');
-            $refund  = (float) $month->where('type', 'refund')->sum('amount');
+            $refund = (float) $month->where('type', 'refund')->sum('amount');
 
             $monthlyData[] = [
-                'month'           => $date->format('M'),
-                'year_month'      => $date->format('Y-m'),
-                'income'          => $income,
-                'expenses'        => $expense,
-                'refunds'         => $refund,
-                'profit'          => $income - $expense - $refund,
+                'month' => $date->format('M'),
+                'year_month' => $date->format('Y-m'),
+                'income' => $income,
+                'expenses' => $expense,
+                'refunds' => $refund,
+                'profit' => $income - $expense - $refund,
                 'cash_to_collect' => (float) ($pendingByMonth->get($date->format('Y-m')) ?? 0),
             ];
         }
 
-        usort($monthlyData, fn($a, $b) => (int) explode('-', $a['year_month'])[1] <=> (int) explode('-', $b['year_month'])[1]);
+        usort($monthlyData, fn ($a, $b) => (int) explode('-', $a['year_month'])[1] <=> (int) explode('-', $b['year_month'])[1]);
 
         return $monthlyData;
     }
@@ -108,11 +109,11 @@ class FinancialService
     {
         return $transactions
             ->where('type', 'expense')
-            ->groupBy(fn($t) => $t->category ?? 'Other')
-            ->map(fn($items, $cat) => [
+            ->groupBy(fn ($t) => $t->category ?? 'Other')
+            ->map(fn ($items, $cat) => [
                 'category' => $cat,
-                'items'    => $items,
-                'total'    => $items->sum('amount'),
+                'items' => $items,
+                'total' => $items->sum('amount'),
             ])
             ->values();
     }

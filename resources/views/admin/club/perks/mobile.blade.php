@@ -16,7 +16,7 @@
             <div class="m-card p-4">
                 <div class="flex items-start gap-3">
                     <span class="w-11 h-11 rounded-xl flex items-center justify-center text-white flex-shrink-0"
-                          style="background: linear-gradient(135deg, {{ $perk->bg_from ?? '#7c3aed' }}, {{ $perk->bg_to ?? '#a855f7' }});">
+                          style="background: linear-gradient(135deg, {{ $perk->bg_from ?? 'hsl(250 65% 60%)' }}, {{ $perk->bg_to ?? 'hsl(250 65% 65%)' }});">
                         <i class="bi {{ $perk->icon ?? 'bi-gift' }} text-lg"></i>
                     </span>
                     <div class="min-w-0 flex-1">

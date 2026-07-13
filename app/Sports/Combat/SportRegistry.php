@@ -15,7 +15,7 @@ class SportRegistry
 
     public function get(?string $key): ?CombatSport
     {
-        $class = $key ? config('combat.sports.' . $key) : null;
+        $class = $key ? config('combat.sports.'.$key) : null;
 
         return $class ? app($class) : null;
     }

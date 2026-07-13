@@ -23,7 +23,7 @@ class SubscriptionExpiryEmail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         $clubName = $this->subscription->tenant->club_name ?? config('app.name');
-        $isPaid   = $this->subscription->payment_status === 'paid';
+        $isPaid = $this->subscription->payment_status === 'paid';
 
         $subject = $isPaid
             ? "[{$clubName}] Your package expires in 3 days — Renew now"

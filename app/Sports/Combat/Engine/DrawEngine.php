@@ -74,9 +74,9 @@ class DrawEngine
 
         // Stable pseudo-random spread; provisional = at risk of removal at start (unpaid OR not weighed in).
         $competitors = $regs->map(fn ($r) => [
-            'name'        => $r->user?->full_name ?? $r->user?->name ?? 'Athlete',
+            'name' => $r->user?->full_name ?? $r->user?->name ?? 'Athlete',
             'provisional' => ! $paidOnly && (! $r->paid || $r->weight === null),
-            'key'         => md5($cat->id . ':' . $r->user_id),
+            'key' => md5($cat->id.':'.$r->user_id),
         ])->sortBy('key')->values();
 
         $cat->matches()->delete();
@@ -84,6 +84,7 @@ class DrawEngine
         $n = $competitors->count();
         if ($n < 2) {
             $cat->update(['draw_state' => $paidOnly ? 'final' : 'provisional', 'draw_count' => $n]);
+
             return;
         }
 
@@ -108,16 +109,16 @@ class DrawEngine
             $b = $slots[$i + 1];
             $bye = (($a === null) xor ($b === null));
             $cat->matches()->create([
-                'event_id'      => $event->id,
-                'round'         => $rounds[0],
-                'phase'         => $this->phaseForRound($rounds[0]),
-                'slot'          => $slot++,
-                'a_name'        => $a['name'] ?? null,
+                'event_id' => $event->id,
+                'round' => $rounds[0],
+                'phase' => $this->phaseForRound($rounds[0]),
+                'slot' => $slot++,
+                'a_name' => $a['name'] ?? null,
                 'a_provisional' => $a['provisional'] ?? false,
-                'b_name'        => $b['name'] ?? null,
+                'b_name' => $b['name'] ?? null,
                 'b_provisional' => $b['provisional'] ?? false,
-                'winner'        => $bye ? ($a ? 'a' : 'b') : null,
-                'status'        => $bye ? 'done' : 'upcoming',
+                'winner' => $bye ? ($a ? 'a' : 'b') : null,
+                'status' => $bye ? 'done' : 'upcoming',
             ]);
         }
 
@@ -126,10 +127,10 @@ class DrawEngine
             for ($i = 0; $i < $count; $i++) {
                 $cat->matches()->create([
                     'event_id' => $event->id,
-                    'round'    => $rounds[$r],
-                    'phase'    => $this->phaseForRound($rounds[$r]),
-                    'slot'     => $slot++,
-                    'status'   => 'upcoming',
+                    'round' => $rounds[$r],
+                    'phase' => $this->phaseForRound($rounds[$r]),
+                    'slot' => $slot++,
+                    'status' => 'upcoming',
                 ]);
             }
         }
@@ -137,8 +138,8 @@ class DrawEngine
         $cat->update([
             'draw_state' => $paidOnly ? 'final' : 'provisional',
             'draw_count' => $n,
-            'schedule'   => $cat->schedule ?: $this->scheduler->defaultSchedule($event, $cat),
-            'status'     => ($paidOnly && $cat->status === 'enrolling') ? 'live' : $cat->status,
+            'schedule' => $cat->schedule ?: $this->scheduler->defaultSchedule($event, $cat),
+            'status' => ($paidOnly && $cat->status === 'enrolling') ? 'live' : $cat->status,
         ]);
     }
 
@@ -156,6 +157,7 @@ class DrawEngine
             }
             $seeds = $next;
         }
+
         return $seeds;
     }
 
@@ -165,12 +167,13 @@ class DrawEngine
         $names = [];
         for ($m = $size / 2; $m >= 1; $m /= 2) {
             $names[] = match ((int) $m) {
-                1       => 'Final',
-                2       => 'Semifinal',
-                4       => 'Quarterfinal',
-                default => 'Round of ' . ((int) $m * 2),
+                1 => 'Final',
+                2 => 'Semifinal',
+                4 => 'Quarterfinal',
+                default => 'Round of '.((int) $m * 2),
             };
         }
+
         return $names;
     }
 
@@ -180,10 +183,11 @@ class DrawEngine
         if (str_starts_with($round, 'Round of')) {
             return 'preliminary';
         }
+
         return match ($round) {
-            'Quarterfinal'       => 'quarterfinals',
+            'Quarterfinal' => 'quarterfinals',
             'Semifinal', 'Final' => 'finals',
-            default              => 'preliminary',
+            default => 'preliminary',
         };
     }
 }

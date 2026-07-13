@@ -25,51 +25,44 @@
     $line = implode(' ', $pts);
     $area = $line !== '' ? "0,30 {$line} 100,30" : '';
 @endphp
-<div class="space-y-5">
+<div class="-mx-4 -mt-4">
 
-    {{-- ===== Revenue hero ===== --}}
-    <a href="{{ route('admin.club.financials', $club->slug) }}" data-shell-link data-route="admin.club.financials"
-       class="m-press block m-hero rounded-2xl text-white p-5 shadow-lg no-underline">
-        <div class="relative z-10">
-            <div class="flex items-center justify-between">
-                <p class="text-xs font-semibold text-white/80 uppercase tracking-wider">{{ __('admin.dash_revenue_12mo') }}</p>
-                <span class="inline-flex items-center gap-1 text-[11px] font-medium bg-white/15 backdrop-blur rounded-full px-2.5 py-1">
-                    <i class="bi bi-graph-up-arrow"></i> {{ $net >= 0 ? '+' : '' }}{{ $cur }} {{ number_format($net, 0) }} {{ __('admin.dash_net') }}
-                </span>
+    {{-- ===== Hero ===== --}}
+    <header class="m-hero px-5 pt-7 pb-6 text-white relative overflow-hidden">
+        <div class="absolute -end-8 -top-8 w-36 h-36 rounded-full bg-white/10"></div>
+        <div class="flex items-center justify-between relative z-10">
+            <div class="min-w-0">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70 truncate">{{ $club->club_name ?? __('admin.club') }}</p>
+                <h1 class="text-2xl font-black mt-0.5">{{ __('admin.nav_dashboard') }}</h1>
             </div>
-            <p class="text-[2rem] leading-tight font-extrabold mt-1 tabular-nums"
-               data-countup="{{ (int) round($income) }}" data-prefix="{{ $cur ? $cur.' ' : '' }}">{{ $cur ? $cur.' ' : '' }}{{ number_format($income, 0) }}</p>
-
-            {{-- Sparkline --}}
-            @if($area)
-            <svg viewBox="0 0 100 30" preserveAspectRatio="none" class="w-full h-12 mt-2 overflow-visible">
-                <defs>
-                    <linearGradient id="mDashSpark" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="rgba(255,255,255,.55)"/>
-                        <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
-                    </linearGradient>
-                </defs>
-                <polygon points="{{ $area }}" fill="url(#mDashSpark)" class="m-in-fade"/>
-                <polyline points="{{ $line }}" fill="none" stroke="#fff" stroke-width="1.6"
-                          stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"
-                          style="stroke-dasharray:240;stroke-dashoffset:240;animation:m-fade .3s both;animation-delay:.2s">
-                    <animate attributeName="stroke-dashoffset" from="240" to="0" dur="1.1s" begin="0.25s" fill="freeze" calcMode="spline" keySplines="0.22 0.61 0.36 1"/>
-                </polyline>
-            </svg>
-            @endif
-
-            <div class="flex items-center gap-2 mt-3">
-                <div class="flex-1 bg-white/12 rounded-xl px-3 py-2">
-                    <p class="text-[10px] text-white/70 uppercase tracking-wide">{{ __('admin.dash_to_collect') }}</p>
-                    <p class="text-sm font-bold tabular-nums">{{ $cur }} {{ number_format($toCollect, 0) }}</p>
-                </div>
-                <div class="flex-1 bg-white/12 rounded-xl px-3 py-2">
-                    <p class="text-[10px] text-white/70 uppercase tracking-wide">{{ __('admin.dash_expenses') }}</p>
-                    <p class="text-sm font-bold tabular-nums">{{ $cur }} {{ number_format($expenses, 0) }}</p>
+            <div class="flex items-center gap-2">
+                <a href="{{ route('admin.club.financials', $club->slug) }}" data-shell-link data-route="admin.club.financials"
+                   class="m-press w-12 h-12 rounded-2xl bg-white/20 border border-white/30 backdrop-blur grid place-items-center active:scale-95 transition-transform no-underline text-white" aria-label="{{ __('admin.nav_financials') }}">
+                    <i class="bi bi-graph-up-arrow text-xl"></i>
+                </a>
+                <div class="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center">
+                    <i class="bi bi-speedometer2 text-xl m-float"></i>
                 </div>
             </div>
         </div>
-    </a>
+
+        <div class="flex gap-2 mt-5 relative z-10">
+            <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
+                <p class="text-base font-black leading-none tabular-nums">{{ number_format($income, 0) }}<span class="text-[10px] font-bold ms-0.5">{{ $cur }}</span></p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('market.stat_revenue') }}</p>
+            </div>
+            <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
+                <p class="text-base font-black leading-none tabular-nums">{{ number_format($toCollect, 0) }}<span class="text-[10px] font-bold ms-0.5">{{ $cur }}</span></p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('admin.dash_to_collect') }}</p>
+            </div>
+            <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
+                <p class="text-base font-black leading-none tabular-nums">{{ $net >= 0 ? '+' : '' }}{{ number_format($net, 0) }}<span class="text-[10px] font-bold ms-0.5">{{ $cur }}</span></p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('admin.dash_net') }}</p>
+            </div>
+        </div>
+    </header>
+
+    <div class="px-4 pt-5 space-y-5">
 
     {{-- ===== KPI grid (nested stagger → per-card entrance) — each tile links to its section ===== --}}
     @php
@@ -183,5 +176,6 @@
         @endif
     </div>
 
+    </div>{{-- /content --}}
 </div>
 @endsection

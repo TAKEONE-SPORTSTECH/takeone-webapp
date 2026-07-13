@@ -33,7 +33,7 @@
                     <i class="bi bi-send text-primary"></i>
                 </div>
                 <div>
-                    <h3 class="font-semibold text-gray-800 text-base">Send Notification</h3>
+                    <h3 class="font-semibold text-gray-800 text-base">{{ __('admin.notifications_send_modal_title') }}</h3>
                     <p class="text-xs text-gray-400">{{ $club->club_name }}</p>
                 </div>
             </div>
@@ -49,20 +49,20 @@
 
                 {{-- Subject --}}
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('admin.notifications_send_modal_subject') }}</label>
                     <input type="text" name="subject" maxlength="255" required
-                           placeholder="Notification subject..."
+                           placeholder="{{ __('admin.notifications_send_modal_subject_placeholder') }}"
                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20">
                 </div>
 
                 {{-- Message --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1 flex justify-between">
-                        <span>Message</span>
+                        <span>{{ __('admin.notifications_send_modal_message') }}</span>
                         <span class="text-gray-400 font-normal" x-text="charCount + ' / ' + maxChars"></span>
                     </label>
                     <textarea name="message" rows="4" required maxlength="5000"
-                              placeholder="Write your message here..."
+                              placeholder="{{ __('admin.notifications_send_modal_message_placeholder') }}"
                               @input="charCount = $event.target.value.length"
                               class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 resize-none"></textarea>
                 </div>
@@ -71,21 +71,21 @@
                 <div>
                     <div class="flex items-center justify-between mb-2">
                         <label class="text-sm font-medium text-gray-700">
-                            Recipients
-                            <span class="text-gray-400 font-normal" x-text="'(' + selectedIds.length + ' of {{ $clubMembers->count() }} selected)'"></span>
+                            {{ __('admin.notifications_send_modal_recipients') }}
+                            <span class="text-gray-400 font-normal" x-text="'(' + selectedIds.length + ' {{ __('admin.notifications_send_modal_of') }} {{ $clubMembers->count() }} {{ __('admin.notifications_send_modal_selected') }})'"></span>
                         </label>
                         <button type="button" @click="toggleAll()"
                                 class="text-xs font-medium transition-colors cursor-pointer"
                                 :class="allSelected ? 'text-red-400 hover:text-red-500' : 'text-primary hover:text-primary/80'">
-                            <span x-text="allSelected ? 'Deselect All' : 'Select All'"></span>
+                            <span x-text="allSelected ? '{{ __('admin.notifications_send_modal_deselect_all') }}' : '{{ __('admin.notifications_send_modal_select_all') }}'"></span>
                         </button>
                     </div>
 
                     {{-- Search --}}
                     <div class="relative mb-2">
-                        <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                        <input type="text" x-model="search" placeholder="Search members..."
-                               class="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20">
+                        <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                        <input type="text" x-model="search" placeholder="{{ __('admin.notifications_send_modal_search_placeholder') }}"
+                               class="w-full ps-8 pe-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20">
                     </div>
 
                     {{-- Member List --}}
@@ -109,7 +109,7 @@
                             </template>
 
                             <div x-show="filteredMembers.length === 0" x-cloak class="px-4 py-6 text-center text-sm text-gray-400">
-                                No members found matching "<span x-text="search"></span>"
+                                {{ __('admin.notifications_send_modal_no_members') }} "<span x-text="search"></span>"
                             </div>
                         </div>
                     </div>
@@ -121,17 +121,17 @@
             <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-3">
                 <a href="{{ route('admin.club.notifications', $club->slug) }}"
                    class="text-sm text-gray-400 hover:text-primary transition-colors no-underline">
-                    <i class="bi bi-clock-history me-1"></i> View History
+                    <i class="bi bi-clock-history me-1"></i> {{ __('admin.notifications_send_modal_view_history') }}
                 </a>
                 <div class="flex gap-2">
                     <button type="button" @click="showNotificationModal = false; resetForm()"
                             class="px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-all cursor-pointer">
-                        Cancel
+                        {{ __('shared.cancel') }}
                     </button>
                     <button type="submit" :disabled="sending || selectedIds.length === 0"
                             class="px-5 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 transition-all font-medium cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2">
                         <span x-show="sending" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                        <span x-text="sending ? 'Sending...' : 'Send'"></span>
+                        <span x-text="sending ? '{{ __('admin.notifications_send_modal_sending') }}' : '{{ __('admin.notifications_send_modal_send') }}'"></span>
                     </button>
                 </div>
             </div>
@@ -192,7 +192,7 @@
 
             submitForm() {
                 if (this.selectedIds.length === 0) {
-                    showToast('Please select at least one member.', 'error');
+                    showToast('{{ __("admin.notifications_send_modal_select_one") }}', 'error');
                     return;
                 }
                 this.sending = true;
@@ -218,12 +218,12 @@
                         this.showNotificationModal = false;
                         this.resetForm();
                     } else {
-                        showToast(res.message || 'Something went wrong.', 'error');
+                        showToast(res.message || '{{ __("admin.notifications_send_modal_something_wrong") }}', 'error');
                     }
                 })
                 .catch(() => {
                     this.sending = false;
-                    showToast('Failed to send notification.', 'error');
+                    showToast('{{ __("admin.notifications_send_modal_send_failed") }}', 'error');
                 });
             }
         }));

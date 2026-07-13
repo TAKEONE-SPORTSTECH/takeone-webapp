@@ -1,6 +1,6 @@
 @extends('layouts.personal-mobile')
 
-@section('title', ($mode ?? 'create') === 'edit' ? 'Edit Event' : 'New Event')
+@section('title', ($mode ?? 'create') === 'edit' ? __('personal.personal_event_create_page_title_edit') : __('personal.personal_event_create_page_title_new'))
 
 {{--
     Create / edit an event — SCHEMA-DRIVEN (config/event_schema.php).
@@ -218,7 +218,7 @@
         removeDivision(i) { this.divisions.splice(i, 1); },
         suggestDivisions() {
             const s = this.sportMeta.sample || [];
-            if (!s.length) { window.showToast('info', 'No suggestions for this sport'); return; }
+            if (!s.length) { window.showToast('info', '{{ __("personal.personal_event_create_no_suggestions") }}'); return; }
             this.divisions = s.map(n => ({ name: n, capacity: 8, schedule: this.newSchedule() }));
         },
         addTeam() { this.league.teams.push(''); },
@@ -228,7 +228,7 @@
 
         canSave() { return this.tenant_id && this.title.trim().length > 1 && this.date && this.start_time; },
         async save() {
-            if (!this.canSave()) { window.showToast('warning','Add a title, date and start time'); return; }
+            if (!this.canSave()) { window.showToast('warning','{{ __("personal.personal_event_create_need_title_date_time") }}'); return; }
             if (this.sending) return;
             this.sending = true;
             try {
@@ -276,8 +276,8 @@
                     credentials: 'same-origin', body: JSON.stringify(payload),
                 });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok || !data.success) throw new Error(data.message || (data.errors ? Object.values(data.errors)[0][0] : 'Could not save event'));
-                window.showToast('success', data.message || (this.isEdit ? 'Event updated' : 'Event created 🎉'));
+                if (!res.ok || !data.success) throw new Error(data.message || (data.errors ? Object.values(data.errors)[0][0] : '{{ __("personal.personal_event_create_could_not_save") }}'));
+                window.showToast('success', data.message || (this.isEdit ? '{{ __("personal.personal_event_create_event_updated") }}' : '{{ __("personal.personal_event_create_event_created") }}'));
                 setTimeout(() => { window.location.href = data.redirect || '{{ route('me.events') }}'; }, 600);
             } catch (e) { window.showToast('error', e.message); }
             finally { this.sending = false; }
@@ -288,15 +288,15 @@
 
     {{-- ===== Header ===== --}}
     <header class="m-hero px-5 pt-5 pb-10 text-white relative overflow-hidden" :style="`background: linear-gradient(150deg, ${color}, #1f2937)`">
-        <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+        <div class="absolute -end-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
         <div class="flex items-center gap-3 relative z-10">
-            <a href="{{ $isEdit ? route('me.events.show', $ev->id) : route('me.events') }}" data-shell-link data-route="me.events"
-               class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="Back">
+            <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ $isEdit ? route('me.events.show', $ev->id) : route('me.events') }}')"
+               class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="{{ __('shared.back') }}">
                 <i class="bi bi-arrow-left text-lg"></i>
-            </a>
+            </button>
             <div>
-                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">{{ $isEdit ? 'Edit event' : 'New event' }}</p>
-                <h1 class="text-xl font-black">{{ $isEdit ? 'Edit event' : 'Create an event' }}</h1>
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">{{ $isEdit ? __('personal.personal_event_create_eyebrow_edit') : __('personal.personal_event_create_eyebrow_new') }}</p>
+                <h1 class="text-xl font-black">{{ $isEdit ? __('personal.personal_event_create_eyebrow_edit') : __('personal.personal_event_create_heading_new') }}</h1>
             </div>
         </div>
     </header>
@@ -305,8 +305,8 @@
         <div class="px-4 mt-6">
             <div class="m-card rounded-2xl p-6 text-center">
                 <i class="bi bi-buildings text-3xl text-gray-300"></i>
-                <p class="text-sm font-bold text-foreground mt-2">Join a club first</p>
-                <p class="text-xs text-muted-foreground mt-1">Events are created for a club you belong to.</p>
+                <p class="text-sm font-bold text-foreground mt-2">{{ __('personal.personal_event_create_join_club_first') }}</p>
+                <p class="text-xs text-muted-foreground mt-1">{{ __('personal.personal_event_create_join_club_desc') }}</p>
             </div>
         </div>
     @else
@@ -315,31 +315,31 @@
         {{-- ===== Step 1 · Generic vs Sport, then the sport filter ===== --}}
         <div x-show="step === 1" class="space-y-4">
             <div class="m-card rounded-2xl p-4">
-                <p class="text-sm font-bold text-foreground mb-3">What are you creating?</p>
+                <p class="text-sm font-bold text-foreground mb-3">{{ __('personal.personal_event_create_what_creating') }}</p>
                 <div class="grid grid-cols-2 gap-2">
                     <button type="button" @click="pickGeneric()"
                             class="m-press rounded-2xl py-6 px-3 border-2 flex flex-col items-center justify-center gap-1.5 text-center transition-colors"
                             :class="mode === 'generic' ? 'border-primary bg-accent' : 'border-gray-100 bg-white'">
                         <i class="bi bi-calendar-event text-2xl leading-none text-emerald-500"></i>
-                        <span class="text-sm font-bold text-foreground">Generic event</span>
-                        <span class="text-[10px] text-muted-foreground leading-tight">Class · gathering · belt test</span>
+                        <span class="text-sm font-bold text-foreground">{{ __('personal.personal_event_create_generic_event') }}</span>
+                        <span class="text-[10px] text-muted-foreground leading-tight">{{ __('personal.personal_event_create_generic_event_sub') }}</span>
                     </button>
                     <button type="button" @click="pickSportMode()"
                             class="m-press rounded-2xl py-6 px-3 border-2 flex flex-col items-center justify-center gap-1.5 text-center transition-colors"
                             :class="mode === 'sport' ? 'border-primary bg-accent' : 'border-gray-100 bg-white'">
                         <i class="bi bi-trophy-fill text-2xl leading-none text-red-500"></i>
-                        <span class="text-sm font-bold text-foreground">Sport</span>
-                        <span class="text-[10px] text-muted-foreground leading-tight">Competition · brackets</span>
+                        <span class="text-sm font-bold text-foreground">{{ __('personal.personal_event_create_sport') }}</span>
+                        <span class="text-[10px] text-muted-foreground leading-tight">{{ __('personal.personal_event_create_sport_sub') }}</span>
                     </button>
                 </div>
 
                 {{-- Sport filter — only when "Sport" is chosen --}}
                 <div x-show="mode === 'sport'" x-cloak class="mt-4 pt-4 border-t border-gray-100">
-                    <p class="text-[11px] text-muted-foreground mb-2">Pick the sport — each has its own setup.</p>
+                    <p class="text-[11px] text-muted-foreground mb-2">{{ __('personal.personal_event_create_pick_sport_hint') }}</p>
                     <div class="relative mb-3">
-                        <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                        <input x-model="sportSearch2" type="text" placeholder="Search sport…"
-                               class="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                        <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input x-model="sportSearch2" type="text" placeholder="{{ __('personal.personal_event_create_search_sport_ph') }}"
+                               class="w-full ps-10 pe-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                     </div>
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[44vh] overflow-y-auto -mx-1 px-1">
                         <template x-for="c in sportCards()" :key="c.key">
@@ -351,13 +351,13 @@
                                 <span class="text-[9px] text-muted-foreground uppercase tracking-wide" x-text="c.family"></span>
                             </button>
                         </template>
-                        <p x-show="!sportCards().length" class="col-span-2 sm:col-span-3 text-center text-sm text-muted-foreground py-6">No sport matches “<span x-text="sportSearch2"></span>”.</p>
+                        <p x-show="!sportCards().length" class="col-span-2 sm:col-span-3 text-center text-sm text-muted-foreground py-6">{{ __('personal.personal_event_create_no_sport_matches') }} “<span x-text="sportSearch2"></span>”.</p>
                     </div>
                 </div>
             </div>
             <button type="button" @click="goNext()" :disabled="!canNext"
                     class="m-press w-full py-3.5 rounded-2xl bg-primary text-white font-black text-sm flex items-center justify-center gap-2 transition-opacity disabled:opacity-50">
-                Next <i class="bi bi-arrow-right"></i>
+                {{ __('personal.personal_event_create_next') }} <i class="bi bi-arrow-right"></i>
             </button>
         </div>
 
@@ -370,39 +370,35 @@
                 <i class="bi text-lg text-primary" :class="picked === 'general' ? 'bi-calendar-event' : (sportMeta.icon || 'bi-trophy')"></i>
                 <span class="text-sm font-bold text-foreground truncate" x-text="pickedLabel"></span>
             </div>
-            <button type="button" @click="step = 1" class="m-press text-[11px] font-bold text-primary px-2 py-1 rounded-lg bg-accent"><i class="bi bi-arrow-left"></i> Change</button>
+            <button type="button" @click="step = 1" class="m-press text-[11px] font-bold text-primary px-2 py-1 rounded-lg bg-accent"><i class="bi bi-arrow-left"></i> {{ __('personal.personal_event_create_change') }}</button>
         </div>
 
         {{-- Details --}}
         <div class="m-card rounded-2xl p-4 space-y-4">
-            <p class="text-sm font-bold text-foreground"><span class="text-primary">3.</span> Details</p>
+            <p class="text-sm font-bold text-foreground"><span class="text-primary">3.</span> {{ __('personal.personal_event_create_details') }}</p>
 
             @if(count($clubs) > 1)
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Club</label>
-                    <select x-model.number="tenant_id" class="app-select w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                        @foreach($clubs as $club)
-                            <option value="{{ $club['id'] }}">{{ $club['name'] }}</option>
-                        @endforeach
-                    </select>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_club') }}</label>
+                    <x-select-menu model="tenant_id" :options="collect($clubs)->map(fn ($c) => ['value' => $c['id'], 'label' => $c['name']])->all()" />
                 </div>
             @endif
 
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Title</label>
-                <input x-model="title" type="text" placeholder="e.g. Summer Sprint Cup"
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_title_label') }}</label>
+                <input x-model="title" type="text" placeholder="{{ __('personal.personal_event_create_title_ph') }}"
                        class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
             </div>
 
             {{-- Enrollment window — drives the whole date chain --}}
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Enrollment opens</label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_enrollment_opens') }}</label>
                     <input x-model="enrollment_starts" type="date" @change="clampDates()"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Last day to join <span class="text-muted-foreground font-normal">(opt)</span></label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_last_day_join') }} <span class="text-muted-foreground font-normal">{{ __('personal.personal_event_create_opt') }}</span></label>
                     <input x-model="enrollment_ends" type="date" :min="enrollment_starts || ''" @change="clampDates()"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                 </div>
@@ -410,7 +406,7 @@
 
             {{-- Weigh-in (championship only) --}}
             <div x-show="isCombat" x-cloak>
-                <label class="block text-xs font-medium text-gray-600 mb-1"><i class="bi bi-clipboard-data text-primary"></i> Weigh-in <span class="text-muted-foreground font-normal">(opt)</span></label>
+                <label class="block text-xs font-medium text-gray-600 mb-1"><i class="bi bi-clipboard-data text-primary"></i> {{ __('personal.personal_event_create_weigh_in') }} <span class="text-muted-foreground font-normal">{{ __('personal.personal_event_create_opt') }}</span></label>
                 <input x-model="weigh_in_at" type="datetime-local"
                        :min="(enrollment_ends || enrollment_starts) ? ((enrollment_ends || enrollment_starts) + 'T00:00') : ''" @change="clampDates()"
                        class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
@@ -419,11 +415,11 @@
             {{-- Start / end date --}}
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Start date</label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_start_date') }}</label>
                     <input x-model="date" type="date" :min="weighInDate || enrollment_ends || enrollment_starts || ''" @change="clampDates()" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">End date <span class="text-muted-foreground font-normal">(opt)</span></label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_end_date') }} <span class="text-muted-foreground font-normal">{{ __('personal.personal_event_create_opt') }}</span></label>
                     <input x-model="end_date" type="date" :min="date || weighInDate || enrollment_ends || enrollment_starts || ''" @change="clampDates()" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                 </div>
             </div>
@@ -431,11 +427,11 @@
             {{-- Daily times --}}
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1"><span x-text="isCombat ? 'Daily start' : 'Start time'">Start time</span></label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1"><span x-text="isCombat ? 'Daily start' : 'Start time'">{{ __('personal.personal_event_create_start_time') }}</span></label>
                     <input x-model="start_time" type="time" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1"><span x-text="isCombat ? 'Daily end' : 'End time'">End time</span> <span class="text-muted-foreground font-normal">(opt)</span></label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1"><span x-text="isCombat ? 'Daily end' : 'End time'">{{ __('personal.personal_event_create_end_time') }}</span> <span class="text-muted-foreground font-normal">{{ __('personal.personal_event_create_opt') }}</span></label>
                     <input x-model="end_time" type="time" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                 </div>
             </div>
@@ -443,15 +439,15 @@
             {{-- Break time (championship only) --}}
             <div x-show="isChampionship" x-cloak class="rounded-xl bg-muted/40 p-3 space-y-3">
                 <div>
-                    <label class="block text-sm font-bold text-foreground mb-1">Number of courts <span class="text-muted-foreground font-normal text-[11px]">(mats / rings)</span></label>
-                    <input x-model="courts" type="number" min="1" max="50" placeholder="Auto — suggested from schedule"
+                    <label class="block text-sm font-bold text-foreground mb-1">{{ __('personal.personal_event_create_num_courts') }} <span class="text-muted-foreground font-normal text-[11px]">{{ __('personal.personal_event_create_mats_rings') }}</span></label>
+                    <input x-model="courts" type="number" min="1" max="50" placeholder="{{ __('personal.personal_event_create_courts_ph') }}"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                    <p class="text-[11px] text-muted-foreground mt-1">Leave blank to let the system suggest courts per day from the timing &amp; match count.</p>
+                    <p class="text-[11px] text-muted-foreground mt-1">{{ __('personal.personal_event_create_courts_hint') }}</p>
                 </div>
                 <div class="flex items-center justify-between border-t border-border/60 pt-3">
                     <div>
-                        <p class="text-sm font-bold text-foreground">Break time</p>
-                        <p class="text-[11px] text-muted-foreground">A daily rest/lunch break — courts pause</p>
+                        <p class="text-sm font-bold text-foreground">{{ __('personal.personal_event_create_break_time') }}</p>
+                        <p class="text-[11px] text-muted-foreground">{{ __('personal.personal_event_create_break_desc') }}</p>
                     </div>
                     <button type="button" @click="break_enabled = !break_enabled"
                             class="m-press shrink-0 w-12 h-7 rounded-full transition-colors relative" :class="break_enabled ? 'bg-primary' : 'bg-gray-300'">
@@ -460,12 +456,12 @@
                 </div>
                 <div x-show="break_enabled" x-cloak class="grid grid-cols-2 gap-3 mt-3">
                     <div>
-                        <label class="block text-[11px] font-medium text-gray-600 mb-1">From</label>
+                        <label class="block text-[11px] font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_from') }}</label>
                         <input x-model="break_start" type="time" :min="start_time || ''" :max="end_time || ''"
                                class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                     </div>
                     <div>
-                        <label class="block text-[11px] font-medium text-gray-600 mb-1">To</label>
+                        <label class="block text-[11px] font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_to') }}</label>
                         <input x-model="break_end" type="time" :min="break_start || start_time || ''" :max="end_time || ''"
                                class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                     </div>
@@ -474,22 +470,22 @@
 
             {{-- Location — pin on map or paste a Maps link --}}
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Location</label>
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_location') }}</label>
                 <div class="flex gap-2 mb-2">
                     <button type="button" @click="locMode='map'"
-                            class="m-press flex-1 py-1.5 rounded-lg text-xs font-bold border-2 transition-colors" :class="locMode==='map' ? 'border-primary bg-accent text-primary' : 'border-gray-200 text-muted-foreground'"><i class="bi bi-geo-alt"></i> Pin on map</button>
+                            class="m-press flex-1 py-1.5 rounded-lg text-xs font-bold border-2 transition-colors" :class="locMode==='map' ? 'border-primary bg-accent text-primary' : 'border-gray-200 text-muted-foreground'"><i class="bi bi-geo-alt"></i> {{ __('personal.personal_event_create_pin_map') }}</button>
                     <button type="button" @click="locMode='url'"
-                            class="m-press flex-1 py-1.5 rounded-lg text-xs font-bold border-2 transition-colors" :class="locMode==='url' ? 'border-primary bg-accent text-primary' : 'border-gray-200 text-muted-foreground'"><i class="bi bi-link-45deg"></i> Maps link</button>
+                            class="m-press flex-1 py-1.5 rounded-lg text-xs font-bold border-2 transition-colors" :class="locMode==='url' ? 'border-primary bg-accent text-primary' : 'border-gray-200 text-muted-foreground'"><i class="bi bi-link-45deg"></i> {{ __('personal.personal_event_create_maps_link') }}</button>
                 </div>
                 <div x-show="locMode==='map'" x-cloak class="space-y-2" @location-changed="gps_lat = $event.detail.lat; gps_long = $event.detail.lng">
-                    <input x-model="location" type="text" placeholder="Location title — e.g. Khalifa Sports City, Mat Hall A"
+                    <input x-model="location" type="text" placeholder="{{ __('personal.personal_event_create_loc_title_ph') }}"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                     <x-location-map id="eventLocMap" :lat="$ev?->gps_lat" :lng="$ev?->gps_long" :address="$ev?->location" height="10rem" :zoom="13" :show-labels="false" />
                 </div>
                 <div x-show="locMode==='url'" x-cloak class="space-y-2">
-                    <input x-model="location_url" type="url" placeholder="https://maps.google.com/…"
+                    <input x-model="location_url" type="url" placeholder="{{ __('personal.personal_event_create_maps_url_ph') }}"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                    <input x-model="location" type="text" placeholder="Place name (optional) — e.g. Main Hall"
+                    <input x-model="location" type="text" placeholder="{{ __('personal.personal_event_create_place_name_ph') }}"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                 </div>
             </div>
@@ -497,26 +493,26 @@
             {{-- Level + event-wide capacity: not for combat (capacity is per weight division) --}}
             <div class="grid grid-cols-2 gap-3" x-show="!isCombat">
                 <div x-show="!has('belt_levels')">
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Level <span class="text-muted-foreground font-normal">(opt)</span></label>
-                    <input x-model="level" type="text" placeholder="e.g. All / U-16"
+                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_level') }} <span class="text-muted-foreground font-normal">{{ __('personal.personal_event_create_opt') }}</span></label>
+                    <input x-model="level" type="text" placeholder="{{ __('personal.personal_event_create_level_ph') }}"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                 </div>
                 <div :class="has('belt_levels') ? 'col-span-2' : ''">
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Capacity <span class="text-muted-foreground font-normal">(opt)</span></label>
-                    <input x-model="max_capacity" type="number" min="1" placeholder="e.g. 40"
+                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_capacity') }} <span class="text-muted-foreground font-normal">{{ __('personal.personal_event_create_opt') }}</span></label>
+                    <input x-model="max_capacity" type="number" min="1" placeholder="{{ __('personal.personal_event_create_capacity_ph') }}"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                 </div>
             </div>
 
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">About <span class="text-muted-foreground font-normal">(opt)</span></label>
-                <textarea x-model="description" rows="3" placeholder="What's the event about?"
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_about') }} <span class="text-muted-foreground font-normal">{{ __('personal.personal_event_create_opt') }}</span></label>
+                <textarea x-model="description" rows="3" placeholder="{{ __('personal.personal_event_create_about_ph') }}"
                           class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"></textarea>
             </div>
 
             <div x-show="has('prize') && !isCombat" x-cloak>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Prize <span class="text-muted-foreground font-normal">(opt)</span></label>
-                <input x-model="prize" type="text" placeholder="e.g. BHD 500 + trophy"
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_prize') }} <span class="text-muted-foreground font-normal">{{ __('personal.personal_event_create_opt') }}</span></label>
+                <input x-model="prize" type="text" placeholder="{{ __('personal.personal_event_create_prize_ph') }}"
                        class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
             </div>
         </div>
@@ -534,12 +530,12 @@
 
         {{-- Reach — who can join (scope) --}}
         <div class="m-card rounded-2xl p-4">
-            <p class="text-sm font-bold text-foreground mb-1"><i class="bi bi-broadcast text-primary"></i> Who can join</p>
-            <p class="text-[11px] text-muted-foreground mb-3">Controls which members can see and register for this event.</p>
+            <p class="text-sm font-bold text-foreground mb-1"><i class="bi bi-broadcast text-primary"></i> {{ __('personal.personal_event_create_who_join') }}</p>
+            <p class="text-[11px] text-muted-foreground mb-3">{{ __('personal.personal_event_create_who_join_desc') }}</p>
             <div class="space-y-2">
                 <template x-for="[key, sc] in Object.entries(schema.scopes || {})" :key="key">
                     <button type="button" @click="scope = key"
-                            class="m-press w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-colors"
+                            class="m-press w-full flex items-center gap-3 p-3 rounded-xl border-2 text-start transition-colors"
                             :class="scope === key ? 'border-primary bg-accent' : 'border-gray-100 bg-white'">
                         <span class="w-9 h-9 rounded-lg grid place-items-center flex-shrink-0"
                               :class="scope === key ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'">
@@ -549,7 +545,7 @@
                             <span class="block text-sm font-bold text-foreground" x-text="sc.label"></span>
                             <span class="block text-[11px] text-muted-foreground leading-tight" x-text="sc.desc"></span>
                         </span>
-                        <i class="bi bi-check-circle-fill text-primary ml-auto flex-shrink-0" x-show="scope === key" x-cloak></i>
+                        <i class="bi bi-check-circle-fill text-primary ms-auto flex-shrink-0" x-show="scope === key" x-cloak></i>
                     </button>
                 </template>
             </div>
@@ -557,51 +553,49 @@
 
         {{-- Belt levels (belt tests) --}}
         <div class="m-card rounded-2xl p-4" x-show="has('belt_levels')" x-cloak>
-            <p class="text-sm font-bold text-foreground mb-1"><i class="bi bi-patch-check-fill text-amber-500"></i> Belt grading</p>
-            <p class="text-[11px] text-muted-foreground mb-3">Which belt range is this grading for?</p>
+            <p class="text-sm font-bold text-foreground mb-1"><i class="bi bi-patch-check-fill text-amber-500"></i> {{ __('personal.personal_event_create_belt_grading') }}</p>
+            <p class="text-[11px] text-muted-foreground mb-3">{{ __('personal.personal_event_create_belt_range_q') }}</p>
             <div class="flex items-center gap-2">
-                <select x-model="beltFrom" class="app-select flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                    <option value="">From belt…</option>
-                    @foreach($schema['belts'] as $belt)<option value="{{ $belt }}">{{ $belt }}</option>@endforeach
-                </select>
+                <div class="flex-1">
+                    <x-select-menu model="beltFrom" :options="$schema['belts']" :placeholder="__('personal.personal_event_create_from_belt')" />
+                </div>
                 <i class="bi bi-arrow-right text-muted-foreground"></i>
-                <select x-model="beltTo" class="app-select flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                    <option value="">To belt…</option>
-                    @foreach($schema['belts'] as $belt)<option value="{{ $belt }}">{{ $belt }}</option>@endforeach
-                </select>
+                <div class="flex-1">
+                    <x-select-menu model="beltTo" :options="$schema['belts']" :placeholder="__('personal.personal_event_create_to_belt')" />
+                </div>
             </div>
         </div>
 
         {{-- Divisions / categories (non-combat: free text) --}}
         <div class="m-card rounded-2xl p-4" x-show="has('divisions') && !isCombat" x-cloak>
             <div class="flex items-center justify-between mb-1">
-                <p class="text-sm font-bold text-foreground"><i class="bi bi-diagram-3 text-primary"></i> <span x-text="divisionLabel + 's'">Categories</span></p>
-                <button type="button" @click="suggestDivisions()" x-show="(sportMeta.sample||[]).length" class="m-press text-[11px] font-bold text-primary"><i class="bi bi-magic"></i> Suggest</button>
+                <p class="text-sm font-bold text-foreground"><i class="bi bi-diagram-3 text-primary"></i> <span x-text="divisionLabel + 's'">{{ __('personal.personal_event_create_category_fallback') }}</span></p>
+                <button type="button" @click="suggestDivisions()" x-show="(sportMeta.sample||[]).length" class="m-press text-[11px] font-bold text-primary"><i class="bi bi-magic"></i> {{ __('personal.personal_event_create_suggest') }}</button>
             </div>
-            <p class="text-[11px] text-muted-foreground mb-3">Each <span x-text="divisionLabel.toLowerCase()">category</span> gets its own bracket; members enrol into one.</p>
+            <p class="text-[11px] text-muted-foreground mb-3">{{ __('personal.personal_event_create_each') }} <span x-text="divisionLabel.toLowerCase()">{{ __('personal.personal_event_create_category_lc') }}</span> {{ __('personal.personal_event_create_gets_own_bracket') }}</p>
             <div class="space-y-2">
                 <template x-for="(d, i) in divisions" :key="i">
                     <div class="flex items-center gap-2">
                         <input x-model="d.name" type="text" :placeholder="divisionLabel + ' name'"
                                class="flex-1 min-w-0 px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                        <input x-model.number="d.capacity" type="number" min="2" placeholder="Cap"
+                        <input x-model.number="d.capacity" type="number" min="2" placeholder="{{ __('personal.personal_event_create_cap_ph') }}"
                                class="w-16 px-2 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                         <button type="button" @click="removeDivision(i)" class="m-press w-8 h-8 rounded-lg bg-muted grid place-items-center text-red-500 flex-shrink-0"><i class="bi bi-x-lg text-xs"></i></button>
                     </div>
                 </template>
             </div>
             <button type="button" @click="addDivision()" class="m-press mt-3 w-full py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground">
-                <i class="bi bi-plus-lg"></i> Add <span x-text="divisionLabel.toLowerCase()">category</span>
+                <i class="bi bi-plus-lg"></i> {{ __('personal.personal_event_create_add') }} <span x-text="divisionLabel.toLowerCase()">{{ __('personal.personal_event_create_category_lc') }}</span>
             </button>
         </div>
 
         {{-- Weight categories (combat) — pick age × gender × classes, then schedule per day --}}
         <div class="m-card rounded-2xl p-4" x-show="isCombat && has('divisions')" x-cloak>
             <div class="flex items-center justify-between mb-1">
-                <p class="text-sm font-bold text-foreground"><i class="bi bi-diagram-3 text-primary"></i> Weight categories</p>
+                <p class="text-sm font-bold text-foreground"><i class="bi bi-diagram-3 text-primary"></i> {{ __('personal.personal_event_create_weight_categories') }}</p>
                 <span class="text-[11px] text-muted-foreground" x-text="dayCount + (dayCount === 1 ? ' day' : ' days')"></span>
             </div>
-            <p class="text-[11px] text-muted-foreground mb-3">Pick age group, gender &amp; weight classes — divisions are created with official names and scheduled per day.</p>
+            <p class="text-[11px] text-muted-foreground mb-3">{{ __('personal.personal_event_create_weight_cat_hint') }}</p>
 
             {{-- Picker --}}
             <div class="rounded-2xl border-2 border-dashed border-gray-200 p-3 space-y-2.5">
@@ -609,10 +603,8 @@
                     <select x-model="tkdAge" @change="tkdChecked = {}" class="app-select w-full px-2.5 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                         <template x-for="g in Object.keys(tkdConfig)" :key="g"><option :value="g" x-text="g"></option></template>
                     </select>
-                    <select x-model="tkdGender" @change="tkdChecked = {}" class="app-select w-full px-2.5 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                        <option value="male">Men</option>
-                        <option value="female">Women</option>
-                    </select>
+                    <x-select-menu model="tkdGender" change="tkdChecked = {}"
+                                   :options="[['value' => 'male', 'label' => __('personal.personal_event_create_men')], ['value' => 'female', 'label' => __('personal.personal_event_create_women')]]" />
                 </div>
                 <div class="flex flex-wrap gap-1.5">
                     <template x-for="c in tkdClassesFor()" :key="c.label">
@@ -627,7 +619,7 @@
                 <button type="button" @click="addTkdClasses()" :disabled="!anyTkdChecked"
                         class="m-press w-full py-2 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50"
                         :style="`background:${color}`">
-                    <i class="bi bi-plus-lg"></i> Add selected
+                    <i class="bi bi-plus-lg"></i> {{ __('personal.personal_event_create_add_selected') }}
                 </button>
             </div>
 
@@ -640,9 +632,9 @@
                             <button type="button" @click="removeDivision(i)" class="m-press w-7 h-7 rounded-lg bg-muted grid place-items-center text-red-500 flex-shrink-0"><i class="bi bi-x-lg text-xs"></i></button>
                         </div>
                         <div class="flex items-center gap-2 mb-2">
-                            <label class="text-[11px] text-muted-foreground">Capacity</label>
-                            <input x-model="d.capacity" type="number" min="2" placeholder="No cap" class="w-24 px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                            <span class="text-[10px] text-muted-foreground">optional</span>
+                            <label class="text-[11px] text-muted-foreground">{{ __('personal.personal_event_create_capacity') }}</label>
+                            <input x-model="d.capacity" type="number" min="2" placeholder="{{ __('personal.personal_event_create_no_cap_ph') }}" class="w-24 px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                            <span class="text-[10px] text-muted-foreground">{{ __('personal.personal_event_create_optional_word') }}</span>
                         </div>
                         <div class="grid grid-cols-3 gap-2">
                             <template x-for="ph in phaseDefs" :key="ph.key">
@@ -657,20 +649,20 @@
                         </div>
                     </div>
                 </template>
-                <p x-show="!divisions.filter(d => (d.name||'').trim()).length" class="text-[11px] text-muted-foreground text-center py-2">No weight categories yet — pick some above.</p>
+                <p x-show="!divisions.filter(d => (d.name||'').trim()).length" class="text-[11px] text-muted-foreground text-center py-2">{{ __('personal.personal_event_create_no_weight_cats') }}</p>
             </div>
 
             <div x-show="dayCount < 2" x-cloak class="flex items-start gap-2 text-[11px] text-amber-600 bg-amber-50 rounded-xl p-2.5 mt-3">
                 <i class="bi bi-info-circle mt-0.5"></i>
-                <span>Single-day event — add an <span class="font-semibold">end date</span> above to split sections (e.g. finals) onto later days.</span>
+                <span>{{ __('personal.personal_event_create_single_day') }} <span class="font-semibold">{{ __('personal.personal_event_create_end_date_lc') }}</span> {{ __('personal.personal_event_create_split_sections') }}</span>
             </div>
         </div>
 
         {{-- League: teams + fixtures (standings auto-computed) --}}
         <div class="m-card rounded-2xl p-4 space-y-4" x-show="has('league')" x-cloak>
             <div>
-                <p class="text-sm font-bold text-foreground mb-1"><i class="bi bi-people-fill text-primary"></i> Teams</p>
-                <p class="text-[11px] text-muted-foreground mb-2">The league standings are calculated automatically from fixture scores.</p>
+                <p class="text-sm font-bold text-foreground mb-1"><i class="bi bi-people-fill text-primary"></i> {{ __('personal.personal_event_create_teams') }}</p>
+                <p class="text-[11px] text-muted-foreground mb-2">{{ __('personal.personal_event_create_teams_hint') }}</p>
                 <div class="space-y-2">
                     <template x-for="(t, i) in league.teams" :key="i">
                         <div class="flex items-center gap-2">
@@ -681,26 +673,26 @@
                     </template>
                 </div>
                 <button type="button" @click="addTeam()" class="m-press mt-2 w-full py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground">
-                    <i class="bi bi-plus-lg"></i> Add <span x-text="sportMeta.team ? 'team' : 'player'">team</span>
+                    <i class="bi bi-plus-lg"></i> {{ __('personal.personal_event_create_add') }} <span x-text="sportMeta.team ? 'team' : 'player'">{{ __('personal.personal_event_create_team_lc') }}</span>
                 </button>
             </div>
 
             <div>
-                <p class="text-sm font-bold text-foreground mb-2"><i class="bi bi-calendar2-week text-primary"></i> Fixtures</p>
+                <p class="text-sm font-bold text-foreground mb-2"><i class="bi bi-calendar2-week text-primary"></i> {{ __('personal.personal_event_create_fixtures') }}</p>
                 <div class="space-y-3">
                     <template x-for="(f, i) in league.fixtures" :key="i">
                         <div class="rounded-2xl border border-gray-100 p-3 space-y-2">
                             <div class="flex items-center gap-2">
-                                <input x-model="f.home" type="text" placeholder="Home"
+                                <input x-model="f.home" type="text" placeholder="{{ __('personal.personal_event_create_home_ph') }}"
                                        class="flex-1 min-w-0 px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                                 <input x-model.number="f.home_score" type="number" min="0" placeholder="–" class="w-12 px-1 py-2 text-center border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                                <span class="text-muted-foreground text-xs">v</span>
+                                <span class="text-muted-foreground text-xs">{{ __('personal.personal_event_create_versus') }}</span>
                                 <input x-model.number="f.away_score" type="number" min="0" placeholder="–" class="w-12 px-1 py-2 text-center border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                                <input x-model="f.away" type="text" placeholder="Away"
+                                <input x-model="f.away" type="text" placeholder="{{ __('personal.personal_event_create_away_ph') }}"
                                        class="flex-1 min-w-0 px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                             </div>
                             <div class="flex items-center gap-2">
-                                <input x-model="f.date" type="text" placeholder="Date — e.g. Jul 3"
+                                <input x-model="f.date" type="text" placeholder="{{ __('personal.personal_event_create_fixture_date_ph') }}"
                                        class="flex-1 px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                                 <button type="button" @click="removeFixture(i)" class="m-press w-8 h-8 rounded-lg bg-muted grid place-items-center text-red-500 flex-shrink-0"><i class="bi bi-trash text-xs"></i></button>
                             </div>
@@ -708,18 +700,18 @@
                     </template>
                 </div>
                 <button type="button" @click="addFixture()" class="m-press mt-2 w-full py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground">
-                    <i class="bi bi-plus-lg"></i> Add fixture
+                    <i class="bi bi-plus-lg"></i> {{ __('personal.personal_event_create_add_fixture') }}
                 </button>
             </div>
         </div>
 
         {{-- Pricing & tickets --}}
         <div class="m-card rounded-2xl p-4 space-y-3">
-            <p class="text-sm font-bold text-foreground">Entry &amp; tickets</p>
+            <p class="text-sm font-bold text-foreground">{{ __('personal.personal_event_create_entry_tickets') }}</p>
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-bold text-foreground">Free to join</p>
-                    <p class="text-[11px] text-muted-foreground">Toggle off to charge an entry fee</p>
+                    <p class="text-sm font-bold text-foreground">{{ __('personal.personal_event_create_free_join') }}</p>
+                    <p class="text-[11px] text-muted-foreground">{{ __('personal.personal_event_create_free_join_desc') }}</p>
                 </div>
                 <button type="button" @click="participant_free = !participant_free"
                         class="m-press shrink-0 w-12 h-7 rounded-full transition-colors relative"
@@ -729,15 +721,15 @@
             </div>
             <div x-show="!participant_free" x-cloak>
                 <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground pointer-events-none" x-text="currency">BHD</span>
+                    <span class="absolute start-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground pointer-events-none" x-text="currency">BHD</span>
                     <input x-model="participant_amount" type="number" min="0" step="0.001" inputmode="decimal" placeholder="0.000"
-                           class="w-full pl-16 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                           class="w-full ps-16 pe-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                 </div>
             </div>
             <div class="flex items-center justify-between pt-2 border-t border-gray-100">
                 <div>
-                    <p class="text-sm font-bold text-foreground">Spectator tickets</p>
-                    <p class="text-[11px] text-muted-foreground">Let people buy a ticket to watch</p>
+                    <p class="text-sm font-bold text-foreground">{{ __('personal.personal_event_create_spectator_tickets') }}</p>
+                    <p class="text-[11px] text-muted-foreground">{{ __('personal.personal_event_create_spectator_desc') }}</p>
                 </div>
                 <button type="button" @click="spectator_enabled = !spectator_enabled"
                         class="m-press shrink-0 w-12 h-7 rounded-full transition-colors relative"
@@ -747,9 +739,9 @@
             </div>
             <div x-show="spectator_enabled" x-cloak>
                 <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground pointer-events-none" x-text="currency">BHD</span>
-                    <input x-model="spectator_amount" type="number" min="0" step="0.001" inputmode="decimal" placeholder="0.000 (or leave blank for free)"
-                           class="w-full pl-16 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                    <span class="absolute start-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground pointer-events-none" x-text="currency">BHD</span>
+                    <input x-model="spectator_amount" type="number" min="0" step="0.001" inputmode="decimal" placeholder="{{ __('personal.personal_event_create_spectator_amount_ph') }}"
+                           class="w-full ps-16 pe-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                 </div>
             </div>
         </div>
@@ -757,8 +749,8 @@
         {{-- Schedule --}}
         <div class="m-card rounded-2xl p-4" x-show="has('schedule') && !isCombat" x-cloak>
             <div class="flex items-center justify-between mb-1">
-                <p class="text-sm font-bold text-foreground"><i class="bi bi-list-check text-primary"></i> Schedule</p>
-                <span class="text-[11px] text-muted-foreground">What happens &amp; when</span>
+                <p class="text-sm font-bold text-foreground"><i class="bi bi-list-check text-primary"></i> {{ __('personal.personal_event_create_schedule') }}</p>
+                <span class="text-[11px] text-muted-foreground">{{ __('personal.personal_event_create_happens_when') }}</span>
             </div>
             <div class="space-y-2 mt-2">
                 <template x-for="(a, i) in agenda" :key="i">
@@ -769,46 +761,46 @@
                                    class="flex-1 min-w-0 px-2.5 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                             <button type="button" @click="removeAgenda(i)" class="m-press w-8 h-8 rounded-lg bg-muted grid place-items-center text-red-500 flex-shrink-0"><i class="bi bi-x-lg text-xs"></i></button>
                         </div>
-                        <input x-model="a.d" type="text" placeholder="What's happening" class="w-full px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                        <input x-model="a.d" type="text" placeholder="{{ __('personal.personal_event_create_whats_happening_ph') }}" class="w-full px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                     </div>
                 </template>
             </div>
-            <button type="button" @click="addAgenda()" class="m-press mt-3 w-full py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground"><i class="bi bi-plus-lg"></i> Add schedule item</button>
+            <button type="button" @click="addAgenda()" class="m-press mt-3 w-full py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground"><i class="bi bi-plus-lg"></i> {{ __('personal.personal_event_create_add_schedule_item') }}</button>
         </div>
 
         {{-- Requirements --}}
         <div class="m-card rounded-2xl p-4" x-show="has('requirements')" x-cloak>
-            <p class="text-sm font-bold text-foreground mb-2"><i class="bi bi-clipboard-check text-primary"></i> Requirements</p>
+            <p class="text-sm font-bold text-foreground mb-2"><i class="bi bi-clipboard-check text-primary"></i> {{ __('personal.personal_event_create_requirements') }}</p>
             <div class="space-y-2">
                 <template x-for="(r, i) in requirements" :key="i">
                     <div class="flex items-center gap-2">
-                        <input x-model="requirements[i]" type="text" placeholder="Requirement" class="flex-1 min-w-0 px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                        <input x-model="requirements[i]" type="text" placeholder="{{ __('personal.personal_event_create_requirement_ph') }}" class="flex-1 min-w-0 px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                         <button type="button" @click="removeReq(i)" class="m-press w-8 h-8 rounded-lg bg-muted grid place-items-center text-red-500 flex-shrink-0"><i class="bi bi-x-lg text-xs"></i></button>
                     </div>
                 </template>
             </div>
-            <button type="button" @click="addReq()" class="m-press mt-2 w-full py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground"><i class="bi bi-plus-lg"></i> Add requirement</button>
+            <button type="button" @click="addReq()" class="m-press mt-2 w-full py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground"><i class="bi bi-plus-lg"></i> {{ __('personal.personal_event_create_add_requirement') }}</button>
         </div>
 
         {{-- Tags (always) --}}
         <div class="m-card rounded-2xl p-4">
-            <label class="block text-xs font-medium text-gray-600 mb-1">Tags <span class="text-muted-foreground font-normal">(comma-separated)</span></label>
-            <input x-model="tagsText" type="text" placeholder="e.g. Sprint, Outdoor, Competitive"
+            <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('personal.personal_event_create_tags') }} <span class="text-muted-foreground font-normal">{{ __('personal.personal_event_create_comma_separated') }}</span></label>
+            <input x-model="tagsText" type="text" placeholder="{{ __('personal.personal_event_create_tags_ph') }}"
                    class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
         </div>
 
         {{-- Phases (tournament timeline) --}}
         <div class="m-card rounded-2xl p-4" x-show="has('phases') && !isCombat" x-cloak>
             <div class="flex items-center justify-between mb-1">
-                <p class="text-sm font-bold text-foreground"><i class="bi bi-signpost-split text-primary"></i> Timeline</p>
-                <span class="text-[11px] text-muted-foreground">Lifecycle stages</span>
+                <p class="text-sm font-bold text-foreground"><i class="bi bi-signpost-split text-primary"></i> {{ __('personal.personal_event_create_timeline') }}</p>
+                <span class="text-[11px] text-muted-foreground">{{ __('personal.personal_event_create_lifecycle') }}</span>
             </div>
-            <p class="text-[11px] text-muted-foreground mb-3">Stages like enrollment, weigh-in, draw, finals.</p>
+            <p class="text-[11px] text-muted-foreground mb-3">{{ __('personal.personal_event_create_stages_hint') }}</p>
             <div class="space-y-3">
                 <template x-for="(p, i) in phases" :key="i">
                     <div class="rounded-2xl border border-gray-100 p-3 space-y-2">
                         <div class="flex items-center gap-2">
-                            <input x-model="p.label" type="text" placeholder="Stage — e.g. Weigh-in" class="flex-1 min-w-0 px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                            <input x-model="p.label" type="text" placeholder="{{ __('personal.personal_event_create_stage_ph') }}" class="flex-1 min-w-0 px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                             <button type="button" @click="removePhase(i)" class="m-press w-8 h-8 rounded-lg bg-muted grid place-items-center text-red-500 flex-shrink-0"><i class="bi bi-x-lg text-xs"></i></button>
                         </div>
                         <div class="flex items-center gap-2">
@@ -820,11 +812,11 @@
                             {{-- status is derived from the date, never entered --}}
                             <span class="px-2.5 py-1 rounded-full text-[10px] font-bold flex-shrink-0" :class="phaseStatusClass(p)" x-text="phaseStatusLabel(p)"></span>
                         </div>
-                        <input x-model="p.note" type="text" placeholder="Note (optional)" class="w-full px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+                        <input x-model="p.note" type="text" placeholder="{{ __('personal.personal_event_create_note_optional_ph') }}" class="w-full px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
                     </div>
                 </template>
             </div>
-            <button type="button" @click="addPhase()" class="m-press mt-3 w-full py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground"><i class="bi bi-plus-lg"></i> Add stage</button>
+            <button type="button" @click="addPhase()" class="m-press mt-3 w-full py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground"><i class="bi bi-plus-lg"></i> {{ __('personal.personal_event_create_add_stage') }}</button>
         </div>
 
         {{-- Save --}}

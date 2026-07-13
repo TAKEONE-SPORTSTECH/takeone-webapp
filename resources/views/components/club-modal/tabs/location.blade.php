@@ -5,8 +5,8 @@
 @endphp
 
 <div class="px-0">
-    <h5 class="font-bold mb-3">Location</h5>
-    <p class="text-muted-foreground mb-4">Set your club's geographic location and regional settings</p>
+    <h5 class="font-bold mb-3">{{ __('shared.modal_tabs_location_title') }}</h5>
+    <p class="text-muted-foreground mb-4">{{ __('shared.modal_tabs_location_subtitle') }}</p>
 
     <!-- Country, Timezone, Currency Row -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -53,7 +53,7 @@
     <!-- Google Maps Link -->
     <div class="mb-4">
         <label for="google_maps_link" class="form-label">
-            <i class="bi bi-google mr-1"></i>Google Maps Link (Optional)
+            <i class="bi bi-google me-1"></i>{{ __('shared.modal_tabs_location_google_maps_link_label') }}
         </label>
         <div class="input-group">
             <span class="input-group-text bg-white">
@@ -63,19 +63,19 @@
                    class="form-control"
                    id="google_maps_link"
                    name="google_maps_link"
-                   placeholder="Paste Google Maps share link here..."
+                   placeholder="{{ __('shared.modal_tabs_location_google_maps_placeholder') }}"
                    pattern="https?://.*google\.com/maps.*|https?://goo\.gl/maps/.*">
         </div>
-        <small class="text-muted-foreground">Paste a Google Maps share URL to auto-fill coordinates</small>
+        <small class="text-muted-foreground">{{ __('shared.modal_tabs_location_google_maps_help') }}</small>
     </div>
 
     <!-- Quick Location Actions -->
     <div class="flex gap-2 flex-wrap">
         <button type="button" class="btn btn-outline-primary btn-sm" onclick="getCurrentLocation()">
-            <i class="bi bi-crosshair mr-2"></i>Use My Current Location
+            <i class="bi bi-crosshair me-2"></i>{{ __('shared.modal_tabs_location_use_current') }}
         </button>
         <button type="button" class="btn btn-outline-secondary btn-sm" onclick="centerOnCountry()">
-            <i class="bi bi-globe mr-2"></i>Center on Selected Country
+            <i class="bi bi-globe me-2"></i>{{ __('shared.modal_tabs_location_center_country') }}
         </button>
     </div>
 </div>
@@ -265,14 +265,14 @@
 
     function getCurrentLocation() {
         if (!navigator.geolocation) {
-            window.showToast('error', 'Geolocation is not supported by your browser');
+            window.showToast('error', '{{ __("shared.modal_tabs_location_geo_unsupported") }}');
             return;
         }
 
         const btn = event.target.closest('button');
         const originalHtml = btn.innerHTML;
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-2"></span>Getting location...';
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>{{ __("shared.modal_tabs_location_getting") }}';
 
         navigator.geolocation.getCurrentPosition(
             function(position) {
@@ -287,12 +287,12 @@
                 btn.innerHTML = originalHtml;
 
                 if (typeof Toast !== 'undefined') {
-                    Toast.success('Success', 'Location updated successfully');
+                    Toast.success('{{ __("shared.modal_tabs_location_success") }}', '{{ __("shared.modal_tabs_location_updated") }}');
                 }
             },
             function(error) {
                 console.error('Geolocation error:', error);
-                window.showToast('error', 'Unable to get your location. Please check your browser permissions.');
+                window.showToast('error', '{{ __("shared.modal_tabs_location_geo_error") }}');
                 btn.disabled = false;
                 btn.innerHTML = originalHtml;
             }
@@ -318,7 +318,7 @@
                 inst.map.setView([lat, lng], 10);
 
                 if (typeof Toast !== 'undefined') {
-                    Toast.info('Info', `Centered on ${country.name}`);
+                    Toast.info('{{ __("shared.modal_tabs_location_info") }}', '{{ __("shared.modal_tabs_location_centered_on") }}'.replace(':name', country.name));
                 }
             }
         }
@@ -358,17 +358,17 @@
                 if (inst) inst.map.setView([lat, lng], 15);
 
                 if (typeof Toast !== 'undefined') {
-                    Toast.success('Success', 'Coordinates extracted from Google Maps link');
+                    Toast.success('{{ __("shared.modal_tabs_location_success") }}', '{{ __("shared.modal_tabs_location_coords_extracted") }}');
                 }
             } else {
                 if (typeof Toast !== 'undefined') {
-                    Toast.warning('Warning', 'Could not extract coordinates from the link');
+                    Toast.warning('{{ __("shared.modal_tabs_location_warning") }}', '{{ __("shared.modal_tabs_location_no_coords") }}');
                 }
             }
         } catch (error) {
             console.error('Error parsing Google Maps link:', error);
             if (typeof Toast !== 'undefined') {
-                Toast.error('Error', 'Invalid Google Maps link');
+                Toast.error('{{ __("shared.error") }}', '{{ __("shared.modal_tabs_location_invalid_link") }}');
             }
         }
     }

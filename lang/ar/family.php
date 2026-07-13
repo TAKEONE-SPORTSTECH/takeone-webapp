@@ -7,6 +7,8 @@ return [
     'member'          => 'فرد',
     'members'         => 'أفراد',
     'under_your_care' => 'تحت رعايتك',
+    'adults'          => 'بالغون',
+    'minors'          => 'قاصرون',
     'years'           => 'سنة',
 
     // Empty state

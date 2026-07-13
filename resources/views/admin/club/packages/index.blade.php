@@ -17,11 +17,11 @@
 }">
     <div class="flex justify-between items-center mb-6">
         <div>
-            <h2 class="tf-section-title">Packages Management</h2>
-            <p class="text-sm text-gray-500 mt-1">Create and manage membership packages</p>
+            <h2 class="tf-section-title">{{ __('admin.club_packages_index_title') }}</h2>
+            <p class="text-sm text-gray-500 mt-1">{{ __('admin.club_packages_index_subtitle') }}</p>
         </div>
         <button class="btn btn-primary" @click="openAddModal()">
-            <i class="bi bi-plus-lg mr-2"></i>Add Package
+            <i class="bi bi-plus-lg me-2"></i>{{ __('admin.club_packages_index_add_package') }}
         </button>
     </div>
 
@@ -30,17 +30,17 @@
         @foreach($packages as $package)
         <x-package-card :package="$package" :club="$club" :instructors-map="$instructorsMap">
             <x-slot:actions>
-                <button class="btn btn-sm btn-outline-primary" title="Edit"
+                <button class="btn btn-sm btn-outline-primary" title="{{ __('shared.edit') }}"
                         @click="openEditModal(packagesData.find(p => p.id === {{ $package->id }}))">
                     <i class="bi bi-pencil"></i>
                 </button>
-                <button class="btn btn-sm btn-secondary" title="Duplicate">
+                <button class="btn btn-sm btn-secondary" title="{{ __('admin.club_packages_index_duplicate') }}">
                     <i class="bi bi-copy"></i>
                 </button>
-                <form action="{{ route('admin.club.packages.destroy', [$club->slug, $package->id]) }}" method="POST" class="inline" onsubmit="event.preventDefault(); const f = this; window.confirmAction({ title: 'Delete Package', message: 'Are you sure you want to delete this package?', type: 'danger', confirmText: 'Delete' }).then(ok => { if (ok) f.submit(); }); return false;">
+                <form action="{{ route('admin.club.packages.destroy', [$club->slug, $package->id]) }}" method="POST" class="inline" onsubmit="event.preventDefault(); const f = this; window.confirmAction({ title: '{{ __("admin.club_packages_index_delete_title") }}', message: '{{ __("admin.club_packages_index_delete_confirm") }}', type: 'danger', confirmText: '{{ __("shared.delete") }}' }).then(ok => { if (ok) f.submit(); }); return false;">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="btn btn-sm btn-danger" title="Delete">
+                    <button type="submit" class="btn btn-sm btn-danger" title="{{ __('shared.delete') }}">
                         <i class="bi bi-trash"></i>
                     </button>
                 </form>
@@ -54,10 +54,10 @@
             <div class="tf-empty-icon">
                 <i class="bi bi-box text-gray-400 text-4xl"></i>
             </div>
-            <h5 class="text-xl font-semibold mb-2">No packages yet</h5>
-            <p class="text-muted-foreground mb-4">Create membership packages for your club to get started</p>
+            <h5 class="text-xl font-semibold mb-2">{{ __('admin.club_packages_index_empty_title') }}</h5>
+            <p class="text-muted-foreground mb-4">{{ __('admin.club_packages_index_empty_subtitle') }}</p>
             <button class="btn btn-primary" @click="openAddModal()">
-                <i class="bi bi-plus-lg mr-2"></i>Add Package
+                <i class="bi bi-plus-lg me-2"></i>{{ __('admin.club_packages_index_add_package') }}
             </button>
         </div>
     </div>

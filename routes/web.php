@@ -1,24 +1,25 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\Request;
-use App\Http\Controllers\FamilyController;
-use App\Http\Controllers\MemberController;
-use App\Http\Controllers\InvoiceController;
-use App\Http\Controllers\PlatformController;
-use App\Http\Controllers\InstructorReviewController;
-use App\Http\Controllers\TrainerController;
-use App\Http\Controllers\Auth\PasswordResetLinkController;
-use App\Http\Controllers\Auth\NewPasswordController;
-use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\FamilyController;
+use App\Http\Controllers\InstructorReviewController;
+use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\MemberController;
+use App\Http\Controllers\PlatformController;
+use App\Http\Controllers\TrainerController;
 use App\Http\Controllers\TwoFactorController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', function (Request $request) {
     if (Auth::check()) {
         return redirect(\App\Support\Landing::url($request));
     }
+
     return redirect()->route('login');
 });
 
@@ -56,24 +57,34 @@ Route::middleware(['auth', 'verified'])->get('/market/forms-preview', function (
     return view('market.forms-preview');
 })->name('market.forms-preview');
 
+// Public version manifest polled by the installed Android app to detect updates.
+Route::get('/app/manifest.json', [App\Http\Controllers\MobileAppController::class, 'manifest'])->name('app.manifest');
+
 // Personal (member) mobile experience — shared mobile shell
 Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')->group(function () {
-    Route::get('/',          [App\Http\Controllers\PersonalMobileController::class, 'home'])->name('home');
+    Route::get('/', [App\Http\Controllers\PersonalMobileController::class, 'home'])->name('home');
+
+    // Native push (FCM) device-token registration for the Android app.
+    Route::post('/push-tokens', [App\Http\Controllers\PushTokenController::class, 'store'])->name('push-tokens.store')->middleware('throttle:member-write');
+    Route::delete('/push-tokens', [App\Http\Controllers\PushTokenController::class, 'destroy'])->name('push-tokens.destroy')->middleware('throttle:member-write');
+
+    // "Get the App / Update" hub (renders in the mobile shell).
+    Route::get('/app', [App\Http\Controllers\MobileAppController::class, 'page'])->name('app');
 
     // Member-authored personal feed posts (text + images, likes, comments).
-    Route::post('/posts',                   [App\Http\Controllers\UserPostController::class, 'store'])->name('posts.store')->middleware('throttle:uploads');
-    Route::put('/posts/{post}',             [App\Http\Controllers\UserPostController::class, 'update'])->name('posts.update')->middleware('throttle:member-write');
-    Route::delete('/posts/{post}',          [App\Http\Controllers\UserPostController::class, 'destroy'])->name('posts.destroy')->middleware('throttle:member-write');
-    Route::post('/posts/{post}/like',       [App\Http\Controllers\UserPostController::class, 'like'])->name('posts.like')->middleware('throttle:member-write');
-    Route::post('/posts/{post}/vote',       [App\Http\Controllers\UserPostController::class, 'vote'])->name('posts.vote')->middleware('throttle:member-write');
-    Route::post('/posts/{post}/view',       [App\Http\Controllers\UserPostController::class, 'view'])->name('posts.view')->middleware('throttle:member-write');
-    Route::get('/posts/{post}/viewers',     [App\Http\Controllers\UserPostController::class, 'viewers'])->name('posts.viewers');
-    Route::get('/posts/{post}/likers',      [App\Http\Controllers\UserPostController::class, 'likers'])->name('posts.likers');
-    Route::post('/posts/{post}/comment',    [App\Http\Controllers\UserPostController::class, 'comment'])->name('posts.comment')->middleware('throttle:member-write');
-    // Member stories (24h) shown in the feed's stories row.
-    Route::post('/stories',                 [App\Http\Controllers\UserStoryController::class, 'store'])->name('stories.store')->middleware('throttle:uploads');
-    Route::delete('/stories/{story}',       [App\Http\Controllers\UserStoryController::class, 'destroy'])->name('stories.destroy')->middleware('throttle:member-write');
-    Route::get('/schedule',  [App\Http\Controllers\PersonalMobileController::class, 'schedule'])->name('schedule');
+    Route::post('/posts', [App\Http\Controllers\UserPostController::class, 'store'])->name('posts.store')->middleware('throttle:uploads');
+    Route::put('/posts/{post}', [App\Http\Controllers\UserPostController::class, 'update'])->name('posts.update')->middleware('throttle:member-write');
+    Route::delete('/posts/{post}', [App\Http\Controllers\UserPostController::class, 'destroy'])->name('posts.destroy')->middleware('throttle:member-write');
+    Route::post('/posts/{post}/like', [App\Http\Controllers\UserPostController::class, 'like'])->name('posts.like')->middleware('throttle:member-write');
+    Route::post('/posts/{post}/vote', [App\Http\Controllers\UserPostController::class, 'vote'])->name('posts.vote')->middleware('throttle:member-write');
+    Route::post('/posts/{post}/view', [App\Http\Controllers\UserPostController::class, 'view'])->name('posts.view')->middleware('throttle:member-write');
+    Route::get('/posts/{post}/viewers', [App\Http\Controllers\UserPostController::class, 'viewers'])->name('posts.viewers');
+    Route::get('/posts/{post}/likers', [App\Http\Controllers\UserPostController::class, 'likers'])->name('posts.likers');
+    Route::post('/posts/{post}/comment', [App\Http\Controllers\UserPostController::class, 'comment'])->name('posts.comment')->middleware('throttle:member-write');
+    // Super-admin moderation: hide a post from public view (reversible) or unhide it.
+    Route::post('/posts/{post}/hide', [App\Http\Controllers\UserPostController::class, 'hide'])->name('posts.hide')->middleware('throttle:member-write');
+    Route::post('/posts/{post}/unhide', [App\Http\Controllers\UserPostController::class, 'unhide'])->name('posts.unhide')->middleware('throttle:member-write');
+    Route::get('/schedule', [App\Http\Controllers\PersonalMobileController::class, 'schedule'])->name('schedule');
     Route::get('/schedule/data', [App\Http\Controllers\PersonalMobileController::class, 'scheduleData'])->name('schedule.data');
     Route::post('/schedule', [App\Http\Controllers\PersonalMobileController::class, 'store'])->name('schedule.store')->middleware('throttle:member-write');
     Route::get('/schedule/synced/{token}', [App\Http\Controllers\PersonalMobileController::class, 'scheduleSyncedShow'])->name('schedule.synced');
@@ -96,66 +107,80 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     Route::put('/schedule/{session}', [App\Http\Controllers\PersonalMobileController::class, 'update'])->name('schedule.update')->whereNumber('session')->middleware('throttle:member-write');
     Route::delete('/schedule/{session}', [App\Http\Controllers\PersonalMobileController::class, 'destroy'])->name('schedule.destroy')->whereNumber('session')->middleware('throttle:member-write');
     Route::get('/affiliations', [App\Http\Controllers\PersonalMobileController::class, 'affiliations'])->name('affiliations');
-    Route::get('/profile',   [App\Http\Controllers\PersonalMobileController::class, 'profile'])->name('profile');
-    Route::get('/packages',  [App\Http\Controllers\PersonalMobileController::class, 'packages'])->name('packages');
-    Route::get('/progress',  [App\Http\Controllers\PersonalMobileController::class, 'progress'])->name('progress');
-    Route::get('/payments',  [App\Http\Controllers\PersonalMobileController::class, 'payments'])->name('payments');
+    // Family tree (kinship graph) — page + JSON window + writes
+    Route::get('/family', [App\Http\Controllers\FamilyTreeController::class, 'index'])->name('family');
+    Route::get('/family/data', [App\Http\Controllers\FamilyTreeController::class, 'data'])->name('family.data');
+    Route::post('/family/relative', [App\Http\Controllers\FamilyTreeController::class, 'addRelative'])->name('family.relative')->middleware('throttle:member-write');
+    Route::post('/family/respond', [App\Http\Controllers\FamilyTreeController::class, 'respond'])->name('family.respond')->middleware('throttle:member-write');
+    Route::get('/profile', [App\Http\Controllers\PersonalMobileController::class, 'profile'])->name('profile');
+    Route::get('/packages', [App\Http\Controllers\PersonalMobileController::class, 'packages'])->name('packages');
+    Route::get('/progress', [App\Http\Controllers\PersonalMobileController::class, 'progress'])->name('progress');
+    Route::get('/payments', [App\Http\Controllers\PersonalMobileController::class, 'payments'])->name('payments');
+    // Settle an outstanding subscription bill by uploading proof of payment.
+    Route::post('/payments/{subscription}/settle', [App\Http\Controllers\PersonalMobileController::class, 'settlePayment'])->name('payments.settle')->middleware('throttle:uploads');
     // Events — real, DB-backed (club_events).
-    Route::get('/events',                  [App\Http\Controllers\PersonalEventController::class, 'index'])->name('events');
-    Route::get('/events/create',           [App\Http\Controllers\PersonalEventController::class, 'create'])->name('events.create');
-    Route::post('/events',                 [App\Http\Controllers\PersonalEventController::class, 'store'])->name('events.store')->middleware('throttle:member-write');
-    Route::get('/events/{event:uuid}',          [App\Http\Controllers\PersonalEventController::class, 'show'])->name('events.show');
-    Route::get('/events/{event:uuid}/edit',     [App\Http\Controllers\PersonalEventController::class, 'edit'])->name('events.edit');
-    Route::put('/events/{event:uuid}',          [App\Http\Controllers\PersonalEventController::class, 'update'])->name('events.update')->middleware('throttle:member-write');
+    Route::get('/events', [App\Http\Controllers\PersonalEventController::class, 'index'])->name('events');
+    Route::get('/events/create', [App\Http\Controllers\PersonalEventController::class, 'create'])->name('events.create');
+    Route::post('/events', [App\Http\Controllers\PersonalEventController::class, 'store'])->name('events.store')->middleware('throttle:member-write');
+    Route::get('/events/{event:uuid}', [App\Http\Controllers\PersonalEventController::class, 'show'])->name('events.show');
+    Route::get('/events/{event:uuid}/edit', [App\Http\Controllers\PersonalEventController::class, 'edit'])->name('events.edit');
+    Route::put('/events/{event:uuid}', [App\Http\Controllers\PersonalEventController::class, 'update'])->name('events.update')->middleware('throttle:member-write');
     Route::patch('/events/{event:uuid}/cancel', [App\Http\Controllers\PersonalEventController::class, 'cancelEvent'])->name('events.cancel-event')->middleware('throttle:member-write');
-    Route::put('/events/{event:uuid}/results',  [App\Http\Controllers\PersonalEventController::class, 'setResults'])->name('events.results')->middleware('throttle:member-write');
-    Route::delete('/events/{event:uuid}',       [App\Http\Controllers\PersonalEventController::class, 'destroy'])->name('events.destroy')->middleware('throttle:member-write');
+    Route::put('/events/{event:uuid}/results', [App\Http\Controllers\PersonalEventController::class, 'setResults'])->name('events.results')->middleware('throttle:member-write');
+    Route::delete('/events/{event:uuid}', [App\Http\Controllers\PersonalEventController::class, 'destroy'])->name('events.destroy')->middleware('throttle:member-write');
     Route::get('/events/{event:uuid}/brackets', [App\Http\Controllers\PersonalEventController::class, 'bracket'])->name('events.bracket');
     Route::post('/events/{event:uuid}/generate-draw', [App\Http\Controllers\PersonalEventController::class, 'generateDraw'])->name('events.generate-draw')->middleware('throttle:member-write');
     Route::post('/events/{event:uuid}/expenses', [App\Http\Controllers\PersonalEventController::class, 'addExpense'])->name('events.expenses.add')->middleware('throttle:member-write');
     Route::delete('/events/{event:uuid}/expenses/{expense}', [App\Http\Controllers\PersonalEventController::class, 'deleteExpense'])->name('events.expenses.delete')->whereNumber('expense')->middleware('throttle:member-write');
     Route::put('/events/{event:uuid}/categories/{category}', [App\Http\Controllers\PersonalEventController::class, 'saveCategory'])->name('events.category.save')->middleware('throttle:member-write');
-    Route::post('/events/{event:uuid}/register',  [App\Http\Controllers\PersonalEventController::class, 'register'])->name('events.register')->middleware('throttle:member-write');
-    Route::post('/events/{event:uuid}/ticket',    [App\Http\Controllers\PersonalEventController::class, 'ticket'])->name('events.ticket')->middleware('throttle:member-write');
+    Route::post('/events/{event:uuid}/register', [App\Http\Controllers\PersonalEventController::class, 'register'])->name('events.register')->middleware('throttle:member-write');
+    Route::post('/events/{event:uuid}/ticket', [App\Http\Controllers\PersonalEventController::class, 'ticket'])->name('events.ticket')->middleware('throttle:member-write');
     Route::delete('/events/{event:uuid}/register', [App\Http\Controllers\PersonalEventController::class, 'cancel'])->name('events.cancel')->middleware('throttle:member-write');
     // Owner moderation of registrations (remove / block this event / blacklist club-wide).
     Route::post('/events/{event:uuid}/participants/{user}/moderate', [App\Http\Controllers\PersonalEventController::class, 'moderateParticipant'])->name('events.participant.moderate')->whereNumber('user')->middleware('throttle:member-write');
     Route::delete('/events/{event:uuid}/bans/{user}', [App\Http\Controllers\PersonalEventController::class, 'liftBan'])->name('events.ban.lift')->whereNumber('user')->middleware('throttle:member-write');
-    Route::get('/market',    [App\Http\Controllers\PersonalMobileController::class, 'market'])->name('market');
+    Route::get('/market', [App\Http\Controllers\PersonalMobileController::class, 'market'])->name('market');
     Route::get('/market/{product}', [App\Http\Controllers\PersonalMobileController::class, 'marketShow'])->name('market.show')->whereNumber('product');
     // Shop orders (member side): place an order + see my orders.
-    Route::get('/orders',    [App\Http\Controllers\OrderController::class, 'index'])->name('orders');
-    Route::post('/orders',   [App\Http\Controllers\OrderController::class, 'store'])->name('orders.store')->middleware('throttle:member-write');
+    Route::get('/orders', [App\Http\Controllers\OrderController::class, 'index'])->name('orders');
+    Route::post('/orders', [App\Http\Controllers\OrderController::class, 'store'])->name('orders.store')->middleware('throttle:member-write');
     Route::post('/orders/{order}/receive', [App\Http\Controllers\OrderController::class, 'receive'])->name('orders.receive')->middleware('throttle:member-write');
     // Challenges & 1v1 duels (real, DB-backed).
-    Route::get('/challenge',                       [App\Http\Controllers\ChallengeController::class, 'index'])->name('challenge');
-    Route::get('/challenge/create',                [App\Http\Controllers\ChallengeController::class, 'create'])->name('challenge.create');
-    Route::post('/challenge/duels',                [App\Http\Controllers\ChallengeController::class, 'store'])->name('challenge.store')->middleware('throttle:member-write');
-    Route::get('/challenge/history',               [App\Http\Controllers\ChallengeController::class, 'history'])->name('challenge.history');
-    Route::get('/challenge/duel/{duel}',           [App\Http\Controllers\ChallengeController::class, 'duel'])->name('challenge.duel')->whereNumber('duel');
-    Route::post('/challenge/duel/{duel}/accept',   [App\Http\Controllers\ChallengeController::class, 'accept'])->name('challenge.duel.accept')->middleware('throttle:member-write');
-    Route::post('/challenge/duel/{duel}/decline',  [App\Http\Controllers\ChallengeController::class, 'decline'])->name('challenge.duel.decline')->middleware('throttle:member-write');
-    Route::post('/challenge/duel/{duel}/cancel',   [App\Http\Controllers\ChallengeController::class, 'cancel'])->name('challenge.duel.cancel')->middleware('throttle:member-write');
-    Route::post('/challenge/duel/{duel}/report',   [App\Http\Controllers\ChallengeController::class, 'report'])->name('challenge.duel.report')->middleware('throttle:member-write');
-    Route::post('/challenge/duel/{duel}/confirm',  [App\Http\Controllers\ChallengeController::class, 'confirm'])->name('challenge.duel.confirm')->middleware('throttle:member-write');
-    Route::post('/challenge/duel/{duel}/dispute',  [App\Http\Controllers\ChallengeController::class, 'dispute'])->name('challenge.duel.dispute')->middleware('throttle:member-write');
-    Route::put('/challenge/duel/{duel}',           [App\Http\Controllers\ChallengeController::class, 'updateDuel'])->name('challenge.duel.update')->middleware('throttle:member-write');
-    Route::delete('/challenge/duel/{duel}',        [App\Http\Controllers\ChallengeController::class, 'destroyDuel'])->name('challenge.duel.destroy')->middleware('throttle:member-write');
-    Route::post('/challenge/duel/{duel}/media',    [App\Http\Controllers\ChallengeController::class, 'addMedia'])->name('challenge.duel.media.add')->middleware('throttle:uploads');
+    Route::get('/challenge', [App\Http\Controllers\ChallengeController::class, 'index'])->name('challenge');
+    Route::get('/challenge/create', [App\Http\Controllers\ChallengeController::class, 'create'])->name('challenge.create');
+    Route::post('/challenge/duels', [App\Http\Controllers\ChallengeController::class, 'store'])->name('challenge.store')->middleware('throttle:member-write');
+    Route::get('/challenge/history', [App\Http\Controllers\ChallengeController::class, 'history'])->name('challenge.history');
+    Route::get('/challenge/duel/{duel}', [App\Http\Controllers\ChallengeController::class, 'duel'])->name('challenge.duel')->whereNumber('duel');
+    Route::post('/challenge/duel/{duel}/accept', [App\Http\Controllers\ChallengeController::class, 'accept'])->name('challenge.duel.accept')->middleware('throttle:member-write');
+    Route::post('/challenge/duel/{duel}/decline', [App\Http\Controllers\ChallengeController::class, 'decline'])->name('challenge.duel.decline')->middleware('throttle:member-write');
+    Route::post('/challenge/duel/{duel}/cancel', [App\Http\Controllers\ChallengeController::class, 'cancel'])->name('challenge.duel.cancel')->middleware('throttle:member-write');
+    Route::post('/challenge/duel/{duel}/report', [App\Http\Controllers\ChallengeController::class, 'report'])->name('challenge.duel.report')->middleware('throttle:member-write');
+    Route::post('/challenge/duel/{duel}/confirm', [App\Http\Controllers\ChallengeController::class, 'confirm'])->name('challenge.duel.confirm')->middleware('throttle:member-write');
+    Route::post('/challenge/duel/{duel}/dispute', [App\Http\Controllers\ChallengeController::class, 'dispute'])->name('challenge.duel.dispute')->middleware('throttle:member-write');
+    Route::put('/challenge/duel/{duel}', [App\Http\Controllers\ChallengeController::class, 'updateDuel'])->name('challenge.duel.update')->middleware('throttle:member-write');
+    Route::delete('/challenge/duel/{duel}', [App\Http\Controllers\ChallengeController::class, 'destroyDuel'])->name('challenge.duel.destroy')->middleware('throttle:member-write');
+    Route::post('/challenge/duel/{duel}/media', [App\Http\Controllers\ChallengeController::class, 'addMedia'])->name('challenge.duel.media.add')->middleware('throttle:uploads');
     Route::delete('/challenge/duel/{duel}/media/{media}', [App\Http\Controllers\ChallengeController::class, 'deleteMedia'])->name('challenge.duel.media.delete')->whereNumber('media')->middleware('throttle:member-write');
     Route::get('/challenge/duel/{duel}/witness-search', [App\Http\Controllers\ChallengeController::class, 'searchWitnesses'])->name('challenge.duel.witness.search')->middleware('throttle:60,1');
     Route::post('/challenge/duel/{duel}/witnesses', [App\Http\Controllers\ChallengeController::class, 'addWitness'])->name('challenge.duel.witness.add')->middleware('throttle:member-write');
     Route::patch('/challenge/duel/{duel}/witnesses/{witness}/respond', [App\Http\Controllers\ChallengeController::class, 'respondWitness'])->name('challenge.duel.witness.respond')->whereNumber('witness')->middleware('throttle:member-write');
     Route::patch('/challenge/duel/{duel}/witnesses/{witness}/feedback', [App\Http\Controllers\ChallengeController::class, 'witnessFeedback'])->name('challenge.duel.witness.feedback')->whereNumber('witness')->middleware('throttle:member-write');
     Route::delete('/challenge/duel/{duel}/witnesses/{witness}', [App\Http\Controllers\ChallengeController::class, 'deleteWitness'])->name('challenge.duel.witness.delete')->whereNumber('witness')->middleware('throttle:member-write');
-    Route::get('/challenge/{challenge}',           [App\Http\Controllers\ChallengeController::class, 'show'])->name('challenge.show')->whereNumber('challenge');
-    Route::post('/challenge/{challenge}/join',     [App\Http\Controllers\ChallengeController::class, 'join'])->name('challenge.join')->middleware('throttle:member-write');
-    Route::post('/challenge/{challenge}/leave',    [App\Http\Controllers\ChallengeController::class, 'leave'])->name('challenge.leave')->middleware('throttle:member-write');
+    Route::get('/challenge/{challenge}', [App\Http\Controllers\ChallengeController::class, 'show'])->name('challenge.show')->whereNumber('challenge');
+    Route::post('/challenge/{challenge}/join', [App\Http\Controllers\ChallengeController::class, 'join'])->name('challenge.join')->middleware('throttle:member-write');
+    Route::post('/challenge/{challenge}/leave', [App\Http\Controllers\ChallengeController::class, 'leave'])->name('challenge.leave')->middleware('throttle:member-write');
     Route::post('/challenge/{challenge}/progress', [App\Http\Controllers\ChallengeController::class, 'progress'])->name('challenge.progress')->middleware('throttle:member-write');
-    Route::get('/settings',  [App\Http\Controllers\PersonalMobileController::class, 'settings'])->name('settings');
+    Route::get('/settings', [App\Http\Controllers\PersonalMobileController::class, 'settings'])->name('settings');
+
+    // People discovery — search directory (public profile lives at /people/{uuid}).
+    Route::get('/people', [App\Http\Controllers\PeopleController::class, 'index'])->name('people');
+    Route::get('/people/search', [App\Http\Controllers\PeopleController::class, 'search'])->name('people.search');
+    Route::put('/discoverable', [App\Http\Controllers\PersonalMobileController::class, 'updateDiscoverable'])->name('discoverable.update')->middleware('throttle:member-write');
+    // Mark an app section/feed-tab as seen (clears its unseen red-dot).
+    Route::post('/seen', [App\Http\Controllers\PersonalMobileController::class, 'markSectionSeen'])->name('seen');
 
     // Switch the active UI language (persists to user + session; client reloads).
-    Route::put('/locale',    [App\Http\Controllers\LocaleController::class, 'update'])->name('locale.update');
+    Route::put('/locale', [App\Http\Controllers\LocaleController::class, 'update'])->name('locale.update');
 });
 
 // Single-post permalink — unguessable token, members-only (auth-gated).
@@ -165,21 +190,21 @@ Route::middleware(['auth', 'verified', 'two-factor'])
 
 // Member walls + social graph (follow / connect / block)
 Route::middleware(['auth', 'verified', 'two-factor'])->prefix('u')->name('wall.')->group(function () {
-    // Backward-compat: legacy /u/{id} links (e.g. older notifications generated
-    // before walls moved to slugs) redirect to the canonical slug URL.
+    // Backward-compat: legacy /u/{id} links (old notifications/QRs) → member profile.
     Route::get('/{id}', function ($id) {
         $user = \App\Models\User::find($id);
         abort_unless($user, 404);
-        return redirect()->route('wall.show', $user);
+
+        return redirect()->route('member.show', $user->uuid);
     })->whereNumber('id')->name('legacy');
 
-    // Bound by slug ({user:slug}) so walls aren't reachable by guessing numeric IDs.
+    // The social "wall" is retired: /u/{slug} now redirects to the member profile.
     Route::get('/{user:slug}', [App\Http\Controllers\WallController::class, 'show'])->name('show');
 
-    Route::post('/{user:slug}/follow',   [App\Http\Controllers\ConnectionController::class, 'follow'])->name('follow')->middleware('throttle:member-write');
+    Route::post('/{user:slug}/follow', [App\Http\Controllers\ConnectionController::class, 'follow'])->name('follow')->middleware('throttle:member-write');
     Route::delete('/{user:slug}/follow', [App\Http\Controllers\ConnectionController::class, 'unfollow'])->name('unfollow')->middleware('throttle:member-write');
-    Route::post('/{user:slug}/block',    [App\Http\Controllers\ConnectionController::class, 'block'])->name('block')->middleware('throttle:member-write');
-    Route::delete('/{user:slug}/block',  [App\Http\Controllers\ConnectionController::class, 'unblock'])->name('unblock')->middleware('throttle:member-write');
+    Route::post('/{user:slug}/block', [App\Http\Controllers\ConnectionController::class, 'block'])->name('block')->middleware('throttle:member-write');
+    Route::delete('/{user:slug}/block', [App\Http\Controllers\ConnectionController::class, 'unblock'])->name('unblock')->middleware('throttle:member-write');
 });
 
 // Authentication routes
@@ -220,8 +245,10 @@ Route::get('/email/verify', function (Request $request) {
     if ($request->user()->hasVerifiedEmail()) {
         $intended = session()->pull('url.intended', \App\Support\Landing::url($request));
         session()->forget('club.context');
+
         return redirect($intended);
     }
+
     return view('auth.verify-email');
 })->middleware('auth')->name('verification.notice');
 
@@ -236,7 +263,7 @@ Route::get('/email/verify/{id}/{hash}', function (Request $request, $id, $hash) 
     session()->forget('club.context');
 
     // Log the user in and set the 2FA session flag so all middleware passes.
-    if (!auth()->check()) {
+    if (! auth()->check()) {
         Auth::login($user);
         $request->session()->regenerate();
         $request->session()->put('two_factor.verified', true);
@@ -258,6 +285,7 @@ Route::get('/email/verify/{id}/{hash}', function (Request $request, $id, $hash) 
 
 Route::post('/email/verification-notification', function (Request $request) {
     $request->user()->sendEmailVerificationNotification();
+
     return back()->with('resent', true);
 })->middleware(['auth', 'throttle:verification'])->name('verification.send');
 
@@ -265,9 +293,10 @@ Route::post('/email/verification-notification', function (Request $request) {
 Route::post('/email/resend-verification', function (Request $request) {
     $request->validate(['email' => 'required|email']);
     $user = \App\Models\User::where('email', $request->email)->first();
-    if ($user && !$user->hasVerifiedEmail()) {
+    if ($user && ! $user->hasVerifiedEmail()) {
         $user->sendEmailVerificationNotification();
     }
+
     // Always return the same message to avoid email enumeration.
     return redirect()->route('login')
         ->with('info', 'If that email exists and is unverified, a new verification link has been sent.');
@@ -281,11 +310,11 @@ Route::get('/t/{user}', [TrainerController::class, 'showPublic'])->name('trainer
 
 // Printable QR posters (club page, club registration, member profile, event).
 Route::middleware(['auth', 'verified', 'two-factor'])->prefix('qr')->name('qr.')->group(function () {
-    Route::get('/club/{club}/page',     [App\Http\Controllers\QrController::class, 'clubPoster'])->name('club.page');
+    Route::get('/club/{club}/page', [App\Http\Controllers\QrController::class, 'clubPoster'])->name('club.page');
     Route::get('/club/{club}/register', [App\Http\Controllers\QrController::class, 'clubRegisterPoster'])->name('club.register');
-    Route::get('/member/{user}',        [App\Http\Controllers\QrController::class, 'memberPoster'])->name('member');
-    Route::get('/member/{user}/svg',    [App\Http\Controllers\QrController::class, 'memberSvg'])->name('member.svg');
-    Route::get('/event/{event:uuid}',   [App\Http\Controllers\QrController::class, 'eventPoster'])->name('event');
+    Route::get('/member/{user}', [App\Http\Controllers\QrController::class, 'memberPoster'])->name('member');
+    Route::get('/member/{user}/svg', [App\Http\Controllers\QrController::class, 'memberSvg'])->name('member.svg');
+    Route::get('/event/{event:uuid}', [App\Http\Controllers\QrController::class, 'eventPoster'])->name('event');
 });
 
 // Explore routes (accessible to authenticated users)
@@ -347,8 +376,15 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])->prefi
     Route::post('/members/{id}/tournament', [App\Http\Controllers\Admin\PlatformController::class, 'storeMemberTournament'])->name('platform.members.store-tournament')->middleware('throttle:admin-write');
     Route::get('/members/{user}/popup', [App\Http\Controllers\Admin\PlatformController::class, 'memberPopup'])->name('platform.members.popup');
     Route::get('/members/{user}/enroll-data', [App\Http\Controllers\Admin\PlatformController::class, 'memberEnrollData'])->name('platform.members.enroll-data');
+    Route::post('/members/{user}/verify-email', [App\Http\Controllers\Admin\PlatformController::class, 'verifyMemberEmail'])->name('platform.members.verify-email')->middleware('throttle:admin-write');
 
     // Database Backup & Restore
+    Route::get('/settings', [App\Http\Controllers\Admin\PlatformController::class, 'settings'])->name('platform.settings');
+    Route::put('/settings', [App\Http\Controllers\Admin\PlatformController::class, 'updateSettings'])->name('platform.settings.update')->middleware('throttle:admin-write');
+    Route::put('/settings/whatsapp', [App\Http\Controllers\Admin\PlatformController::class, 'updateWhatsAppSettings'])->name('platform.settings.whatsapp.update')->middleware('throttle:admin-write');
+    Route::post('/settings/whatsapp/test', [App\Http\Controllers\Admin\PlatformController::class, 'testWhatsAppConnection'])->name('platform.settings.whatsapp.test')->middleware('throttle:admin-write');
+    Route::post('/settings/whatsapp/send-test', [App\Http\Controllers\Admin\PlatformController::class, 'sendTestWhatsAppMessage'])->name('platform.settings.whatsapp.send-test')->middleware('throttle:admin-write');
+
     Route::get('/backup', [App\Http\Controllers\Admin\PlatformController::class, 'backup'])->name('platform.backup');
     Route::get('/backup/download', [App\Http\Controllers\Admin\PlatformController::class, 'downloadBackup'])->name('platform.backup.download');
     Route::post('/backup/restore', [App\Http\Controllers\Admin\PlatformController::class, 'restoreBackup'])->name('platform.backup.restore')->middleware('throttle:backup');
@@ -380,11 +416,16 @@ Route::middleware(['auth', 'verified', 'two-factor', 'tenant', 'throttle:admin-w
     Route::put('/shop/products/{product}', [App\Http\Controllers\Admin\ClubShopController::class, 'updateProduct'])->name('shop.products.update');
     Route::delete('/shop/products/{product}', [App\Http\Controllers\Admin\ClubShopController::class, 'destroyProduct'])->name('shop.products.destroy');
     Route::post('/shop/categories', [App\Http\Controllers\Admin\ClubShopController::class, 'storeCategory'])->name('shop.categories.store');
+    Route::put('/shop/categories/{category}', [App\Http\Controllers\Admin\ClubShopController::class, 'updateCategory'])->name('shop.categories.update');
+    Route::delete('/shop/categories/{category}', [App\Http\Controllers\Admin\ClubShopController::class, 'destroyCategory'])->name('shop.categories.destroy');
     // Incoming shop orders the club fulfils.
     Route::get('/orders', [App\Http\Controllers\Admin\ClubOrderController::class, 'index'])->name('orders');
     Route::patch('/orders/{order}/status', [App\Http\Controllers\Admin\ClubOrderController::class, 'updateStatus'])->name('orders.status');
     Route::get('/details', [App\Http\Controllers\Admin\ClubAdminController::class, 'details'])->name('details');
     Route::put('/', [App\Http\Controllers\Admin\ClubAdminController::class, 'update'])->name('update');
+    Route::put('/settings/whatsapp', [App\Http\Controllers\Admin\ClubAdminController::class, 'updateWhatsAppSettings'])->name('settings.whatsapp.update');
+    Route::post('/settings/whatsapp/test', [App\Http\Controllers\Admin\ClubAdminController::class, 'testWhatsAppConnection'])->name('settings.whatsapp.test');
+    Route::post('/settings/whatsapp/send-test', [App\Http\Controllers\Admin\ClubAdminController::class, 'sendTestWhatsAppMessage'])->name('settings.whatsapp.send-test');
     Route::delete('/', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroy'])->name('destroy');
     Route::post('/social-links', [App\Http\Controllers\Admin\ClubAdminController::class, 'storeSocialLink'])->name('social-links.store');
     Route::delete('/social-links/{link}', [App\Http\Controllers\Admin\ClubAdminController::class, 'destroySocialLink'])->name('social-links.destroy');
@@ -404,6 +445,7 @@ Route::middleware(['auth', 'verified', 'two-factor', 'tenant', 'throttle:admin-w
     Route::get('/facilities/{facility}', [App\Http\Controllers\Admin\ClubFacilityController::class, 'getFacility'])->name('facilities.show');
     Route::put('/facilities/{facility}', [App\Http\Controllers\Admin\ClubFacilityController::class, 'updateFacility'])->name('facilities.update');
     Route::delete('/facilities/{facility}', [App\Http\Controllers\Admin\ClubFacilityController::class, 'destroyFacility'])->name('facilities.destroy');
+    Route::post('/facilities/{facility}/toggle', [App\Http\Controllers\Admin\ClubFacilityController::class, 'toggleFacility'])->name('facilities.toggle');
     Route::post('/facilities/{facility}/upload-image', [App\Http\Controllers\Admin\ClubFacilityController::class, 'uploadFacilityImage'])->name('facilities.upload-image')->middleware('throttle:uploads');
 
     // Instructors
@@ -468,7 +510,9 @@ Route::middleware(['auth', 'verified', 'two-factor', 'tenant', 'throttle:admin-w
     Route::get('/members/popup-demo', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'memberPopupDemo'])->name('members.popup-demo');
     Route::get('/members/{user}/enroll-packages', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'enrollPackages'])->name('members.enroll-packages');
     Route::post('/members/{user}/enroll', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'enrollMember'])->name('members.enroll');
+    Route::post('/members/enroll-batch', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'enrollBatch'])->name('members.enroll-batch')->middleware('throttle:admin-write');
     Route::delete('/members/{user}/remove', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'removeMember'])->name('members.remove')->middleware('throttle:admin-write');
+    Route::post('/members/{user}/verify-email', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'verifyMemberEmail'])->name('members.verify-email')->middleware('throttle:admin-write');
     Route::get('/members/import-template', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'importTemplate'])->name('members.import-template');
     Route::post('/members/import', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'importMembers'])->name('members.import')->middleware('throttle:admin-write');
     Route::post('/subscriptions/{subscription}/approve-payment', [App\Http\Controllers\Admin\ClubMemberAdminController::class, 'approvePayment'])->name('subscriptions.approve-payment');
@@ -480,6 +524,12 @@ Route::middleware(['auth', 'verified', 'two-factor', 'tenant', 'throttle:admin-w
     Route::get('/roles', [App\Http\Controllers\Admin\ClubRoleController::class, 'roles'])->name('roles');
     Route::post('/roles', [App\Http\Controllers\Admin\ClubRoleController::class, 'storeRole'])->name('roles.store');
     Route::delete('/roles', [App\Http\Controllers\Admin\ClubRoleController::class, 'destroyRole'])->name('roles.destroy');
+    // Per-member access: read current effective permissions + save a standard role or custom permission set.
+    Route::get('/roles/member/{user}/permissions', [App\Http\Controllers\Admin\ClubRoleController::class, 'memberPermissions'])->name('roles.member.permissions');
+    Route::post('/roles/member/permissions', [App\Http\Controllers\Admin\ClubRoleController::class, 'storeMemberPermissions'])->name('roles.member.permissions.store')->middleware('throttle:admin-write');
+    Route::post('/roles/definitions', [App\Http\Controllers\Admin\ClubRoleController::class, 'createRole'])->name('roles.def.store');
+    Route::put('/roles/definitions/{role}', [App\Http\Controllers\Admin\ClubRoleController::class, 'updateRole'])->name('roles.def.update');
+    Route::delete('/roles/definitions/{role}', [App\Http\Controllers\Admin\ClubRoleController::class, 'deleteRole'])->name('roles.def.destroy');
 
     // Financials
     Route::get('/financials', [App\Http\Controllers\Admin\ClubFinancialController::class, 'financials'])->name('financials');
@@ -552,6 +602,8 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
 
     // Individual member routes
     Route::get('/member/{uuid}', [MemberController::class, 'show'])->name('member.show');
+    // Safe public profile (people discovery) — broadly viewable, sensitive data omitted.
+    Route::get('/people/{uuid}', [App\Http\Controllers\PeopleController::class, 'show'])->name('people.show');
     Route::get('/member/{id}/edit', [MemberController::class, 'edit'])->name('member.edit');
     Route::put('/member/{id}', [MemberController::class, 'update'])->name('member.update')->middleware('throttle:member-write');
     Route::delete('/member/{id}/confirm-delete', [MemberController::class, 'confirmDelete'])->name('member.confirm-delete');
@@ -564,6 +616,9 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     Route::post('/member/{id}/health', [MemberController::class, 'storeHealth'])->name('member.store-health')->middleware('throttle:member-write');
     Route::put('/member/{id}/health/{recordId}', [MemberController::class, 'updateHealth'])->name('member.update-health')->middleware('throttle:member-write');
     Route::post('/member/{id}/tournament', [MemberController::class, 'storeTournament'])->name('member.store-tournament')->middleware('throttle:member-write');
+    Route::post('/member/{id}/goal', [MemberController::class, 'storeGoal'])->name('member.store-goal')->middleware('throttle:member-write');
+    Route::post('/member/{id}/attendance', [MemberController::class, 'storeAttendance'])->name('member.store-attendance')->middleware('throttle:member-write');
+    Route::post('/member/{id}/event-log', [MemberController::class, 'storeMemberEvent'])->name('member.store-event')->middleware('throttle:member-write');
     Route::put('/member/goal/{goalId}', [MemberController::class, 'updateGoal'])->name('member.update-goal')->middleware('throttle:member-write');
 
     // Affiliation routes
@@ -582,6 +637,7 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     Route::post('/family', [FamilyController::class, 'store'])->name('family.store')->middleware('throttle:member-write');
     Route::get('/family/{id}', function ($id) {
         $user = \App\Models\User::findOrFail($id);
+
         return redirect()->route('member.show', $user->uuid);
     })->name('family.show');
     Route::get('/family/{id}/edit', function ($id) {
@@ -591,6 +647,9 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     Route::post('/family/{id}/health', [MemberController::class, 'storeHealth'])->name('family.store-health')->middleware('throttle:member-write');
     Route::put('/family/{id}/health/{recordId}', [MemberController::class, 'updateHealth'])->name('family.update-health')->middleware('throttle:member-write');
     Route::put('/family/goal/{goalId}', [MemberController::class, 'updateGoal'])->name('family.update-goal')->middleware('throttle:member-write');
+    Route::post('/family/{id}/goal', [MemberController::class, 'storeGoal'])->name('family.store-goal')->middleware('throttle:member-write');
+    Route::post('/family/{id}/attendance', [MemberController::class, 'storeAttendance'])->name('family.store-attendance')->middleware('throttle:member-write');
+    Route::post('/family/{id}/event-log', [MemberController::class, 'storeMemberEvent'])->name('family.store-event')->middleware('throttle:member-write');
     Route::post('/family/{id}/tournament', [MemberController::class, 'storeTournament'])->name('family.store-tournament')->middleware('throttle:member-write');
     Route::post('/family/{id}/upload-picture', [MemberController::class, 'uploadPicture'])->name('family.upload-picture')->middleware('throttle:uploads');
     Route::delete('/family/{id}', [MemberController::class, 'destroy'])->name('family.destroy')->middleware('throttle:member-write');

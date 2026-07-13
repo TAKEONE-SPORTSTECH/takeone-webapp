@@ -16,6 +16,7 @@ class MagicLoginLink extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     public User $user;
+
     public ?string $intended;
 
     public function __construct(User $user, ?string $intended = null)
@@ -27,7 +28,7 @@ class MagicLoginLink extends Mailable implements ShouldQueue
     public function envelope()
     {
         return new Envelope(
-            subject: 'Your login link for ' . config('app.name', 'TAKEONE'),
+            subject: 'Your login link for '.config('app.name', 'TAKEONE'),
         );
     }
 
@@ -37,7 +38,7 @@ class MagicLoginLink extends Mailable implements ShouldQueue
             view: 'emails.magic-login',
             with: [
                 'loginUrl' => URL::temporarySignedRoute('login.magic.verify', now()->addMinutes(30), array_filter([
-                    'user'     => $this->user->getKey(),
+                    'user' => $this->user->getKey(),
                     'intended' => $this->intended,
                 ])),
                 'user' => $this->user,

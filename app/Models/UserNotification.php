@@ -24,8 +24,8 @@ class UserNotification extends Model
     ];
 
     protected $casts = [
-        'is_read'  => 'boolean',
-        'read_at'  => 'datetime',
+        'is_read' => 'boolean',
+        'read_at' => 'datetime',
     ];
 
     public function clubNotification(): BelongsTo
@@ -56,13 +56,14 @@ class UserNotification extends Model
     {
         if ($this->club_notification_id && $this->clubNotification) {
             $cn = $this->clubNotification;
+
             return [
-                'title'   => $cn->subject,
-                'body'    => $cn->message,
-                'url'     => $cn->action_url,
-                'icon'    => 'bi-megaphone-fill',
+                'title' => $cn->subject,
+                'body' => $cn->message,
+                'url' => $cn->action_url,
+                'icon' => 'bi-megaphone-fill',
                 'context' => $cn->tenant->club_name ?? 'Club',
-                'avatar'  => null,
+                'avatar' => null,
             ];
         }
 
@@ -73,19 +74,19 @@ class UserNotification extends Model
         // types and legacy rows). Actor names are data and stay as-is.
         $actorName = $actor?->full_name ?? '';
         $title = match ($this->type) {
-            'follow', 'post', 'like', 'comment'     => __('notifications.' . $this->type, ['actor' => $actorName]),
-            'payment_approved', 'payment_refunded'  => __('notifications.' . $this->type),
-            default                                 => $this->title,
+            'follow', 'post', 'like', 'comment' => __('notifications.'.$this->type, ['actor' => $actorName]),
+            'payment_approved', 'payment_refunded' => __('notifications.'.$this->type),
+            default => $this->title,
         };
 
         return [
-            'title'   => $title,
-            'body'    => $this->body,
-            'url'     => $this->action_url,
-            'icon'    => $this->icon ?: 'bi-bell-fill',
+            'title' => $title,
+            'body' => $this->body,
+            'url' => $this->action_url,
+            'icon' => $this->icon ?: 'bi-bell-fill',
             'context' => $actor?->full_name ?? $this->tenant?->club_name,
-            'avatar'  => $actor && $actor->profile_picture
-                ? asset('storage/' . $actor->profile_picture) . '?v=' . optional($actor->updated_at)->timestamp
+            'avatar' => $actor && $actor->profile_picture
+                ? asset('storage/'.$actor->profile_picture).'?v='.optional($actor->updated_at)->timestamp
                 : null,
         ];
     }
@@ -102,36 +103,52 @@ class UserNotification extends Model
         }
 
         $n = static::create([
-            'user_id'       => $userId,
-            'actor_user_id' => $opts['actor_id']     ?? null,
-            'tenant_id'     => $opts['tenant_id']    ?? null,
-            'type'          => $type,
-            'subject_type'  => $opts['subject_type'] ?? null,
-            'subject_id'    => $opts['subject_id']   ?? null,
-            'title'         => $title,
-            'body'          => $opts['body']       ?? null,
-            'action_url'    => $opts['action_url'] ?? null,
-            'icon'          => $opts['icon']       ?? null,
-            'is_read'       => false,
+            'user_id' => $userId,
+            'actor_user_id' => $opts['actor_id'] ?? null,
+            'tenant_id' => $opts['tenant_id'] ?? null,
+            'type' => $type,
+            'subject_type' => $opts['subject_type'] ?? null,
+            'subject_id' => $opts['subject_id'] ?? null,
+            'title' => $title,
+            'body' => $opts['body'] ?? null,
+            'action_url' => $opts['action_url'] ?? null,
+            'icon' => $opts['icon'] ?? null,
+            'is_read' => false,
         ]);
 
         try {
             if (function_exists('Realtime') && Realtime()->enabled()) {
                 $d = $n->display();
                 Realtime()->publishToUser($userId, 'notifications', [
-                    'id'               => $n->id,
-                    'subject'          => $title,
-                    'body'             => $d['body'],
-                    'icon'             => $d['icon'],
-                    'avatar'           => $d['avatar'],          // actor's profile picture
-                    'context'          => $d['context'] ?? ($opts['context'] ?? null),
-                    'club_name'        => $opts['context'] ?? null,
-                    'action_url'       => $opts['action_url'] ?? null,
+                    'id' => $n->id,
+                    'subject' => $title,
+                    'body' => $d['body'],
+                    'icon' => $d['icon'],
+                    'avatar' => $d['avatar'],          // actor's profile picture
+                    'context' => $d['context'] ?? ($opts['context'] ?? null),
+                    'club_name' => $opts['context'] ?? null,
+                    'action_url' => $opts['action_url'] ?? null,
                     'created_at_human' => 'just now',
                 ]);
             }
         } catch (\Throwable $e) {
             // Best-effort; the DB row is the source of truth.
+        }
+
+        // Native push (FCM) — reaches the device tray even when the app is closed.
+        try {
+            \App\Jobs\SendPushNotification::dispatch(
+                $userId,
+                $opts['context'] ?? config('app.name', 'TAKEONE'),
+                $title,
+                [
+                    'type' => $type,
+                    'notification_id' => (string) $n->id,
+                    'action_url' => $opts['action_url'] ?? '',
+                ],
+            );
+        } catch (\Throwable $e) {
+            // Best-effort.
         }
 
         return $n;
@@ -160,7 +177,7 @@ class UserNotification extends Model
             }
             $batch = $rows->groupBy('user_id')->map(function ($userRows, $userId) {
                 return [
-                    'topic'   => Realtime()->userTopic((int) $userId, 'notifications'),
+                    'topic' => Realtime()->userTopic((int) $userId, 'notifications'),
                     'payload' => ['action' => 'remove', 'ids' => $userRows->pluck('id')->map(fn ($i) => (int) $i)->all()],
                 ];
             })->values()->all();

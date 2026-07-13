@@ -20,8 +20,8 @@ class UserScheduleSession extends Model
     ];
 
     protected $casts = [
-        'focus'         => 'array',
-        'workout'       => 'array',
+        'focus' => 'array',
+        'workout' => 'array',
         'location_meta' => 'array',
     ];
 
@@ -38,7 +38,9 @@ class UserScheduleSession extends Model
     /** "06:30" → "6:30 AM" for display; passes odd strings through. */
     private function fmt(?string $t): ?string
     {
-        if (! $t) return null;
+        if (! $t) {
+            return null;
+        }
         try {
             return \Carbon\Carbon::parse($t)->format('g:i A');
         } catch (\Throwable) {
@@ -53,7 +55,8 @@ class UserScheduleSession extends Model
             $s = \Carbon\Carbon::parse($this->start_time);
             $e = \Carbon\Carbon::parse($this->end_time);
             $mins = $s->diffInMinutes($e);
-            return $mins > 0 ? $mins . ' min' : '—';
+
+            return $mins > 0 ? $mins.' min' : '—';
         } catch (\Throwable) {
             return '—';
         }
@@ -69,33 +72,33 @@ class UserScheduleSession extends Model
         $workout = $this->workout ?: ['warmup' => [], 'main' => [], 'cooldown' => []];
 
         return [
-            'id'         => $this->id,
-            'source'     => 'personal',
-            'editable'   => true,
-            'who'        => $whoKey,
-            'day'        => $this->day,
-            'start'      => $this->fmt($this->start_time),
-            'end'        => $this->fmt($this->end_time),
-            'start_raw'  => $this->start_time,
-            'end_raw'    => $this->end_time,
-            'duration'   => $this->durationLabel(),
-            'title'      => $this->title,
+            'id' => $this->id,
+            'source' => 'personal',
+            'editable' => true,
+            'who' => $whoKey,
+            'day' => $this->day,
+            'start' => $this->fmt($this->start_time),
+            'end' => $this->fmt($this->end_time),
+            'start_raw' => $this->start_time,
+            'end_raw' => $this->end_time,
+            'duration' => $this->durationLabel(),
+            'title' => $this->title,
             'discipline' => $this->discipline,
-            'icon'       => $this->icon ?: 'bi-calendar-check',
-            'color'      => $this->color ?: '#7c3aed',
-            'coach'      => $this->coach,
-            'location'   => $this->location,
+            'icon' => $this->icon ?: 'bi-calendar-check',
+            'color' => $this->color ?: '#7c3aed',
+            'coach' => $this->coach,
+            'location' => $this->location,
             'location_type' => $this->location_meta['type'] ?? ($this->location ? 'text' : null),
-            'location_lat'  => $this->location_meta['lat'] ?? null,
-            'location_lng'  => $this->location_meta['lng'] ?? null,
+            'location_lat' => $this->location_meta['lat'] ?? null,
+            'location_lng' => $this->location_meta['lng'] ?? null,
             'location_address' => $this->location_meta['address'] ?? null,
-            'intensity'  => $this->intensity,
-            'focus'      => $this->focus ?: [],
-            'notes'      => $this->notes,
-            'workout'    => [
-                'warmup'   => $workout['warmup']   ?? [],
-                'main'     => $workout['main']      ?? [],
-                'cooldown' => $workout['cooldown']  ?? [],
+            'intensity' => $this->intensity,
+            'focus' => $this->focus ?: [],
+            'notes' => $this->notes,
+            'workout' => [
+                'warmup' => $workout['warmup'] ?? [],
+                'main' => $workout['main'] ?? [],
+                'cooldown' => $workout['cooldown'] ?? [],
             ],
         ];
     }

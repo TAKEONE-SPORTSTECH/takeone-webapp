@@ -9,8 +9,8 @@
         <div class="modal-content border-0 shadow-lg w-full max-w-xl relative rounded-lg overflow-hidden" @click.stop>
             <div class="modal-header border-b px-6 py-4">
                 <div>
-                    <h5 class="modal-title font-bold">Record Manual Expense</h5>
-                    <p class="text-sm text-muted-foreground mb-0">Add a new expense or refund transaction to the ledger</p>
+                    <h5 class="modal-title font-bold">{{ __('shared.components_expense_modal_title') }}</h5>
+                    <p class="text-sm text-muted-foreground mb-0">{{ __('shared.components_expense_modal_subtitle') }}</p>
                 </div>
                 <button type="button" class="text-muted-foreground hover:text-foreground" @click="showExpenseModal = false">
                     <i class="bi bi-x-lg"></i>
@@ -33,11 +33,11 @@
                                 ],
                                 get current() { return this.options.find(o => o.value === expenseType) }
                              }" @click.outside="open = false">
-                            <label class="form-label">Transaction Type</label>
+                            <label class="form-label">{{ __('shared.components_expense_modal_transaction_type') }}</label>
                             <input type="hidden" name="type_display" :value="expenseType">
                             <button type="button"
                                     @click="open = !open"
-                                    class="w-full flex items-center justify-between gap-2 form-control text-left">
+                                    class="w-full flex items-center justify-between gap-2 form-control text-start">
                                 <span class="flex items-center gap-2">
                                     <i class="bi text-base" :class="[current.icon, current.color]"></i>
                                     <span x-text="current.label"></span>
@@ -60,7 +60,7 @@
                                             :class="{ 'bg-primary/5 font-medium': expenseType === opt.value }">
                                         <i class="bi text-base w-5 text-center" :class="[opt.icon, opt.color]"></i>
                                         <span x-text="opt.label"></span>
-                                        <i x-show="expenseType === opt.value" class="bi bi-check2 ml-auto text-primary"></i>
+                                        <i x-show="expenseType === opt.value" class="bi bi-check2 ms-auto text-primary"></i>
                                     </button>
                                 </template>
                             </div>
@@ -68,75 +68,75 @@
 
                         {{-- Expense Category --}}
                         <div x-show="expenseType === 'expense'" x-transition>
-                            <label class="form-label">Expense Category</label>
-                            <select name="category" class="form-select">
-                                <option value="">Select category</option>
-                                <option value="rent">Rent</option>
-                                <option value="utilities">Utilities</option>
-                                <option value="equipment">Equipment</option>
-                                <option value="salaries">Salaries</option>
-                                <option value="maintenance">Maintenance</option>
-                                <option value="marketing">Marketing</option>
-                                <option value="insurance">Insurance</option>
-                                <option value="other">Other</option>
-                            </select>
-                            <small class="text-muted-foreground">Choose the category for proper expense tracking</small>
+                            <label class="form-label">{{ __('shared.components_expense_modal_expense_category') }}</label>
+                            <x-select-menu name="category" :value="''" :placeholder="__('shared.components_expense_modal_select_category')"
+                                           :options="[
+                                               ['value' => 'rent', 'label' => __('shared.components_expense_modal_cat_rent')],
+                                               ['value' => 'utilities', 'label' => __('shared.components_expense_modal_cat_utilities')],
+                                               ['value' => 'equipment', 'label' => __('shared.components_expense_modal_cat_equipment')],
+                                               ['value' => 'salaries', 'label' => __('shared.components_expense_modal_cat_salaries')],
+                                               ['value' => 'maintenance', 'label' => __('shared.components_expense_modal_cat_maintenance')],
+                                               ['value' => 'marketing', 'label' => __('shared.components_expense_modal_cat_marketing')],
+                                               ['value' => 'insurance', 'label' => __('shared.components_expense_modal_cat_insurance')],
+                                               ['value' => 'other', 'label' => __('shared.components_expense_modal_cat_other')],
+                                           ]" />
+                            <small class="text-muted-foreground">{{ __('shared.components_expense_modal_category_help') }}</small>
                         </div>
 
                         {{-- Description --}}
                         <div>
-                            <label class="form-label">Description <span class="text-destructive">*</span></label>
-                            <input type="text" name="description" class="form-control" placeholder="e.g., Monthly gym rent" required>
-                            <small class="text-muted-foreground">Brief description of the transaction</small>
+                            <label class="form-label">{{ __('shared.components_expense_modal_description') }} <span class="text-destructive">*</span></label>
+                            <input type="text" name="description" class="form-control" placeholder="{{ __('shared.components_expense_modal_description_placeholder') }}" required>
+                            <small class="text-muted-foreground">{{ __('shared.components_expense_modal_description_help') }}</small>
                         </div>
 
                         {{-- Amount & Date --}}
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="form-label">Amount <span class="text-destructive">*</span></label>
+                                <label class="form-label">{{ __('shared.components_expense_modal_amount') }} <span class="text-destructive">*</span></label>
                                 <input type="number" name="amount" class="form-control" step="0.01" min="0" placeholder="0.00" required>
-                                <small class="text-muted-foreground">Amount before VAT</small>
+                                <small class="text-muted-foreground">{{ __('shared.components_expense_modal_amount_help') }}</small>
                             </div>
                             <div>
-                                <label class="form-label">Date <span class="text-destructive">*</span></label>
+                                <label class="form-label">{{ __('shared.components_expense_modal_date') }} <span class="text-destructive">*</span></label>
                                 <input type="date" name="transaction_date" class="form-control" value="{{ date('Y-m-d') }}" max="{{ date('Y-m-d') }}" required>
                             </div>
                         </div>
 
                         {{-- Payment Method --}}
                         <div x-data="{ method: 'cash' }">
-                            <label class="form-label">Payment Method</label>
+                            <label class="form-label">{{ __('shared.components_expense_modal_payment_method') }}</label>
                             <input type="hidden" name="payment_method" :value="method">
                             <div class="grid grid-cols-4 gap-2">
                                 <label class="payment-option" :class="{ 'active': method === 'cash' }" @click="method = 'cash'">
                                     <i class="bi bi-cash-stack text-lg"></i>
-                                    <span>Cash</span>
+                                    <span>{{ __('shared.components_expense_modal_pay_cash') }}</span>
                                 </label>
                                 <label class="payment-option" :class="{ 'active': method === 'bank_transfer' }" @click="method = 'bank_transfer'">
                                     <i class="bi bi-bank text-lg"></i>
-                                    <span>Bank</span>
+                                    <span>{{ __('shared.components_expense_modal_pay_bank') }}</span>
                                 </label>
                                 <label class="payment-option" :class="{ 'active': method === 'card' }" @click="method = 'card'">
                                     <i class="bi bi-credit-card text-lg"></i>
-                                    <span>Card</span>
+                                    <span>{{ __('shared.components_expense_modal_pay_card') }}</span>
                                 </label>
                                 <label class="payment-option" :class="{ 'active': method === 'other' }" @click="method = 'other'">
                                     <i class="bi bi-three-dots text-lg"></i>
-                                    <span>Other</span>
+                                    <span>{{ __('shared.components_expense_modal_pay_other') }}</span>
                                 </label>
                             </div>
                         </div>
 
                         {{-- Notes --}}
                         <div>
-                            <label class="form-label">Notes (Optional)</label>
-                            <textarea name="reference_number" class="form-control" rows="2" placeholder="Additional details..."></textarea>
+                            <label class="form-label">{{ __('shared.components_expense_modal_notes') }}</label>
+                            <textarea name="reference_number" class="form-control" rows="2" placeholder="{{ __('shared.components_expense_modal_notes_placeholder') }}"></textarea>
                         </div>
 
                         <div class="flex justify-end gap-2 pt-4">
-                            <button type="button" class="btn btn-outline-secondary" @click="showExpenseModal = false">Cancel</button>
+                            <button type="button" class="btn btn-outline-secondary" @click="showExpenseModal = false">{{ __('shared.cancel') }}</button>
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-lg mr-2"></i>Record Transaction
+                                <i class="bi bi-check-lg me-2"></i>{{ __('shared.components_expense_modal_record_transaction') }}
                             </button>
                         </div>
                     </div>

@@ -1,10 +1,16 @@
+{{-- Lives inside the personal mobile shell, so the header (avatar → drawer),
+     notifications, chat and bottom tab bar match the rest of /me. The shell
+     resolves the header title from the `me.settings` route itself. --}}
 @extends('layouts.personal-mobile')
 
 @section('title', __('settings.title'))
 
-{{-- Full-bleed (Facebook-style): edge-to-edge white blocks separated by gray gutters. --}}
 @section('personal-content')
-<div class="-mx-4 -mt-4">
+{{-- -mx-4 cancels the shell <main>'s px-4 so the white blocks stay edge-to-edge. --}}
+<div class="-mx-4">
+
+    {{-- Full-bleed (Facebook-style): edge-to-edge white blocks separated by gray gutters. --}}
+    <div class="mt-2">
     <div class="bg-white px-4 py-4 mb-2">
         <h3 class="font-semibold text-foreground mb-3">{{ __('settings.account') }}</h3>
         <div class="space-y-3 text-sm">
@@ -36,10 +42,32 @@
         </div>
     </div>
 
+    {{-- Privacy — people discovery --}}
+    <div class="bg-white px-4 py-4 mb-2" x-data="{ on: {{ $user->isDiscoverable() ? 'true' : 'false' }}, saving: false }">
+        <h3 class="font-semibold text-foreground mb-0.5">{{ __('personal.discoverable_label') }}</h3>
+        <div class="flex items-center justify-between gap-4">
+            <p class="text-xs text-muted-foreground flex-1">{{ __('personal.discoverable_help') }}</p>
+            <button type="button" role="switch" :aria-checked="on" :disabled="saving"
+                    @click="
+                        const prev = on; on = !prev; saving = true;
+                        fetch(@js(route('me.discoverable.update')), { method: 'PUT', headers: { 'Content-Type':'application/json','X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content,'Accept':'application/json' }, credentials:'same-origin', body: JSON.stringify({ is_discoverable: on }) })
+                            .then(r => r.json())
+                            .then(d => { if (!d.success) throw d; if (window.showToast) window.showToast('success', d.message); })
+                            .catch(() => { on = prev; if (window.showToast) window.showToast('error', 'Could not update'); })
+                            .finally(() => { saving = false; });"
+                    class="relative inline-flex h-6 w-11 flex-shrink-0 rounded-full transition-colors"
+                    :class="on ? 'bg-primary' : 'bg-gray-300'">
+                <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform mt-0.5"
+                      :class="on ? 'translate-x-5 rtl:-translate-x-5' : 'translate-x-0.5 rtl:-translate-x-0.5'"></span>
+            </button>
+        </div>
+    </div>
+
     <div class="bg-white divide-y divide-gray-50">
         <a href="{{ route('member.show', $user->uuid) }}" class="flex items-center justify-between p-4"><span class="text-sm text-foreground"><i class="bi bi-person-gear me-2 text-muted-foreground"></i>{{ __('settings.edit_profile') }}</span><i class="bi bi-chevron-right text-muted-foreground"></i></a>
         <a href="{{ route('security.show') }}" class="flex items-center justify-between p-4"><span class="text-sm text-foreground"><i class="bi bi-shield-lock me-2 text-muted-foreground"></i>{{ __('settings.security_password') }}</span><i class="bi bi-chevron-right text-muted-foreground"></i></a>
         <a href="{{ route('me.payments') }}" data-shell-link data-route="me.payments" class="flex items-center justify-between p-4"><span class="text-sm text-foreground"><i class="bi bi-receipt me-2 text-muted-foreground"></i>{{ __('settings.invoices') }}</span><i class="bi bi-chevron-right text-muted-foreground"></i></a>
+    </div>
     </div>
 </div>
 
@@ -61,7 +89,16 @@ window.switchLocale = function (code) {
     .then(function (d) {
         if (d && d.success) {
             window.showToast && window.showToast('success', d.message);
-            // Full reload so <html dir>/font apply globally (shell only swaps content).
+            // Flip direction/font immediately — this re-triggers every [dir=rtl]
+            // rule and Tailwind rtl: variant without waiting for the round-trip.
+            if (d.dir) document.documentElement.dir = d.dir;
+            if (d.locale) {
+                document.documentElement.lang = d.locale;
+                // So a bfcached page from the old locale reloads on Back.
+                try { localStorage.setItem('takeone:locale', d.locale); } catch (e) {}
+            }
+            // Reload for the server-rendered translated strings (the shell only
+            // swaps content, so nothing else re-renders <html>).
             setTimeout(function () { window.location.reload(); }, 350);
         } else {
             window.__localeSaving = false;

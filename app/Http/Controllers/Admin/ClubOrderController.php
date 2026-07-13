@@ -30,10 +30,10 @@ class ClubOrderController extends Controller
             ->get();
 
         $stats = [
-            'pending'   => $orders->where('status', 'pending')->count(),
+            'pending' => $orders->where('status', 'pending')->count(),
             'confirmed' => $orders->where('status', 'confirmed')->count(),
             'fulfilled' => $orders->where('status', 'fulfilled')->count(),
-            'revenue'   => $orders->whereIn('status', ['confirmed', 'fulfilled'])->sum('total'),
+            'revenue' => $orders->whereIn('status', ['confirmed', 'fulfilled'])->sum('total'),
         ];
 
         return view(ClubView::pick('orders'), compact('club', 'orders', 'stats'));
@@ -45,7 +45,7 @@ class ClubOrderController extends Controller
         abort_unless($order->tenant_id === $club->id, 404);
 
         $data = $request->validate([
-            'status' => ['required', 'in:' . implode(',', Order::STATUSES)],
+            'status' => ['required', 'in:'.implode(',', Order::STATUSES)],
         ]);
 
         // Status change and ledger booking are atomic — if the income entry
@@ -58,20 +58,20 @@ class ClubOrderController extends Controller
         // Notify the buyer of the status change (bell + live MQTT push).
         $icons = ['confirmed' => 'bi-check-circle-fill', 'fulfilled' => 'bi-bag-check-fill', 'cancelled' => 'bi-x-circle-fill', 'pending' => 'bi-hourglass-split'];
         \App\Models\UserNotification::notifyUser((int) $order->user_id, 'order',
-            __('market.notify_order_' . $order->status, ['ref' => $order->reference, 'club' => $club->club_name]), [
-                'actor_id'     => \Illuminate\Support\Facades\Auth::id(),
-                'tenant_id'    => $club->id,
-                'icon'         => $icons[$order->status] ?? 'bi-bag',
-                'body'         => $club->club_name . ' · ' . $order->reference,
-                'action_url'   => route('me.orders'),
+            __('market.notify_order_'.$order->status, ['ref' => $order->reference, 'club' => $club->club_name]), [
+                'actor_id' => \Illuminate\Support\Facades\Auth::id(),
+                'tenant_id' => $club->id,
+                'icon' => $icons[$order->status] ?? 'bi-bag',
+                'body' => $club->club_name.' · '.$order->reference,
+                'action_url' => route('me.orders'),
                 'subject_type' => 'order',
-                'subject_id'   => $order->id,
+                'subject_id' => $order->id,
             ]);
 
         return response()->json([
             'success' => true,
             'message' => __('market.order_status_updated'),
-            'status'  => $order->status,
+            'status' => $order->status,
         ]);
     }
 
@@ -87,12 +87,12 @@ class ClubOrderController extends Controller
 
         if ($isPaid && ! $order->income_transaction_id) {
             $transaction = $financials->recordTransaction($club, [
-                'user_id'          => $order->user_id,
-                'type'             => 'income',
-                'category'         => 'shop',
-                'amount'           => $order->total,
-                'payment_method'   => 'other',
-                'description'      => __('market.income_shop_sale', ['ref' => $order->reference]),
+                'user_id' => $order->user_id,
+                'type' => 'income',
+                'category' => 'shop',
+                'amount' => $order->total,
+                'payment_method' => 'other',
+                'description' => __('market.income_shop_sale', ['ref' => $order->reference]),
                 'transaction_date' => now(),
                 'reference_number' => $order->reference,
             ]);

@@ -33,7 +33,7 @@ class Conversation extends Model
     /** Find (or create) the single 1:1 conversation between two users. */
     public static function findOrCreateDirect(int $a, int $b): self
     {
-        $key = 'u' . min($a, $b) . '-u' . max($a, $b);
+        $key = 'u'.min($a, $b).'-u'.max($a, $b);
 
         $conversation = static::firstOrCreate(
             ['dm_key' => $key],

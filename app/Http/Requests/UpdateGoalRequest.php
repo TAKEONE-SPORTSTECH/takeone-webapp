@@ -15,7 +15,7 @@ class UpdateGoalRequest extends FormRequest
     {
         return [
             'current_progress_value' => 'required|numeric|min:0',
-            'status'                 => 'required|in:active,completed',
+            'status' => 'required|in:active,completed',
         ];
     }
 }

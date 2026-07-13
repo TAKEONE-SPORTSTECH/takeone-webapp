@@ -3,16 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ChangePasswordRequest;
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
-use BaconQrCode\Renderer\ImageRenderer;
-use BaconQrCode\Renderer\Image\SvgImageBackEnd;
-use BaconQrCode\Renderer\RendererStyle\RendererStyle;
-use BaconQrCode\Writer;
 
 class TwoFactorController extends Controller
 {
@@ -20,7 +20,7 @@ class TwoFactorController extends Controller
 
     public function __construct()
     {
-        $this->google2fa = new Google2FA();
+        $this->google2fa = new Google2FA;
     }
 
     /**
@@ -46,15 +46,15 @@ class TwoFactorController extends Controller
 
         // Generate a fresh secret and store it (unconfirmed) so the QR renders.
         $secret = $this->google2fa->generateSecretKey();
-        $user->two_factor_secret        = encrypt($secret);
-        $user->two_factor_confirmed_at  = null; // not yet confirmed
+        $user->two_factor_secret = encrypt($secret);
+        $user->two_factor_confirmed_at = null; // not yet confirmed
         $user->save();
 
         $qrCodeSvg = $this->buildQrCode($user->email, $secret);
 
         return view('security.setup', [
-            'user'      => $user,
-            'secret'    => $secret,
+            'user' => $user,
+            'secret' => $secret,
             'qrCodeSvg' => $qrCodeSvg,
         ]);
     }
@@ -67,22 +67,22 @@ class TwoFactorController extends Controller
     {
         $request->validate(['code' => 'required|string|digits:6']);
 
-        $user   = Auth::user();
+        $user = Auth::user();
         $secret = decrypt($user->two_factor_secret);
 
-        if (!$this->google2fa->verifyKey($secret, $request->code)) {
+        if (! $this->google2fa->verifyKey($secret, $request->code)) {
             return back()->withErrors(['code' => 'Invalid code. Please try again.']);
         }
 
         $recoveryCodes = $this->generateRecoveryCodes();
 
         $user->two_factor_recovery_codes = encrypt(json_encode($recoveryCodes));
-        $user->two_factor_confirmed_at   = now();
+        $user->two_factor_confirmed_at = now();
         $user->save();
 
         return view('security.recovery-codes', [
             'recoveryCodes' => $recoveryCodes,
-            'fresh'         => true,
+            'fresh' => true,
         ]);
     }
 
@@ -95,21 +95,21 @@ class TwoFactorController extends Controller
 
         $user = Auth::user();
 
-        if (!$user->hasTwoFactorEnabled()) {
+        if (! $user->hasTwoFactorEnabled()) {
             return back()->with('error', '2FA is not enabled.');
         }
 
         $secret = decrypt($user->two_factor_secret);
-        $valid  = $this->google2fa->verifyKey($secret, $request->code)
+        $valid = $this->google2fa->verifyKey($secret, $request->code)
                   || $this->useRecoveryCode($user, $request->code);
 
-        if (!$valid) {
+        if (! $valid) {
             return back()->withErrors(['code' => 'Invalid code. Please try again.']);
         }
 
-        $user->two_factor_secret         = null;
+        $user->two_factor_secret = null;
         $user->two_factor_recovery_codes = null;
-        $user->two_factor_confirmed_at   = null;
+        $user->two_factor_confirmed_at = null;
         $user->save();
 
         return redirect()->route('security.show')->with('success', '2FA has been disabled.');
@@ -122,10 +122,10 @@ class TwoFactorController extends Controller
     {
         $request->validate(['code' => 'required|string|digits:6']);
 
-        $user   = Auth::user();
+        $user = Auth::user();
         $secret = decrypt($user->two_factor_secret);
 
-        if (!$this->google2fa->verifyKey($secret, $request->code)) {
+        if (! $this->google2fa->verifyKey($secret, $request->code)) {
             return back()->withErrors(['code' => 'Invalid code. Please try again.']);
         }
 
@@ -135,7 +135,7 @@ class TwoFactorController extends Controller
 
         return view('security.recovery-codes', [
             'recoveryCodes' => $recoveryCodes,
-            'fresh'         => false,
+            'fresh' => false,
         ]);
     }
 
@@ -144,7 +144,7 @@ class TwoFactorController extends Controller
      */
     public function challenge()
     {
-        if (!session()->has('two_factor.user_id')) {
+        if (! session()->has('two_factor.user_id')) {
             return redirect()->route('login');
         }
 
@@ -159,18 +159,18 @@ class TwoFactorController extends Controller
         $request->validate(['code' => 'required|string']);
 
         $userId = session('two_factor.user_id');
-        if (!$userId) {
+        if (! $userId) {
             return redirect()->route('login');
         }
 
-        $user   = \App\Models\User::findOrFail($userId);
+        $user = \App\Models\User::findOrFail($userId);
         $secret = decrypt($user->two_factor_secret);
-        $code   = trim($request->code);
+        $code = trim($request->code);
 
         $valid = $this->google2fa->verifyKey($secret, $code)
                  || $this->useRecoveryCode($user, $code);
 
-        if (!$valid) {
+        if (! $valid) {
             return back()->withErrors(['code' => 'Invalid authentication code.']);
         }
 
@@ -226,7 +226,7 @@ class TwoFactorController extends Controller
 
         $renderer = new ImageRenderer(
             new RendererStyle(200),
-            new SvgImageBackEnd()
+            new SvgImageBackEnd
         );
 
         return (new Writer($renderer))->writeString($otpUrl);
@@ -234,14 +234,13 @@ class TwoFactorController extends Controller
 
     private function generateRecoveryCodes(): array
     {
-        return collect(range(1, 8))->map(fn() =>
-            strtoupper(Str::random(5)) . '-' . strtoupper(Str::random(5))
+        return collect(range(1, 8))->map(fn () => strtoupper(Str::random(5)).'-'.strtoupper(Str::random(5))
         )->all();
     }
 
     private function useRecoveryCode(\App\Models\User $user, string $code): bool
     {
-        if (!$user->two_factor_recovery_codes) {
+        if (! $user->two_factor_recovery_codes) {
             return false;
         }
 

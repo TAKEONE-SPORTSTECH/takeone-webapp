@@ -26,7 +26,7 @@ class DemoPurge extends Command
         'product_reviews', 'club_products', 'club_product_categories',
         'event_matches', 'event_categories', 'club_event_registrations', 'club_events',
         'challenge_participations', 'duels', 'challenges',
-        'user_post_poll_votes', 'user_post_comments', 'user_post_likes', 'user_posts', 'user_stories',
+        'user_post_poll_votes', 'user_post_comments', 'user_post_likes', 'user_posts',
         'club_timeline_post_comments', 'club_timeline_post_likes', 'club_timeline_posts',
         'user_follows', 'user_schedule_sessions',
         'club_member_subscriptions', 'memberships',
@@ -36,33 +36,34 @@ class DemoPurge extends Command
 
     /** table => [ [column, disk, 'single'|'array'], ... ] — files purged before the rows. */
     private array $fileColumns = [
-        'tenants'                   => [['logo', 'public', 'single'], ['cover_image', 'public', 'single'], ['favicon', 'public', 'single']],
-        'users'                     => [['profile_picture', 'public', 'single']],
-        'club_products'             => [['image_path', 'public', 'single']],
+        'tenants' => [['logo', 'public', 'single'], ['cover_image', 'public', 'single'], ['favicon', 'public', 'single']],
+        'users' => [['profile_picture', 'public', 'single']],
+        'club_products' => [['image_path', 'public', 'single']],
         'club_member_subscriptions' => [['proof_of_payment', 'local', 'single'], ['refund_proof', 'local', 'single']],
-        'club_facilities'           => [['photo', 'public', 'single'], ['images', 'public', 'array']],
-        'club_packages'             => [['cover_image', 'public', 'single']],
-        'club_activities'           => [['picture_url', 'public', 'single']],
-        'club_timeline_posts'       => [['image_path', 'public', 'single']],
-        'user_posts'                => [['images', 'public', 'array']],
-        'user_stories'              => [['image_path', 'public', 'single']],
-        'club_gallery_images'       => [['image_path', 'public', 'single']],
+        'club_facilities' => [['photo', 'public', 'single'], ['images', 'public', 'array']],
+        'club_packages' => [['cover_image', 'public', 'single']],
+        'club_activities' => [['picture_url', 'public', 'single']],
+        'club_timeline_posts' => [['image_path', 'public', 'single']],
+        'user_posts' => [['images', 'public', 'array']],
+        'club_gallery_images' => [['image_path', 'public', 'single']],
     ];
 
     public function handle(): int
     {
         $manifest = DemoManifest::load();
         if (! $manifest) {
-            $this->error('No demo manifest found at ' . DemoManifest::path() . ' — nothing to purge.');
+            $this->error('No demo manifest found at '.DemoManifest::path().' — nothing to purge.');
+
             return self::FAILURE;
         }
 
         $tables = $manifest['tables'] ?? [];
         $totalRows = array_sum(array_map('count', $tables));
-        $this->warn("This will permanently delete {$totalRows} demo rows across " . count($tables) . ' tables (seeded ' . ($manifest['seeded_at'] ?? '?') . ').');
+        $this->warn("This will permanently delete {$totalRows} demo rows across ".count($tables).' tables (seeded '.($manifest['seeded_at'] ?? '?').').');
 
         if (! $this->option('force') && ! $this->confirm('Proceed?', true)) {
             $this->info('Aborted.');
+
             return self::SUCCESS;
         }
 
@@ -120,8 +121,9 @@ class DemoPurge extends Command
         $this->newLine();
         $this->info("✅ Demo purged. Files removed: {$fileCount}.");
         foreach ($deleted as $table => $n) {
-            $this->line('   ' . str_pad($table, 28) . $n);
+            $this->line('   '.str_pad($table, 28).$n);
         }
+
         return self::SUCCESS;
     }
 
@@ -130,6 +132,7 @@ class DemoPurge extends Command
     {
         if ($type === 'array') {
             $arr = is_array($val) ? $val : (json_decode((string) $val, true) ?: []);
+
             return array_values(array_filter(array_map(fn ($v) => is_string($v) ? $v : null, $arr)));
         }
         $s = (string) $val;
@@ -137,6 +140,7 @@ class DemoPurge extends Command
         if ($s === '' || str_starts_with($s, 'http://') || str_starts_with($s, 'https://')) {
             return [];
         }
+
         return [$s];
     }
 }

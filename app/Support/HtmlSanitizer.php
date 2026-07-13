@@ -36,13 +36,13 @@ class HtmlSanitizer
         // The XML encoding PI forces UTF-8 parsing (keeps Arabic intact) without
         // the deprecated mb_convert_encoding(HTML-ENTITIES) trick.
         $dom->loadHTML(
-            '<?xml encoding="UTF-8">' . '<div id="__root">' . $html . '</div>',
+            '<?xml encoding="UTF-8">'.'<div id="__root">'.$html.'</div>',
             LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
         );
         libxml_clear_errors();
 
         $xpath = new DOMXPath($dom);
-        $root  = $xpath->query('//*[@id="__root"]')->item(0);
+        $root = $xpath->query('//*[@id="__root"]')->item(0);
         if (! $root instanceof DOMElement) {
             return null;
         }
@@ -62,6 +62,7 @@ class HtmlSanitizer
 
             if (! array_key_exists($tag, self::ALLOWED)) {
                 self::unwrap($el); // keep the text, drop the tag
+
                 continue;
             }
 

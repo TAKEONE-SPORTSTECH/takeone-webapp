@@ -2,7 +2,7 @@
 <html lang="en" id="wiz-html">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ session('club.context.name', 'Register') }} — TAKEONE</title>
     {{-- Use the club's logo as the browser tab favicon --}}
@@ -280,21 +280,21 @@
                 <div x-html="termsHtml"></div>
             </template>
             <div x-show="!clubTermsEn && !clubTermsAr">
-                <p>By registering with {{ session('club.context.name', 'this club') }}, you agree to the following terms:</p>
+                <p>{{ __('auth.auth_register_wizard_terms_default_intro', ['club' => session('club.context.name', 'this club')]) }}</p>
                 <br>
-                <p><strong>1. Membership</strong><br>Membership is subject to approval by the club. Registration does not guarantee acceptance. The club reserves the right to decline any application.</p>
+                <p><strong>{{ __('auth.auth_register_wizard_terms_membership_title') }}</strong><br>{{ __('auth.auth_register_wizard_terms_membership_body') }}</p>
                 <br>
-                <p><strong>2. Payment</strong><br>Fees are due as per the selected package. Payment must be submitted to the club as proof of payment. Subscriptions become active only after payment is confirmed by club administration.</p>
+                <p><strong>{{ __('auth.auth_register_wizard_terms_payment_title') }}</strong><br>{{ __('auth.auth_register_wizard_terms_payment_body') }}</p>
                 <br>
-                <p><strong>3. Medical Information</strong><br>You are responsible for disclosing any medical conditions that may affect participation in club activities. The club is not liable for undisclosed health conditions.</p>
+                <p><strong>{{ __('auth.auth_register_wizard_terms_medical_title') }}</strong><br>{{ __('auth.auth_register_wizard_terms_medical_body') }}</p>
                 <br>
-                <p><strong>4. Code of Conduct</strong><br>All members are expected to respect club facilities, staff, and fellow members. The club may revoke membership for misconduct.</p>
+                <p><strong>{{ __('auth.auth_register_wizard_terms_conduct_title') }}</strong><br>{{ __('auth.auth_register_wizard_terms_conduct_body') }}</p>
                 <br>
-                <p><strong>5. Privacy</strong><br>Your personal data is collected for the purpose of club management and will not be shared with third parties without your consent, except as required by law.</p>
+                <p><strong>{{ __('auth.auth_register_wizard_terms_privacy_title') }}</strong><br>{{ __('auth.auth_register_wizard_terms_privacy_body') }}</p>
                 <br>
-                <p><strong>6. Changes</strong><br>The club reserves the right to amend these terms at any time. Continued membership constitutes acceptance of updated terms.</p>
+                <p><strong>{{ __('auth.auth_register_wizard_terms_changes_title') }}</strong><br>{{ __('auth.auth_register_wizard_terms_changes_body') }}</p>
                 <br>
-                <p class="font-medium">By proceeding, you confirm you have read and understood these terms.</p>
+                <p class="font-medium">{{ __('auth.auth_register_wizard_terms_confirm') }}</p>
             </div>
         </div>
         <label class="flex items-start gap-3 cursor-pointer flex-shrink-0">
@@ -323,7 +323,7 @@
                 <label class="field-label" x-text="t.fullName"></label>
                 <input type="text" x-model="account.full_name" autocomplete="name"
                        :class="errors.full_name ? 'field-error' : ''"
-                       class="field-input" placeholder="Your full name">
+                       class="field-input" placeholder="{{ __('auth.auth_register_wizard_ph_full_name') }}">
                 <p x-show="errors.full_name" class="err-msg" x-text="t.required"></p>
             </div>
 
@@ -332,7 +332,7 @@
                 <label class="field-label" x-text="t.email"></label>
                 <input type="email" x-model="account.email" autocomplete="email"
                        :class="errors.email ? 'field-error' : ''"
-                       class="field-input" placeholder="you@example.com">
+                       class="field-input" placeholder="{{ __('auth.auth_register_wizard_ph_email') }}">
                 <p x-show="errors.email" class="err-msg" x-text="t.invalidEmail"></p>
             </div>
 
@@ -343,7 +343,7 @@
                 <x-country-code-dropdown name="country_code" id="country_code" value="+973">
                     <input type="tel" id="wizard_mobile_number" name="mobile_number"
                            class="w-full px-4 py-2.5 bg-transparent focus:outline-none text-sm text-gray-900"
-                           placeholder="e.g. 33001234" autocomplete="tel">
+                           placeholder="{{ __('auth.auth_register_wizard_ph_mobile') }}" autocomplete="tel">
                 </x-country-code-dropdown>
                 <p x-show="errors.mobile_number" class="err-msg" x-text="t.required"></p>
             </div>
@@ -387,7 +387,7 @@
                 </label>
                 <div x-show="self.hasHealth" x-transition class="mt-3">
                     <textarea x-model="self.health_conditions" class="field-input" rows="3"
-                              placeholder="Optional — e.g. asthma, diabetes" style="resize:none"></textarea>
+                              placeholder="{{ __('auth.auth_register_wizard_ph_health') }}" style="resize:none"></textarea>
                 </div>
             </div>
         </div>
@@ -459,7 +459,7 @@
                     <label class="tf-label" x-text="t.childName"></label>
                     <input type="text" x-model="newChild.full_name"
                            :class="errors.newChild ? 'field-error' : ''"
-                           class="field-input" placeholder="Full name">
+                           class="field-input" placeholder="{{ __('auth.auth_register_wizard_ph_child_name') }}">
                 </div>
 
                 <div class="mb-4">
@@ -499,7 +499,7 @@
                     </label>
                     <div x-show="newChild.hasHealth" x-transition class="mt-3">
                         <textarea x-model="newChild.health_conditions" class="field-input" rows="2"
-                                  placeholder="Optional — e.g. asthma, diabetes" style="resize:none"></textarea>
+                                  placeholder="{{ __('auth.auth_register_wizard_ph_health') }}" style="resize:none"></textarea>
                     </div>
                 </div>
 
@@ -778,7 +778,7 @@
 
                 {{-- Pay later toggle --}}
                 <button type="button" @click="togglePayLater()"
-                        class="mt-3 flex items-center gap-3 w-full text-left">
+                        class="mt-3 flex items-center gap-3 w-full text-start">
                     <span class="w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors"
                           :class="payLater ? 'border-primary bg-primary text-white' : 'border-gray-300'">
                         <i class="bi bi-check-lg text-xs" x-show="payLater"></i>
@@ -956,12 +956,13 @@ function wizard() {
 
         // Club-wide default joining fee (used when a package has no override).
         clubEnrollmentFee: @json((float) session('club.context.enrollment_fee', 0)),
+        clubRegistrationFee: @json((float) session('club.context.registration_fee', 0)),
 
         relationshipOptions: [
-            { value: 'son',      label: 'Son',      icon: 'bi-person',       gender: 'Male'   },
-            { value: 'daughter', label: 'Daughter', icon: 'bi-person-heart', gender: 'Female' },
-            { value: 'spouse',   label: 'Spouse',   icon: 'bi-heart',        gender: ''       },
-            { value: 'other',    label: 'Other',    icon: 'bi-people',       gender: ''       },
+            { value: 'son',      label: '{{ __('auth.auth_register_wizard_rel_son') }}',      icon: 'bi-person',       gender: 'Male'   },
+            { value: 'daughter', label: '{{ __('auth.auth_register_wizard_rel_daughter') }}', icon: 'bi-person-heart', gender: 'Female' },
+            { value: 'spouse',   label: '{{ __('auth.auth_register_wizard_rel_spouse') }}',   icon: 'bi-heart',        gender: ''       },
+            { value: 'other',    label: '{{ __('auth.auth_register_wizard_rel_other') }}',    icon: 'bi-people',       gender: ''       },
         ],
 
         // Top-level cache: key 'self' or child index (number) → array of packages.
@@ -1447,6 +1448,7 @@ function wizard() {
                 newData['self'] = data.packages || [];
                 // Authoritative club joining fee (don't depend on a possibly-stale session).
                 if (data.enrollment_fee !== undefined) this.clubEnrollmentFee = parseFloat(data.enrollment_fee) || 0;
+                if (data.registration_fee !== undefined) this.clubRegistrationFee = parseFloat(data.registration_fee) || 0;
             } catch (e) {
                 console.error('Failed to load packages for self', e);
                 newData['self'] = [];
@@ -1613,20 +1615,25 @@ function wizard() {
 
         // Per-person first-time registration fee: first selected package's override,
         // else the club default. Existing relatives already enrolled pay nothing.
+        // One-time registration fee for a first-timer: package override, else the
+        // club registration fee, else the legacy enrollment fee. Mirrors the
+        // backend RegistrationCostService::effectiveRegistrationFee fallback.
         personRegFee(person, availList) {
             if (person.already_member) return 0;
             const ids = person.packages || [];
             if (ids.length === 0) return 0;
             const pkg = (availList || []).find(p => p.id == ids[0]);
             if (pkg && pkg.registration_fee !== null && pkg.registration_fee !== undefined && pkg.registration_fee !== '') {
-                return parseFloat(pkg.registration_fee);
+                return parseFloat(pkg.registration_fee) || 0;
             }
-            return parseFloat(this.clubEnrollmentFee) || 0;
+            let fee = parseFloat(this.clubRegistrationFee) || 0;
+            if (fee <= 0) fee = parseFloat(this.clubEnrollmentFee) || 0;
+            return fee;
         },
 
         relationshipLabel(val) {
             const r = this.relationshipOptions.find(o => o.value === val);
-            return r ? r.label : 'Member';
+            return r ? r.label : '{{ __('auth.auth_register_wizard_rel_member_fallback') }}';
         },
 
         // Schedule formatting for the package cards.
@@ -1726,7 +1733,7 @@ function wizard() {
                     this.goTo(6);
                     setTimeout(() => { window.location.href = data.redirect; }, 4000);
                 } else if (res.status === 419) {
-                    this.errors.submit = 'Your session expired. Please refresh the page and try again.';
+                    this.errors.submit = '{{ __('auth.auth_register_wizard_err_session_expired') }}';
                 } else if (data && (data.errors || data.message)) {
                     // Surface the first validation message (e.g. "email already taken").
                     if (data.errors) {
@@ -1736,10 +1743,10 @@ function wizard() {
                         this.errors.submit = data.message;
                     }
                 } else {
-                    this.errors.submit = 'Something went wrong (error ' + res.status + '). Please try again.';
+                    this.errors.submit = '{{ __('auth.auth_register_wizard_err_generic_pre') }}' + res.status + '{{ __('auth.auth_register_wizard_err_generic_post') }}';
                 }
             } catch (e) {
-                this.errors.submit = 'Network error. Please check your connection and try again.';
+                this.errors.submit = '{{ __('auth.auth_register_wizard_err_network') }}';
             }
             this.submitting = false;
         },

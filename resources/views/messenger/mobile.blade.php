@@ -12,9 +12,9 @@
      the desktop navbar when landing on /messages on a phone. --}}
 <header class="sticky top-0 z-40 bg-white border-b border-border">
     <div class="flex items-center gap-2 px-3 h-14">
-        <a href="{{ route('me.home') }}" class="flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0" aria-label="{{ __('shared.back') }}">
+        <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('me.home') }}')" class="flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0" aria-label="{{ __('shared.back') }}">
             <i class="bi bi-arrow-left text-xl text-foreground"></i>
-        </a>
+        </button>
         <div class="flex-1 min-w-0">
             <p class="text-[10px] text-muted-foreground font-medium leading-tight flex items-center gap-1">
                 <span class="w-1.5 h-1.5 rounded-full" :class="connected ? 'bg-green-500' : 'bg-gray-300'"></span>

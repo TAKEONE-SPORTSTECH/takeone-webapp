@@ -6,25 +6,31 @@
 @section('content')
 <div x-data="postPage()" class="min-h-screen bg-background pb-12">
 
-    {{-- ===== Header with back button ===== --}}
-    <header class="sticky top-0 z-40 bg-white border-b border-border">
-        <div class="flex items-center gap-2 px-3 h-14 max-w-xl mx-auto">
-            <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('me.home') }}')"
-                    class="m-press w-10 h-10 -ml-1 rounded-xl flex items-center justify-center text-foreground" aria-label="{{ __('shared.back') }}">
-                <i class="bi bi-arrow-left text-xl"></i>
-            </button>
-            <p class="flex-1 min-w-0 text-base font-bold text-primary truncate">{{ __('personal.post_title') }}</p>
+    {{-- ===== Hero header ===== --}}
+    <header class="m-hero px-5 pt-7 pb-6 text-white relative overflow-hidden">
+        <div class="absolute -end-8 -top-8 w-36 h-36 rounded-full bg-white/10"></div>
+        <div class="flex items-center justify-between gap-3 relative z-10 max-w-xl mx-auto">
+            <div class="flex items-center gap-3 min-w-0">
+                <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ route('me.home') }}')"
+                        class="m-press w-12 h-12 shrink-0 rounded-2xl bg-white/20 border border-white/30 backdrop-blur grid place-items-center active:scale-95 transition-transform" aria-label="{{ __('shared.back') }}">
+                    <i class="bi bi-arrow-left text-xl"></i>
+                </button>
+                <div class="min-w-0">
+                    <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">{{ __('nav.news_feed') }}</p>
+                    <h1 class="text-2xl font-black mt-0.5">{{ __('personal.post_title') }}</h1>
+                </div>
+            </div>
             <button type="button" @click="sharePost(post)"
-                    class="m-press w-10 h-10 rounded-xl flex items-center justify-center text-foreground" aria-label="{{ __('personal.share') }}">
-                <i class="bi bi-share text-lg"></i>
+                    class="m-press w-12 h-12 shrink-0 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center active:scale-95 transition-transform" aria-label="{{ __('personal.share') }}">
+                <i class="bi bi-share text-lg m-float"></i>
             </button>
         </div>
     </header>
 
     {{-- ===== The post ===== --}}
     <div class="max-w-xl mx-auto sm:mt-4">
-        <div class="mobile-stagger sm:rounded-xl sm:overflow-hidden sm:shadow-sm sm:border sm:border-gray-100">
-            @include('personal.partials.post-card')
+        <div class="mobile-stagger">
+            @include('personal.partials.post-card', ['bare' => true])
         </div>
     </div>
 
@@ -32,6 +38,7 @@
         window.postPage = function () {
             return {
                 me: { name: @js(Auth::user()->full_name), avatar: @js(Auth::user()->profile_picture ? asset('storage/'.Auth::user()->profile_picture).'?v='.optional(Auth::user()->updated_at)->timestamp : null) },
+                isSuperAdmin: @js((bool) (Auth::user()?->hasRole('super-admin'))),
                 csrf: document.querySelector('meta[name=csrf-token]')?.content || '',
                 postBase: @js(url('/me/posts')),
                 base: @js(url('/u')),
@@ -39,6 +46,8 @@
                 lightbox: { open: false, images: [], index: 0 },
 
                 init() {
+                    // Comments are expanded by default on the dedicated post page.
+                    this.post.showComments = true;
                     // Live updates for THIS post over MQTT (like / comment / edit / delete).
                     window.addEventListener('realtime:posts', (e) => this.onRealtimePost(e.detail || {}));
                 },
@@ -49,6 +58,17 @@
                         setTimeout(() => window.location.href = @js(route('me.home')), 900);
                         return;
                     }
+                    // Moderation: super-admins keep viewing the (flagged) post; anyone
+                    // else is bounced home the moment it's hidden.
+                    if (d.action === 'hide') {
+                        if (this.isSuperAdmin) { this.post.hidden = true; }
+                        else {
+                            window.showToast && window.showToast('info', @js(__('personal.post_removed')));
+                            setTimeout(() => window.location.href = @js(route('me.home')), 900);
+                        }
+                        return;
+                    }
+                    if (d.action === 'unhide') { this.post.hidden = false; return; }
                     if (d.action === 'like') this.post.likes = d.likes;
                     else if (d.action === 'comment') { if (!this.post.comments.some(c => c.id === d.comment.id)) this.post.comments.push(d.comment); }
                     else if (d.action === 'edit') { this.post.body = d.body; this.post.edited = true; }
@@ -127,6 +147,35 @@
                         await this.send(`${this.postBase}/${post.id}`, { method: 'DELETE' });
                         window.showToast && window.showToast('success', @js(__('personal.post_deleted')));
                         setTimeout(() => window.location.href = @js(route('me.home')), 600);
+                    } catch (e) { window.showToast && window.showToast('error', e.message); }
+                },
+
+                // Super-admin moderation: remove any member's post for everyone.
+                async adminDeletePost(post) {
+                    const ok = await window.confirmAction({ title: @js(__('personal.admin_remove_post')), message: @js(__('personal.admin_remove_post_confirm')), type: 'danger', confirmText: @js(__('personal.delete')) });
+                    if (!ok) return;
+                    try {
+                        await this.send(`${this.postBase}/${post.id}`, { method: 'DELETE' });
+                        window.showToast && window.showToast('success', @js(__('personal.post_deleted')));
+                        setTimeout(() => window.location.href = @js(route('me.home')), 600);
+                    } catch (e) { window.showToast && window.showToast('error', e.message); }
+                },
+
+                // Super-admin moderation: hide (reversible) / unhide this post.
+                async hidePost(post) {
+                    const ok = await window.confirmAction({ title: @js(__('personal.hide_post')), message: @js(__('personal.hide_post_confirm')), type: 'warning', confirmText: @js(__('personal.hide_confirm_btn')) });
+                    if (!ok) return;
+                    try {
+                        await this.send(`${this.postBase}/${post.id}/hide`, { method: 'POST' });
+                        this.post.hidden = true;
+                        window.showToast && window.showToast('success', @js(__('personal.post_hidden')));
+                    } catch (e) { window.showToast && window.showToast('error', e.message); }
+                },
+                async unhidePost(post) {
+                    try {
+                        await this.send(`${this.postBase}/${post.id}/unhide`, { method: 'POST' });
+                        this.post.hidden = false;
+                        window.showToast && window.showToast('success', @js(__('personal.post_unhidden')));
                     } catch (e) { window.showToast && window.showToast('error', e.message); }
                 },
 

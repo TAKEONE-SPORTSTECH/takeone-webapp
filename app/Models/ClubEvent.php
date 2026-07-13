@@ -12,7 +12,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class ClubEvent extends Model
 {
-    use HasFactory, BelongsToTenant, LogsActivity;
+    use BelongsToTenant, HasFactory, LogsActivity;
 
     protected static function booted(): void
     {
@@ -86,27 +86,27 @@ class ClubEvent extends Model
     ];
 
     protected $casts = [
-        'date'         => 'date',
-        'end_date'     => 'date',
-        'weigh_in_at'  => 'datetime',
+        'date' => 'date',
+        'end_date' => 'date',
+        'weigh_in_at' => 'datetime',
         'enrollment_starts_at' => 'date',
-        'enrollment_ends_at'   => 'date',
-        'tags'         => 'array',
-        'images'       => 'array',
-        'max_capacity'       => 'integer',
+        'enrollment_ends_at' => 'date',
+        'tags' => 'array',
+        'images' => 'array',
+        'max_capacity' => 'integer',
         'cancel_within_days' => 'integer',
-        'spots_taken'        => 'integer',
-        'minutes_per_match'  => 'integer',
-        'courts'             => 'integer',
-        'break_minutes'      => 'integer',
-        'day_courts'         => 'array',
-        'is_archived'  => 'boolean',
+        'spots_taken' => 'integer',
+        'minutes_per_match' => 'integer',
+        'courts' => 'integer',
+        'break_minutes' => 'integer',
+        'day_courts' => 'array',
+        'is_archived' => 'boolean',
         'spectator_enabled' => 'boolean',
         'requirements' => 'array',
-        'phases'       => 'array',
-        'agenda'       => 'array',
-        'results'      => 'array',
-        'league'       => 'array',
+        'phases' => 'array',
+        'agenda' => 'array',
+        'results' => 'array',
+        'league' => 'array',
     ];
 
     /**
@@ -133,7 +133,9 @@ class ClubEvent extends Model
      */
     public function isOngoing(): bool
     {
-        if ($this->hasEnded()) return false;
+        if ($this->hasEnded()) {
+            return false;
+        }
 
         return $this->date->copy()->setTimeFromTimeString($this->start_time)->isPast();
     }
@@ -141,7 +143,9 @@ class ClubEvent extends Model
     /** True once the event's start moment has passed. */
     public function hasStarted(): bool
     {
-        if (! $this->date) return false;
+        if (! $this->date) {
+            return false;
+        }
 
         return $this->date->copy()->setTimeFromTimeString($this->start_time ?: '00:00')->isPast();
     }

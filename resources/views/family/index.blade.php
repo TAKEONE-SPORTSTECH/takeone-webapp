@@ -4,9 +4,13 @@
 <div class="tf-container">
     <div class="flex justify-between items-center mb-4">
         <div>
-            <h1 class="mb-1 text-2xl font-bold">Family Members</h1>
-            <p class="text-gray-500 mb-0">Manage and view your family members</p>
+            <h1 class="mb-1 text-2xl font-bold">{{ __('member.family_index_title') }}</h1>
+            <p class="text-gray-500 mb-0">{{ __('member.family_index_subtitle') }}</p>
         </div>
+        <a href="{{ route('me.family') }}"
+           class="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium">
+            <i class="bi bi-diagram-3"></i>{{ __('nav.family_tree') }}
+        </a>
     </div>
 
     <!-- Family Members Card Grid -->
@@ -31,7 +35,7 @@
                     <div class="mb-3">
                         <i class="bi bi-plus-circle text-5xl"></i>
                     </div>
-                    <h5 class="font-semibold text-gray-500">Add Member</h5>
+                    <h5 class="font-semibold text-gray-500">{{ __('member.family_index_add_member') }}</h5>
                 </div>
             </div>
         </div>
@@ -40,8 +44,8 @@
 {{-- Add Family Member Modal --}}
 <x-profile-modal
     mode="create"
-    title="Add Family Member"
-    subtitle="Fill in the details to add a new family member"
+    :title="__('member.family_index_modal_title')"
+    :subtitle="__('member.family_index_modal_subtitle')"
     :showRelationshipFields="true"
     :showEmailField="false"
     :formAction="route('family.store')"

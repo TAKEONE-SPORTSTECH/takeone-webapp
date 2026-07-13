@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Receipt</title>
+    <title>{{ __('shared.templates_invoices_receipt_title') }}</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
 
@@ -279,15 +279,15 @@
         <div class="header-info">
             <div class="receipt-title-wrapper">
                 <h1>TAKEONE</h1>
-                <p class="slogan">Connect, Share, Thrive.</p>
+                <p class="slogan">{{ __('shared.templates_invoices_receipt_slogan') }}</p>
             </div>
             <div class="registration-info">
                 <div class="reg-row">
-                    <div class="white-box">REGISTRATION #</div>
+                    <div class="white-box">{{ __('shared.templates_invoices_receipt_registration_no') }}</div>
                     <div class="white-box">001</div>
                 </div>
                 <div class="reg-row">
-                    <div class="white-box">VAT REGISTRATION #</div>
+                    <div class="white-box">{{ __('shared.templates_invoices_receipt_vat_registration_no') }}</div>
                     <div class="white-box">N/A</div>
                 </div>
             </div>
@@ -298,7 +298,7 @@
     <div class="main-content">
         <div class="invoice-info">
             <div>
-                <p class="to"><B>RECEIPT TO :</B></p>
+                <p class="to"><B>{{ __('shared.templates_invoices_receipt_receipt_to') }}</B></p>
                 <p>
                     <strong>{{ $invoice->student->full_name }}</strong><br>
                     {{ $invoice->student->mobile_formatted ?: 'N/A' }}<br>
@@ -308,11 +308,11 @@
             </div>
             <div class="info-details">
                 <div class="info-row">
-                    <span>RECEIPT NO</span>
+                    <span>{{ __('shared.templates_invoices_receipt_receipt_no') }}</span>
                     <span class="white-pill">{{ $invoice->id }}</span>
                 </div>
                 <div class="info-row">
-                    <span>ISSUE DATE</span>
+                    <span>{{ __('shared.templates_invoices_receipt_issue_date') }}</span>
                     <span class="white-pill">{{ $invoice->created_at->format('d-m-Y') }}</span>
                 </div>
             </div>
@@ -321,17 +321,17 @@
         <table id="receipt-items">
             <thead>
                 <tr>
-                    <th>Item No</th>
-                    <th>Description</th>
-                    <th>Qty</th>
-                    <th>Price</th>
-                    <th>Total</th>
+                    <th>{{ __('shared.templates_invoices_receipt_col_item_no') }}</th>
+                    <th>{{ __('shared.templates_invoices_receipt_col_description') }}</th>
+                    <th>{{ __('shared.templates_invoices_receipt_col_qty') }}</th>
+                    <th>{{ __('shared.templates_invoices_receipt_col_price') }}</th>
+                    <th>{{ __('shared.templates_invoices_receipt_col_total') }}</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td>1</td>
-                    <td>Club Membership Fee - {{ $invoice->tenant->club_name }}</td>
+                    <td>{{ __('shared.templates_invoices_receipt_membership_fee') }} - {{ $invoice->tenant->club_name }}</td>
                     <td>1</td>
                     <td>{{ number_format($invoice->amount, 2) }}</td>
                     <td></td>
@@ -340,21 +340,21 @@
         </table>
 
         <div id="payment-note" class="receipt-note">
-            <p><strong>Note:</strong> This payment covers the membership fee for <strong>{{ $invoice->student->full_name }}</strong> at <strong>{{ $invoice->tenant->club_name }}</strong>.</p>
+            <p><strong>{{ __('shared.templates_invoices_receipt_note_label') }}</strong> {{ __('shared.templates_invoices_receipt_note_covers') }} <strong>{{ $invoice->student->full_name }}</strong> {{ __('shared.templates_invoices_receipt_note_at') }} <strong>{{ $invoice->tenant->club_name }}</strong>.</p>
         </div>
 
         <table class="sub-total-table">
             <tbody>
                 <tr>
-                    <td>Sub Total:</td>
+                    <td>{{ __('shared.templates_invoices_receipt_sub_total') }}</td>
                     <td id="sub-total"></td>
                 </tr>
                 <tr>
-                    <td>VAT (0%):</td>
+                    <td>{{ __('shared.templates_invoices_receipt_vat') }}</td>
                     <td id="vat"></td>
                 </tr>
                 <tr class="grand-total-row">
-                    <td>Grand Total:</td>
+                    <td>{{ __('shared.templates_invoices_receipt_grand_total') }}</td>
                     <td id="grand-total"></td>
                 </tr>
             </tbody>
@@ -383,7 +383,7 @@
 
     </div>
     <div class="footer">
-        © 2025 TAKEONE. All Rights Reserved.
+        {{ __('shared.templates_invoices_receipt_copyright') }}
     </div>
 </div>
 

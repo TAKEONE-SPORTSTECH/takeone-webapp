@@ -14,7 +14,7 @@ class Landing
     public static function url(Request $request): string
     {
         $user = Auth::user();
-        if (!$user) {
+        if (! $user) {
             return route('login');
         }
 
@@ -23,6 +23,7 @@ class Landing
             if (session('view_mode') === 'business' && $user->hasApprovedBusiness()) {
                 return route('business.dashboard');
             }
+
             return route('me.home');
         }
 

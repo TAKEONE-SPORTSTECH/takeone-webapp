@@ -14,11 +14,11 @@ class SendNotificationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'recipient_type'   => 'required|in:all,selected',
-            'recipient_ids'    => 'required_if:recipient_type,selected|array',
-            'recipient_ids.*'  => 'integer|exists:users,id',
-            'subject'          => 'required|string|min:3|max:255',
-            'message'          => 'required|string|min:10|max:5000',
+            'recipient_type' => 'required|in:all,selected',
+            'recipient_ids' => 'required_if:recipient_type,selected|array',
+            'recipient_ids.*' => 'integer|exists:users,id',
+            'subject' => 'required|string|min:3|max:255',
+            'message' => 'required|string|min:10|max:5000',
         ];
     }
 }

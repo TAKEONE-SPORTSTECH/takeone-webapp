@@ -18,7 +18,7 @@
                 </a>
             </div>
 
-            <p class="text-center text-gray-500 text-lg mb-6 tracking-tight">Sign in to start your session</p>
+            <p class="text-center text-gray-500 text-lg mb-6 tracking-tight">{{ __('auth.auth_desktop_login_subtitle') }}</p>
 
             <!-- Flash error (e.g. expired session / page expired) -->
             @if(session('error'))
@@ -33,12 +33,12 @@
                 <button type="button" @click="tab='password'"
                         :class="tab==='password' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'"
                         class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all">
-                    <i class="bi bi-shield-lock mr-1.5"></i>Password
+                    <i class="bi bi-shield-lock me-1.5"></i>{{ __('auth.auth_desktop_login_tab_password') }}
                 </button>
                 <button type="button" @click="tab='link'"
                         :class="tab==='link' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'"
                         class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all">
-                    <i class="bi bi-envelope-paper mr-1.5"></i>Login link
+                    <i class="bi bi-envelope-paper me-1.5"></i>{{ __('auth.auth_desktop_login_tab_link') }}
                 </button>
             </div>
 
@@ -51,7 +51,7 @@
                            class="tf-input @error('email') border-red-500 @enderror"
                            name="email"
                            value="{{ old('email') }}"
-                           placeholder="Email or Phone"
+                           placeholder="{{ __('auth.auth_desktop_login_email_placeholder') }}"
                            required autocomplete="username"
                            autofocus>
                     @error('email')
@@ -66,7 +66,7 @@
                     <input id="password" type="password"
                            class="tf-input @error('password') border-red-500 @enderror"
                            name="password"
-                           placeholder="Password"
+                           placeholder="{{ __('auth.auth_desktop_login_password_placeholder') }}"
                            required autocomplete="current-password">
                     @error('password')
                         <span class="tf-error" role="alert">
@@ -83,13 +83,13 @@
                            name="remember"
                            {{ old('remember') ? 'checked' : '' }}>
                     <label class="text-gray-500 text-sm" for="remember">
-                        Remember Me
+                        {{ __('auth.auth_desktop_login_remember_me') }}
                     </label>
                 </div>
 
                 <!-- Sign In Button -->
                 <button type="submit" class="tf-auth-btn mt-2 mb-2">
-                    SIGN IN
+                    {{ __('auth.auth_desktop_login_sign_in') }}
                 </button>
             </form>
 
@@ -99,29 +99,29 @@
                 <div class="flex items-start gap-3 bg-green-50 border border-green-200 text-green-800 rounded-xl px-4 py-3 mb-4 text-sm">
                     <i class="bi bi-envelope-check mt-0.5 shrink-0"></i>
                     <div class="flex-1">
-                        <p class="font-medium mb-1">Check your inbox</p>
-                        <p class="text-green-700">If an account exists for <strong>{{ session('magic_sent') }}</strong>, we've emailed a login link. Tap the button in that email to sign in — no password needed.</p>
+                        <p class="font-medium mb-1">{{ __('auth.auth_desktop_login_check_inbox_title') }}</p>
+                        <p class="text-green-700">{{ __('auth.auth_desktop_login_check_inbox_before') }} <strong>{{ session('magic_sent') }}</strong>{{ __('auth.auth_desktop_login_check_inbox_after') }}</p>
                     </div>
                 </div>
                 @endif
 
                 <form method="POST" action="{{ route('login.magic') }}">
                     @csrf
-                    <p class="text-center text-sm text-gray-500 mb-3">No password? We'll email you a one-time login link.</p>
+                    <p class="text-center text-sm text-gray-500 mb-3">{{ __('auth.auth_desktop_login_magic_hint') }}</p>
                     <div class="mb-3">
                         <input type="email" name="email" value="{{ old('email') }}"
                                class="tf-input"
-                               placeholder="Your email" required autocomplete="email">
+                               placeholder="{{ __('auth.auth_desktop_login_your_email_placeholder') }}" required autocomplete="email">
                     </div>
                     <button type="submit" class="tf-auth-btn-outline">
-                        <i class="bi bi-envelope-paper mr-2"></i>EMAIL ME A LOGIN LINK
+                        <i class="bi bi-envelope-paper me-2"></i>{{ __('auth.auth_desktop_login_email_me_link') }}
                     </button>
                 </form>
             </div>
 
             <!-- Register (always visible) -->
             <a href="{{ route('register') }}" class="tf-auth-btn-outline mt-4 mb-2">
-                REGISTER
+                {{ __('auth.auth_desktop_login_register') }}
             </a>
 
             <!-- Unverified email notice -->
@@ -129,13 +129,13 @@
             <div class="flex items-start gap-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl px-4 py-3 mb-4 text-sm">
                 <i class="bi bi-envelope-exclamation mt-0.5 shrink-0"></i>
                 <div class="flex-1">
-                    <p class="font-medium mb-1">Email not verified</p>
-                    <p class="text-yellow-700 mb-2">Didn't receive the email or it expired?</p>
+                    <p class="font-medium mb-1">{{ __('auth.auth_desktop_login_unverified_title') }}</p>
+                    <p class="text-yellow-700 mb-2">{{ __('auth.auth_desktop_login_unverified_hint') }}</p>
                     <form method="POST" action="{{ route('verification.resend.public') }}">
                         @csrf
                         <input type="hidden" name="email" value="{{ session('unverified_email') }}">
                         <button type="submit" class="text-yellow-800 underline font-medium text-xs hover:text-yellow-900">
-                            Resend verification email
+                            {{ __('auth.auth_desktop_login_resend_verification') }}
                         </button>
                     </form>
                 </div>
@@ -146,10 +146,20 @@
             <p class="text-center text-sm text-gray-500">
                 @if (Route::has('password.request'))
                     <a href="{{ route('password.request') }}" class="tf-auth-link">
-                        I forgot my password
+                        {{ __('auth.auth_desktop_login_forgot_password') }}
                     </a>
                 @endif
             </p>
+
+            <!-- Download the Android app -->
+            <a href="{{ url('/app/takeone.apk') }}" download
+               class="mt-5 flex items-center justify-center gap-3 px-4 py-3 rounded-2xl bg-gradient-to-br from-accent/60 to-white border border-primary/15 shadow-sm hover:shadow transition-shadow text-sm font-semibold text-gray-700">
+                <span class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-green-500 to-emerald-600 shadow">
+                    <i class="bi bi-android2 text-white"></i>
+                </span>
+                <span class="flex-1">{{ __('nav.get_app') }}</span>
+                <i class="bi bi-download text-primary"></i>
+            </a>
         </div>
     </div>
 </div>

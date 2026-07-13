@@ -2,20 +2,19 @@
 
 @section('admin-content')
 <div>
-    <!-- Page Header -->
-    <div class="mb-4">
-        <h1 class="text-2xl font-bold mb-2">Audit Log</h1>
-        <p class="text-muted-foreground">Every recorded action on the platform — who did what and when.</p>
-    </div>
+    <x-admin-hero eyebrow="System" title="Audit Log" icon="bi-journal-text"
+                  subtitle="Every recorded action on the platform — who did what and when."
+                  :count="number_format($logs->total())" countLabel="Entries" />
 
     <!-- Filters -->
     <form method="GET" action="{{ route('admin.platform.audit-log') }}">
-        <div class="card border shadow-sm mb-4">
-            <div class="card-body p-4">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-4">
+            <div class="p-4">
                 {{-- Search --}}
                 <div class="relative mb-3">
                     <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></i>
-                    <input type="text" name="search" class="form-control pl-10"
+                    <input type="text" name="search"
+                           class="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                            placeholder="Search by action, model, user name or email..."
                            value="{{ $search ?? '' }}">
                 </div>
@@ -24,46 +23,46 @@
                 <div class="flex flex-wrap gap-2 items-end">
                     <div class="flex flex-col gap-1">
                         <label class="text-xs text-muted-foreground font-medium">Channel</label>
-                        <select name="log_name" class="form-control form-control-sm" style="min-width: 130px;">
-                            <option value="">All</option>
-                            @foreach($logNames as $name)
-                                <option value="{{ $name }}" @selected($logName === $name)>{{ ucfirst($name) }}</option>
-                            @endforeach
-                        </select>
+                        <div style="min-width: 130px;">
+                            <x-select-menu name="log_name" :value="$logName ?? ''" placeholder="All"
+                                           :options="collect($logNames)->map(fn($n) => ['value' => $n, 'label' => ucfirst($n)])->all()" />
+                        </div>
                     </div>
 
                     <div class="flex flex-col gap-1">
                         <label class="text-xs text-muted-foreground font-medium">Event</label>
-                        <select name="event" class="form-control form-control-sm" style="min-width: 110px;">
-                            <option value="">All</option>
-                            @foreach(['created','updated','deleted'] as $ev)
-                                <option value="{{ $ev }}" @selected($event === $ev)>{{ ucfirst($ev) }}</option>
-                            @endforeach
-                        </select>
+                        <div style="min-width: 110px;">
+                            <x-select-menu name="event" :value="$event ?? ''" placeholder="All"
+                                           :options="[['value' => 'created', 'label' => 'Created'], ['value' => 'updated', 'label' => 'Updated'], ['value' => 'deleted', 'label' => 'Deleted']]" />
+                        </div>
                     </div>
 
                     <div class="border-start border-border mx-1 align-self-stretch d-none d-sm-block"></div>
 
                     <div class="flex flex-col gap-1">
                         <label class="text-xs text-muted-foreground font-medium">From</label>
-                        <input type="date" name="date_from" class="form-control form-control-sm"
+                        <input type="date" name="date_from"
+                               class="px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                value="{{ $dateFrom ?? '' }}" style="min-width: 140px;">
                     </div>
 
                     <div class="flex flex-col gap-1">
                         <label class="text-xs text-muted-foreground font-medium">To</label>
-                        <input type="date" name="date_to" class="form-control form-control-sm"
+                        <input type="date" name="date_to"
+                               class="px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                value="{{ $dateTo ?? '' }}" style="min-width: 140px;">
                     </div>
 
                     <div class="flex gap-2 ms-auto">
                         @if($search || $logName || $event || $dateFrom || $dateTo)
-                            <a href="{{ route('admin.platform.audit-log') }}" class="btn btn-sm btn-outline-secondary">
-                                <i class="bi bi-x-lg me-1"></i>Clear
+                            <a href="{{ route('admin.platform.audit-log') }}"
+                               class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors no-underline">
+                                <i class="bi bi-x-lg"></i>Clear
                             </a>
                         @endif
-                        <button type="submit" class="btn btn-sm btn-primary">
-                            <i class="bi bi-funnel me-1"></i>Apply
+                        <button type="submit"
+                                class="inline-flex items-center gap-1.5 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+                            <i class="bi bi-funnel"></i>Apply
                         </button>
                     </div>
                 </div>
@@ -73,7 +72,7 @@
 
     <!-- Log Table -->
     @if($logs->count() > 0)
-        <div class="card border shadow-sm mb-4">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-4 overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="table table-hover mb-0">
                     <thead class="table-light">
@@ -303,8 +302,8 @@
         </div>
 
     @else
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-body text-center py-12">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-4">
+            <div class="text-center py-12">
                 <i class="bi bi-journal-text text-muted-foreground text-6xl"></i>
                 <h5 class="mt-3 mb-2">No Log Entries Found</h5>
                 <p class="text-muted-foreground mb-0">

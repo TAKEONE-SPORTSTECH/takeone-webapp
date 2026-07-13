@@ -18,8 +18,10 @@ class Business extends Model
 {
     use HasFactory, SoftDeletes;
 
-    public const STATUS_PENDING  = 'pending';
+    public const STATUS_PENDING = 'pending';
+
     public const STATUS_APPROVED = 'approved';
+
     public const STATUS_REJECTED = 'rejected';
 
     protected $fillable = [
@@ -90,12 +92,12 @@ class Business extends Model
         DB::table('sessions')->whereIn('user_id', array_filter([$previousOwnerId, $newOwnerId]))->delete();
 
         return $this->ownershipLogs()->create([
-            'from_user_id'           => $previousOwnerId,
-            'to_user_id'             => $newOwnerId,
-            'changed_by'             => $changedBy,
-            'clubs_reassigned'       => $reassignClubs,
+            'from_user_id' => $previousOwnerId,
+            'to_user_id' => $newOwnerId,
+            'changed_by' => $changedBy,
+            'clubs_reassigned' => $reassignClubs,
             'clubs_reassigned_count' => $reassignedCount,
-            'note'                   => $note,
+            'note' => $note,
         ]);
     }
 
@@ -126,10 +128,10 @@ class Business extends Model
     public function approve(?int $approverId = null): void
     {
         $this->update([
-            'status'           => self::STATUS_APPROVED,
+            'status' => self::STATUS_APPROVED,
             'rejection_reason' => null,
-            'approved_at'      => now(),
-            'approved_by'      => $approverId,
+            'approved_at' => now(),
+            'approved_by' => $approverId,
         ]);
 
         Tenant::where('owner_user_id', $this->owner_user_id)
@@ -146,10 +148,10 @@ class Business extends Model
     public function reject(?string $reason = null, ?int $approverId = null): void
     {
         $this->update([
-            'status'           => self::STATUS_REJECTED,
+            'status' => self::STATUS_REJECTED,
             'rejection_reason' => $reason,
-            'approved_at'      => null,
-            'approved_by'      => $approverId,
+            'approved_at' => null,
+            'approved_by' => $approverId,
         ]);
     }
 }

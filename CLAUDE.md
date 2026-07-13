@@ -57,6 +57,47 @@ Laravel 12 SaaS platform for sports clubs (TAKEONE-SPORTSTECH). Multi-tenant arc
 
 ---
 
+## Android App (APK) Mirrors the Mobile Web — STRICT
+
+**The mobile web experience IS the Android app.** There is a native Android app in `mobile/`
+(Capacitor shell, app ID `bh.takeone.app`) that loads the live site (`https://takeone.bh`)
+in a WebView. It is **not** a separate codebase — whatever renders in the mobile web views
+is exactly what users see inside the APK. Therefore, whenever working on the mobile app, the
+web and the APK must be treated as **one deliverable**.
+
+### Rules
+1. **Mobile web changes flow to the app automatically — no rebuild needed.** Any change to a
+   mobile Blade view, controller, route, JS, CSS, or backend logic appears in the installed
+   APK the moment it's deployed, because the app loads the live site. Do **not** tell the user
+   to rebuild the APK for content/UI/logic changes.
+2. **Every mobile feature must actually work inside a WebView.** When building a mobile
+   feature, verify it functions in the Android WebView, not just a desktop browser. In
+   particular:
+   - Camera / QR scanning / photo capture use `getUserMedia` — the `CAMERA` permission is
+     already declared in `mobile/android/app/src/main/AndroidManifest.xml`. If a new feature
+     needs another device capability (mic, geolocation beyond what's declared, notifications),
+     **add the matching Android permission there** as part of the same task.
+   - Avoid browser-only APIs that Android WebView blocks or handles differently (e.g. certain
+     downloads, `window.open` popups, native file pickers) without a WebView-safe fallback.
+3. **Only rebuild/re-sign the APK when the NATIVE shell changes** — app icon, name, splash,
+   colors, permissions, Capacitor plugins, or the `server.url`. In that case, do the full
+   loop as one unit: edit config → `npx cap sync android` → rebuild (`npm run build:release`)
+   → re-verify the signed artifact. See `mobile/README.md`.
+4. **Keep the shell config in sync with reality.** If the production URL, app name, or brand
+   color changes on the web side, update `mobile/capacitor.config.json` (and re-sync) in the
+   same change — never let the app point at a stale URL or show stale branding.
+5. **Never break a mobile view in a way that only shows up in the app.** Since the APK has no
+   browser chrome (no address bar, no easy refresh), a mobile view that soft-locks or clips
+   off-screen is worse in the app than on web. The existing mobile-forms/safe-area rules below
+   apply doubly here.
+
+> Practical summary: **mobile web work = app work.** Build mobile features so they work in the
+> WebView, add any needed native permission alongside, and only touch `mobile/` + rebuild when
+> the native shell itself changes. Full setup, build, and signing details live in
+> `mobile/README.md`.
+
+---
+
 ## Design Rules — STRICT
 
 ### 1. Never modify existing UI design
@@ -70,6 +111,9 @@ Do not clean up surrounding code, add docstrings, rename variables, or reorganiz
 
 ### 4. No native OS-rendered form popups (`<select>`, `<input type="date|time">`) for styled UI
 Never use a native `<select>`/`<option>`, or a native `<input type="date">` / `type="time"` / `type="datetime-local"`, when the control is part of the styled UI. The OS renders these popups (the option list, the calendar/clock) with sharp corners and its own colors — they cannot be themed and look inconsistent with the design system. Build a custom **Alpine** control instead: a `rounded-xl` bordered trigger button (chevron that rotates on open, purple focus ring) plus an absolutely-positioned `rounded-xl` panel (`bg-white border border-gray-100 shadow-lg overflow-hidden`) with a fade/slide `x-transition`, `hover:bg-muted/60` rows, and a `text-primary` highlight (check / selected state). Close on `@click.outside` and `@keydown.escape`. Keep the panel as smooth/rounded as the trigger. Reuse an existing `<x-*-dropdown>` component when one fits (see the Blade Component Library); otherwise match the reference implementations in `resources/views/personal/challenge-create.blade.php` — the **Win condition / Stake** dropdowns and the **Deadline** calendar popover (stores an ISO `YYYY-MM-DD` string, disables past days, has Clear / Today actions).
+
+### 5. Logos render on transparent backgrounds — never on a white tile
+Club logos, brand logos, and business/chain logos are supplied as transparent PNGs and MUST be shown as the bare image on a transparent background. Never wrap a logo in a white/filled rounded card, tile, or "chip" (`bg-white`, `p-1`, `shadow`, `ring`, `rounded-2xl overflow-hidden`) — that white square looks broken against non-white/hero/photo backdrops. Use only a sizing container plus the image: `<span class="w-16 h-16 flex-shrink-0"><img class="w-full h-full object-contain" ...></span>`. No background fill, no padding box, no ring/shadow behind the mark. This applies to every logo placement (public club page hero, cards, headers, nav, feed avatars where a real logo is used).
 
 ---
 
@@ -120,6 +164,71 @@ Apply this same pattern to every other feature: health records, goals, affiliati
 
 ### Reference implementation
 `/me/schedule`: `scheduleData()` returns the schedule as JSON; `pushScheduleRefresh($userIds)` publishes `{action:'refresh'}` on the `schedule` channel to every affected user; the list view's `realtime:schedule` handler calls `reloadData()` on `refresh` (and patches individual cards on `created/updated/deleted`). Personal-session edits use the targeted-patch shape; club-class/substitute changes use the refresh shape.
+
+---
+
+## Keep the MCP Server in Sync — STRICT
+
+**Rule:** The general-purpose MCP server (`app/Mcp/*`, exposed at `POST /mcp` and via `php artisan mcp:start takeone`) is a first-class interface to the platform, just like the web UI. **It must never fall behind the data model or feature set.** Whenever a change alters what the app can read or do, the MCP must be updated in the **same** change — treat a stale MCP as a broken build. Full subsystem docs: `Documentation/MCP.md`. See [[project_mcp_server]].
+
+### When a change REQUIRES an MCP update
+Update or add a tool (in `app/Mcp/Tools/`, registered in `app/Mcp/Servers/TakeOneServer.php`) whenever you:
+- **Add a new entity / feature** that a user or integration would reasonably want to read or act on (new model, new admin action, new member self-service flow) → add a read tool, and a write tool if the app can mutate it.
+- **Add or rename a field** that an existing tool returns (e.g. a new member/club attribute) → surface it in that tool's JSON so consumers see it.
+- **Change a relationship or query** a tool relies on (e.g. the club↔member relation, a status enum, a slug/uuid binding) → fix the tool's query so it still returns correct, scoped data. (The existing tools already hit real gotchas: `memberClubs()` not `memberships`, `birthdate` not `date_of_birth`, `ClubTransaction.payment_method` is a NOT-NULL enum — keep these correct.)
+- **Change an authorization rule** (who can see/do what) → mirror it in `app/Mcp/Concerns/AuthorizesClubAccess.php` (`canAdminClub`, `canViewMember`, `accessibleClubIds`) so the MCP enforces the *same* scope. The MCP must never expose more than the acting user could do in the UI.
+- **Add a validation rule / enum vocabulary** to a write path → apply the identical rule in the corresponding write tool (e.g. gender `Male`/`Female`, payment methods).
+
+### How to do it (non-negotiable steps)
+1. Add/adjust the tool; extend `App\Mcp\Tools\BaseTool` (gives `guard()`, the write kill-switch, and scoping helpers). Guard first: `$user = $this->guard($request); if ($user instanceof \Laravel\Mcp\Response) return $user;`
+2. Set `protected bool $isWrite = true;` on any tool that mutates data.
+3. Register the class in `TakeOneServer::$tools`.
+4. Enforce tenant scope with the `AuthorizesClubAccess` helpers — never query models unscoped.
+5. Add/extend a case in `tests/Feature/McpServerTest.php` covering both the happy path **and** an authorization denial.
+6. Update the tool table in `Documentation/MCP.md`.
+
+### What does NOT need an MCP change
+Pure UI/styling/copy edits, internal refactors, and changes with no new readable/actionable surface. When unsure, err toward adding the tool — an integration that can't see a feature is worse than one extra tool.
+
+> Rationale: external systems (n8n, Claude, other services) consume the platform through this one server. If a feature ships to the web but not the MCP, every integration silently drifts out of date. The MCP is part of the deliverable, not an afterthought.
+
+---
+
+## Admin Sidebar SPA Navigation — STRICT
+
+**Rule:** Clicking any link in a desktop admin sidebar (club admin `/admin/club/{club}/*` **and** super-admin platform `/admin/*`) must load the page **in place — no full browser reload**, like a React SPA. The sidebar, top bar, and scroll shell stay mounted; only the main content area swaps.
+
+### How it works
+- **Navigator:** `resources/views/partials/admin-shell-nav.blade.php` — included by both desktop admin layouts (`layouts/admin-club.blade.php`, `layouts/admin.blade.php`). It intercepts clicks on `a[data-shell-link]`, `fetch()`es the destination (sends `X-Requested-With`), parses the response, and swaps it in. Shows a slim top progress bar, updates `document.title`, the active nav state, and `history.pushState`/`popstate`. Modeled on the proven mobile shell navigator (`partials/mobile-shell-nav.blade.php`).
+- **Swap target:** the layout's `<main>` carries `data-shell-main="club"` (or `"platform"`) plus `data-route`. The navigator replaces its `innerHTML` from the destination's matching `<main>`. **If the destination has a different `data-shell-main` value (or none), it hard-loads** — so club↔platform and admin→non-admin links fall back to a real navigation (their sidebars differ).
+- **Page scripts & modals:** pages put JS/modals in `@push('scripts')`/`@push('modals')` (rendered *outside* `<main>`), so `app.blade.php` wraps those stacks in `<div id="shell-scripts">` / `<div id="shell-modals">`. On nav the navigator swaps those regions and runs each **unique** `<script>` **once per session** (deduped by content/`src`, seeded with the first-paint scripts). This is deliberate: desktop admin pages declare top-level `const`/`let`/`function` at global scope (for inline `onclick=`), so re-running the same script would throw "already declared". Globals therefore run once; their functions persist.
+- **Re-init bridge:** after each swap the navigator **dispatches a synthetic `DOMContentLoaded`** and a `shell:navigated` window event. Existing pages gate their init on `DOMContentLoaded`, so this re-runs that init against the freshly-swapped DOM — on first visit AND revisit (the listener registered on first visit persists and re-fires). Alpine re-inits swapped `x-data` via its own mutation observer (the navigator does **not** call `Alpine.initTree`, which would double-initialize).
+- **Speed:** links are **prefetched on hover / touchstart** (15s cache) so the click is usually instant; a top progress bar covers any remaining latency.
+- **Page styles:** `@push('styles')` blocks are injected from the destination's `<head>` on first visit (content-deduped, so globals aren't re-added).
+- **Marking links:** add `data-shell-link data-route="{{ $routeName }}"` to a sidebar `<a>` **only when it stays within the same shell**. Never mark cross-shell links (platform↔club, Back to Explore, external/`target="_blank"`) — leave them as plain links so they hard-load.
+- **In-content links navigate in place automatically.** Beyond the sidebar, the navigator also intercepts any same-origin `<a>` whose path is under the shell's base (`data-shell-base` on `<main>` — `/admin/club/{slug}` or `/admin`), e.g. status-filter and pagination links. Links to *other* sections (member profiles `/member/*`, etc.) fall through to a normal full load. A non-HTML response (file download, redirect, JSON) auto-falls-back to full navigation via a Content-Type + redirect check.
+- **Opt a content link OUT** of in-place nav with `data-no-shell` (e.g. file-download links like the member import template), or `download` / `target="_blank"` / an `onclick` / `data-bs-toggle` (those are skipped automatically).
+
+### What page authors should know
+1. **`DOMContentLoaded` works** — the navigator re-fires it on every swap, so existing `document.addEventListener('DOMContentLoaded', …)` init runs on each visit. New init code can use it, or listen for the `shell:navigated` window event. Put DOM-binding init *inside* that handler (not bare top-level) so it re-runs per visit and binds to the new DOM.
+2. **Top-level declarations run once** — `const`/`let`/`function`/`class` at script top level execute only on the first visit (dedupe). Don't rely on them re-executing; keep per-visit work inside the `DOMContentLoaded`/`shell:navigated` handler.
+3. **Dedup persistent listeners.** A `DOMContentLoaded` handler re-fires every nav, and re-bound `document`/`window` listeners can stack. Prefer delegated listeners, or store the handler on `window.__xxx` and `removeEventListener` the previous one before re-adding (see the mobile-shell dedup note). The navigator itself is guarded with `window.__adminShellNavInit`.
+
+### Mobile shells: cross-shell guard
+All mobile shells reuse `id="shell-content"`, so the mobile navigator can't tell them apart by id alone. Each shell's `<main id="shell-content">` carries a **`data-shell-id`** (`personal` / `admin-club` / `business`); the navigator hard-loads when the destination's `data-shell-id` differs (mirrors the desktop `data-shell-main` guard). **When you add a new mobile shell layout, give its `#shell-content` a unique `data-shell-id`.** Cross-shell links must still be plain `<a>` (no `data-shell-link`).
+
+---
+
+## Navigation Integrity — no dead ends — STRICT
+
+**Rule:** Every clickable control must go to a real, reachable destination. A link/button that 404s, opens a modal that isn't on the page, or is a bare `href="#"` with no handler is a defect — treat it like a broken build.
+
+- **`route('name', …)` must name a real route** with the **correct binding key** — `member.show` binds `{uuid}`, but `member.update`/`edit`/`destroy`/`upload-picture` bind `{id}`; club-admin routes bind `{club}` (id-or-slug via `Route::bind('club')`); many public routes need a `{country}` prefix (`/{country}/clubs/{slug}`). Passing an id to a `{uuid}` route (or omitting `{country}`) is a runtime 404, not a compile error — audit these when linking.
+- **A modal trigger requires the modal on the page.** `data-bs-toggle="modal" data-bs-target="#x"` needs an element `id="x"` in the rendered output; if the real editor is an Alpine component (e.g. `<x-profile-modal>` opening on the `open-profile-modal` window event), dispatch that event instead — `onclick="window.dispatchEvent(new CustomEvent('open-profile-modal'))"`. Don't point at a `#modalId` that doesn't exist.
+- **`data-bs-*` goes through the bridge** (`app.blade.php`), which fires on `data-bs-toggle`. `data-bs-target` **without** `data-bs-toggle` does nothing. `window.bootstrap.Modal` / `bsModal.show()` are shimmed and work.
+- **No placeholder `href="#"`** on a control that implies navigation. Wire it to the real route/tab, or don't render it. Prefer omitting an unbuilt action over shipping a dead button.
+- **JS-built URLs** (`fetch`/`location.href`/template literals) must match a real route pattern — verify against `php artisan route:list` before committing. Dead/orphaned handler clusters that point at removed routes should be deleted, not left dormant.
+- **To verify:** dump the route table (`php artisan route:list --json`) and cross-reference `route('…')` names, then click-test the primary actions on any page you touch.
 
 ---
 
@@ -177,6 +286,48 @@ Intentionally **deferred indefinitely** — additional cost not wanted at this s
 
 ---
 
+## Image Uploads Must Validate Real Bytes — STRICT
+
+**Rule:** NEVER derive a stored file's extension from the client-supplied data-URI header, and never write request bytes to disk with `file_put_contents`/raw paths. Every base64 image upload MUST go through the **`App\Traits\StoresBase64Images`** trait, which sniffs the real MIME from the decoded bytes, assigns the extension server-side from a whitelist (jpg/png/gif/webp — **SVG rejected**, it can carry script), and returns the stored path (or `null` to reject).
+
+### Why
+The old pattern `$ext = explode('image/', $parts[0])[1]` let a logged-in user upload `shell.php`/`.svg` by lying in the data-URI header → stored XSS, and RCE under the common nginx/php-fpm docroot config. Fixed across all upload endpoints on the `harden/launch-readiness` branch.
+
+### How to add an upload endpoint
+```php
+use App\Traits\StoresBase64Images;   // add to the controller class
+
+$path = $this->storeBase64Image($request->image, $folder, $filenameBase);
+if ($path === null) {
+    return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
+}
+// delete the OLD file only after a successful store, and only if the path changed
+```
+- Validate the request with **`UploadImageRequest`** (or the same rules): `image` = `starts_with:data:image/`; `folder` = `regex:/^[A-Za-z0-9_\-\/]+$/`; `filename` = `regex:/^[A-Za-z0-9_\-]+$/` (blocks traversal + stray extensions).
+- The extension is assigned by the trait — do **not** append `.$ext` yourself, and don't trust `$request->filename` to already carry one.
+- Endpoint-level regression coverage lives in `tests/Feature/UploadSecurityTest.php`; the trait's unit coverage is `tests/Feature/StoresBase64ImagesTest.php`. Add a case when you add an endpoint.
+
+---
+
+## Canonical Enum Vocabularies — STRICT
+
+**Gender is stored and validated as `Male` / `Female`** everywhere — never `m`/`f`. This was normalized by migration `2026_06_05_000001_normalize_gender_enum_on_users_table` and is the value the `<x-gender-dropdown>` submits. Every FormRequest/controller uses `in:Male,Female`. When writing tests or new forms, send `Male`/`Female`; sending `m`/`f` will fail validation silently (redirect-back with errors, no row created).
+
+---
+
+## 403s Redirect on Web, Return JSON on API — expected behavior
+
+The global handler in `bootstrap/app.php` intentionally converts a 403:
+- **Browser navigation** (non-JSON) for a logged-in user → `redirect('/')` with an error flash (so a stale higher-privilege page never dead-ends on a raw 403). Access is still denied.
+- **JSON/AJAX** (`expectsJson`) → real `403`.
+
+So authorization tests must assert `assertRedirect('/')` for a `get()` and `assertForbidden()` for a `getJson()` — a browser GET to a forbidden page is a `302`, not a `403`. Don't "fix" the controller to emit 403 on web; that reroute is deliberate.
+
+### Tenant resolution in `role:`/`permission:` middleware
+`CheckRole`/`CheckPermission` resolve the tenant via `resolveTenantId()` (bound `{club}` model → numeric id → `slug` lookup). Do not reintroduce the old inline `$a ?? $b ? c : d` expression — `??` binds tighter than `?:`, so it always resolved by slug and returned `null` under a `{club}` binding, silently defeating any club-scoped role/permission check.
+
+---
+
 ## Financials Feature Status
 
 - Step 1 ✅ `PlatformController@joinClub` auto-creates a `ClubTransaction` on package registration
@@ -194,6 +345,19 @@ A large, cohesive demo dataset wired to the super admin (`superadmin@takeone.bh`
 - **Purge:** `php artisan demo:purge` (`--force` to skip prompt). Removes **exactly** what was seeded.
 - **How removal stays exact & safe:** `demo:seed` records every created row id (and any uploaded file) to a **manifest** at `storage/app/private/demo/manifest.json` (`App\Support\DemoManifest`). `demo:purge` reads it, deletes files first (defensively scanning file-bearing columns in case images were uploaded to demo records via the UI), then deletes rows in reverse-FK order inside a transaction. It can never touch real imported members or the super-admin account. Second safety net: demo clubs use slug `demo-*` and demo users `@demo.takeone.bh`.
 - Commands: `app/Console/Commands/DemoSeed.php`, `app/Console/Commands/DemoPurge.php`. Only one manifest at a time (re-seed requires purge or `--fresh`).
+
+---
+
+## Pre-Launch Runbook — operational, NOT code
+
+These are launch gates that live in the **environment/ops**, not the repo — a green test suite does not clear them. Verify before any production go-live. (Surfaced by the launch-readiness audit; code-level findings from that audit are already fixed and codified in the STRICT sections above.)
+
+- **Production env flags (BLOCKER).** The live `.env` must be `APP_ENV=production` + `APP_DEBUG=false` (it was `local`/`true` on `https://takeone.bh`, which leaks a full stack trace + secrets on every error). Also set `LOG_LEVEL=warning` and `LOG_STACK=single,sentry` (so `Log::error()` reaches Sentry). **Re-run `php artisan config:cache` after ANY `.env` change** — caching freezes `env()`.
+- **Warm prod caches on deploy:** `config:cache` + `route:cache` + `event:cache` + `view:cache` — all four now succeed. `view:cache` used to die with `DirectoryNotFoundException` for `vendor/takeone/cropper/src/resources/views`: takeone/cropper's provider registers `__DIR__.'/resources/views'` from `src/`, but ships its views one level up at `resources/views`. `AppServiceProvider::pruneMissingViewPaths()` now drops non-existent paths from every view namespace on `booted()`, so the bad hint is gone before `view:cache` walks it. The published copy at `resources/views/vendor/takeone/` is what resolves at runtime, and still does. **This is a workaround for an upstream package bug** — fix the path in `laravel-image-cropper` and the guard becomes a no-op (keep it; it protects against any package doing the same).
+- **Backups / DR (BLOCKER).** Stand up a cron'd, rotated, **off-server** backup of the DB **and** upload folders (`storage/app/public/*`, `storage/app/private/payment-proofs`, chat attachments). Copy the Android release keystore (`mobile/android/app/takeone-release.jks`, git-ignored) to secure external storage — losing it means the Play Store app can never be updated. (`/database/*.sqlite*` is now in `.gitignore` — the DB, its `-wal`/`-shm` sidecars, and `.bak-*` snapshots can never be committed. Nothing sqlite was ever tracked, so no history scrub was needed.)
+- **Mail (MAJOR).** Queued mail had failing jobs (`SendQueuedMailable`) — verification emails silently not sending. Diagnose the Gmail SMTP creds, send a real end-to-end verification, then clear `queue:failed`. Mail is real Gmail SMTP (`smtp.gmail.com:465 ssl`), queued — see the no-Mailpit rule.
+- **Datastore at scale (MAJOR).** Production is SQLite (WAL). Fine for a soft launch, but SQLite is single-writer — under concurrent multi-club writes it throws "database is locked". A ready `mysql` connection already sits in `config/database.php`; migrate before real concurrency. Keep WAL checkpoints healthy (the `-wal` file should not dwarf the DB).
+- **Workers as least-privilege.** Supervisor `queue:work` should run as `www-data`, not `root`.
 
 ---
 
@@ -222,7 +386,7 @@ Status: Complete. Key patterns:
 
 **Required patterns:**
 - **Use a bottom-sheet (or full-screen) layout** for non-trivial mobile forms: `fixed inset-x-0 bottom-0 max-h-[92vh] flex flex-col`, with a `flex-shrink-0` header, a `flex-1 overflow-y-auto` scrollable body, and a `flex-shrink-0` sticky footer holding the actions. The body scrolls; the actions stay reachable.
-- **Respect the safe area** on the sticky footer: `padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));`.
+- **Respect the safe area** on the sticky footer: `padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));`. ⚠️ This only works because the base layouts (`layouts/app.blade.php`, `layouts/tailwind.blade.php`) set `<meta name="viewport" content="… viewport-fit=cover">` — without `viewport-fit=cover` every `env(safe-area-inset-*)` resolves to `0` and the padding silently does nothing. Never drop `viewport-fit=cover` from a base layout's viewport meta, and never ship a mobile viewport with `maximum-scale=1`/`user-scalable=no` (breaks pinch-zoom / WCAG 1.4.4).
 - **⚠️ Teleport fixed overlays to `<body>`.** The mobile shell's `#shell-content` carries `.mobile-stagger`, whose `m-rise` animation leaves a `transform` on every direct child. A CSS `transform` makes that element the containing block for any `position: fixed` descendant — so a bottom-sheet's `bottom-0` / `max-h-[92vh]` resolve against the tiny wrapper instead of the viewport and the form gets clipped. Wrap any fixed sheet/FAB/overlay in `<template x-teleport="body">…</template>` (inside an Alpine `x-data` scope) so it escapes the transformed ancestor. Use `z-[60]+` for teleported sheets so they sit above the bottom tab bar (`z-40`).
 - Inputs full-width (`w-full`), comfortable tap targets, and the design-system input/button tokens. Keep [[Mobile = Creative + Animated]] in mind — animated, on-palette, not a stripped-down desktop form.
 
@@ -363,6 +527,7 @@ All components live in `resources/views/components/` and are called as `<x-{name
 | `<x-toast-notification>` | Global toast container — **include once per layout**; call `window.showToast(type, message)` from JS | `position` (default `top-right`) |
 | `<x-qr-code>` | Offline QR (bacon, server-rendered SVG) — trigger button opens a modal with the code + Download PNG/SVG + Copy link + optional printable poster. Build target URLs via `App\Http\Controllers\QrController::clubPageUrl/clubRegisterUrl/memberUrl/eventUrl()`; poster routes are `qr.club.page`, `qr.club.register`, `qr.member`, `qr.event`. QR rendering helper: `App\Support\Qr::svg()`. | `url` (required), `title`, `caption`, `filename`, `label`, `icon`, `size`, `posterUrl`, `buttonClass` |
 | `<x-stat-card>` | KPI stat card with sparkline, trend indicator, and live-update API (`StatCard.update(cardId, detail)`). Supports click navigation via `href`, `modal`, or `on-click`. | `label`, `value`, `sub-label`, `icon` (bi-*), `icon-bg`, `icon-color`, `size` (`sm`\|`md`\|`lg`), `spark-data`, `spark-labels`, `spark-color`, `trend`, `trend-up`, `refresh-event`, `card-id`, `href`, `modal`, `on-click` |
+| `<x-admin-hero>` | Platform/club-admin page hero band (purple gradient, control-center style) — title + optional eyebrow/subtitle, optional right-side `count` chip, and an `actions` slot for buttons/badges. Used on the platform dashboard + admin list pages. | `title` (required), `eyebrow`, `subtitle`, `icon` (bi-*), `count`, `countLabel`; slot: `actions` |
 
 > **`<x-stat-card>` sparkline alignment rule:** Always pass `:spark-data` from the same domain as the card's value (e.g. revenue card → monthly revenue array, not monthly member counts). When no real time-series exists yet, pass `array_fill(0, 12, 0)` as a flat baseline — never reuse another card's unrelated data array. The component is `flex flex-col` with `mt-auto` on the sparkline, so it always pins to the bottom of the card in equal-height grid rows. Do not remove these classes from the component.
 >
@@ -377,6 +542,7 @@ All components live in `resources/views/components/` and are called as `<x-{name
 
 | Tag | Purpose | Key props |
 |-----|---------|-----------|
+| `<x-select-menu>` | **Generic styled dropdown — the default replacement for any native `<select>`** (Design Rule #4). Rounded trigger (rotating chevron, purple focus ring) + `rounded-xl` fade/slide panel with `hover:bg-muted/60` rows and a `text-primary` check on the selected item; closes on click-outside/escape. Two modes: pass **`model`** (an Alpine state path, e.g. `cat`) to bind a property in the PARENT Alpine scope (use instead of `x-model`); OR omit `model` and pass **`value`** for a standalone server-form control (seeds state, posts via the hidden `name` input). Prefer a specialized `<x-*-dropdown>` when the vocabulary matches (gender/country/etc.). Do NOT use for JS-coupled selects (options read by `id`/`data-*`, built in JS strings, `form.reset()`-cleared, or dynamic `x-for` options) — those stay native. | `model`, `value`, `options` (`[['value'=>,'label'=>], …]`), `name`, `placeholder`, `error`, `change` (Alpine expr run after pick), `panelClass` |
 | `<x-rich-text-editor>` | WYSIWYG rich-text editor (Alpine + `contenteditable`). Toolbar: bold/italic/underline/strikethrough, text color, H1/H2/H3/paragraph/quote, bullet+numbered lists, indent, align, link (inline URL bar, no native prompt)/unlink, horizontal rule, undo/redo, clear. Submits HTML via a hidden `<textarea name="{name}">`. Supports `dir="rtl"`. | `name`, `id`, `value`, `dir`, `placeholder`, `minHeight` |
 | `<x-image-upload>` | Inline image upload with crop preview (uses takeone-cropper) | `id`, `name`, `width`, `height`, `shape`, `folder`, `filename`, `uploadUrl`, `currentImage`, `placeholder`, `placeholderIcon`, `buttonText`, `rounded`, `showPreview` |
 | `<x-takeone-cropper>` | Raw cropper widget (used inside `image-upload`). Pass `:uploadAsIs="true"` to show a second "Upload As Is" button alongside "Crop & Apply". Customize its label with `uploadAsIsText`. | `id`, `width`, `height`, `shape`, `folder`, `filename`, `uploadUrl`, `currentImage`, `buttonText`, `buttonClass`, `mode` (ajax\|form), `inputName`, `canvasHeight`, `uploadAsIs`, `uploadAsIsText` |
@@ -394,3 +560,19 @@ All components live in `resources/views/components/` and are called as `<x-{name
 - AJAX responses return `response()->json(['success' => true/false, 'message' => '...'])`
 - Authorization checks follow the pattern: super-admin → own profile → family relationship → club admin of member
 - Throttle middleware is applied on all write routes (`throttle:member-write`, `throttle:admin-write`, `throttle:uploads`, etc.)
+- **Guard `@php` helper-function declarations.** The member profile (`components-templates/member/show.blade.php`) and the super-admin member view (`family/show.blade.php`) are near-identical twins that each declare top-level PHP helpers in `@php` blocks (`calculateTimeDifference`, `getChangeIcon`, and `calculateAgeAtDate` in their `affiliations-enhanced` partials). Any PHP function declared in a Blade `@php` block MUST be wrapped in `if (! function_exists('name')) { … }` — otherwise rendering both views (or the same view twice) in one request/process is a "Cannot redeclare" fatal. JS functions inside `<script>` are exempt.
+
+### Member profile — self-service create flows (built on `member/show` + mirrored to `family/show`)
+The member/family profile "Actions" menu creates records via shared endpoints on `MemberController` (auth: super-admin → own profile → guardian). Each opens an Alpine modal (`@open-*-add-modal.window`), POSTs JSON, and patches the DOM in place (No-Reload rule):
+- **Goals** — `member.store-goal` / `family.store-goal` (`StoreGoalRequest`, `Goal` model). Goals had update-only before; this added create.
+- **Attendance** — `member.store-attendance` / `family.store-attendance` (`StoreAttendanceRequest`, `Attendance` on `members_attendance`).
+- **Event participation** — `member.store-event` / `family.store-event` (`StoreMemberEventRequest`, new `MemberEvent` model / `member_events` table): a free-form personal event log, distinct from club-event registrations (`ClubEventRegistration`) and tournaments (`TournamentEvent`).
+- **Achievements stay club-awarded** (read-only `member_award` via `ClubAchievement`) — there is intentionally no member self-service "add achievement".
+- Tests: `GoalTest`, `AttendanceRecordTest`, `MemberEventTest`, `ProfilePageRendersTest`.
+
+### People discovery (member-to-member)
+`PeopleController` provides a platform-wide **"Find People"** search (`me.people` page + `me.people.search` AJAX) and a **SAFE public profile** at `people.show` (`/people/{uuid}`). Views are device-split: `people/{mobile,desktop}/{index,show}.blade.php` (+ `people/partials/club-row`).
+- **`users.is_discoverable`** (bool, default true) = opt-OUT of discovery. It gates BOTH search visibility AND cold DMs — a discoverable member has opted into being found *and* contacted, so `User::canMessage()` allows messaging any discoverable member. Toggle in `/me/settings` → `me.discoverable.update`.
+- **Public profile shows only safe data** (name, photo, clubs active+history, skills, medals, challenge win-rate). It must NEVER expose health/billing/documents/contacts/family — those live only on the family/admin-gated `member.show`. `User::canViewPublicProfile()` = any signed-in viewer not blocked either way; viewing your own → redirect to `member.show`.
+- **The old `/u/{slug}` wall + follow notifications now redirect to `people.show`** (was `member.show`, which 404'd for non-family). New "view another member" links should target `people.show`, not `member.show`.
+- Follow routes are `wall.follow` (POST) / `wall.unfollow` (DELETE) bound by `{user:slug}` — use the slug, and DELETE to unfollow. Tests: `PeopleDiscoveryTest`.

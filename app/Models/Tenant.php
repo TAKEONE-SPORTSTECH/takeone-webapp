@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\HasTranslations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,35 +12,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
-use App\Models\ClubAchievement;
-use App\Models\ClubActivity;
-use App\Models\ClubAffiliation;
-use App\Models\ClubBankAccount;
-use App\Models\ClubEvent;
-use App\Models\ClubEventRegistration;
-use App\Models\ClubFacility;
-use App\Models\ClubGalleryImage;
-use App\Models\ClubInstructor;
-use App\Models\ClubMemberSubscription;
-use App\Models\ClubMessage;
-use App\Models\ClubNotification;
-use App\Models\ClubPackage;
-use App\Models\ClubPerk;
-use App\Models\PerkCollection;
-use App\Models\ClubReview;
-use App\Models\ClubSocialLink;
-use App\Models\ClubTimelinePost;
-use App\Models\ClubTimelinePostComment;
-use App\Models\ClubTimelinePostLike;
-use App\Models\ClubTransaction;
-use App\Models\Invoice;
-use App\Models\Membership;
-use App\Models\UserNotification;
-use App\Traits\HasTranslations;
 
 class Tenant extends Model
 {
-    use HasFactory, SoftDeletes, LogsActivity, HasTranslations {
+    use HasFactory, HasTranslations, LogsActivity, SoftDeletes {
         HasTranslations::setTranslation as protected baseSetTranslation;
     }
 
@@ -81,7 +57,7 @@ class Tenant extends Model
     {
         // Auto-link a newly created club to its owner's approved chain, if any.
         static::creating(function (self $tenant) {
-            if (empty($tenant->business_id) && !empty($tenant->owner_user_id)) {
+            if (empty($tenant->business_id) && ! empty($tenant->owner_user_id)) {
                 $businessId = Business::where('owner_user_id', $tenant->owner_user_id)
                     ->where('status', Business::STATUS_APPROVED)
                     ->value('id');
@@ -190,6 +166,7 @@ class Tenant extends Model
         'registration_terms',
         'registration_requirements',
         'enrollment_fee',
+        'registration_fee',
         'commercial_reg_number',
         'vat_reg_number',
         'vat_percentage',
@@ -223,6 +200,7 @@ class Tenant extends Model
         'gps_lat' => 'decimal:7',
         'gps_long' => 'decimal:7',
         'enrollment_fee' => 'decimal:2',
+        'registration_fee' => 'decimal:2',
         'vat_percentage' => 'decimal:2',
         'phone' => 'array',
         'settings' => 'array',
@@ -250,8 +228,8 @@ class Tenant extends Model
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'memberships')
-                    ->withPivot('status')
-                    ->withTimestamps();
+            ->withPivot('status')
+            ->withTimestamps();
     }
 
     /**
@@ -432,6 +410,7 @@ class Tenant extends Model
     public function getUrlAttribute(): string
     {
         $country = strtolower($this->country ?? 'bh');
+
         return route('clubs.show', ['country' => $country, 'slug' => $this->slug]);
     }
 

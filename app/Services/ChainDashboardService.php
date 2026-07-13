@@ -36,7 +36,7 @@ class ChainDashboardService
 
         if (empty($clubIds)) {
             return [
-                'clubs'  => collect(),
+                'clubs' => collect(),
                 'totals' => $this->emptyTotals(),
             ];
         }
@@ -76,30 +76,30 @@ class ChainDashboardService
             $exp = (float) ($expenses[$club->id] ?? 0);
 
             return [
-                'id'              => $club->id,
-                'name'            => $club->club_name,
-                'slug'            => $club->slug,
-                'logo'            => $club->logo,
-                'currency'        => $club->currency ?: '',
-                'members'         => (int) ($members[$club->id] ?? 0),
-                'active_subs'     => (int) ($activeSubs[$club->id] ?? 0),
-                'revenue'         => $rev,
-                'expenses'        => $exp,
-                'net'             => $rev - $exp,
+                'id' => $club->id,
+                'name' => $club->club_name,
+                'slug' => $club->slug,
+                'logo' => $club->logo,
+                'currency' => $club->currency ?: '',
+                'members' => (int) ($members[$club->id] ?? 0),
+                'active_subs' => (int) ($activeSubs[$club->id] ?? 0),
+                'revenue' => $rev,
+                'expenses' => $exp,
+                'net' => $rev - $exp,
                 'cash_to_collect' => (float) ($cashToCollect[$club->id] ?? 0),
             ];
         });
 
         $totals = [
-            'clubs'           => $rows->count(),
-            'members'         => (int) $rows->sum('members'),
-            'active_subs'     => (int) $rows->sum('active_subs'),
-            'revenue'         => (float) $rows->sum('revenue'),
-            'expenses'        => (float) $rows->sum('expenses'),
-            'net'             => (float) $rows->sum('net'),
+            'clubs' => $rows->count(),
+            'members' => (int) $rows->sum('members'),
+            'active_subs' => (int) $rows->sum('active_subs'),
+            'revenue' => (float) $rows->sum('revenue'),
+            'expenses' => (float) $rows->sum('expenses'),
+            'net' => (float) $rows->sum('net'),
             'cash_to_collect' => (float) $rows->sum('cash_to_collect'),
             // Most clubs share one currency; surface the first for display.
-            'currency'        => $rows->first()['currency'] ?? '',
+            'currency' => $rows->first()['currency'] ?? '',
         ];
 
         return ['clubs' => $rows, 'totals' => $totals];

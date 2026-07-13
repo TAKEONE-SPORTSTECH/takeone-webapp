@@ -15,10 +15,10 @@ class Challenge extends Model
     ];
 
     protected $casts = [
-        'rules'     => 'array',
-        'rewards'   => 'array',
+        'rules' => 'array',
+        'rewards' => 'array',
         'starts_at' => 'date',
-        'ends_at'   => 'date',
+        'ends_at' => 'date',
         'is_active' => 'boolean',
     ];
 
@@ -42,6 +42,7 @@ class Challenge extends Model
         if ($this->ends_at && $this->ends_at->lt($today)) {
             return 'completed';
         }
+
         return 'active';
     }
 
@@ -50,6 +51,7 @@ class Challenge extends Model
         if (! $this->ends_at) {
             return 0;
         }
+
         return max(0, (int) ceil(now()->startOfDay()->diffInDays($this->ends_at, false)));
     }
 }

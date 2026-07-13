@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class ClubProductVariant extends Model
 {
-    use HasFactory, BelongsToTenant, SoftDeletes, DeletesUploadedFiles;
+    use BelongsToTenant, DeletesUploadedFiles, HasFactory, SoftDeletes;
 
     protected $table = 'club_product_variants';
 
@@ -27,19 +27,22 @@ class ClubProductVariant extends Model
 
     protected $fillable = [
         'tenant_id', 'club_product_id',
+        'options', 'description',
         'size', 'color', 'color_hex', 'brand', 'sku',
         'price', 'old_price', 'cost', 'quantity', 'low_stock_alert',
+        'fulfillment', 'supplier', 'ships_in',
         'image_path', 'is_active', 'sort',
     ];
 
     protected $casts = [
-        'price'           => 'decimal:2',
-        'old_price'       => 'decimal:2',
-        'cost'            => 'decimal:2',
-        'quantity'        => 'integer',
+        'options' => 'array',
+        'price' => 'decimal:2',
+        'old_price' => 'decimal:2',
+        'cost' => 'decimal:2',
+        'quantity' => 'integer',
         'low_stock_alert' => 'integer',
-        'is_active'       => 'boolean',
-        'sort'            => 'integer',
+        'is_active' => 'boolean',
+        'sort' => 'integer',
     ];
 
     public function tenant(): BelongsTo
@@ -55,6 +58,13 @@ class ClubProductVariant extends Model
     /** Human label, e.g. "Adidas · Royal Blue · M". Empty parts are dropped. */
     public function getLabelAttribute(): string
     {
+        // Prefer the WooCommerce-style options map (values in attribute order);
+        // fall back to the legacy brand/color/size columns for un-migrated rows.
+        $options = $this->options ?? [];
+        if (! empty($options)) {
+            return collect(array_values($options))->filter()->implode(' · ');
+        }
+
         return collect([$this->brand, $this->color, $this->size])
             ->filter()
             ->implode(' · ');
@@ -70,19 +80,24 @@ class ClubProductVariant extends Model
     public function toCardArray(): array
     {
         return [
-            'id'        => $this->id,
-            'size'      => $this->size,
-            'color'     => $this->color,
+            'id' => $this->id,
+            'options' => $this->options ?? (object) [],
+            'description' => $this->description,
+            'size' => $this->size,
+            'color' => $this->color,
             'color_hex' => $this->color_hex,
-            'brand'     => $this->brand,
-            'sku'       => $this->sku,
-            'label'     => $this->label,
-            'price'     => (float) $this->price,
+            'brand' => $this->brand,
+            'sku' => $this->sku,
+            'label' => $this->label,
+            'price' => (float) $this->price,
             'old_price' => $this->old_price !== null ? (float) $this->old_price : null,
-            'quantity'  => $this->quantity,
-            'image'     => $this->image_path ? asset('storage/' . $this->image_path) : null,
+            'quantity' => $this->quantity,
+            'fulfillment' => $this->fulfillment ?: 'stock',
+            'supplier' => $this->supplier,
+            'ships_in' => $this->ships_in,
+            'image' => $this->image_path ? asset('storage/'.$this->image_path) : null,
             'is_active' => (bool) $this->is_active,
-            'in_stock'  => ! $this->isOutOfStock(),
+            'in_stock' => ! $this->isOutOfStock(),
         ];
     }
 }

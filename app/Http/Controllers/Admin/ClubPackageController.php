@@ -22,18 +22,18 @@ class ClubPackageController extends Controller
     public function packages(Tenant $club)
     {
         $this->authorizeClub($club);
-        $clubId      = $club->id;
-        $packages    = ClubPackage::where('tenant_id', $clubId)->with(['activities'])->get();
-        $facilities  = ClubFacility::where('tenant_id', $clubId)->get();
-        $activities  = ClubActivity::where('tenant_id', $clubId)->get();
+        $clubId = $club->id;
+        $packages = ClubPackage::where('tenant_id', $clubId)->with(['activities'])->get();
+        $facilities = ClubFacility::where('tenant_id', $clubId)->get();
+        $activities = ClubActivity::where('tenant_id', $clubId)->get();
         $instructors = ClubInstructor::where('tenant_id', $clubId)->with('user')->get();
 
         $instructorsMap = $instructors->mapWithKeys(function ($instructor) {
             return [$instructor->id => [
-                'id'      => $instructor->id,
+                'id' => $instructor->id,
                 'user_id' => $instructor->user_id,
-                'name'    => $instructor->user?->full_name ?? $instructor->user?->name ?? 'Unknown',
-                'image'   => $instructor->user?->profile_picture ?? null,
+                'name' => $instructor->user?->full_name ?? $instructor->user?->name ?? 'Unknown',
+                'image' => $instructor->user?->profile_picture ?? null,
             ]];
         });
 
@@ -46,20 +46,20 @@ class ClubPackageController extends Controller
         $clubId = $club->id;
 
         $data = [
-            'tenant_id'        => $clubId,
-            'name'             => $request->name,
-            'description'      => $request->description,
-            'price'            => $request->price,
+            'tenant_id' => $clubId,
+            'name' => $request->name,
+            'description' => $request->description,
+            'price' => $request->price,
             'registration_fee' => $request->filled('registration_fee') ? $request->registration_fee : null,
-            'duration_months'  => $request->duration_months,
-            'gender'           => $request->gender_restriction ?? 'mixed',
-            'age_min'          => $request->age_min,
-            'age_max'          => $request->age_max,
-            'is_active'        => true,
+            'duration_months' => $request->duration_months,
+            'gender' => $request->gender_restriction ?? 'mixed',
+            'age_min' => $request->age_min,
+            'age_max' => $request->age_max,
+            'is_active' => true,
         ];
 
         if ($request->filled('image') && str_starts_with($request->input('image'), 'data:image')) {
-            $data['cover_image'] = $this->storeBase64Image($request->input('image'), 'packages', 'package_' . time());
+            $data['cover_image'] = $this->storeBase64Image($request->input('image'), 'packages', 'package_'.time());
         } elseif ($request->hasFile('image')) {
             $data['cover_image'] = $request->file('image')->store('packages', 'public');
         }
@@ -80,25 +80,25 @@ class ClubPackageController extends Controller
     public function updatePackage(PackageRequest $request, Tenant $club, $packageId)
     {
         $this->authorizeClub($club);
-        $clubId  = $club->id;
+        $clubId = $club->id;
         $package = ClubPackage::where('tenant_id', $clubId)->where('id', $packageId)->firstOrFail();
 
         $data = [
-            'name'            => $request->name,
-            'description'     => $request->description,
-            'price'           => $request->price,
+            'name' => $request->name,
+            'description' => $request->description,
+            'price' => $request->price,
             'registration_fee' => $request->filled('registration_fee') ? $request->registration_fee : null,
             'duration_months' => $request->duration_months,
-            'gender'          => $request->gender_restriction ?? 'mixed',
-            'age_min'         => $request->age_min,
-            'age_max'         => $request->age_max,
+            'gender' => $request->gender_restriction ?? 'mixed',
+            'age_min' => $request->age_min,
+            'age_max' => $request->age_max,
         ];
 
         if ($request->filled('image') && str_starts_with($request->input('image'), 'data:image')) {
             if ($package->cover_image && Storage::disk('public')->exists($package->cover_image)) {
                 Storage::disk('public')->delete($package->cover_image);
             }
-            $data['cover_image'] = $this->storeBase64Image($request->input('image'), 'packages', 'package_' . $packageId . '_' . time());
+            $data['cover_image'] = $this->storeBase64Image($request->input('image'), 'packages', 'package_'.$packageId.'_'.time());
         } elseif ($request->hasFile('image')) {
             if ($package->cover_image && Storage::disk('public')->exists($package->cover_image)) {
                 Storage::disk('public')->delete($package->cover_image);
@@ -133,31 +133,33 @@ class ClubPackageController extends Controller
     private function buildSyncData(Request $request): array
     {
         try {
-            $schedules          = json_decode($request->schedules ?? '[]', true, 512, JSON_THROW_ON_ERROR);
+            $schedules = json_decode($request->schedules ?? '[]', true, 512, JSON_THROW_ON_ERROR);
             $trainerAssignments = json_decode($request->trainer_assignments ?? '[]', true, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
-            $schedules          = [];
+            $schedules = [];
             $trainerAssignments = [];
         }
 
         $activitySchedules = [];
         foreach ($schedules as $schedule) {
             $activityId = $schedule['activityId'] ?? null;
-            if (!$activityId) continue;
+            if (! $activityId) {
+                continue;
+            }
 
-            $days        = $schedule['days']        ?? [];
-            $startTime   = $schedule['startTime']   ?? '';
-            $endTime     = $schedule['endTime']     ?? '';
-            $facilityId  = $schedule['facilityId']  ?? null;
+            $days = $schedule['days'] ?? [];
+            $startTime = $schedule['startTime'] ?? '';
+            $endTime = $schedule['endTime'] ?? '';
+            $facilityId = $schedule['facilityId'] ?? null;
             $facilityName = $schedule['facilityName'] ?? null;
 
             foreach ($days as $day) {
                 $dayValue = is_array($day) ? ($day['value'] ?? $day['name'] ?? '') : $day;
                 $activitySchedules[$activityId][] = [
-                    'day'           => $dayValue,
-                    'start_time'    => $startTime,
-                    'end_time'      => $endTime,
-                    'facility_id'   => $facilityId,
+                    'day' => $dayValue,
+                    'start_time' => $startTime,
+                    'end_time' => $endTime,
+                    'facility_id' => $facilityId,
                     'facility_name' => $facilityName,
                 ];
             }
@@ -167,7 +169,7 @@ class ClubPackageController extends Controller
         foreach ($activitySchedules as $activityId => $scheduleEntries) {
             $syncData[$activityId] = [
                 'instructor_id' => $trainerAssignments[$activityId] ?? null,
-                'schedule'      => json_encode($scheduleEntries),
+                'schedule' => json_encode($scheduleEntries),
             ];
         }
 

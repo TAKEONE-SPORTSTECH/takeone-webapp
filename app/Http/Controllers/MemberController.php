@@ -9,17 +9,14 @@ use App\Http\Requests\TournamentRequest;
 use App\Http\Requests\UpdateGoalRequest;
 use App\Http\Requests\UpdateMemberRequest;
 use App\Http\Requests\UploadImageRequest;
+use App\Models\Attendance;
+use App\Models\ClubEventRegistration;
+use App\Models\Goal;
+use App\Models\Invoice;
+use App\Models\Membership;
+use App\Models\TournamentEvent;
 use App\Models\User;
 use App\Models\UserRelationship;
-use App\Models\HealthRecord;
-use App\Models\Invoice;
-use App\Models\TournamentEvent;
-use App\Models\Goal;
-use App\Models\Attendance;
-use App\Models\ClubAffiliation;
-use App\Models\ClubEventRegistration;
-use App\Models\ClubMemberSubscription;
-use App\Models\Membership;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -28,6 +25,7 @@ use Illuminate\Support\Facades\Storage;
 class MemberController extends Controller
 {
     use \App\Traits\BuildsMemberPayments;
+    use \App\Traits\StoresBase64Images;
 
     /**
      * Display a listing of members (family dashboard).
@@ -41,7 +39,7 @@ class MemberController extends Controller
             ->with('dependent')
             ->whereHas('dependent')
             ->get()
-            ->sortBy(function($relationship) {
+            ->sortBy(function ($relationship) {
                 return $relationship->dependent->full_name;
             });
 
@@ -49,7 +47,10 @@ class MemberController extends Controller
         $isMobile = (bool) request()->attributes->get('is_mobile', false);
         $view = $isMobile && view()->exists('family.mobile.index') ? 'family.mobile.index' : 'family.index';
 
-        return view($view, compact('user', 'dependents'));
+        // The mobile shell labels its header from $shellTitle for routes that
+        // aren't in its own nav list.
+        return view($view, compact('user', 'dependents'))
+            ->with('shellTitle', __('family.title'));
     }
 
     /**
@@ -102,14 +103,14 @@ class MemberController extends Controller
 
         // Check if the current user is a club admin for any club this member belongs to
         $isClubAdminOfMember = false;
-        if (!$isSuperAdmin && !$isOwnProfile && $user->isClubAdmin()) {
+        if (! $isSuperAdmin && ! $isOwnProfile && $user->isClubAdmin()) {
             $memberTenantIds = Membership::where('user_id', $member->id)->pluck('tenant_id');
-            $isClubAdminOfMember = $memberTenantIds->contains(fn($tenantId) => $user->isClubAdmin($tenantId));
+            $isClubAdminOfMember = $memberTenantIds->contains(fn ($tenantId) => $user->isClubAdmin($tenantId));
         }
 
         $canResetPassword = $isSuperAdmin || $isOwnProfile || $isClubAdminOfMember;
         // Auto-generate (regenerate) a password — super-admin only, any account.
-        $canRegeneratePassword = $isSuperAdmin && !$isOwnProfile;
+        $canRegeneratePassword = $isSuperAdmin && ! $isOwnProfile;
 
         // Role-based edit matrix for the profile page:
         //  • basic/personal info → self, guardian/parent, or super-admin
@@ -117,29 +118,28 @@ class MemberController extends Controller
         //    the member's club) or super-admin
         // A guardian is anyone who reaches this page without being self, a club
         // admin, or super-admin (the family relationship is enforced below).
-        $isGuardian      = !$isSuperAdmin && !$isOwnProfile && !$isClubAdminOfMember;
-        $canEditBasic    = $isOwnProfile || $isGuardian || $isSuperAdmin;
+        $isGuardian = ! $isSuperAdmin && ! $isOwnProfile && ! $isClubAdminOfMember;
+        $canEditBasic = $isOwnProfile || $isGuardian || $isSuperAdmin;
         $canManageMember = $isClubAdminOfMember || $isSuperAdmin;
 
-        // Sensitive sections (emergency contacts, billing) are private: visible to the
-        // member's own people (self, guardian, super-admin) and to a club admin ONLY
-        // where this member holds an ACTIVE subscription (active/pending, not expired).
-        // Hidden from everyone else, incl. admins of clubs with no active package.
-        $canViewSensitive = $isOwnProfile || $isGuardian || $isSuperAdmin;
-        if (! $canViewSensitive && $user->isClubAdmin()) {
-            $activeSubTenantIds = ClubMemberSubscription::where('user_id', $member->id)
-                ->whereIn('status', ['active', 'pending'])
-                ->where(function ($q) {
-                    $q->whereNull('end_date')->orWhereDate('end_date', '>=', now());
-                })
-                ->pluck('tenant_id')->unique();
-            $canViewSensitive = $activeSubTenantIds->contains(fn ($tid) => $user->isClubAdmin($tid));
-        }
+        // Billing & other sensitive sections are a STRICTLY private matter. Visible
+        // ONLY to:
+        //   • the member themselves            (their own financial data)
+        //   • their real guardian / parent     (a confirmed family relationship)
+        //   • a super-admin
+        //   • an owner/admin/staff of a club this member is affiliated to
+        // Every other viewer (fellow members, unrelated users) is blocked. The
+        // guardian check is an explicit relationship lookup — never inferred — so
+        // no other viewer can ever slip through.
+        $isRealGuardian = ! $isOwnProfile && UserRelationship::where('guardian_user_id', $user->id)
+            ->where('dependent_user_id', $member->id)
+            ->exists();
+        $canViewSensitive = $isOwnProfile || $isSuperAdmin || $isRealGuardian || $isClubAdminOfMember;
 
         // For super-admin, own profile, or club admin of this member — create a mock relationship
         // For regular users, verify family relationship exists
         if ($isSuperAdmin || $isOwnProfile || $isClubAdminOfMember) {
-            $relationship = (object)[
+            $relationship = (object) [
                 'dependent' => $member,
                 'relationship_type' => $isOwnProfile ? 'self' : 'admin_view',
                 'guardian_user_id' => $user->id,
@@ -212,6 +212,7 @@ class MemberController extends Controller
                     $athletes = is_array($a->athletes) ? $a->athletes : [];
                     $mine = collect($athletes)->first(fn ($x) => is_array($x) && (int) ($x['user_id'] ?? 0) === (int) $member->id);
                     $a->member_award = $mine['role'] ?? null;
+
                     return $mine ? $a : null;
                 })
                 ->filter()
@@ -222,9 +223,15 @@ class MemberController extends Controller
         // mention more than one medal, e.g. "Gold & Silver").
         foreach ($awardedAchievements as $a) {
             $r = mb_strtolower($a->member_award ?? '');
-            if (str_contains($r, 'gold'))   $awardCounts['1st']++;
-            if (str_contains($r, 'silver')) $awardCounts['2nd']++;
-            if (str_contains($r, 'bronze')) $awardCounts['3rd']++;
+            if (str_contains($r, 'gold')) {
+                $awardCounts['1st']++;
+            }
+            if (str_contains($r, 'silver')) {
+                $awardCounts['2nd']++;
+            }
+            if (str_contains($r, 'bronze')) {
+                $awardCounts['3rd']++;
+            }
         }
 
         // Fetch goals data for the member
@@ -248,6 +255,46 @@ class MemberController extends Controller
         $challengeWins = \App\Models\Duel::where('status', 'completed')->where('winner_id', $memberId)->count();
         $challengeWinRate = $challengesTotal > 0 ? round(($challengeWins / $challengesTotal) * 100) : 0;
 
+        // Full challenge (duel) list for the profile's Challenges tab, so a visitor
+        // can browse this person's head-to-head history — not just the win rate.
+        $memberChallenges = \App\Models\Duel::where(fn ($q) => $q->where('challenger_id', $memberId)->orWhere('opponent_id', $memberId))
+            ->with([
+                'challenger:id,uuid,full_name,profile_picture,gender,updated_at',
+                'opponent:id,uuid,full_name,profile_picture,gender,updated_at',
+            ])
+            ->latest()
+            ->get()
+            ->map(function ($d) use ($memberId) {
+                $isChallenger = $d->challenger_id === $memberId;
+                $rival = $isChallenger ? $d->opponent : $d->challenger;
+                $rivalName = $rival?->full_name ?? $d->opponent_name ?? $d->opponent_handle ?? __('member.opponent');
+
+                $result = null;
+                if ($d->status === 'completed') {
+                    $result = $d->winner_id === null ? 'draw' : ($d->winner_id === $memberId ? 'won' : 'lost');
+                }
+
+                return (object) [
+                    'id' => $d->id,
+                    'discipline' => $d->discipline,
+                    'metric' => $d->metric,
+                    'format' => \App\Models\Duel::formatLabel($d->format),
+                    'type' => $d->type,
+                    'status' => $d->status,
+                    'stake' => (int) $d->stake_points,
+                    'date' => $d->completed_at ?? $d->deadline ?? $d->created_at,
+                    'rival_name' => $rivalName,
+                    'rival_uuid' => $rival?->uuid,
+                    'rival_avatar' => $rival && $rival->profile_picture
+                        ? asset('storage/'.$rival->profile_picture).'?v='.optional($rival->updated_at)->timestamp
+                        : null,
+                    'rival_gender' => $rival?->gender,
+                    'result' => $result,
+                    'my_score' => $isChallenger ? $d->challenger_score : $d->opponent_score,
+                    'rival_score' => $isChallenger ? $d->opponent_score : $d->challenger_score,
+                ];
+            });
+
         // Fetch affiliations data for the member with enhanced relationships
         $clubAffiliations = $relationship->dependent->clubAffiliations()
             ->with([
@@ -264,8 +311,8 @@ class MemberController extends Controller
             ->get();
 
         // Add icon_class to media items for JavaScript
-        $clubAffiliations->each(function($affiliation) {
-            $affiliation->affiliationMedia->each(function($media) {
+        $clubAffiliations->each(function ($affiliation) {
+            $affiliation->affiliationMedia->each(function ($media) {
                 $media->icon_class = $media->icon_class;
             });
         });
@@ -276,12 +323,12 @@ class MemberController extends Controller
         $totalMembershipDuration = $clubAffiliations->sum('duration_in_months');
 
         // Get all unique skills for filter dropdown
-        $allSkills = $clubAffiliations->flatMap(function($affiliation) {
+        $allSkills = $clubAffiliations->flatMap(function ($affiliation) {
             return $affiliation->skillAcquisitions->pluck('skill_name');
         })->unique()->sort()->values();
 
         // Count total instructors
-        $totalInstructors = $clubAffiliations->flatMap(function($affiliation) {
+        $totalInstructors = $clubAffiliations->flatMap(function ($affiliation) {
             return $affiliation->skillAcquisitions->pluck('instructor');
         })->filter()->unique('id')->count();
 
@@ -289,6 +336,11 @@ class MemberController extends Controller
         $joinedEventRegistrations = ClubEventRegistration::where('user_id', $relationship->dependent->id)
             ->with(['event.tenant'])
             ->orderBy('registered_at', 'desc')
+            ->get();
+
+        // Free-form personal event-participation log (member-owned entries).
+        $memberEventLog = $relationship->dependent->memberEvents()
+            ->orderBy('event_date', 'desc')
             ->get();
 
         $isMobile = (bool) request()->attributes->get('is_mobile');
@@ -300,8 +352,8 @@ class MemberController extends Controller
             // Render the mobile profile inside the personal-mobile shell so it
             // keeps the persistent top bar + bottom tabs (matches the in-shell
             // member view served by PersonalMobileController@show).
-            'inShell'      => $isMobile,
-            'shellTitle'   => $relationship->dependent->full_name,
+            'inShell' => $isMobile,
+            'shellTitle' => $relationship->dependent->full_name,
             'relationship' => $relationship,
             'latestHealthRecord' => $latestHealthRecord,
             'healthRecords' => $healthRecords,
@@ -324,6 +376,7 @@ class MemberController extends Controller
             'challengeWinRate' => $challengeWinRate,
             'challengesTotal' => $challengesTotal,
             'challengeWins' => $challengeWins,
+            'memberChallenges' => $memberChallenges,
             'clubAffiliations' => $clubAffiliations,
             'totalAffiliations' => $totalAffiliations,
             'distinctSkills' => $distinctSkills,
@@ -332,12 +385,17 @@ class MemberController extends Controller
             'totalInstructors' => $totalInstructors,
             'user' => $relationship->dependent,
             'joinedEventRegistrations' => $joinedEventRegistrations,
+            'memberEventLog' => $memberEventLog,
             'allClubs' => \App\Models\Tenant::orderBy('club_name')->get(['id', 'club_name', 'address', 'logo']),
             'canResetPassword' => $canResetPassword,
             'canRegeneratePassword' => $canRegeneratePassword,
             'canEditBasic' => $canEditBasic,
             'canManageMember' => $canManageMember,
             'canViewSensitive' => $canViewSensitive,
+            // Who may settle an outstanding bill (upload proof for review): the
+            // member themselves, their real guardian, or a super-admin. Club admins
+            // use the approve-payment flow instead, so they only view here.
+            'canSettleBills' => $isOwnProfile || $isSuperAdmin || $isRealGuardian,
         ]);
     }
 
@@ -354,12 +412,12 @@ class MemberController extends Controller
         $isOwnProfile = $user->id == $id;
 
         $isClubAdminOfMember = false;
-        if (!$isSuperAdmin && !$isOwnProfile && $user->isClubAdmin()) {
+        if (! $isSuperAdmin && ! $isOwnProfile && $user->isClubAdmin()) {
             $memberTenantIds = Membership::where('user_id', $member->id)->pluck('tenant_id');
-            $isClubAdminOfMember = $memberTenantIds->contains(fn($tenantId) => $user->isClubAdmin($tenantId));
+            $isClubAdminOfMember = $memberTenantIds->contains(fn ($tenantId) => $user->isClubAdmin($tenantId));
         }
 
-        if (!$isSuperAdmin && !$isOwnProfile && !$isClubAdminOfMember) {
+        if (! $isSuperAdmin && ! $isOwnProfile && ! $isClubAdminOfMember) {
             abort(403);
         }
 
@@ -409,7 +467,7 @@ class MemberController extends Controller
         // Email the new password to the member (best-effort — the admin still
         // sees it on screen, so a mail failure must not fail the request).
         $emailed = false;
-        if (!empty($member->email)) {
+        if (! empty($member->email)) {
             try {
                 \Illuminate\Support\Facades\Mail::to($member->email)
                     ->send(new \App\Mail\GeneratedPasswordEmail($member, $newPassword));
@@ -420,11 +478,11 @@ class MemberController extends Controller
         }
 
         return response()->json([
-            'success'  => true,
+            'success' => true,
             'password' => $newPassword,
-            'emailed'  => $emailed,
-            'email'    => $member->email,
-            'message'  => $emailed
+            'emailed' => $emailed,
+            'email' => $member->email,
+            'message' => $emailed
                 ? 'New password generated and emailed to the member.'
                 : 'New password generated. Email could not be sent — share it manually.',
         ]);
@@ -450,7 +508,7 @@ class MemberController extends Controller
         // For super-admin or own profile, create a mock relationship
         // For regular users, verify family relationship exists
         if ($isSuperAdmin || $isOwnProfile) {
-            $relationship = (object)[
+            $relationship = (object) [
                 'dependent' => $member,
                 'relationship_type' => $isOwnProfile ? 'self' : 'admin_view',
                 'guardian_user_id' => $user->id,
@@ -486,7 +544,7 @@ class MemberController extends Controller
         $isOwnProfile = $user->id == $id;
 
         // For regular users, verify family relationship exists
-        if (!$isSuperAdmin && !$isOwnProfile) {
+        if (! $isSuperAdmin && ! $isOwnProfile) {
             $relationship = UserRelationship::where('guardian_user_id', $user->id)
                 ->where('dependent_user_id', $id)
                 ->firstOrFail();
@@ -496,7 +554,7 @@ class MemberController extends Controller
         $socialLinks = [];
         if (isset($validated['social_links']) && is_array($validated['social_links'])) {
             foreach ($validated['social_links'] as $link) {
-                if (!empty($link['platform']) && !empty($link['url'])) {
+                if (! empty($link['platform']) && ! empty($link['url'])) {
                     $socialLinks[$link['platform']] = $link['url'];
                 }
             }
@@ -520,7 +578,7 @@ class MemberController extends Controller
             // Also check for old format profile pictures
             $extensions = ['png', 'jpg', 'jpeg', 'webp'];
             foreach ($extensions as $ext) {
-                $path = 'images/profiles/profile_' . $member->id . '.' . $ext;
+                $path = 'images/profiles/profile_'.$member->id.'.'.$ext;
                 if (Storage::disk('public')->exists($path)) {
                     Storage::disk('public')->delete($path);
                 }
@@ -532,36 +590,36 @@ class MemberController extends Controller
 
         // Process emergency contacts from JSON hidden input
         $emergencyContacts = collect(json_decode($request->input('emergency_contacts_json', '[]'), true) ?? [])
-            ->filter(fn($c) => !empty($c['name']) || !empty($c['phone']))
-            ->map(fn($c) => [
-                'name'         => trim($c['name'] ?? ''),
+            ->filter(fn ($c) => ! empty($c['name']) || ! empty($c['phone']))
+            ->map(fn ($c) => [
+                'name' => trim($c['name'] ?? ''),
                 'relationship' => $c['relationship'] ?? '',
-                'phone_code'   => $c['phone_code'] ?? '',
-                'phone'        => trim($c['phone'] ?? ''),
+                'phone_code' => $c['phone_code'] ?? '',
+                'phone' => trim($c['phone'] ?? ''),
             ])
             ->values()
             ->all();
 
         // Process health conditions from JSON hidden input
         $healthConditions = collect(json_decode($request->input('health_conditions_json', '[]'), true) ?? [])
-            ->filter(fn($c) => !empty($c['condition']))
-            ->map(fn($c) => [
+            ->filter(fn ($c) => ! empty($c['condition']))
+            ->map(fn ($c) => [
                 'condition' => trim($c['condition']),
-                'noted_at'  => $c['noted_at'] ?? now()->format('Y-m-d'),
-                'notes'     => trim($c['notes'] ?? ''),
+                'noted_at' => $c['noted_at'] ?? now()->format('Y-m-d'),
+                'notes' => trim($c['notes'] ?? ''),
             ])
             ->values()
             ->all();
 
         // Process documents from JSON hidden input (file_path already set by upload-document endpoint)
         $documents = collect(json_decode($request->input('documents_json', '[]'), true) ?? [])
-            ->filter(fn($d) => !empty($d['type']) || !empty($d['number']))
-            ->map(fn($d) => [
-                'type'        => trim($d['type'] ?? ''),
-                'number'      => trim($d['number'] ?? ''),
-                'file_path'   => $d['file_path'] ?? null,
-                'file_name'   => $d['file_name'] ?? null,
-                'file_url'    => $d['file_url'] ?? null,
+            ->filter(fn ($d) => ! empty($d['type']) || ! empty($d['number']))
+            ->map(fn ($d) => [
+                'type' => trim($d['type'] ?? ''),
+                'number' => trim($d['number'] ?? ''),
+                'file_path' => $d['file_path'] ?? null,
+                'file_name' => $d['file_name'] ?? null,
+                'file_url' => $d['file_url'] ?? null,
                 'uploaded_at' => $d['uploaded_at'] ?? now()->format('Y-m-d'),
             ])
             ->values()
@@ -580,12 +638,12 @@ class MemberController extends Controller
             'motto' => $validated['motto'],
             'profile_picture_is_public' => $request->has('profile_picture_is_public') ? true : false,
             'emergency_contacts' => $emergencyContacts,
-            'health_conditions'  => $healthConditions,
-            'documents'          => $documents,
+            'health_conditions' => $healthConditions,
+            'documents' => $documents,
         ]);
 
         // Update relationship if it exists (not for admin or own profile)
-        if (!$isSuperAdmin && !$isOwnProfile && isset($relationship)) {
+        if (! $isSuperAdmin && ! $isOwnProfile && isset($relationship)) {
             $relationship->update([
                 'relationship_type' => $validated['relationship_type'] ?? $relationship->relationship_type,
                 'is_billing_contact' => $validated['is_billing_contact'] ?? false,
@@ -596,12 +654,12 @@ class MemberController extends Controller
         if ($request->wantsJson() || $request->ajax()) {
             // Get the updated profile picture URL
             $profilePictureUrl = null;
-            if ($member->profile_picture && file_exists(public_path('storage/' . $member->profile_picture))) {
-                $profilePictureUrl = asset('storage/' . $member->profile_picture);
+            if ($member->profile_picture && file_exists(public_path('storage/'.$member->profile_picture))) {
+                $profilePictureUrl = asset('storage/'.$member->profile_picture);
             } else {
                 $extensions = ['png', 'jpg', 'jpeg', 'webp'];
                 foreach ($extensions as $ext) {
-                    $path = 'storage/images/profiles/profile_' . $member->id . '.' . $ext;
+                    $path = 'storage/images/profiles/profile_'.$member->id.'.'.$ext;
                     if (file_exists(public_path($path))) {
                         $profilePictureUrl = asset($path);
                         break;
@@ -614,17 +672,17 @@ class MemberController extends Controller
                 'message' => 'Member updated successfully.',
                 'profile_picture_url' => $profilePictureUrl,
                 'member' => [
-                    'full_name'          => $member->full_name,
-                    'motto'              => $member->motto,
-                    'nationality'        => $member->nationality,
-                    'gender'             => $member->gender,
-                    'marital_status'     => $member->marital_status,
-                    'blood_type'         => $member->blood_type,
-                    'age'                => $member->age,
-                    'social_links'       => $member->social_links ?? [],
+                    'full_name' => $member->full_name,
+                    'motto' => $member->motto,
+                    'nationality' => $member->nationality,
+                    'gender' => $member->gender,
+                    'marital_status' => $member->marital_status,
+                    'blood_type' => $member->blood_type,
+                    'age' => $member->age,
+                    'social_links' => $member->social_links ?? [],
                     'emergency_contacts' => $member->emergency_contacts ?? [],
-                    'health_conditions'  => $member->health_conditions ?? [],
-                    'documents'          => $member->documents ?? [],
+                    'health_conditions' => $member->health_conditions ?? [],
+                    'documents' => $member->documents ?? [],
                 ],
             ]);
         }
@@ -651,7 +709,7 @@ class MemberController extends Controller
             $isOwnProfile = $user->id == $id;
 
             // For regular users, verify family relationship exists
-            if (!$isSuperAdmin && !$isOwnProfile) {
+            if (! $isSuperAdmin && ! $isOwnProfile) {
                 UserRelationship::where('guardian_user_id', $user->id)
                     ->where('dependent_user_id', $id)
                     ->firstOrFail();
@@ -659,24 +717,17 @@ class MemberController extends Controller
 
             $member = User::findOrFail($id);
 
-            // Handle base64 image from cropper
-            $imageData = $request->image;
-            $imageParts = explode(";base64,", $imageData);
-            $imageTypeAux = explode("image/", $imageParts[0]);
-            $extension = $imageTypeAux[1];
-            $imageBinary = base64_decode($imageParts[1]);
-
-            $folder = trim($request->folder, '/');
-            $fileName = $request->filename . '.' . $extension;
-            $fullPath = $folder . '/' . $fileName;
+            // Validate + store the base64 image with a server-assigned extension
+            // (real MIME sniffed from the bytes; PHP/HTML/SVG rejected).
+            $fullPath = $this->storeBase64Image($request->image, $request->folder, $request->filename);
+            if ($fullPath === null) {
+                return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
+            }
 
             // Delete old profile picture if exists
             if ($member->profile_picture && Storage::disk('public')->exists($member->profile_picture)) {
                 Storage::disk('public')->delete($member->profile_picture);
             }
-
-            // Store in the public disk
-            Storage::disk('public')->put($fullPath, $imageBinary);
 
             // Update member's profile_picture field
             $member->update(['profile_picture' => $fullPath]);
@@ -684,7 +735,7 @@ class MemberController extends Controller
             return response()->json([
                 'success' => true,
                 'path' => $fullPath,
-                'url' => asset('storage/' . $fullPath)
+                'url' => asset('storage/'.$fullPath),
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -705,18 +756,18 @@ class MemberController extends Controller
             $isSuperAdmin = $user->hasRole('super-admin');
             $isOwnProfile = $user->id == $id;
 
-            if (!$isSuperAdmin && !$isOwnProfile) {
+            if (! $isSuperAdmin && ! $isOwnProfile) {
                 UserRelationship::where('guardian_user_id', $user->id)
                     ->where('dependent_user_id', $id)
                     ->firstOrFail();
             }
 
-            $path = $request->file('file')->store('documents/' . $id, 'public');
+            $path = $request->file('file')->store('documents/'.$id, 'public');
 
             return response()->json([
-                'success'   => true,
-                'path'      => $path,
-                'url'       => asset('storage/' . $path),
+                'success' => true,
+                'path' => $path,
+                'url' => asset('storage/'.$path),
                 'file_name' => $request->file('file')->getClientOriginalName(),
             ]);
         } catch (\Exception $e) {
@@ -736,7 +787,7 @@ class MemberController extends Controller
             $isSuperAdmin = $user->hasRole('super-admin');
             $isOwnProfile = $user->id == $id;
 
-            if (!$isSuperAdmin && !$isOwnProfile) {
+            if (! $isSuperAdmin && ! $isOwnProfile) {
                 UserRelationship::where('guardian_user_id', $user->id)
                     ->where('dependent_user_id', $id)
                     ->firstOrFail();
@@ -745,7 +796,7 @@ class MemberController extends Controller
             $filePath = $request->input('file_path');
 
             // Restrict deletion to files within that member's documents directory
-            if (!str_starts_with($filePath, 'documents/' . $id . '/')) {
+            if (! str_starts_with($filePath, 'documents/'.$id.'/')) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized file path.'], 403);
             }
 
@@ -771,7 +822,7 @@ class MemberController extends Controller
         $validated = $request->validated();
 
         // Auto-derive BMI when both weight & height are present and BMI wasn't supplied.
-        if (empty($validated['bmi']) && !empty($validated['weight']) && !empty($validated['height'])) {
+        if (empty($validated['bmi']) && ! empty($validated['weight']) && ! empty($validated['height'])) {
             $heightM = (float) $validated['height'] / 100;
             if ($heightM > 0) {
                 $validated['bmi'] = round((float) $validated['weight'] / ($heightM * $heightM), 1);
@@ -785,7 +836,7 @@ class MemberController extends Controller
         $isOwnProfile = $user->id == $id;
 
         // For regular users, verify family relationship exists
-        if (!$isSuperAdmin && !$isOwnProfile) {
+        if (! $isSuperAdmin && ! $isOwnProfile) {
             UserRelationship::where('guardian_user_id', $user->id)
                 ->where('dependent_user_id', $id)
                 ->firstOrFail();
@@ -799,6 +850,7 @@ class MemberController extends Controller
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'message' => __('member.health_duplicate_date')], 422);
             }
+
             return redirect()->back()
                 ->with('error', 'A health record already exists for this date.');
         }
@@ -809,12 +861,12 @@ class MemberController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => __('member.weight_added'),
-                'record'  => [
-                    'id'             => $record->id,
-                    'weight'         => is_null($record->weight) ? null : (float) $record->weight,
-                    'height'         => is_null($record->height) ? null : (float) $record->height,
-                    'bmi'            => is_null($record->bmi) ? null : (float) $record->bmi,
-                    'recorded_at'    => optional($record->recorded_at)->format('Y-m-d'),
+                'record' => [
+                    'id' => $record->id,
+                    'weight' => is_null($record->weight) ? null : (float) $record->weight,
+                    'height' => is_null($record->height) ? null : (float) $record->height,
+                    'bmi' => is_null($record->bmi) ? null : (float) $record->bmi,
+                    'recorded_at' => optional($record->recorded_at)->format('Y-m-d'),
                     'recorded_label' => optional($record->recorded_at)->format('d M Y'),
                 ],
             ]);
@@ -843,7 +895,7 @@ class MemberController extends Controller
         $isOwnProfile = $user->id == $id;
 
         // For regular users, verify family relationship exists
-        if (!$isSuperAdmin && !$isOwnProfile) {
+        if (! $isSuperAdmin && ! $isOwnProfile) {
             UserRelationship::where('guardian_user_id', $user->id)
                 ->where('dependent_user_id', $id)
                 ->firstOrFail();
@@ -886,7 +938,7 @@ class MemberController extends Controller
         $isOwnProfile = $user->id == $id;
 
         // For regular users, verify family relationship exists
-        if (!$isSuperAdmin && !$isOwnProfile) {
+        if (! $isSuperAdmin && ! $isOwnProfile) {
             UserRelationship::where('guardian_user_id', $user->id)
                 ->where('dependent_user_id', $id)
                 ->firstOrFail();
@@ -908,7 +960,7 @@ class MemberController extends Controller
         // Create performance results
         if (isset($validated['performance_results'])) {
             foreach ($validated['performance_results'] as $resultData) {
-                if (!empty($resultData['medal_type'])) {
+                if (! empty($resultData['medal_type'])) {
                     $tournament->performanceResults()->create($resultData);
                 }
             }
@@ -917,7 +969,7 @@ class MemberController extends Controller
         // Create notes and media
         if (isset($validated['notes_media'])) {
             foreach ($validated['notes_media'] as $noteData) {
-                if (!empty($noteData['note_text']) || !empty($noteData['media_link'])) {
+                if (! empty($noteData['note_text']) || ! empty($noteData['media_link'])) {
                     $tournament->notesMedia()->create($noteData);
                 }
             }
@@ -934,9 +986,6 @@ class MemberController extends Controller
 
     /**
      * Build a JSON-friendly payload for a tournament event for in-place rendering.
-     *
-     * @param  \App\Models\TournamentEvent  $tournament
-     * @return array
      */
     private function tournamentPayload(TournamentEvent $tournament): array
     {
@@ -984,13 +1033,13 @@ class MemberController extends Controller
         $isSuperAdmin = $user->hasRole('super-admin');
 
         // Check if user is authorized to update this goal
-        if (!$isSuperAdmin && $goal->user_id !== $user->id) {
+        if (! $isSuperAdmin && $goal->user_id !== $user->id) {
             // Check if user is guardian of the goal owner
             $relationship = UserRelationship::where('guardian_user_id', $user->id)
                 ->where('dependent_user_id', $goal->user_id)
                 ->first();
 
-            if (!$relationship) {
+            if (! $relationship) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }
         }
@@ -1019,6 +1068,148 @@ class MemberController extends Controller
     }
 
     /**
+     * Store a new goal for the specified member.
+     */
+    public function storeGoal(\App\Http\Requests\StoreGoalRequest $request, $id)
+    {
+        $user = Auth::user();
+
+        // Authorize: super-admin, own profile, or guardian of the member.
+        $isSuperAdmin = $user->hasRole('super-admin');
+        if (! $isSuperAdmin && $user->id != $id) {
+            UserRelationship::where('guardian_user_id', $user->id)
+                ->where('dependent_user_id', $id)
+                ->firstOrFail();
+        }
+
+        // Ensure the target user exists (and is a real member row).
+        User::findOrFail($id);
+
+        $validated = $request->validated();
+
+        $goal = Goal::create([
+            'user_id' => $id,
+            'title' => $validated['title'],
+            'description' => $validated['description'] ?? null,
+            'start_date' => $validated['start_date'] ?? now()->toDateString(),
+            'target_date' => $validated['target_date'],
+            'current_progress_value' => $validated['current_progress_value'] ?? 0,
+            'target_value' => $validated['target_value'],
+            'status' => 'active',
+            'priority_level' => $validated['priority_level'] ?? 'medium',
+            'unit' => $validated['unit'],
+            'icon_type' => $validated['icon_type'] ?? 'bi-bullseye',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Goal created successfully',
+            'goal' => [
+                'id' => $goal->id,
+                'title' => $goal->title,
+                'description' => $goal->description,
+                'unit' => $goal->unit,
+                'status' => $goal->status,
+                'current_progress_value' => (float) $goal->current_progress_value,
+                'target_value' => (float) $goal->target_value,
+                'progress_percentage' => round($goal->progress_percentage, 1),
+                'priority_level' => $goal->priority_level,
+                'icon_type' => $goal->icon_type,
+                'target_date' => optional($goal->target_date)->format('M j, Y'),
+            ],
+        ]);
+    }
+
+    /**
+     * Store a new attendance record for the specified member.
+     */
+    public function storeAttendance(\App\Http\Requests\StoreAttendanceRequest $request, $id)
+    {
+        $user = Auth::user();
+
+        $isSuperAdmin = $user->hasRole('super-admin');
+        if (! $isSuperAdmin && $user->id != $id) {
+            UserRelationship::where('guardian_user_id', $user->id)
+                ->where('dependent_user_id', $id)
+                ->firstOrFail();
+        }
+
+        User::findOrFail($id);
+
+        $validated = $request->validated();
+
+        $record = Attendance::create([
+            'member_id' => $id,
+            'session_type' => $validated['session_type'],
+            'trainer_name' => $validated['trainer_name'] ?? null,
+            'session_datetime' => $validated['session_datetime'],
+            'status' => $validated['status'],
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Attendance record added',
+            'record' => [
+                'id' => $record->id,
+                'session_type' => $record->session_type,
+                'trainer_name' => $record->trainer_name,
+                'status' => $record->status,
+                'status_label' => $record->status === 'completed' ? 'Completed' : 'No Show',
+                'notes' => $record->notes,
+                'date' => $record->session_datetime->format('M j, Y'),
+                'time' => $record->session_datetime->format('g:i A'),
+            ],
+        ]);
+    }
+
+    /**
+     * Store a new free-form event-participation log entry for the member.
+     */
+    public function storeMemberEvent(\App\Http\Requests\StoreMemberEventRequest $request, $id)
+    {
+        $user = Auth::user();
+
+        $isSuperAdmin = $user->hasRole('super-admin');
+        if (! $isSuperAdmin && $user->id != $id) {
+            UserRelationship::where('guardian_user_id', $user->id)
+                ->where('dependent_user_id', $id)
+                ->firstOrFail();
+        }
+
+        User::findOrFail($id);
+
+        $validated = $request->validated();
+
+        $event = \App\Models\MemberEvent::create([
+            'user_id' => $id,
+            'title' => $validated['title'],
+            'event_date' => $validated['event_date'],
+            'location' => $validated['location'] ?? null,
+            'role' => $validated['role'] ?? null,
+            'result' => $validated['result'] ?? null,
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Event added to log',
+            'event' => [
+                'id' => $event->id,
+                'title' => $event->title,
+                'location' => $event->location,
+                'role' => $event->role,
+                'result' => $event->result,
+                'notes' => $event->notes,
+                'date' => $event->event_date->format('M j, Y'),
+                'day' => $event->event_date->format('D'),
+                'day_num' => $event->event_date->format('d'),
+                'month' => $event->event_date->format('M'),
+            ],
+        ]);
+    }
+
+    /**
      * Confirm and remove the specified member from storage.
      *
      * @param  \Illuminate\Http\Request  $request
@@ -1041,7 +1232,7 @@ class MemberController extends Controller
         }
 
         // For regular users, verify family relationship exists
-        if (!$isSuperAdmin) {
+        if (! $isSuperAdmin) {
             UserRelationship::where('guardian_user_id', $user->id)
                 ->where('dependent_user_id', $id)
                 ->firstOrFail();
@@ -1061,7 +1252,7 @@ class MemberController extends Controller
         // Redirect based on user type
         if ($isSuperAdmin) {
             return redirect()->route('admin.platform.members')
-                ->with('success', $memberName . ' has been removed successfully.');
+                ->with('success', $memberName.' has been removed successfully.');
         }
 
         return redirect()->route('members.index')
@@ -1073,7 +1264,9 @@ class MemberController extends Controller
     private function authorizeForMember(int $id): void
     {
         $user = Auth::user();
-        if ($user->hasRole('super-admin') || $user->id == $id) return;
+        if ($user->hasRole('super-admin') || $user->id == $id) {
+            return;
+        }
         UserRelationship::where('guardian_user_id', $user->id)
             ->where('dependent_user_id', $id)
             ->firstOrFail();
@@ -1084,45 +1277,45 @@ class MemberController extends Controller
         $this->authorizeForMember($id);
 
         $validated = $request->validate([
-            'tenant_id'   => 'nullable|exists:tenants,id',
-            'club_name'   => 'required_without:tenant_id|nullable|string|max:255',
-            'start_date'  => 'required|date',
-            'end_date'    => 'nullable|date|after_or_equal:start_date',
-            'location'    => 'nullable|string|max:255',
+            'tenant_id' => 'nullable|exists:tenants,id',
+            'club_name' => 'required_without:tenant_id|nullable|string|max:255',
+            'start_date' => 'required|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'location' => 'nullable|string|max:255',
             'description' => 'nullable|string|max:1000',
-            'coaches'     => 'nullable|string|max:1000',
+            'coaches' => 'nullable|string|max:1000',
         ]);
 
         // If a platform club is selected, pull its data
         $tenant = null;
-        if (!empty($validated['tenant_id'])) {
+        if (! empty($validated['tenant_id'])) {
             $tenant = \App\Models\Tenant::findOrFail($validated['tenant_id']);
         }
 
         $coaches = null;
-        if (!empty($validated['coaches'])) {
+        if (! empty($validated['coaches'])) {
             $coaches = array_values(array_filter(array_map('trim', explode(',', $validated['coaches']))));
         }
 
         $member = User::findOrFail($id);
         $affiliation = $member->clubAffiliations()->create([
-            'tenant_id'   => $tenant?->id,
-            'club_name'   => $tenant ? $tenant->club_name : $validated['club_name'],
-            'logo'        => $tenant?->logo ?? null,
-            'start_date'  => $validated['start_date'],
-            'end_date'    => $validated['end_date'] ?? null,
-            'location'    => $tenant ? ($tenant->address ?? $validated['location']) : ($validated['location'] ?? null),
+            'tenant_id' => $tenant?->id,
+            'club_name' => $tenant ? $tenant->club_name : $validated['club_name'],
+            'logo' => $tenant?->logo ?? null,
+            'start_date' => $validated['start_date'],
+            'end_date' => $validated['end_date'] ?? null,
+            'location' => $tenant ? ($tenant->address ?? $validated['location']) : ($validated['location'] ?? null),
             'description' => $validated['description'] ?? null,
-            'coaches'     => $coaches,
+            'coaches' => $coaches,
         ]);
 
         $logoUrl = null;
         if ($tenant?->logo) {
-            $logoUrl = asset('storage/' . $tenant->logo);
+            $logoUrl = asset('storage/'.$tenant->logo);
         } elseif ($affiliation->logo) {
             $logoUrl = filter_var($affiliation->logo, FILTER_VALIDATE_URL)
                 ? $affiliation->logo
-                : asset('storage/' . $affiliation->logo);
+                : asset('storage/'.$affiliation->logo);
         }
 
         return response()->json([
@@ -1130,17 +1323,17 @@ class MemberController extends Controller
             'message' => 'Affiliation added successfully.',
             'id' => $affiliation->id,
             'affiliation' => [
-                'id'          => $affiliation->id,
-                'club_name'   => $affiliation->club_name,
-                'logo_url'    => $logoUrl,
-                'location'    => $affiliation->location,
+                'id' => $affiliation->id,
+                'club_name' => $affiliation->club_name,
+                'logo_url' => $logoUrl,
+                'location' => $affiliation->location,
                 'description' => $affiliation->description,
-                'coaches'     => is_array($affiliation->coaches) ? implode(', ', $affiliation->coaches) : '',
-                'start_date'  => $affiliation->start_date?->format('Y-m-d'),
-                'end_date'    => $affiliation->end_date?->format('Y-m-d'),
+                'coaches' => is_array($affiliation->coaches) ? implode(', ', $affiliation->coaches) : '',
+                'start_date' => $affiliation->start_date?->format('Y-m-d'),
+                'end_date' => $affiliation->end_date?->format('Y-m-d'),
                 'start_label' => $affiliation->start_date?->format('M Y'),
-                'end_label'   => $affiliation->end_date ? $affiliation->end_date->format('M Y') : 'Present',
-                'is_ongoing'  => !$affiliation->end_date,
+                'end_label' => $affiliation->end_date ? $affiliation->end_date->format('M Y') : 'Present',
+                'is_ongoing' => ! $affiliation->end_date,
                 'formatted_duration' => $affiliation->formatted_duration,
             ],
         ]);
@@ -1151,44 +1344,44 @@ class MemberController extends Controller
         $this->authorizeForMember($id);
 
         $validated = $request->validate([
-            'club_name'   => 'required|string|max:255',
-            'start_date'  => 'required|date',
-            'end_date'    => 'nullable|date|after_or_equal:start_date',
-            'location'    => 'nullable|string|max:255',
+            'club_name' => 'required|string|max:255',
+            'start_date' => 'required|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'location' => 'nullable|string|max:255',
             'description' => 'nullable|string|max:1000',
-            'coaches'     => 'nullable|string|max:1000',
+            'coaches' => 'nullable|string|max:1000',
         ]);
 
         $coaches = null;
-        if (!empty($validated['coaches'])) {
+        if (! empty($validated['coaches'])) {
             $coaches = array_values(array_filter(array_map('trim', explode(',', $validated['coaches']))));
         }
 
         $member = User::findOrFail($id);
         $affiliation = $member->clubAffiliations()->findOrFail($affiliationId);
         $affiliation->update([
-            'club_name'   => $validated['club_name'],
-            'start_date'  => $validated['start_date'],
-            'end_date'    => $validated['end_date'] ?? null,
-            'location'    => $validated['location'] ?? null,
+            'club_name' => $validated['club_name'],
+            'start_date' => $validated['start_date'],
+            'end_date' => $validated['end_date'] ?? null,
+            'location' => $validated['location'] ?? null,
             'description' => $validated['description'] ?? null,
-            'coaches'     => $coaches,
+            'coaches' => $coaches,
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Affiliation updated successfully.',
             'affiliation' => [
-                'id'          => $affiliation->id,
-                'club_name'   => $affiliation->club_name,
-                'location'    => $affiliation->location,
+                'id' => $affiliation->id,
+                'club_name' => $affiliation->club_name,
+                'location' => $affiliation->location,
                 'description' => $affiliation->description,
-                'coaches'     => is_array($affiliation->coaches) ? implode(', ', $affiliation->coaches) : '',
-                'start_date'  => $affiliation->start_date?->format('Y-m-d'),
-                'end_date'    => $affiliation->end_date?->format('Y-m-d'),
+                'coaches' => is_array($affiliation->coaches) ? implode(', ', $affiliation->coaches) : '',
+                'start_date' => $affiliation->start_date?->format('Y-m-d'),
+                'end_date' => $affiliation->end_date?->format('Y-m-d'),
                 'start_label' => $affiliation->start_date?->format('M Y'),
-                'end_label'   => $affiliation->end_date ? $affiliation->end_date->format('M Y') : 'Present',
-                'is_ongoing'  => !$affiliation->end_date,
+                'end_label' => $affiliation->end_date ? $affiliation->end_date->format('M Y') : 'Present',
+                'is_ongoing' => ! $affiliation->end_date,
                 'formatted_duration' => $affiliation->formatted_duration,
             ],
         ]);
@@ -1212,22 +1405,22 @@ class MemberController extends Controller
         $this->authorizeForMember($id);
 
         $validated = $request->validate([
-            'skill_name'        => 'required|string|max:255',
+            'skill_name' => 'required|string|max:255',
             'proficiency_level' => 'required|in:beginner,intermediate,advanced,expert',
-            'start_date'        => 'nullable|date',
-            'duration_months'   => 'nullable|integer|min:1|max:600',
-            'notes'             => 'nullable|string|max:500',
+            'start_date' => 'nullable|date',
+            'duration_months' => 'nullable|integer|min:1|max:600',
+            'notes' => 'nullable|string|max:500',
         ]);
 
         $member = User::findOrFail($id);
         $affiliation = $member->clubAffiliations()->findOrFail($affiliationId);
         $skill = $affiliation->skillAcquisitions()->create([
-            'skill_name'        => $validated['skill_name'],
+            'skill_name' => $validated['skill_name'],
             'proficiency_level' => $validated['proficiency_level'],
-            'start_date'        => $validated['start_date'] ?? null,
-            'duration_months'   => $validated['duration_months'] ?? 1,
-            'notes'             => $validated['notes'] ?? null,
-            'icon'              => 'bi-star',
+            'start_date' => $validated['start_date'] ?? null,
+            'duration_months' => $validated['duration_months'] ?? 1,
+            'notes' => $validated['notes'] ?? null,
+            'icon' => 'bi-star',
         ]);
 
         return response()->json([
@@ -1235,12 +1428,12 @@ class MemberController extends Controller
             'message' => 'Skill added successfully.',
             'id' => $skill->id,
             'skill' => [
-                'id'                => $skill->id,
-                'skill_name'        => $skill->skill_name,
+                'id' => $skill->id,
+                'skill_name' => $skill->skill_name,
                 'proficiency_level' => $skill->proficiency_level,
-                'formatted_duration'=> $skill->formatted_duration,
-                'start_label'       => $skill->start_date ? $skill->start_date->format('M Y') : null,
-                'badge_color'       => $skill->proficiency_level == 'expert' ? 'danger' : ($skill->proficiency_level == 'advanced' ? 'warning' : ($skill->proficiency_level == 'intermediate' ? 'info' : 'secondary')),
+                'formatted_duration' => $skill->formatted_duration,
+                'start_label' => $skill->start_date ? $skill->start_date->format('M Y') : null,
+                'badge_color' => $skill->proficiency_level == 'expert' ? 'danger' : ($skill->proficiency_level == 'advanced' ? 'warning' : ($skill->proficiency_level == 'intermediate' ? 'info' : 'secondary')),
             ],
         ]);
     }
@@ -1261,9 +1454,9 @@ class MemberController extends Controller
         $this->authorizeForMember($id);
 
         $validated = $request->validate([
-            'media_type'  => 'required|in:certificate,photo,video,document',
-            'title'       => 'required|string|max:255',
-            'media_url'   => 'required|string|max:500',
+            'media_type' => 'required|in:certificate,photo,video,document',
+            'title' => 'required|string|max:255',
+            'media_url' => 'required|string|max:500',
             'description' => 'nullable|string|max:500',
         ]);
 
@@ -1276,9 +1469,9 @@ class MemberController extends Controller
             'message' => 'Media added successfully.',
             'id' => $media->id,
             'media' => [
-                'id'         => $media->id,
-                'title'      => $media->title,
-                'full_url'   => $media->full_url,
+                'id' => $media->id,
+                'title' => $media->title,
+                'full_url' => $media->full_url,
                 'icon_class' => $media->icon_class,
             ],
         ]);
@@ -1292,7 +1485,7 @@ class MemberController extends Controller
         $affiliation = $member->clubAffiliations()->findOrFail($affiliationId);
         $media = $affiliation->affiliationMedia()->findOrFail($mediaId);
 
-        if (!filter_var($media->media_url, FILTER_VALIDATE_URL)) {
+        if (! filter_var($media->media_url, FILTER_VALIDATE_URL)) {
             Storage::disk('public')->delete($media->media_url);
         }
 
@@ -1323,7 +1516,7 @@ class MemberController extends Controller
         }
 
         // For regular users, verify family relationship exists
-        if (!$isSuperAdmin) {
+        if (! $isSuperAdmin) {
             UserRelationship::where('guardian_user_id', $user->id)
                 ->where('dependent_user_id', $id)
                 ->firstOrFail();
@@ -1334,7 +1527,7 @@ class MemberController extends Controller
         $ownedClubs = \App\Models\Tenant::where('owner_user_id', $member->id)->pluck('club_name');
         if ($ownedClubs->isNotEmpty()) {
             return redirect()->back()
-                ->with('error', 'Cannot delete this account. They are the owner of the following club(s): ' . $ownedClubs->join(', ') . '. Transfer ownership first.');
+                ->with('error', 'Cannot delete this account. They are the owner of the following club(s): '.$ownedClubs->join(', ').'. Transfer ownership first.');
         }
 
         $memberName = $member->full_name;
@@ -1342,7 +1535,7 @@ class MemberController extends Controller
         // Redirect based on user type
         if ($isSuperAdmin) {
             return redirect()->route('admin.platform.members')
-                ->with('success', $memberName . ' has been removed successfully.');
+                ->with('success', $memberName.' has been removed successfully.');
         }
 
         return redirect()->route('members.index')

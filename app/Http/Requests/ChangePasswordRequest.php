@@ -16,14 +16,14 @@ class ChangePasswordRequest extends FormRequest
     {
         return [
             'current_password' => ['required', 'string'],
-            'password'         => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
         ];
     }
 
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            if (!Hash::check($this->current_password, $this->user()->password)) {
+            if (! Hash::check($this->current_password, $this->user()->password)) {
                 $validator->errors()->add('current_password', 'The current password is incorrect.');
             }
         });

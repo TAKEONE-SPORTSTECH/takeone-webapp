@@ -2,8 +2,8 @@
 
 namespace App\Support;
 
-use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 
@@ -21,7 +21,7 @@ class Qr
     {
         $renderer = new ImageRenderer(
             new RendererStyle($size, $margin),
-            new SvgImageBackEnd()
+            new SvgImageBackEnd
         );
 
         $svg = (new Writer($renderer))->writeString($data);

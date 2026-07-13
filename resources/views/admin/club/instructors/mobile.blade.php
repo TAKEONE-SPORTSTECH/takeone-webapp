@@ -3,15 +3,47 @@
 @section('title', ($club->club_name ?? __('admin.club')) . ' · ' . __('admin.nav_instructors'))
 
 @section('club-admin-content')
-<div class="space-y-4 mobile-stagger"
+@php
+    $insCount = $instructors->count();
+    $insRated = $instructors->filter(fn ($i) => (float) ($i->rating ?? 0) > 0);
+    $insAvgRating = $insRated->count() ? round($insRated->avg('rating'), 1) : 0;
+@endphp
+<div class="-mx-4 -mt-4"
      x-data="{ removeInstructorId: null, removeInstructorName: '' }"
      @instructor-removed.window="removeInstructorId = null; removeInstructorName = ''">
 
-    {{-- Add instructor --}}
-    <button type="button" @click="$dispatch('open-add-instructor')"
-            class="m-press w-full flex items-center justify-center gap-2 rounded-2xl bg-primary text-white py-3.5 font-semibold shadow-sm">
-        <i class="bi bi-plus-lg text-lg"></i>{{ __('admin.ins_add') }}
-    </button>
+    {{-- ===== Hero ===== --}}
+    <header class="m-hero px-5 pt-7 pb-6 text-white relative overflow-hidden">
+        <div class="absolute -end-8 -top-8 w-36 h-36 rounded-full bg-white/10"></div>
+        <div class="flex items-center justify-between relative z-10">
+            <div class="min-w-0">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70 truncate">{{ $club->club_name ?? __('admin.club') }}</p>
+                <h1 class="text-2xl font-black mt-0.5">{{ __('admin.nav_instructors') }}</h1>
+            </div>
+            <div class="flex items-center gap-2">
+                <button type="button" @click="$dispatch('open-add-instructor')"
+                        class="m-press w-12 h-12 rounded-2xl bg-white/20 border border-white/30 backdrop-blur grid place-items-center active:scale-95 transition-transform" aria-label="{{ __('admin.ins_add') }}">
+                    <i class="bi bi-plus-lg text-xl"></i>
+                </button>
+                <div class="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center">
+                    <i class="bi bi-person-badge text-xl m-float"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex gap-2 mt-5 relative z-10">
+            <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
+                <p class="text-lg font-black leading-none tabular-nums">{{ $insCount }}</p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('admin.nav_instructors') }}</p>
+            </div>
+            <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
+                <p class="text-lg font-black leading-none tabular-nums">{{ $insAvgRating > 0 ? number_format($insAvgRating, 1) : '—' }}</p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('admin.dash_rating') }}</p>
+            </div>
+        </div>
+    </header>
+
+    <div class="px-4 pt-5 space-y-4 mobile-stagger">
 
     @if($instructors->isEmpty())
         <div class="m-card p-8 text-center">
@@ -20,7 +52,7 @@
         </div>
     @else
         @if($instructors->count() > 1)
-            <p class="text-[11px] text-muted-foreground px-1 -mb-1 flex items-center gap-1"><i class="bi bi-grip-vertical"></i>{{ __('admin.ins_drag_hint') }}</p>
+            <p class="text-[11px] text-muted-foreground px-1 mb-1 flex items-center gap-1"><i class="bi bi-grip-vertical"></i>{{ __('admin.ins_drag_hint') }}</p>
         @endif
         <div id="instructor-sortable" class="space-y-2.5">
         @foreach($instructors as $ins)
@@ -224,5 +256,6 @@ function removeInstructor(id) {
     document.head.appendChild(s);
 })();
     </script>
+    </div>{{-- /content --}}
 </div>
 @endsection

@@ -9,14 +9,14 @@
         <div class="modal-content border-0 shadow-lg w-full max-w-xl relative rounded-lg overflow-hidden" @click.stop>
             <div class="modal-header border-b px-6 py-4">
                 <h5 class="modal-title font-bold flex items-center gap-2">
-                    <i class="bi bi-currency-dollar text-green-600"></i>Record Manual Income
+                    <i class="bi bi-currency-dollar text-green-600"></i>{{ __('shared.components_income_modal_title') }}
                 </h5>
                 <button type="button" class="text-muted-foreground hover:text-foreground" @click="showIncomeModal = false">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
             <div class="modal-body px-6 py-4">
-                <p class="text-sm text-muted-foreground mb-4">Add a manual income entry to your financial records</p>
+                <p class="text-sm text-muted-foreground mb-4">{{ __('shared.components_income_modal_subtitle') }}</p>
                 <form action="{{ route('admin.club.financials.income', $club->slug) }}" method="POST">
                     @csrf
                     <div class="space-y-4">
@@ -26,27 +26,27 @@
                             open: false,
                             selected: '',
                             options: [
-                                { value: 'subscription', label: 'Subscription',  icon: 'bi-person-badge',    color: 'text-blue-500' },
-                                { value: 'event',        label: 'Event',          icon: 'bi-calendar-event',  color: 'text-purple-500' },
-                                { value: 'product_sale', label: 'Product Sale',   icon: 'bi-bag-check',       color: 'text-green-500' },
-                                { value: 'sponsorship',  label: 'Sponsorship',    icon: 'bi-trophy',          color: 'text-yellow-500' },
-                                { value: 'donation',     label: 'Donation',       icon: 'bi-heart',           color: 'text-red-500' },
-                                { value: 'other',        label: 'Other',          icon: 'bi-three-dots',      color: 'text-gray-400' },
+                                { value: 'subscription', label: '{{ __('shared.components_income_modal_cat_subscription') }}',  icon: 'bi-person-badge',    color: 'text-blue-500' },
+                                { value: 'event',        label: '{{ __('shared.components_income_modal_cat_event') }}',          icon: 'bi-calendar-event',  color: 'text-purple-500' },
+                                { value: 'product_sale', label: '{{ __('shared.components_income_modal_cat_product_sale') }}',   icon: 'bi-bag-check',       color: 'text-green-500' },
+                                { value: 'sponsorship',  label: '{{ __('shared.components_income_modal_cat_sponsorship') }}',    icon: 'bi-trophy',          color: 'text-yellow-500' },
+                                { value: 'donation',     label: '{{ __('shared.components_income_modal_cat_donation') }}',       icon: 'bi-heart',           color: 'text-red-500' },
+                                { value: 'other',        label: '{{ __('shared.components_income_modal_other') }}',          icon: 'bi-three-dots',      color: 'text-gray-400' },
                             ],
                             get current() { return this.options.find(o => o.value === this.selected) }
                         }" @click.outside="open = false">
-                            <label class="form-label">Category</label>
+                            <label class="form-label">{{ __('shared.components_income_modal_category') }}</label>
                             <input type="hidden" name="category" :value="selected">
                             {{-- Trigger --}}
                             <button type="button"
                                     @click="open = !open"
-                                    class="w-full flex items-center justify-between gap-2 form-control text-left">
+                                    class="w-full flex items-center justify-between gap-2 form-control text-start">
                                 <span class="flex items-center gap-2">
                                     <template x-if="current">
                                         <i class="bi text-base" :class="[current.icon, current.color]"></i>
                                     </template>
                                     <span :class="current ? 'text-foreground' : 'text-muted-foreground'"
-                                          x-text="current ? current.label : 'Select category'"></span>
+                                          x-text="current ? current.label : '{{ __('shared.components_income_modal_select_category') }}'"></span>
                                 </span>
                                 <i class="bi bi-chevron-down text-muted-foreground text-xs transition-transform duration-200"
                                    :class="{ 'rotate-180': open }"></i>
@@ -67,7 +67,7 @@
                                             :class="{ 'bg-primary/5 font-medium': selected === opt.value }">
                                         <i class="bi text-base w-5 text-center" :class="[opt.icon, opt.color]"></i>
                                         <span x-text="opt.label"></span>
-                                        <i x-show="selected === opt.value" class="bi bi-check2 ml-auto text-primary"></i>
+                                        <i x-show="selected === opt.value" class="bi bi-check2 ms-auto text-primary"></i>
                                     </button>
                                 </template>
                             </div>
@@ -75,60 +75,60 @@
 
                         {{-- Description --}}
                         <div>
-                            <label class="form-label">Income Source <span class="text-destructive">*</span></label>
-                            <input type="text" name="description" class="form-control" placeholder="e.g., Equipment sale, Special event" required>
+                            <label class="form-label">{{ __('shared.components_income_modal_income_source') }} <span class="text-destructive">*</span></label>
+                            <input type="text" name="description" class="form-control" placeholder="{{ __('shared.components_income_modal_income_source_placeholder') }}" required>
                         </div>
 
                         {{-- Amount --}}
                         <div>
-                            <label class="form-label">Amount <span class="text-destructive">*</span></label>
+                            <label class="form-label">{{ __('shared.components_income_modal_amount') }} <span class="text-destructive">*</span></label>
                             <div class="relative">
-                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">{{ $currency }}</span>
-                                <input type="number" name="amount" class="form-control pl-14" step="0.01" min="0" placeholder="0.00" required>
+                                <span class="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">{{ $currency }}</span>
+                                <input type="number" name="amount" class="form-control ps-14" step="0.01" min="0" placeholder="0.00" required>
                             </div>
-                            <small class="text-muted-foreground">VAT will be calculated automatically based on club settings</small>
+                            <small class="text-muted-foreground">{{ __('shared.components_income_modal_vat_note') }}</small>
                         </div>
 
                         {{-- Date --}}
                         <div>
-                            <label class="form-label">Date <span class="text-destructive">*</span></label>
+                            <label class="form-label">{{ __('shared.components_income_modal_date') }} <span class="text-destructive">*</span></label>
                             <input type="date" name="transaction_date" class="form-control" value="{{ date('Y-m-d') }}" max="{{ date('Y-m-d') }}" required>
                         </div>
 
                         {{-- Payment Method --}}
                         <div x-data="{ method: 'cash' }">
-                            <label class="form-label">Payment Method</label>
+                            <label class="form-label">{{ __('shared.components_income_modal_payment_method') }}</label>
                             <input type="hidden" name="payment_method" :value="method">
                             <div class="grid grid-cols-4 gap-2">
                                 <label class="payment-option" :class="{ 'active': method === 'cash' }" @click="method = 'cash'">
                                     <i class="bi bi-cash-stack text-lg"></i>
-                                    <span>Cash</span>
+                                    <span>{{ __('shared.components_income_modal_pay_cash') }}</span>
                                 </label>
                                 <label class="payment-option" :class="{ 'active': method === 'bank_transfer' }" @click="method = 'bank_transfer'">
                                     <i class="bi bi-bank text-lg"></i>
-                                    <span>Bank</span>
+                                    <span>{{ __('shared.components_income_modal_pay_bank') }}</span>
                                 </label>
                                 <label class="payment-option" :class="{ 'active': method === 'card' }" @click="method = 'card'">
                                     <i class="bi bi-credit-card text-lg"></i>
-                                    <span>Card</span>
+                                    <span>{{ __('shared.components_income_modal_pay_card') }}</span>
                                 </label>
                                 <label class="payment-option" :class="{ 'active': method === 'other' }" @click="method = 'other'">
                                     <i class="bi bi-three-dots text-lg"></i>
-                                    <span>Other</span>
+                                    <span>{{ __('shared.components_income_modal_other') }}</span>
                                 </label>
                             </div>
                         </div>
 
                         {{-- Notes --}}
                         <div>
-                            <label class="form-label">Notes (Optional)</label>
-                            <textarea name="reference_number" class="form-control" rows="3" placeholder="Additional details about this income..."></textarea>
+                            <label class="form-label">{{ __('shared.components_income_modal_notes') }}</label>
+                            <textarea name="reference_number" class="form-control" rows="3" placeholder="{{ __('shared.components_income_modal_notes_placeholder') }}"></textarea>
                         </div>
 
                         <div class="flex gap-2 pt-2">
-                            <button type="button" class="btn btn-outline-secondary flex-1" @click="showIncomeModal = false">Cancel</button>
+                            <button type="button" class="btn btn-outline-secondary flex-1" @click="showIncomeModal = false">{{ __('shared.cancel') }}</button>
                             <button type="submit" class="btn btn-success flex-1">
-                                <i class="bi bi-check-lg mr-2"></i>Record Income
+                                <i class="bi bi-check-lg me-2"></i>{{ __('shared.components_income_modal_submit') }}
                             </button>
                         </div>
                     </div>

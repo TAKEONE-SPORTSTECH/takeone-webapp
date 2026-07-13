@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- TAKEONE brand: primary hsl(250 65% 65%) = #7F6CE0 -->
+    <color name="colorPrimary">#7F6CE0</color>
+    <color name="colorPrimaryDark">#6B58C7</color>
+    <color name="colorAccent">#7F6CE0</color>
+</resources>

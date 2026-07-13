@@ -15,7 +15,7 @@ use Illuminate\Support\Str;
  */
 class Order extends Model
 {
-    use SoftDeletes, DeletesUploadedFiles;
+    use DeletesUploadedFiles, SoftDeletes;
 
     /**
      * Uploaded payment proof removed automatically on force-delete (not on
@@ -34,8 +34,8 @@ class Order extends Model
     protected $dates = ['received_at'];
 
     protected $casts = [
-        'subtotal'     => 'decimal:2',
-        'total'        => 'decimal:2',
+        'subtotal' => 'decimal:2',
+        'total' => 'decimal:2',
         'has_dropship' => 'boolean',
     ];
 
@@ -46,7 +46,7 @@ class Order extends Model
         static::creating(function (self $order) {
             if (empty($order->reference)) {
                 do {
-                    $ref = 'TK-' . strtoupper(Str::random(6));
+                    $ref = 'TK-'.strtoupper(Str::random(6));
                 } while (static::where('reference', $ref)->exists());
                 $order->reference = $ref;
             }
@@ -75,6 +75,6 @@ class Order extends Model
 
     public function paymentProofUrl(): ?string
     {
-        return $this->payment_proof_path ? asset('storage/' . $this->payment_proof_path) : null;
+        return $this->payment_proof_path ? asset('storage/'.$this->payment_proof_path) : null;
     }
 }

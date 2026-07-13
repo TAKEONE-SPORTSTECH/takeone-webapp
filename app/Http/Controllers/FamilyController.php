@@ -9,20 +9,20 @@ use App\Http\Requests\UpdateFamilyMemberRequest;
 use App\Http\Requests\UpdateGoalRequest;
 use App\Http\Requests\UpdateProfileRequest;
 use App\Http\Requests\UploadImageRequest;
-use App\Models\User;
-use App\Models\UserRelationship;
-use App\Models\HealthRecord;
+use App\Models\Attendance;
+use App\Models\Goal;
 use App\Models\Invoice;
 use App\Models\TournamentEvent;
-use App\Models\Goal;
-use App\Models\Attendance;
-use App\Models\ClubAffiliation;
+use App\Models\User;
+use App\Models\UserRelationship;
 use App\Services\FamilyService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class FamilyController extends Controller
 {
+    use \App\Traits\StoresBase64Images;
+
     protected $familyService;
 
     public function __construct(FamilyService $familyService)
@@ -42,7 +42,7 @@ class FamilyController extends Controller
             ->with('dependent')
             ->whereHas('dependent')
             ->get()
-            ->sortBy(function($relationship) {
+            ->sortBy(function ($relationship) {
                 return $relationship->dependent->full_name;
             });
 
@@ -111,8 +111,8 @@ class FamilyController extends Controller
             ->get();
 
         // Add icon_class to media items for JavaScript
-        $clubAffiliations->each(function($affiliation) {
-            $affiliation->affiliationMedia->each(function($media) {
+        $clubAffiliations->each(function ($affiliation) {
+            $affiliation->affiliationMedia->each(function ($media) {
                 $media->icon_class = $media->icon_class;
             });
         });
@@ -123,18 +123,18 @@ class FamilyController extends Controller
         $totalMembershipDuration = $clubAffiliations->sum('duration_in_months');
 
         // Get all unique skills for filter dropdown
-        $allSkills = $clubAffiliations->flatMap(function($affiliation) {
+        $allSkills = $clubAffiliations->flatMap(function ($affiliation) {
             return $affiliation->skillAcquisitions->pluck('skill_name');
         })->unique()->sort()->values();
 
         // Count total instructors
-        $totalInstructors = $clubAffiliations->flatMap(function($affiliation) {
+        $totalInstructors = $clubAffiliations->flatMap(function ($affiliation) {
             return $affiliation->skillAcquisitions->pluck('instructor');
         })->filter()->unique('id')->count();
 
         // Pass user directly and a flag to indicate it's the current user's profile
         return view('family.show', [
-            'relationship' => (object)[
+            'relationship' => (object) [
                 'dependent' => $user,
                 'relationship_type' => 'self',
                 'guardian_user_id' => $user->id,
@@ -189,43 +189,20 @@ class FamilyController extends Controller
         try {
             $user = Auth::user();
 
-            // Handle base64 image from cropper
-            $imageData = $request->image;
-            $imageParts = explode(";base64,", $imageData);
-            $imageTypeAux = explode("image/", $imageParts[0]);
-            $extension = $imageTypeAux[1];
-            $imageBinary = base64_decode($imageParts[1]);
+            // Validate + store the base64 image via the Storage facade with a
+            // server-assigned extension (real MIME sniffed; PHP/HTML/SVG rejected).
+            // Replaces the previous raw file_put_contents path, which allowed
+            // client-controlled extensions and directory traversal.
+            $fullPath = $this->storeBase64Image($request->image, $request->folder, $request->filename);
+            if ($fullPath === null) {
+                return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
+            }
 
-            $folder = trim($request->folder, '/');
-            $fileName = $request->filename . '.' . $extension;
-            $fullPath = $folder . '/' . $fileName;
-
-            // Use public/storage directory directly (not through Storage facade)
-            $publicStoragePath = public_path('storage');
-
-            // Delete old profile picture if exists
+            // Delete old profile picture if it still exists at a different path.
             $oldPath = $user->profile_picture;
-            if ($oldPath && file_exists($publicStoragePath . '/' . $oldPath)) {
-                unlink($publicStoragePath . '/' . $oldPath);
+            if ($oldPath && $oldPath !== $fullPath && Storage::disk('public')->exists($oldPath)) {
+                Storage::disk('public')->delete($oldPath);
             }
-
-            // Also delete any existing files with different extensions
-            $basePath = $folder . '/' . $request->filename;
-            foreach (['png', 'jpg', 'jpeg', 'webp', 'gif'] as $ext) {
-                $checkPath = $publicStoragePath . '/' . $basePath . '.' . $ext;
-                if (file_exists($checkPath)) {
-                    unlink($checkPath);
-                }
-            }
-
-            // Ensure directory exists
-            $fullDir = $publicStoragePath . '/' . $folder;
-            if (!is_dir($fullDir)) {
-                mkdir($fullDir, 0755, true);
-            }
-
-            // Save file directly to public/storage
-            file_put_contents($publicStoragePath . '/' . $fullPath, $imageBinary);
 
             // Update user's profile_picture field (use save() for reliable persistence)
             $user->profile_picture = $fullPath;
@@ -234,7 +211,7 @@ class FamilyController extends Controller
             return response()->json([
                 'success' => true,
                 'path' => $fullPath,
-                'url' => asset('storage/' . $fullPath)
+                'url' => asset('storage/'.$fullPath),
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -263,7 +240,7 @@ class FamilyController extends Controller
             // Also check for old format profile pictures
             $extensions = ['png', 'jpg', 'jpeg', 'webp'];
             foreach ($extensions as $ext) {
-                $path = 'images/profiles/profile_' . $user->id . '.' . $ext;
+                $path = 'images/profiles/profile_'.$user->id.'.'.$ext;
                 if (Storage::disk('public')->exists($path)) {
                     Storage::disk('public')->delete($path);
                 }
@@ -277,7 +254,7 @@ class FamilyController extends Controller
         $socialLinks = [];
         if (isset($validated['social_links']) && is_array($validated['social_links'])) {
             foreach ($validated['social_links'] as $link) {
-                if (!empty($link['platform']) && !empty($link['url'])) {
+                if (! empty($link['platform']) && ! empty($link['url'])) {
                     $socialLinks[$link['platform']] = $link['url'];
                 }
             }
@@ -297,7 +274,7 @@ class FamilyController extends Controller
 
         $user->update($validated);
 
-        return redirect()->route('profile.show')
+        return redirect()->route('member.show', $user->uuid)
             ->with('success', 'Profile updated successfully.');
     }
 
@@ -326,8 +303,8 @@ class FamilyController extends Controller
 
         if ($request->wantsJson()) {
             return response()->json([
-                'success'  => true,
-                'message'  => 'Family member added successfully!',
+                'success' => true,
+                'message' => 'Family member added successfully!',
                 'redirect' => route('members.index'),
             ]);
         }
@@ -356,7 +333,7 @@ class FamilyController extends Controller
         // For super-admin or own profile, create a mock relationship
         // For regular users, verify family relationship exists
         if ($isSuperAdmin || $isOwnProfile) {
-            $relationship = (object)[
+            $relationship = (object) [
                 'dependent' => $member,
                 'relationship_type' => $isOwnProfile ? 'self' : 'admin_view',
                 'guardian_user_id' => $user->id,
@@ -423,8 +400,8 @@ class FamilyController extends Controller
             ->get();
 
         // Add icon_class to media items for JavaScript
-        $clubAffiliations->each(function($affiliation) {
-            $affiliation->affiliationMedia->each(function($media) {
+        $clubAffiliations->each(function ($affiliation) {
+            $affiliation->affiliationMedia->each(function ($media) {
                 $media->icon_class = $media->icon_class;
             });
         });
@@ -435,12 +412,12 @@ class FamilyController extends Controller
         $totalMembershipDuration = $clubAffiliations->sum('duration_in_months');
 
         // Get all unique skills for filter dropdown
-        $allSkills = $clubAffiliations->flatMap(function($affiliation) {
+        $allSkills = $clubAffiliations->flatMap(function ($affiliation) {
             return $affiliation->skillAcquisitions->pluck('skill_name');
         })->unique()->sort()->values();
 
         // Count total instructors
-        $totalInstructors = $clubAffiliations->flatMap(function($affiliation) {
+        $totalInstructors = $clubAffiliations->flatMap(function ($affiliation) {
             return $affiliation->skillAcquisitions->pluck('instructor');
         })->filter()->unique('id')->count();
 
@@ -491,7 +468,7 @@ class FamilyController extends Controller
         // For super-admin or own profile, create a mock relationship
         // For regular users, verify family relationship exists
         if ($isSuperAdmin || $isOwnProfile) {
-            $relationship = (object)[
+            $relationship = (object) [
                 'dependent' => $member,
                 'relationship_type' => $isOwnProfile ? 'self' : 'admin_view',
                 'guardian_user_id' => $user->id,
@@ -527,7 +504,7 @@ class FamilyController extends Controller
         $isOwnProfile = $user->id == $id;
 
         // For regular users, verify family relationship exists
-        if (!$isSuperAdmin && !$isOwnProfile) {
+        if (! $isSuperAdmin && ! $isOwnProfile) {
             $relationship = UserRelationship::where('guardian_user_id', $user->id)
                 ->where('dependent_user_id', $id)
                 ->firstOrFail();
@@ -545,7 +522,7 @@ class FamilyController extends Controller
             // Also check for old format profile pictures
             $extensions = ['png', 'jpg', 'jpeg', 'webp'];
             foreach ($extensions as $ext) {
-                $path = 'images/profiles/profile_' . $dependent->id . '.' . $ext;
+                $path = 'images/profiles/profile_'.$dependent->id.'.'.$ext;
                 if (Storage::disk('public')->exists($path)) {
                     Storage::disk('public')->delete($path);
                 }
@@ -559,7 +536,7 @@ class FamilyController extends Controller
         $socialLinks = [];
         if (isset($validated['social_links']) && is_array($validated['social_links'])) {
             foreach ($validated['social_links'] as $link) {
-                if (!empty($link['platform']) && !empty($link['url'])) {
+                if (! empty($link['platform']) && ! empty($link['url'])) {
                     $socialLinks[$link['platform']] = $link['url'];
                 }
             }
@@ -586,7 +563,7 @@ class FamilyController extends Controller
         ]);
 
         // Update relationship if it exists (not for admin or own profile)
-        if (!$isSuperAdmin && !$isOwnProfile && isset($relationship)) {
+        if (! $isSuperAdmin && ! $isOwnProfile && isset($relationship)) {
             $relationship->update([
                 'relationship_type' => $validated['relationship_type'] ?? $relationship->relationship_type,
                 'is_billing_contact' => $validated['is_billing_contact'] ?? false,
@@ -623,24 +600,17 @@ class FamilyController extends Controller
 
             $familyMember = User::findOrFail($id);
 
-            // Handle base64 image from cropper
-            $imageData = $request->image;
-            $imageParts = explode(";base64,", $imageData);
-            $imageTypeAux = explode("image/", $imageParts[0]);
-            $extension = $imageTypeAux[1];
-            $imageBinary = base64_decode($imageParts[1]);
-
-            $folder = trim($request->folder, '/');
-            $fileName = $request->filename . '.' . $extension;
-            $fullPath = $folder . '/' . $fileName;
-
-            // Delete old profile picture if exists
-            if ($familyMember->profile_picture && Storage::disk('public')->exists($familyMember->profile_picture)) {
-                Storage::disk('public')->delete($familyMember->profile_picture);
+            // Validate + store the base64 image with a server-assigned extension
+            // (real MIME sniffed from the bytes; PHP/HTML/SVG rejected).
+            $fullPath = $this->storeBase64Image($request->image, $request->folder, $request->filename);
+            if ($fullPath === null) {
+                return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
             }
 
-            // Store in the public disk (storage/app/public)
-            Storage::disk('public')->put($fullPath, $imageBinary);
+            // Delete old profile picture if exists
+            if ($familyMember->profile_picture && $familyMember->profile_picture !== $fullPath && Storage::disk('public')->exists($familyMember->profile_picture)) {
+                Storage::disk('public')->delete($familyMember->profile_picture);
+            }
 
             // Update family member's profile_picture field
             $familyMember->update(['profile_picture' => $fullPath]);
@@ -648,7 +618,7 @@ class FamilyController extends Controller
             return response()->json([
                 'success' => true,
                 'path' => $fullPath,
-                'url' => asset('storage/' . $fullPath)
+                'url' => asset('storage/'.$fullPath),
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -797,7 +767,7 @@ class FamilyController extends Controller
                 ->where('dependent_user_id', $goal->user_id)
                 ->first();
 
-            if (!$relationship) {
+            if (! $relationship) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }
         }
@@ -837,12 +807,12 @@ class FamilyController extends Controller
         $user = Auth::user();
 
         // Check if user is authorized to add tournament for this dependent
-        if ($user->id !== (int)$id) {
+        if ($user->id !== (int) $id) {
             $relationship = UserRelationship::where('guardian_user_id', $user->id)
                 ->where('dependent_user_id', $id)
                 ->first();
 
-            if (!$relationship) {
+            if (! $relationship) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }
         }
@@ -866,7 +836,7 @@ class FamilyController extends Controller
         // Create performance results
         if (isset($validated['performance_results'])) {
             foreach ($validated['performance_results'] as $resultData) {
-                if (!empty($resultData['medal_type'])) {
+                if (! empty($resultData['medal_type'])) {
                     $tournament->performanceResults()->create($resultData);
                 }
             }
@@ -875,7 +845,7 @@ class FamilyController extends Controller
         // Create notes and media
         if (isset($validated['notes_media'])) {
             foreach ($validated['notes_media'] as $noteData) {
-                if (!empty($noteData['note_text']) || !empty($noteData['media_link'])) {
+                if (! empty($noteData['note_text']) || ! empty($noteData['media_link'])) {
                     $tournament->notesMedia()->create($noteData);
                 }
             }
@@ -892,9 +862,6 @@ class FamilyController extends Controller
 
     /**
      * Build a JSON-friendly payload for a tournament event for in-place rendering.
-     *
-     * @param  \App\Models\TournamentEvent  $tournament
-     * @return array
      */
     private function tournamentPayload(TournamentEvent $tournament): array
     {
@@ -944,7 +911,7 @@ class FamilyController extends Controller
         }
 
         // For regular users, verify family relationship exists
-        if (!$isSuperAdmin) {
+        if (! $isSuperAdmin) {
             $relationship = UserRelationship::where('guardian_user_id', $user->id)
                 ->where('dependent_user_id', $id)
                 ->firstOrFail();
@@ -957,7 +924,7 @@ class FamilyController extends Controller
         // Redirect based on user type
         if ($isSuperAdmin) {
             return redirect()->route('admin.platform.members')
-                ->with('success', $memberName . ' has been removed successfully.');
+                ->with('success', $memberName.' has been removed successfully.');
         }
 
         return redirect()->route('members.index')

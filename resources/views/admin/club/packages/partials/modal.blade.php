@@ -17,7 +17,7 @@
              x-data="{
                  currentTab: 'basic',
                  tabs: ['basic', 'schedules', 'trainers', 'pricing'],
-                 tabNames: ['Basic Info', 'Schedules', 'Assign Trainers', 'Pricing & Confirm'],
+                 tabNames: ['{{ __('admin.packages_partials_modal_tab_basic_info') }}', '{{ __('admin.packages_partials_modal_tab_schedules') }}', '{{ __('admin.packages_partials_modal_tab_name_assign_trainers') }}', '{{ __('admin.packages_partials_modal_tab_name_pricing_confirm') }}'],
                  get currentIndex() { return this.tabs.indexOf(this.currentTab) },
                  get isLastTab() { return this.currentTab === 'pricing' },
                  nextTab() {
@@ -36,9 +36,9 @@
             <div class="modal-header border-b border-border px-6 py-4">
                 <div>
                     <h5 class="modal-title font-bold text-xl"
-                        x-text="packageModalMode === 'add' ? 'Create New Package' : 'Edit Package'"></h5>
+                        x-text="packageModalMode === 'add' ? '{{ __('admin.packages_partials_modal_create_new_package') }}' : '{{ __('admin.packages_partials_modal_edit_package') }}'"></h5>
                     <p class="text-muted-foreground text-sm mb-0"
-                       x-text="packageModalMode === 'add' ? 'Configure your membership package with activities, pricing, and availability' : 'Update your membership package details'"></p>
+                       x-text="packageModalMode === 'add' ? '{{ __('admin.packages_partials_modal_subtitle_add') }}' : '{{ __('admin.packages_partials_modal_subtitle_edit') }}'"></p>
                 </div>
                 <button type="button" class="btn-close" @click="showPackageModal = false"></button>
             </div>
@@ -50,16 +50,16 @@
                         <button class="nav-link w-full flex items-center justify-center px-3 py-3"
                                 :class="{ 'active': currentTab === 'basic' }"
                                 @click="currentTab = 'basic'" type="button">
-                            <span class="hidden sm:inline">Basic Info</span>
-                            <span class="sm:hidden">Basic</span>
+                            <span class="hidden sm:inline">{{ __('admin.packages_partials_modal_tab_basic_info') }}</span>
+                            <span class="sm:hidden">{{ __('admin.packages_partials_modal_tab_basic_short') }}</span>
                         </button>
                     </li>
                     <li class="flex-1" role="presentation">
                         <button class="nav-link w-full flex items-center justify-center px-3 py-3"
                                 :class="{ 'active': currentTab === 'schedules' }"
                                 @click="currentTab = 'schedules'" type="button">
-                            <span class="hidden sm:inline">Schedules</span>
-                            <span class="sm:hidden">Schedule</span>
+                            <span class="hidden sm:inline">{{ __('admin.packages_partials_modal_tab_schedules') }}</span>
+                            <span class="sm:hidden">{{ __('admin.packages_partials_modal_tab_schedule_short') }}</span>
                         </button>
                     </li>
                     <li class="flex-1" role="presentation">
@@ -67,14 +67,14 @@
                                 :class="{ 'active': currentTab === 'trainers' }"
                                 @click="currentTab = 'trainers'; if(window.updateTrainerAssignmentsUI) updateTrainerAssignmentsUI();"
                                 type="button">
-                            <span>Trainers</span>
+                            <span>{{ __('admin.packages_partials_modal_tab_trainers') }}</span>
                         </button>
                     </li>
                     <li class="flex-1" role="presentation">
                         <button class="nav-link w-full flex items-center justify-center px-3 py-3"
                                 :class="{ 'active': currentTab === 'pricing' }"
                                 @click="currentTab = 'pricing'" type="button">
-                            <span>Pricing</span>
+                            <span>{{ __('admin.packages_partials_modal_tab_pricing') }}</span>
                         </button>
                     </li>
                 </ul>
@@ -94,7 +94,7 @@
                             <div class="card-body p-4 bg-gradient-to-br from-primary/5 to-transparent">
                                 <div class="flex items-center gap-2 mb-4">
                                     <div class="section-icon"><i class="bi bi-upload text-primary"></i></div>
-                                    <h6 class="mb-0 font-semibold">Package Image</h6>
+                                    <h6 class="mb-0 font-semibold">{{ __('admin.packages_partials_modal_package_image') }}</h6>
                                 </div>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
@@ -105,17 +105,17 @@
                                             inputName="image" folder="packages"
                                             :filename="'package_' . time()"
                                             :previewWidth="300" :previewHeight="169"
-                                            buttonText="Upload Image"
+                                            buttonText="{{ __('admin.packages_partials_modal_upload_image') }}"
                                             buttonClass="btn btn-outline-secondary w-full mt-3"
                                         />
                                     </div>
                                     <div>
                                         <div class="rounded-lg p-3 mb-3 bg-muted/30">
-                                            <p class="text-sm font-medium mb-2">Image Guidelines</p>
+                                            <p class="text-sm font-medium mb-2">{{ __('admin.packages_partials_modal_image_guidelines') }}</p>
                                             <ul class="list-none text-sm text-muted-foreground mb-0">
-                                                <li class="flex items-center gap-2 mb-1"><span class="rounded-full bg-primary w-1.5 h-1.5"></span>Recommended ratio: 16:9</li>
-                                                <li class="flex items-center gap-2 mb-1"><span class="rounded-full bg-primary w-1.5 h-1.5"></span>Maximum file size: 5MB</li>
-                                                <li class="flex items-center gap-2"><span class="rounded-full bg-primary w-1.5 h-1.5"></span>Formats: JPG, PNG, WebP</li>
+                                                <li class="flex items-center gap-2 mb-1"><span class="rounded-full bg-primary w-1.5 h-1.5"></span>{{ __('admin.packages_partials_modal_recommended_ratio') }}</li>
+                                                <li class="flex items-center gap-2 mb-1"><span class="rounded-full bg-primary w-1.5 h-1.5"></span>{{ __('admin.packages_partials_modal_max_file_size') }}</li>
+                                                <li class="flex items-center gap-2"><span class="rounded-full bg-primary w-1.5 h-1.5"></span>{{ __('admin.packages_partials_modal_formats') }}</li>
                                             </ul>
                                         </div>
                                         <div class="flex items-center gap-3 p-3 rounded-lg border border-border bg-white">
@@ -123,8 +123,8 @@
                                                 <input type="checkbox" id="packagePopular" name="is_popular" class="form-check-input" role="switch">
                                             </div>
                                             <div>
-                                                <label for="packagePopular" class="form-label mb-0 font-medium cursor-pointer">Featured Package</label>
-                                                <p class="text-muted-foreground text-sm mb-0">Highlight this package on the main page</p>
+                                                <label for="packagePopular" class="form-label mb-0 font-medium cursor-pointer">{{ __('admin.packages_partials_modal_featured_package') }}</label>
+                                                <p class="text-muted-foreground text-sm mb-0">{{ __('admin.packages_partials_modal_featured_package_hint') }}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -137,24 +137,24 @@
                             <div class="card-body p-4">
                                 <div class="flex items-center gap-2 mb-4">
                                     <div class="section-icon"><i class="bi bi-tag text-primary"></i></div>
-                                    <h6 class="mb-0 font-semibold">Package Details</h6>
+                                    <h6 class="mb-0 font-semibold">{{ __('admin.packages_partials_modal_package_details') }}</h6>
                                 </div>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <div class="mb-3">
-                                            <label for="packageName" class="form-label font-medium">Package Name <span class="text-destructive">*</span></label>
-                                            <input type="text" id="packageName" name="name" required x-show="lang==='en'" placeholder="e.g., Premium Monthly Membership" class="form-control">
+                                            <label for="packageName" class="form-label font-medium">{{ __('admin.packages_partials_modal_package_name') }} <span class="text-destructive">*</span></label>
+                                            <input type="text" id="packageName" name="name" required x-show="lang==='en'" placeholder="{{ __('admin.packages_partials_modal_package_name_placeholder') }}" class="form-control">
                                             <input type="text" id="packageNameAr" name="translations[name][ar]" dir="rtl" x-show="lang==='ar'" x-cloak placeholder="الاسم بالعربية" class="form-control">
                                         </div>
                                         <div class="mb-3">
-                                            <label for="packageDuration" class="form-label font-medium">Duration (Months) <span class="text-destructive">*</span></label>
+                                            <label for="packageDuration" class="form-label font-medium">{{ __('admin.packages_partials_modal_duration_months') }} <span class="text-destructive">*</span></label>
                                             <input type="number" id="packageDuration" name="duration_months" required value="1" min="1" class="form-control">
                                         </div>
                                     </div>
                                     <div>
                                         <div class="mb-3">
-                                            <label for="packageDescription" class="form-label font-medium">Description</label>
-                                            <textarea id="packageDescription" name="description" rows="5" x-show="lang==='en'" placeholder="Brief description of what this package includes..." class="form-control resize-none"></textarea>
+                                            <label for="packageDescription" class="form-label font-medium">{{ __('admin.packages_partials_modal_description') }}</label>
+                                            <textarea id="packageDescription" name="description" rows="5" x-show="lang==='en'" placeholder="{{ __('admin.packages_partials_modal_description_placeholder') }}" class="form-control resize-none"></textarea>
                                             <textarea id="packageDescriptionAr" name="translations[description][ar]" dir="rtl" x-show="lang==='ar'" x-cloak rows="5" class="form-control resize-none" placeholder="الوصف بالعربية"></textarea>
                                         </div>
                                     </div>
@@ -167,19 +167,20 @@
                             <div class="card-body p-4">
                                 <div class="flex items-center gap-2 mb-4">
                                     <div class="section-icon"><i class="bi bi-people-fill text-primary"></i></div>
-                                    <h6 class="mb-0 font-semibold">Capacity</h6>
+                                    <h6 class="mb-0 font-semibold">{{ __('admin.packages_partials_modal_capacity') }}</h6>
                                 </div>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <div>
-                                        <label for="packageCapacity" class="form-label font-medium">Max Capacity</label>
-                                        <input type="number" id="packageCapacity" name="max_capacity" min="1" placeholder="e.g., 20" class="form-control">
+                                        <label for="packageCapacity" class="form-label font-medium">{{ __('admin.packages_partials_modal_max_capacity') }}</label>
+                                        <input type="number" id="packageCapacity" name="max_capacity" min="1" placeholder="{{ __('admin.packages_partials_modal_max_capacity_placeholder') }}" class="form-control">
                                     </div>
                                     <div>
-                                        <label for="packageScheduleType" class="form-label font-medium">Schedule Type</label>
-                                        <select id="packageScheduleType" name="schedule_type" class="form-select">
-                                            <option value="fixed">Fixed</option>
-                                            <option value="flexible">Flexible</option>
-                                        </select>
+                                        <label for="packageScheduleType" class="form-label font-medium">{{ __('admin.packages_partials_modal_schedule_type') }}</label>
+                                        <x-select-menu name="schedule_type" :value="old('schedule_type', 'fixed')"
+                                            :options="[
+                                                ['value' => 'fixed', 'label' => __('admin.packages_partials_modal_schedule_type_fixed')],
+                                                ['value' => 'flexible', 'label' => __('admin.packages_partials_modal_schedule_type_flexible')],
+                                            ]" />
                                     </div>
                                 </div>
                             </div>
@@ -190,24 +191,24 @@
                             <div class="card-body p-4">
                                 <div class="flex items-center gap-2 mb-4">
                                     <div class="section-icon"><i class="bi bi-people text-primary"></i></div>
-                                    <h6 class="mb-0 font-semibold">Member Restrictions</h6>
+                                    <h6 class="mb-0 font-semibold">{{ __('admin.packages_partials_modal_member_restrictions') }}</h6>
                                 </div>
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                                     <div>
-                                        <label for="packageGender" class="form-label font-medium">Gender</label>
+                                        <label for="packageGender" class="form-label font-medium">{{ __('admin.packages_partials_modal_gender') }}</label>
                                         <select id="packageGender" name="gender_restriction" class="form-select">
-                                            <option value="mixed">Mixed (All Genders)</option>
-                                            <option value="male">Male Only</option>
-                                            <option value="female">Female Only</option>
+                                            <option value="mixed">{{ __('admin.packages_partials_modal_gender_mixed') }}</option>
+                                            <option value="male">{{ __('admin.packages_partials_modal_gender_male') }}</option>
+                                            <option value="female">{{ __('admin.packages_partials_modal_gender_female') }}</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label for="packageMinAge" class="form-label font-medium">Minimum Age</label>
-                                        <input type="number" id="packageMinAge" name="age_min" min="0" placeholder="e.g., 5" class="form-control">
+                                        <label for="packageMinAge" class="form-label font-medium">{{ __('admin.packages_partials_modal_min_age') }}</label>
+                                        <input type="number" id="packageMinAge" name="age_min" min="0" placeholder="{{ __('admin.packages_partials_modal_min_age_placeholder') }}" class="form-control">
                                     </div>
                                     <div>
-                                        <label for="packageMaxAge" class="form-label font-medium">Maximum Age</label>
-                                        <input type="number" id="packageMaxAge" name="age_max" min="0" placeholder="e.g., 18" class="form-control">
+                                        <label for="packageMaxAge" class="form-label font-medium">{{ __('admin.packages_partials_modal_max_age') }}</label>
+                                        <input type="number" id="packageMaxAge" name="age_max" min="0" placeholder="{{ __('admin.packages_partials_modal_max_age_placeholder') }}" class="form-control">
                                     </div>
                                 </div>
                             </div>
@@ -219,27 +220,27 @@
                                 <div class="flex items-center justify-between mb-4">
                                     <div class="flex items-center gap-2">
                                         <div class="section-icon"><i class="bi bi-calendar-event text-primary"></i></div>
-                                        <h6 class="mb-0 font-semibold">Availability Period</h6>
+                                        <h6 class="mb-0 font-semibold">{{ __('admin.packages_partials_modal_availability_period') }}</h6>
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <div class="form-check form-switch mb-0">
                                             <input type="checkbox" id="alwaysAvailable" name="always_available" class="form-check-input" role="switch" checked x-model="alwaysAvailable">
                                         </div>
-                                        <label for="alwaysAvailable" class="form-label mb-0 font-medium cursor-pointer">Always Available</label>
+                                        <label for="alwaysAvailable" class="form-label mb-0 font-medium cursor-pointer">{{ __('admin.packages_partials_modal_always_available') }}</label>
                                     </div>
                                 </div>
                                 <div x-show="!alwaysAvailable" x-cloak class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label for="packageStartDate" class="form-label font-medium">Start Date</label>
+                                        <label for="packageStartDate" class="form-label font-medium">{{ __('admin.packages_partials_modal_start_date') }}</label>
                                         <input type="date" id="packageStartDate" name="start_date" class="form-control">
                                     </div>
                                     <div>
-                                        <label for="packageEndDate" class="form-label font-medium">End Date</label>
+                                        <label for="packageEndDate" class="form-label font-medium">{{ __('admin.packages_partials_modal_end_date') }}</label>
                                         <input type="date" id="packageEndDate" name="end_date" class="form-control">
                                     </div>
                                 </div>
                                 <div x-show="alwaysAvailable" class="text-center p-4 rounded-lg border border-primary/20 bg-primary/5">
-                                    <p class="text-muted-foreground mb-0">This package is available year-round with no date restrictions</p>
+                                    <p class="text-muted-foreground mb-0">{{ __('admin.packages_partials_modal_always_available_note') }}</p>
                                 </div>
                             </div>
                         </div>
@@ -252,8 +253,8 @@
                                 <div class="flex items-center gap-2 mb-2">
                                     <div class="section-icon"><i class="bi bi-clock text-primary"></i></div>
                                     <div>
-                                        <h6 class="mb-0 font-semibold">Package Schedule <span class="text-destructive">*</span></h6>
-                                        <p class="text-muted-foreground text-sm mb-0">Define when this package is available</p>
+                                        <h6 class="mb-0 font-semibold">{{ __('admin.packages_partials_modal_package_schedule') }} <span class="text-destructive">*</span></h6>
+                                        <p class="text-muted-foreground text-sm mb-0">{{ __('admin.packages_partials_modal_package_schedule_hint') }}</p>
                                     </div>
                                 </div>
                                 <div class="rounded-lg border border-border p-4 mb-4 mt-4 bg-muted/10">
@@ -262,9 +263,9 @@
                                     </div>
                                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                                         <div>
-                                            <label for="scheduleActivity" class="tf-label">Activity <span class="text-red-500">*</span></label>
+                                            <label for="scheduleActivity" class="tf-label">{{ __('admin.packages_partials_modal_activity') }} <span class="text-red-500">*</span></label>
                                             <select id="scheduleActivity" class="tf-time">
-                                                <option value="">Select activity</option>
+                                                <option value="">{{ __('admin.packages_partials_modal_select_activity') }}</option>
                                                 @if(isset($activities))
                                                     @foreach($activities as $activity)
                                                         <option value="{{ $activity->id }}" data-name="{{ $activity->title ?? $activity->name }}">{{ $activity->title ?? $activity->name }}</option>
@@ -273,9 +274,9 @@
                                             </select>
                                         </div>
                                         <div>
-                                            <label for="scheduleFacility" class="tf-label">Facility</label>
+                                            <label for="scheduleFacility" class="tf-label">{{ __('admin.packages_partials_modal_facility') }}</label>
                                             <select id="scheduleFacility" class="tf-time">
-                                                <option value="">Select facility</option>
+                                                <option value="">{{ __('admin.packages_partials_modal_select_facility') }}</option>
                                                 @if(isset($facilities))
                                                     @foreach($facilities as $facility)
                                                         <option value="{{ $facility->id }}" data-name="{{ $facility->name }}">{{ $facility->name }}</option>
@@ -284,21 +285,21 @@
                                             </select>
                                         </div>
                                         <div>
-                                            <label for="scheduleNotes" class="tf-label">Notes (Optional)</label>
-                                            <input type="text" id="scheduleNotes" placeholder="Add any additional notes..." class="tf-time">
+                                            <label for="scheduleNotes" class="tf-label">{{ __('admin.packages_partials_modal_notes_optional') }}</label>
+                                            <input type="text" id="scheduleNotes" placeholder="{{ __('admin.packages_partials_modal_notes_placeholder') }}" class="tf-time">
                                         </div>
                                     </div>
                                     <div class="flex justify-end">
                                         <button type="button" id="addScheduleBtn" class="btn btn-outline-primary px-4 py-2">
-                                            <i class="bi bi-plus-lg mr-2"></i><span id="addScheduleBtnText">Add Schedule</span>
+                                            <i class="bi bi-plus-lg me-2"></i><span id="addScheduleBtnText">{{ __('admin.packages_partials_modal_add_schedule') }}</span>
                                         </button>
                                     </div>
                                 </div>
                                 <div id="schedulesList"></div>
                                 <div id="noSchedulesMessage" class="text-center py-12 border-2 border-dashed border-border rounded-lg">
                                     <i class="bi bi-clock text-muted-foreground text-5xl"></i>
-                                    <p class="text-muted-foreground mb-1 mt-3">No schedules added yet</p>
-                                    <p class="text-muted-foreground text-sm">Add at least one schedule to continue</p>
+                                    <p class="text-muted-foreground mb-1 mt-3">{{ __('admin.packages_partials_modal_no_schedules') }}</p>
+                                    <p class="text-muted-foreground text-sm">{{ __('admin.packages_partials_modal_no_schedules_hint') }}</p>
                                 </div>
                                 <input type="hidden" id="schedulesData" name="schedules">
                             </div>
@@ -312,15 +313,15 @@
                                 <div class="flex items-center gap-2 mb-2">
                                     <div class="section-icon"><i class="bi bi-person-check text-primary"></i></div>
                                     <div>
-                                        <h6 class="mb-0 font-semibold">Assign Trainers</h6>
-                                        <p class="text-muted-foreground text-sm mb-0">Assign instructors to scheduled activities</p>
+                                        <h6 class="mb-0 font-semibold">{{ __('admin.packages_partials_modal_tab_name_assign_trainers') }}</h6>
+                                        <p class="text-muted-foreground text-sm mb-0">{{ __('admin.packages_partials_modal_assign_trainers_hint') }}</p>
                                     </div>
                                 </div>
                                 <div id="trainerAssignments" class="mt-4">
                                     <div class="text-center py-12 border-2 border-dashed border-border rounded-lg">
                                         <i class="bi bi-person-check text-muted-foreground text-5xl"></i>
-                                        <p class="text-muted-foreground mb-1 mt-3">No activities scheduled yet</p>
-                                        <p class="text-muted-foreground text-sm">Add schedules in the previous tab first</p>
+                                        <p class="text-muted-foreground mb-1 mt-3">{{ __('admin.packages_partials_modal_no_activities') }}</p>
+                                        <p class="text-muted-foreground text-sm">{{ __('admin.packages_partials_modal_no_activities_hint') }}</p>
                                     </div>
                                 </div>
                                 <input type="hidden" id="trainerAssignmentsData" name="trainer_assignments">
@@ -340,10 +341,10 @@
                             <div class="card-body p-4">
                                 <div class="flex items-center gap-2 mb-4">
                                     <div class="section-icon"><i class="bi bi-currency-dollar text-primary"></i></div>
-                                    <h6 class="mb-0 font-semibold">Base Price</h6>
+                                    <h6 class="mb-0 font-semibold">{{ __('admin.packages_partials_modal_base_price') }}</h6>
                                 </div>
                                 <label for="packagePrice" class="form-label font-medium">
-                                    Package Price ({{ $club->currency ?? 'BHD' }}) <span class="text-destructive">*</span>
+                                    {{ __('admin.packages_partials_modal_package_price', ['currency' => $club->currency ?? 'BHD']) }} <span class="text-destructive">*</span>
                                 </label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-muted/30"><i class="bi bi-currency-dollar text-muted-foreground"></i></span>
@@ -351,45 +352,45 @@
                                 </div>
 
                                 <label for="packageRegFee" class="form-label font-medium mt-4">
-                                    First-Time Registration Fee ({{ $club->currency ?? 'BHD' }})
+                                    {{ __('admin.packages_partials_modal_registration_fee', ['currency' => $club->currency ?? 'BHD']) }}
                                 </label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-muted/30"><i class="bi bi-person-plus text-muted-foreground"></i></span>
-                                    <input type="number" id="packageRegFee" name="registration_fee" step="0.01" min="0" placeholder="Leave blank to use the club default" class="form-control">
+                                    <input type="number" id="packageRegFee" name="registration_fee" step="0.01" min="0" placeholder="{{ __('admin.packages_partials_modal_registration_fee_placeholder') }}" class="form-control">
                                 </div>
-                                <p class="text-muted-foreground text-sm mt-1">One-time joining fee charged only the first time a member joins. Leave blank to use the club's default enrollment fee.</p>
+                                <p class="text-muted-foreground text-sm mt-1">{{ __('admin.packages_partials_modal_registration_fee_hint') }}</p>
                             </div>
                         </div>
                         <div class="card border-0 shadow-sm mb-4">
                             <div class="card-body p-4">
                                 <div class="flex items-center gap-2 mb-4">
                                     <div class="section-icon"><i class="bi bi-tag text-primary"></i></div>
-                                    <h6 class="mb-0 font-semibold">Discount Options</h6>
+                                    <h6 class="mb-0 font-semibold">{{ __('admin.packages_partials_modal_discount_options') }}</h6>
                                 </div>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label for="discountCode" class="form-label font-medium">Discount Code</label>
-                                        <input type="text" id="discountCode" name="discount_code" placeholder="e.g., SAVE20" class="form-control uppercase font-mono">
-                                        <p class="text-muted-foreground text-sm mt-1">Optional promo code for customers</p>
+                                        <label for="discountCode" class="form-label font-medium">{{ __('admin.packages_partials_modal_discount_code') }}</label>
+                                        <input type="text" id="discountCode" name="discount_code" placeholder="{{ __('admin.packages_partials_modal_discount_code_placeholder') }}" class="form-control uppercase font-mono">
+                                        <p class="text-muted-foreground text-sm mt-1">{{ __('admin.packages_partials_modal_discount_code_hint') }}</p>
                                     </div>
                                     <div>
-                                        <label for="discountPercent" class="form-label font-medium">Discount Percentage</label>
+                                        <label for="discountPercent" class="form-label font-medium">{{ __('admin.packages_partials_modal_discount_percentage') }}</label>
                                         <div class="input-group">
-                                            <input type="number" id="discountPercent" name="discount_percentage" min="0" max="100" step="0.01" placeholder="20" class="form-control" x-model.number="discountPercent">
+                                            <input type="number" id="discountPercent" name="discount_percentage" min="0" max="100" step="0.01" placeholder="{{ __('admin.packages_partials_modal_discount_percentage_placeholder') }}" class="form-control" x-model.number="discountPercent">
                                             <span class="input-group-text bg-muted/30 text-muted-foreground">%</span>
                                         </div>
-                                        <p class="text-muted-foreground text-sm mt-1">Percentage off the base price</p>
+                                        <p class="text-muted-foreground text-sm mt-1">{{ __('admin.packages_partials_modal_discount_percentage_hint') }}</p>
                                     </div>
                                 </div>
                                 <div x-show="showPreview" x-cloak class="mt-4 p-4 rounded-xl border-2 border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5">
                                     <div class="flex items-center justify-between">
                                         <div>
-                                            <p class="text-muted-foreground text-sm mb-1">Final Price</p>
+                                            <p class="text-muted-foreground text-sm mb-1">{{ __('admin.packages_partials_modal_final_price') }}</p>
                                             <p class="text-4xl font-bold text-primary mb-0">{{ $club->currency ?? 'BHD' }} <span x-text="finalPrice.toFixed(2)">0.00</span></p>
                                         </div>
-                                        <div class="text-right">
+                                        <div class="text-end">
                                             <p class="text-muted-foreground line-through mb-1">{{ $club->currency ?? 'BHD' }} <span x-text="basePrice.toFixed(2)">0.00</span></p>
-                                            <span class="badge bg-primary text-lg" x-text="discountPercent + '% OFF'">0% OFF</span>
+                                            <span class="badge bg-primary text-lg" x-text="discountPercent + '{{ __('admin.packages_partials_modal_percent_off') }}'">0% OFF</span>
                                         </div>
                                     </div>
                                 </div>
@@ -402,18 +403,18 @@
             <!-- Footer -->
             <div class="modal-footer border-t border-border px-6 py-4">
                 <div class="text-muted-foreground text-sm">
-                    Step <span x-text="currentIndex + 1">1</span> of 4
+                    {{ __('admin.packages_partials_modal_step') }} <span x-text="currentIndex + 1">1</span> {{ __('admin.packages_partials_modal_of_4') }}
                     <span x-text="' - ' + tabNames[currentIndex]"> - Basic Info</span>
                 </div>
-                <div class="ml-auto flex gap-2">
-                    <button type="button" class="btn btn-outline-secondary px-4" @click="showPackageModal = false">Cancel</button>
+                <div class="ms-auto flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary px-4" @click="showPackageModal = false">{{ __('shared.cancel') }}</button>
                     <button type="button" x-show="!isLastTab" class="btn btn-primary px-4" @click="nextTab()">
-                        Next Step<i class="bi bi-arrow-right ml-2"></i>
+                        {{ __('admin.packages_partials_modal_next_step') }}<i class="bi bi-arrow-right me-2"></i>
                     </button>
                     <button type="submit" form="packageForm" x-show="isLastTab" x-cloak class="btn btn-primary px-4">
-                        <i class="bi bi-plus-lg mr-2" x-show="packageModalMode === 'add'"></i>
-                        <i class="bi bi-check-lg mr-2" x-show="packageModalMode === 'edit'"></i>
-                        <span x-text="packageModalMode === 'add' ? 'Create Package' : 'Update Package'"></span>
+                        <i class="bi bi-plus-lg me-2" x-show="packageModalMode === 'add'"></i>
+                        <i class="bi bi-check-lg me-2" x-show="packageModalMode === 'edit'"></i>
+                        <span x-text="packageModalMode === 'add' ? '{{ __('admin.packages_partials_modal_create_package') }}' : '{{ __('admin.packages_partials_modal_update_package') }}'"></span>
                     </button>
                 </div>
             </div>
@@ -456,11 +457,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const notes           = document.getElementById('scheduleNotes').value;
 
         if (selectedDays.length === 0 || !startTime || !endTime || !activityId) {
-            window.showToast('error', 'Please select at least one day, activity, and specify start/end times');
+            window.showToast('error', '{{ __('admin.packages_partials_modal_toast_select_day') }}');
             return;
         }
         if (endTime <= startTime) {
-            window.showToast('error', 'End time must be after start time');
+            window.showToast('error', '{{ __('admin.packages_partials_modal_toast_end_after_start') }}');
             return;
         }
 
@@ -476,7 +477,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (editingScheduleIndex !== null) {
             schedules[editingScheduleIndex] = schedule;
             editingScheduleIndex = null;
-            addScheduleBtnText.textContent = 'Add Schedule';
+            addScheduleBtnText.textContent = '{{ __('admin.packages_partials_modal_add_schedule') }}';
             addScheduleBtn.classList.remove('btn-primary');
             addScheduleBtn.classList.add('btn-outline-primary');
         } else {
@@ -512,7 +513,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         noSchedulesMessage.classList.add('hidden');
         schedulesList.innerHTML = `
-            <div class="mb-3"><label class="form-label font-medium">Added Schedules (${schedules.length})</label></div>
+            <div class="mb-3"><label class="form-label font-medium">{{ __('admin.packages_partials_modal_added_schedules') }} (${schedules.length})</label></div>
             <div class="border border-border rounded-lg overflow-hidden">
                 ${schedules.map((s, i) => `
                     <div class="flex items-start justify-between p-3 ${i < schedules.length - 1 ? 'border-b border-border' : ''} hover:bg-muted/10 transition-colors">
@@ -521,12 +522,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                 ${s.days.map(d => `<span class="badge bg-secondary">${d.name}</span>`).join('')}
                                 <span class="font-medium">${formatTimeTo12Hour(s.startTime)} - ${formatTimeTo12Hour(s.endTime)}</span>
                                 <span class="badge bg-secondary">${calcDurationMinutes(s.startTime, s.endTime)} min</span>
-                                ${s.activityName ? `<span class="badge bg-primary/10 text-primary border border-primary/20"><i class="bi bi-activity mr-1"></i>${s.activityName}</span>` : ''}
-                                ${s.facilityName ? `<span class="badge bg-sky-50 text-sky-700 border border-sky-200"><i class="bi bi-geo-alt mr-1"></i>${s.facilityName}</span>` : ''}
+                                ${s.activityName ? `<span class="badge bg-primary/10 text-primary border border-primary/20"><i class="bi bi-activity me-1"></i>${s.activityName}</span>` : ''}
+                                ${s.facilityName ? `<span class="badge bg-sky-50 text-sky-700 border border-sky-200"><i class="bi bi-geo-alt me-1"></i>${s.facilityName}</span>` : ''}
                             </div>
-                            ${s.notes ? `<p class="text-muted-foreground text-sm mb-0"><span class="font-medium">Note:</span> ${s.notes}</p>` : ''}
+                            ${s.notes ? `<p class="text-muted-foreground text-sm mb-0"><span class="font-medium">{{ __('admin.packages_partials_modal_note_label') }}</span> ${s.notes}</p>` : ''}
                         </div>
-                        <div class="flex gap-1 ml-2">
+                        <div class="flex gap-1 ms-2">
                             <button type="button" class="btn btn-sm btn-light edit-schedule" data-index="${i}"><i class="bi bi-pencil"></i></button>
                             <button type="button" class="btn btn-sm btn-light text-destructive delete-schedule" data-index="${i}"><i class="bi bi-trash"></i></button>
                         </div>
@@ -548,7 +549,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 if (editingScheduleIndex === idx) {
                     editingScheduleIndex = null;
-                    addScheduleBtnText.textContent = 'Add Schedule';
+                    addScheduleBtnText.textContent = '{{ __('admin.packages_partials_modal_add_schedule') }}';
                     addScheduleBtn.classList.remove('btn-primary');
                     addScheduleBtn.classList.add('btn-outline-primary');
                     resetScheduleForm();
@@ -569,7 +570,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('scheduleActivity').value = s.activityId;
         document.getElementById('scheduleFacility').value = s.facilityId || '';
         document.getElementById('scheduleNotes').value    = s.notes || '';
-        addScheduleBtnText.textContent = 'Update Schedule';
+        addScheduleBtnText.textContent = '{{ __('admin.packages_partials_modal_update_schedule') }}';
         addScheduleBtn.classList.remove('btn-outline-primary');
         addScheduleBtn.classList.add('btn-primary');
     }
@@ -598,20 +599,20 @@ document.addEventListener('DOMContentLoaded', function() {
             trainerAssignmentsContainer.innerHTML = `
                 <div class="text-center py-12 border-2 border-dashed border-border rounded-lg">
                     <i class="bi bi-person-check text-muted-foreground text-5xl"></i>
-                    <p class="text-muted-foreground mb-1 mt-3">No activities scheduled yet</p>
-                    <p class="text-muted-foreground text-sm">Add schedules in the previous tab first</p>
+                    <p class="text-muted-foreground mb-1 mt-3">{{ __('admin.packages_partials_modal_no_activities') }}</p>
+                    <p class="text-muted-foreground text-sm">{{ __('admin.packages_partials_modal_no_activities_hint') }}</p>
                 </div>`;
             return;
         }
 
         trainerAssignmentsContainer.innerHTML = `
-            <p class="text-muted-foreground text-sm mb-4">Activities from your schedules:</p>
+            <p class="text-muted-foreground text-sm mb-4">{{ __('admin.packages_partials_modal_activities_from_schedules') }}</p>
             ${uniqueActivities.map(a => `
                 <div class="flex flex-wrap items-center gap-3 p-4 border border-border rounded-lg mb-3 bg-muted/10">
                     <div class="flex-1 min-w-0"><p class="font-semibold mb-0">${a.name}</p></div>
                     <div class="w-full sm:w-64">
                         <select class="form-select trainer-assignment" data-activity-id="${a.id}">
-                            <option value="">Select instructor</option>
+                            <option value="">{{ __('admin.packages_partials_modal_select_instructor') }}</option>
                             ${instructors.map(i => `<option value="${i.id}" ${trainerAssignments[a.id] == i.id ? 'selected' : ''}>${i.name}</option>`).join('')}
                         </select>
                     </div>
@@ -651,7 +652,7 @@ document.addEventListener('DOMContentLoaded', function() {
         schedules = [];
         trainerAssignments = {};
         editingScheduleIndex = null;
-        addScheduleBtnText.textContent = 'Add Schedule';
+        addScheduleBtnText.textContent = '{{ __('admin.packages_partials_modal_add_schedule') }}';
         addScheduleBtn.classList.remove('btn-primary');
         addScheduleBtn.classList.add('btn-outline-primary');
         updateSchedulesUI();
@@ -701,7 +702,7 @@ document.addEventListener('DOMContentLoaded', function() {
         schedules = [];
         trainerAssignments = {};
         editingScheduleIndex = null;
-        addScheduleBtnText.textContent = 'Add Schedule';
+        addScheduleBtnText.textContent = '{{ __('admin.packages_partials_modal_add_schedule') }}';
         addScheduleBtn.classList.remove('btn-primary');
         addScheduleBtn.classList.add('btn-outline-primary');
 

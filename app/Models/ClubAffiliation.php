@@ -87,6 +87,7 @@ class ClubAffiliation extends Model
     public function getDurationInMonthsAttribute(): int
     {
         $endDate = $this->end_date ?? now();
+
         return $this->start_date->diffInMonths($endDate);
     }
 
@@ -97,7 +98,8 @@ class ClubAffiliation extends Model
     {
         $start = $this->start_date->format('M Y');
         $end = $this->end_date ? $this->end_date->format('M Y') : 'Present';
-        return $start . ' – ' . $end;
+
+        return $start.' – '.$end;
     }
 
     /**
@@ -111,13 +113,13 @@ class ClubAffiliation extends Model
         $parts = [];
 
         if ($diff->y > 0) {
-            $parts[] = $diff->y . ' year' . ($diff->y > 1 ? 's' : '');
+            $parts[] = $diff->y.' year'.($diff->y > 1 ? 's' : '');
         }
         if ($diff->m > 0) {
-            $parts[] = $diff->m . ' month' . ($diff->m > 1 ? 's' : '');
+            $parts[] = $diff->m.' month'.($diff->m > 1 ? 's' : '');
         }
         if ($diff->d > 0) {
-            $parts[] = $diff->d . ' day' . ($diff->d > 1 ? 's' : '');
+            $parts[] = $diff->d.' day'.($diff->d > 1 ? 's' : '');
         }
 
         return implode(' ', $parts) ?: 'Same day';

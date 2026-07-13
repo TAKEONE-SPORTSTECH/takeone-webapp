@@ -29,7 +29,7 @@
         @if(!request()->routeIs('trainer.show.public'))
         <a href="{{ url()->previous() }}" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors mb-2">
             <i class="bi bi-arrow-left"></i>
-            <span>Back</span>
+            <span>{{ __('shared.back') }}</span>
         </a>
         @endif
 
@@ -60,7 +60,7 @@
                                 <div class="flex items-center gap-1">
                                     <i class="bi bi-star-fill text-yellow-400"></i>
                                     <span class="font-semibold">{{ $stats['rating'] > 0 ? $stats['rating'] : 'N/A' }}</span>
-                                    <span class="text-gray-500">({{ $stats['certifications'] }} certifications)</span>
+                                    <span class="text-gray-500">({{ $stats['certifications'] }} {{ __('trainer.trainer_show_certifications_lower') }})</span>
                                 </div>
                                 {{-- Specialty Badge --}}
                                 @if($primaryInstructor?->role)
@@ -71,7 +71,7 @@
                                 {{-- Experience Badge --}}
                                 @if($user->experience_years)
                                 <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
-                                    {{ $user->experience_years }} {{ $user->experience_years == 1 ? 'year' : 'years' }} experience
+                                    {{ $user->experience_years }} {{ $user->experience_years == 1 ? __('trainer.trainer_show_year') : __('trainer.trainer_show_years') }} {{ __('trainer.trainer_show_experience_word') }}
                                 </span>
                                 @endif
                             </div>
@@ -89,11 +89,11 @@
                         <div class="flex flex-col gap-2">
                             <button class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium">
                                 <i class="bi bi-calendar"></i>
-                                Book Session
+                                {{ __('trainer.trainer_show_book_session') }}
                             </button>
                             <button class="inline-flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
                                 <i class="bi bi-chat"></i>
-                                Message
+                                {{ __('trainer.trainer_show_message') }}
                             </button>
                         </div>
                     </div>
@@ -102,19 +102,19 @@
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div class="text-center p-3 border rounded-lg {{ $isMale ? 'border-blue-200' : 'border-gray-200' }}">
                             <p class="text-2xl font-bold {{ $isMale ? 'text-blue-600' : 'text-purple-600' }}">{{ $stats['clients'] }}</p>
-                            <p class="text-xs text-gray-500">Clients</p>
+                            <p class="text-xs text-gray-500">{{ __('trainer.trainer_show_clients') }}</p>
                         </div>
                         <div class="text-center p-3 border rounded-lg {{ $isMale ? 'border-blue-200' : 'border-gray-200' }}">
                             <p class="text-2xl font-bold {{ $isMale ? 'text-sky-600' : 'text-teal-600' }}">{{ $stats['sessions'] }}</p>
-                            <p class="text-xs text-gray-500">Sessions</p>
+                            <p class="text-xs text-gray-500">{{ __('trainer.trainer_show_sessions') }}</p>
                         </div>
                         <div class="text-center p-3 border rounded-lg {{ $isMale ? 'border-blue-200' : 'border-gray-200' }}">
                             <p class="text-2xl font-bold {{ $isMale ? 'text-indigo-600' : 'text-amber-600' }}">{{ $stats['rating'] }}</p>
-                            <p class="text-xs text-gray-500">Rating</p>
+                            <p class="text-xs text-gray-500">{{ __('trainer.trainer_show_rating') }}</p>
                         </div>
                         <div class="text-center p-3 border rounded-lg {{ $isMale ? 'border-blue-200' : 'border-gray-200' }}">
                             <p class="text-2xl font-bold {{ $isMale ? 'text-blue-600' : 'text-purple-600' }}">{{ $stats['certifications'] }}</p>
-                            <p class="text-xs text-gray-500">Certifications</p>
+                            <p class="text-xs text-gray-500">{{ __('trainer.trainer_show_certifications') }}</p>
                         </div>
                     </div>
                 </div>
@@ -128,22 +128,22 @@
                 <button @click="activeTab = 'about'"
                         :class="activeTab === 'about' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
                         class="py-2 px-4 rounded-md text-sm font-medium transition-all">
-                    About
+                    {{ __('trainer.trainer_show_tab_about') }}
                 </button>
                 <button @click="activeTab = 'schedule'"
                         :class="activeTab === 'schedule' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
                         class="py-2 px-4 rounded-md text-sm font-medium transition-all">
-                    Schedule
+                    {{ __('trainer.trainer_show_tab_schedule') }}
                 </button>
                 <button @click="activeTab = 'reviews'"
                         :class="activeTab === 'reviews' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
                         class="py-2 px-4 rounded-md text-sm font-medium transition-all">
-                    Reviews
+                    {{ __('trainer.trainer_show_tab_reviews') }}
                 </button>
                 <button @click="activeTab = 'contact'"
                         :class="activeTab === 'contact' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
                         class="py-2 px-4 rounded-md text-sm font-medium transition-all">
-                    Contact
+                    {{ __('trainer.trainer_show_tab_contact') }}
                 </button>
             </div>
 
@@ -158,8 +158,8 @@
                                 <i class="bi bi-people text-xl text-purple-600"></i>
                             </div>
                             <div class="flex-1">
-                                <h3 class="text-xl font-bold mb-2">About {{ $user->full_name }}</h3>
-                                <p class="text-sm text-gray-500">Professional trainer dedicated to your fitness journey</p>
+                                <h3 class="text-xl font-bold mb-2">{{ __('trainer.trainer_show_about_heading') }} {{ $user->full_name }}</h3>
+                                <p class="text-sm text-gray-500">{{ __('trainer.trainer_show_professional_subtitle') }}</p>
                             </div>
                         </div>
                     </div>
@@ -169,10 +169,10 @@
                         <div class="space-y-3">
                             <div class="flex items-center gap-2 mb-3">
                                 <div class="h-1 w-8 bg-gradient-to-r {{ $isMale ? 'from-blue-500 to-sky-500' : 'from-purple-500 to-teal-500' }} rounded-full"></div>
-                                <span class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Biography</span>
+                                <span class="text-sm font-semibold text-gray-500 uppercase tracking-wide">{{ __('trainer.trainer_show_biography') }}</span>
                             </div>
-                            <p class="text-gray-800 leading-relaxed text-base pl-10">
-                                {{ $user->bio ?? 'No biography available.' }}
+                            <p class="text-gray-800 leading-relaxed text-base ps-10">
+                                {{ $user->bio ?? __('trainer.trainer_show_no_biography') }}
                             </p>
                         </div>
 
@@ -180,28 +180,28 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                             {{-- Specialty Card --}}
                             <div class="group relative overflow-hidden rounded-xl border bg-gradient-to-br {{ $isMale ? 'from-blue-100/50 to-blue-50/30' : 'from-purple-50 to-purple-100/50' }} p-5 hover:shadow-md transition-all duration-300">
-                                <div class="absolute top-0 right-0 w-24 h-24 {{ $isMale ? 'bg-blue-500/10' : 'bg-purple-500/10' }} rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-110"></div>
+                                <div class="absolute top-0 end-0 w-24 h-24 {{ $isMale ? 'bg-blue-500/10' : 'bg-purple-500/10' }} rounded-full -me-12 -mt-12 transition-transform group-hover:scale-110"></div>
                                 <div class="relative flex items-start gap-4">
                                     <div class="p-2.5 rounded-lg {{ $isMale ? 'bg-blue-100/50' : 'bg-purple-100' }}">
                                         <i class="bi bi-award text-lg {{ $isMale ? 'text-blue-600' : 'text-purple-600' }}"></i>
                                     </div>
                                     <div class="flex-1">
-                                        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Specialty</p>
-                                        <p class="text-lg font-bold text-gray-900">{{ $primaryInstructor?->tr('role') ?? 'Trainer' }}</p>
+                                        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">{{ __('trainer.trainer_show_specialty') }}</p>
+                                        <p class="text-lg font-bold text-gray-900">{{ $primaryInstructor?->tr('role') ?? __('trainer.trainer_show_trainer_fallback') }}</p>
                                     </div>
                                 </div>
                             </div>
 
                             {{-- Experience Card --}}
                             <div class="group relative overflow-hidden rounded-xl border bg-gradient-to-br {{ $isMale ? 'from-sky-50/50 to-sky-100/30' : 'from-teal-50 to-teal-100/50' }} p-5 hover:shadow-md transition-all duration-300">
-                                <div class="absolute top-0 right-0 w-24 h-24 {{ $isMale ? 'bg-blue-500/10' : 'bg-purple-500/10' }} rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-110"></div>
+                                <div class="absolute top-0 end-0 w-24 h-24 {{ $isMale ? 'bg-blue-500/10' : 'bg-purple-500/10' }} rounded-full -me-12 -mt-12 transition-transform group-hover:scale-110"></div>
                                 <div class="relative flex items-start gap-4">
                                     <div class="p-2.5 rounded-lg {{ $isMale ? 'bg-sky-100/50' : 'bg-teal-100' }}">
                                         <i class="bi bi-graph-up text-lg {{ $isMale ? 'text-sky-600' : 'text-teal-600' }}"></i>
                                     </div>
                                     <div class="flex-1">
-                                        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Experience</p>
-                                        <p class="text-lg font-bold text-gray-900">{{ $user->experience_years ?? 0 }} {{ ($user->experience_years ?? 0) == 1 ? 'year' : 'years' }}</p>
+                                        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">{{ __('trainer.trainer_show_experience') }}</p>
+                                        <p class="text-lg font-bold text-gray-900">{{ $user->experience_years ?? 0 }} {{ ($user->experience_years ?? 0) == 1 ? __('trainer.trainer_show_year') : __('trainer.trainer_show_years') }}</p>
                                     </div>
                                 </div>
                             </div>
@@ -212,9 +212,9 @@
                             <div class="space-y-4 pt-2">
                                 <div class="flex items-center gap-2">
                                     <div class="h-1 w-8 bg-gradient-to-r from-amber-500 to-purple-500 rounded-full"></div>
-                                    <span class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Classes Taught</span>
+                                    <span class="text-sm font-semibold text-gray-500 uppercase tracking-wide">{{ __('trainer.trainer_show_classes_taught') }}</span>
                                 </div>
-                                <div class="flex flex-wrap gap-2.5 pl-10">
+                                <div class="flex flex-wrap gap-2.5 ps-10">
                                     @foreach($activities as $activity)
                                         <span class="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium border-2 rounded-full hover:bg-purple-50 hover:border-purple-400 transition-all cursor-default">
                                             <i class="bi bi-activity text-sm"></i>
@@ -235,23 +235,23 @@
                                 <i class="bi bi-award text-xl text-amber-500"></i>
                             </div>
                             <div class="flex-1">
-                                <h3 class="text-xl font-bold mb-2">Achievements & Milestones</h3>
-                                <p class="text-sm text-gray-500">Recognition for excellence and dedication</p>
+                                <h3 class="text-xl font-bold mb-2">{{ __('trainer.trainer_show_achievements_title') }}</h3>
+                                <p class="text-sm text-gray-500">{{ __('trainer.trainer_show_achievements_subtitle') }}</p>
                             </div>
                         </div>
                     </div>
                     <div class="p-6">
                         @php
                             $achievements = [
-                                ['title' => 'Top Rated Trainer', 'icon' => 'bi-award', 'gradient' => $isMale ? 'from-blue-100/40 to-blue-50/20' : 'from-purple-100/50 to-purple-50', 'iconColor' => $isMale ? 'text-blue-600' : 'text-purple-600'],
-                                ['title' => 'Sessions Completed', 'icon' => 'bi-activity', 'gradient' => $isMale ? 'from-sky-100/40 to-sky-50/20' : 'from-teal-100/50 to-teal-50', 'iconColor' => $isMale ? 'text-sky-600' : 'text-teal-600'],
-                                ['title' => 'Client Favorite', 'icon' => 'bi-heart', 'gradient' => $isMale ? 'from-indigo-100/40 to-indigo-50/20' : 'from-amber-100/50 to-amber-50', 'iconColor' => $isMale ? 'text-indigo-600' : 'text-amber-600'],
+                                ['title' => __('trainer.trainer_show_ach_top_rated'), 'icon' => 'bi-award', 'gradient' => $isMale ? 'from-blue-100/40 to-blue-50/20' : 'from-purple-100/50 to-purple-50', 'iconColor' => $isMale ? 'text-blue-600' : 'text-purple-600'],
+                                ['title' => __('trainer.trainer_show_ach_sessions_completed'), 'icon' => 'bi-activity', 'gradient' => $isMale ? 'from-sky-100/40 to-sky-50/20' : 'from-teal-100/50 to-teal-50', 'iconColor' => $isMale ? 'text-sky-600' : 'text-teal-600'],
+                                ['title' => __('trainer.trainer_show_ach_client_favorite'), 'icon' => 'bi-heart', 'gradient' => $isMale ? 'from-indigo-100/40 to-indigo-50/20' : 'from-amber-100/50 to-amber-50', 'iconColor' => $isMale ? 'text-indigo-600' : 'text-amber-600'],
                             ];
                         @endphp
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             @foreach($achievements as $achievement)
                                 <div class="group relative overflow-hidden rounded-xl border bg-gradient-to-br {{ $achievement['gradient'] }} p-5 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-                                    <div class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-white/50 to-transparent rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-150"></div>
+                                    <div class="absolute top-0 end-0 w-20 h-20 bg-gradient-to-br from-white/50 to-transparent rounded-full -me-10 -mt-10 transition-transform group-hover:scale-150"></div>
                                     <div class="relative flex flex-col items-center text-center gap-3">
                                         <div class="w-14 h-14 rounded-full bg-white shadow-md flex items-center justify-center group-hover:scale-110 transition-transform">
                                             <i class="bi {{ $achievement['icon'] }} text-2xl {{ $achievement['iconColor'] }}"></i>
@@ -272,8 +272,8 @@
                                 <i class="bi bi-award text-xl text-teal-600"></i>
                             </div>
                             <div class="flex-1">
-                                <h3 class="text-xl font-bold mb-2">Certifications & Credentials</h3>
-                                <p class="text-sm text-gray-500">Professional qualifications verified for authenticity</p>
+                                <h3 class="text-xl font-bold mb-2">{{ __('trainer.trainer_show_certifications_title') }}</h3>
+                                <p class="text-sm text-gray-500">{{ __('trainer.trainer_show_certifications_subtitle') }}</p>
                             </div>
                         </div>
                     </div>
@@ -292,11 +292,11 @@
                                                         <i class="bi bi-award text-purple-600"></i>
                                                     </div>
                                                     <div class="flex-1">
-                                                        <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Certification</p>
+                                                        <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">{{ __('trainer.trainer_show_certification') }}</p>
                                                         <p class="font-semibold">{{ $skill }}</p>
                                                     </div>
                                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-gray-200">
-                                                        Verified
+                                                        {{ __('trainer.trainer_show_verified') }}
                                                     </span>
                                                 </div>
                                             </div>
@@ -309,7 +309,7 @@
                                 <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
                                     <i class="bi bi-award text-2xl text-gray-400"></i>
                                 </div>
-                                <p class="text-gray-500">No certifications added yet</p>
+                                <p class="text-gray-500">{{ __('trainer.trainer_show_no_certifications') }}</p>
                             </div>
                         @endif
                     </div>
@@ -343,8 +343,8 @@
                                 <i class="bi bi-clock text-xl text-blue-500"></i>
                             </div>
                             <div class="flex-1">
-                                <h3 class="text-xl font-bold mb-2">Weekly Schedule</h3>
-                                <p class="text-sm text-gray-500">Available training sessions throughout the week</p>
+                                <h3 class="text-xl font-bold mb-2">{{ __('trainer.trainer_show_weekly_schedule') }}</h3>
+                                <p class="text-sm text-gray-500">{{ __('trainer.trainer_show_schedule_subtitle') }}</p>
                             </div>
                         </div>
                     </div>
@@ -384,12 +384,12 @@
                                 <div>
                                     <h6 class="text-base font-bold mb-0">{{ $slot['activity_name'] }}</h6>
                                     <div class="class-meta text-muted-foreground flex items-center gap-x-4 mt-0.5 text-sm">
-                                        <span><i class="bi bi-clock mr-1"></i>{{ \Carbon\Carbon::parse($slot['start'])->format('g:i A') }} – {{ \Carbon\Carbon::parse($slot['end'])->format('g:i A') }}</span>
-                                        <span class="flex items-center gap-1 ml-2"><i class="bi bi-stopwatch"></i>{{ $slot['duration'] }} min</span>
+                                        <span><i class="bi bi-clock me-1"></i>{{ \Carbon\Carbon::parse($slot['start'])->format('g:i A') }} – {{ \Carbon\Carbon::parse($slot['end'])->format('g:i A') }}</span>
+                                        <span class="flex items-center gap-1 ms-2"><i class="bi bi-stopwatch"></i>{{ $slot['duration'] }} {{ __('trainer.trainer_show_min') }}</span>
                                     </div>
                                     @if($slot['facility_name'])
                                     <div class="text-sm text-muted-foreground mt-0.5">
-                                        <i class="bi bi-geo-alt mr-1"></i>{{ $slot['facility_name'] }}
+                                        <i class="bi bi-geo-alt me-1"></i>{{ $slot['facility_name'] }}
                                     </div>
                                     @endif
                                 </div>
@@ -397,13 +397,13 @@
                                 <div class="flex flex-col items-end gap-2 shrink-0">
                                     <div x-show="activeDay === '{{ $todayKey }}'">
                                         <span x-show="getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') === 'live'" class="status-chip status-ongoing">
-                                            <span class="live-dot"></span> Ongoing
+                                            <span class="live-dot"></span> {{ __('trainer.trainer_show_ongoing') }}
                                         </span>
                                         <span x-show="getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') === 'upcoming'" class="status-chip status-bookable">
-                                            <i class="bi bi-clock-fill"></i> Upcoming
+                                            <i class="bi bi-clock-fill"></i> {{ __('trainer.trainer_show_upcoming') }}
                                         </span>
                                         <span x-show="getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') === 'finished'" class="status-chip status-finished">
-                                            <i class="bi bi-check-circle-fill"></i> Finished
+                                            <i class="bi bi-check-circle-fill"></i> {{ __('trainer.trainer_show_finished') }}
                                         </span>
                                     </div>
                                     @if($slot['club_name'])
@@ -430,8 +430,8 @@
                     <div x-show="!@js(collect($scheduleSlots)->map(fn($s) => $s['days'])->flatten()->unique()->values()->toArray()).includes(activeDay)"
                          class="text-center py-16">
                         <i class="bi bi-calendar-x text-muted-foreground text-5xl"></i>
-                        <p class="text-lg font-medium mt-4">No classes on this day</p>
-                        <p class="text-sm text-muted-foreground mt-2">Try selecting a different day</p>
+                        <p class="text-lg font-medium mt-4">{{ __('trainer.trainer_show_no_classes_day') }}</p>
+                        <p class="text-sm text-muted-foreground mt-2">{{ __('trainer.trainer_show_try_different_day') }}</p>
                     </div>
                 </div>
                 @else
@@ -439,7 +439,7 @@
                     <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
                         <i class="bi bi-calendar-x text-2xl text-gray-400"></i>
                     </div>
-                    <p class="text-gray-500">No classes scheduled</p>
+                    <p class="text-gray-500">{{ __('trainer.trainer_show_no_classes_scheduled') }}</p>
                 </div>
                 @endif
 
@@ -456,15 +456,15 @@
                                 <i class="bi bi-chat text-xl text-teal-600"></i>
                             </div>
                             <div class="flex-1">
-                                <h3 class="text-xl font-bold mb-2">Client Reviews</h3>
-                                <p class="text-sm text-gray-500">What our clients say about their experience</p>
+                                <h3 class="text-xl font-bold mb-2">{{ __('trainer.trainer_show_client_reviews') }}</h3>
+                                <p class="text-sm text-gray-500">{{ __('trainer.trainer_show_reviews_subtitle') }}</p>
                             </div>
                         </div>
                     </div>
                     <div class="p-6 space-y-4">
                         @if(!empty($reactionTotal) && $reactionTotal > 0)
                             <div class="p-4 border rounded-xl bg-white">
-                                <p class="text-sm font-semibold text-gray-500 mb-2"><i class="bi bi-emoji-smile mr-1"></i> Class reactions · {{ $reactionTotal }}</p>
+                                <p class="text-sm font-semibold text-gray-500 mb-2"><i class="bi bi-emoji-smile me-1"></i> {{ __('trainer.trainer_show_class_reactions') }} · {{ $reactionTotal }}</p>
                                 <div class="flex flex-wrap gap-2">
                                     @foreach($reactions as $emoji => $cnt)
                                         <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100">
@@ -485,7 +485,7 @@
                                             </span>
                                         </div>
                                         <div>
-                                            <p class="font-bold text-base">{{ $review->reviewer->full_name ?? 'Anonymous' }}</p>
+                                            <p class="font-bold text-base">{{ $review->reviewer->full_name ?? __('trainer.trainer_show_anonymous') }}</p>
                                             <p class="text-xs text-gray-500 flex items-center gap-1">
                                                 <i class="bi bi-clock text-xs"></i>
                                                 {{ $review->formatted_date }}
@@ -499,7 +499,7 @@
                                     </div>
                                 </div>
                                 @if($review->comment)
-                                    <p class="text-gray-500 leading-relaxed pl-15">{{ $review->comment }}</p>
+                                    <p class="text-gray-500 leading-relaxed ps-15">{{ $review->comment }}</p>
                                 @endif
                             </div>
                         @empty
@@ -507,7 +507,7 @@
                                 <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
                                     <i class="bi bi-chat text-2xl text-gray-400"></i>
                                 </div>
-                                <p class="text-gray-500">No reviews yet</p>
+                                <p class="text-gray-500">{{ __('trainer.trainer_show_no_reviews') }}</p>
                             </div>
                         @endforelse
                     </div>
@@ -523,8 +523,8 @@
                                 <i class="bi bi-telephone text-xl text-blue-500"></i>
                             </div>
                             <div class="flex-1">
-                                <h3 class="text-xl font-bold mb-2">Contact Information</h3>
-                                <p class="text-sm text-gray-500">Get in touch to start your training journey</p>
+                                <h3 class="text-xl font-bold mb-2">{{ __('trainer.trainer_show_contact_information') }}</h3>
+                                <p class="text-sm text-gray-500">{{ __('trainer.trainer_show_contact_subtitle') }}</p>
                             </div>
                         </div>
                     </div>
@@ -555,11 +555,11 @@
                                 <i class="bi bi-telephone text-xl text-blue-500"></i>
                             </div>
                             <div class="flex-1">
-                                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Phone</p>
+                                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{{ __('trainer.trainer_show_phone') }}</p>
                                 @if($trainerPhone)
                                     <a href="tel:{{ $trainerPhone }}" class="font-bold text-base hover:text-blue-600 transition-colors">{{ $trainerPhone }}</a>
                                 @else
-                                    <p class="font-bold text-base text-gray-400">Not provided</p>
+                                    <p class="font-bold text-base text-gray-400">{{ __('trainer.trainer_show_not_provided') }}</p>
                                 @endif
                             </div>
                         </div>
@@ -570,11 +570,11 @@
                                 <i class="bi bi-envelope text-xl text-purple-600"></i>
                             </div>
                             <div class="flex-1">
-                                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Email</p>
+                                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{{ __('trainer.trainer_show_email') }}</p>
                                 @if($trainerEmail)
                                     <a href="mailto:{{ $trainerEmail }}" class="font-bold text-base hover:text-purple-600 transition-colors">{{ $trainerEmail }}</a>
                                 @else
-                                    <p class="font-bold text-base text-gray-400">Not provided</p>
+                                    <p class="font-bold text-base text-gray-400">{{ __('trainer.trainer_show_not_provided') }}</p>
                                 @endif
                             </div>
                         </div>
@@ -582,7 +582,7 @@
                         {{-- Social Media --}}
                         @if(!empty(array_filter($trainerSocials)))
                         <div class="pt-4">
-                            <p class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Connect on Social Media</p>
+                            <p class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">{{ __('trainer.trainer_show_connect_social') }}</p>
                             <div class="flex flex-wrap gap-3">
                                 @foreach($trainerSocials as $platform => $url)
                                     @if(!empty($url) && isset($socialIcons[$platform]))

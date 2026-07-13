@@ -14,11 +14,11 @@ class StoreTransactionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'description'      => 'required|string|max:255',
-            'amount'           => 'required|numeric|min:0',
+            'description' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:0',
             'transaction_date' => 'required|date',
-            'category'         => 'nullable|string|max:255',
-            'payment_method'   => 'nullable|in:cash,card,bank_transfer,online,other',
+            'category' => 'nullable|string|max:255',
+            'payment_method' => 'nullable|in:cash,card,bank_transfer,online,other',
             'reference_number' => 'nullable|string|max:255',
         ];
     }

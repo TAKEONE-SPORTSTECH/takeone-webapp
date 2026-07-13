@@ -9,9 +9,9 @@
     $showVar = $isEdit ? 'showEditModal' : 'showAddModal';
     $formId = $isEdit ? 'editActivityForm' : 'addActivityForm';
     $cropperId = $isEdit ? 'editActivityPictureCropper' : 'activityPictureCropper';
-    $title = $isEdit ? 'Edit Activity' : 'Create New Activity';
-    $subtitle = $isEdit ? 'Update activity details' : 'Configure your activity details';
-    $submitText = $isEdit ? 'Update Activity' : 'Create Activity';
+    $title = $isEdit ? __('shared.components_activity_modal_title_edit') : __('shared.components_activity_modal_title_create');
+    $subtitle = $isEdit ? __('shared.components_activity_modal_subtitle_edit') : __('shared.components_activity_modal_subtitle_create');
+    $submitText = $isEdit ? __('shared.components_activity_modal_submit_edit') : __('shared.components_activity_modal_submit_create');
     $submitIcon = $isEdit ? 'bi-check-lg' : 'bi-plus-lg';
 @endphp
 
@@ -77,17 +77,17 @@
                         <!-- Activity Picture -->
                         <div class="space-y-3">
                             <label class="block text-sm font-medium text-foreground">
-                                Activity Picture
+                                {{ __('shared.components_activity_modal_activity_picture') }}
                             </label>
 
                             @if(!$isEdit)
                             <!-- Existing picture from duplication -->
                             <div id="existingPictureSection" class="hidden">
                                 <div class="flex items-center gap-3 p-3 bg-info/10 border border-info/20 rounded-lg">
-                                    <img id="existingPictureImg" src="" alt="Existing" class="w-16 h-16 object-cover rounded">
+                                    <img id="existingPictureImg" src="" alt="{{ __('shared.components_activity_modal_existing_alt') }}" class="w-16 h-16 object-cover rounded">
                                     <div class="flex-1">
-                                        <p class="text-sm font-medium text-foreground">Keep existing picture</p>
-                                        <p class="text-xs text-muted-foreground">Or upload a new one below</p>
+                                        <p class="text-sm font-medium text-foreground">{{ __('shared.components_activity_modal_keep_existing') }}</p>
+                                        <p class="text-xs text-muted-foreground">{{ __('shared.components_activity_modal_or_upload_new') }}</p>
                                     </div>
                                     <button type="button" id="removeExistingPictureBtn" class="p-2 text-destructive hover:text-destructive/80">
                                         <i class="bi bi-x-lg"></i>
@@ -109,7 +109,7 @@
                                     :filename="'activity_' . time()"
                                     :previewWidth="280"
                                     :previewHeight="210"
-                                    :buttonText="$isEdit ? 'Change Picture' : 'Upload Picture'"
+                                    :buttonText="$isEdit ? __('shared.components_activity_modal_change_picture') : __('shared.components_activity_modal_upload_picture')"
                                     buttonClass="btn btn-outline-secondary w-full"
                                 />
                             </div>
@@ -120,14 +120,14 @@
                         <!-- Activity Title -->
                         <div class="space-y-2">
                             <label for="{{ $prefix }}ActivityName" class="block text-sm font-medium text-foreground">
-                                Activity Title <span class="text-destructive">*</span>
+                                {{ __('shared.components_activity_modal_activity_title') }} <span class="text-destructive">*</span>
                             </label>
                             <input type="text"
                                    id="{{ $prefix }}ActivityName"
                                    name="name"
                                    required
                                    x-show="lang==='en'"
-                                   placeholder="e.g., Morning Yoga Class"
+                                   placeholder="{{ __('shared.components_activity_modal_name_placeholder') }}"
                                    class="form-control"
                                    oninput="clearActivityFieldError('{{ $prefix }}', 'name')">
                             <input type="text"
@@ -145,13 +145,13 @@
                         <!-- Description -->
                         <div class="space-y-2">
                             <label for="{{ $prefix }}ActivityDescription" class="block text-sm font-medium text-foreground">
-                                Description
+                                {{ __('shared.components_activity_modal_description') }}
                             </label>
                             <textarea id="{{ $prefix }}ActivityDescription"
                                       name="description"
                                       rows="3"
                                       x-show="lang==='en'"
-                                      placeholder="Detailed description of the activity..."
+                                      placeholder="{{ __('shared.components_activity_modal_description_placeholder') }}"
                                       class="form-control resize-none"
                                       oninput="clearActivityFieldError('{{ $prefix }}', 'description')"></textarea>
                             <textarea id="{{ $prefix }}ActivityDescriptionAr"
@@ -168,12 +168,12 @@
                         <!-- Additional Notes -->
                         <div class="space-y-2">
                             <label for="{{ $prefix }}ActivityNotes" class="block text-sm font-medium text-foreground">
-                                Additional Notes
+                                {{ __('shared.components_activity_modal_additional_notes') }}
                             </label>
                             <textarea id="{{ $prefix }}ActivityNotes"
                                       name="notes"
                                       rows="2"
-                                      placeholder="Any additional information..."
+                                      placeholder="{{ __('shared.components_activity_modal_notes_placeholder') }}"
                                       class="form-control resize-none"
                                       oninput="clearActivityFieldError('{{ $prefix }}', 'notes')"></textarea>
                             <span id="{{ $prefix }}ActivityError_notes" class="text-destructive text-xs hidden block"></span>
@@ -187,7 +187,7 @@
                 <button type="button"
                         class="btn btn-outline-secondary"
                         @click="{{ $showVar }} = false">
-                    Cancel
+                    {{ __('shared.cancel') }}
                 </button>
                 <button type="button"
                         id="{{ $prefix }}ActivitySubmitBtn"
@@ -259,7 +259,7 @@ function initDuplicate() {
     const component = el ? Alpine.$data(el) : null;
     if (component && component.duplicateData) {
         const data = component.duplicateData;
-        document.getElementById('addActivityName').value = data.name + ' (Copy)';
+        document.getElementById('addActivityName').value = data.name + '{{ __("shared.components_activity_modal_copy_suffix") }}';
         document.getElementById('addActivityDescription').value = data.description || '';
         document.getElementById('addActivityNotes').value = data.notes || '';
         clearAllActivityErrors('add');
@@ -308,28 +308,28 @@ function submitActivityForm(prefix, formId) {
     let valid = true;
     const nameEl = document.getElementById(prefix + 'ActivityName');
     if (!nameEl || !nameEl.value.trim()) {
-        showActivityFieldError(prefix, 'name', 'Activity title is required.');
+        showActivityFieldError(prefix, 'name', '{{ __("shared.components_activity_modal_err_title_required") }}');
         valid = false;
     } else if (nameEl.value.trim().length > 255) {
-        showActivityFieldError(prefix, 'name', 'Activity title must not exceed 255 characters.');
+        showActivityFieldError(prefix, 'name', '{{ __("shared.components_activity_modal_err_title_max") }}');
         valid = false;
     }
 
     const descEl = document.getElementById(prefix + 'ActivityDescription');
     if (descEl && descEl.value.length > 2000) {
-        showActivityFieldError(prefix, 'description', 'Description must not exceed 2000 characters.');
+        showActivityFieldError(prefix, 'description', '{{ __("shared.components_activity_modal_err_desc_max") }}');
         valid = false;
     }
 
     const notesEl = document.getElementById(prefix + 'ActivityNotes');
     if (notesEl && notesEl.value.length > 1000) {
-        showActivityFieldError(prefix, 'notes', 'Additional notes must not exceed 1000 characters.');
+        showActivityFieldError(prefix, 'notes', '{{ __("shared.components_activity_modal_err_notes_max") }}');
         valid = false;
     }
 
     if (!valid) {
         if (typeof Toast !== 'undefined') {
-            Toast.error('Validation Error', 'Please fix the highlighted fields before submitting.');
+            Toast.error('{{ __("shared.components_activity_modal_toast_validation_error") }}', '{{ __("shared.components_activity_modal_toast_fix_fields") }}');
         }
         return;
     }
@@ -337,7 +337,7 @@ function submitActivityForm(prefix, formId) {
     const btn = document.getElementById(prefix + 'ActivitySubmitBtn');
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-2"></span>Saving...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>{{ __("shared.components_activity_modal_saving") }}';
 
     fetch(form.action, {
         method: 'POST',
@@ -348,7 +348,7 @@ function submitActivityForm(prefix, formId) {
         const data = await response.json();
         if (response.ok && data.success) {
             if (typeof Toast !== 'undefined') {
-                Toast.success('Success', data.message || 'Activity saved successfully.');
+                Toast.success('{{ __("shared.components_activity_modal_toast_success") }}', data.message || '{{ __("shared.components_activity_modal_toast_saved") }}');
             }
             const mode = prefix === 'edit' ? 'edit' : 'create';
             // Update the page in place — no reload.
@@ -377,13 +377,13 @@ function submitActivityForm(prefix, formId) {
             });
             const count = Object.keys(data.errors).length;
             if (typeof Toast !== 'undefined') {
-                Toast.error('Validation Failed', `${count} error${count > 1 ? 's' : ''} — please review the highlighted fields.`);
+                Toast.error('{{ __("shared.components_activity_modal_toast_validation_failed") }}', `${count} error${count > 1 ? 's' : ''} — please review the highlighted fields.`);
             }
             btn.disabled = false;
             btn.innerHTML = originalHtml;
         } else {
             if (typeof Toast !== 'undefined') {
-                Toast.error('Error', data.message || 'Failed to save activity. Please try again.');
+                Toast.error('{{ __("shared.components_activity_modal_toast_error") }}', data.message || '{{ __("shared.components_activity_modal_toast_save_failed") }}');
             }
             btn.disabled = false;
             btn.innerHTML = originalHtml;
@@ -391,7 +391,7 @@ function submitActivityForm(prefix, formId) {
     })
     .catch(() => {
         if (typeof Toast !== 'undefined') {
-            Toast.error('Error', 'An unexpected error occurred. Please try again.');
+            Toast.error('{{ __("shared.components_activity_modal_toast_error") }}', '{{ __("shared.components_activity_modal_toast_unexpected") }}');
         }
         btn.disabled = false;
         btn.innerHTML = originalHtml;

@@ -21,7 +21,7 @@ class ClubMessageController extends Controller
         $this->authorizeClub($club);
 
         $conversations = $this->conversationsFor($club, (int) Auth::id());
-        $members       = Membership::where('tenant_id', $club->id)->with('user')->get();
+        $members = Membership::where('tenant_id', $club->id)->with('user')->get();
 
         return view(\App\Support\ClubView::pick('messages'), compact('club', 'conversations', 'members'));
     }
@@ -48,8 +48,8 @@ class ClubMessageController extends Controller
             ->update(['is_read' => true, 'read_at' => now()]);
 
         return response()->json([
-            'success'  => true,
-            'user'     => $this->presentUser($user),
+            'success' => true,
+            'user' => $this->presentUser($user),
             'messages' => $messages->map(fn ($m) => $this->presentMessage($m, $adminId))->values(),
         ]);
     }
@@ -61,8 +61,8 @@ class ClubMessageController extends Controller
 
         $data = $request->validate([
             'recipient_id' => ['required', 'integer', 'exists:users,id'],
-            'message'      => ['required', 'string', 'max:5000'],
-            'subject'      => ['nullable', 'string', 'max:255'],
+            'message' => ['required', 'string', 'max:5000'],
+            'subject' => ['nullable', 'string', 'max:255'],
         ]);
 
         // Recipient must be a member of THIS club — never an arbitrary user (IDOR).
@@ -71,21 +71,21 @@ class ClubMessageController extends Controller
         $adminId = (int) Auth::id();
 
         $message = ClubMessage::create([
-            'tenant_id'    => $club->id,
-            'sender_id'    => $adminId,
+            'tenant_id' => $club->id,
+            'sender_id' => $adminId,
             'recipient_id' => $data['recipient_id'],
-            'subject'      => $data['subject'] ?? null,
-            'message'      => $data['message'],
-            'is_read'      => false,
+            'subject' => $data['subject'] ?? null,
+            'message' => $data['message'],
+            'is_read' => false,
         ]);
 
         $this->pushRealtime($club, $message);
 
         if ($request->expectsJson()) {
             return response()->json([
-                'success'      => true,
-                'message'      => 'Message sent.',
-                'data'         => $this->presentMessage($message, $adminId),
+                'success' => true,
+                'message' => 'Message sent.',
+                'data' => $this->presentMessage($message, $adminId),
                 'recipient_id' => (int) $data['recipient_id'],
             ]);
         }
@@ -118,16 +118,16 @@ class ClubMessageController extends Controller
         $users = User::whereIn('id', $grouped->keys())->get()->keyBy('id');
 
         return $grouped->map(function ($msgs, $otherId) use ($adminId, $users) {
-            $last   = $msgs->first();
+            $last = $msgs->first();
             $unread = $msgs->where('recipient_id', $adminId)->where('is_read', false)->count();
 
             return (object) [
-                'user_id'         => $otherId,
-                'user'            => $users[$otherId] ?? null,
-                'last_message'    => $last->message,
+                'user_id' => $otherId,
+                'user' => $users[$otherId] ?? null,
+                'last_message' => $last->message,
                 'last_message_at' => $last->created_at,
-                'unread'          => $unread > 0,
-                'unread_count'    => $unread,
+                'unread' => $unread > 0,
+                'unread_count' => $unread,
             ];
         })->values();
     }
@@ -135,23 +135,23 @@ class ClubMessageController extends Controller
     private function presentMessage(ClubMessage $m, int $adminId): array
     {
         return [
-            'id'               => $m->id,
-            'body'             => $m->message,
-            'mine'             => $m->sender_id === $adminId,
-            'is_read'          => $m->is_read,
-            'created_at'       => $m->created_at->toIso8601String(),
+            'id' => $m->id,
+            'body' => $m->message,
+            'mine' => $m->sender_id === $adminId,
+            'is_read' => $m->is_read,
+            'created_at' => $m->created_at->toIso8601String(),
             'created_at_human' => $m->created_at->diffForHumans(null, true, true),
-            'time'             => $m->created_at->format('g:i A'),
+            'time' => $m->created_at->format('g:i A'),
         ];
     }
 
     private function presentUser(User $user): array
     {
         return [
-            'id'     => $user->id,
-            'name'   => $user->full_name ?? $user->name ?? 'Member',
-            'avatar' => $user->profile_picture ? asset('storage/' . $user->profile_picture) : null,
-            'initial'=> mb_strtoupper(mb_substr($user->full_name ?? $user->name ?? 'M', 0, 1, 'UTF-8'), 'UTF-8'),
+            'id' => $user->id,
+            'name' => $user->full_name ?? $user->name ?? 'Member',
+            'avatar' => $user->profile_picture ? asset('storage/'.$user->profile_picture) : null,
+            'initial' => mb_strtoupper(mb_substr($user->full_name ?? $user->name ?? 'M', 0, 1, 'UTF-8'), 'UTF-8'),
         ];
     }
 
@@ -161,15 +161,27 @@ class ClubMessageController extends Controller
         $sender = Auth::user();
 
         Realtime()->publishToUser((int) $message->recipient_id, 'messages', [
-            'id'               => $message->id,
-            'tenant_id'        => $club->id,
-            'club_slug'        => $club->slug,
-            'club_name'        => $club->club_name ?? 'Club',
-            'from_id'          => (int) $message->sender_id,
-            'from_name'        => $sender->full_name ?? $sender->name ?? 'Club',
-            'from_avatar'      => $sender->profile_picture ? asset('storage/' . $sender->profile_picture) : null,
-            'body'             => $message->message,
+            'id' => $message->id,
+            'tenant_id' => $club->id,
+            'club_slug' => $club->slug,
+            'club_name' => $club->club_name ?? 'Club',
+            'from_id' => (int) $message->sender_id,
+            'from_name' => $sender->full_name ?? $sender->name ?? 'Club',
+            'from_avatar' => $sender->profile_picture ? asset('storage/'.$sender->profile_picture) : null,
+            'body' => $message->message,
             'created_at_human' => 'just now',
         ]);
+
+        // Native push (FCM) to the tray — reaches the member even if the app is closed.
+        try {
+            \App\Jobs\SendPushNotification::dispatch(
+                (int) $message->recipient_id,
+                $club->club_name ?? 'Club',
+                (string) $message->message,
+                ['type' => 'club_message', 'tenant_id' => (string) $club->id, 'action_url' => url('/messages')],
+            );
+        } catch (\Throwable $e) {
+            // Best-effort.
+        }
     }
 }

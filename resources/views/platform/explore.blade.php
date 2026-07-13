@@ -4,9 +4,9 @@
 <div class="tf-container" x-data="exploreApp()">
     <!-- Hero Section -->
     <div class="text-center mb-3">
-        <h1 class="text-4xl md:text-5xl font-bold text-primary mb-2">Find Your Perfect Fit</h1>
-        <p class="text-lg md:text-xl text-muted-foreground mb-3">Discover sports clubs, trainers, nutrition clinics, and more near you</p>
-        <p class="text-muted-foreground"><span id="currentLocation" class="badge bg-primary text-white rounded-full px-3 py-2 text-lg"><i class="bi bi-geo-alt-fill mr-1"></i>Detecting location...</span></p>
+        <h1 class="text-4xl md:text-5xl font-bold text-primary mb-2">{!! __('explore.hero_title') !!}</h1>
+        <p class="text-lg md:text-xl text-muted-foreground mb-3">{{ __('explore.hero_sub') }}</p>
+        <p class="text-muted-foreground"><span id="currentLocation" class="badge bg-primary text-white rounded-full px-3 py-2 text-lg"><i class="bi bi-geo-alt-fill me-1"></i>{{ __('explore.detecting_location') }}</span></p>
     </div>
 
     <!-- Search Bar with Near Me Button -->
@@ -15,13 +15,13 @@
             <div class="card shadow-sm rounded-full border-0">
                 <div class="rounded-full p-2">
                     <div class="flex rounded-full overflow-hidden">
-                        <span class="flex items-center px-3 py-2 bg-white border-0 rounded-l-full">
+                        <span class="flex items-center px-3 py-2 bg-white border-0 rounded-s-full">
                             <i class="bi bi-search"></i>
                         </span>
                         <input type="text" id="searchInput" class="flex-1 px-3 py-2 bg-white border-0 focus:outline-none focus:ring-0"
-                               placeholder="Search for clubs, trainers, nutrition clinics...">
+                               placeholder="{{ __('explore.search_placeholder') }}">
                         <button class="btn btn-primary px-4 rounded-full" id="nearMeBtn" type="button" @click="openMapModal()">
-                            <i class="bi bi-geo-alt-fill mr-2"></i>Near Me
+                            <i class="bi bi-geo-alt-fill me-2"></i>{{ __('explore.near_me') }}
                         </button>
                     </div>
                 </div>
@@ -34,52 +34,52 @@
         <div class="w-full lg:w-5/6">
             <div class="flex flex-wrap gap-2 justify-center">
                 <button class="btn btn-primary category-btn active" data-category="all">
-                    <i class="bi bi-search mr-2"></i>All
+                    <i class="bi bi-search me-2"></i>{{ __('explore.cat_all') }}
                 </button>
                 <button class="btn btn-outline-primary category-btn" data-category="sports-clubs">
-                    <i class="bi bi-trophy mr-2"></i>Clubs
+                    <i class="bi bi-trophy me-2"></i>{{ __('explore.cat_clubs') }}
                 </button>
                 <button class="btn btn-outline-primary category-btn" data-category="personal-trainers">
-                    <i class="bi bi-person mr-2"></i>Trainers
+                    <i class="bi bi-person me-2"></i>{{ __('explore.cat_trainers') }}
                 </button>
                 <button class="btn btn-outline-primary category-btn" data-category="events">
-                    <i class="bi bi-calendar-event mr-2"></i>Events
+                    <i class="bi bi-calendar-event me-2"></i>{{ __('explore.cat_events') }}
                 </button>
                 <button class="btn btn-outline-primary category-btn" data-category="nutrition-clinic">
-                    <i class="bi bi-apple mr-2"></i>Nutrition
+                    <i class="bi bi-apple me-2"></i>{{ __('explore.cat_nutrition') }}
                 </button>
                 <button class="btn btn-outline-primary category-btn" data-category="physiotherapy-clinics">
-                    <i class="bi bi-activity mr-2"></i>Physiotherapy
+                    <i class="bi bi-activity me-2"></i>{{ __('explore.cat_physiotherapy') }}
                 </button>
                 <button class="btn btn-outline-primary category-btn" data-category="sports-shops">
-                    <i class="bi bi-bag mr-2"></i>Shops
+                    <i class="bi bi-bag me-2"></i>{{ __('explore.cat_shops') }}
                 </button>
                 <button class="btn btn-outline-primary category-btn" data-category="venues">
-                    <i class="bi bi-building-fill mr-2"></i>Venues
+                    <i class="bi bi-building-fill me-2"></i>{{ __('explore.cat_venues') }}
                 </button>
                 <button class="btn btn-outline-primary category-btn" data-category="supplements">
-                    <i class="bi bi-box mr-2"></i>Supplements
+                    <i class="bi bi-box me-2"></i>{{ __('explore.cat_supplements') }}
                 </button>
                 <button class="btn btn-outline-primary category-btn" data-category="food-plans">
-                    <i class="bi bi-egg-fried mr-2"></i>Food Plans
+                    <i class="bi bi-egg-fried me-2"></i>{{ __('explore.cat_food_plans') }}
                 </button>
             </div>
         </div>
     </div>
 
     <!-- Location Status Alert -->
-    <div id="locationAlert" class="alert alert-info relative pr-12 hidden" role="alert" x-show="showAlert" x-transition>
-        <i class="bi bi-info-circle mr-2"></i>
+    <div id="locationAlert" class="alert alert-info relative pe-12 hidden" role="alert" x-show="showAlert" x-transition>
+        <i class="bi bi-info-circle me-2"></i>
         <span id="locationMessage"></span>
-        <button type="button" class="absolute top-4 right-4 btn-close" @click="showAlert = false"></button>
+        <button type="button" class="absolute top-4 end-4 btn-close" @click="showAlert = false"></button>
     </div>
 
     <!-- Loading Spinner -->
     <div id="loadingSpinner" class="text-center py-5">
         <div class="spinner-border text-primary" role="status">
-            <span class="sr-only">Loading...</span>
+            <span class="sr-only">{{ __('explore.loading') }}</span>
         </div>
-        <p class="mt-3 text-muted-foreground">Finding what's near you...</p>
+        <p class="mt-3 text-muted-foreground">{{ __('explore.finding') }}</p>
     </div>
 
     <!-- Clubs Grid -->
@@ -96,8 +96,8 @@
         <div class="w-full flex justify-center">
             <div id="noResults" class="flex flex-col items-center justify-center text-center min-h-[400px]">
                 <i class="bi bi-inbox text-6xl text-gray-300"></i>
-                <h4 class="mt-3 text-muted-foreground font-semibold">No Results Found</h4>
-                <p class="text-muted-foreground">Try adjusting your search or location</p>
+                <h4 class="mt-3 text-muted-foreground font-semibold">{{ __('explore.no_results') }}</h4>
+                <p class="text-muted-foreground">{{ __('explore.no_results_hint') }}</p>
             </div>
         </div>
     </div>
@@ -129,7 +129,7 @@
                 <!-- Modal Header -->
                 <div class="flex items-center justify-between px-6 py-4">
                     <h5 class="text-lg font-semibold">
-                        <i class="bi bi-geo-alt-fill mr-2 text-primary"></i>Set Your Location
+                        <i class="bi bi-geo-alt-fill me-2 text-primary"></i>{{ __('explore.set_location') }}
                     </h5>
                     <button type="button" class="btn-close" @click="closeMapModal()"></button>
                 </div>
@@ -140,11 +140,11 @@
                 <!-- Modal Footer -->
                 <div class="flex items-center justify-between px-6 py-4 bg-muted border-t border-border">
                     <small class="text-muted-foreground">
-                        <i class="bi bi-geo-alt-fill mr-1"></i>
-                        <span id="modalLocationCoordinates">Drag the marker to set your location</span>
+                        <i class="bi bi-geo-alt-fill me-1"></i>
+                        <span id="modalLocationCoordinates">{{ __('explore.drag_marker') }}</span>
                     </small>
                     <button type="button" class="btn btn-primary" id="applyLocationBtn" @click="applyLocation()">
-                        <i class="bi bi-check-circle mr-2"></i>Apply Location
+                        <i class="bi bi-check-circle me-2"></i>{{ __('explore.apply_location') }}
                     </button>
                 </div>
             </div>

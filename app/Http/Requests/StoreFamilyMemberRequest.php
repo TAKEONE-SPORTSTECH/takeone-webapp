@@ -15,21 +15,21 @@ class StoreFamilyMemberRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'full_name'           => 'required|string|max:255',
-            'email'               => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->whereNull('deleted_at')],
-            'gender'              => 'required|in:Male,Female',
-            'birthdate'           => 'required|date|before:today',
-            'blood_type'          => 'nullable|string|max:10',
-            'nationality'         => 'required|string|max:100',
-            'relationship_type'   => 'required|string|max:50',
-            'is_billing_contact'  => 'boolean',
-            'mobile_code'         => 'nullable|string|max:10',
-            'mobile'              => 'nullable|string|max:20',
-            'marital_status'                    => 'nullable|string|max:50',
-            'motto'                             => 'nullable|string|max:500',
+            'full_name' => 'required|string|max:255',
+            'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->whereNull('deleted_at')],
+            'gender' => 'required|in:Male,Female',
+            'birthdate' => 'required|date|before:today',
+            'blood_type' => 'nullable|string|max:10',
+            'nationality' => 'required|string|max:100',
+            'relationship_type' => 'required|string|max:50',
+            'is_billing_contact' => 'boolean',
+            'mobile_code' => 'nullable|string|max:10',
+            'mobile' => 'nullable|string|max:20',
+            'marital_status' => 'nullable|string|max:50',
+            'motto' => 'nullable|string|max:500',
             'emergency_contacts_json' => 'nullable|string',
-            'health_conditions_json'  => 'nullable|string',
-            'documents_json'          => 'nullable|string',
+            'health_conditions_json' => 'nullable|string',
+            'documents_json' => 'nullable|string',
         ];
     }
 }

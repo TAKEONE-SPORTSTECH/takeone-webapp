@@ -16,9 +16,11 @@ use Illuminate\Support\Facades\Cache;
 class ClubCache
 {
     // TTLs in seconds
-    const TTL_STATS      = 3600;  // 1 hour  — member counts, nationality, etc.
+    const TTL_STATS = 3600;  // 1 hour  — member counts, nationality, etc.
+
     const TTL_FINANCIALS = 1800;  // 30 min  — monthly chart data
-    const TTL_ANALYTICS  = 3600;  // 1 hour  — popular packages
+
+    const TTL_ANALYTICS = 3600;  // 1 hour  — popular packages
 
     // ── Key builders ────────────────────────────────────────────────────────
 

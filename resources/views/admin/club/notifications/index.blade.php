@@ -5,11 +5,11 @@
     {{-- Header --}}
     <div class="flex flex-wrap gap-3 items-center justify-between mb-6">
         <div>
-            <h2 class="tf-section-title">Notifications</h2>
-            <p class="text-muted-foreground mb-0">History of all notifications sent to members</p>
+            <h2 class="tf-section-title">{{ __('admin.club_notifications_index_title') }}</h2>
+            <p class="text-muted-foreground mb-0">{{ __('admin.club_notifications_index_subtitle') }}</p>
         </div>
         <button @click="showNotificationModal = true" class="btn btn-primary">
-            <i class="bi bi-send me-2"></i>Send Notification
+            <i class="bi bi-send me-2"></i>{{ __('admin.club_notifications_index_send') }}
         </button>
     </div>
 
@@ -20,19 +20,19 @@
                 <div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                     <i class="bi bi-bell text-2xl text-primary"></i>
                 </div>
-                <h3 class="text-gray-600 font-medium mb-1">No notifications sent yet</h3>
-                <p class="text-gray-400 text-sm">Click "Send Notification" to send your first message to members.</p>
+                <h3 class="text-gray-600 font-medium mb-1">{{ __('admin.club_notifications_index_empty_title') }}</h3>
+                <p class="text-gray-400 text-sm">{{ __('admin.club_notifications_index_empty_body') }}</p>
             </div>
         @else
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead class="bg-muted/40 border-b border-border">
                         <tr>
-                            <th class="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Sent At</th>
-                            <th class="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Subject</th>
-                            <th class="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Sent By</th>
-                            <th class="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Recipients</th>
-                            <th class="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide"></th>
+                            <th class="text-start px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{{ __('admin.club_notifications_index_col_sent_at') }}</th>
+                            <th class="text-start px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{{ __('admin.club_notifications_index_col_subject') }}</th>
+                            <th class="text-start px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{{ __('admin.club_notifications_index_col_sent_by') }}</th>
+                            <th class="text-start px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{{ __('admin.club_notifications_index_col_recipients') }}</th>
+                            <th class="text-start px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide"></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-border">
@@ -48,26 +48,26 @@
                                 </span>
                             </td>
                             <td class="px-5 py-4 text-gray-600 whitespace-nowrap">
-                                {{ $notif->sender->full_name ?? 'Unknown' }}
+                                {{ $notif->sender->full_name ?? __('admin.club_notifications_index_unknown') }}
                             </td>
                             <td class="px-5 py-4 whitespace-nowrap">
                                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium
                                     {{ $notif->recipient_type === 'all' ? 'bg-primary/10 text-primary' : 'bg-blue-50 text-blue-600' }}">
                                     <i class="bi {{ $notif->recipient_type === 'all' ? 'bi-people' : 'bi-person-check' }}"></i>
-                                    {{ $notif->recipient_count }} {{ $notif->recipient_type === 'all' ? 'All Members' : 'Selected' }}
+                                    {{ $notif->recipient_count }} {{ $notif->recipient_type === 'all' ? __('admin.club_notifications_index_all_members') : __('admin.club_notifications_index_selected') }}
                                 </span>
                             </td>
                             <td class="px-5 py-4">
                                 <button @click="expanded = !expanded"
                                         class="text-xs text-primary hover:underline cursor-pointer bg-transparent border-0 p-0"
-                                        x-text="expanded ? 'Hide' : 'View Message'">
+                                        x-text="expanded ? '{{ __('admin.club_notifications_index_hide') }}' : '{{ __('admin.club_notifications_index_view_message') }}'">
                                 </button>
                             </td>
                         </tr>
                         {{-- Expanded Message Row --}}
                         <tr x-show="expanded" x-cloak class="bg-muted/10">
                             <td colspan="5" class="px-5 py-4">
-                                <div class="bg-primary/5 border-l-4 border-primary rounded-r-lg p-4 text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                                <div class="bg-primary/5 border-s-4 border-primary rounded-e-lg p-4 text-sm text-gray-700 whitespace-pre-line leading-relaxed">
                                     {{ $notif->message }}
                                 </div>
                             </td>

@@ -17,7 +17,7 @@
              @click.stop>
             <!-- Header -->
             <div class="modal-header border-b border-gray-200 px-6 py-4">
-                <h5 class="modal-title text-lg font-semibold">Let's Add a New Instructor</h5>
+                <h5 class="modal-title text-lg font-semibold">{{ __('admin.club_instructors_add_title') }}</h5>
                 <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" @click="showAddInstructorModal = false; resetInstructorForm()">
                     <i class="bi bi-x-lg"></i>
                 </button>
@@ -44,8 +44,8 @@
                                 <i class="bi bi-plus-lg text-xl text-primary"></i>
                             </div>
                             <div>
-                                <h3 class="font-bold text-xl">How would you like to add the instructor?</h3>
-                                <p class="text-sm text-gray-500">Choose to create a new member or select an existing one</p>
+                                <h3 class="font-bold text-xl">{{ __('admin.club_instructors_add_how_to_add') }}</h3>
+                                <p class="text-sm text-gray-500">{{ __('admin.club_instructors_add_how_to_add_sub') }}</p>
                             </div>
                         </div>
 
@@ -53,16 +53,16 @@
                             <label class="flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors creation-type-option" data-type="new">
                                 <input type="radio" name="creation_type_radio" value="new" checked class="w-5 h-5 text-primary">
                                 <div class="flex-1">
-                                    <div class="font-semibold">Create new instructor</div>
-                                    <div class="text-sm text-gray-500">Create a new TakeOne platform member and link as instructor</div>
+                                    <div class="font-semibold">{{ __('admin.club_instructors_add_create_new') }}</div>
+                                    <div class="text-sm text-gray-500">{{ __('admin.club_instructors_add_create_new_desc') }}</div>
                                 </div>
                             </label>
 
                             <label class="flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors creation-type-option" data-type="existing">
                                 <input type="radio" name="creation_type_radio" value="existing" class="w-5 h-5 text-primary">
                                 <div class="flex-1">
-                                    <div class="font-semibold">Select from existing members</div>
-                                    <div class="text-sm text-gray-500">Search and link an existing club member as instructor</div>
+                                    <div class="font-semibold">{{ __('admin.club_instructors_add_select_existing') }}</div>
+                                    <div class="text-sm text-gray-500">{{ __('admin.club_instructors_add_select_existing_desc') }}</div>
                                 </div>
                             </label>
                         </div>
@@ -75,32 +75,32 @@
                                 <i class="bi bi-person-plus text-xl text-primary"></i>
                             </div>
                             <div>
-                                <h3 class="font-bold text-xl">Create TakeOne Platform Member</h3>
-                                <p class="text-sm text-gray-500">First, let's create their member account</p>
+                                <h3 class="font-bold text-xl">{{ __('admin.club_instructors_add_create_platform_member') }}</h3>
+                                <p class="text-sm text-gray-500">{{ __('admin.club_instructors_add_create_platform_member_sub') }}</p>
                             </div>
                         </div>
 
                         <div class="space-y-4">
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div class="space-y-2">
-                                    <label class="block text-sm font-medium text-gray-700">Email <span class="text-red-500">*</span></label>
-                                    <input type="email" name="email" placeholder="member@example.com" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                    <label class="block text-sm font-medium text-gray-700">{{ __('admin.club_instructors_add_email') }} <span class="text-red-500">*</span></label>
+                                    <input type="email" name="email" placeholder="{{ __('admin.club_instructors_add_email_placeholder') }}" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                                 </div>
                                 <div class="space-y-2">
-                                    <label class="block text-sm font-medium text-gray-700">Password <span class="text-red-500">*</span></label>
-                                    <input type="password" name="password" placeholder="Minimum 6 characters" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                    <label class="block text-sm font-medium text-gray-700">{{ __('admin.club_instructors_add_password') }} <span class="text-red-500">*</span></label>
+                                    <input type="password" name="password" placeholder="{{ __('admin.club_instructors_add_password_placeholder') }}" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                                 </div>
                             </div>
 
                             <div class="mb-4">
-                                <label class="tf-label">Phone Number <span class="text-red-500">*</span></label>
+                                <label class="tf-label">{{ __('admin.club_instructors_add_phone_number') }} <span class="text-red-500">*</span></label>
                                 <x-country-code-dropdown
                                     name="country_code"
                                     id="instructor_country_code"
                                     value="+973"
                                     :required="true"
                                 >
-                                    <input type="tel" name="phone" placeholder="Phone number" required
+                                    <input type="tel" name="phone" placeholder="{{ __('admin.club_instructors_add_phone_placeholder') }}" required
                                            class="w-full px-4 py-3 text-base bg-transparent focus:outline-none">
                                 </x-country-code-dropdown>
                             </div>
@@ -109,13 +109,13 @@
                                 <x-gender-dropdown
                                     name="gender"
                                     id="instructor_gender"
-                                    label="Gender"
+                                    label="{{ __('admin.club_instructors_add_gender') }}"
                                     :required="true"
                                 />
                                 <x-birthdate-dropdown
                                     name="birthdate"
                                     id="instructor_birthdate"
-                                    label="Date of Birth"
+                                    label="{{ __('admin.club_instructors_add_date_of_birth') }}"
                                     :required="true"
                                     :minAge="16"
                                     :maxAge="80"
@@ -125,7 +125,7 @@
                             <x-country-dropdown
                                 name="nationality"
                                 id="instructor_nationality"
-                                label="Nationality"
+                                label="{{ __('admin.club_instructors_add_nationality') }}"
                                 :required="true"
                             />
                         </div>
@@ -138,15 +138,15 @@
                                 <i class="bi bi-search text-xl text-primary"></i>
                             </div>
                             <div>
-                                <h3 class="font-bold text-xl">Find Club Member</h3>
-                                <p class="text-sm text-gray-500">Search by name, email, or phone number</p>
+                                <h3 class="font-bold text-xl">{{ __('admin.club_instructors_add_find_club_member') }}</h3>
+                                <p class="text-sm text-gray-500">{{ __('admin.club_instructors_add_find_club_member_sub') }}</p>
                             </div>
                         </div>
 
                         <div class="space-y-4">
                             <div class="relative">
-                                <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                                <input type="text" id="memberSearchInput" placeholder="Search by name, email, or phone..." class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                <input type="text" id="memberSearchInput" placeholder="{{ __('admin.club_instructors_add_search_placeholder') }}" class="w-full ps-10 pe-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                             </div>
 
                             <div id="searchResults" class="border rounded-lg divide-y max-h-64 overflow-y-auto hidden">
@@ -155,11 +155,11 @@
 
                             <div id="noResultsMsg" class="text-center py-8 text-gray-500 hidden">
                                 <i class="bi bi-person text-4xl mb-2 opacity-50"></i>
-                                <p>No members found</p>
+                                <p>{{ __('admin.club_instructors_add_no_members_found') }}</p>
                             </div>
 
                             <div id="selectedMemberCard" class="p-4 bg-primary/10 rounded-lg border-2 border-primary hidden">
-                                <p class="text-sm font-semibold mb-1">Selected Member</p>
+                                <p class="text-sm font-semibold mb-1">{{ __('admin.club_instructors_add_selected_member') }}</p>
                                 <p id="selectedMemberName" class="text-lg font-bold"></p>
                             </div>
                         </div>
@@ -172,20 +172,20 @@
                                 <i class="bi bi-person text-xl text-primary"></i>
                             </div>
                             <div>
-                                <h3 class="font-bold text-xl">First, let's get to know you</h3>
-                                <p class="text-sm text-gray-500">Tell us your name and share a photo</p>
+                                <h3 class="font-bold text-xl">{{ __('admin.club_instructors_add_get_to_know') }}</h3>
+                                <p class="text-sm text-gray-500">{{ __('admin.club_instructors_add_get_to_know_sub') }}</p>
                             </div>
                         </div>
 
                         <div class="space-y-6">
                             <div class="space-y-2">
-                                <label class="block text-base font-medium text-gray-700">What's your full name? <span class="text-red-500">*</span></label>
-                                <input type="text" name="name" placeholder="Enter your full name" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <label class="block text-base font-medium text-gray-700">{{ __('admin.club_instructors_add_full_name_q') }} <span class="text-red-500">*</span></label>
+                                <input type="text" name="name" placeholder="{{ __('admin.club_instructors_add_full_name_placeholder') }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                             </div>
 
                             <div class="space-y-2">
-                                <label class="block text-base font-medium text-gray-700">Share your photo</label>
-                                <p class="text-sm text-gray-500 mb-3">This helps members recognize you</p>
+                                <label class="block text-base font-medium text-gray-700">{{ __('admin.club_instructors_add_share_photo') }}</label>
+                                <p class="text-sm text-gray-500 mb-3">{{ __('admin.club_instructors_add_share_photo_sub') }}</p>
 
                                 <div class="flex items-center gap-6">
                                     <x-takeone-cropper
@@ -199,7 +199,7 @@
                                         :filename="'instructor_' . time()"
                                         :previewWidth="128"
                                         :previewHeight="128"
-                                        buttonText="Upload Photo"
+                                        buttonText="{{ __('admin.club_instructors_add_upload_photo') }}"
                                         buttonClass="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
                                     />
                                 </div>
@@ -214,22 +214,22 @@
                                 <i class="bi bi-briefcase text-xl text-primary"></i>
                             </div>
                             <div>
-                                <h3 class="font-bold text-xl">What do you do?</h3>
-                                <p class="text-sm text-gray-500">Tell us about your professional background</p>
+                                <h3 class="font-bold text-xl">{{ __('admin.club_instructors_add_what_you_do') }}</h3>
+                                <p class="text-sm text-gray-500">{{ __('admin.club_instructors_add_what_you_do_sub') }}</p>
                             </div>
                         </div>
 
                         <div class="space-y-4" x-data="{ lang: 'en' }">
                             <div class="space-y-2">
-                                <label class="block text-base font-medium text-gray-700">What's your role? <span class="text-red-500">*</span></label>
+                                <label class="block text-base font-medium text-gray-700">{{ __('admin.club_instructors_add_role_q') }} <span class="text-red-500">*</span></label>
                                 <x-lang-toggle class="mb-4" />
-                                <input type="text" name="specialty_existing" placeholder="e.g., Martial Arts Instructor" x-show="lang==='en'" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <input type="text" name="specialty_existing" placeholder="{{ __('admin.club_instructors_add_role_placeholder') }}" x-show="lang==='en'" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                                 <input type="text" name="translations[role][ar]" dir="rtl" x-show="lang==='ar'" x-cloak placeholder="المسمى بالعربية" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" value="{{ old('translations.role.ar') }}">
                             </div>
 
                             <div class="space-y-2">
-                                <label class="block text-base font-medium text-gray-700">How many years of experience? <span class="text-red-500">*</span></label>
-                                <input type="number" name="experience_existing" min="0" placeholder="e.g., 5" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <label class="block text-base font-medium text-gray-700">{{ __('admin.club_instructors_add_experience_q') }} <span class="text-red-500">*</span></label>
+                                <input type="number" name="experience_existing" min="0" placeholder="{{ __('admin.club_instructors_add_experience_placeholder') }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                             </div>
                         </div>
                     </div>
@@ -240,22 +240,22 @@
                                 <i class="bi bi-briefcase text-xl text-primary"></i>
                             </div>
                             <div>
-                                <h3 class="font-bold text-xl">What do you do?</h3>
-                                <p class="text-sm text-gray-500">Tell us about your professional background</p>
+                                <h3 class="font-bold text-xl">{{ __('admin.club_instructors_add_what_you_do') }}</h3>
+                                <p class="text-sm text-gray-500">{{ __('admin.club_instructors_add_what_you_do_sub') }}</p>
                             </div>
                         </div>
 
                         <div class="space-y-4" x-data="{ lang: 'en' }">
                             <div class="space-y-2">
-                                <label class="block text-base font-medium text-gray-700">What's your role? <span class="text-red-500">*</span></label>
+                                <label class="block text-base font-medium text-gray-700">{{ __('admin.club_instructors_add_role_q') }} <span class="text-red-500">*</span></label>
                                 <x-lang-toggle class="mb-4" />
-                                <input type="text" name="specialty" placeholder="e.g., Martial Arts Instructor" x-show="lang==='en'" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <input type="text" name="specialty" placeholder="{{ __('admin.club_instructors_add_role_placeholder') }}" x-show="lang==='en'" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                                 <input type="text" name="translations[role][ar]" dir="rtl" x-show="lang==='ar'" x-cloak placeholder="المسمى بالعربية" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" value="{{ old('translations.role.ar') }}">
                             </div>
 
                             <div class="space-y-2">
-                                <label class="block text-base font-medium text-gray-700">How many years of experience? <span class="text-red-500">*</span></label>
-                                <input type="number" name="experience" min="0" placeholder="e.g., 5" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <label class="block text-base font-medium text-gray-700">{{ __('admin.club_instructors_add_experience_q') }} <span class="text-red-500">*</span></label>
+                                <input type="number" name="experience" min="0" placeholder="{{ __('admin.club_instructors_add_experience_placeholder') }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                             </div>
                         </div>
                     </div>
@@ -267,23 +267,23 @@
                                 <i class="bi bi-award text-xl text-primary"></i>
                             </div>
                             <div>
-                                <h3 class="font-bold text-xl">What are you good at?</h3>
-                                <p class="text-sm text-gray-500">Share your skills and specialties</p>
+                                <h3 class="font-bold text-xl">{{ __('admin.club_instructors_add_good_at') }}</h3>
+                                <p class="text-sm text-gray-500">{{ __('admin.club_instructors_add_good_at_sub') }}</p>
                             </div>
                         </div>
 
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-base font-medium text-gray-700">Your Skills & Specialties</label>
-                                <p class="text-sm text-gray-500 mt-1 mb-3">Add skills like Taekwondo, Muay Thai, Judo, etc.</p>
+                                <label class="block text-base font-medium text-gray-700">{{ __('admin.club_instructors_add_skills_label') }}</label>
+                                <p class="text-sm text-gray-500 mt-1 mb-3">{{ __('admin.club_instructors_add_skills_hint') }}</p>
 
                                 <div id="skillsContainerExisting" class="flex flex-wrap gap-2 mb-4 p-4 bg-gray-50 rounded-lg min-h-[60px]">
                                     <!-- Skills tags will be added here -->
-                                    <span class="text-sm text-gray-400" id="noSkillsMsgExisting">No skills added yet</span>
+                                    <span class="text-sm text-gray-400" id="noSkillsMsgExisting">{{ __('admin.club_instructors_add_no_skills_yet') }}</span>
                                 </div>
 
                                 <div class="flex gap-2">
-                                    <input type="text" id="newSkillInputExisting" placeholder="Type a skill and press Enter" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                    <input type="text" id="newSkillInputExisting" placeholder="{{ __('admin.club_instructors_add_skill_placeholder') }}" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                                     <button type="button" id="addSkillBtnExisting" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
                                         <i class="bi bi-plus-lg"></i>
                                     </button>
@@ -299,23 +299,23 @@
                                 <i class="bi bi-award text-xl text-primary"></i>
                             </div>
                             <div>
-                                <h3 class="font-bold text-xl">What are you good at?</h3>
-                                <p class="text-sm text-gray-500">Share your skills and specialties</p>
+                                <h3 class="font-bold text-xl">{{ __('admin.club_instructors_add_good_at') }}</h3>
+                                <p class="text-sm text-gray-500">{{ __('admin.club_instructors_add_good_at_sub') }}</p>
                             </div>
                         </div>
 
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-base font-medium text-gray-700">Your Skills & Specialties</label>
-                                <p class="text-sm text-gray-500 mt-1 mb-3">Add skills like Taekwondo, Muay Thai, Judo, etc.</p>
+                                <label class="block text-base font-medium text-gray-700">{{ __('admin.club_instructors_add_skills_label') }}</label>
+                                <p class="text-sm text-gray-500 mt-1 mb-3">{{ __('admin.club_instructors_add_skills_hint') }}</p>
 
                                 <div id="skillsContainer" class="flex flex-wrap gap-2 mb-4 p-4 bg-gray-50 rounded-lg min-h-[60px]">
                                     <!-- Skills tags will be added here -->
-                                    <span class="text-sm text-gray-400" id="noSkillsMsg">No skills added yet</span>
+                                    <span class="text-sm text-gray-400" id="noSkillsMsg">{{ __('admin.club_instructors_add_no_skills_yet') }}</span>
                                 </div>
 
                                 <div class="flex gap-2">
-                                    <input type="text" id="newSkillInput" placeholder="Type a skill and press Enter" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                    <input type="text" id="newSkillInput" placeholder="{{ __('admin.club_instructors_add_skill_placeholder') }}" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                                     <button type="button" id="addSkillBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
                                         <i class="bi bi-plus-lg"></i>
                                     </button>
@@ -332,28 +332,28 @@
                                 <i class="bi bi-file-text text-xl text-primary"></i>
                             </div>
                             <div>
-                                <h3 class="font-bold text-xl">Tell us more about yourself</h3>
-                                <p class="text-sm text-gray-500">Share your story, achievements, and qualifications</p>
+                                <h3 class="font-bold text-xl">{{ __('admin.club_instructors_add_tell_more') }}</h3>
+                                <p class="text-sm text-gray-500">{{ __('admin.club_instructors_add_tell_more_sub') }}</p>
                             </div>
                         </div>
 
                         <div class="space-y-4">
                             <div class="space-y-2">
-                                <label class="block text-base font-medium text-gray-700">Your Story</label>
-                                <p class="text-sm text-gray-500 mb-2">A brief introduction about yourself</p>
-                                <textarea name="bio_existing" rows="3" placeholder="Tell members about your background, passion, and teaching philosophy..." class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
+                                <label class="block text-base font-medium text-gray-700">{{ __('admin.club_instructors_add_your_story') }}</label>
+                                <p class="text-sm text-gray-500 mb-2">{{ __('admin.club_instructors_add_your_story_sub') }}</p>
+                                <textarea name="bio_existing" rows="3" placeholder="{{ __('admin.club_instructors_add_bio_placeholder') }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
                             </div>
 
                             <div class="space-y-2">
-                                <label class="block text-base font-medium text-gray-700">Your Achievements</label>
-                                <p class="text-sm text-gray-500 mb-2">Notable accomplishments and awards</p>
-                                <textarea name="achievements_existing" rows="3" placeholder="e.g., National Champion 2023, 10+ years competition experience..." class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
+                                <label class="block text-base font-medium text-gray-700">{{ __('admin.club_instructors_add_your_achievements') }}</label>
+                                <p class="text-sm text-gray-500 mb-2">{{ __('admin.club_instructors_add_your_achievements_sub') }}</p>
+                                <textarea name="achievements_existing" rows="3" placeholder="{{ __('admin.club_instructors_add_achievements_placeholder') }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
                             </div>
 
                             <div class="space-y-2">
-                                <label class="block text-base font-medium text-gray-700">Your Certifications</label>
-                                <p class="text-sm text-gray-500 mb-2">Professional qualifications and training</p>
-                                <textarea name="certifications_existing" rows="3" placeholder="e.g., Black Belt 3rd Dan, Certified Personal Trainer..." class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
+                                <label class="block text-base font-medium text-gray-700">{{ __('admin.club_instructors_add_your_certifications') }}</label>
+                                <p class="text-sm text-gray-500 mb-2">{{ __('admin.club_instructors_add_your_certifications_sub') }}</p>
+                                <textarea name="certifications_existing" rows="3" placeholder="{{ __('admin.club_instructors_add_certifications_placeholder') }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
                             </div>
                         </div>
                     </div>
@@ -364,28 +364,28 @@
                                 <i class="bi bi-file-text text-xl text-primary"></i>
                             </div>
                             <div>
-                                <h3 class="font-bold text-xl">Tell us more about yourself</h3>
-                                <p class="text-sm text-gray-500">Share your story, achievements, and qualifications</p>
+                                <h3 class="font-bold text-xl">{{ __('admin.club_instructors_add_tell_more') }}</h3>
+                                <p class="text-sm text-gray-500">{{ __('admin.club_instructors_add_tell_more_sub') }}</p>
                             </div>
                         </div>
 
                         <div class="space-y-4">
                             <div class="space-y-2">
-                                <label class="block text-base font-medium text-gray-700">Your Story</label>
-                                <p class="text-sm text-gray-500 mb-2">A brief introduction about yourself</p>
-                                <textarea name="bio" rows="3" placeholder="Tell members about your background, passion, and teaching philosophy..." class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
+                                <label class="block text-base font-medium text-gray-700">{{ __('admin.club_instructors_add_your_story') }}</label>
+                                <p class="text-sm text-gray-500 mb-2">{{ __('admin.club_instructors_add_your_story_sub') }}</p>
+                                <textarea name="bio" rows="3" placeholder="{{ __('admin.club_instructors_add_bio_placeholder') }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
                             </div>
 
                             <div class="space-y-2">
-                                <label class="block text-base font-medium text-gray-700">Your Achievements</label>
-                                <p class="text-sm text-gray-500 mb-2">Notable accomplishments and awards</p>
-                                <textarea name="achievements" rows="3" placeholder="e.g., National Champion 2023, 10+ years competition experience..." class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
+                                <label class="block text-base font-medium text-gray-700">{{ __('admin.club_instructors_add_your_achievements') }}</label>
+                                <p class="text-sm text-gray-500 mb-2">{{ __('admin.club_instructors_add_your_achievements_sub') }}</p>
+                                <textarea name="achievements" rows="3" placeholder="{{ __('admin.club_instructors_add_achievements_placeholder') }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
                             </div>
 
                             <div class="space-y-2">
-                                <label class="block text-base font-medium text-gray-700">Your Certifications</label>
-                                <p class="text-sm text-gray-500 mb-2">Professional qualifications and training</p>
-                                <textarea name="certifications" rows="3" placeholder="e.g., Black Belt 3rd Dan, Certified Personal Trainer..." class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
+                                <label class="block text-base font-medium text-gray-700">{{ __('admin.club_instructors_add_your_certifications') }}</label>
+                                <p class="text-sm text-gray-500 mb-2">{{ __('admin.club_instructors_add_your_certifications_sub') }}</p>
+                                <textarea name="certifications" rows="3" placeholder="{{ __('admin.club_instructors_add_certifications_placeholder') }}" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
                             </div>
                         </div>
                     </div>
@@ -393,47 +393,47 @@
                     {{-- Persistent section (not part of the step wizard): compensation & classes --}}
                     <div class="mt-6 pt-5 border-t border-gray-100 space-y-5">
                         <div>
-                            <label class="block text-base font-medium text-gray-700 mb-2"><i class="bi bi-cash-coin mr-1 text-primary"></i>Compensation</label>
+                            <label class="block text-base font-medium text-gray-700 mb-2"><i class="bi bi-cash-coin me-1 text-primary"></i>{{ __('admin.club_instructors_add_compensation') }}</label>
                             <div class="flex flex-wrap items-end gap-3">
                                 <div>
                                     <select name="compensation_type" id="addCompType" class="px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                                             onchange="document.getElementById('addWageFields').style.display = this.value === 'paid' ? 'flex' : 'none'">
-                                        <option value="volunteer">Volunteer</option>
-                                        <option value="paid">Paid</option>
+                                        <option value="volunteer">{{ __('admin.club_instructors_add_volunteer') }}</option>
+                                        <option value="paid">{{ __('admin.club_instructors_add_paid') }}</option>
                                     </select>
                                 </div>
                                 <div id="addWageFields" class="flex items-end gap-3" style="display:none;">
                                     <div>
-                                        <label class="block text-xs text-gray-500 mb-1">Amount</label>
+                                        <label class="block text-xs text-gray-500 mb-1">{{ __('admin.club_instructors_add_amount') }}</label>
                                         <input type="number" min="0" step="0.01" name="wage_amount" placeholder="0.00" class="w-32 px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
                                     </div>
                                     <div>
-                                        <label class="block text-xs text-gray-500 mb-1">Period</label>
-                                        <select name="wage_period" class="px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-                                            <option value="monthly">Per month</option>
-                                            <option value="session">Per session</option>
-                                            <option value="hourly">Per hour</option>
-                                        </select>
+                                        <label class="block text-xs text-gray-500 mb-1">{{ __('admin.club_instructors_add_period') }}</label>
+                                        <x-select-menu name="wage_period" :value="'monthly'" :options="[
+                                            ['value' => 'monthly', 'label' => __('admin.club_instructors_add_per_month')],
+                                            ['value' => 'session', 'label' => __('admin.club_instructors_add_per_session')],
+                                            ['value' => 'hourly',  'label' => __('admin.club_instructors_add_per_hour')],
+                                        ]" />
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div>
-                            <label class="block text-base font-medium text-gray-700 mb-2"><i class="bi bi-calendar2-week mr-1 text-primary"></i>Package classes &amp; schedules</label>
+                            <label class="block text-base font-medium text-gray-700 mb-2"><i class="bi bi-calendar2-week me-1 text-primary"></i>{{ __('admin.club_instructors_add_package_classes') }}</label>
                             @if($packageSlots->isEmpty())
-                                <p class="text-sm text-gray-400">No package schedules yet. Create a package with classes first.</p>
+                                <p class="text-sm text-gray-400">{{ __('admin.club_instructors_add_no_packages') }}</p>
                             @else
                                 <div class="space-y-3">
                                     @foreach($packageSlots->groupBy('package_id') as $slots)
                                         <div class="border border-gray-100 rounded-lg overflow-hidden">
-                                            <p class="px-3 py-2 bg-gray-50 text-xs font-bold text-gray-700"><i class="bi bi-box text-primary mr-1"></i>{{ $slots->first()->package_name }}</p>
+                                            <p class="px-3 py-2 bg-gray-50 text-xs font-bold text-gray-700"><i class="bi bi-box text-primary me-1"></i>{{ $slots->first()->package_name }}</p>
                                             <div class="divide-y divide-gray-50">
                                                 @foreach($slots as $slot)
                                                     <label class="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50">
                                                         <input type="checkbox" name="package_slots[]" value="{{ $slot->id }}" class="rounded text-primary focus:ring-primary">
                                                         <span class="min-w-0">
                                                             <span class="block text-sm font-medium text-gray-800 truncate">{{ $slot->activity_name }}</span>
-                                                            <span class="block text-xs text-gray-400 truncate">{{ $slot->schedule_label ?: 'No schedule set' }}@if($slot->instructor_name) · {{ $slot->instructor_name }}@endif</span>
+                                                            <span class="block text-xs text-gray-400 truncate">{{ $slot->schedule_label ?: __('admin.club_instructors_add_no_schedule_set') }}@if($slot->instructor_name) · {{ $slot->instructor_name }}@endif</span>
                                                         </span>
                                                     </label>
                                                 @endforeach
@@ -450,20 +450,20 @@
             <!-- Footer -->
             <div class="modal-footer border-t border-gray-200 px-6 py-4 flex justify-between">
                 <button type="button" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors" @click="showAddInstructorModal = false; resetInstructorForm()">
-                    Cancel
+                    {{ __('shared.cancel') }}
                 </button>
 
                 <div class="flex gap-2">
                     <button type="button" id="prevStepBtn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors hidden flex items-center gap-1">
-                        <i class="bi bi-chevron-left"></i> Previous
+                        <i class="bi bi-chevron-left"></i> {{ __('admin.club_instructors_add_previous') }}
                     </button>
 
                     <button type="button" id="nextStepBtn" class="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-1">
-                        Next <i class="bi bi-chevron-right"></i>
+                        {{ __('admin.club_instructors_add_next') }} <i class="bi bi-chevron-right"></i>
                     </button>
 
                     <button type="button" id="submitBtn" class="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors hidden flex items-center gap-2">
-                        <i class="bi bi-check-lg"></i> Create Instructor
+                        <i class="bi bi-check-lg"></i> {{ __('admin.club_instructors_add_create_instructor') }}
                     </button>
                 </div>
             </div>
@@ -589,7 +589,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderSkills() {
         skillsContainer.innerHTML = '';
         if (skills.length === 0) {
-            skillsContainer.innerHTML = '<span class="text-sm text-gray-400">No skills added yet</span>';
+            skillsContainer.innerHTML = '<span class="text-sm text-gray-400">{{ __("admin.club_instructors_add_no_skills_yet") }}</span>';
         } else {
             skills.forEach((skill, index) => {
                 const tag = document.createElement('span');
@@ -630,7 +630,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderSkillsExisting() {
         skillsContainerExisting.innerHTML = '';
         if (skillsExisting.length === 0) {
-            skillsContainerExisting.innerHTML = '<span class="text-sm text-gray-400">No skills added yet</span>';
+            skillsContainerExisting.innerHTML = '<span class="text-sm text-gray-400">{{ __("admin.club_instructors_add_no_skills_yet") }}</span>';
         } else {
             skillsExisting.forEach((skill, index) => {
                 const tag = document.createElement('span');
@@ -695,7 +695,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                             <div class="flex-1 min-w-0">
                                 <p class="font-semibold truncate">${member.name || member.full_name}</p>
-                                <p class="text-sm text-gray-500 truncate">${member.email || 'Member'}</p>
+                                <p class="text-sm text-gray-500 truncate">${member.email || '{{ __("admin.club_instructors_add_member_fallback") }}'}</p>
                             </div>
                         </div>
                     `).join('');

@@ -19,6 +19,7 @@ class Role extends Model
         'name',
         'slug',
         'description',
+        'color',
     ];
 
     /**
@@ -27,7 +28,7 @@ class Role extends Model
     public function permissions(): BelongsToMany
     {
         return $this->belongsToMany(Permission::class, 'role_permission')
-                    ->withTimestamps();
+            ->withTimestamps();
     }
 
     /**
@@ -36,8 +37,8 @@ class Role extends Model
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'user_roles')
-                    ->withPivot('tenant_id')
-                    ->withTimestamps();
+            ->withPivot('tenant_id')
+            ->withTimestamps();
     }
 
     /**

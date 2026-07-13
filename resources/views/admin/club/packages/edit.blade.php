@@ -34,8 +34,8 @@
             <!-- Header -->
             <div class="modal-header border-b border-border px-6 py-4">
                 <div>
-                    <h5 class="modal-title font-bold text-xl">Edit Package</h5>
-                    <p class="text-muted-foreground text-sm mb-0">Update your membership package details</p>
+                    <h5 class="modal-title font-bold text-xl">{{ __('admin.club_packages_edit_title') }}</h5>
+                    <p class="text-muted-foreground text-sm mb-0">{{ __('admin.club_packages_edit_subtitle') }}</p>
                 </div>
                 <button type="button" class="btn-close" @click="showEditPackageModal = false"></button>
             </div>
@@ -48,8 +48,8 @@
                                 :class="{ 'active': currentTab === 'basic' }"
                                 @click="currentTab = 'basic'"
                                 type="button">
-                            <span class="hidden sm:inline">Basic Info</span>
-                            <span class="sm:hidden">Basic</span>
+                            <span class="hidden sm:inline">{{ __('admin.club_packages_edit_tab_basic') }}</span>
+                            <span class="sm:hidden">{{ __('admin.club_packages_edit_tab_basic_short') }}</span>
                         </button>
                     </li>
                     <li class="flex-1" role="presentation">
@@ -57,8 +57,8 @@
                                 :class="{ 'active': currentTab === 'schedules' }"
                                 @click="currentTab = 'schedules'"
                                 type="button">
-                            <span class="hidden sm:inline">Schedules</span>
-                            <span class="sm:hidden">Schedule</span>
+                            <span class="hidden sm:inline">{{ __('admin.club_packages_edit_tab_schedules') }}</span>
+                            <span class="sm:hidden">{{ __('admin.club_packages_edit_tab_schedules_short') }}</span>
                         </button>
                     </li>
                     <li class="flex-1" role="presentation">
@@ -66,7 +66,7 @@
                                 :class="{ 'active': currentTab === 'trainers' }"
                                 @click="currentTab = 'trainers'; if(window.updateEditTrainerAssignmentsUI) updateEditTrainerAssignmentsUI();"
                                 type="button">
-                            <span>Trainers</span>
+                            <span>{{ __('admin.club_packages_edit_tab_trainers') }}</span>
                         </button>
                     </li>
                     <li class="flex-1" role="presentation">
@@ -74,7 +74,7 @@
                                 :class="{ 'active': currentTab === 'pricing' }"
                                 @click="currentTab = 'pricing'"
                                 type="button">
-                            <span>Pricing</span>
+                            <span>{{ __('admin.club_packages_edit_tab_pricing') }}</span>
                         </button>
                     </li>
                 </ul>
@@ -96,7 +96,7 @@
                                     <div class="section-icon">
                                         <i class="bi bi-upload text-primary"></i>
                                     </div>
-                                    <h6 class="mb-0 font-semibold">Package Image</h6>
+                                    <h6 class="mb-0 font-semibold">{{ __('admin.club_packages_edit_package_image') }}</h6>
                                 </div>
 
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -113,7 +113,7 @@
                                                 :filename="'package_' . time()"
                                                 :previewWidth="300"
                                                 :previewHeight="169"
-                                                buttonText="Change Image"
+                                                buttonText="{{ __('admin.club_packages_edit_change_image') }}"
                                                 buttonClass="btn btn-outline-secondary flex-1"
                                             />
                                         </div>
@@ -121,19 +121,19 @@
 
                                     <div>
                                         <div class="rounded-lg p-3 mb-3 bg-muted/30">
-                                            <p class="text-sm font-medium mb-2">Image Guidelines</p>
+                                            <p class="text-sm font-medium mb-2">{{ __('admin.club_packages_edit_image_guidelines') }}</p>
                                             <ul class="list-none text-sm text-muted-foreground mb-0">
                                                 <li class="flex items-center gap-2 mb-1">
                                                     <span class="rounded-full bg-primary w-1.5 h-1.5"></span>
-                                                    Recommended ratio: 16:9
+                                                    {{ __('admin.club_packages_edit_ratio') }}
                                                 </li>
                                                 <li class="flex items-center gap-2 mb-1">
                                                     <span class="rounded-full bg-primary w-1.5 h-1.5"></span>
-                                                    Maximum file size: 5MB
+                                                    {{ __('admin.club_packages_edit_max_size') }}
                                                 </li>
                                                 <li class="flex items-center gap-2">
                                                     <span class="rounded-full bg-primary w-1.5 h-1.5"></span>
-                                                    Formats: JPG, PNG, WebP
+                                                    {{ __('admin.club_packages_edit_formats') }}
                                                 </li>
                                             </ul>
                                         </div>
@@ -143,8 +143,8 @@
                                                 <input type="checkbox" id="editPackagePopular" name="is_popular" class="form-check-input" role="switch">
                                             </div>
                                             <div>
-                                                <label for="editPackagePopular" class="form-label mb-0 font-medium cursor-pointer">Featured Package</label>
-                                                <p class="text-muted-foreground text-sm mb-0">Highlight this package on the main page</p>
+                                                <label for="editPackagePopular" class="form-label mb-0 font-medium cursor-pointer">{{ __('admin.club_packages_edit_featured') }}</label>
+                                                <p class="text-muted-foreground text-sm mb-0">{{ __('admin.club_packages_edit_featured_hint') }}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -159,22 +159,22 @@
                                     <div class="section-icon">
                                         <i class="bi bi-tag text-primary"></i>
                                     </div>
-                                    <h6 class="mb-0 font-semibold">Package Details</h6>
+                                    <h6 class="mb-0 font-semibold">{{ __('admin.club_packages_edit_package_details') }}</h6>
                                 </div>
 
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <div class="mb-3">
                                             <label for="editPackageName" class="form-label font-medium">
-                                                Package Name <span class="text-destructive">*</span>
+                                                {{ __('admin.club_packages_edit_package_name') }} <span class="text-destructive">*</span>
                                             </label>
-                                            <input type="text" id="editPackageName" name="name" required x-show="lang==='en'" placeholder="e.g., Premium Monthly Membership" class="form-control">
+                                            <input type="text" id="editPackageName" name="name" required x-show="lang==='en'" placeholder="{{ __('admin.club_packages_edit_name_placeholder') }}" class="form-control">
                                             <input type="text" id="editPackageNameAr" name="translations[name][ar]" dir="rtl" x-show="lang==='ar'" x-cloak placeholder="الاسم بالعربية" class="form-control">
                                         </div>
 
                                         <div class="mb-3">
                                             <label for="editPackageDuration" class="form-label font-medium">
-                                                Duration (Months) <span class="text-destructive">*</span>
+                                                {{ __('admin.club_packages_edit_duration') }} <span class="text-destructive">*</span>
                                             </label>
                                             <input type="number" id="editPackageDuration" name="duration_months" required value="1" min="1" class="form-control">
                                         </div>
@@ -182,8 +182,8 @@
 
                                     <div>
                                         <div class="mb-3">
-                                            <label for="editPackageDescription" class="form-label font-medium">Description</label>
-                                            <textarea id="editPackageDescription" name="description" rows="5" x-show="lang==='en'" placeholder="Brief description of what this package includes..." class="form-control resize-none"></textarea>
+                                            <label for="editPackageDescription" class="form-label font-medium">{{ __('admin.club_packages_edit_description') }}</label>
+                                            <textarea id="editPackageDescription" name="description" rows="5" x-show="lang==='en'" placeholder="{{ __('admin.club_packages_edit_description_placeholder') }}" class="form-control resize-none"></textarea>
                                             <textarea id="editPackageDescriptionAr" name="translations[description][ar]" dir="rtl" x-show="lang==='ar'" x-cloak rows="5" class="form-control resize-none" placeholder="الوصف بالعربية"></textarea>
                                         </div>
                                     </div>
@@ -198,25 +198,25 @@
                                     <div class="section-icon">
                                         <i class="bi bi-people text-primary"></i>
                                     </div>
-                                    <h6 class="mb-0 font-semibold">Member Restrictions</h6>
+                                    <h6 class="mb-0 font-semibold">{{ __('admin.club_packages_edit_member_restrictions') }}</h6>
                                 </div>
 
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                                     <div>
-                                        <label for="editPackageGender" class="form-label font-medium">Gender</label>
+                                        <label for="editPackageGender" class="form-label font-medium">{{ __('admin.club_packages_edit_gender') }}</label>
                                         <select id="editPackageGender" name="gender_restriction" class="form-select">
-                                            <option value="mixed">Mixed (All Genders)</option>
-                                            <option value="male">Male Only</option>
-                                            <option value="female">Female Only</option>
+                                            <option value="mixed">{{ __('admin.club_packages_edit_gender_mixed') }}</option>
+                                            <option value="male">{{ __('admin.club_packages_edit_gender_male') }}</option>
+                                            <option value="female">{{ __('admin.club_packages_edit_gender_female') }}</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label for="editPackageMinAge" class="form-label font-medium">Minimum Age</label>
-                                        <input type="number" id="editPackageMinAge" name="age_min" min="0" placeholder="e.g., 5" class="form-control">
+                                        <label for="editPackageMinAge" class="form-label font-medium">{{ __('admin.club_packages_edit_min_age') }}</label>
+                                        <input type="number" id="editPackageMinAge" name="age_min" min="0" placeholder="{{ __('admin.club_packages_edit_min_age_placeholder') }}" class="form-control">
                                     </div>
                                     <div>
-                                        <label for="editPackageMaxAge" class="form-label font-medium">Maximum Age</label>
-                                        <input type="number" id="editPackageMaxAge" name="age_max" min="0" placeholder="e.g., 18" class="form-control">
+                                        <label for="editPackageMaxAge" class="form-label font-medium">{{ __('admin.club_packages_edit_max_age') }}</label>
+                                        <input type="number" id="editPackageMaxAge" name="age_max" min="0" placeholder="{{ __('admin.club_packages_edit_max_age_placeholder') }}" class="form-control">
                                     </div>
                                 </div>
                             </div>
@@ -232,8 +232,8 @@
                                         <i class="bi bi-clock text-primary"></i>
                                     </div>
                                     <div>
-                                        <h6 class="mb-0 font-semibold">Package Schedule <span class="text-destructive">*</span></h6>
-                                        <p class="text-muted-foreground text-sm mb-0">Define when this package is available</p>
+                                        <h6 class="mb-0 font-semibold">{{ __('admin.club_packages_edit_package_schedule') }} <span class="text-destructive">*</span></h6>
+                                        <p class="text-muted-foreground text-sm mb-0">{{ __('admin.club_packages_edit_schedule_hint') }}</p>
                                     </div>
                                 </div>
 
@@ -248,9 +248,9 @@
 
                                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                                         <div>
-                                            <label for="editScheduleActivity" class="tf-label">Activity <span class="text-red-500">*</span></label>
+                                            <label for="editScheduleActivity" class="tf-label">{{ __('admin.club_packages_edit_activity') }} <span class="text-red-500">*</span></label>
                                             <select id="editScheduleActivity" class="tf-time">
-                                                <option value="">Select activity</option>
+                                                <option value="">{{ __('admin.club_packages_edit_select_activity') }}</option>
                                                 @if(isset($activities))
                                                     @foreach($activities as $activity)
                                                         <option value="{{ $activity->id }}" data-name="{{ $activity->title ?? $activity->name }}">{{ $activity->title ?? $activity->name }}</option>
@@ -259,9 +259,9 @@
                                             </select>
                                         </div>
                                         <div>
-                                            <label for="editScheduleFacility" class="tf-label">Facility</label>
+                                            <label for="editScheduleFacility" class="tf-label">{{ __('admin.club_packages_edit_facility') }}</label>
                                             <select id="editScheduleFacility" class="tf-time">
-                                                <option value="">Select facility</option>
+                                                <option value="">{{ __('admin.club_packages_edit_select_facility') }}</option>
                                                 @if(isset($facilities))
                                                     @foreach($facilities as $facility)
                                                         <option value="{{ $facility->id }}" data-name="{{ $facility->name }}">{{ $facility->name }}</option>
@@ -270,14 +270,14 @@
                                             </select>
                                         </div>
                                         <div>
-                                            <label for="editScheduleNotes" class="tf-label">Notes (Optional)</label>
-                                            <input type="text" id="editScheduleNotes" placeholder="Add any additional notes..." class="tf-time">
+                                            <label for="editScheduleNotes" class="tf-label">{{ __('admin.club_packages_edit_notes') }}</label>
+                                            <input type="text" id="editScheduleNotes" placeholder="{{ __('admin.club_packages_edit_notes_placeholder') }}" class="tf-time">
                                         </div>
                                     </div>
 
                                     <div class="flex justify-end">
                                         <button type="button" id="editAddScheduleBtn" class="btn btn-outline-primary px-4 py-2">
-                                            <i class="bi bi-plus-lg mr-2"></i><span id="editAddScheduleBtnText">Add Schedule</span>
+                                            <i class="bi bi-plus-lg me-2"></i><span id="editAddScheduleBtnText">{{ __('admin.club_packages_edit_add_schedule') }}</span>
                                         </button>
                                     </div>
                                 </div>
@@ -287,8 +287,8 @@
 
                                 <div id="editNoSchedulesMessage" class="text-center py-12 border-2 border-dashed border-border rounded-lg">
                                     <i class="bi bi-clock text-muted-foreground text-5xl"></i>
-                                    <p class="text-muted-foreground mb-1 mt-3">No schedules added yet</p>
-                                    <p class="text-muted-foreground text-sm">Add at least one schedule to continue</p>
+                                    <p class="text-muted-foreground mb-1 mt-3">{{ __('admin.club_packages_edit_no_schedules') }}</p>
+                                    <p class="text-muted-foreground text-sm">{{ __('admin.club_packages_edit_no_schedules_hint') }}</p>
                                 </div>
 
                                 <input type="hidden" id="editSchedulesData" name="schedules">
@@ -305,16 +305,16 @@
                                         <i class="bi bi-person-check text-primary"></i>
                                     </div>
                                     <div>
-                                        <h6 class="mb-0 font-semibold">Assign Trainers</h6>
-                                        <p class="text-muted-foreground text-sm mb-0">Assign instructors to scheduled activities</p>
+                                        <h6 class="mb-0 font-semibold">{{ __('admin.club_packages_edit_assign_trainers') }}</h6>
+                                        <p class="text-muted-foreground text-sm mb-0">{{ __('admin.club_packages_edit_assign_trainers_hint') }}</p>
                                     </div>
                                 </div>
 
                                 <div id="editTrainerAssignments" class="mt-4">
                                     <div class="text-center py-12 border-2 border-dashed border-border rounded-lg">
                                         <i class="bi bi-person-check text-muted-foreground text-5xl"></i>
-                                        <p class="text-muted-foreground mb-1 mt-3">No activities scheduled yet</p>
-                                        <p class="text-muted-foreground text-sm">Add schedules in the previous tab first</p>
+                                        <p class="text-muted-foreground mb-1 mt-3">{{ __('admin.club_packages_edit_no_activities') }}</p>
+                                        <p class="text-muted-foreground text-sm">{{ __('admin.club_packages_edit_no_activities_hint') }}</p>
                                     </div>
                                 </div>
 
@@ -337,11 +337,11 @@
                                     <div class="section-icon">
                                         <i class="bi bi-currency-dollar text-primary"></i>
                                     </div>
-                                    <h6 class="mb-0 font-semibold">Base Price</h6>
+                                    <h6 class="mb-0 font-semibold">{{ __('admin.club_packages_edit_base_price') }}</h6>
                                 </div>
 
                                 <label for="editPackagePrice" class="form-label font-medium">
-                                    Package Price ({{ $club->currency ?? 'BHD' }}) <span class="text-destructive">*</span>
+                                    {{ __('admin.club_packages_edit_package_price', ['currency' => $club->currency ?? 'BHD']) }} <span class="text-destructive">*</span>
                                 </label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-muted/30">
@@ -358,32 +358,32 @@
                                     <div class="section-icon">
                                         <i class="bi bi-tag text-primary"></i>
                                     </div>
-                                    <h6 class="mb-0 font-semibold">Discount Options</h6>
+                                    <h6 class="mb-0 font-semibold">{{ __('admin.club_packages_edit_discount_options') }}</h6>
                                 </div>
 
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label for="editDiscountCode" class="form-label font-medium">Discount Code</label>
-                                        <input type="text" id="editDiscountCode" name="discount_code" placeholder="e.g., SAVE20" class="form-control uppercase font-mono">
-                                        <p class="text-muted-foreground text-sm mt-1">Optional promo code for customers</p>
+                                        <label for="editDiscountCode" class="form-label font-medium">{{ __('admin.club_packages_edit_discount_code') }}</label>
+                                        <input type="text" id="editDiscountCode" name="discount_code" placeholder="{{ __('admin.club_packages_edit_discount_code_placeholder') }}" class="form-control uppercase font-mono">
+                                        <p class="text-muted-foreground text-sm mt-1">{{ __('admin.club_packages_edit_discount_code_hint') }}</p>
                                     </div>
                                     <div>
-                                        <label for="editDiscountPercent" class="form-label font-medium">Discount Percentage</label>
+                                        <label for="editDiscountPercent" class="form-label font-medium">{{ __('admin.club_packages_edit_discount_percentage') }}</label>
                                         <div class="input-group">
                                             <input type="number" id="editDiscountPercent" name="discount_percentage" min="0" max="100" step="0.01" placeholder="20" class="form-control" x-model.number="discountPercent">
                                             <span class="input-group-text bg-muted/30 text-muted-foreground">%</span>
                                         </div>
-                                        <p class="text-muted-foreground text-sm mt-1">Percentage off the base price</p>
+                                        <p class="text-muted-foreground text-sm mt-1">{{ __('admin.club_packages_edit_discount_percentage_hint') }}</p>
                                     </div>
                                 </div>
 
                                 <div x-show="showPreview" x-cloak class="mt-4 p-4 rounded-xl border-2 border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5">
                                     <div class="flex items-center justify-between">
                                         <div>
-                                            <p class="text-muted-foreground text-sm mb-1">Final Price</p>
+                                            <p class="text-muted-foreground text-sm mb-1">{{ __('admin.club_packages_edit_final_price') }}</p>
                                             <p class="text-4xl font-bold text-primary mb-0">{{ $club->currency ?? 'BHD' }} <span x-text="finalPrice.toFixed(2)">0.00</span></p>
                                         </div>
-                                        <div class="text-right">
+                                        <div class="text-end">
                                             <p class="text-muted-foreground line-through mb-1">{{ $club->currency ?? 'BHD' }} <span x-text="basePrice.toFixed(2)">0.00</span></p>
                                             <span class="badge bg-primary text-lg" x-text="discountPercent + '% OFF'">0% OFF</span>
                                         </div>
@@ -398,17 +398,17 @@
             <!-- Footer -->
             <div class="modal-footer border-t border-border px-6 py-4">
                 <div class="text-muted-foreground text-sm">
-                    Step <span x-text="currentIndex + 1">1</span> of 4
+                    {{ __('admin.club_packages_edit_step') }} <span x-text="currentIndex + 1">1</span> {{ __('admin.club_packages_edit_of_4') }}
                     <span x-text="' - ' + tabNames[currentIndex]"> - Basic Info</span>
                 </div>
 
-                <div class="ml-auto flex gap-2">
-                    <button type="button" class="btn btn-outline-secondary px-4" @click="showEditPackageModal = false">Cancel</button>
+                <div class="ms-auto flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary px-4" @click="showEditPackageModal = false">{{ __('shared.cancel') }}</button>
                     <button type="button" x-show="!isLastTab" class="btn btn-primary px-4" @click="nextTab()">
-                        Next Step<i class="bi bi-arrow-right ml-2"></i>
+                        {{ __('admin.club_packages_edit_next_step') }}<i class="bi bi-arrow-right ms-2"></i>
                     </button>
                     <button type="submit" form="editPackageForm" x-show="isLastTab" x-cloak class="btn btn-primary px-4">
-                        <i class="bi bi-check-lg mr-2"></i>Update Package
+                        <i class="bi bi-check-lg me-2"></i>{{ __('admin.club_packages_edit_update_package') }}
                     </button>
                 </div>
             </div>
@@ -430,7 +430,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const editInstructors = @json($instructors ?? []).map(i => ({
         id: i.id,
-        name: i.user?.full_name || i.user?.name || 'Unknown'
+        name: i.user?.full_name || i.user?.name || '{{ __("admin.club_packages_edit_unknown") }}'
     }));
 
     // Schedule management
@@ -453,12 +453,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const notes = document.getElementById('editScheduleNotes').value;
 
         if (selectedDays.length === 0 || !startTime || !endTime || !activityId) {
-            window.showToast('error', 'Please select at least one day, activity, and specify start/end times');
+            window.showToast('error', '{{ __("admin.club_packages_edit_js_validation") }}');
             return;
         }
 
         if (endTime <= startTime) {
-            window.showToast('error', 'End time must be after start time');
+            window.showToast('error', '{{ __("admin.club_packages_edit_js_end_after_start") }}');
             return;
         }
 
@@ -477,7 +477,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (editEditingScheduleIndex !== null) {
             editSchedules[editEditingScheduleIndex] = schedule;
             editEditingScheduleIndex = null;
-            editAddScheduleBtnText.textContent = 'Add Schedule';
+            editAddScheduleBtnText.textContent = '{{ __("admin.club_packages_edit_add_schedule") }}';
             editAddScheduleBtn.classList.remove('btn-primary');
             editAddScheduleBtn.classList.add('btn-outline-primary');
         } else {
@@ -513,7 +513,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         editSchedulesList.innerHTML = `
             <div class="mb-3">
-                <label class="form-label font-medium">Added Schedules (${editSchedules.length})</label>
+                <label class="form-label font-medium">{{ __("admin.club_packages_edit_added_schedules") }} (${editSchedules.length})</label>
             </div>
             <div class="border border-border rounded-lg overflow-hidden">
                 ${editSchedules.map((schedule, index) => `
@@ -522,13 +522,13 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="flex flex-wrap items-center gap-2 mb-2">
                                 ${schedule.days.map(d => `<span class="badge bg-secondary">${d.name}</span>`).join('')}
                                 <span class="font-medium">${formatTimeTo12Hour(schedule.startTime)} - ${formatTimeTo12Hour(schedule.endTime)}</span>
-                                <span class="badge bg-secondary">${calcDurationMinutes(schedule.startTime, schedule.endTime)} min</span>
-                                ${schedule.activityName ? `<span class="badge bg-primary/10 text-primary border border-primary/20"><i class="bi bi-activity mr-1"></i>${schedule.activityName}</span>` : ''}
-                                ${schedule.facilityName ? `<span class="badge bg-sky-50 text-sky-700 border border-sky-200"><i class="bi bi-geo-alt mr-1"></i>${schedule.facilityName}</span>` : ''}
+                                <span class="badge bg-secondary">${calcDurationMinutes(schedule.startTime, schedule.endTime)} {{ __("admin.club_packages_edit_minutes_short") }}</span>
+                                ${schedule.activityName ? `<span class="badge bg-primary/10 text-primary border border-primary/20"><i class="bi bi-activity me-1"></i>${schedule.activityName}</span>` : ''}
+                                ${schedule.facilityName ? `<span class="badge bg-sky-50 text-sky-700 border border-sky-200"><i class="bi bi-geo-alt me-1"></i>${schedule.facilityName}</span>` : ''}
                             </div>
-                            ${schedule.notes ? `<p class="text-muted-foreground text-sm mb-0"><span class="font-medium">Note:</span> ${schedule.notes}</p>` : ''}
+                            ${schedule.notes ? `<p class="text-muted-foreground text-sm mb-0"><span class="font-medium">{{ __("admin.club_packages_edit_note_label") }}</span> ${schedule.notes}</p>` : ''}
                         </div>
-                        <div class="flex gap-1 ml-2">
+                        <div class="flex gap-1 ms-2">
                             <button type="button" class="btn btn-sm btn-light edit-edit-schedule" data-index="${index}">
                                 <i class="bi bi-pencil"></i>
                             </button>
@@ -554,7 +554,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 editSchedules.splice(index, 1);
                 if (editEditingScheduleIndex === index) {
                     editEditingScheduleIndex = null;
-                    editAddScheduleBtnText.textContent = 'Add Schedule';
+                    editAddScheduleBtnText.textContent = '{{ __("admin.club_packages_edit_add_schedule") }}';
                     editAddScheduleBtn.classList.remove('btn-primary');
                     editAddScheduleBtn.classList.add('btn-outline-primary');
                     resetEditScheduleForm();
@@ -579,7 +579,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('editScheduleFacility').value = schedule.facilityId || '';
         document.getElementById('editScheduleNotes').value = schedule.notes || '';
 
-        editAddScheduleBtnText.textContent = 'Update Schedule';
+        editAddScheduleBtnText.textContent = '{{ __("admin.club_packages_edit_update_schedule") }}';
         editAddScheduleBtn.classList.remove('btn-outline-primary');
         editAddScheduleBtn.classList.add('btn-primary');
     }
@@ -612,15 +612,15 @@ document.addEventListener('DOMContentLoaded', function() {
             editTrainerContainer.innerHTML = `
                 <div class="text-center py-12 border-2 border-dashed border-border rounded-lg">
                     <i class="bi bi-person-check text-muted-foreground text-5xl"></i>
-                    <p class="text-muted-foreground mb-1 mt-3">No activities scheduled yet</p>
-                    <p class="text-muted-foreground text-sm">Add schedules in the previous tab first</p>
+                    <p class="text-muted-foreground mb-1 mt-3">{{ __("admin.club_packages_edit_no_activities") }}</p>
+                    <p class="text-muted-foreground text-sm">{{ __("admin.club_packages_edit_no_activities_hint") }}</p>
                 </div>
             `;
             return;
         }
 
         editTrainerContainer.innerHTML = `
-            <p class="text-muted-foreground text-sm mb-4">Activities from your schedules:</p>
+            <p class="text-muted-foreground text-sm mb-4">{{ __("admin.club_packages_edit_activities_from_schedules") }}</p>
             ${uniqueActivities.map(activity => `
                 <div class="flex flex-wrap items-center gap-3 p-4 border border-border rounded-lg mb-3 bg-muted/10">
                     <div class="flex-1 min-w-0">
@@ -628,7 +628,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <div class="w-full sm:w-64">
                         <select class="form-select edit-trainer-assignment" data-activity-id="${activity.id}">
-                            <option value="">Select instructor</option>
+                            <option value="">{{ __("admin.club_packages_edit_select_instructor") }}</option>
                             ${editInstructors.map(i => `<option value="${i.id}" ${editTrainerAssignments[activity.id] == i.id ? 'selected' : ''}>${i.name}</option>`).join('')}
                         </select>
                     </div>

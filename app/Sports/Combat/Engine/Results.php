@@ -22,7 +22,7 @@ class Results
             if (! $final || ! $final->winner) {
                 continue; // no champion yet
             }
-            $gold   = $final->winner === 'a' ? $final->a_name : $final->b_name;
+            $gold = $final->winner === 'a' ? $final->a_name : $final->b_name;
             $silver = $final->winner === 'a' ? $final->b_name : $final->a_name;
 
             $bronze = [];
@@ -46,6 +46,7 @@ class Results
 
             $out[] = ['division' => $cat->name, 'class' => $cat->weight_class, 'medals' => $medals];
         }
+
         return $out;
     }
 
@@ -64,24 +65,24 @@ class Results
         $cats = $event->categories()->get();
         $phaseLabel = ['preliminary' => 'Preliminaries', 'quarterfinals' => 'Quarter-finals', 'finals' => 'Finals'];
         $breakNote = ($event->break_start && $event->break_end)
-            ? ' · Break ' . \Carbon\Carbon::parse($event->break_start)->format('g:i A') . '–' . \Carbon\Carbon::parse($event->break_end)->format('g:i A')
+            ? ' · Break '.\Carbon\Carbon::parse($event->break_start)->format('g:i A').'–'.\Carbon\Carbon::parse($event->break_end)->format('g:i A')
             : '';
 
         $entries = [];
         if ($event->enrollment_ends_at) {
             $entries[] = [
                 'label' => 'Registration closes',
-                'date'  => $event->enrollment_ends_at->toDateString(),
-                'note'  => 'Last day to enrol',
-                'icon'  => 'bi-pencil-square',
+                'date' => $event->enrollment_ends_at->toDateString(),
+                'note' => 'Last day to enrol',
+                'icon' => 'bi-pencil-square',
             ];
         }
         $wi = $event->weigh_in_at ? \Carbon\Carbon::parse($event->weigh_in_at) : $start->copy();
         $entries[] = [
             'label' => 'Weigh-in & draw',
-            'date'  => $wi->toDateString(),
-            'note'  => 'Official weights recorded, brackets drawn',
-            'icon'  => 'bi-clipboard-data',
+            'date' => $wi->toDateString(),
+            'note' => 'Official weights recorded, brackets drawn',
+            'icon' => 'bi-clipboard-data',
         ];
 
         for ($d = 1, $days = $this->scheduler->eventDayCount($event); $d <= $days; $d++) {
@@ -102,10 +103,10 @@ class Results
             }
             $names = array_map(fn ($p) => $phaseLabel[$p], array_keys($phasesOnDay));
             $entries[] = [
-                'label' => 'Day ' . $d,
-                'date'  => $start->copy()->addDays($d - 1)->toDateString(),
-                'note'  => implode(' · ', $names) . ' — ' . $classCount . ' weight ' . \Illuminate\Support\Str::plural('class', $classCount) . $breakNote,
-                'icon'  => 'bi-flag',
+                'label' => 'Day '.$d,
+                'date' => $start->copy()->addDays($d - 1)->toDateString(),
+                'note' => implode(' · ', $names).' — '.$classCount.' weight '.\Illuminate\Support\Str::plural('class', $classCount).$breakNote,
+                'icon' => 'bi-flag',
             ];
         }
 

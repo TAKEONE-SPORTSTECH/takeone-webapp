@@ -17,14 +17,14 @@
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
-                    <tr class="text-left text-xs uppercase tracking-wide text-muted-foreground bg-muted/50 border-b border-gray-100">
-                        <th class="px-4 py-3 font-medium">Member</th>
-                        <th class="px-4 py-3 font-medium">Gender</th>
-                        <th class="px-4 py-3 font-medium">Age</th>
-                        <th class="px-4 py-3 font-medium">Nationality</th>
-                        <th class="px-4 py-3 font-medium">Category</th>
-                        <th class="px-4 py-3 font-medium">Clubs</th>
-                        <th class="px-4 py-3 font-medium whitespace-nowrap">Member since</th>
+                    <tr class="text-start text-xs uppercase tracking-wide text-muted-foreground bg-muted/50 border-b border-gray-100">
+                        <th class="px-4 py-3 font-medium">{{ __('platform.members_results_member') }}</th>
+                        <th class="px-4 py-3 font-medium">{{ __('platform.members_results_gender') }}</th>
+                        <th class="px-4 py-3 font-medium">{{ __('platform.members_results_age') }}</th>
+                        <th class="px-4 py-3 font-medium">{{ __('platform.members_results_nationality') }}</th>
+                        <th class="px-4 py-3 font-medium">{{ __('platform.members_results_category') }}</th>
+                        <th class="px-4 py-3 font-medium">{{ __('platform.members_results_clubs') }}</th>
+                        <th class="px-4 py-3 font-medium whitespace-nowrap">{{ __('platform.members_results_member_since') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -59,15 +59,15 @@
                                             {{ mb_strtoupper(mb_substr($member->full_name ?? 'M', 0, 1, 'UTF-8'), 'UTF-8') }}
                                         @endif
                                     </span>
-                                    <span class="font-semibold text-foreground truncate">{{ $member->full_name ?? 'Unknown' }}</span>
+                                    <span class="font-semibold text-foreground truncate">{{ $member->full_name ?? __('platform.members_results_unknown') }}</span>
                                 </div>
                             </td>
                             <td class="px-4 py-3">
                                 <span class="inline-flex items-center gap-1 {{ $tMale ? 'text-primary' : 'text-pink-600' }}">
-                                    <i class="bi {{ $tMale ? 'bi-man' : 'bi-woman' }}"></i>{{ $tMale ? 'Male' : 'Female' }}
+                                    <i class="bi {{ $tMale ? 'bi-man' : 'bi-woman' }}"></i>{{ $tMale ? __('platform.members_results_male') : __('platform.members_results_female') }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3 text-muted-foreground whitespace-nowrap">{{ $tAge !== null ? $tAge . ' yrs' : '—' }}</td>
+                            <td class="px-4 py-3 text-muted-foreground whitespace-nowrap">{{ $tAge !== null ? $tAge . ' ' . __('platform.members_results_yrs') : '—' }}</td>
                             <td class="px-4 py-3 text-muted-foreground">
                                 <span class="nationality-display" data-iso3="{{ $member->nationality }}">{{ $member->nationality ?? '—' }}</span>
                             </td>
@@ -103,12 +103,12 @@
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body text-center py-12">
             <i class="bi bi-people text-muted-foreground text-6xl"></i>
-            <h5 class="mt-3 mb-2">No Members Found</h5>
+            <h5 class="mt-3 mb-2">{{ __('platform.members_results_none_title') }}</h5>
             <p class="text-muted-foreground mb-0">
                 @if($search)
-                    No members match your search criteria.
+                    {{ __('platform.members_results_none_search') }}
                 @else
-                    No members registered on the platform yet.
+                    {{ __('platform.members_results_none_empty') }}
                 @endif
             </p>
         </div>

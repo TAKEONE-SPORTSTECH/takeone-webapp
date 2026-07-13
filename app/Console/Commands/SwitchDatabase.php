@@ -7,6 +7,7 @@ use Illuminate\Console\Command;
 class SwitchDatabase extends Command
 {
     protected $signature = 'db:switch {--status : Show which database is currently active}';
+
     protected $description = 'Switch between database.sqlite (original) and database_new.sqlite (new)';
 
     public function handle(): void
@@ -24,7 +25,8 @@ class SwitchDatabase extends Command
         if ($this->option('status')) {
             $label = str_contains($current, 'database_new') ? 'NEW (database_new.sqlite)' : 'ORIGINAL (database.sqlite)';
             $this->info("Active database: {$label}");
-            $this->line("Path: " . ($current ?: $originalPath . ' (default)'));
+            $this->line('Path: '.($current ?: $originalPath.' (default)'));
+
             return;
         }
 

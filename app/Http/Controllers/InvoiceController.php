@@ -32,13 +32,13 @@ class InvoiceController extends Controller
         $today = now()->startOfDay();
 
         $summary = [
-            'outstanding'   => (float) $all->where('status', 'pending')->sum('amount'),
-            'paid_total'    => (float) $all->where('status', 'paid')->sum('amount'),
+            'outstanding' => (float) $all->where('status', 'pending')->sum('amount'),
+            'paid_total' => (float) $all->where('status', 'paid')->sum('amount'),
             'pending_count' => $all->where('status', 'pending')->count(),
-            'paid_count'    => $all->where('status', 'paid')->count(),
+            'paid_count' => $all->where('status', 'paid')->count(),
             'overdue_count' => $all->where('status', 'pending')
                 ->filter(fn ($i) => $i->due_date && $i->due_date->lt($today))->count(),
-            'next_due'      => $all->where('status', 'pending')
+            'next_due' => $all->where('status', 'pending')
                 ->filter(fn ($i) => $i->due_date)
                 ->sortBy('due_date')->first(),
         ];
@@ -103,9 +103,10 @@ class InvoiceController extends Controller
 
         if ($request->has('download')) {
             $html = view('components-templates.invoices.receipt', compact('invoice'))->render();
+
             return response($html)
                 ->header('Content-Type', 'text/html')
-                ->header('Content-Disposition', 'attachment; filename="receipt_' . $invoice->id . '.html"');
+                ->header('Content-Disposition', 'attachment; filename="receipt_'.$invoice->id.'.html"');
         }
 
         return view('components-templates.invoices.receipt', compact('invoice'));
@@ -126,7 +127,7 @@ class InvoiceController extends Controller
 
         // In a real application, this would integrate with a payment gateway
         $invoice->update([
-            'status' => 'paid'
+            'status' => 'paid',
         ]);
 
         return redirect()->route('bills.show', $invoice->id)
@@ -148,7 +149,7 @@ class InvoiceController extends Controller
         // In a real application, this would integrate with a payment gateway
         foreach ($invoices as $invoice) {
             $invoice->update([
-                'status' => 'paid'
+                'status' => 'paid',
             ]);
         }
 

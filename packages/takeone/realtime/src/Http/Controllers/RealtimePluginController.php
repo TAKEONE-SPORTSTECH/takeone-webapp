@@ -22,8 +22,8 @@ class RealtimePluginController extends Controller
 
         return view('realtime::admin.index', [
             'layout'   => $layout,
-            'settings' => $this->currentSettings(),
-            'status'   => $this->probe(),
+            'settings' => $this->realtime->adminSettings(),
+            'status'   => $this->realtime->probe(),
         ]);
     }
 
@@ -55,8 +55,8 @@ class RealtimePluginController extends Controller
             return response()->json([
                 'success'  => true,
                 'message'  => 'Realtime settings saved.',
-                'status'   => $this->probe(),
-                'settings' => $this->currentSettings(),
+                'status'   => $this->realtime->probe(),
+                'settings' => $this->realtime->adminSettings(),
             ]);
         }
 
@@ -84,37 +84,5 @@ class RealtimePluginController extends Controller
             'success' => $ok,
             'message' => $ok ? 'Broker reachable — test message published.' : ('Broker unreachable: ' . $error),
         ], $ok ? 200 : 422);
-    }
-
-    private function currentSettings(): array
-    {
-        return [
-            'enabled'         => $this->realtime->enabled(),
-            'broker_host'     => $this->realtime->config('broker.host'),
-            'broker_port'     => $this->realtime->config('broker.port'),
-            'broker_username' => $this->realtime->config('broker.username'),
-            'broker_ws_url'   => $this->realtime->config('broker.ws_url'),
-            'jwt_ttl'         => $this->realtime->config('jwt.ttl'),
-            'jwt_secret_set'  => filled($this->realtime->config('jwt.secret')),
-        ];
-    }
-
-    /** Lightweight reachability probe for the status pill (TCP connect only). */
-    private function probe(): array
-    {
-        if (! $this->realtime->enabled()) {
-            return ['state' => 'disabled', 'label' => 'Disabled'];
-        }
-
-        $host = $this->realtime->config('broker.host', '127.0.0.1');
-        $port = (int) $this->realtime->config('broker.port', 1883);
-        $conn = @fsockopen($host, $port, $errno, $errstr, 2);
-
-        if ($conn) {
-            fclose($conn);
-            return ['state' => 'online', 'label' => 'Broker online'];
-        }
-
-        return ['state' => 'offline', 'label' => 'Broker offline (' . ($errstr ?: 'no route') . ')'];
     }
 }

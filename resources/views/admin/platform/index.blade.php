@@ -5,23 +5,23 @@
     <!-- Header -->
     <div class="flex flex-wrap gap-3 items-center justify-between">
         <div>
-            <h2 class="text-3xl font-bold">All Clubs</h2>
-            <p class="text-muted-foreground mt-1">Manage all clubs on the platform</p>
+            <h2 class="text-3xl font-bold">{{ __('platform.admin_platform_index_all_clubs') }}</h2>
+            <p class="text-muted-foreground mt-1">{{ __('platform.admin_platform_index_manage_all_clubs') }}</p>
         </div>
         <div class="flex items-center gap-2">
             <a href="{{ route('admin.platform.clubs.create') }}" class="btn btn-primary">
-                <i class="bi bi-plus-lg mr-2"></i>Add New Club
+                <i class="bi bi-plus-lg me-2"></i>{{ __('platform.admin_platform_index_add_new_club') }}
             </a>
         </div>
     </div>
 
     <!-- Search Bar -->
     <div class="relative">
-        <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+        <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
         <input
             type="text"
-            class="form-control pl-10"
-            placeholder="Search clubs by name, location, or description..."
+            class="form-control ps-10"
+            placeholder="{{ __('platform.admin_platform_index_search_placeholder') }}"
             id="searchInput"
         />
     </div>
@@ -29,7 +29,7 @@
     <!-- Clubs Grid -->
     @if($clubs->isEmpty())
         <div class="card p-5 text-center">
-            <p class="text-muted-foreground mb-0">No clubs found. Create your first club to get started.</p>
+            <p class="text-muted-foreground mb-0">{{ __('platform.admin_platform_index_no_clubs_found') }}</p>
         </div>
     @else
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" id="clubsGrid">
@@ -55,7 +55,7 @@
 
                         <!-- Club Logo Overlay -->
                         @if($club->logo)
-                        <div class="absolute bottom-2 left-2">
+                        <div class="absolute bottom-2 start-2">
                             <div class="rounded-full bg-white shadow-lg border p-1 w-20 h-20">
                                 <img src="{{ asset('storage/' . $club->logo) }}"
                                      alt="{{ $club->club_name }} logo"
@@ -66,15 +66,15 @@
                         @endif
 
                         <!-- Admin Badge -->
-                        <div class="absolute top-2 left-2">
+                        <div class="absolute top-2 start-2">
                             <span class="badge text-white" style="background: linear-gradient(135deg, hsl(250 60% 75%), hsl(250 60% 65%));">
-                                Admin
+                                {{ __('platform.admin_platform_index_admin_badge') }}
                             </span>
                         </div>
 
                         <!-- Rating Badge -->
                         @if($club->rating)
-                        <div class="absolute top-2 right-2">
+                        <div class="absolute top-2 end-2">
                             <span class="badge bg-white text-foreground">
                                 <i class="bi bi-star-fill text-warning"></i>
                                 {{ number_format($club->rating, 1) }}
@@ -89,7 +89,7 @@
                             <h3 class="text-lg font-semibold mb-2 club-name-hover">{{ $club->club_name }}</h3>
                             @if($club->location)
                             <div class="flex items-center text-muted-foreground text-sm">
-                                <i class="bi bi-geo-alt mr-1"></i>
+                                <i class="bi bi-geo-alt me-1"></i>
                                 <span class="truncate">{{ $club->location }}</span>
                             </div>
                             @endif
@@ -100,17 +100,17 @@
                             <div class="p-2 rounded bg-accent">
                                 <i class="bi bi-people block mb-1 text-primary"></i>
                                 <p class="font-semibold mb-0">{{ $club->members_count ?? 0 }}</p>
-                                <p class="text-muted-foreground mb-0 text-xs">Members</p>
+                                <p class="text-muted-foreground mb-0 text-xs">{{ __('platform.admin_platform_index_members') }}</p>
                             </div>
                             <div class="p-2 rounded bg-accent">
                                 <i class="bi bi-box block mb-1 text-primary"></i>
                                 <p class="font-semibold mb-0">{{ $club->packages_count ?? 0 }}</p>
-                                <p class="text-muted-foreground mb-0 text-xs">Packages</p>
+                                <p class="text-muted-foreground mb-0 text-xs">{{ __('platform.admin_platform_index_packages') }}</p>
                             </div>
                             <div class="p-2 rounded bg-accent">
                                 <i class="bi bi-star block mb-1 text-primary"></i>
                                 <p class="font-semibold mb-0">{{ $club->trainers_count ?? 0 }}</p>
-                                <p class="text-muted-foreground mb-0 text-xs">Trainers</p>
+                                <p class="text-muted-foreground mb-0 text-xs">{{ __('platform.admin_platform_index_trainers') }}</p>
                             </div>
                         </div>
                     </div>

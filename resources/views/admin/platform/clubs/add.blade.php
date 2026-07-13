@@ -1,14 +1,14 @@
 @extends('layouts.admin')
 
-@section('page-title', 'Create New Club')
-@section('page-subtitle', 'Add a new club to the platform')
+@section('page-title', __('platform.platform_clubs_add_page_title'))
+@section('page-subtitle', __('platform.platform_clubs_add_page_subtitle'))
 
 @section('content')
     <div class="grid grid-cols-1 lg:grid-cols-12">
         <div class="lg:col-span-8 lg:col-start-3">
             <div class="card border-0 shadow-sm">
             <div class="card-header bg-card">
-                <h5 class="mb-0"><i class="bi bi-building mr-2"></i>Club Information</h5>
+                <h5 class="mb-0"><i class="bi bi-building me-2"></i>{{ __('platform.platform_clubs_add_club_information') }}</h5>
             </div>
             <div class="card-body">
                 <form action="{{ route('admin.platform.clubs.store') }}" method="POST">
@@ -16,9 +16,9 @@
 
                     <!-- Owner Selection -->
                     <div class="mb-4">
-                        <label for="owner_user_id" class="form-label">Club Owner <span class="text-destructive">*</span></label>
+                        <label for="owner_user_id" class="form-label">{{ __('platform.platform_clubs_add_club_owner') }} <span class="text-destructive">*</span></label>
                         <select class="form-select @error('owner_user_id') is-invalid @enderror" id="owner_user_id" name="owner_user_id" required>
-                            <option value="">Select Owner</option>
+                            <option value="">{{ __('platform.platform_clubs_add_select_owner') }}</option>
                             @foreach($users as $user)
                                 <option value="{{ $user['id'] }}"
                                         data-name="{{ $user['full_name'] }}"
@@ -33,43 +33,43 @@
                         @error('owner_user_id')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
-                        <small class="text-muted-foreground">The user who will manage this club</small>
+                        <small class="text-muted-foreground">{{ __('platform.platform_clubs_add_owner_help') }}</small>
                     </div>
 
                     <!-- Basic Information -->
-                    <h6 class="border-b pb-2 mb-3">Basic Information</h6>
+                    <h6 class="border-b pb-2 mb-3">{{ __('platform.platform_clubs_add_basic_information') }}</h6>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                         <div>
-                            <label for="club_name" class="form-label">Club Name <span class="text-destructive">*</span></label>
+                            <label for="club_name" class="form-label">{{ __('platform.platform_clubs_add_club_name') }} <span class="text-destructive">*</span></label>
                             <input type="text" class="form-control @error('club_name') is-invalid @enderror" id="club_name" name="club_name" value="{{ old('club_name') }}" required>
                             @error('club_name')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
                         <div>
-                            <label for="slug" class="form-label">Club Slug <span class="text-destructive">*</span></label>
+                            <label for="slug" class="form-label">{{ __('platform.platform_clubs_add_club_slug') }} <span class="text-destructive">*</span></label>
                             <input type="text" class="form-control @error('slug') is-invalid @enderror" id="slug" name="slug" value="{{ old('slug') }}" required>
                             @error('slug')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
-                            <small class="text-muted-foreground">URL-friendly identifier (e.g., bh-taekwondo)</small>
+                            <small class="text-muted-foreground">{{ __('platform.platform_clubs_add_slug_help') }}</small>
                         </div>
                     </div>
 
                     <!-- Contact Information -->
-                    <h6 class="border-b pb-2 mb-3 mt-4">Contact Information</h6>
+                    <h6 class="border-b pb-2 mb-3 mt-4">{{ __('platform.platform_clubs_add_contact_information') }}</h6>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                         <div>
-                            <label for="email" class="form-label">Club Email</label>
+                            <label for="email" class="form-label">{{ __('platform.platform_clubs_add_club_email') }}</label>
                             <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email') }}">
                             @error('email')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
                         <div>
-                            <label for="phone_number" class="form-label">Phone Number</label>
+                            <label for="phone_number" class="form-label">{{ __('platform.platform_clubs_add_phone_number') }}</label>
                             <x-country-code-dropdown
                                 name="phone_code"
                                 id="phone_code"
@@ -110,7 +110,7 @@
                             <x-country-dropdown
                                 name="country"
                                 id="country"
-                                label="Country"
+                                :label="__('platform.platform_clubs_add_country')"
                                 :value="old('country', 'BH')"
                                 :required="false"
                                 :error="$errors->first('country')" />
@@ -118,10 +118,10 @@
                     </div>
 
                     <!-- Location -->
-                    <h6 class="border-b pb-2 mb-3 mt-4">Location</h6>
+                    <h6 class="border-b pb-2 mb-3 mt-4">{{ __('platform.platform_clubs_add_location') }}</h6>
 
                     <div class="mb-3">
-                        <label for="address" class="form-label">Address</label>
+                        <label for="address" class="form-label">{{ __('platform.platform_clubs_add_address') }}</label>
                         <textarea class="form-control @error('address') is-invalid @enderror" id="address" name="address" rows="2">{{ old('address') }}</textarea>
                         @error('address')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -130,14 +130,14 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                         <div>
-                            <label for="gps_lat" class="form-label">GPS Latitude</label>
+                            <label for="gps_lat" class="form-label">{{ __('platform.platform_clubs_add_gps_latitude') }}</label>
                             <input type="number" step="0.0000001" class="form-control @error('gps_lat') is-invalid @enderror" id="gps_lat" name="gps_lat" value="{{ old('gps_lat') }}" placeholder="26.0667">
                             @error('gps_lat')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
                         <div>
-                            <label for="gps_long" class="form-label">GPS Longitude</label>
+                            <label for="gps_long" class="form-label">{{ __('platform.platform_clubs_add_gps_longitude') }}</label>
                             <input type="number" step="0.0000001" class="form-control @error('gps_long') is-invalid @enderror" id="gps_long" name="gps_long" value="{{ old('gps_long') }}" placeholder="50.5577">
                             @error('gps_long')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -146,11 +146,11 @@
                     </div>
 
                     <!-- Branding -->
-                    <h6 class="border-b pb-2 mb-3 mt-4">Branding</h6>
+                    <h6 class="border-b pb-2 mb-3 mt-4">{{ __('platform.platform_clubs_add_branding') }}</h6>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                         <div class="text-center">
-                            <label class="form-label block">Club Logo</label>
+                            <label class="form-label block">{{ __('platform.platform_clubs_add_club_logo') }}</label>
                             <x-takeone-cropper
                                 id="create_club_logo"
                                 mode="form"
@@ -162,16 +162,16 @@
                                 shape="square"
                                 folder="clubs/logos"
                                 filename="logo_{{ time() }}"
-                                buttonText="Select Logo"
+                                :buttonText="__('platform.platform_clubs_add_select_logo')"
                                 buttonClass="btn btn-outline-success btn-sm"
                             />
                             @error('logo')
                                 <div class="text-destructive text-sm mt-1">{{ $message }}</div>
                             @enderror
-                            <small class="text-muted-foreground block mt-2">Recommended: Square image, max 2MB</small>
+                            <small class="text-muted-foreground block mt-2">{{ __('platform.platform_clubs_add_logo_recommended') }}</small>
                         </div>
                         <div class="text-center">
-                            <label class="form-label block">Cover Image</label>
+                            <label class="form-label block">{{ __('platform.platform_clubs_add_cover_image') }}</label>
                             <x-takeone-cropper
                                 id="create_club_cover"
                                 mode="form"
@@ -183,23 +183,23 @@
                                 shape="square"
                                 folder="clubs/covers"
                                 filename="cover_{{ time() }}"
-                                buttonText="Select Cover"
+                                :buttonText="__('platform.platform_clubs_add_select_cover')"
                                 buttonClass="btn btn-outline-success btn-sm"
                             />
                             @error('cover_image')
                                 <div class="text-destructive text-sm mt-1">{{ $message }}</div>
                             @enderror
-                            <small class="text-muted-foreground block mt-2">Recommended: 1200x400px, max 2MB</small>
+                            <small class="text-muted-foreground block mt-2">{{ __('platform.platform_clubs_add_cover_recommended') }}</small>
                         </div>
                     </div>
 
                     <!-- Actions -->
                         <div class="flex justify-between mt-4 pt-3 border-t">
                             <a href="{{ route('admin.platform.clubs') }}" class="btn btn-secondary">
-                                <i class="bi bi-arrow-left mr-2"></i>Cancel
+                                <i class="bi bi-arrow-left me-2"></i>{{ __('shared.cancel') }}
                             </a>
-                            <button type="submit" class="btn text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                                <i class="bi bi-check-circle mr-2"></i>Create Club
+                            <button type="submit" class="btn text-white" style="background: linear-gradient(135deg, hsl(250 65% 66%) 0%, hsl(262 60% 56%) 100%);">
+                                <i class="bi bi-check-circle me-2"></i>{{ __('platform.platform_clubs_add_create_club') }}
                             </button>
                         </div>
                 </form>
@@ -225,7 +225,7 @@ document.getElementById('club_name').addEventListener('input', function(e) {
 // Initialize Select2 for owner dropdown
 $(document).ready(function() {
     $('#owner_user_id').select2({
-        placeholder: 'Search by name, email, or phone...',
+        placeholder: '{{ __("platform.platform_clubs_add_search_owner_placeholder") }}',
         allowClear: true,
         width: '100%',
         templateResult: formatUser,

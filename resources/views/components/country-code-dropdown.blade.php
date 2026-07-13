@@ -1,4 +1,4 @@
-@props(['name' => 'country_code', 'id' => 'country_code', 'value' => '+1', 'required' => false, 'error' => null])
+@props(['name' => 'country_code', 'id' => 'country_code', 'value' => '+1', 'required' => false, 'error' => null, 'syncWithCountry' => true])
 
 {{-- Keep the mobile-number group left-to-right even on RTL pages: the flag/code
      button stays on the LEFT and the phone field on the right (phone numbers read
@@ -150,7 +150,10 @@
                     this.selectedFlag = initialCountry.flag;
                 }
 
-                // Listen for country-changed events
+@if($syncWithCountry)
+                // Listen for country-changed events (e.g. a country/nationality picker on the
+                // same form syncing the dial code). Opt out with :syncWithCountry="false" when
+                // the phone code must stay independent (e.g. nationality ≠ phone country).
                 window.addEventListener('country-changed', (e) => {
                     const code = e.detail.call_code;
                     if (!code) return;
@@ -160,6 +163,7 @@
                         this.selectedFlag = match.flag;
                     }
                 });
+@endif
             },
 
             toggle() {

@@ -3,16 +3,48 @@
 @section('title', ($club->club_name ?? __('admin.club')) . ' · ' . __('admin.nav_packages'))
 
 @section('club-admin-content')
-@php $cur = $club->currency ?: ''; @endphp
-<div class="space-y-4 mobile-stagger"
+@php
+    $cur = $club->currency ?: '';
+    $pkgTotal  = $packages->count();
+    // Distinct activities offered across all packages (the same activity used by
+    // many packages counts once) — not a per-package sum.
+    $pkgActivities = $packages->flatMap(fn ($p) => $p->activities)->unique('id')->count();
+@endphp
+<div class="-mx-4 -mt-4"
      x-data="{ removePackageId: null, removePackageName: '' }"
      @package-removed.window="removePackageId = null; removePackageName = ''">
 
-    {{-- Add package --}}
-    <button type="button" @click="$dispatch('open-add-package')"
-            class="m-press w-full flex items-center justify-center gap-2 rounded-2xl bg-primary text-white py-3.5 font-semibold shadow-sm">
-        <i class="bi bi-plus-lg text-lg"></i>{{ __('admin.pkg_add') }}
-    </button>
+    {{-- ===== Hero ===== --}}
+    <header class="m-hero px-5 pt-7 pb-6 text-white relative overflow-hidden">
+        <div class="absolute -end-8 -top-8 w-36 h-36 rounded-full bg-white/10"></div>
+        <div class="flex items-center justify-between relative z-10">
+            <div class="min-w-0">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70 truncate">{{ $club->club_name ?? __('admin.club') }}</p>
+                <h1 class="text-2xl font-black mt-0.5">{{ __('admin.nav_packages') }}</h1>
+            </div>
+            <div class="flex items-center gap-2">
+                <button type="button" @click="$dispatch('open-add-package')"
+                        class="m-press w-12 h-12 rounded-2xl bg-white/20 border border-white/30 backdrop-blur grid place-items-center active:scale-95 transition-transform" aria-label="{{ __('admin.pkg_add') }}">
+                    <i class="bi bi-plus-lg text-xl"></i>
+                </button>
+                <div class="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center">
+                    <i class="bi bi-box text-xl m-float"></i>
+                </div>
+            </div>
+        </div>
+        <div class="flex gap-2 mt-5 relative z-10">
+            <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
+                <p class="text-lg font-black leading-none">{{ $pkgTotal ?? 0 }}</p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('admin.nav_packages') }}</p>
+            </div>
+            <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
+                <p class="text-lg font-black leading-none">{{ $pkgActivities }}</p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('admin.nav_activities') }}</p>
+            </div>
+        </div>
+    </header>
+
+    <div class="px-4 pt-5 space-y-4 mobile-stagger">
 
     @if($packages->isEmpty())
         <div class="m-card p-8 text-center">
@@ -211,5 +243,6 @@ function removePackage(id) {
     .catch(() => window.showToast('error', 'An error occurred. Please try again.'));
 }
     </script>
+    </div>{{-- /content --}}
 </div>
 @endsection

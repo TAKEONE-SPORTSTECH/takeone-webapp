@@ -21,12 +21,12 @@ class FormEngine
         $target = $cond['value'] ?? null;
 
         return match ($cond['op'] ?? 'equals') {
-            'equals'     => (string) $val === (string) $target,
+            'equals' => (string) $val === (string) $target,
             'not_equals' => (string) $val !== (string) $target,
-            'in'         => is_array($val) ? in_array($target, $val, true) : in_array($val, (array) $target, true),
-            'filled'     => $val !== null && $val !== '' && $val !== [],
+            'in' => is_array($val) ? in_array($target, $val, true) : in_array($val, (array) $target, true),
+            'filled' => $val !== null && $val !== '' && $val !== [],
             'not_filled' => $val === null || $val === '' || $val === [],
-            default      => true,
+            default => true,
         };
     }
 
@@ -41,12 +41,13 @@ class FormEngine
             if (! $key) {
                 continue;
             }
-            $dataKey = 'fields.' . $key;
+            $dataKey = 'fields.'.$key;
             $labels[$dataKey] = $field['label'] ?? $key;
 
             // A field hidden by conditional logic is neither required nor validated.
             if (! self::isVisible($field, $data)) {
                 $rules[$dataKey] = ['nullable'];
+
                 continue;
             }
 
@@ -64,20 +65,24 @@ class FormEngine
                 case 'checkboxes':
                     $r[] = $required ? 'required' : 'nullable';
                     $r[] = 'array';
-                    $rules[$dataKey . '.*'] = $opts ? ['in:' . implode(',', $opts)] : ['string'];
+                    $rules[$dataKey.'.*'] = $opts ? ['in:'.implode(',', $opts)] : ['string'];
                     break;
                 case 'select':
                 case 'radio':
                     $r[] = $required ? 'required' : 'nullable';
                     if ($opts) {
-                        $r[] = 'in:' . implode(',', $opts);
+                        $r[] = 'in:'.implode(',', $opts);
                     }
                     break;
                 case 'number':
                     $r[] = $required ? 'required' : 'nullable';
                     $r[] = 'numeric';
-                    if (isset($v['min']) && $v['min'] !== '') $r[] = 'min:' . $v['min'];
-                    if (isset($v['max']) && $v['max'] !== '') $r[] = 'max:' . $v['max'];
+                    if (isset($v['min']) && $v['min'] !== '') {
+                        $r[] = 'min:'.$v['min'];
+                    }
+                    if (isset($v['max']) && $v['max'] !== '') {
+                        $r[] = 'max:'.$v['max'];
+                    }
                     break;
                 case 'email':
                     $r[] = $required ? 'required' : 'nullable';
@@ -99,9 +104,13 @@ class FormEngine
                 default:
                     $r[] = $required ? 'required' : 'nullable';
                     $r[] = 'string';
-                    if (isset($v['minLength']) && $v['minLength'] !== '') $r[] = 'min:' . $v['minLength'];
-                    $r[] = 'max:' . ($v['maxLength'] ?? ($type === 'textarea' ? 5000 : 500));
-                    if (! empty($v['pattern'])) $r[] = 'regex:/' . str_replace('/', '\/', $v['pattern']) . '/';
+                    if (isset($v['minLength']) && $v['minLength'] !== '') {
+                        $r[] = 'min:'.$v['minLength'];
+                    }
+                    $r[] = 'max:'.($v['maxLength'] ?? ($type === 'textarea' ? 5000 : 500));
+                    if (! empty($v['pattern'])) {
+                        $r[] = 'regex:/'.str_replace('/', '\/', $v['pattern']).'/';
+                    }
                     break;
             }
 

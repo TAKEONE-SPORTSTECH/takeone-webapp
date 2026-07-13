@@ -22,7 +22,8 @@ class MessengerController extends Controller
 
     /** Private disk + folder where encrypted attachment blobs live. */
     private const ATTACHMENT_DISK = 'local';
-    private const ATTACHMENT_DIR  = 'chat-attachments';
+
+    private const ATTACHMENT_DIR = 'chat-attachments';
 
     /** Only these (sniffed) types are ever shown inline; all else downloads. */
     private const SAFE_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -34,7 +35,7 @@ class MessengerController extends Controller
 
         return view($this->pick('messenger'), [
             'conversations' => $conversations,
-            'unreadTotal'   => $conversations->sum('unread_count'),
+            'unreadTotal' => $conversations->sum('unread_count'),
         ]);
     }
 
@@ -42,7 +43,7 @@ class MessengerController extends Controller
     public function conversations()
     {
         return response()->json([
-            'success'       => true,
+            'success' => true,
             'conversations' => $this->inboxFor((int) Auth::id()),
         ]);
     }
@@ -74,8 +75,8 @@ class MessengerController extends Controller
         $conversations = $this->inboxFor((int) Auth::id());
 
         return view($this->pick('messenger'), [
-            'conversations'  => $conversations,
-            'unreadTotal'    => $conversations->sum('unread_count'),
+            'conversations' => $conversations,
+            'unreadTotal' => $conversations->sum('unread_count'),
             'openConversation' => $conversation->id,
         ]);
     }
@@ -100,8 +101,8 @@ class MessengerController extends Controller
         $other = $conversation->loadMissing('participants')->otherParticipant($me);
 
         return response()->json([
-            'success'  => true,
-            'partner'  => $this->presentUser($other),
+            'success' => true,
+            'partner' => $this->presentUser($other),
             'messages' => $messages->map(fn ($m) => $this->presentMessage($m, $me))->values(),
         ]);
     }
@@ -112,13 +113,20 @@ class MessengerController extends Controller
         $this->authorizeParticipant($conversation);
         $me = (int) Auth::id();
 
+        // A block created after a direct thread already exists must still stop new
+        // messages — canMessage() only guards opening a NEW thread in start().
+        if ($conversation->type === 'direct') {
+            $otherId = $conversation->participants()->where('users.id', '!=', $me)->value('users.id');
+            abort_if($otherId && Auth::user()->blockedEitherWay((int) $otherId), 403);
+        }
+
         $data = $request->validate([
             'body' => ['required', 'string', 'max:5000'],
         ]);
 
         $message = $conversation->messages()->create([
             'sender_id' => $me,
-            'body'      => $data['body'],
+            'body' => $data['body'],
         ]);
 
         $conversation->forceFill(['last_message_at' => $message->created_at])->save();
@@ -127,9 +135,9 @@ class MessengerController extends Controller
         $this->pushRealtime($conversation, $message);
 
         return response()->json([
-            'success'         => true,
+            'success' => true,
             'conversation_id' => $conversation->id,
-            'data'            => $this->presentMessage($message, $me),
+            'data' => $this->presentMessage($message, $me),
         ]);
     }
 
@@ -149,10 +157,10 @@ class MessengerController extends Controller
         $this->pushRealtime($conversation, $message, 'edit');
 
         return response()->json([
-            'success'         => true,
+            'success' => true,
             'conversation_id' => $conversation->id,
-            'is_latest'       => $this->isLatest($conversation, $message),
-            'data'            => $this->presentMessage($message, (int) Auth::id()),
+            'is_latest' => $this->isLatest($conversation, $message),
+            'data' => $this->presentMessage($message, (int) Auth::id()),
         ]);
     }
 
@@ -172,10 +180,10 @@ class MessengerController extends Controller
         }
 
         return response()->json([
-            'success'         => true,
+            'success' => true,
             'conversation_id' => $conversation->id,
-            'message_id'      => $message->id,
-            'is_latest'       => $this->isLatest($conversation, $message),
+            'message_id' => $message->id,
+            'is_latest' => $this->isLatest($conversation, $message),
         ]);
     }
 
@@ -191,7 +199,7 @@ class MessengerController extends Controller
         $me = (int) Auth::id();
 
         $request->validate([
-            'file' => ['required', 'file', 'max:' . (int) (self::MAX_ATTACHMENT_BYTES / 1024)],
+            'file' => ['required', 'file', 'max:'.(int) (self::MAX_ATTACHMENT_BYTES / 1024)],
         ]);
 
         $file = $request->file('file');
@@ -206,17 +214,17 @@ class MessengerController extends Controller
         $name = mb_substr($file->getClientOriginalName() ?: ($kind === 'image' ? 'photo' : 'file'), 0, 255);
 
         // Encrypt the raw bytes before they ever touch disk.
-        $path = self::ATTACHMENT_DIR . '/' . $conversation->id . '/' . Str::uuid()->toString();
+        $path = self::ATTACHMENT_DIR.'/'.$conversation->id.'/'.Str::uuid()->toString();
         Storage::disk(self::ATTACHMENT_DISK)->put($path, Crypt::encryptString($file->get()));
 
         $message = $conversation->messages()->create([
-            'sender_id'             => $me,
-            'body'                  => '',
-            'attachment_path'       => $path,
-            'attachment_name'       => $name,
-            'attachment_mime'       => $mime,
-            'attachment_size'       => $file->getSize(),
-            'attachment_kind'       => $kind,
+            'sender_id' => $me,
+            'body' => '',
+            'attachment_path' => $path,
+            'attachment_name' => $name,
+            'attachment_mime' => $mime,
+            'attachment_size' => $file->getSize(),
+            'attachment_kind' => $kind,
             'attachment_expires_at' => now()->addHours(self::ATTACHMENT_TTL_HOURS),
         ]);
 
@@ -226,9 +234,9 @@ class MessengerController extends Controller
         $this->pushRealtime($conversation, $message, 'file');
 
         return response()->json([
-            'success'         => true,
+            'success' => true,
             'conversation_id' => $conversation->id,
-            'data'            => $this->presentMessage($message, $me),
+            'data' => $this->presentMessage($message, $me),
         ]);
     }
 
@@ -254,34 +262,35 @@ class MessengerController extends Controller
         // anything else (SVG/HTML/etc.) is forced to download. The served
         // Content-Type is pinned to those known types — the stored mime was
         // sniffed server-side at upload, so it is trustworthy here.
-        $mime      = (string) $message->attachment_mime;
+        $mime = (string) $message->attachment_mime;
         $safeImage = in_array($mime, self::SAFE_IMAGE_MIMES, true);
-        $isMedia   = str_starts_with($mime, 'audio/') || str_starts_with($mime, 'video/');
-        $inline    = $safeImage || $isMedia;
-        $type      = $inline ? $mime : 'application/octet-stream';
-        $name      = str_replace(['"', "\r", "\n"], '', (string) $message->attachment_name);
+        $isMedia = str_starts_with($mime, 'audio/') || str_starts_with($mime, 'video/');
+        $inline = $safeImage || $isMedia;
+        $type = $inline ? $mime : 'application/octet-stream';
+        $name = str_replace(['"', "\r", "\n"], '', (string) $message->attachment_name);
 
         $headers = [
-            'Content-Type'             => $type,
-            'Content-Disposition'      => ($inline ? 'inline' : 'attachment') . '; filename="' . $name . '"',
-            'Cache-Control'            => 'private, max-age=86400',
-            'X-Content-Type-Options'   => 'nosniff',
+            'Content-Type' => $type,
+            'Content-Disposition' => ($inline ? 'inline' : 'attachment').'; filename="'.$name.'"',
+            'Cache-Control' => 'private, max-age=86400',
+            'X-Content-Type-Options' => 'nosniff',
             // Defence in depth: even if a payload slips through, render nothing.
-            'Content-Security-Policy'  => "default-src 'none'; sandbox; style-src 'unsafe-inline'",
-            'Accept-Ranges'            => 'bytes',
+            'Content-Security-Policy' => "default-src 'none'; sandbox; style-src 'unsafe-inline'",
+            'Accept-Ranges' => 'bytes',
         ];
 
         // Honour HTTP Range so audio/video can seek without downloading the whole
         // file first. We already hold the full decrypted bytes, so slicing is cheap.
-        $size  = strlen($bytes);
+        $size = strlen($bytes);
         $range = request()->header('Range');
         if ($range && preg_match('/bytes=(\d*)-(\d*)/', $range, $m)) {
             $start = $m[1] === '' ? 0 : (int) $m[1];
-            $end   = $m[2] === '' ? $size - 1 : min((int) $m[2], $size - 1);
+            $end = $m[2] === '' ? $size - 1 : min((int) $m[2], $size - 1);
             if ($start > $end || $start >= $size) {
                 return response('', 416, ['Content-Range' => "bytes */{$size}"]);
             }
             $headers['Content-Range'] = "bytes {$start}-{$end}/{$size}";
+
             return response(substr($bytes, $start, $end - $start + 1), 206, $headers);
         }
 
@@ -296,13 +305,13 @@ class MessengerController extends Controller
 
         DB::table('message_hides')->insertOrIgnore([
             'message_id' => $message->id,
-            'user_id'    => (int) Auth::id(),
+            'user_id' => (int) Auth::id(),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
         return response()->json([
-            'success'    => true,
+            'success' => true,
             'message_id' => $message->id,
         ]);
     }
@@ -329,7 +338,7 @@ class MessengerController extends Controller
         }
 
         $preview = \Illuminate\Support\Facades\Cache::remember(
-            'linkpreview:' . sha1($url),
+            'linkpreview:'.sha1($url),
             now()->addHours(6),
             fn () => $this->buildPreview($url),
         );
@@ -355,7 +364,7 @@ class MessengerController extends Controller
     /** Platform-wide user search for starting a new chat (Facebook-style). */
     public function searchUsers(Request $request)
     {
-        $q  = trim((string) $request->query('q', ''));
+        $q = trim((string) $request->query('q', ''));
         $me = Auth::user();
 
         // You can only reach people you're allowed to message: club-mates,
@@ -386,8 +395,18 @@ class MessengerController extends Controller
         $allowedIds = collect()->merge($clubMateIds)->merge($connectedIds)->merge($partnerIds)
             ->unique()->diff($blockedIds)->values();
 
-        $users = $allowedIds->isEmpty() ? collect() : User::query()
-            ->whereIn('id', $allowedIds)
+        // With a query, people-discovery widens reach to any DISCOVERABLE member
+        // (they've opted into being found + contacted). With no query, only the
+        // already-reachable set is listed (don't dump the whole platform).
+        $users = ($allowedIds->isEmpty() && $q === '') ? collect() : User::query()
+            ->where(function ($outer) use ($allowedIds, $q) {
+                $outer->whereIn('id', $allowedIds);
+                if ($q !== '') {
+                    $outer->orWhere('is_discoverable', true);
+                }
+            })
+            ->whereKeyNot($me->id)
+            ->whereNotIn('id', $blockedIds)
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(fn ($w) => $w
                     ->where('full_name', 'like', "%{$q}%")
@@ -400,7 +419,7 @@ class MessengerController extends Controller
 
         return response()->json([
             'success' => true,
-            'users'   => $users->map(fn ($u) => $this->presentUser($u))->values(),
+            'users' => $users->map(fn ($u) => $this->presentUser($u))->values(),
         ]);
     }
 
@@ -435,9 +454,9 @@ class MessengerController extends Controller
         }
 
         $title = $this->metaContent($html, 'og:title') ?: $this->htmlTitle($html);
-        $desc  = $this->metaContent($html, 'og:description') ?: $this->metaContent($html, 'description');
+        $desc = $this->metaContent($html, 'og:description') ?: $this->metaContent($html, 'description');
         $image = $this->metaContent($html, 'og:image');
-        $site  = $this->metaContent($html, 'og:site_name') ?: parse_url($finalUrl, PHP_URL_HOST);
+        $site = $this->metaContent($html, 'og:site_name') ?: parse_url($finalUrl, PHP_URL_HOST);
 
         if ($image && ! preg_match('#^https?://#i', $image)) {
             $image = $this->absoluteUrl($finalUrl, $image);
@@ -450,12 +469,12 @@ class MessengerController extends Controller
         }
 
         return [
-            'type'        => 'link',
-            'url'         => $url,
-            'title'       => $title ? mb_substr(trim($title), 0, 140) : null,
+            'type' => 'link',
+            'url' => $url,
+            'title' => $title ? mb_substr(trim($title), 0, 140) : null,
             'description' => $desc ? mb_substr(trim($desc), 0, 200) : null,
-            'image'       => $image,
-            'site'        => $site ? mb_substr($site, 0, 60) : null,
+            'image' => $image,
+            'site' => $site ? mb_substr($site, 0, 60) : null,
         ];
     }
 
@@ -463,11 +482,12 @@ class MessengerController extends Controller
     private function videoEmbed(string $url): ?array
     {
         if (preg_match('#(?:youtube\.com/(?:watch\?v=|shorts/|embed/)|youtu\.be/)([\w-]{6,})#i', $url, $m)) {
-            return ['type' => 'video_embed', 'provider' => 'youtube', 'embed' => 'https://www.youtube.com/embed/' . $m[1], 'url' => $url];
+            return ['type' => 'video_embed', 'provider' => 'youtube', 'embed' => 'https://www.youtube.com/embed/'.$m[1], 'url' => $url];
         }
         if (preg_match('#vimeo\.com/(\d+)#i', $url, $m)) {
-            return ['type' => 'video_embed', 'provider' => 'vimeo', 'embed' => 'https://player.vimeo.com/video/' . $m[1], 'url' => $url];
+            return ['type' => 'video_embed', 'provider' => 'vimeo', 'embed' => 'https://player.vimeo.com/video/'.$m[1], 'url' => $url];
         }
+
         return null;
     }
 
@@ -481,10 +501,10 @@ class MessengerController extends Controller
                 return [$current, null];
             }
 
-            $p    = parse_url($current);
+            $p = parse_url($current);
             $host = $p['host'];
             $port = $p['port'] ?? (($p['scheme'] ?? 'http') === 'https' ? 443 : 80);
-            $pin  = $ips[0]; // connect ONLY to a pre-validated address
+            $pin = $ips[0]; // connect ONLY to a pre-validated address
 
             try {
                 $resp = \Illuminate\Support\Facades\Http::timeout(5)
@@ -507,15 +527,18 @@ class MessengerController extends Controller
             }
 
             if ($resp->redirect() && $resp->header('Location')) {
-                $loc     = $resp->header('Location');
+                $loc = $resp->header('Location');
                 $current = preg_match('#^https?://#i', $loc) ? $loc : $this->absoluteUrl($current, $loc);
+
                 continue;
             }
             if (! $resp->ok() || ! str_contains(strtolower($resp->header('Content-Type') ?? ''), 'text/html')) {
                 return [$current, null];
             }
+
             return [$current, mb_substr($resp->body(), 0, 300000)];
         }
+
         return [$current, null];
     }
 
@@ -541,15 +564,19 @@ class MessengerController extends Controller
         }
 
         $host = $p['host'];
-        $ips  = [];
+        $ips = [];
         if (filter_var($host, FILTER_VALIDATE_IP)) {
             $ips[] = $host;
         } else {
             foreach ((@dns_get_record($host, DNS_A) ?: []) as $r) {
-                if (! empty($r['ip'])) $ips[] = $r['ip'];
+                if (! empty($r['ip'])) {
+                    $ips[] = $r['ip'];
+                }
             }
             foreach ((@dns_get_record($host, DNS_AAAA) ?: []) as $r) {
-                if (! empty($r['ipv6'])) $ips[] = $r['ipv6'];
+                if (! empty($r['ipv6'])) {
+                    $ips[] = $r['ipv6'];
+                }
             }
         }
         if (empty($ips)) {
@@ -560,30 +587,33 @@ class MessengerController extends Controller
                 return null;
             }
         }
+
         return array_values(array_unique($ips));
     }
 
     private function absoluteUrl(string $base, string $rel): string
     {
         if (str_starts_with($rel, '//')) {
-            return (parse_url($base, PHP_URL_SCHEME) ?: 'https') . ':' . $rel;
+            return (parse_url($base, PHP_URL_SCHEME) ?: 'https').':'.$rel;
         }
-        $b      = parse_url($base);
-        $origin = ($b['scheme'] ?? 'https') . '://' . ($b['host'] ?? '');
+        $b = parse_url($base);
+        $origin = ($b['scheme'] ?? 'https').'://'.($b['host'] ?? '');
         if (str_starts_with($rel, '/')) {
-            return $origin . $rel;
+            return $origin.$rel;
         }
         $path = preg_replace('#/[^/]*$#', '/', $b['path'] ?? '/');
-        return $origin . $path . $rel;
+
+        return $origin.$path.$rel;
     }
 
     private function metaContent(string $html, string $prop): ?string
     {
         $q = preg_quote($prop, '#');
-        if (preg_match('#<meta[^>]+(?:property|name)=["\']' . $q . '["\'][^>]*content=["\']([^"\']*)["\']#i', $html, $m)
-            || preg_match('#<meta[^>]+content=["\']([^"\']*)["\'][^>]*(?:property|name)=["\']' . $q . '["\']#i', $html, $m)) {
+        if (preg_match('#<meta[^>]+(?:property|name)=["\']'.$q.'["\'][^>]*content=["\']([^"\']*)["\']#i', $html, $m)
+            || preg_match('#<meta[^>]+content=["\']([^"\']*)["\'][^>]*(?:property|name)=["\']'.$q.'["\']#i', $html, $m)) {
             return html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5);
         }
+
         return null;
     }
 
@@ -601,7 +631,7 @@ class MessengerController extends Controller
             'image' => '📷 Photo',
             'audio' => '🎵 Audio',
             'video' => '🎬 Video',
-            default => '📎 ' . $name,
+            default => '📎 '.$name,
         };
     }
 
@@ -626,53 +656,54 @@ class MessengerController extends Controller
             // Hide chats the user "deleted" — unless a newer message has arrived.
             ->reject(function (Conversation $c) use ($userId) {
                 $cleared = $c->participants->firstWhere('id', $userId)?->pivot?->cleared_at;
+
                 return $cleared && (! $c->last_message_at || $c->last_message_at <= $cleared);
             });
 
         return $conversations->map(function (Conversation $c) use ($userId) {
             $other = $c->otherParticipant($userId);
-            $last  = $c->latestMessage;
+            $last = $c->latestMessage;
 
             return (object) [
-                'id'              => $c->id,
-                'partner'         => $this->presentUser($other),
-                'last_body'       => $last
+                'id' => $c->id,
+                'partner' => $this->presentUser($other),
+                'last_body' => $last
                     ? ($last->isDeleted()
                         ? 'This message was deleted'
                         : ($last->attachment_kind !== null
                             ? $this->attachmentLabel($last->attachment_kind, $last->attachment_name)
                             : Str::limit((string) $last->body, 40)))
                     : null,
-                'last_mine'       => $last ? $last->sender_id === $userId : false,
-                'last_at_human'   => $c->last_message_at?->diffForHumans(null, true, true),
-                'unread_count'    => $c->unreadCountFor($userId),
+                'last_mine' => $last ? $last->sender_id === $userId : false,
+                'last_at_human' => $c->last_message_at?->diffForHumans(null, true, true),
+                'unread_count' => $c->unreadCountFor($userId),
             ];
         });
     }
 
     private function presentMessage(Message $m, int $meId): array
     {
-        $deleted    = $m->isDeleted();
-        $mine       = (int) $m->sender_id === $meId;
-        $hasAtt     = $m->attachment_kind !== null && ! $deleted;
+        $deleted = $m->isDeleted();
+        $mine = (int) $m->sender_id === $meId;
+        $hasAtt = $m->attachment_kind !== null && ! $deleted;
         $attExpired = $hasAtt && $m->attachment_path === null;
 
         return [
-            'id'               => $m->id,
-            'body'             => $deleted ? null : $m->body,
-            'mine'             => $mine,
-            'sender_id'        => $m->sender_id,
-            'created_at'       => $m->created_at->toIso8601String(),
+            'id' => $m->id,
+            'body' => $deleted ? null : $m->body,
+            'mine' => $mine,
+            'sender_id' => $m->sender_id,
+            'created_at' => $m->created_at->toIso8601String(),
             'created_at_human' => $m->created_at->diffForHumans(null, true, true),
-            'time'             => $m->created_at->format('g:i A'),
-            'edited'           => $m->edited_at !== null && ! $deleted,
-            'deleted'          => $deleted,
+            'time' => $m->created_at->format('g:i A'),
+            'edited' => $m->edited_at !== null && ! $deleted,
+            'deleted' => $deleted,
             // Only own, live, text (non-attachment) messages can be edited.
-            'can_edit'         => $mine && ! $deleted && ! $hasAtt,
-            'kind'             => $hasAtt ? $m->attachment_kind : null,
+            'can_edit' => $mine && ! $deleted && ! $hasAtt,
+            'kind' => $hasAtt ? $m->attachment_kind : null,
             'attachment_expired' => $attExpired,
-            'attachment'       => ($hasAtt && ! $attExpired) ? [
-                'url'  => route('messages.attachment', [$m->conversation_id, $m->id]),
+            'attachment' => ($hasAtt && ! $attExpired) ? [
+                'url' => route('messages.attachment', [$m->conversation_id, $m->id]),
                 'name' => $m->attachment_name,
                 'mime' => $m->attachment_mime,
                 'size' => (int) $m->attachment_size,
@@ -687,14 +718,14 @@ class MessengerController extends Controller
         }
 
         $name = $user->full_name ?? $user->name ?? 'User';
-        $me   = Auth::user();
+        $me = Auth::user();
 
         return [
-            'id'      => $user->id,
-            'uuid'    => $user->uuid,
-            'slug'    => $user->slug,
-            'name'    => $name,
-            'avatar'  => $user->profile_picture ? asset('storage/' . $user->profile_picture) : null,
+            'id' => $user->id,
+            'uuid' => $user->uuid,
+            'slug' => $user->slug,
+            'name' => $name,
+            'avatar' => $user->profile_picture ? asset('storage/'.$user->profile_picture) : null,
             'initial' => strtoupper(mb_substr($name, 0, 1)),
             'blocked' => $me && $me->id !== $user->id ? $me->hasBlocked($user->id) : false,
         ];
@@ -708,10 +739,10 @@ class MessengerController extends Controller
      */
     private function pushRealtime(Conversation $conversation, Message $message, string $action = 'new'): void
     {
-        $sender   = Auth::user();
+        $sender = Auth::user();
         $senderUi = $this->presentUser($sender);
-        $deleted  = $action === 'delete';
-        $isFile   = $action === 'file';
+        $deleted = $action === 'delete';
+        $isFile = $action === 'file';
 
         $recipients = $conversation->participants()
             ->whereKeyNot($message->sender_id)
@@ -719,10 +750,10 @@ class MessengerController extends Controller
 
         // Attachment fan-out carries only a URL + metadata (no bytes).
         $attachment = null;
-        $body       = $deleted ? null : $message->body;
+        $body = $deleted ? null : $message->body;
         if ($isFile) {
             $attachment = [
-                'url'  => route('messages.attachment', [$conversation->id, $message->id]),
+                'url' => route('messages.attachment', [$conversation->id, $message->id]),
                 'name' => $message->attachment_name,
                 'mime' => $message->attachment_mime,
                 'size' => (int) $message->attachment_size,
@@ -736,38 +767,55 @@ class MessengerController extends Controller
 
         // Identical payload for every recipient — build once.
         $payload = [
-            'action'           => $action,
-            'conversation_id'  => $conversation->id,
-            'id'               => $message->id,
-            'from_id'          => (int) $message->sender_id,
-            'from_name'        => $senderUi['name'],
-            'from_avatar'      => $senderUi['avatar'],
-            'body'             => $body,
-            'edited'           => $message->edited_at !== null && ! $deleted,
-            'deleted'          => $deleted,
-            'kind'             => $isFile ? $message->attachment_kind : null,
-            'attachment'       => $attachment,
-            'is_latest'        => $this->isLatest($conversation, $message),
+            'action' => $action,
+            'conversation_id' => $conversation->id,
+            'id' => $message->id,
+            'from_id' => (int) $message->sender_id,
+            'from_name' => $senderUi['name'],
+            'from_avatar' => $senderUi['avatar'],
+            'body' => $body,
+            'edited' => $message->edited_at !== null && ! $deleted,
+            'deleted' => $deleted,
+            'kind' => $isFile ? $message->attachment_kind : null,
+            'attachment' => $attachment,
+            'is_latest' => $this->isLatest($conversation, $message),
             'created_at_human' => 'just now',
-            'time'             => $message->created_at->format('g:i A'),
+            'time' => $message->created_at->format('g:i A'),
         ];
 
         // Batch into ONE broker connection (a per-recipient connection would
         // open a separate socket for every participant).
         $batch = $recipients->map(fn ($uid) => [
-            'topic'   => \Takeone\Realtime\Support\Topics::user((int) $uid, 'messages'),
+            'topic' => \Takeone\Realtime\Support\Topics::user((int) $uid, 'messages'),
             'payload' => $payload,
         ])->all();
 
         \Realtime()->publishMany($batch);
+
+        // Native push (FCM) to the tray — only for new messages / files, not edits/deletes.
+        if ($action === 'new' || $isFile) {
+            try {
+                $url = route('messages.show', $conversation->id);
+                foreach ($recipients as $uid) {
+                    \App\Jobs\SendPushNotification::dispatch(
+                        (int) $uid,
+                        $senderUi['name'],
+                        (string) ($body ?? ''),
+                        ['type' => 'message', 'conversation_id' => (string) $conversation->id, 'action_url' => $url],
+                    );
+                }
+            } catch (\Throwable $e) {
+                // Best-effort.
+            }
+        }
     }
 
     /** Device-aware view picker (desktop vs mobile), mirroring ClubView. */
     private function pick(string $view): string
     {
         $isMobile = (bool) request()->attributes->get('is_mobile', false);
-        $mobile   = "messenger.mobile";
+        $mobile = 'messenger.mobile';
 
-        return $isMobile && view()->exists($mobile) ? $mobile : "messenger.index";
+        return $isMobile && view()->exists($mobile) ? $mobile : 'messenger.index';
     }
 }

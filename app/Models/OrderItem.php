@@ -14,9 +14,9 @@ class OrderItem extends Model
     ];
 
     protected $casts = [
-        'price'      => 'decimal:2',
+        'price' => 'decimal:2',
         'line_total' => 'decimal:2',
-        'qty'        => 'integer',
+        'qty' => 'integer',
     ];
 
     public function order(): BelongsTo
@@ -36,6 +36,6 @@ class OrderItem extends Model
 
     public function imageUrl(): ?string
     {
-        return $this->image_path ? asset('storage/' . $this->image_path) : null;
+        return $this->image_path ? asset('storage/'.$this->image_path) : null;
     }
 }

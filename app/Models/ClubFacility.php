@@ -13,7 +13,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class ClubFacility extends Model
 {
-    use HasFactory, BelongsToTenant, LogsActivity, HasTranslations;
+    use BelongsToTenant, HasFactory, HasTranslations, LogsActivity;
 
     /** Translatable fields (no description column exists on this model). */
     protected array $translatable = ['name', 'address'];

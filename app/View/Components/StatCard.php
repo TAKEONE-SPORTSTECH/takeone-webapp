@@ -9,25 +9,25 @@ class StatCard extends Component
     public string $cardId;
 
     public function __construct(
-        public string  $label      = '',
-        public string  $value      = '',
-        public string  $subLabel   = '',
-        public string  $icon       = 'bi-bar-chart-line',
-        public string  $iconBg     = 'bg-gray-100',
-        public string  $iconColor  = 'text-gray-500',
-        public array   $sparkData   = [],
-        public array   $sparkLabels = [],  // e.g. ['Jan','Feb',...] — shown in tooltip
-        public string  $sparkColor  = '#8b5cf6',
-        public string  $size       = 'md',   // sm | md | lg
-        public ?string $href       = null,    // navigate on click
-        public ?string $modal      = null,    // open modal ID on click
-        public ?string $onClick    = null,    // raw JS expression on click
-        public ?string $trend      = null,    // "+12%" displayed below value
-        public bool    $trendUp    = true,
+        public string $label = '',
+        public string $value = '',
+        public string $subLabel = '',
+        public string $icon = 'bi-bar-chart-line',
+        public string $iconBg = 'bg-gray-100',
+        public string $iconColor = 'text-gray-500',
+        public array $sparkData = [],
+        public array $sparkLabels = [],  // e.g. ['Jan','Feb',...] — shown in tooltip
+        public string $sparkColor = '#8b5cf6',
+        public string $size = 'md',   // sm | md | lg
+        public ?string $href = null,    // navigate on click
+        public ?string $modal = null,    // open modal ID on click
+        public ?string $onClick = null,    // raw JS expression on click
+        public ?string $trend = null,    // "+12%" displayed below value
+        public bool $trendUp = true,
         public ?string $refreshEvent = null,  // window event name for live updates
-        string         $cardId     = '',
+        string $cardId = '',
     ) {
-        $this->cardId = $cardId ?: 'sc-' . substr(md5($label . $value . uniqid()), 0, 8);
+        $this->cardId = $cardId ?: 'sc-'.substr(md5($label.$value.uniqid()), 0, 8);
     }
 
     public function isClickable(): bool
@@ -37,9 +37,16 @@ class StatCard extends Component
 
     public function clickHandler(): string
     {
-        if ($this->href)    return "window.location='{$this->href}'";
-        if ($this->modal)   return "document.getElementById('{$this->modal}')?.dispatchEvent(new Event('show-modal'))";
-        if ($this->onClick) return $this->onClick;
+        if ($this->href) {
+            return "window.location='{$this->href}'";
+        }
+        if ($this->modal) {
+            return "document.getElementById('{$this->modal}')?.dispatchEvent(new Event('show-modal'))";
+        }
+        if ($this->onClick) {
+            return $this->onClick;
+        }
+
         return '';
     }
 

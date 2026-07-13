@@ -5,13 +5,13 @@
     <!-- Card Header -->
     <div class="flex items-center justify-between border-b border-border px-6 py-4">
         <div>
-            <h2 class="text-xl font-bold text-gray-900">Club Gallery</h2>
-            <p class="text-sm text-gray-500 mt-1">Drag to reorder — top item appears first in the banner</p>
+            <h2 class="text-xl font-bold text-gray-900">{{ __('admin.club_gallery_index_title') }}</h2>
+            <p class="text-sm text-gray-500 mt-1">{{ __('admin.club_gallery_index_reorder_hint') }}</p>
         </div>
         <button class="btn btn-primary"
                 @click="showUploadModal = true">
-            <i class="bi bi-plus-lg mr-2"></i>
-            Add
+            <i class="bi bi-plus-lg me-2"></i>
+            {{ __('admin.club_gallery_index_add') }}
         </button>
     </div>
 
@@ -19,11 +19,11 @@
     <div class="flex items-center gap-3 px-6 py-3 bg-red-50 border-b border-red-100">
         <i class="bi bi-youtube text-red-600 text-lg"></i>
         <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-gray-700 mb-0">Banner Video</p>
+            <p class="text-sm font-medium text-gray-700 mb-0">{{ __('admin.club_gallery_index_banner_video') }}</p>
             <p class="text-xs text-gray-500 truncate mb-0">{{ $club->youtube_url }}</p>
         </div>
         <button class="btn btn-sm btn-outline-secondary" @click="showUploadModal = true; $nextTick(() => { const btns = document.querySelectorAll('[x-data*=\'currentTab\'] button'); btns[2]?.click(); })">
-            <i class="bi bi-pencil mr-1"></i>Edit
+            <i class="bi bi-pencil me-1"></i>{{ __('shared.edit') }}
         </button>
     </div>
     @endif
@@ -35,11 +35,11 @@
         <!-- Save order button (hidden until order changes) -->
         <div id="reorder-bar" class="hidden mb-4 flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <i class="bi bi-info-circle text-blue-500"></i>
-            <span class="text-sm text-blue-700 flex-1">Order changed — save to apply on the public page.</span>
+            <span class="text-sm text-blue-700 flex-1">{{ __('admin.club_gallery_index_order_changed') }}</span>
             <button onclick="saveOrder()" class="btn btn-primary btn-sm">
-                <i class="bi bi-check-lg mr-1"></i>Save Order
+                <i class="bi bi-check-lg me-1"></i>{{ __('admin.club_gallery_index_save_order') }}
             </button>
-            <button onclick="cancelReorder()" class="btn btn-light btn-sm">Cancel</button>
+            <button onclick="cancelReorder()" class="btn btn-light btn-sm">{{ __('shared.cancel') }}</button>
         </div>
 
         <div class="flex flex-col gap-3" id="gallery-list">
@@ -54,7 +54,7 @@
                 </div>
 
                 <!-- Drag Handle -->
-                <div class="drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 flex-shrink-0" title="Drag to reorder">
+                <div class="drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 flex-shrink-0" title="{{ __('admin.club_gallery_index_drag_to_reorder') }}">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/>
                         <circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>
@@ -63,7 +63,7 @@
 
                 <!-- Thumbnail -->
                 <img src="{{ asset('storage/' . $image->image_path) }}"
-                     alt="{{ $image->caption ?? 'Gallery' }}"
+                     alt="{{ $image->caption ?? __('admin.club_gallery_index_gallery_alt') }}"
                      class="w-20 h-16 object-cover rounded flex-shrink-0">
 
                 <!-- Info -->
@@ -71,7 +71,7 @@
                     @if($image->caption)
                     <p class="text-sm text-gray-700 truncate">{{ $image->caption }}</p>
                     @else
-                    <p class="text-sm text-gray-400 italic">No caption</p>
+                    <p class="text-sm text-gray-400 italic">{{ __('admin.club_gallery_index_no_caption') }}</p>
                     @endif
                 </div>
 
@@ -92,7 +92,7 @@
         @else
         <div class="text-center py-8 text-gray-500">
             <i class="bi bi-images" style="font-size: 2.5rem; opacity: 0.3;"></i>
-            <p class="mt-3">No pictures in gallery. Add some pictures to get started!</p>
+            <p class="mt-3">{{ __('admin.club_gallery_index_empty') }}</p>
         </div>
         @endif
     </div>
@@ -168,9 +168,9 @@ function cancelReorder() {
 
 function deleteImage(id) {
     confirmAction({
-        title: 'Delete Picture',
-        message: 'This picture will be permanently removed from the gallery.',
-        confirmText: 'Delete',
+        title: '{{ __("admin.club_gallery_index_delete_title") }}',
+        message: '{{ __("admin.club_gallery_index_delete_message") }}',
+        confirmText: '{{ __("shared.delete") }}',
         type: 'danger',
     }).then(confirmed => {
         if (!confirmed) return;
@@ -189,10 +189,10 @@ function deleteImage(id) {
                 el?.remove();
                 if (typeof updatePositionBadges === 'function') updatePositionBadges();
             } else {
-                window.showToast('error', data.message || 'Failed to delete picture');
+                window.showToast('error', data.message || '{{ __("admin.club_gallery_index_delete_failed") }}');
             }
         })
-        .catch(() => window.showToast('error', 'Failed to delete picture'));
+        .catch(() => window.showToast('error', '{{ __("admin.club_gallery_index_delete_failed") }}'));
     });
 }
 </script>

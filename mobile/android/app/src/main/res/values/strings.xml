@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">TAKEONE</string>
+    <string name="title_activity_main">TAKEONE</string>
+    <string name="package_name">bh.takeone.app</string>
+    <string name="custom_url_scheme">bh.takeone.app</string>
+</resources>

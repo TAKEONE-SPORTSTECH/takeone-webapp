@@ -68,9 +68,13 @@
     })->values();
 
     $ledger = $pendingLedger->concat($txLedger)->values();
+
+    $netVal      = (float) ($summary['net_profit'] ?? 0);
+    $incomeVal   = (float) ($summary['total_income'] ?? 0);
+    $expensesVal = (float) ($summary['total_expenses'] ?? 0);
 @endphp
 
-<div class="space-y-5"
+<div class="-mx-4 -mt-4"
      x-data="{
         // ── transaction sheet (income / expense / edit) ──
         txOpen: false, txMode: 'income', txId: null,
@@ -180,19 +184,35 @@
         },
     }">
 
-    {{-- Summary hero (tap → jump to full ledger) --}}
-    <div class="rounded-2xl m-hero text-white p-5 shadow-sm m-press cursor-pointer" role="button" tabindex="0"
-         @click="txFilter = 'all'; txSearch = ''; $nextTick(() => document.getElementById('fin-ledger')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))">
-        <div class="flex items-center justify-between">
-            <p class="text-xs font-medium text-white/80 uppercase tracking-wide">{{ __('admin.fin_net_profit') }}</p>
-            <i class="bi bi-chevron-right text-white/60"></i>
+    {{-- ===== Hero ===== --}}
+    <header class="m-hero px-5 pt-7 pb-6 text-white relative overflow-hidden">
+        <div class="absolute -end-8 -top-8 w-36 h-36 rounded-full bg-white/10"></div>
+        <div class="flex items-center justify-between relative z-10">
+            <div class="min-w-0">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70 truncate">{{ $club->club_name ?? __('admin.club') }}</p>
+                <h1 class="text-2xl font-black mt-0.5">{{ __('admin.nav_financials') }}</h1>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center">
+                <i class="bi bi-bank text-xl m-float"></i>
+            </div>
         </div>
-        <p class="text-3xl font-bold mt-1">{{ $cur }} {{ number_format((float)($summary['net_profit'] ?? 0), 2) }}</p>
-        <div class="flex items-center gap-4 mt-3 text-sm text-white/90">
-            <span><i class="bi bi-arrow-down-circle mr-1"></i>{{ __('admin.fin_in') }} {{ $cur }} {{ number_format((float)($summary['total_income'] ?? 0), 0) }}</span>
-            <span><i class="bi bi-arrow-up-circle mr-1"></i>{{ __('admin.fin_out') }} {{ $cur }} {{ number_format((float)($summary['total_expenses'] ?? 0), 0) }}</span>
+        <div class="flex gap-2 mt-5 relative z-10">
+            <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
+                <p class="text-base font-black leading-none tabular-nums">{{ $netVal >= 0 ? '+' : '' }}{{ number_format($netVal, 0) }}<span class="text-[10px] font-bold ms-0.5">{{ $cur }}</span></p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('admin.dash_net') }}</p>
+            </div>
+            <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
+                <p class="text-base font-black leading-none tabular-nums">{{ number_format($incomeVal, 0) }}<span class="text-[10px] font-bold ms-0.5">{{ $cur }}</span></p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('market.stat_revenue') }}</p>
+            </div>
+            <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
+                <p class="text-base font-black leading-none tabular-nums">{{ number_format($expensesVal, 0) }}<span class="text-[10px] font-bold ms-0.5">{{ $cur }}</span></p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('admin.dash_expenses') }}</p>
+            </div>
         </div>
-    </div>
+    </header>
+
+    <div class="px-4 pt-5 space-y-5">
 
     {{-- Quick tiles --}}
     <div class="grid grid-cols-2 gap-3">
@@ -351,11 +371,11 @@
                     {{-- Type (edit only) --}}
                     <div x-show="txMode === 'edit'">
                         <label class="form-label">{{ __('admin.fin_type') }}</label>
-                        <select name="type" x-model="tx.type" class="form-select">
-                            <option value="income">{{ __('admin.fin_income') }}</option>
-                            <option value="expense">{{ __('admin.fin_expense') }}</option>
-                            <option value="refund">{{ __('admin.fin_refund') }}</option>
-                        </select>
+                        <x-select-menu model="tx.type" name="type" :options="[
+                            ['value' => 'income',  'label' => __('admin.fin_income')],
+                            ['value' => 'expense', 'label' => __('admin.fin_expense')],
+                            ['value' => 'refund',  'label' => __('admin.fin_refund')],
+                        ]" />
                     </div>
 
                     {{-- Category --}}
@@ -491,5 +511,6 @@
     </div>
     </template>
 
+    </div>{{-- /content --}}
 </div>
 @endsection

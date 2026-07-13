@@ -25,7 +25,7 @@ class ClubNotificationEmail extends Mailable implements ShouldQueue
         $clubName = $this->notification->tenant->club_name ?? config('app.name');
 
         return new Envelope(
-            subject: '[' . $clubName . '] ' . $this->notification->subject,
+            subject: '['.$clubName.'] '.$this->notification->subject,
         );
     }
 

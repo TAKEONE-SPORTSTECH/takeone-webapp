@@ -46,13 +46,13 @@ class FormController extends Controller
             return response()->json(['success' => false, 'message' => $validator->errors()->first(), 'errors' => $validator->errors()], 422);
         }
 
-        $data  = (array) $request->input('fields', []);
+        $data = (array) $request->input('fields', []);
         $files = [];
 
         // Persist uploaded files; record the stored path back into the data.
         foreach ($form->fields() as $field) {
-            if (($field['type'] ?? '') === 'file' && $request->hasFile('fields.' . ($field['key'] ?? ''))) {
-                $path = $request->file('fields.' . $field['key'])->store("form-uploads/{$form->id}", 'public');
+            if (($field['type'] ?? '') === 'file' && $request->hasFile('fields.'.($field['key'] ?? ''))) {
+                $path = $request->file('fields.'.$field['key'])->store("form-uploads/{$form->id}", 'public');
                 $data[$field['key']] = $path;
                 $files[] = ['path' => $path, 'disk' => 'public'];
             }
@@ -60,9 +60,9 @@ class FormController extends Controller
 
         $form->submissions()->create([
             'user_id' => Auth::id(),
-            'data'    => $data,
-            'files'   => $files,
-            'ip'      => $request->ip(),
+            'data' => $data,
+            'files' => $files,
+            'ip' => $request->ip(),
         ]);
 
         return response()->json([

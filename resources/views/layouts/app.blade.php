@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ ($isMobile ?? false) ? config('locales.' . app()->getLocale() . '.dir', 'ltr') : 'ltr' }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ config('locales.' . app()->getLocale() . '.dir', 'ltr') }}">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     @auth
     <meta name="rt-user" content="{{ Auth::id() }}">
@@ -120,6 +120,70 @@
         .nav-icon-btn:hover { background: hsl(250 60% 92%); color: hsl(var(--primary)); transform: translateY(-1px); }
         .nav-icon-btn:active { transform: scale(.92); }
 
+        /* Segmented utility cluster — groups explore / messages / notifications into one frosted capsule */
+        .nav-cluster {
+            display: flex; align-items: center; gap: 2px;
+            padding: 3px;
+            background: hsl(220 15% 96%);
+            border: 1px solid hsl(210 14% 88% / .8);
+            border-radius: 0.875rem;
+            transition: border-color .18s ease, box-shadow .18s ease;
+        }
+        .nav-cluster:hover { border-color: hsl(250 60% 84%); box-shadow: 0 2px 12px hsl(250 60% 55% / .08); }
+        .nav-cluster .nav-icon-btn { width: 2.25rem; height: 2.25rem; border-radius: 0.625rem; }
+        .nav-divider { width: 1px; height: 1.25rem; background: hsl(210 14% 84%); flex-shrink: 0; }
+
+        /* Brand lockup — divider only shows when a sidebar toggle is injected next to the logo */
+        .brand-divider { display: none; width: 1px; height: 1.5rem; background: hsl(210 14% 86%); flex-shrink: 0; }
+        .brand-zone:has(#emp-sidebar-toggle) .brand-divider,
+        .brand-zone:has(#pa-sidebar-toggle) .brand-divider { display: block; }
+        .brand-logo { height: 2.25rem; width: auto; user-select: none; }
+
+        /* Profile chip — avatar + chevron in a soft pill */
+        .profile-chip {
+            display: flex; align-items: center; gap: 0.375rem;
+            padding: 0.1875rem 0.5rem 0.1875rem 0.1875rem;
+            border-radius: 999px;
+            border: 1px solid hsl(210 14% 88% / .8);
+            background: hsl(220 15% 96%);
+            cursor: pointer;
+            transition: background-color .18s ease, border-color .18s ease, transform .14s cubic-bezier(.22,.61,.36,1);
+        }
+        .profile-chip:hover { background: #fff; border-color: hsl(250 60% 80%); }
+        .profile-chip:active { transform: scale(.96); }
+
+        /* Command-bar trigger — the header's centered search */
+        .cmd-trigger {
+            height: 2.5rem; padding: 0 0.75rem;
+            border-radius: 0.75rem;
+            background: hsl(220 15% 96%);
+            border: 1px solid hsl(210 14% 88% / .8);
+            color: hsl(220 9% 46%);
+            display: flex; align-items: center; gap: 0.625rem;
+            transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease;
+        }
+        .cmd-trigger:hover { background: #fff; border-color: hsl(250 60% 80%); box-shadow: 0 2px 12px hsl(250 60% 55% / .12); }
+        /* Leading search-icon tile inside the command trigger */
+        .cmd-ico-tile {
+            width: 1.5rem; height: 1.5rem; flex-shrink: 0;
+            border-radius: 0.5rem;
+            background: hsl(250 60% 92%); color: hsl(var(--primary));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.8rem;
+            transition: background-color .18s ease, transform .18s ease;
+        }
+        .cmd-trigger:hover .cmd-ico-tile { background: hsl(250 60% 86%); transform: scale(1.05); }
+        .cmd-kbd {
+            font-size: 11px; font-weight: 600; line-height: 1.5;
+            color: hsl(220 9% 46%); background: #fff;
+            border: 1px solid hsl(210 14% 85%); border-radius: 6px;
+            padding: 1px 6px; box-shadow: 0 1px 0 hsl(210 14% 88%);
+            white-space: nowrap;
+        }
+        /* Active (keyboard-highlighted) command palette row */
+        .cmd-item-active { background: hsl(250 60% 96%); }
+        .cmd-item-active .cmd-ico { background: hsl(250 60% 88%); color: hsl(var(--primary)); }
+
         /* Notification styles */
         .notification-badge {
             position: absolute;
@@ -202,11 +266,13 @@
     <nav class="to-bar">
         <div class="container mx-auto px-4">
             <div class="flex items-center justify-between h-16">
-                <!-- Logo -->
-                <div class="flex items-center gap-2">
+                <!-- Brand lockup -->
+                <div class="brand-zone flex items-center gap-2.5">
                     @stack('navbar-left')
-                    <a class="flex items-center font-semibold text-xl transition-transform duration-200 hover:scale-[1.03] active:scale-95" href="{{ Auth::check() ? route('clubs.explore') : url('/') }}">
-                        <img src="{{ asset('images/fullLogo.png') }}" alt="TAKEONE" class="h-10">
+                    <span class="brand-divider"></span>
+                    <a class="flex items-center transition-transform duration-200 hover:scale-[1.03] active:scale-95"
+                       href="{{ Auth::check() ? route('clubs.explore') : url('/') }}" aria-label="{{ __('nav.layouts_app_brand_home_aria') }}">
+                        <img src="{{ asset('images/fullLogo.png') }}" alt="TAKEONE" class="brand-logo" draggable="false">
                     </a>
                 </div>
 
@@ -225,17 +291,43 @@
                 <!-- Mobile actions (chat + menu) -->
                 <div class="md:hidden flex items-center gap-1">
                     @auth
-                    <a href="{{ route('messages.index') }}" class="nav-icon-btn chat-link" title="Messages">
+                    <a href="{{ route('messages.index') }}" class="nav-icon-btn chat-link" title="{{ __('nav.layouts_app_messages') }}">
                         <i class="bi bi-chat-dots text-xl"></i>
                         @if($chatUnread > 0)
                             <span class="notification-badge chat-badge">{{ $chatUnread > 99 ? '99+' : $chatUnread }}</span>
                         @endif
                     </a>
                     @endauth
-                    <button @click="mobileMenuOpen = true" class="nav-icon-btn" type="button" aria-label="Open menu">
+                    <button @click="mobileMenuOpen = true" class="nav-icon-btn" type="button" aria-label="{{ __('nav.layouts_app_open_menu_aria') }}">
                         <i class="bi bi-list text-2xl"></i>
                     </button>
                 </div>
+
+                @auth
+                <!-- Command-bar search (centered, desktop) -->
+                <div class="hidden md:flex flex-1 justify-center px-4">
+                    <button type="button" @click="$dispatch('open-command-palette')"
+                            x-data="{
+                                hints: ['Search pages, people, clubs…', 'Find a club near you…', 'Jump to a member…', 'Open a setting or report…'],
+                                i: 0, fading: false,
+                                init() {
+                                    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+                                    setInterval(() => {
+                                        this.fading = true;
+                                        setTimeout(() => { this.i = (this.i + 1) % this.hints.length; this.fading = false; }, 280);
+                                    }, 3400);
+                                }
+                            }"
+                            class="cmd-trigger w-full max-w-lg" aria-label="{{ __('nav.layouts_app_search_aria') }}">
+                        <span class="cmd-ico-tile"><i class="bi bi-search"></i></span>
+                        <span class="flex-1 text-start text-sm truncate transition-opacity duration-300"
+                              style="color: hsl(220 9% 46%)"
+                              :style="{ opacity: fading ? 0 : 1 }"
+                              x-text="hints[i]">{{ __('nav.layouts_app_search_placeholder') }}</span>
+                        <kbd class="cmd-kbd">⌘K</kbd>
+                    </button>
+                </div>
+                @endauth
 
                 <!-- Desktop Navigation -->
                 <div class="hidden md:flex items-center gap-2">
@@ -243,14 +335,22 @@
                         <!-- Exit Impersonation Button -->
                         <x-impersonation-banner />
 
+                        <!-- Utility action cluster (segmented capsule) -->
+                        <div class="nav-cluster">
                         <!-- Explore Button -->
-                        <a class="nav-icon-btn" href="{{ route('clubs.explore') }}" title="Explore">
+                        <a class="nav-icon-btn" href="{{ route('clubs.explore') }}" title="{{ __('nav.layouts_app_explore') }}">
                             <i class="bi bi-compass text-xl"></i>
                         </a>
+                        <!-- Find People Button -->
+                        <a class="nav-icon-btn" href="{{ route('me.people') }}" title="{{ __('personal.find_people') }}">
+                            <i class="bi bi-people text-xl"></i>
+                        </a>
+
+                        <span class="nav-divider"></span>
 
                         <!-- Messages Dropdown -->
                         <div class="relative" x-data="chatDropdown()">
-                            <button @click="toggle()" type="button" class="nav-icon-btn chat-link" title="Messages">
+                            <button @click="toggle()" type="button" class="nav-icon-btn chat-link" title="{{ __('nav.layouts_app_messages') }}">
                                 <i class="bi bi-chat-dots text-xl"></i>
                                 @if($chatUnread > 0)
                                     <span class="notification-badge chat-badge">{{ $chatUnread > 99 ? '99+' : $chatUnread }}</span>
@@ -263,23 +363,23 @@
                                  x-transition:leave="transition ease-in duration-75"
                                  x-transition:leave-start="opacity-100 scale-100"
                                  x-transition:leave-end="opacity-0 scale-95"
-                                 class="absolute right-0 mt-2 notification-dropdown bg-white rounded-xl shadow-xl ring-1 ring-black/5 border border-border/60 z-50">
+                                 class="absolute end-0 mt-2 notification-dropdown bg-white rounded-xl shadow-xl ring-1 ring-black/5 border border-border/60 z-50">
                                 <div class="flex items-center justify-between px-4 py-3 border-b border-border">
-                                    <h6 class="text-sm font-semibold mb-0">Messages</h6>
-                                    <a href="{{ route('messages.index') }}" class="text-xs text-primary hover:underline">Open inbox</a>
+                                    <h6 class="text-sm font-semibold mb-0">{{ __('nav.layouts_app_messages') }}</h6>
+                                    <a href="{{ route('messages.index') }}" class="text-xs text-primary hover:underline">{{ __('nav.layouts_app_open_inbox') }}</a>
                                 </div>
 
                                 <template x-if="loading">
                                     <div class="px-4 py-8 text-center">
                                         <i class="bi bi-arrow-repeat text-2xl text-gray-300 block mb-2 animate-spin"></i>
-                                        <p class="text-sm text-muted-foreground mb-0">Loading…</p>
+                                        <p class="text-sm text-muted-foreground mb-0">{{ __('nav.layouts_app_loading') }}</p>
                                     </div>
                                 </template>
 
                                 <template x-if="!loading && chats.length === 0">
                                     <div class="px-4 py-8 text-center">
                                         <i class="bi bi-chat-square-dots text-2xl text-gray-300 block mb-2"></i>
-                                        <p class="text-sm text-muted-foreground mb-0">No conversations yet</p>
+                                        <p class="text-sm text-muted-foreground mb-0">{{ __('nav.layouts_app_no_conversations') }}</p>
                                     </div>
                                 </template>
 
@@ -300,7 +400,7 @@
                                                     <span x-show="c.unread_count > 0" class="shrink-0 w-1.5 h-1.5 rounded-full bg-primary"></span>
                                                 </div>
                                                 <p class="mb-0 text-[11px] text-muted-foreground truncate">
-                                                    <span x-show="c.last_mine">You: </span><span x-text="c.last_body || 'New message'"></span>
+                                                    <span x-show="c.last_mine">{{ __('nav.layouts_app_you_prefix') }}</span><span x-text="c.last_body || 'New message'"></span>
                                                     <span x-show="c.last_at_human"> · <span x-text="c.last_at_human"></span></span>
                                                 </p>
                                             </div>
@@ -311,6 +411,8 @@
                                 </template>
                             </div>
                         </div>
+
+                        <span class="nav-divider"></span>
 
                         <!-- Notifications Dropdown -->
                         @auth
@@ -325,7 +427,7 @@
                                 ->count();
                         @endphp
                         <div class="relative" x-data="{ open: false }">
-                            <button @click="open = !open" id="rt-bell-btn" class="nav-icon-btn" title="Notifications">
+                            <button @click="open = !open" id="rt-bell-btn" class="nav-icon-btn" title="{{ __('nav.layouts_app_notifications') }}">
                                 <i class="bi bi-bell text-xl" id="navNotifBell"></i>
                                 @if($unreadCount > 0)
                                     <span class="notification-badge">{{ $unreadCount > 99 ? '99+' : $unreadCount }}</span>
@@ -339,20 +441,20 @@
                                  x-transition:leave-start="opacity-100 scale-100"
                                  x-transition:leave-end="opacity-0 scale-95"
                                  id="rt-notif-dropdown"
-                                 class="absolute right-0 mt-2 notification-dropdown bg-white rounded-xl shadow-xl ring-1 ring-black/5 border border-border/60 z-50">
+                                 class="absolute end-0 mt-2 notification-dropdown bg-white rounded-xl shadow-xl ring-1 ring-black/5 border border-border/60 z-50">
                                 <div id="rt-notif-header" class="flex items-center justify-between px-4 py-3 border-b border-border">
-                                    <h6 class="text-sm font-semibold mb-0">Notifications</h6>
+                                    <h6 class="text-sm font-semibold mb-0">{{ __('nav.layouts_app_notifications') }}</h6>
                                     <div class="flex items-center gap-3">
                                         @if($unreadCount > 0)
                                             <button onclick="markAllNotificationsRead(this)"
                                                     class="text-xs text-primary hover:underline cursor-pointer bg-transparent border-0 p-0">
-                                                Mark all read
+                                                {{ __('nav.layouts_app_mark_all_read') }}
                                             </button>
                                         @endif
                                         @if($recentNotifs->isNotEmpty())
                                             <button onclick="clearAllNotifications(this)"
                                                     class="text-xs text-destructive hover:underline cursor-pointer bg-transparent border-0 p-0">
-                                                Clear all
+                                                {{ __('nav.layouts_app_clear_all') }}
                                             </button>
                                         @endif
                                     </div>
@@ -393,13 +495,14 @@
                                 @empty
                                     <div class="px-4 py-8 text-center">
                                         <i class="bi bi-bell-slash text-2xl text-gray-300 block mb-2"></i>
-                                        <p class="text-sm text-muted-foreground mb-0">No notifications yet</p>
+                                        <p class="text-sm text-muted-foreground mb-0">{{ __('nav.layouts_app_no_notifications_yet') }}</p>
                                     </div>
                                 @endforelse
 
                             </div>
                         </div>
                         @endauth
+                        </div>{{-- /.nav-cluster --}}
 
                         <!-- Personal / Business View Switcher (matches mobile switcher) -->
                         @if(Auth::user()->hasApprovedBusiness())
@@ -411,28 +514,28 @@
                             <button @click="open = !open" type="button"
                                     class="flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-card text-sm font-medium text-foreground hover:bg-accent transition-colors cursor-pointer">
                                 <i class="bi {{ $currentViewMode === 'business' ? 'bi-building' : 'bi-person' }} text-primary"></i>
-                                <span class="hidden sm:inline">{{ $currentViewMode === 'business' ? 'Club Management' : 'Personal View' }}</span>
+                                <span class="hidden sm:inline">{{ $currentViewMode === 'business' ? __('nav.layouts_app_club_management') : __('nav.layouts_app_personal_view') }}</span>
                                 <i class="bi bi-chevron-down text-xs text-muted-foreground" :class="open && 'rotate-180'" style="transition:transform .2s"></i>
                             </button>
                             <div x-show="open" @click.outside="open = false" x-cloak
                                  x-transition:enter="transition ease-out duration-100"
                                  x-transition:enter-start="opacity-0 scale-95"
                                  x-transition:enter-end="opacity-100 scale-100"
-                                 class="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl ring-1 ring-black/5 border border-border/60 z-50 p-1">
-                                <p class="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Switch view</p>
+                                 class="absolute end-0 mt-2 w-64 bg-white rounded-xl shadow-xl ring-1 ring-black/5 border border-border/60 z-50 p-1">
+                                <p class="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{{ __('nav.layouts_app_switch_view') }}</p>
 
                                 {{-- Personal (always first) --}}
                                 @if($currentViewMode === 'personal')
                                     <div class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-accent/60">
                                         <span class="w-8 h-8 rounded-full bg-muted flex items-center justify-center"><i class="bi bi-person text-foreground"></i></span>
-                                        <span class="flex-1 text-left"><span class="block text-sm font-medium text-foreground">Personal View</span><span class="block text-xs text-muted-foreground">My profile, bookings, payments</span></span>
+                                        <span class="flex-1 text-start"><span class="block text-sm font-medium text-foreground">{{ __('nav.layouts_app_personal_view') }}</span><span class="block text-xs text-muted-foreground">{{ __('nav.layouts_app_personal_view_desc') }}</span></span>
                                         <i class="bi bi-check-lg text-primary"></i>
                                     </div>
                                 @else
                                     <form action="{{ route('view.switch') }}" method="POST">@csrf<input type="hidden" name="mode" value="personal">
-                                        <button type="submit" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent transition-colors text-left">
+                                        <button type="submit" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent transition-colors text-start">
                                             <span class="w-8 h-8 rounded-full bg-muted flex items-center justify-center"><i class="bi bi-person text-foreground"></i></span>
-                                            <span class="flex-1"><span class="block text-sm font-medium text-foreground">Personal View</span><span class="block text-xs text-muted-foreground">My profile, bookings, payments</span></span>
+                                            <span class="flex-1"><span class="block text-sm font-medium text-foreground">{{ __('nav.layouts_app_personal_view') }}</span><span class="block text-xs text-muted-foreground">{{ __('nav.layouts_app_personal_view_desc') }}</span></span>
                                         </button>
                                     </form>
                                 @endif
@@ -441,14 +544,14 @@
                                 @if($currentViewMode === 'business')
                                     <div class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-accent/60">
                                         <span class="w-8 h-8 rounded-full bg-accent flex items-center justify-center"><i class="bi bi-building text-primary"></i></span>
-                                        <span class="flex-1 text-left"><span class="block text-sm font-medium text-foreground">Club Management</span><span class="block text-xs text-muted-foreground truncate">{{ $switcherBusinessName }}</span></span>
+                                        <span class="flex-1 text-start"><span class="block text-sm font-medium text-foreground">{{ __('nav.layouts_app_club_management') }}</span><span class="block text-xs text-muted-foreground truncate">{{ $switcherBusinessName }}</span></span>
                                         <i class="bi bi-check-lg text-primary"></i>
                                     </div>
                                 @else
                                     <form action="{{ route('view.switch') }}" method="POST">@csrf<input type="hidden" name="mode" value="business">
-                                        <button type="submit" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent transition-colors text-left">
+                                        <button type="submit" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent transition-colors text-start">
                                             <span class="w-8 h-8 rounded-full bg-accent flex items-center justify-center"><i class="bi bi-building text-primary"></i></span>
-                                            <span class="flex-1"><span class="block text-sm font-medium text-foreground">Club Management</span><span class="block text-xs text-muted-foreground truncate">{{ $switcherBusinessName }}</span></span>
+                                            <span class="flex-1"><span class="block text-sm font-medium text-foreground">{{ __('nav.layouts_app_club_management') }}</span><span class="block text-xs text-muted-foreground truncate">{{ $switcherBusinessName }}</span></span>
                                         </button>
                                     </form>
                                 @endif
@@ -458,7 +561,7 @@
 
                         <!-- Profile Dropdown -->
                         <div class="relative ml-2" x-data="{ open: false }">
-                            <button @click="open = !open" class="flex items-center cursor-pointer rounded-full ring-2 ring-transparent hover:ring-accent transition-all duration-200 hover:scale-105 active:scale-95" type="button">
+                            <button @click="open = !open" class="profile-chip" type="button">
                                 <div class="avatar-container">
                                     @if(Auth::user()->profile_picture)
                                         <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}?v={{ Auth::user()->updated_at->timestamp }}"
@@ -475,6 +578,7 @@
                                     @endif
                                     <span class="online-indicator"></span>
                                 </div>
+                                <i class="bi bi-chevron-down text-xs text-muted-foreground" :class="open && 'rotate-180'" style="transition:transform .2s"></i>
                             </button>
 
                             <div x-show="open" @click.outside="open = false" x-cloak
@@ -484,57 +588,57 @@
                                  x-transition:leave="transition ease-in duration-75"
                                  x-transition:leave-start="opacity-100 scale-100"
                                  x-transition:leave-end="opacity-0 scale-95"
-                                 class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl ring-1 ring-black/5 border border-border/60 z-50">
+                                 class="absolute end-0 mt-2 w-56 bg-white rounded-xl shadow-xl ring-1 ring-black/5 border border-border/60 z-50">
                                 <div class="px-4 py-3 border-b border-border bg-gradient-to-br from-accent/50 to-transparent rounded-t-xl">
                                     <p class="text-sm font-semibold text-foreground">{{ Auth::user()->full_name }}</p>
                                     <p class="text-xs text-muted-foreground">{{ Auth::user()->email }}</p>
                                 </div>
                                 <div class="py-1">
                                     <a class="profile-dropdown-item" href="{{ route('member.show', Auth::user()->uuid) }}">
-                                        <i class="bi bi-person mr-2"></i>Profile
+                                        <i class="bi bi-person me-2"></i>{{ __('nav.layouts_app_profile') }}
                                     </a>
                                     <a class="profile-dropdown-item" href="{{ route('member.show', Auth::user()->uuid) }}#affiliations">
-                                        <i class="bi bi-diagram-3 mr-2"></i>Affiliations
+                                        <i class="bi bi-diagram-3 me-2"></i>{{ __('nav.layouts_app_affiliations') }}
                                     </a>
-                                    <a class="profile-dropdown-item" href="#">
-                                        <i class="bi bi-calendar-event mr-2"></i>Sessions
+                                    <a class="profile-dropdown-item" href="{{ route('me.schedule') }}">
+                                        <i class="bi bi-calendar-event me-2"></i>{{ __('nav.layouts_app_sessions') }}
                                     </a>
                                     <a class="profile-dropdown-item" href="{{ route('members.index') }}">
-                                        <i class="bi bi-people mr-2"></i>Family
+                                        <i class="bi bi-people me-2"></i>{{ __('nav.layouts_app_family') }}
                                     </a>
                                     <a class="profile-dropdown-item" href="{{ route('bills.index') }}">
-                                        <i class="bi bi-receipt mr-2"></i>Payments & Subscriptions
+                                        <i class="bi bi-receipt me-2"></i>{{ __('nav.layouts_app_payments_subscriptions') }}
                                     </a>
                                     @php
                                         $ownedBusiness = Auth::user()->ownedBusiness;
                                     @endphp
                                     @if($ownedBusiness && $ownedBusiness->isApproved())
                                     <a class="profile-dropdown-item" href="{{ route('business.dashboard') }}">
-                                        <i class="bi bi-buildings mr-2"></i>Manage Business
+                                        <i class="bi bi-buildings me-2"></i>{{ __('nav.layouts_app_manage_business') }}
                                     </a>
                                     @endif
                                     @if(!$ownedBusiness || !$ownedBusiness->isApproved())
                                     <a class="profile-dropdown-item" href="{{ route('business.setup') }}">
-                                        <i class="bi bi-buildings mr-2"></i>{{ $ownedBusiness ? 'Business (' . $ownedBusiness->status . ')' : 'Create a Business' }}
+                                        <i class="bi bi-buildings me-2"></i>{{ $ownedBusiness ? __('nav.layouts_app_business_status', ['status' => $ownedBusiness->status]) : __('nav.layouts_app_create_business') }}
                                     </a>
                                     @endif
                                 </div>
                                 @if(Auth::user()->isSuperAdmin())
                                 <div class="border-t border-border py-1">
                                     <a class="profile-dropdown-item" href="{{ route('admin.platform.index') }}">
-                                        <i class="bi bi-shield-check mr-2"></i>Admin Panel
+                                        <i class="bi bi-shield-check me-2"></i>{{ __('nav.layouts_app_admin_panel') }}
                                     </a>
                                 </div>
                                 @endif
                                 <div class="border-t border-border py-1">
                                     <a class="profile-dropdown-item" href="{{ route('security.show') }}">
-                                        <i class="bi bi-shield-lock mr-2"></i>Security
+                                        <i class="bi bi-shield-lock me-2"></i>{{ __('nav.layouts_app_security') }}
                                     </a>
                                 </div>
                                 <div class="border-t border-border py-1">
                                     <a class="profile-dropdown-item" href="{{ route('logout') }}"
                                        onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                                        <i class="bi bi-box-arrow-right mr-2"></i>Sign Out
+                                        <i class="bi bi-box-arrow-right me-2"></i>{{ __('nav.layouts_app_sign_out') }}
                                     </a>
                                     <form id="logout-form" action="{{ route('logout') }}" method="POST" class="hidden">
                                         @csrf
@@ -546,11 +650,11 @@
 
                     @guest
                         <a class="flex items-center px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground" href="{{ route('login') }}">
-                            <i class="bi bi-box-arrow-in-right mr-1"></i>Login
+                            <i class="bi bi-box-arrow-in-right me-1"></i>{{ __('nav.layouts_app_login') }}
                         </a>
                         @if (Route::has('register'))
                             <a class="flex items-center px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground" href="{{ route('register') }}">
-                                <i class="bi bi-person-plus mr-1"></i>Register
+                                <i class="bi bi-person-plus me-1"></i>{{ __('nav.layouts_app_register') }}
                             </a>
                         @endif
                     @endguest
@@ -558,6 +662,94 @@
             </div>
         </div>
     </nav>
+
+    @auth
+    {{-- ⌘K Command Palette — jump to any destination. Teleported to <body> to escape the bar's stacking context. --}}
+    @php
+        $authUser = Auth::user();
+        $cmds = [
+            ['label' => __('nav.layouts_app_cmd_explore_clubs'), 'sub' => __('nav.layouts_app_cmd_explore_clubs_sub'), 'icon' => 'bi-compass',      'url' => route('clubs.explore')],
+            ['label' => __('nav.layouts_app_messages'),          'sub' => __('nav.layouts_app_cmd_messages_sub'),      'icon' => 'bi-chat-dots',    'url' => route('messages.index')],
+            ['label' => __('nav.layouts_app_cmd_my_profile'),    'sub' => __('nav.layouts_app_cmd_my_profile_sub'),    'icon' => 'bi-person',       'url' => route('member.show', $authUser->uuid)],
+            ['label' => __('nav.layouts_app_cmd_my_family'),     'sub' => __('nav.layouts_app_cmd_my_family_sub'),     'icon' => 'bi-people',       'url' => route('members.index')],
+            ['label' => __('nav.layouts_app_payments_subscriptions'), 'sub' => __('nav.layouts_app_cmd_payments_sub'),  'icon' => 'bi-receipt',      'url' => route('bills.index')],
+            ['label' => __('nav.layouts_app_security'),          'sub' => __('nav.layouts_app_cmd_security_sub'),      'icon' => 'bi-shield-lock',  'url' => route('security.show')],
+        ];
+        if ($authUser->isSuperAdmin()) {
+            $cmds[] = ['label' => __('nav.layouts_app_admin_panel'),     'sub' => __('nav.layouts_app_cmd_admin_sub'),       'icon' => 'bi-shield-check', 'url' => route('admin.platform.index')];
+            $cmds[] = ['label' => __('nav.layouts_app_cmd_all_members'), 'sub' => __('nav.layouts_app_cmd_all_members_sub'), 'icon' => 'bi-people-fill',  'url' => route('admin.platform.members')];
+        }
+        $cmdBusiness = $authUser->ownedBusiness;
+        if ($cmdBusiness && $cmdBusiness->isApproved()) {
+            $cmds[] = ['label' => __('nav.layouts_app_manage_business'), 'sub' => __('nav.layouts_app_cmd_business_sub'), 'icon' => 'bi-buildings', 'url' => route('business.dashboard')];
+        }
+    @endphp
+    <div x-data="{
+            open: false, q: '', active: 0,
+            items: @js($cmds),
+            get filtered() {
+                const t = this.q.trim().toLowerCase();
+                return t ? this.items.filter(i => (i.label + ' ' + i.sub).toLowerCase().includes(t)) : this.items;
+            },
+            openPalette() { this.open = true; this.q = ''; this.active = 0; this.$nextTick(() => this.$refs.cmdInput && this.$refs.cmdInput.focus()); },
+            move(d) { const n = this.filtered.length; if (!n) { this.active = 0; return; } this.active = (this.active + d + n) % n; },
+            go(i) { const it = this.filtered[i]; if (it) window.location.href = it.url; }
+         }"
+         x-init="window.addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); openPalette(); } })"
+         @open-command-palette.window="openPalette()">
+        <template x-teleport="body">
+            <div x-show="open" x-cloak @keydown.escape.window="open = false" class="fixed inset-0 z-[70]" style="display:none;">
+                {{-- Backdrop --}}
+                <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="open = false"
+                     x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                     x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
+                {{-- Panel --}}
+                <div class="relative mx-auto mt-[12vh] w-full max-w-xl px-4"
+                     x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 -translate-y-3 scale-95" x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                     x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
+                    <div class="bg-white rounded-2xl shadow-2xl ring-1 ring-black/5 overflow-hidden">
+                        {{-- Search input --}}
+                        <div class="flex items-center gap-3 px-4 border-b border-border">
+                            <i class="bi bi-search text-muted-foreground"></i>
+                            <input x-ref="cmdInput" x-model="q" @input="active = 0" type="text" autocomplete="off"
+                                   @keydown.arrow-down.prevent="move(1)" @keydown.arrow-up.prevent="move(-1)"
+                                   @keydown.enter.prevent="go(active)" @keydown.escape="open = false"
+                                   placeholder="{{ __('nav.layouts_app_search_placeholder') }}"
+                                   class="flex-1 py-3.5 text-sm bg-transparent border-0 outline-none focus:ring-0 placeholder:text-muted-foreground">
+                            <kbd class="cmd-kbd">esc</kbd>
+                        </div>
+                        {{-- Results --}}
+                        <div class="max-h-[55vh] overflow-y-auto py-1.5">
+                            <template x-for="(it, idx) in filtered" :key="it.url">
+                                <a :href="it.url" @mouseenter="active = idx"
+                                   class="flex items-center gap-3 mx-1.5 px-3 py-2.5 rounded-xl no-underline transition-colors"
+                                   :class="active === idx ? 'cmd-item-active' : 'hover:bg-muted/60'">
+                                    <span class="cmd-ico shrink-0 w-9 h-9 rounded-lg bg-muted text-muted-foreground flex items-center justify-center transition-colors">
+                                        <i class="bi" :class="it.icon"></i>
+                                    </span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block text-sm font-semibold text-foreground truncate" x-text="it.label"></span>
+                                        <span class="block text-xs text-muted-foreground truncate" x-text="it.sub"></span>
+                                    </span>
+                                    <i class="bi bi-arrow-return-left text-xs text-muted-foreground shrink-0" x-show="active === idx"></i>
+                                </a>
+                            </template>
+                            <div x-show="filtered.length === 0" class="px-4 py-10 text-center">
+                                <i class="bi bi-search text-2xl text-gray-300 block mb-2"></i>
+                                <p class="text-sm text-muted-foreground mb-0">{{ __('nav.layouts_app_no_matches_for') }} “<span x-text="q"></span>”</p>
+                            </div>
+                        </div>
+                        {{-- Footer hint --}}
+                        <div class="flex items-center justify-between px-4 py-2.5 border-t border-border bg-muted/30 text-[11px] text-muted-foreground">
+                            <span class="flex items-center gap-1.5"><kbd class="cmd-kbd">↑</kbd><kbd class="cmd-kbd">↓</kbd> {{ __('nav.layouts_app_kbd_navigate') }}</span>
+                            <span class="flex items-center gap-1.5"><kbd class="cmd-kbd">↵</kbd> {{ __('nav.layouts_app_kbd_open') }} <span class="opacity-50">·</span> <kbd class="cmd-kbd">esc</kbd> {{ __('nav.layouts_app_kbd_close') }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+    @endauth
 
     <!-- Mobile Backdrop -->
     <div x-show="mobileMenuOpen"
@@ -581,12 +773,12 @@
          x-transition:leave="transition ease-in duration-200 transform"
          x-transition:leave-start="translate-x-0"
          x-transition:leave-end="translate-x-full"
-         class="fixed inset-y-0 right-0 w-72 max-w-[85vw] bg-background z-50 md:hidden shadow-2xl flex flex-col overflow-hidden">
+         class="fixed inset-y-0 end-0 w-72 max-w-[85vw] bg-background z-50 md:hidden shadow-2xl flex flex-col overflow-hidden">
 
         <!-- Drawer Header -->
         <div class="m-hero flex items-center justify-between px-4 h-16 shrink-0">
             <img src="{{ asset('images/fullLogo.png') }}" alt="TAKEONE" class="h-8 relative z-10 brightness-0 invert">
-            <button @click="mobileMenuOpen = false" class="relative z-10 w-9 h-9 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center text-white hover:bg-white/25 active:scale-90 transition" type="button" aria-label="Close menu">
+            <button @click="mobileMenuOpen = false" class="relative z-10 w-9 h-9 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center text-white hover:bg-white/25 active:scale-90 transition" type="button" aria-label="{{ __('nav.layouts_app_close_menu_aria') }}">
                 <i class="bi bi-x-lg"></i>
             </button>
         </div>
@@ -622,14 +814,14 @@
                 @if(Auth::user()->hasApprovedBusiness())
                 @php $currentViewMode = session('view_mode', 'personal'); @endphp
                 <div class="mb-4">
-                    <p class="px-1 pb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Switch view</p>
+                    <p class="px-1 pb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{{ __('nav.layouts_app_switch_view') }}</p>
                     <div class="grid grid-cols-2 gap-2">
                         <form action="{{ route('view.switch') }}" method="POST">
                             @csrf
                             <input type="hidden" name="mode" value="personal">
                             <button type="submit" class="w-full flex flex-col items-center gap-1 px-2 py-3 rounded-lg border transition-colors {{ $currentViewMode === 'personal' ? 'border-primary bg-accent text-primary' : 'border-border bg-white text-foreground' }}">
                                 <i class="bi bi-person text-lg"></i>
-                                <span class="text-xs font-medium">Personal</span>
+                                <span class="text-xs font-medium">{{ __('nav.layouts_app_personal') }}</span>
                             </button>
                         </form>
                         <form action="{{ route('view.switch') }}" method="POST">
@@ -637,7 +829,7 @@
                             <input type="hidden" name="mode" value="business">
                             <button type="submit" class="w-full flex flex-col items-center gap-1 px-2 py-3 rounded-lg border transition-colors {{ $currentViewMode === 'business' ? 'border-primary bg-accent text-primary' : 'border-border bg-white text-foreground' }}">
                                 <i class="bi bi-buildings text-lg"></i>
-                                <span class="text-xs font-medium">Business</span>
+                                <span class="text-xs font-medium">{{ __('nav.layouts_app_business') }}</span>
                             </button>
                         </form>
                     </div>
@@ -648,45 +840,45 @@
                 @php $ownedBusinessMobile = Auth::user()->ownedBusiness; @endphp
                 <nav class="space-y-1">
                     <a class="drawer-link" href="{{ route('clubs.explore') }}">
-                        <i class="bi bi-compass text-lg w-5 text-center"></i>Explore
+                        <i class="bi bi-compass text-lg w-5 text-center"></i>{{ __('nav.layouts_app_explore') }}
                     </a>
                     <a class="drawer-link" href="{{ route('messages.index') }}">
-                        <i class="bi bi-chat-dots text-lg w-5 text-center"></i>Messages
+                        <i class="bi bi-chat-dots text-lg w-5 text-center"></i>{{ __('nav.layouts_app_messages') }}
                         @if(($chatUnread ?? 0) > 0)
-                            <span class="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center">{{ $chatUnread > 99 ? '99+' : $chatUnread }}</span>
+                            <span class="ms-auto min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center">{{ $chatUnread > 99 ? '99+' : $chatUnread }}</span>
                         @endif
                     </a>
                     <a class="drawer-link" href="{{ route('member.show', Auth::user()->uuid) }}">
-                        <i class="bi bi-person text-lg w-5 text-center"></i>Profile
+                        <i class="bi bi-person text-lg w-5 text-center"></i>{{ __('nav.layouts_app_profile') }}
                     </a>
                     <a class="drawer-link" href="{{ route('member.show', Auth::user()->uuid) }}#affiliations">
-                        <i class="bi bi-diagram-3 text-lg w-5 text-center"></i>Affiliations
+                        <i class="bi bi-diagram-3 text-lg w-5 text-center"></i>{{ __('nav.layouts_app_affiliations') }}
                     </a>
-                    <a class="drawer-link" href="#">
-                        <i class="bi bi-calendar-event text-lg w-5 text-center"></i>Sessions
+                    <a class="drawer-link" href="{{ route('me.schedule') }}">
+                        <i class="bi bi-calendar-event text-lg w-5 text-center"></i>{{ __('nav.layouts_app_sessions') }}
                     </a>
                     <a class="drawer-link" href="{{ route('members.index') }}">
-                        <i class="bi bi-people text-lg w-5 text-center"></i>Family
+                        <i class="bi bi-people text-lg w-5 text-center"></i>{{ __('nav.layouts_app_family') }}
                     </a>
                     <a class="drawer-link" href="{{ route('bills.index') }}">
-                        <i class="bi bi-receipt text-lg w-5 text-center"></i>Payments &amp; Subscriptions
+                        <i class="bi bi-receipt text-lg w-5 text-center"></i>{{ __('nav.layouts_app_payments_subscriptions') }}
                     </a>
                     @if($ownedBusinessMobile && $ownedBusinessMobile->isApproved())
                     <a class="drawer-link" href="{{ route('business.dashboard') }}">
-                        <i class="bi bi-buildings text-lg w-5 text-center"></i>Manage Business
+                        <i class="bi bi-buildings text-lg w-5 text-center"></i>{{ __('nav.layouts_app_manage_business') }}
                     </a>
                     @else
                     <a class="drawer-link" href="{{ route('business.setup') }}">
-                        <i class="bi bi-buildings text-lg w-5 text-center"></i>{{ $ownedBusinessMobile ? 'Business (' . $ownedBusinessMobile->status . ')' : 'Create a Business' }}
+                        <i class="bi bi-buildings text-lg w-5 text-center"></i>{{ $ownedBusinessMobile ? __('nav.layouts_app_business_status', ['status' => $ownedBusinessMobile->status]) : __('nav.layouts_app_create_business') }}
                     </a>
                     @endif
                     @if(Auth::user()->isSuperAdmin())
                     <a class="drawer-link" href="{{ route('admin.platform.index') }}">
-                        <i class="bi bi-shield-check text-lg w-5 text-center"></i>Admin Panel
+                        <i class="bi bi-shield-check text-lg w-5 text-center"></i>{{ __('nav.layouts_app_admin_panel') }}
                     </a>
                     @endif
                     <a class="drawer-link" href="{{ route('security.show') }}">
-                        <i class="bi bi-shield-lock text-lg w-5 text-center"></i>Security
+                        <i class="bi bi-shield-lock text-lg w-5 text-center"></i>{{ __('nav.layouts_app_security') }}
                     </a>
                 </nav>
 
@@ -695,13 +887,13 @@
                     <form method="POST" action="{{ route('impersonate.leave') }}">
                         @csrf
                         <button type="submit" class="drawer-link w-full !text-amber-700">
-                            <i class="bi bi-incognito text-lg w-5 text-center"></i>Exit impersonation
+                            <i class="bi bi-incognito text-lg w-5 text-center"></i>{{ __('nav.layouts_app_exit_impersonation') }}
                         </button>
                     </form>
                     @endif
                     <a class="drawer-link !text-destructive" href="{{ route('logout') }}"
                        onclick="event.preventDefault(); document.getElementById('logout-form-mobile').submit();">
-                        <i class="bi bi-box-arrow-right text-lg w-5 text-center"></i>Sign Out
+                        <i class="bi bi-box-arrow-right text-lg w-5 text-center"></i>{{ __('nav.layouts_app_sign_out') }}
                     </a>
                     <form id="logout-form-mobile" action="{{ route('logout') }}" method="POST" class="hidden">
                         @csrf
@@ -712,11 +904,11 @@
             @guest
                 <nav class="space-y-1">
                     <a class="drawer-link" href="{{ route('login') }}">
-                        <i class="bi bi-box-arrow-in-right text-lg w-5 text-center"></i>Login
+                        <i class="bi bi-box-arrow-in-right text-lg w-5 text-center"></i>{{ __('nav.layouts_app_login') }}
                     </a>
                     @if (Route::has('register'))
                         <a class="drawer-link" href="{{ route('register') }}">
-                            <i class="bi bi-person-plus text-lg w-5 text-center"></i>Register
+                            <i class="bi bi-person-plus text-lg w-5 text-center"></i>{{ __('nav.layouts_app_register') }}
                         </a>
                     @endif
                 </nav>
@@ -734,7 +926,8 @@
     <x-confirm-dialog />
 
     <!-- Toast Container (Alpine.js) -->
-    <div x-data="toastManager()" x-init="init()" class="fixed top-20 right-4 z-50 space-y-2 pointer-events-none">
+    @php $toastsEnabled = \App\Models\PlatformSetting::getBool('toasts_enabled', true); @endphp
+    <div x-data="toastManager()" class="fixed top-20 right-4 z-[200] space-y-2 pointer-events-none">
         <template x-for="toast in toasts" :key="toast.id">
             <div x-show="toast.visible"
                  x-transition:enter="transition ease-out duration-300 transform"
@@ -802,6 +995,7 @@
                     });
                 },
                 addToast(type, message, duration = 3000) {
+                    @if(! $toastsEnabled) return; @endif
                     const id = Date.now();
                     this.toasts.push({ id, type, message, visible: true });
                     if (duration > 0) {
@@ -1048,10 +1242,12 @@
     <!-- Vite Compiled Assets -->
     @vite(['resources/js/app.js'])
 
-    @stack('scripts')
+    {{-- Page-pushed scripts/modals are wrapped so the desktop admin shell navigator
+         (partials/admin-shell-nav) can transplant + re-run them on in-place navigation. --}}
+    <div id="shell-scripts">@stack('scripts')</div>
 
     <!-- Modals Stack (for cropper and other modals) -->
-    @stack('modals')
+    <div id="shell-modals">@stack('modals')</div>
 
     <script>
         // ── Shared AudioContext ──────────────────────────────────────────────
@@ -1211,9 +1407,9 @@
             // Drop the "No notifications yet" empty state if present.
             dropdown.querySelector('.bi-bell-slash')?.closest('div')?.remove();
 
-            const subject  = (n.subject || 'Notification').slice(0, 40);
-            const club     = n.context || n.club_name || 'Club';
-            const when     = n.created_at_human || 'just now';
+            const subject  = (n.subject || @js(__('nav.layouts_app_notification_fallback'))).slice(0, 40);
+            const club     = n.context || n.club_name || @js(__('nav.layouts_app_club_fallback'));
+            const when     = n.created_at_human || @js(__('nav.layouts_app_just_now'));
             const url      = n.action_url || null;
             const icon     = n.icon || 'bi-bell-fill';
             const avatarHtml = n.avatar
@@ -1252,7 +1448,7 @@
                 const b = document.createElement('button');
                 b.setAttribute('onclick', 'markAllNotificationsRead(this)');
                 b.className = 'text-xs text-primary hover:underline cursor-pointer bg-transparent border-0 p-0';
-                b.textContent = 'Mark all read';
+                b.textContent = @js(__('nav.layouts_app_mark_all_read'));
                 header.appendChild(b);
             }
         }
@@ -1365,7 +1561,7 @@
             // Skip the toast/badge/sound when the user is actively reading this
             // conversation in an expanded mobile chat head — it handles it itself.
             if (typeof window.__chatHeadActive === 'function' && window.__chatHeadActive(m.conversation_id)) return;
-            const who = m.from_name || 'New message';
+            const who = m.from_name || @js(__('nav.layouts_app_new_message'));
             const body = (m.body || '').slice(0, 80);
             if (window.showToast) window.showToast('info', who + ': ' + body);
             // The top-bar chat icon lists Messenger DMs only (its dropdown loads
@@ -1418,7 +1614,7 @@
                     filename = (file.name || 'photo').replace(/\.[^.]+$/, '') + '.jpg';
                 }
                 if (blob.size > this.MAX_BYTES) {
-                    window.showToast && window.showToast('error', 'File is too large (max 8 MB).');
+                    window.showToast && window.showToast('error', @js(__('nav.layouts_app_file_too_large')));
                     return null;
                 }
                 const fd = new FormData();
@@ -1430,9 +1626,9 @@
                         body: fd, // browser sets multipart boundary
                     });
                     const d = await r.json();
-                    if (!d.success) { window.showToast && window.showToast('error', d.message || 'Could not send file.'); return null; }
+                    if (!d.success) { window.showToast && window.showToast('error', d.message || @js(__('nav.layouts_app_could_not_send_file'))); return null; }
                     return d.data; // presented message (mine:true) with attachment.url
-                } catch (e) { window.showToast && window.showToast('error', 'Could not send file.'); return null; }
+                } catch (e) { window.showToast && window.showToast('error', @js(__('nav.layouts_app_could_not_send_file'))); return null; }
             },
         };
 
@@ -1563,7 +1759,7 @@
                 if (list && !list.querySelector('.notification-empty')) {
                     const empty = document.createElement('div');
                     empty.className = 'notification-empty px-4 py-8 text-center';
-                    empty.innerHTML = '<i class="bi bi-bell-slash text-2xl text-gray-300 block mb-2"></i><p class="text-sm text-muted-foreground mb-0">No notifications yet</p>';
+                    empty.innerHTML = '<i class="bi bi-bell-slash text-2xl text-gray-300 block mb-2"></i><p class="text-sm text-muted-foreground mb-0">' + @js(__('nav.layouts_app_no_notifications_yet')) + '</p>';
                     list.appendChild(empty);
                 }
             });
@@ -1581,5 +1777,7 @@
             }
         }
     </script>
+    @include('partials.push-register')
+    @include('partials.locale-bfcache-guard')
 </body>
 </html>

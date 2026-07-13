@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ClassRating extends Model
 {
     protected $fillable = ['package_activity_id', 'slot_day', 'slot_start', 'user_id', 'rating', 'comment'];
+
     protected $casts = ['rating' => 'integer'];
 
     public function user(): BelongsTo

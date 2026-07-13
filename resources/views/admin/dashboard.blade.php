@@ -64,7 +64,7 @@
     }
 
     .stat-icon.clubs {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, hsl(250 65% 66%) 0%, hsl(262 60% 56%) 100%);
         color: white;
     }
 
@@ -222,8 +222,8 @@
 </style>
 
 <div class="dashboard-header">
-    <h1>Admin Dashboard</h1>
-    <p>Welcome back! Here's an overview of your platform statistics.</p>
+    <h1>{{ __('shared.admin_dashboard_title') }}</h1>
+    <p>{{ __('shared.admin_dashboard_welcome') }}</p>
 </div>
 
 <!-- Statistics Grid -->
@@ -235,7 +235,7 @@
         </div>
         <div class="stat-content">
             <div class="stat-value">{{ $stats['clubs'] ?? 0 }}</div>
-            <div class="stat-label">Clubs</div>
+            <div class="stat-label">{{ __('shared.admin_dashboard_clubs') }}</div>
         </div>
         <div class="stat-arrow">
             <i class="bi bi-arrow-right"></i>
@@ -249,7 +249,7 @@
         </div>
         <div class="stat-content">
             <div class="stat-value">{{ $stats['members'] ?? 0 }}</div>
-            <div class="stat-label">Members</div>
+            <div class="stat-label">{{ __('shared.admin_dashboard_members') }}</div>
         </div>
         <div class="stat-arrow">
             <i class="bi bi-arrow-right"></i>
@@ -263,7 +263,7 @@
         </div>
         <div class="stat-content">
             <div class="stat-value">{{ $stats['trainers'] ?? 0 }}</div>
-            <div class="stat-label">Trainers</div>
+            <div class="stat-label">{{ __('shared.admin_dashboard_trainers') }}</div>
         </div>
         <div class="stat-arrow">
             <i class="bi bi-arrow-right"></i>
@@ -277,7 +277,7 @@
         </div>
         <div class="stat-content">
             <div class="stat-value">{{ $stats['events'] ?? 0 }}</div>
-            <div class="stat-label">Events</div>
+            <div class="stat-label">{{ __('shared.admin_dashboard_events') }}</div>
         </div>
         <div class="stat-arrow">
             <i class="bi bi-arrow-right"></i>
@@ -291,7 +291,7 @@
         </div>
         <div class="stat-content">
             <div class="stat-value">{{ $stats['nutrition'] ?? 0 }}</div>
-            <div class="stat-label">Nutrition</div>
+            <div class="stat-label">{{ __('shared.admin_dashboard_nutrition') }}</div>
         </div>
         <div class="stat-arrow">
             <i class="bi bi-arrow-right"></i>
@@ -305,7 +305,7 @@
         </div>
         <div class="stat-content">
             <div class="stat-value">{{ $stats['physiotherapy'] ?? 0 }}</div>
-            <div class="stat-label">Physiotherapy</div>
+            <div class="stat-label">{{ __('shared.admin_dashboard_physiotherapy') }}</div>
         </div>
         <div class="stat-arrow">
             <i class="bi bi-arrow-right"></i>
@@ -319,7 +319,7 @@
         </div>
         <div class="stat-content">
             <div class="stat-value">{{ $stats['venues'] ?? 0 }}</div>
-            <div class="stat-label">Venues</div>
+            <div class="stat-label">{{ __('shared.admin_dashboard_venues') }}</div>
         </div>
         <div class="stat-arrow">
             <i class="bi bi-arrow-right"></i>
@@ -333,7 +333,7 @@
         </div>
         <div class="stat-content">
             <div class="stat-value">{{ $stats['shops'] ?? 0 }}</div>
-            <div class="stat-label">Shops</div>
+            <div class="stat-label">{{ __('shared.admin_dashboard_shops') }}</div>
         </div>
         <div class="stat-arrow">
             <i class="bi bi-arrow-right"></i>
@@ -347,7 +347,7 @@
         </div>
         <div class="stat-content">
             <div class="stat-value">{{ $stats['supplements'] ?? 0 }}</div>
-            <div class="stat-label">Supplements</div>
+            <div class="stat-label">{{ __('shared.admin_dashboard_supplements') }}</div>
         </div>
         <div class="stat-arrow">
             <i class="bi bi-arrow-right"></i>
@@ -361,7 +361,7 @@
         </div>
         <div class="stat-content">
             <div class="stat-value">{{ $stats['healthfood'] ?? 0 }}</div>
-            <div class="stat-label">Health Food</div>
+            <div class="stat-label">{{ __('shared.admin_dashboard_health_food') }}</div>
         </div>
         <div class="stat-arrow">
             <i class="bi bi-arrow-right"></i>
@@ -373,38 +373,38 @@
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
     <!-- Quick Actions -->
     <div class="recent-section">
-        <h3><i class="bi bi-lightning"></i> Quick Actions</h3>
+        <h3><i class="bi bi-lightning"></i> {{ __('shared.admin_dashboard_quick_actions') }}</h3>
         <div class="quick-actions">
             <a href="{{ route('admin.platform.clubs') }}" class="quick-action-btn">
                 <i class="bi bi-plus-circle"></i>
-                <span>Add New Club</span>
+                <span>{{ __('shared.admin_dashboard_add_new_club') }}</span>
             </a>
             <a href="{{ route('admin.platform.members') }}" class="quick-action-btn">
                 <i class="bi bi-person-plus"></i>
-                <span>Add Member</span>
+                <span>{{ __('shared.admin_dashboard_add_member') }}</span>
             </a>
             <a href="#" class="quick-action-btn">
                 <i class="bi bi-calendar-plus"></i>
-                <span>Create Event</span>
+                <span>{{ __('shared.admin_dashboard_create_event') }}</span>
             </a>
             <a href="#" class="quick-action-btn">
                 <i class="bi bi-database-down"></i>
-                <span>Backup Now</span>
+                <span>{{ __('shared.admin_dashboard_backup_now') }}</span>
             </a>
         </div>
     </div>
 
     <!-- Recent Activity -->
     <div class="recent-section">
-        <h3><i class="bi bi-clock-history"></i> Recent Activity</h3>
+        <h3><i class="bi bi-clock-history"></i> {{ __('shared.admin_dashboard_recent_activity') }}</h3>
         <div style="display: flex; flex-direction: column; gap: 0.75rem;">
             <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; background: hsl(var(--muted) / 0.3); border-radius: 0.5rem;">
                 <div style="width: 36px; height: 36px; background: hsl(var(--primary)); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.875rem;">
                     <i class="bi bi-person-plus"></i>
                 </div>
                 <div style="flex: 1;">
-                    <p style="margin: 0; font-size: 0.875rem; font-weight: 500;">New member registered</p>
-                    <p style="margin: 0; font-size: 0.75rem; color: hsl(var(--muted-foreground));">2 minutes ago</p>
+                    <p style="margin: 0; font-size: 0.875rem; font-weight: 500;">{{ __('shared.admin_dashboard_activity_new_member') }}</p>
+                    <p style="margin: 0; font-size: 0.75rem; color: hsl(var(--muted-foreground));">{{ __('shared.admin_dashboard_activity_2_minutes_ago') }}</p>
                 </div>
             </div>
             <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; background: hsl(var(--muted) / 0.3); border-radius: 0.5rem;">
@@ -412,8 +412,8 @@
                     <i class="bi bi-building"></i>
                 </div>
                 <div style="flex: 1;">
-                    <p style="margin: 0; font-size: 0.875rem; font-weight: 500;">New club created</p>
-                    <p style="margin: 0; font-size: 0.75rem; color: hsl(var(--muted-foreground));">1 hour ago</p>
+                    <p style="margin: 0; font-size: 0.875rem; font-weight: 500;">{{ __('shared.admin_dashboard_activity_new_club') }}</p>
+                    <p style="margin: 0; font-size: 0.75rem; color: hsl(var(--muted-foreground));">{{ __('shared.admin_dashboard_activity_1_hour_ago') }}</p>
                 </div>
             </div>
             <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; background: hsl(var(--muted) / 0.3); border-radius: 0.5rem;">
@@ -421,8 +421,8 @@
                     <i class="bi bi-calendar-event"></i>
                 </div>
                 <div style="flex: 1;">
-                    <p style="margin: 0; font-size: 0.875rem; font-weight: 500;">Event scheduled</p>
-                    <p style="margin: 0; font-size: 0.75rem; color: hsl(var(--muted-foreground));">3 hours ago</p>
+                    <p style="margin: 0; font-size: 0.875rem; font-weight: 500;">{{ __('shared.admin_dashboard_activity_event_scheduled') }}</p>
+                    <p style="margin: 0; font-size: 0.75rem; color: hsl(var(--muted-foreground));">{{ __('shared.admin_dashboard_activity_3_hours_ago') }}</p>
                 </div>
             </div>
         </div>
@@ -430,4 +430,3 @@
 </div>
 
 @endsection
-

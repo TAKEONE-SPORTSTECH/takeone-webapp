@@ -7,8 +7,8 @@ if (! function_exists('classifyTaekwondo')) {
      * Age groups: Kids (6–11), Cadet (12–14), Junior (15–17), Senior (18–30), Masters (31+)
      *
      * @param  string  $gender  "male" or "female"
-     * @param  int     $age     Age in years
-     * @param  float   $weight  Weight in kg
+     * @param  int  $age  Age in years
+     * @param  float  $weight  Weight in kg
      * @return array{age_group: string, category: string, min: float, max: float}|null
      */
     function classifyTaekwondo(string $gender, int $age, float $weight): ?array
@@ -39,10 +39,10 @@ if (! function_exists('classifyTaekwondo')) {
             if ($weight >= $class['min'] && $weight <= $class['max']) {
                 return [
                     'age_group' => $group,
-                    'category'  => $class['label'],
-                    'name'      => $class['name'] ?? null,
-                    'min'       => $class['min'],
-                    'max'       => $class['max'],
+                    'category' => $class['label'],
+                    'name' => $class['name'] ?? null,
+                    'min' => $class['min'],
+                    'max' => $class['max'],
                 ];
             }
         }
@@ -59,8 +59,8 @@ if (! function_exists('classifyOlympicTaekwondo')) {
      * Women: -49, -57, -67, +67
      *
      * @param  string  $gender  "male" or "female"
-     * @param  int     $age     Age in years
-     * @param  float   $weight  Weight in kg
+     * @param  int  $age  Age in years
+     * @param  float  $weight  Weight in kg
      * @return array{status: string, gender?: string, age?: int, category?: string, code?: string, min?: float, max?: float, reason?: string}
      */
     function classifyOlympicTaekwondo(string $gender, int $age, float $weight): array
@@ -110,13 +110,13 @@ if (! function_exists('classifyOlympicTaekwondo')) {
         foreach ($classes as $class) {
             if ($weight >= $class['min'] && $weight <= $class['max']) {
                 return [
-                    'status'   => 'OK',
-                    'gender'   => $gender,
-                    'age'      => $age,
+                    'status' => 'OK',
+                    'gender' => $gender,
+                    'age' => $age,
                     'category' => $class['label'],
-                    'code'     => $class['code'],
-                    'min'      => $class['min'],
-                    'max'      => $class['max'],
+                    'code' => $class['code'],
+                    'min' => $class['min'],
+                    'max' => $class['max'],
                 ];
             }
         }
