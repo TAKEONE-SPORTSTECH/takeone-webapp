@@ -266,10 +266,6 @@ html, body { overflow: hidden !important; height: 100% !important; }
             ['route'=>'admin.club.gallery',      'icon'=>'bi-images',         'label'=>__('nav.layouts_admin_club_nav_gallery')],
             ['route'=>'admin.club.achievements', 'icon'=>'bi-trophy',         'label'=>__('nav.layouts_admin_club_nav_achievements')],
         ]],
-        ['label'=>__('nav.layouts_admin_club_group_communication'), 'items'=>[
-            ['route'=>'admin.club.messages',     'icon'=>'bi-chat-dots',      'label'=>__('nav.layouts_admin_club_nav_messages')],
-            ['route'=>'admin.club.notifications','icon'=>'bi-bell',           'label'=>__('nav.layouts_admin_club_nav_notifications')],
-        ]],
     ];
 @endphp
 
