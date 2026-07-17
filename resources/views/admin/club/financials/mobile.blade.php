@@ -14,7 +14,8 @@
         'refund'  => $transactions->where('type', 'refund')->count(),
     ];
 
-    // Pending (unpaid) subscriptions surfaced as ledger entries — shown first since they need action.
+    // Pending (unpaid) subscriptions surfaced as ledger entries — interleaved with transactions
+    // by date below rather than grouped together, matching the desktop chronological ledger.
     $pendingLedger = $pendingSubscriptions->map(function ($sub) use ($cur) {
         $name = $sub->user->full_name ?? $sub->user->name ?? __('admin.fin_member');
         $amt  = (float) ($sub->amount_due ?? 0);
@@ -30,6 +31,7 @@
             'refundable'      => false,
             'subscription_id' => $sub->id,
             'member_url'      => $sub->user?->uuid ? route('member.show', $sub->user->uuid) : route('admin.club.members', $club->slug),
+            'sort_date'       => $sub->start_date ? \Illuminate\Support\Carbon::parse($sub->start_date) : null,
         ];
     })->values();
 
@@ -64,10 +66,19 @@
             'subscription_id'  => $sub?->id,
             'amount_paid'      => $refundable ? (float) $sub->amount_paid : 0,
             'ref'              => $t->reference_number ?: $label,
+            'sort_date'        => $t->transaction_date,
         ];
     })->values();
 
-    $ledger = $pendingLedger->concat($txLedger)->values();
+    // Single date-sorted ledger — pending rows are interleaved with transactions by date rather
+    // than grouped together, matching the desktop ledger exactly (admin/club/financials/index.blade.php).
+    $ledger = $pendingLedger->concat($txLedger)
+        ->sortByDesc(fn ($row) => $row['sort_date'] ?? \Illuminate\Support\Carbon::minValue())
+        ->map(function ($row) {
+            unset($row['sort_date']);
+            return $row;
+        })
+        ->values();
 
     $netVal      = (float) ($summary['net_profit'] ?? 0);
     $incomeVal   = (float) ($summary['total_income'] ?? 0);
@@ -78,7 +89,7 @@
      x-data="{
         // ── transaction sheet (income / expense / edit) ──
         txOpen: false, txMode: 'income', txId: null,
-        tx: { type: 'income', description: '', amount: '', transaction_date: '{{ $today }}', category: '', payment_method: 'cash', reference_number: '' },
+        tx: { type: 'income', description: '', amount: '', transaction_date: '{{ $today }}', category: '', payment_method: 'cash', reference_number: '', recurring: false },
         incomeCats: [
             { v: 'subscription', l: @js(__('admin.fin_cat_subscription')) },
             { v: 'event',        l: @js(__('admin.fin_cat_event')) },
@@ -98,14 +109,16 @@
             { v: 'other',       l: @js(__('admin.fin_cat_other')) },
         ],
         get txCats() { return this.tx.type === 'expense' ? this.expenseCats : (this.tx.type === 'income' ? this.incomeCats : []); },
+        get txIsRecurring() { return this.txMode === 'expense' && this.tx.recurring; },
         get txAction() {
             if (this.txMode === 'edit') return `{{ url('admin/club/' . $club->slug . '/financials') }}/${this.txId}`;
+            if (this.txIsRecurring) return '{{ route('admin.club.financials.recurring.store', $club->slug) }}';
             return this.txMode === 'expense' ? '{{ route('admin.club.financials.expense', $club->slug) }}' : '{{ route('admin.club.financials.income', $club->slug) }}';
         },
-        resetTx() { this.tx = { type: 'income', description: '', amount: '', transaction_date: '{{ $today }}', category: '', payment_method: 'cash', reference_number: '' }; },
+        resetTx() { this.tx = { type: 'income', description: '', amount: '', transaction_date: '{{ $today }}', category: '', payment_method: 'cash', reference_number: '', recurring: false }; },
         openIncome()  { this.txMode = 'income';  this.txId = null; this.resetTx(); this.tx.type = 'income';  this.txOpen = true; },
         openExpense() { this.txMode = 'expense'; this.txId = null; this.resetTx(); this.tx.type = 'expense'; this.txOpen = true; },
-        openEdit(t)   { this.txMode = 'edit'; this.txId = t.id; this.tx = { type: t.type, description: t.description || '', amount: t.amount, transaction_date: t.transaction_date, category: t.category || '', payment_method: t.payment_method || 'cash', reference_number: t.reference_number || '' }; this.txOpen = true; },
+        openEdit(t)   { this.txMode = 'edit'; this.txId = t.id; this.tx = { type: t.type, description: t.description || '', amount: t.amount, transaction_date: t.transaction_date, category: t.category || '', payment_method: t.payment_method || 'cash', reference_number: t.reference_number || '', recurring: false }; this.txOpen = true; },
         submitTx() {
             if (!this.tx.description.trim()) { window.showToast('warning', @js(__('admin.fin_err_desc'))); return; }
             if (!(parseFloat(this.tx.amount) >= 0) || this.tx.amount === '') { window.showToast('warning', @js(__('admin.fin_err_amount'))); return; }
@@ -213,24 +226,6 @@
     </header>
 
     <div class="px-4 pt-5 space-y-5">
-
-    {{-- Quick tiles --}}
-    <div class="grid grid-cols-2 gap-3">
-        <button type="button" class="m-card p-4 text-left m-press" @click="txFilter = 'pending'; txSearch = ''; $nextTick(() => document.getElementById('fin-ledger')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))">
-            <div class="flex items-center justify-between">
-                <span class="flex items-center gap-1.5 text-muted-foreground text-xs font-medium"><i class="bi bi-hourglass-split"></i> {{ __('admin.dash_to_collect') }}</span>
-                <i class="bi bi-chevron-right text-gray-300 text-xs"></i>
-            </div>
-            <p class="text-xl font-bold text-amber-600 mt-1.5">{{ $cur }} {{ number_format((float)($summary['pending'] ?? 0), 0) }}</p>
-        </button>
-        <button type="button" class="m-card p-4 text-left m-press" @click="txFilter = 'refund'; txSearch = ''; $nextTick(() => document.getElementById('fin-ledger')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))">
-            <div class="flex items-center justify-between">
-                <span class="flex items-center gap-1.5 text-muted-foreground text-xs font-medium"><i class="bi bi-arrow-counterclockwise"></i> {{ __('admin.fin_refunds') }}</span>
-                <i class="bi bi-chevron-right text-gray-300 text-xs"></i>
-            </div>
-            <p class="text-xl font-bold text-gray-900 mt-1.5">{{ $cur }} {{ number_format((float)($summary['refunds'] ?? 0), 0) }}</p>
-        </button>
-    </div>
 
     {{-- Add actions --}}
     <div class="grid grid-cols-2 gap-3">
@@ -358,8 +353,8 @@
                 <div class="flex items-center justify-between px-4 py-3 text-white rounded-t-3xl sm:rounded-t-2xl flex-shrink-0"
                      :class="tx.type === 'income' ? 'bg-green-600' : (tx.type === 'refund' ? 'bg-amber-600' : 'bg-primary')">
                     <h5 class="text-base font-semibold flex items-center">
-                        <i class="bi mr-2" :class="txMode === 'edit' ? 'bi-pencil' : (tx.type === 'income' ? 'bi-plus-circle' : 'bi-dash-circle')"></i>
-                        <span x-text="txMode === 'edit' ? @js(__('admin.fin_edit_tx')) : (tx.type === 'income' ? @js(__('admin.fin_record_income')) : @js(__('admin.fin_record_expense')))"></span>
+                        <i class="bi mr-2" :class="txMode === 'edit' ? 'bi-pencil' : (txIsRecurring ? 'bi-arrow-repeat' : (tx.type === 'income' ? 'bi-plus-circle' : 'bi-dash-circle'))"></i>
+                        <span x-text="txMode === 'edit' ? @js(__('admin.fin_edit_tx')) : (txIsRecurring ? @js(__('admin.fin_record_recurring')) : (tx.type === 'income' ? @js(__('admin.fin_record_income')) : @js(__('admin.fin_record_expense'))))"></span>
                     </h5>
                     <button type="button" @click="txOpen = false" class="text-white/90 hover:text-white text-2xl leading-none w-8 h-8 flex items-center justify-center -mr-1">&times;</button>
                 </div>
@@ -393,6 +388,22 @@
                         <input type="text" name="description" x-model="tx.description" required placeholder="{{ __('admin.fin_description_ph') }}" class="form-control">
                     </div>
 
+                    {{-- Recurring toggle (expense only) --}}
+                    <div x-show="txMode === 'expense'" class="flex items-center justify-between rounded-xl border border-gray-200 px-3 py-2.5">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <span class="w-8 h-8 rounded-lg bg-accent flex items-center justify-center flex-shrink-0"><i class="bi bi-arrow-repeat text-primary"></i></span>
+                            <div class="min-w-0">
+                                <p class="text-sm font-medium text-foreground">{{ __('admin.fin_recurring') }}</p>
+                                <p class="text-xs text-muted-foreground">{{ __('admin.fin_recurring_help') }}</p>
+                            </div>
+                        </div>
+                        <button type="button" role="switch" :aria-checked="tx.recurring.toString()" @click="tx.recurring = !tx.recurring"
+                                class="relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors"
+                                :class="tx.recurring ? 'bg-primary' : 'bg-gray-200'">
+                            <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform" :class="tx.recurring ? 'translate-x-6' : 'translate-x-1'"></span>
+                        </button>
+                    </div>
+
                     {{-- Amount & date --}}
                     <div class="grid grid-cols-2 gap-3">
                         <div>
@@ -400,10 +411,14 @@
                             <input type="number" name="amount" x-model="tx.amount" step="0.01" min="0" required placeholder="0.00" class="form-control">
                         </div>
                         <div>
-                            <label class="form-label">{{ __('admin.fin_date') }} <span class="text-red-500">*</span></label>
-                            <input type="date" name="transaction_date" x-model="tx.transaction_date" max="{{ $today }}" required class="form-control">
+                            <label class="form-label" x-text="txIsRecurring ? @js(__('admin.fin_recurring_day')) : @js(__('admin.fin_date'))"></label>
+                            <input type="date" :name="txIsRecurring ? 'recurring_date' : 'transaction_date'" x-model="tx.transaction_date"
+                                   :max="txIsRecurring ? null : '{{ $today }}'" required class="form-control">
                         </div>
                     </div>
+                    <p x-show="txIsRecurring" x-cloak class="text-xs text-muted-foreground -mt-2 flex items-center gap-1.5">
+                        <i class="bi bi-info-circle"></i> {{ __('admin.fin_recurring_day_help') }}
+                    </p>
 
                     {{-- Payment method --}}
                     <div>
@@ -423,14 +438,14 @@
                     {{-- Notes --}}
                     <div>
                         <label class="form-label">{{ __('admin.fin_notes') }}</label>
-                        <textarea name="reference_number" x-model="tx.reference_number" rows="2" placeholder="{{ __('admin.fin_notes_ph') }}" class="form-control resize-none"></textarea>
+                        <textarea :name="txIsRecurring ? 'notes' : 'reference_number'" x-model="tx.reference_number" rows="2" placeholder="{{ __('admin.fin_notes_ph') }}" class="form-control resize-none"></textarea>
                     </div>
                 </form>
 
                 <div class="px-4 py-3 bg-gray-50 border-t flex-shrink-0 flex items-center gap-2" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));">
                     <button type="button" @click="txOpen = false" class="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 bg-white text-sm font-medium">{{ __('admin.cancel') }}</button>
                     <button type="button" @click="$refs.txForm.requestSubmit()" class="flex-1 btn btn-primary py-2.5">
-                        <i class="bi bi-check-lg mr-1"></i><span x-text="txMode === 'edit' ? @js(__('admin.fin_save')) : @js(__('admin.fin_record'))"></span>
+                        <i class="bi bi-check-lg mr-1"></i><span x-text="txMode === 'edit' ? @js(__('admin.fin_save')) : (txIsRecurring ? @js(__('admin.fin_record_recurring')) : @js(__('admin.fin_record')))"></span>
                     </button>
                 </div>
             </div>

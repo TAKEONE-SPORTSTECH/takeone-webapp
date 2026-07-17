@@ -38,6 +38,7 @@ class ChainDashboardService
             return [
                 'clubs' => collect(),
                 'totals' => $this->emptyTotals(),
+                'revenue_chart' => ['labels' => [], 'datasets' => []],
             ];
         }
 
@@ -102,7 +103,7 @@ class ChainDashboardService
             'currency' => $rows->first()['currency'] ?? '',
         ];
 
-        return ['clubs' => $rows, 'totals' => $totals];
+        return ['clubs' => $rows, 'totals' => $totals, 'revenue_chart' => $this->monthlyRevenueByClub($clubIds, $clubs)];
     }
 
     private function emptyTotals(): array
@@ -112,5 +113,52 @@ class ChainDashboardService
             'revenue' => 0.0, 'expenses' => 0.0, 'net' => 0.0,
             'cash_to_collect' => 0.0, 'currency' => '',
         ];
+    }
+
+    /**
+     * Monthly revenue trend per club (last N months) for the chain dashboard's line chart.
+     *
+     * @param  array<int>  $clubIds
+     * @param  Collection  $clubs
+     */
+    private function monthlyRevenueByClub(array $clubIds, Collection $clubs, int $months = 6): array
+    {
+        if (empty($clubIds)) {
+            return ['labels' => [], 'datasets' => []];
+        }
+
+        $now = now();
+        $start = $now->copy()->subMonths($months - 1)->startOfMonth();
+
+        $rows = ClubTransaction::whereIn('tenant_id', $clubIds)
+            ->where('type', 'income')
+            ->where('transaction_date', '>=', $start)
+            ->selectRaw("tenant_id, strftime('%Y-%m', transaction_date) as month_key, COALESCE(SUM(amount),0) as total")
+            ->groupBy('tenant_id', 'month_key')
+            ->get()
+            ->groupBy('tenant_id');
+
+        $labels = [];
+        $monthKeys = [];
+        for ($i = $months - 1; $i >= 0; $i--) {
+            $date = $now->copy()->subMonths($i);
+            $labels[] = $date->format('M');
+            $monthKeys[] = $date->format('Y-m');
+        }
+
+        $palette = ['#8b5cf6', '#06b6d4', '#f59e0b', '#ec4899', '#10b981', '#6366f1', '#ef4444', '#14b8a6'];
+
+        $datasets = $clubs->values()->map(function ($club, $i) use ($rows, $monthKeys, $palette) {
+            $clubRows = $rows->get($club->id, collect())->keyBy('month_key');
+
+            return [
+                'label' => $club->club_name,
+                'data' => array_map(fn ($key) => (float) ($clubRows->get($key)?->total ?? 0), $monthKeys),
+                'color' => $palette[$i % count($palette)],
+                'fill' => false,
+            ];
+        })->all();
+
+        return ['labels' => $labels, 'datasets' => $datasets];
     }
 }

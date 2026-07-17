@@ -319,6 +319,15 @@ function mobileMessenger() {
             if (pre) this.openThread(pre);
         },
 
+        // Always derive the displayed time from the raw UTC instant in the
+        // VIEWER's own browser/device timezone — never trust a server-formatted
+        // wall-clock string (the server has no idea where the viewer actually is).
+        localTime(iso) {
+            if (!iso) return '';
+            try { return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+            catch (e) { return ''; }
+        },
+
         openSearch() { this.searchOpen = true; this.searchResults = []; this.searchTerm = ''; this.$nextTick(() => this.$refs.searchInput?.focus()); },
         closeSearch() { this.searchOpen = false; },
 
@@ -365,7 +374,11 @@ function mobileMessenger() {
             try {
                 const r = await fetch(`${this.urls.base}/${id}/thread`, { headers: { 'Accept': 'application/json' } });
                 const d = await r.json();
-                if (d.success) { this.partner = d.partner; this.messages = d.messages; this.scrollDown(); }
+                if (d.success) {
+                    this.partner = d.partner;
+                    this.messages = d.messages.map((m) => ({ ...m, time: this.localTime(m.created_at) || m.time }));
+                    this.scrollDown();
+                }
             } catch (e) { window.showToast('error', @js(__('messenger.could_not_load'))); }
             finally { this.loadingThread = false; }
         },
@@ -392,7 +405,11 @@ function mobileMessenger() {
             try {
                 const r = await fetch(`${this.urls.base}/${this.activeId}/send`, { method: 'POST', headers: this.headers(), body: JSON.stringify({ body }) });
                 const d = await r.json();
-                if (d.success) { this.lastAddedId = d.data.id; this.messages.push(d.data); this.draft = ''; this.scrollDown(); this.updateRow(this.activeId, body, true); }
+                if (d.success) {
+                    this.lastAddedId = d.data.id;
+                    this.messages.push({ ...d.data, time: this.localTime(d.data.created_at) || d.data.time });
+                    this.draft = ''; this.scrollDown(); this.updateRow(this.activeId, body, true);
+                }
             } catch (e) { window.showToast('error', @js(__('messenger.could_not_send'))); }
             finally { this.sending = false; }
         },
@@ -414,7 +431,7 @@ function mobileMessenger() {
             if (detail.action === 'file') {
                 if (this.threadOpen && this.activeId === id) {
                     this.lastAddedId = detail.id;
-                    this.messages.push({ id: detail.id, mine: false, time: detail.time || '', kind: detail.kind, attachment: detail.attachment });
+                    this.messages.push({ id: detail.id, mine: false, time: this.localTime(detail.created_at) || detail.time || '', kind: detail.kind, attachment: detail.attachment });
                     this.scrollDown(); this.markRead(id);
                 } else { this.bumpUnread(id); if (window.updateChatBadge) window.updateChatBadge(1); }
                 this.updateRow(id, detail.body || (detail.kind === 'image' ? @js(__('messenger.photo')) : '📎 ' + (detail.attachment && detail.attachment.name || '')), false);
@@ -424,7 +441,7 @@ function mobileMessenger() {
 
             if (this.threadOpen && this.activeId === id) {
                 this.lastAddedId = detail.id;
-                this.messages.push({ id: detail.id, body: detail.body, mine: false, time: detail.time || '' });
+                this.messages.push({ id: detail.id, body: detail.body, mine: false, time: this.localTime(detail.created_at) || detail.time || '' });
                 this.scrollDown();
                 this.markRead(id);
             } else {

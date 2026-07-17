@@ -28,7 +28,7 @@ class Order extends Model
     protected $fillable = [
         'reference', 'tenant_id', 'user_id', 'status', 'subtotal', 'total',
         'currency', 'has_dropship', 'note', 'payment_proof_path', 'received_at',
-        'income_transaction_id',
+        'income_transaction_id', 'is_test',
     ];
 
     protected $dates = ['received_at'];
@@ -37,6 +37,7 @@ class Order extends Model
         'subtotal' => 'decimal:2',
         'total' => 'decimal:2',
         'has_dropship' => 'boolean',
+        'is_test' => 'boolean',
     ];
 
     public const STATUSES = ['pending', 'confirmed', 'fulfilled', 'received', 'cancelled'];
@@ -49,6 +50,10 @@ class Order extends Model
                     $ref = 'TK-'.strtoupper(Str::random(6));
                 } while (static::where('reference', $ref)->exists());
                 $order->reference = $ref;
+            }
+
+            if (is_null($order->is_test) && $order->tenant_id) {
+                $order->is_test = Tenant::isTestMode($order->tenant_id);
             }
         });
     }

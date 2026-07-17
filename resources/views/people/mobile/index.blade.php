@@ -6,6 +6,16 @@
 
 @section('personal-content')
 <div class="-mx-4 -mt-4" x-data="peopleSearch(@js($suggestions))">
+    @unless($hasConfirmedClub)
+        <div class="px-4 pt-10 pb-6 text-center mobile-stagger">
+            <i class="bi bi-people text-4xl text-gray-300"></i>
+            <p class="font-bold text-foreground mt-4">{{ __('personal.people_no_club_title') }}</p>
+            <p class="text-sm text-muted-foreground mt-1">{{ __('personal.people_no_club_desc') }}</p>
+            <a href="{{ route('clubs.explore') }}" class="m-press inline-flex items-center gap-2 mt-5 bg-primary text-white px-4 py-2.5 rounded-xl font-medium">
+                <i class="bi bi-plus-lg"></i>{{ __('personal.people_register_cta') }}
+            </a>
+        </div>
+    @else
     {{-- The search bar keeps its own sticky row under the shell header. --}}
     <div class="sticky top-14 z-30 bg-white border-b border-border">
         <div class="px-3 py-3">
@@ -102,6 +112,7 @@
             </div>
         </template>
     </div>
+    @endunless
 </div>
 @endsection
 

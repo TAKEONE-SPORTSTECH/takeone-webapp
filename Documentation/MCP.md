@@ -72,8 +72,9 @@ Or point a local client (Claude Desktop) at `php artisan mcp:start takeone`. If
 | `get_club` | read | scoped | Full details + counts for one club (id or slug) |
 | `list_members` | read | scoped | Members of a club (search + paginate) |
 | `get_member` | read | gated | One member profile (uuid or id) — super-admin/self/guardian/club-admin only |
-| `club_financials` | read | admin | Income, expenses, net, cash-to-collect for a club |
-| `search_people` | read | any | Platform-wide discoverable-member search — **safe public fields only** |
+| `club_financials` | read | admin | Income, expenses, net, cash-to-collect for a club — scoped to the club's current Test/Live mode |
+| `club_staff` | read | admin | A club's staff (instructors, secretaries, operators, cleaners, ...) with staff type, compensation, and active status. Read-only — hiring/terminating staff is not exposed over MCP |
+| `search_people` | read | any | Club-scoped discoverable-member search (confirmed club-mates of the acting user only, never platform-wide) — **safe public fields only** |
 | `record_transaction` | write | admin | Log a manual income/expense for a club |
 | `notify_member` | write | admin/guardian | Send an in-app + live (MQTT) notification |
 | `enroll_members` | write | admin | Batch-enroll active members into a package, marked as already paid |
@@ -82,6 +83,12 @@ Or point a local client (Claude Desktop) at `php artisan mcp:start takeone`. If
 - Amounts are in each club's own currency.
 - Read tools return scoped/empty results for users without access; write and
   admin tools return an explicit authorization error.
+- **Test/Live mode.** Every club has an `is_test_mode` flag (admin-toggleable on the web
+  financials page). `record_transaction` and `enroll_members` inherit that mode automatically
+  — a `ClubTransaction`/`ClubMemberSubscription` created via MCP is tagged `is_test` to match
+  the club's current mode, exactly like a web-created one. `club_financials` sums only rows
+  matching the club's current mode, so MCP consumers see the same numbers the admin dashboard
+  shows — never a mix of test and live data.
 
 ### Write kill-switch
 Set `MCP_ALLOW_WRITES=false` to expose a **read-only** integration without

@@ -11,6 +11,21 @@ class StoreClubRequest extends FormRequest
         return true;
     }
 
+    /**
+     * The business-dashboard "Create Club" flow (route business.clubs.store)
+     * never trusts a client-supplied owner — the acting business owner always
+     * becomes the club's owner, which also auto-links the club to their chain
+     * via Tenant::booted()'s creating hook. The super-admin platform flow
+     * (platform.clubs.store) is unaffected and still picks an arbitrary owner
+     * via its own picker UI.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->routeIs('business.clubs.store')) {
+            $this->merge(['owner_user_id' => auth()->id()]);
+        }
+    }
+
     public function rules(): array
     {
         return [

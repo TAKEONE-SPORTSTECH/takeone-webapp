@@ -104,13 +104,90 @@ class PeopleDiscoveryTest extends TestCase
         $this->actingAs($me)->get('/me/people')->assertOk()->assertSee('Find People');
     }
 
+    // ---------------- Gated until a club confirms membership ----------------
+
+    public function test_index_shows_register_cta_with_no_club(): void
+    {
+        $me = $this->createUser();
+
+        $this->actingAs($me)->get('/me/people')->assertOk()
+            ->assertSee('Register to a club')
+            ->assertDontSee('Search by name, phone or email', false);
+
+        $this->actingAs($me)
+            ->withHeader('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148')
+            ->get('/me/people')->assertOk()
+            ->assertSee('Register to a club');
+    }
+
+    public function test_index_shows_register_cta_when_membership_still_pending(): void
+    {
+        $owner = $this->createUser();
+        $club = $this->createClub($owner);
+        $me = $this->createUser();
+        \App\Models\ClubMemberSubscription::create([
+            'tenant_id' => $club->id, 'user_id' => $me->id, 'type' => 'regular',
+            'status' => 'pending', 'payment_status' => 'pending_approval',
+            'amount_paid' => 0, 'amount_due' => 0, 'start_date' => now(), 'end_date' => now()->addYear(),
+        ]);
+
+        $this->actingAs($me)->get('/me/people')->assertOk()->assertSee('Register to a club');
+    }
+
+    public function test_search_returns_empty_when_membership_not_confirmed(): void
+    {
+        $owner = $this->createUser();
+        $club = $this->createClub($owner);
+        $me = $this->createUser();
+        $confirmedMate = $this->createUser(['full_name' => 'Confirmed Mate']);
+        \App\Models\ClubMemberSubscription::create([
+            'tenant_id' => $club->id, 'user_id' => $me->id, 'type' => 'regular',
+            'status' => 'pending', 'payment_status' => 'pending_approval',
+            'amount_paid' => 0, 'amount_due' => 0, 'start_date' => now(), 'end_date' => now()->addYear(),
+        ]);
+        $this->joinClub($confirmedMate, $club);
+
+        $res = $this->actingAs($me)->getJson('/me/people/search?q=Confirmed')->assertOk();
+        $this->assertEmpty($res->json('people'));
+    }
+
+    public function test_pending_member_is_not_visible_to_confirmed_clubmates(): void
+    {
+        $owner = $this->createUser();
+        $club = $this->createClub($owner);
+        $me = $this->createUser();
+        $pending = $this->createUser(['full_name' => 'Still Pending']);
+        $this->joinClub($me, $club);
+        \App\Models\ClubMemberSubscription::create([
+            'tenant_id' => $club->id, 'user_id' => $pending->id, 'type' => 'regular',
+            'status' => 'pending', 'payment_status' => 'pending_approval',
+            'amount_paid' => 0, 'amount_due' => 0, 'start_date' => now(), 'end_date' => now()->addYear(),
+        ]);
+
+        $res = $this->actingAs($me)->getJson('/me/people/search?q=Pending')->assertOk();
+        $this->assertEmpty($res->json('people'));
+    }
+
     // ---------------- Suggestions (default state) ----------------
 
+    /** Simulates a club-owner-confirmed membership (memberships row + an active subscription). */
     private function joinClub($user, $club): void
     {
         \Illuminate\Support\Facades\DB::table('memberships')->insert([
             'tenant_id' => $club->id, 'user_id' => $user->id, 'status' => 'active',
             'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        \App\Models\ClubMemberSubscription::create([
+            'tenant_id' => $club->id,
+            'user_id' => $user->id,
+            'type' => 'regular',
+            'status' => 'active',
+            'payment_status' => 'paid',
+            'amount_paid' => 0,
+            'amount_due' => 0,
+            'start_date' => now(),
+            'end_date' => now()->addYear(),
         ]);
     }
 

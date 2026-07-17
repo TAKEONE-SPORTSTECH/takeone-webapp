@@ -27,6 +27,8 @@
     @keyframes ftPop{to{opacity:1;transform:none;}}
     .ft-node:hover .ft-avatar{transform:translateY(-2px);box-shadow:0 10px 24px hsl(250 40% 40% / .28);}
 
+    .ft-avatar-wrap{position:relative;display:inline-flex;flex:0 0 auto;}
+
     .ft-avatar{width:66px;height:66px;border-radius:9999px;overflow:hidden;flex:0 0 auto;
         display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.7rem;
         background:hsl(250 55% 60%);box-shadow:0 4px 12px hsl(250 40% 40% / .18);
@@ -40,18 +42,31 @@
 
     .ft-name{margin-top:8px;font-size:.78rem;font-weight:600;color:hsl(220 20% 20%);
         text-align:center;line-height:1.15;max-width:104px;overflow:hidden;text-overflow:ellipsis;
-        display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+        display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+        background:#fff;padding:1px 6px;border-radius:6px;}
     .ft-rel{margin-top:3px;font-size:.6rem;font-weight:600;letter-spacing:.02em;
         color:hsl(250 45% 55%);background:hsl(250 60% 95%);padding:1px 7px;border-radius:9999px;
         text-transform:capitalize;white-space:nowrap;}
     .ft-node[data-root="1"] .ft-rel{color:#fff;background:hsl(250 65% 65%);}
-    .ft-years{margin-top:2px;font-size:.58rem;color:hsl(220 12% 55%);}
+    .ft-years{margin-top:2px;font-size:.58rem;color:hsl(220 12% 55%);
+        background:#fff;padding:0 6px;border-radius:6px;}
 
     .ft-badge{position:absolute;top:-4px;right:14px;width:20px;height:20px;border-radius:9999px;
         display:flex;align-items:center;justify-content:center;font-size:.62rem;color:#fff;
         border:2px solid #fff;box-shadow:0 2px 6px rgb(0 0 0 / .18);}
     .ft-badge.pending{background:hsl(38 92% 52%);}
     .ft-badge.deceased{background:hsl(220 10% 55%);}
+
+    .ft-manage{position:absolute;top:-4px;left:14px;width:20px;height:20px;border-radius:9999px;
+        display:flex;align-items:center;justify-content:center;font-size:.62rem;color:hsl(220 10% 40%);
+        background:#fff;border:2px solid hsl(220 15% 90%);box-shadow:0 2px 6px rgb(0 0 0 / .12);
+        cursor:pointer;padding:0;}
+    .ft-manage:hover{background:hsl(220 15% 96%);}
+
+    .ft-flag{position:absolute;top:-2px;right:-2px;width:22px;height:16px;border-radius:3px;
+        overflow:hidden;border:1.5px solid #fff;box-shadow:0 1px 4px rgb(0 0 0 / .35);background:#eee;
+        z-index:1;}
+    .ft-flag .fi{width:100%;height:100%;display:block;background-size:cover;background-position:50%;background-repeat:no-repeat;}
 
     .ft-actions{margin-top:8px;display:flex;gap:6px;}
     .ft-actions button{border:0;cursor:pointer;font-size:.62rem;font-weight:600;padding:4px 9px;
@@ -95,6 +110,41 @@ window.FamilyTree = window.FamilyTree || (function () {
     function reload() { if (S) load(S.focus); }
     function recenter(id) { if (S) { S.focus = id; load(id); } }
 
+    // Confirmed spouses of a person, from the last loaded window — used to
+    // offer "who's the other parent?" when adding a child to someone with 2+
+    // spouses, so their kids don't get mixed under one undifferentiated parent.
+    function spousesOf(id) {
+        if (!S || !S.data) return [];
+        return S.data.unions
+            .filter(u => u.status === 'confirmed' && (u.a === id || u.b === id))
+            .map(u => {
+                const otherId = u.a === id ? u.b : u.a;
+                const n = S.data.nodes.find(x => x.id === otherId);
+                return n ? { id: otherId, name: n.name } : null;
+            })
+            .filter(Boolean);
+    }
+
+    // Every relationship edge connecting a person to the currently-loaded
+    // window — used by the "manage relationships" sheet so a mistaken or
+    // duplicate relative can be unlinked directly from the tree.
+    function edgesOf(id) {
+        if (!S || !S.data) return [];
+        const byId = {}; S.data.nodes.forEach(n => byId[n.id] = n);
+        const out = [];
+        S.data.parentEdges.forEach(e => {
+            if (e.p === id && byId[e.c]) out.push({ edge_type: 'parent', edge_id: e.id, label: 'Parent of', name: byId[e.c].name, status: e.status });
+            if (e.c === id && byId[e.p]) out.push({ edge_type: 'parent', edge_id: e.id, label: 'Child of', name: byId[e.p].name, status: e.status });
+        });
+        S.data.unions.forEach(e => {
+            if (e.a === id || e.b === id) {
+                const otherId = e.a === id ? e.b : e.a;
+                if (byId[otherId]) out.push({ edge_type: 'union', edge_id: e.id, label: 'Spouse of', name: byId[otherId].name, status: e.status });
+            }
+        });
+        return out;
+    }
+
     async function load(focusId) {
         const url = new URL(S.cfg.dataUrl, window.location.origin);
         if (focusId) url.searchParams.set('focus', focusId);
@@ -114,6 +164,7 @@ window.FamilyTree = window.FamilyTree || (function () {
     // Layout + render
     // -----------------------------------------------------------------
     function render(data) {
+        S.data = data; // kept for later lookups (e.g. spousesOf() for the add-relative form)
         S.focus = data.focus;
         S.root = data.root;
         const byId = {}; data.nodes.forEach(n => byId[n.id] = n);
@@ -165,30 +216,64 @@ window.FamilyTree = window.FamilyTree || (function () {
         requestAnimationFrame(() => { drawLinks(data, byId, partnersOf); centerOnFocus(); });
     }
 
+    // Split a person's spouses across BOTH sides instead of bunching them all
+    // on one side — e.g. two co-wives of the same man sit one on his left, one
+    // on his right. Each mother's children then hang straight down from her
+    // own position (see orderRelative's parent-averaging below), so the
+    // connector lines fan out cleanly instead of crossing through the other
+    // wife's column to reach her kids.
+    function spreadPartners(centerId, partners, baseKey) {
+        const placement = {};
+        partners.forEach((p, i) => {
+            const side = i % 2 === 0 ? 1 : -1;      // alternate right, left, right, left…
+            const step = Math.floor(i / 2) + 1;      // 1st pair ±1, 2nd pair ±2, …
+            placement[p] = baseKey + side * step;
+        });
+        return placement;
+    }
+
     function orderSeedRow(ids, byId, partnersOf, key) {
-        // Focus first, its partners next to it, then the rest — evenly spread.
+        // Focus centered, its partners spread evenly on both sides, then any
+        // remaining peers (e.g. siblings sharing this row) after that.
         const focus = ids.find(id => byId[id] && byId[id].is_focus);
-        const ordered = [];
-        if (focus) {
-            ordered.push(focus);
-            (partnersOf[focus] || []).forEach(p => ids.includes(p) && ordered.push(p));
+        if (!focus) {
+            ids.forEach((id, i) => key[id] = i - (ids.length - 1) / 2);
+            return;
         }
-        ids.forEach(id => ordered.includes(id) || ordered.push(id));
-        ordered.forEach((id, i) => key[id] = i - (ordered.length - 1) / 2);
+
+        const partners = (partnersOf[focus] || []).filter(p => ids.includes(p));
+        const placement = spreadPartners(focus, partners, 0);
+        key[focus] = 0;
+        Object.assign(key, placement);
+
+        // Anything else in the row (rare — e.g. a sibling of the focus) goes
+        // after the widest spread partner, evenly spaced.
+        const used = new Set([focus, ...partners]);
+        const rest = ids.filter(id => !used.has(id));
+        const maxSide = partners.length ? Math.max(...Object.values(placement).map(Math.abs)) : 0;
+        rest.forEach((id, i) => key[id] = maxSide + 1 + i);
     }
 
     function orderRelative(ids, upMap, partnersOf, key) {
         if (!ids || !ids.length) return;
-        // Each node inherits the average key of its parents/children one row over.
+        // Each node inherits the average key of its parents/children one row over
+        // — so a child's default position is already between ITS OWN two
+        // recorded parents, not some other couple's midpoint.
         ids.forEach(id => {
             const refs = (upMap[id] || []).filter(r => r in key);
             key[id] = refs.length ? refs.reduce((s, r) => s + key[r], 0) / refs.length : (key[id] ?? 0);
         });
-        // Keep partners adjacent by averaging their keys.
+        // Spread each person's spouses across both sides of them too (same
+        // reasoning as the seed row), instead of the old "always adjacent"
+        // nudge that bunched multiple spouses on one side.
+        const adjusted = new Set();
         ids.forEach(id => {
-            (partnersOf[id] || []).forEach(p => {
-                if (ids.includes(p)) { const m = (key[id] + key[p]) / 2; key[id] = m; key[p] = m + 0.01; }
-            });
+            if (adjusted.has(id)) return;
+            const partners = (partnersOf[id] || []).filter(p => ids.includes(p) && !adjusted.has(p));
+            if (!partners.length) return;
+            Object.assign(key, spreadPartners(id, partners, key[id]));
+            partners.forEach(p => adjusted.add(p));
+            adjusted.add(id);
         });
         // De-collide equal keys.
         const seen = {};
@@ -207,14 +292,39 @@ window.FamilyTree = window.FamilyTree || (function () {
         if (n.deceased) node.dataset.deceased = '1';
         node.style.animationDelay = (rowIndex * 60) + 'ms';
 
+        const avWrap = el('div', 'ft-avatar-wrap');
         const av = el('div', 'ft-avatar');
         if (n.avatar) { const img = el('img'); img.src = n.avatar; img.alt = ''; av.appendChild(img); }
         else { av.style.background = GENDER_BG[n.gender] || 'hsl(220 10% 60%)';
                av.innerHTML = '<i class="bi bi-person-fill"></i>'; }
-        node.appendChild(av);
+        avWrap.appendChild(av);
+
+        if (n.nationality) {
+            const code = String(n.nationality).replace(/[^a-z]/g, '').slice(0, 2);
+            if (code.length === 2) {
+                const fl = el('div', 'ft-flag');
+                const span = document.createElement('span');
+                span.className = 'fi fi-' + code; // built via className, never innerHTML — can't inject markup
+                fl.appendChild(span);
+                avWrap.appendChild(fl); // anchored to the avatar's own box, sits right on its border
+            }
+        }
+
+        node.appendChild(avWrap);
 
         if (n.pending) { const b = el('div', 'ft-badge pending'); b.innerHTML = '<i class="bi bi-hourglass-split"></i>'; node.appendChild(b); }
         else if (n.deceased) { const b = el('div', 'ft-badge deceased'); b.innerHTML = '<i class="bi bi-flower1"></i>'; node.appendChild(b); }
+
+        // Manage (unlink) — every relative except yourself can be corrected/removed.
+        if (!n.is_root) {
+            const mg = el('button', 'ft-manage'); mg.type = 'button'; mg.setAttribute('aria-label', 'Manage relationship');
+            mg.innerHTML = '<i class="bi bi-three-dots"></i>';
+            mg.addEventListener('click', ev => {
+                ev.stopPropagation();
+                S.vp.dispatchEvent(new CustomEvent('ft:manage', { detail: { personId: n.id, personName: n.name, edges: edgesOf(n.id) }, bubbles: true }));
+            });
+            node.appendChild(mg);
+        }
 
         const name = el('div', 'ft-name'); name.textContent = n.name; node.appendChild(name);
         if (n.label) { const r = el('div', 'ft-rel'); r.textContent = n.label; node.appendChild(r); }
@@ -237,7 +347,7 @@ window.FamilyTree = window.FamilyTree || (function () {
         node.addEventListener('click', ev => {
             if (S.moved) return; // was a drag, not a tap
             if (n.is_focus) {
-                S.vp.dispatchEvent(new CustomEvent('ft:add', { detail: { focusId: n.id, focusName: n.name }, bubbles: true }));
+                S.vp.dispatchEvent(new CustomEvent('ft:add', { detail: { focusId: n.id, focusName: n.name, spouses: spousesOf(n.id) }, bubbles: true }));
             } else {
                 recenter(n.id);
             }
@@ -415,7 +525,7 @@ window.FamilyTree = window.FamilyTree || (function () {
         } catch (e) { if (window.showToast) window.showToast('error', 'Something went wrong.'); }
     }
 
-    return { mount, reload, recenter, zoomIn, zoomOut, home };
+    return { mount, reload, recenter, zoomIn, zoomOut, home, spousesOf, edgesOf };
 })();
 
 // Alpine data factory for the add-relative sheet/modal. A global (not Alpine.data)
@@ -424,15 +534,22 @@ window.ftAddRelativeData = window.ftAddRelativeData || function (cfg) {
     return {
         open: false, focusId: null, focusName: '', type: 'child',
         full_name: '', gender: '', birth_year: '', is_deceased: false, state: 'married', submitting: false,
+        spouses: [], other_parent_id: null,
         openFor(d) {
             this.focusId = d.focusId; this.focusName = d.focusName;
             this.type = 'child'; this.full_name = ''; this.gender = '';
             this.birth_year = ''; this.is_deceased = false; this.state = 'married';
+            this.spouses = d.spouses || [];
+            this.other_parent_id = this.spouses.length === 1 ? this.spouses[0].id : null;
             this.open = true;
         },
         close() { this.open = false; },
         async submit() {
             if (!this.full_name.trim()) { window.showToast && window.showToast('error', 'Please enter a name.'); return; }
+            if (this.type === 'child' && this.spouses.length > 1 && !this.other_parent_id) {
+                window.showToast && window.showToast('error', 'Please select the other parent.');
+                return;
+            }
             this.submitting = true;
             try {
                 const body = {
@@ -441,6 +558,7 @@ window.ftAddRelativeData = window.ftAddRelativeData || function (cfg) {
                     birth_date: this.birth_year ? (this.birth_year + '-01-01') : null,
                 };
                 if (this.type === 'spouse') body.state = this.state;
+                if (this.type === 'child' && this.other_parent_id) body.other_parent_person_id = this.other_parent_id;
                 const res = await fetch(cfg.addUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest' },
@@ -453,6 +571,52 @@ window.ftAddRelativeData = window.ftAddRelativeData || function (cfg) {
                 window.showToast && window.showToast('error', 'Something went wrong.');
             } finally {
                 this.submitting = false;
+            }
+        }
+    };
+};
+
+// Alpine data factory for the "manage relationships" sheet/modal — lists a
+// person's connecting edges and lets you unlink one (fix a mistake/duplicate).
+window.ftManageData = window.ftManageData || function (cfg) {
+    return {
+        open: false, personId: null, personName: '', edges: [], removingId: null,
+        openFor(d) {
+            this.personId = d.personId; this.personName = d.personName;
+            this.edges = d.edges || [];
+            this.open = true;
+        },
+        close() { this.open = false; },
+        async remove(edge) {
+            const ok = await (window.confirmAction ? window.confirmAction({
+                title: 'Remove relationship',
+                message: 'Remove the "' + edge.label + ' ' + edge.name + '" relationship? This can\'t be undone.',
+                type: 'danger',
+                confirmText: 'Remove',
+            }) : Promise.resolve(true));
+            if (!ok) return;
+
+            this.removingId = edge.edge_type + ':' + edge.edge_id;
+            try {
+                const res = await fetch(cfg.removeUrl, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                    body: JSON.stringify({ edge_type: edge.edge_type, edge_id: edge.edge_id }),
+                });
+                const j = await res.json();
+                window.showToast && window.showToast(j.success ? 'success' : 'error', j.message || '');
+                if (j.success) {
+                    this.edges = this.edges.filter(e => !(e.edge_type === edge.edge_type && e.edge_id === edge.edge_id));
+                    window.FamilyTree && window.FamilyTree.reload();
+                    // Pages that show this modal without a mounted tree (e.g. /family/members)
+                    // listen for this to refresh their own list instead.
+                    window.dispatchEvent(new CustomEvent('family-relative-removed'));
+                    if (this.edges.length === 0) this.close();
+                }
+            } catch (e) {
+                window.showToast && window.showToast('error', 'Something went wrong.');
+            } finally {
+                this.removingId = null;
             }
         }
     };

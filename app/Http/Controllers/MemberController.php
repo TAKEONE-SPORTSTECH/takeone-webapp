@@ -14,9 +14,11 @@ use App\Models\ClubEventRegistration;
 use App\Models\Goal;
 use App\Models\Invoice;
 use App\Models\Membership;
+use App\Models\Person;
 use App\Models\TournamentEvent;
 use App\Models\User;
 use App\Models\UserRelationship;
+use App\Services\KinshipService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -25,23 +27,74 @@ use Illuminate\Support\Facades\Storage;
 class MemberController extends Controller
 {
     use \App\Traits\BuildsMemberPayments;
+    use \App\Traits\ComputesAttendanceStats;
     use \App\Traits\StoresBase64Images;
 
     /**
      * Display a listing of members (family dashboard).
      *
+     * Sourced from the kinship graph (App\Services\KinshipService) rather than
+     * the legacy user_relationships table, so this list always matches what
+     * the Family Tree shows — a relative added via any tree flow (spouse,
+     * parent, existing person, etc.) appears here too, not just dependents
+     * registered through the old guardian/dependent flow.
+     *
      * @return \Illuminate\View\View
      */
-    public function index()
+    public function index(KinshipService $kin)
     {
         $user = Auth::user();
-        $dependents = UserRelationship::where('guardian_user_id', $user->id)
-            ->with('dependent')
-            ->whereHas('dependent')
-            ->get()
-            ->sortBy(function ($relationship) {
-                return $relationship->dependent->full_name;
-            });
+
+        $kin->syncGuardianship($user);   // mirror any legacy guardian rows into the graph
+        $me = $kin->personFor($user);
+        $data = $kin->neighborhood($me, $me);
+
+        $nodesById = collect($data['nodes'])
+            ->reject(fn ($n) => $n['is_focus'] ?? false)
+            ->filter(fn ($n) => $n['account'] ?? false)   // only real, linked accounts have a profile to open
+            ->keyBy('id');
+
+        $peopleById = Person::whereIn('id', $nodesById->keys())->with('user')->get()->keyBy('id');
+
+        // Every node (not just the account-linked ones listed as cards) so edge
+        // labels can name the "other side" even when it's a non-account relative.
+        $allNodesById = collect($data['nodes'])->keyBy('id');
+        $edgesFor = function (int $personId) use ($data, $allNodesById) {
+            $out = [];
+            foreach ($data['parentEdges'] as $e) {
+                if ($e['p'] === $personId && $allNodesById->has($e['c'])) {
+                    $out[] = ['edge_type' => 'parent', 'edge_id' => $e['id'], 'label' => 'Parent of', 'name' => $allNodesById[$e['c']]['name'], 'status' => $e['status']];
+                }
+                if ($e['c'] === $personId && $allNodesById->has($e['p'])) {
+                    $out[] = ['edge_type' => 'parent', 'edge_id' => $e['id'], 'label' => 'Child of', 'name' => $allNodesById[$e['p']]['name'], 'status' => $e['status']];
+                }
+            }
+            foreach ($data['unions'] as $u) {
+                if ($u['a'] === $personId || $u['b'] === $personId) {
+                    $otherId = $u['a'] === $personId ? $u['b'] : $u['a'];
+                    if ($allNodesById->has($otherId)) {
+                        $out[] = ['edge_type' => 'union', 'edge_id' => $u['id'], 'label' => 'Spouse of', 'name' => $allNodesById[$otherId]['name'], 'status' => $u['status']];
+                    }
+                }
+            }
+
+            return $out;
+        };
+
+        $dependents = $nodesById->map(function ($node) use ($peopleById, $edgesFor) {
+            $u = $peopleById->get($node['id'])?->user;
+
+            return $u ? (object) [
+                'dependent' => $u,
+                'relationship_type' => $node['label'],
+                'person_id' => $node['id'],
+                'edges' => $edgesFor($node['id']),
+            ] : null;
+        })
+            ->filter()
+            ->unique(fn ($r) => $r->dependent->id)
+            ->sortBy(fn ($r) => $r->dependent->full_name)
+            ->values();
 
         // Mobile and desktop have genuinely different layouts — separate files.
         $isMobile = (bool) request()->attributes->get('is_mobile', false);
@@ -240,12 +293,19 @@ class MemberController extends Controller
         $completedGoalsCount = $goals->where('status', 'completed')->count();
         $successRate = $goals->count() > 0 ? round(($completedGoalsCount / $goals->count()) * 100) : 0;
 
-        // Fetch attendance data for the member
+        // Attendance log (manual entries via the desktop "Add attendance record" feature) — still
+        // used for the entry list, but the summary numbers below no longer derive from it.
         $attendanceRecords = $relationship->dependent->attendanceRecords()->orderBy('session_datetime', 'desc')->get();
-        $sessionsCompleted = $attendanceRecords->where('status', 'completed')->count();
-        $noShows = $attendanceRecords->where('status', 'no_show')->count();
-        $totalSessions = $attendanceRecords->count();
-        $attendanceRate = $totalSessions > 0 ? round(($sessionsCompleted / $totalSessions) * 100, 1) : 0;
+
+        // Attendance summary: total sessions = the package's scheduled classes across the
+        // subscription period; completed = trainer-marked class_attendances for those classes.
+        [
+            'sessionsCompleted' => $sessionsCompleted,
+            'noShows' => $noShows,
+            'totalSessions' => $totalSessions,
+            'attendanceRate' => $attendanceRate,
+            'scheduleSessions' => $scheduleSessions,
+        ] = $this->computeAttendanceStats($relationship->dependent);
 
         // Challenge (duel) record — win rate across completed challenges.
         $memberId = $relationship->dependent->id;
@@ -372,7 +432,9 @@ class MemberController extends Controller
             'attendanceRecords' => $attendanceRecords,
             'sessionsCompleted' => $sessionsCompleted,
             'noShows' => $noShows,
+            'totalSessions' => $totalSessions,
             'attendanceRate' => $attendanceRate,
+            'scheduleSessions' => $scheduleSessions,
             'challengeWinRate' => $challengeWinRate,
             'challengesTotal' => $challengesTotal,
             'challengeWins' => $challengeWins,
@@ -743,6 +805,63 @@ class MemberController extends Controller
     }
 
     /**
+     * Remove a member's profile picture.
+     */
+    public function removeProfilePicture($id)
+    {
+        $user = Auth::user();
+        $isSuperAdmin = $user->hasRole('super-admin');
+        $isOwnProfile = $user->id == $id;
+
+        if (! $isSuperAdmin && ! $isOwnProfile) {
+            UserRelationship::where('guardian_user_id', $user->id)
+                ->where('dependent_user_id', $id)
+                ->firstOrFail();
+        }
+
+        $member = User::findOrFail($id);
+
+        if ($member->profile_picture && Storage::disk('public')->exists($member->profile_picture)) {
+            Storage::disk('public')->delete($member->profile_picture);
+        }
+
+        $extensions = ['png', 'jpg', 'jpeg', 'webp'];
+        foreach ($extensions as $ext) {
+            $path = 'images/profiles/profile_'.$member->id.'.'.$ext;
+            if (Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
+        }
+
+        $member->update(['profile_picture' => null]);
+
+        return response()->json(['success' => true, 'message' => __('shared.photo_edit_modal_removed')]);
+    }
+
+    /**
+     * Toggle the public/private visibility of a member's profile picture.
+     */
+    public function updateProfilePictureVisibility(\Illuminate\Http\Request $request, $id)
+    {
+        $request->validate(['is_public' => 'required|boolean']);
+
+        $user = Auth::user();
+        $isSuperAdmin = $user->hasRole('super-admin');
+        $isOwnProfile = $user->id == $id;
+
+        if (! $isSuperAdmin && ! $isOwnProfile) {
+            UserRelationship::where('guardian_user_id', $user->id)
+                ->where('dependent_user_id', $id)
+                ->firstOrFail();
+        }
+
+        $member = User::findOrFail($id);
+        $member->update(['profile_picture_is_public' => $request->boolean('is_public')]);
+
+        return response()->json(['success' => true, 'is_public' => $member->profile_picture_is_public]);
+    }
+
+    /**
      * Upload an identity document file for a member.
      */
     public function uploadDocument(\Illuminate\Http\Request $request, $id)
@@ -1047,8 +1166,32 @@ class MemberController extends Controller
         // Validate the request
         $validated = $request->validated();
 
+        // Closing a goal for the first time requires an "after" proof photo — once
+        // completed_at is stamped it never resets, so re-saving an already-completed
+        // goal (e.g. tweaking current_progress_value) doesn't demand a new photo.
+        $isFirstCompletion = $validated['status'] === 'completed' && $goal->status !== 'completed';
+        if ($isFirstCompletion) {
+            if (empty($validated['after_proof'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Attach an "after" photo to close this goal.',
+                ], 422);
+            }
+
+            $path = $this->storeBase64Image($validated['after_proof'], 'goal-proofs', 'goal_after_'.$goal->id.'_'.time());
+            if (! $path) {
+                return response()->json(['success' => false, 'message' => 'Please upload a valid image (JPG or PNG).'], 422);
+            }
+
+            $goal->after_proof = $path;
+            $goal->completed_at = now();
+        }
+
         // Update the goal
-        $goal->update($validated);
+        $goal->update([
+            'current_progress_value' => $validated['current_progress_value'],
+            'status' => $validated['status'],
+        ]);
 
         return response()->json([
             'success' => true,
@@ -1063,6 +1206,10 @@ class MemberController extends Controller
                 'target_value' => $goal->target_value,
                 'progress_percentage' => $goal->progress_percentage,
                 'priority_level' => $goal->priority_level,
+                'before_proof' => $goal->before_proof ? asset('storage/'.$goal->before_proof) : null,
+                'after_proof' => $goal->after_proof ? asset('storage/'.$goal->after_proof) : null,
+                'completed_at' => optional($goal->completed_at)->format('M j, Y'),
+                'days_taken' => $goal->days_taken,
             ],
         ]);
     }
@@ -1087,6 +1234,11 @@ class MemberController extends Controller
 
         $validated = $request->validated();
 
+        $beforeProof = $this->storeBase64Image($validated['before_proof'], 'goal-proofs', 'goal_before_'.$id.'_'.time());
+        if (! $beforeProof) {
+            return response()->json(['success' => false, 'message' => 'Please upload a valid image (JPG or PNG).'], 422);
+        }
+
         $goal = Goal::create([
             'user_id' => $id,
             'title' => $validated['title'],
@@ -1099,6 +1251,7 @@ class MemberController extends Controller
             'priority_level' => $validated['priority_level'] ?? 'medium',
             'unit' => $validated['unit'],
             'icon_type' => $validated['icon_type'] ?? 'bi-bullseye',
+            'before_proof' => $beforeProof,
         ]);
 
         return response()->json([
@@ -1116,6 +1269,7 @@ class MemberController extends Controller
                 'priority_level' => $goal->priority_level,
                 'icon_type' => $goal->icon_type,
                 'target_date' => optional($goal->target_date)->format('M j, Y'),
+                'before_proof' => asset('storage/'.$goal->before_proof),
             ],
         ]);
     }

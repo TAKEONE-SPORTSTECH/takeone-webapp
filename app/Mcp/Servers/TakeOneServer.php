@@ -3,6 +3,7 @@
 namespace App\Mcp\Servers;
 
 use App\Mcp\Tools\ClubFinancialsTool;
+use App\Mcp\Tools\ClubStaffTool;
 use App\Mcp\Tools\EnrollMembersTool;
 use App\Mcp\Tools\GetClubTool;
 use App\Mcp\Tools\GetMemberTool;
@@ -31,8 +32,8 @@ Getting started:
   1. Call `who_am_i` to see the acting user's identity, roles and accessible clubs.
   2. Use `list_clubs` / `get_club` to browse clubs the user can access.
   3. Use `list_members` / `get_member` for member data (private profiles are gated).
-  4. Use `club_financials` for a club's money (admins only).
-  5. `search_people` finds discoverable members platform-wide (safe public fields only).
+  4. Use `club_financials` for a club's money (admins only); `club_staff` lists instructors/staff and their compensation (admins only, read-only).
+  5. `search_people` finds discoverable members who share a confirmed club membership with the acting user (never platform-wide; safe public fields only).
 
 Write tools (may be globally disabled via server config):
   • `record_transaction` — log manual income/expense for a club (admins only).
@@ -51,6 +52,7 @@ class TakeOneServer extends Server
         ListMembersTool::class,
         GetMemberTool::class,
         ClubFinancialsTool::class,
+        ClubStaffTool::class,
         SearchPeopleTool::class,
         RecordTransactionTool::class,
         NotifyMemberTool::class,

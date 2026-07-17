@@ -23,7 +23,7 @@
 @endphp
 
 <div class="min-h-screen bg-gray-50" x-data="{ activeTab: 'about' }">
-    <div class="max-w-6xl mx-auto p-4 space-y-6">
+    <div class="p-4 space-y-6">
 
         {{-- Back Button --}}
         @if(!request()->routeIs('trainer.show.public'))

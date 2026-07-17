@@ -65,6 +65,7 @@ class ClubMemberSubscription extends Model
         'proof_of_payment',
         'refund_proof',
         'active_key',
+        'is_test',
     ];
 
     /**
@@ -88,6 +89,14 @@ class ClubMemberSubscription extends Model
 
         static::creating($setKey);
         static::updating($setKey);
+
+        // Stamp the club's current test/live mode onto new subscriptions,
+        // unless the caller already set it explicitly.
+        static::creating(function (self $sub): void {
+            if (is_null($sub->is_test) && $sub->tenant_id) {
+                $sub->is_test = Tenant::isTestMode($sub->tenant_id);
+            }
+        });
     }
 
     /**
@@ -102,6 +111,7 @@ class ClubMemberSubscription extends Model
         'amount_paid' => 'decimal:2',
         'amount_due' => 'decimal:2',
         'registration_fee' => 'decimal:2',
+        'is_test' => 'boolean',
     ];
 
     /**
@@ -180,5 +190,30 @@ class ClubMemberSubscription extends Model
     public function daysUntilExpiry(): int
     {
         return Carbon::now()->diffInDays($this->end_date, false);
+    }
+
+    /**
+     * IDs of every user who shares at least one club with the given user, where
+     * BOTH sides have an actually club-owner-confirmed membership (status =
+     * 'active'). Not `memberships.status`, which is set to 'active' the instant
+     * a subscription record exists — even a still-pending self-registration.
+     * Shared by the web "Find People" feature and the `search_people` MCP tool
+     * so both enforce the same club-scoping.
+     */
+    public static function confirmedClubMateIds(int $userId): \Illuminate\Support\Collection
+    {
+        $clubIds = self::where('user_id', $userId)
+            ->where('status', 'active')
+            ->pluck('tenant_id')
+            ->unique();
+
+        if ($clubIds->isEmpty()) {
+            return collect();
+        }
+
+        return self::whereIn('tenant_id', $clubIds)
+            ->where('status', 'active')
+            ->distinct()
+            ->pluck('user_id');
     }
 }

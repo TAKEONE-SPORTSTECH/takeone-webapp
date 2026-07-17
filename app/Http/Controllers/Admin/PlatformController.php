@@ -1162,6 +1162,43 @@ class PlatformController extends Controller
     }
 
     /**
+     * Remove a member's profile picture (super-admin).
+     */
+    public function removeMemberPicture($id)
+    {
+        $member = User::findOrFail($id);
+
+        if ($member->profile_picture && Storage::disk('public')->exists($member->profile_picture)) {
+            Storage::disk('public')->delete($member->profile_picture);
+        }
+
+        $extensions = ['png', 'jpg', 'jpeg', 'webp'];
+        foreach ($extensions as $ext) {
+            $path = 'images/profiles/profile_'.$member->id.'.'.$ext;
+            if (Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
+        }
+
+        $member->update(['profile_picture' => null]);
+
+        return response()->json(['success' => true, 'message' => __('shared.photo_edit_modal_removed')]);
+    }
+
+    /**
+     * Toggle the public/private visibility of a member's profile picture (super-admin).
+     */
+    public function updateMemberPictureVisibility(\Illuminate\Http\Request $request, $id)
+    {
+        $request->validate(['is_public' => 'required|boolean']);
+
+        $member = User::findOrFail($id);
+        $member->update(['profile_picture_is_public' => $request->boolean('is_public')]);
+
+        return response()->json(['success' => true, 'is_public' => $member->profile_picture_is_public]);
+    }
+
+    /**
      * Store a health record for a member.
      */
     public function storeMemberHealth(HealthRecordRequest $request, $id)

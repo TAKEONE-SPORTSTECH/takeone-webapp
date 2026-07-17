@@ -379,6 +379,23 @@ class User extends Authenticatable implements MustVerifyEmail
             ->contains(fn (Tenant $club) => ! empty($club->settings['block_explore'])));
     }
 
+    public function clubMemberSubscriptions(): HasMany
+    {
+        return $this->hasMany(ClubMemberSubscription::class);
+    }
+
+    /**
+     * True once at least one club has actually confirmed the member (subscription
+     * status = active) — distinct from `memberships.status`, which is set to
+     * 'active' the instant a subscription record exists, even a still-pending
+     * self-registration. Used to gate club-scoped social features (Find People)
+     * until real membership is confirmed.
+     */
+    public function hasConfirmedClubMembership(): bool
+    {
+        return once(fn () => $this->clubMemberSubscriptions()->where('status', 'active')->exists());
+    }
+
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);

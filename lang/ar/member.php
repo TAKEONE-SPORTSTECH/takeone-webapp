@@ -37,7 +37,7 @@ return [
 
     // Tabs
     'tab_overview' => 'معلومات',
-    'tab_health' => 'الصحة',
+    'tab_health' => 'القوام',
     'tab_goals' => 'الأهداف',
     'tab_tournaments' => 'البطولات',
     'tab_clubs' => 'الأندية',
@@ -103,6 +103,32 @@ return [
     'goals_done' => 'مكتملة',
     'goals_success' => 'النجاح',
     'no_goals' => 'لم يتم تحديد أهداف.',
+    'add_goal' => 'إضافة هدف',
+    'goal_title' => 'الهدف',
+    'goal_title_placeholder' => 'مثال: رفع 80 كجم بنش برس',
+    'goal_description' => 'الوصف',
+    'goal_description_placeholder' => 'تفاصيل اختيارية',
+    'goal_target_value' => 'المستهدف',
+    'goal_unit' => 'الوحدة',
+    'goal_unit_placeholder' => 'كجم، دقيقة، عدة...',
+    'goal_target_date' => 'تحقيقه بحلول',
+    'goal_before_photo' => 'صورة قبل',
+    'goal_before_photo_hint' => 'اضغط لإضافة صورة "قبل"',
+    'goal_after_photo' => 'صورة بعد',
+    'goal_after_photo_hint' => 'اضغط لإضافة صورة "بعد"',
+    'create_goal' => 'إنشاء الهدف',
+    'goal_created' => 'تم إنشاء الهدف.',
+    'update_progress' => 'تحديث التقدم',
+    'mark_as_achieved' => 'وضع علامة كمُنجز',
+    'mark_as_achieved_hint' => 'أرفق صورة "بعد" لإغلاق هذا الهدف.',
+    'goal_updated' => 'تم تحديث الهدف.',
+    'goal_achieved' => 'تم الإنجاز',
+    'days_to_achieve' => 'يوم لتحقيقه',
+    'before' => 'قبل',
+    'after' => 'بعد',
+    'pick_a_date' => 'اختر تاريخًا',
+    'clear' => 'مسح',
+    'today' => 'اليوم',
 
     // Tournaments
     'no_tournaments' => 'لا توجد بطولات بعد.',
@@ -127,6 +153,11 @@ return [
     'completed' => 'مكتملة',
     'no_shows' => 'حالات الغياب',
     'total_sessions' => 'إجمالي الجلسات',
+    'class_schedule' => 'جدول الحصص',
+    'attended' => 'حضر',
+    'missed' => 'غياب',
+    'upcoming' => 'قادم',
+    'no_schedule_sessions' => 'لا توجد حصص مجدولة لهذا الاشتراك بعد.',
 
     // Billing
     'invoice' => 'فاتورة',
@@ -207,6 +238,40 @@ return [
     'js_could_not_add' => 'تعذرت إضافة العضو.',
     'js_went_wrong' => 'حدث خطأ ما. يرجى المحاولة مرة أخرى.',
 
+    // Add-member chooser (New / Search Existing)
+    'add_member_chooser_subtitle' => 'كيف تود إضافتهم؟',
+    'add_new_title' => 'إضافة شخص جديد',
+    'add_new_desc' => 'سجّل شخصًا ليس لديه حساب بعد.',
+    'search_existing_title' => 'البحث عن عضو حالي',
+    'search_existing_desc' => 'ابحث عن شخص لديه حساب بالفعل واربطه.',
+
+    // Search-existing sheet/modal
+    'search_existing_sheet_subtitle' => 'ابحث بالاسم أو الهاتف أو البريد الإلكتروني أو ولي الأمر.',
+    'search_existing_placeholder' => 'ابحث بالاسم أو الهاتف أو البريد الإلكتروني…',
+    'searching' => 'جارٍ البحث…',
+    'no_results' => 'لا توجد نتائج مطابقة.',
+    'change' => 'تغيير',
+    'link_notice' => 'سيحتاجون إلى تأكيد هذا الارتباط قبل أن يظهر لديهم.',
+    'link_as_family' => 'ربط كأحد أفراد العائلة',
+    'linking' => 'جارٍ الربط…',
+
+    // Phone auto-suggest (inside the manual "new member" form)
+    'suggest_existing_prefix' => 'يبدو أن هذا هو',
+    'suggest_existing_cta' => 'اضغط للربط بدلاً من إنشاء حساب مكرر',
+
+    // Search/lookup "matched via" labels
+    'matched_via_phone' => 'نفس رقم الهاتف',
+    'matched_via_contact' => 'مطابقة عبر الهاتف/البريد الإلكتروني',
+    'matched_via_name' => 'مطابقة بالاسم',
+    'matched_via_guardian' => 'ولي الأمر: :name',
+
+    // Link-existing outcomes
+    'cannot_link_self' => 'لا يمكنك ربط نفسك كأحد أفراد العائلة.',
+    'already_linked' => 'هذا الشخص هو بالفعل أحد أفراد عائلتك.',
+    'link_request_sent' => 'تم إرسال الطلب — سيظهر بمجرد تأكيده.',
+    'link_added' => 'تم الربط بعائلتك.',
+    'manage_relationships' => 'إدارة العلاقات',
+
     // ===== Super-admin password controls =====
     'account_security' => 'أمان الحساب',
     'super_admin_only' => 'للمشرف العام فقط',
@@ -245,6 +310,7 @@ return [
     'templates_member_show_add_health_update' => 'إضافة تحديث صحي',
     'templates_member_show_add_tournament_participation' => 'إضافة مشاركة في بطولة',
     'templates_member_show_edit_info' => 'تعديل المعلومات',
+    'templates_member_show_edit_photo' => 'تعديل الصورة',
     'templates_member_show_set_a_goal' => 'تحديد هدف',
     'templates_member_show_reset_password' => 'إعادة تعيين كلمة المرور',
     'templates_member_show_generate_password' => 'إنشاء كلمة مرور',

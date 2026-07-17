@@ -3,7 +3,7 @@
 @section('title', __('messenger.messenger_index_title'))
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4" x-data="messenger()" x-init="init()">
+<div class="px-4 sm:px-6 lg:px-8 py-4" x-data="messenger()" x-init="init()">
 
     <div class="flex items-center justify-between mb-4">
         <div>
@@ -247,6 +247,15 @@ function messenger() {
             if (pre) this.openConversation(pre);
         },
 
+        // Always derive the displayed time from the raw UTC instant in the
+        // VIEWER's own browser/device timezone — never trust a server-formatted
+        // wall-clock string (the server has no idea where the viewer actually is).
+        localTime(iso) {
+            if (!iso) return '';
+            try { return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+            catch (e) { return ''; }
+        },
+
         async searchUsers() {
             const q = this.searchTerm.trim();
             if (!q) { this.searchResults = []; return; }
@@ -287,7 +296,11 @@ function messenger() {
             try {
                 const r = await fetch(`${this.urls.base}/${id}/thread`, { headers: { 'Accept': 'application/json' } });
                 const d = await r.json();
-                if (d.success) { this.partner = d.partner; this.messages = d.messages; this.scrollDown(); }
+                if (d.success) {
+                    this.partner = d.partner;
+                    this.messages = d.messages.map((m) => ({ ...m, time: this.localTime(m.created_at) || m.time }));
+                    this.scrollDown();
+                }
             } catch (e) { window.showToast('error', '{{ __("messenger.messenger_index_err_load_conversation") }}'); }
             finally { this.loadingThread = false; }
         },
@@ -301,7 +314,10 @@ function messenger() {
             try {
                 const r = await fetch(`${this.urls.base}/${this.activeId}/send`, { method: 'POST', headers: this.headers(), body: JSON.stringify({ body }) });
                 const d = await r.json();
-                if (d.success) { this.messages.push(d.data); this.draft = ''; this.scrollDown(); this.updateRow(this.activeId, body, true); }
+                if (d.success) {
+                    this.messages.push({ ...d.data, time: this.localTime(d.data.created_at) || d.data.time });
+                    this.draft = ''; this.scrollDown(); this.updateRow(this.activeId, body, true);
+                }
             } catch (e) { window.showToast('error', '{{ __("messenger.messenger_index_err_send") }}'); }
             finally { this.sending = false; }
         },
@@ -324,7 +340,7 @@ function messenger() {
             // Incoming ephemeral attachment (picture / file).
             if (detail.action === 'file') {
                 if (this.activeId === id) {
-                    this.messages.push({ id: detail.id, mine: false, time: detail.time || '', kind: detail.kind, attachment: detail.attachment });
+                    this.messages.push({ id: detail.id, mine: false, time: this.localTime(detail.created_at) || detail.time || '', kind: detail.kind, attachment: detail.attachment });
                     this.scrollDown(); this.markRead(id);
                 } else { this.bumpUnread(id); this.bumpHeaderBadge(1); }
                 this.updateRow(id, detail.body || (detail.kind === 'image' ? '{{ __("messenger.messenger_index_photo") }}' : '📎 ' + (detail.attachment && detail.attachment.name || '')), false);
@@ -333,7 +349,7 @@ function messenger() {
             }
 
             if (this.activeId === id) {
-                this.messages.push({ id: detail.id, body: detail.body, mine: false, time: detail.time || '' });
+                this.messages.push({ id: detail.id, body: detail.body, mine: false, time: this.localTime(detail.created_at) || detail.time || '' });
                 this.scrollDown();
                 this.markRead(id);
             } else {

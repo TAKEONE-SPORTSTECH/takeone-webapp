@@ -301,14 +301,13 @@ html, body { overflow: hidden !important; height: 100% !important; }
         <!-- Action buttons -->
         <div class="emp-actions emp-collapse-hide">
             @if(Auth::user()->isSuperAdmin())
+                <a href="{{ route('admin.platform.clubs') }}" class="emp-sb-btn" title="{{ __('nav.layouts_admin_club_back_to_clubs') }}"><i class="bi bi-arrow-left"></i></a>
                 <a href="{{ route('admin.platform.index') }}" class="emp-sb-btn" title="{{ __('nav.layouts_admin_club_admin_dashboard') }}"><i class="bi bi-shield-check"></i></a>
                 <a href="{{ route('me.home') }}" class="emp-sb-btn" title="{{ __('nav.layouts_admin_club_my_home') }}"><i class="bi bi-house"></i></a>
-                <a href="{{ route('admin.platform.clubs') }}" class="emp-sb-btn" title="{{ __('nav.layouts_admin_club_back_to_clubs') }}"><i class="bi bi-arrow-left"></i></a>
             @else
                 <a href="{{ route('clubs.explore') }}" class="emp-sb-btn" title="{{ __('nav.layouts_admin_club_back_to_explore') }}"><i class="bi bi-arrow-left"></i></a>
             @endif
             <a href="{{ $club->url }}" class="emp-sb-btn" title="{{ __('nav.layouts_admin_club_preview_club') }}" target="_blank"><i class="bi bi-eye"></i></a>
-            <button @click="showNotificationModal = true" class="emp-sb-btn" title="{{ __('nav.layouts_admin_club_send_notification') }}"><i class="bi bi-send"></i></button>
             <a href="{{ route('admin.club.details', $clubId) }}" data-shell-link data-route="admin.club.details" class="emp-sb-btn {{ $currentRoute === 'admin.club.details' ? 'active' : '' }}" title="{{ __('nav.layouts_admin_club_club_details') }}"><i class="bi bi-gear"></i></a>
         </div>
 

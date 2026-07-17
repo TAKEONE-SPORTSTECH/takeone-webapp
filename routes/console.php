@@ -14,3 +14,4 @@ Schedule::command('expenses:process-recurring')->dailyAt('00:00');
 Schedule::command('messages:prune-attachments')->hourly();
 
 Schedule::command('duels:expire-pending')->hourly();
+Schedule::command('goals:daily-encouragement')->dailyAt('09:00');

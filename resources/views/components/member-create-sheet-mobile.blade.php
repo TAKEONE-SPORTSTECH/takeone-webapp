@@ -16,9 +16,15 @@
     desktop profile-modal create flow (same field names + JSON contract).
 --}}
 <div x-data="memberCreateSheetMobile()" x-cloak
-     x-on:open-member-create-modal.window="openSheet()"
+     x-on:open-member-manual-sheet.window="openSheet()"
      @keydown.escape.window="close()">
 
+    {{-- Teleported to <body> so the fixed backdrop/sheet escape #shell-content's
+         transformed ancestor (.mobile-stagger leaves a transform on its direct
+         children, which would otherwise become the fixed positioning context
+         and clip/misplace the sheet). --}}
+    <template x-teleport="body">
+    <div>
     {{-- Backdrop --}}
     <div x-show="open" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
          x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
@@ -76,8 +82,25 @@
                             :required="false">
                             <input id="{{ $p }}_mobile_number" type="tel" name="mobile" value="{{ old('mobile') }}"
                                    class="w-full px-4 py-3 text-base bg-transparent focus:outline-none"
-                                   autocomplete="tel" placeholder="{{ __('member.phone_number') }}">
+                                   autocomplete="tel" placeholder="{{ __('member.phone_number') }}"
+                                   @input="onMobileInput($event.target.value)">
                         </x-country-code-dropdown>
+
+                        {{-- Auto-suggest: an existing account already uses this number --}}
+                        <template x-for="match in suggestMatches" :key="match.id">
+                            <button type="button" @click="linkInstead(match)"
+                                    class="mt-2 w-full flex items-center gap-2.5 rounded-xl border border-sky-200 bg-sky-50 p-3 text-start">
+                                <span class="w-9 h-9 rounded-full overflow-hidden bg-white grid place-items-center flex-shrink-0 border border-sky-100">
+                                    <template x-if="match.avatar"><img :src="match.avatar" alt="" class="w-9 h-9 object-cover"></template>
+                                    <template x-if="!match.avatar"><i class="bi bi-person-fill text-sky-400"></i></template>
+                                </span>
+                                <span class="min-w-0 flex-1">
+                                    <span class="block text-sm font-semibold text-foreground truncate" x-text="'{{ __('member.suggest_existing_prefix') }} ' + match.name"></span>
+                                    <span class="block text-[11px] text-sky-700">{{ __('member.suggest_existing_cta') }}</span>
+                                </span>
+                                <i class="bi bi-chevron-right text-sky-400 flex-shrink-0"></i>
+                            </button>
+                        </template>
                     </div>
                 </div>
 
@@ -282,6 +305,8 @@
             </button>
         </div>
     </div>
+    </div>
+    </template>
 </div>
 
 @push('scripts')
@@ -294,14 +319,41 @@ function memberCreateSheetMobile() {
         contacts: [],
         conditions: [],
         docs: [],
+        suggestMatches: [],
+        mobileLookupTimer: null,
 
         openSheet() {
             this.open = true;
+            this.suggestMatches = [];
             document.body.style.overflow = 'hidden';
         },
         close() {
             this.open = false;
             document.body.style.overflow = '';
+        },
+
+        // Debounced exact-match lookup: does this phone already belong to a real account?
+        onMobileInput(value) {
+            clearTimeout(this.mobileLookupTimer);
+            const mobile = (value || '').trim();
+            if (mobile.length < 6) { this.suggestMatches = []; return; }
+            this.mobileLookupTimer = setTimeout(async () => {
+                const code = (document.getElementById('{{ $p }}_country_code') || {}).value || '+973';
+                try {
+                    const res = await fetch('{{ route('family.lookup') }}', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({ mobile_code: code, mobile }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    this.suggestMatches = (data.success && Array.isArray(data.matches)) ? data.matches : [];
+                } catch (e) { /* best-effort — never block typing */ }
+            }, 400);
+        },
+        linkInstead(match) {
+            this.close();
+            window.dispatchEvent(new CustomEvent('open-member-search-sheet', { detail: { preselect: match } }));
         },
 
         addContact()   { this.contacts.push({ name: '', relationship: '', phone_code: '+973', phone: '' }); },

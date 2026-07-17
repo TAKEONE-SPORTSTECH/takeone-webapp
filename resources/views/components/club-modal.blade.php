@@ -1,4 +1,4 @@
-@props(['mode' => 'create', 'club' => null])
+@props(['mode' => 'create', 'club' => null, 'context' => 'admin'])
 
 @php
     $isEdit = $mode === 'edit' && $club;
@@ -7,7 +7,7 @@
 @endphp
 
 <!-- Club Modal (Alpine.js) -->
-<div x-data="clubModalController({{ json_encode(['mode' => $mode, 'clubId' => $club->id ?? null, 'isEdit' => $isEdit]) }})"
+<div x-data="clubModalController({{ json_encode(['mode' => $mode, 'clubId' => $club->id ?? null, 'isEdit' => $isEdit, 'context' => $context]) }})"
      x-show="open"
      x-cloak
      @open-club-modal.window="openModal($event.detail)"
@@ -31,16 +31,19 @@
     <!-- Modal Dialog -->
     <div x-show="open"
          x-transition:enter="transition ease-out duration-300"
-         x-transition:enter-start="opacity-0 scale-95"
-         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:enter-start="opacity-0 translate-y-full sm:translate-y-4 sm:scale-95"
+         x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
          x-transition:leave="transition ease-in duration-200"
-         x-transition:leave-start="opacity-100 scale-100"
-         x-transition:leave-end="opacity-0 scale-95"
-         class="fixed inset-0 flex items-center justify-center p-4">
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 translate-y-full sm:translate-y-4 sm:scale-95"
+         class="fixed inset-0 flex items-end sm:items-center justify-center sm:p-4">
 
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col" @click.stop>
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-5xl max-h-[92vh] sm:max-h-[90vh] flex flex-col" @click.stop>
+            <!-- Drag handle (mobile only) -->
+            <div class="pt-2.5 pb-1 flex justify-center sm:hidden flex-shrink-0"><span class="w-10 h-1.5 rounded-full bg-gray-300"></span></div>
+
             <!-- Modal Header -->
-            <div class="px-6 pt-6 pb-0">
+            <div class="px-4 sm:px-6 pt-2 sm:pt-6 pb-0 flex-shrink-0">
                 <div class="flex justify-between items-start mb-3">
                     <div>
                         <h4 class="text-xl font-bold mb-1" x-text="mode === 'edit' ? 'Edit Club' : 'Create New Club'"></h4>
@@ -67,7 +70,7 @@
                                 :class="currentTab === index
                                     ? 'text-primary border-primary'
                                     : 'text-muted-foreground border-transparent hover:text-primary hover:border-primary/30'"
-                                class="flex items-center gap-2 px-4 py-3 border-b-3 font-medium text-sm whitespace-nowrap transition-all -mb-0.5">
+                                class="flex items-center gap-2 px-3 sm:px-4 py-3 border-b-3 font-medium text-sm whitespace-nowrap transition-all -mb-0.5">
                             <i :class="tab.icon"></i>
                             <span class="hidden md:inline" x-text="tab.name"></span>
                         </button>
@@ -76,7 +79,7 @@
             </div>
 
             <!-- Modal Body (Scrollable) -->
-            <div class="px-6 py-6 overflow-y-auto flex-1">
+            <div class="px-4 sm:px-6 py-4 sm:py-6 overflow-y-auto overscroll-contain flex-1">
                 <form id="clubForm" x-ref="form" data-mode="{{ $mode }}" data-club-id="{{ $club->id ?? '' }}">
                     @csrf
                     @if($isEdit)
@@ -85,7 +88,7 @@
 
                     <!-- Tab 1: Basic Information -->
                     <div x-show="currentTab === 0" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
-                        <x-club-modal.tabs.basic-info :club="$club" :mode="$mode" />
+                        <x-club-modal.tabs.basic-info :club="$club" :mode="$mode" :context="$context" />
                     </div>
 
                     <!-- Tab 2: Identity & Branding -->
@@ -111,29 +114,30 @@
             </div>
 
             <!-- Modal Footer -->
-            <div class="px-6 pb-6 pt-4 flex items-center justify-end gap-3 border-t border-border">
+            <div class="px-4 sm:px-6 pt-4 flex items-center justify-end gap-2 sm:gap-3 border-t border-border flex-shrink-0 flex-wrap"
+                 style="padding-bottom: max(1rem, calc(0.75rem + env(safe-area-inset-bottom)));">
                 <button x-show="currentTab > 0"
                         @click="goToTab(currentTab - 1)"
-                        class="btn btn-secondary">
+                        class="btn btn-secondary flex-1 sm:flex-initial justify-center">
                     <i class="bi bi-arrow-left me-2"></i>{{ __('shared.back') }}
                 </button>
-                <button @click="closeModal()" class="btn btn-secondary">{{ __('shared.cancel') }}</button>
+                <button @click="closeModal()" class="btn btn-secondary flex-1 sm:flex-initial justify-center">{{ __('shared.cancel') }}</button>
                 <button x-show="currentTab < tabs.length - 1"
                         @click="goToTab(currentTab + 1)"
-                        class="btn btn-primary">
+                        class="btn btn-primary flex-1 sm:flex-initial justify-center">
                     {{ __('shared.components_club_modal_next') }}<i class="bi bi-arrow-right ms-2"></i>
                 </button>
                 <button x-show="currentTab === tabs.length - 1"
                         @click="handleSubmit()"
                         :disabled="isSubmitting"
-                        class="btn btn-primary">
+                        class="btn btn-primary flex-1 sm:flex-initial justify-center">
                     <template x-if="isSubmitting">
-                        <span class="flex items-center">
+                        <span class="flex items-center justify-center">
                             <span class="spinner-border me-2"></span>{{ __('shared.components_club_modal_saving') }}
                         </span>
                     </template>
                     <template x-if="!isSubmitting">
-                        <span>
+                        <span class="flex items-center justify-center">
                             <i class="bi bi-check-circle mr-2"></i><span x-text="mode === 'edit' ? 'Update Club' : 'Create Club'"></span>
                         </span>
                     </template>
@@ -285,6 +289,7 @@
             mode: config.mode,
             clubId: config.clubId,
             isEdit: config.isEdit,
+            context: config.context || 'admin',
 
             tabs: [
                 { id: 'basic', name: 'Basic Info', icon: 'bi bi-info-circle' },
@@ -516,8 +521,8 @@
                 let isValid = true;
                 let errorCount = 0;
 
-                // --- Tab 0: owner hidden field ---
-                if (this.currentTab === 0) {
+                // --- Tab 0: owner hidden field (business context auto-fills it — nothing to validate) ---
+                if (this.currentTab === 0 && this.context !== 'business') {
                     const ownerInput = document.getElementById('owner_user_id');
                     const ownerError = document.getElementById('ownerError');
                     if (ownerInput && !ownerInput.value) {
@@ -695,7 +700,7 @@
                 try {
                     const url = this.mode === 'edit'
                         ? `/admin/clubs/${this.clubId}`
-                        : '/admin/clubs';
+                        : (this.context === 'business' ? '/business/clubs' : '/admin/clubs');
 
                     const response = await fetch(url, {
                         method: 'POST',
@@ -739,6 +744,13 @@
                 }
             },
 
+            // Scoped per context so a draft abandoned in the super-admin "Create Club"
+            // wizard can never resurface in the business-dashboard one (or vice versa)
+            // — they're unrelated forms that happen to share this component.
+            draftKey() {
+                return `clubModalDraft:${this.context}`;
+            },
+
             saveDraft() {
                 if (this.mode === 'create') {
                     const form = this.$refs.form;
@@ -752,13 +764,16 @@
                             draft[key] = value;
                         }
                     }
-                    localStorage.setItem('clubModalDraft', JSON.stringify(draft));
+                    localStorage.setItem(this.draftKey(), JSON.stringify(draft));
                 }
             },
 
             loadDraft() {
                 if (this.mode === 'create') {
-                    const draft = localStorage.getItem('clubModalDraft');
+                    // One-time cleanup of the old unscoped key from before contexts existed.
+                    localStorage.removeItem('clubModalDraft');
+
+                    const draft = localStorage.getItem(this.draftKey());
                     if (draft) {
                         try {
                             const data = JSON.parse(draft);
@@ -779,7 +794,7 @@
             },
 
             clearDraft() {
-                localStorage.removeItem('clubModalDraft');
+                localStorage.removeItem(this.draftKey());
             },
 
             showToast(message, type = 'info') {

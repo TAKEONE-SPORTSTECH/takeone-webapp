@@ -14,6 +14,7 @@ class StoreInstructorRequest extends FormRequest
     public function rules(): array
     {
         $compensation = [
+            'staff_type' => 'nullable|in:instructor,secretary,operator,cleaner,other',
             'compensation_type' => 'nullable|in:volunteer,paid',
             'wage_amount' => 'nullable|numeric|min:0|required_if:compensation_type,paid',
             'wage_period' => 'nullable|in:monthly,session,hourly|required_if:compensation_type,paid',

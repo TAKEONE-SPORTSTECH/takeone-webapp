@@ -167,8 +167,19 @@
                         </div>
                     </div>
 
-                    {{-- Persistent section (not part of the step wizard): compensation & classes --}}
+                    {{-- Persistent section (not part of the step wizard): staff type, compensation & classes --}}
                     <div class="mt-6 pt-5 border-t border-gray-100 space-y-5">
+                        <div>
+                            <label class="block text-base font-medium text-gray-700 mb-2"><i class="bi bi-person-badge me-1 text-primary"></i>{{ __('admin.ins_staff_type') }}</label>
+                            <select name="staff_type" id="editStaffType" class="px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                    onchange="document.getElementById('editPackageClassesSection').style.display = this.value === 'instructor' ? 'block' : 'none'">
+                                <option value="instructor">{{ __('admin.ins_staff_type_instructor') }}</option>
+                                <option value="secretary">{{ __('admin.ins_staff_type_secretary') }}</option>
+                                <option value="operator">{{ __('admin.ins_staff_type_operator') }}</option>
+                                <option value="cleaner">{{ __('admin.ins_staff_type_cleaner') }}</option>
+                                <option value="other">{{ __('admin.ins_staff_type_other') }}</option>
+                            </select>
+                        </div>
                         <div>
                             <label class="block text-base font-medium text-gray-700 mb-2"><i class="bi bi-cash-coin me-1 text-primary"></i>{{ __('admin.club_instructors_edit_compensation') }}</label>
                             <div class="flex flex-wrap items-end gap-3">
@@ -195,7 +206,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div>
+                        <div id="editPackageClassesSection">
                             <label class="block text-base font-medium text-gray-700 mb-2"><i class="bi bi-calendar2-week me-1 text-primary"></i>{{ __('admin.club_instructors_edit_package_classes') }}</label>
                             @if($packageSlots->isEmpty())
                                 <p class="text-sm text-gray-400">{{ __('admin.club_instructors_edit_no_packages') }}</p>
@@ -353,6 +364,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Populate fields
         document.getElementById('editInstructorNameDisplay').value = data.name || '';
+        const staffType = data.staff_type || 'instructor';
+        document.getElementById('editStaffType').value = staffType;
+        document.getElementById('editPackageClassesSection').style.display = staffType === 'instructor' ? 'block' : 'none';
         document.getElementById('editInstructorRole').value = data.role || '';
         document.getElementById('editInstructorRoleAr').value = data.translations?.role?.ar || '';
         document.getElementById('editInstructorExperience').value = data.experience ?? '';

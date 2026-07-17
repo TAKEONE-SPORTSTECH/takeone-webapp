@@ -16,6 +16,7 @@ class UpdateInstructorRequest extends FormRequest
         return [
             'name' => 'nullable|string|max:255',
             'role' => 'nullable|string|max:255',
+            'staff_type' => 'nullable|in:instructor,secretary,operator,cleaner,other',
             'experience' => 'nullable|integer|min:0',
             'skills' => 'nullable|string',
             'bio' => 'nullable|string',

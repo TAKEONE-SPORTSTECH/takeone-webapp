@@ -39,6 +39,502 @@ Laravel 12 SaaS platform for sports clubs (TAKEONE-SPORTSTECH). Multi-tenant arc
 | `/bills/*` | Invoice/billing |
 | `/instructor/{instructorId}/reviews` | Instructor reviews |
 
+> New/refactored routes must follow the **Unpredictable Resource Identifiers** and **Route Binding and Object Access Security** rules below — public keys are non-predictable (uuid/public_id), never the auto-increment `id` or a name-derived slug.
+
+---
+
+## Security First — STRICT
+
+**Rule:** Security must be prioritized in every build, change, action, experiment, prototype, refactor, trial feature, admin tool, automation, and integration — even if the work is temporary, internal-only, test-only, or "just for now".
+
+There is no "unsafe because it is only a trial" exception.
+
+### Default mindset
+Every task must be approached as if it could eventually reach production or be reused later. Temporary code often becomes permanent code, so trial implementations must still follow secure-by-default practices.
+
+### Non-negotiable principles
+- Prefer **secure by default** behavior
+- Prefer **least privilege**
+- Prefer **deny by default** over open by default
+- Validate all inputs
+- Authorize every sensitive action
+- Escape/output safely
+- Protect uploads and file handling
+- Avoid secret leakage
+- Avoid trust in client-side claims
+- Avoid "we will secure it later" shortcuts
+
+### Applies to all work
+This includes:
+- UI features
+- backend logic
+- AJAX endpoints
+- admin tools
+- MCP tools
+- mobile/WebView features
+- imports/exports
+- file uploads
+- notifications
+- realtime events
+- internal scripts
+- demo/trial utilities
+- test helpers when they affect real environments or real data
+
+### Forbidden thinking
+Do NOT justify insecure choices with:
+- "it is only a prototype"
+- "it is just for testing"
+- "only admins will use it"
+- "this is internal"
+- "we will harden it later"
+- "it is only temporary"
+
+These are not acceptable reasons to weaken security.
+
+### Security priority rule
+If a feature improves speed, convenience, or visual polish but weakens security, security wins.
+
+### Security is always required
+Security is a release requirement, a trial requirement, and a development requirement — not a final polishing step.
+
+---
+
+## Threat-Driven Security — STRICT
+
+**Rule:** Every build, feature, refactor, script, integration, API endpoint, mobile capability, admin tool, trial implementation, and UI action must be designed with active defense against real-world attack classes — both classic and modern.
+
+Do not build as if the system will only be used by honest users. Assume attackers may try to:
+- gain unauthorized access
+- extract data
+- escalate privileges
+- abuse APIs
+- automate attacks
+- inject malicious input
+- upload dangerous files
+- exploit weak defaults
+- flood the system with traffic or expensive requests
+- abuse mobile/browser capabilities
+- exploit realtime channels
+- exploit third-party packages or integrations
+- chain small weaknesses into a larger compromise
+
+The system must be designed **secure by default**, **deny by default**, and with **defense in depth**.
+
+### Current threat reality
+Claude must account for both classic and modern attack patterns.
+
+This includes:
+- OWASP Top 10 web risks
+- OWASP API risks
+- credential stuffing
+- bot-driven abuse
+- scraping and mass extraction
+- supply chain compromise
+- application-layer DDoS
+- short-burst high-intensity attacks
+- abuse of unrestricted resource consumption
+- insecure business flow exposure
+
+Build with awareness that attackers increasingly automate and scale attacks rather than relying only on one-off manual exploits.
+
+---
+
+## Security Coverage Requirements — STRICT
+
+Claude must actively design and review every change against at least the following attack classes and failure modes.
+
+### 1. Access control and privilege escalation
+Protect against:
+- broken access control
+- insecure direct object references
+- broken object-level authorization
+- broken function-level authorization
+- tenant boundary bypass
+- role / permission bypass
+- privilege escalation
+- forced browsing to admin/member/private routes
+
+Required defenses:
+- enforce authorization server-side on every sensitive action
+- never trust hidden inputs, client-side role flags, or UI visibility as security
+- always scope queries by tenant / club / user as appropriate
+- deny access by default unless explicitly allowed
+
+### 2. Injection attacks
+Protect against:
+- SQL injection
+- command injection
+- template injection
+- NoSQL-style injection patterns where relevant
+- log injection
+- header injection
+
+Required defenses:
+- use parameterized queries / Eloquent / query builder safely
+- never concatenate raw untrusted input into SQL, shell commands, headers, or HTML
+- validate and normalize all input server-side
+- review any raw expressions, raw queries, shell calls, and dynamic filters carefully
+
+### 3. Cross-site scripting and content injection
+Protect against:
+- stored XSS
+- reflected XSS
+- DOM XSS
+- HTML/script injection through rich fields, uploads, URLs, or profile data
+
+Required defenses:
+- escape output by default
+- do not render untrusted HTML unless explicitly sanitized
+- treat file names, captions, notes, bios, links, and metadata as untrusted
+- validate URLs and unsafe schemes
+- reject dangerous upload types where appropriate
+
+### 4. Authentication, sessions, and account abuse
+Protect against:
+- weak authentication flows
+- session fixation
+- insecure remember-me patterns
+- brute force
+- credential stuffing
+- account takeover
+- password reset abuse
+- enumeration via login/forgot-password behavior
+
+Required defenses:
+- use Laravel's secure auth features properly
+- throttle auth-sensitive routes
+- support strong verification and optional MFA where applicable
+- avoid leaking whether an account exists through messages or timing where practical
+- enforce secure session and token handling
+
+### 5. CSRF and unsafe state changes
+Protect against:
+- CSRF on web routes
+- unsafe GET requests changing state
+- AJAX actions missing proper protection
+
+Required defenses:
+- keep CSRF protections intact on state-changing web requests
+- never move write behavior onto unsafe methods
+- ensure AJAX write flows still use proper Laravel protections
+
+### 6. File upload and media attacks
+Protect against:
+- malicious file uploads
+- fake MIME / fake extension uploads
+- SVG/script payloads
+- path traversal
+- oversized file abuse
+- storage poisoning
+- orphaned sensitive files
+- public exposure of private uploads
+
+Required defenses:
+- validate real file bytes, not only client-declared types
+- reject dangerous formats when not explicitly needed
+- generate safe server-side file names and paths
+- never trust user-provided paths or extensions
+- delete/replace files safely
+- keep sensitive files on the correct disk and visibility level
+
+> See **Image Uploads Must Validate Real Bytes**, **Upload Storage Structure and File Naming**, and **Delete Files Before Records** for the enforced implementation.
+
+### 7. API abuse and data extraction
+Protect against:
+- broken API authorization
+- mass assignment style mistakes
+- overexposed JSON responses
+- excessive data disclosure
+- object enumeration
+- unrestricted resource consumption
+- business-flow abuse
+- shadow / forgotten endpoints
+
+Required defenses:
+- return only required fields
+- scope every API query tightly
+- rate-limit and paginate expensive endpoints
+- protect object lookup routes carefully
+- document and audit API surfaces
+- treat internal/admin APIs as attack surfaces too
+
+### 8. Business logic abuse
+Protect against:
+- abusing workflows in unintended order
+- replaying actions
+- duplicate submissions
+- bypassing approvals
+- price / amount / status tampering
+- abusing invitations, registrations, subscriptions, notifications, or scheduling logic
+
+Required defenses:
+- validate state transitions server-side
+- do not trust client-calculated amounts, statuses, or permissions
+- enforce invariants in services/controllers/models
+- protect important actions with idempotency or duplicate-submission handling where relevant
+
+### 9. Security misconfiguration
+Protect against:
+- unsafe debug settings
+- permissive storage exposure
+- weak CORS / cookie / session config
+- verbose errors
+- stale permissions
+- unprotected admin surfaces
+- insecure defaults in trial code
+
+Required defenses:
+- prefer secure defaults everywhere
+- fail safely when configuration is missing
+- do not expose stack traces, secrets, internal paths, or sensitive config in responses
+- keep trial and demo features behind proper protections too
+
+### 10. Cryptographic and secret-handling failures
+Protect against:
+- plaintext secrets
+- weak hashing/storage of credentials
+- insecure token exposure
+- insecure reset / verification flows
+- leaking keys in logs, JS, responses, or repositories
+
+Required defenses:
+- use framework-approved secure primitives
+- never invent custom crypto
+- never hardcode secrets in code or client-side output
+- minimize secret exposure in logs and debugging
+
+### 11. Realtime, websocket, and event abuse
+Protect against:
+- publishing data to wrong users
+- insecure channel fanout
+- event spoofing assumptions
+- leaking private payloads in notifications or realtime updates
+
+Required defenses:
+- scope every push payload to the intended audience
+- send the minimum necessary data
+- never assume the client should see data just because it can receive events
+- use refresh signals instead of oversharing payloads when views differ per user
+
+### 12. Mobile / WebView / device capability abuse
+Protect against:
+- unsafe camera/mic/geolocation usage
+- permission misuse
+- insecure file selection flows
+- leaking sensitive data via mobile-only behaviors
+- WebView-specific attack surface
+
+Required defenses:
+- request only necessary permissions
+- feature-detect support first
+- provide safe fallbacks
+- avoid browser/WebView behaviors that expose unsafe download or popup paths
+- treat mobile capability access as security-sensitive, not only UX-sensitive
+
+### 13. Bot abuse, scraping, and automated attacks
+Protect against:
+- scraping
+- credential stuffing
+- fake account creation
+- abusive form submissions
+- endpoint hammering
+- inventory / seat / availability abuse
+- API probing
+
+Required defenses:
+- throttle sensitive routes
+- rate-limit expensive reads and writes
+- monitor repeated suspicious patterns
+- make enumeration and bulk extraction harder
+- design endpoints and pagination with abuse resistance in mind
+
+### 14. DDoS and resource exhaustion resilience
+Protect against:
+- volumetric DDoS
+- application-layer DDoS
+- burst traffic floods
+- expensive query abuse
+- oversized upload abuse
+- queue flooding
+- notification storming
+- high-cost search/filter abuse
+
+Required defenses:
+- keep endpoints efficient
+- rate-limit and cap expensive operations
+- paginate large responses
+- debounce live search on the client when appropriate
+- avoid N+1 and unbounded queries
+- reject abusive payload sizes
+- design with graceful degradation in mind
+- never create endpoints that are cheap to call but expensive to execute without protection
+
+### 15. Supply chain and dependency risks
+Protect against:
+- vulnerable packages
+- unreviewed libraries
+- unsafe third-party scripts
+- stale dependencies
+- compromised update paths
+- package drift between builds
+
+Required defenses:
+- avoid unnecessary dependencies
+- prefer trusted, maintained libraries only when truly needed
+- do not add libraries for trivial features
+- review security implications before introducing any package or CDN dependency
+
+### 16. Logging, monitoring, and incident visibility failures
+Protect against:
+- silent failures
+- undetected abuse
+- missing audit trails
+- logs leaking secrets or personal data
+
+Required defenses:
+- log security-relevant actions appropriately
+- avoid logging secrets, tokens, raw sensitive payloads, or private files
+- preserve useful audit trails for sensitive admin/member actions
+- make suspicious failure patterns observable without leaking internals to users
+
+---
+
+## Security Checklist for Every Change — STRICT
+
+For every build or action, Claude must actively check:
+
+1. **Input validation**
+   - Are request fields validated server-side?
+   - Are enums, IDs, and uploaded values constrained?
+   - Are untrusted values normalized before use?
+
+2. **Authorization**
+   - Is the user allowed to perform this action?
+   - Is tenant / club scope enforced?
+   - Is sensitive data limited to only authorized viewers?
+
+3. **Output safety**
+   - Is rendered output escaped correctly?
+   - Is any HTML injection possible?
+   - Are JSON responses safe and minimal?
+
+4. **File / upload safety**
+   - Are uploaded files validated by real bytes / MIME, not only extension?
+   - Are dangerous file types rejected?
+   - Are old files deleted safely when replaced or removed?
+
+5. **Secrets / sensitive data**
+   - Are secrets kept out of source, responses, logs, and client-side code?
+   - Are tokens, keys, internal paths, and private implementation details protected?
+
+6. **Client trust**
+   - Is the server avoiding trust in client-side claims, hidden inputs, JS flags, or user-supplied roles/prices/statuses?
+
+7. **Dependency safety**
+   - Is a new dependency truly necessary?
+   - Does the feature avoid unnecessary external libraries or unsafe packages?
+
+8. **Safe defaults**
+   - If configuration is missing or ambiguous, does the feature fail safely?
+   - Are dangerous actions protected by explicit checks?
+
+9. **Realtime / background effects**
+   - Are MQTT events scoped correctly?
+   - Are notifications or broadcasts leaking data to the wrong users?
+
+10. **Trial / internal tools**
+   - Even if temporary, could this code expose data, permissions, files, or attack surface later?
+
+---
+
+## Unpredictable Resource Identifiers — STRICT
+
+**Rule:** Never use predictable, enumerable, guessable, or easily-derived public links for user profiles, records, files, resources, or private application objects.
+
+Do NOT expose routes like:
+- `/me/ghassanyusuf`
+- `/me/profile/25`
+- `/member/26`
+- `/invoice/1001`
+- `/order/501`
+- or any other route where changing a name, slug, username, sequence number, or nearby value could reveal another resource
+
+### Why
+Predictable identifiers make enumeration easier and increase the risk of:
+- insecure direct object reference (IDOR)
+- unauthorized profile access
+- private data extraction
+- tenant boundary probing
+- account discovery
+- scraping and automated enumeration
+- leaking object count, creation order, or naming patterns
+
+### Required rule
+Use non-predictable public identifiers for any user-facing or externally reachable resource that refers to sensitive, user-owned, tenant-owned, or permission-protected data.
+
+Preferred options:
+- UUIDv4
+- strong random tokens
+- other high-entropy non-guessable identifiers approved by the project
+
+Avoid for sensitive/public resource URLs:
+- incremental numeric IDs
+- usernames as primary object keys
+- slugs derived only from human-readable names
+- email-like identifiers
+- any identifier that reveals business structure, ordering, or identity unnecessarily
+
+### Important
+Unpredictable identifiers are **defense in depth**, not the main defense.
+Every request must still enforce full server-side authorization and tenant/user ownership checks.
+A random identifier does NOT replace authorization.
+
+---
+
+## Route Binding and Object Access Security — STRICT
+
+When exposing records through routes, APIs, AJAX endpoints, or realtime-related fetches:
+
+### Required rules
+1. Never use the auto-increment database `id` as the public route key for sensitive resources.
+2. Never rely on usernames, display names, or simple slugs as the only access key for protected resources.
+3. Use a dedicated public identifier column such as:
+   - `uuid`
+   - `public_id`
+   - `external_id`
+4. Route model binding for protected resources should use the non-predictable public identifier, not the numeric primary key.
+5. Server-side queries must still be scoped by the authenticated user's permissions, ownership, club, tenant, family relationship, or admin scope as appropriate.
+6. If the current user should only access their own resource, prefer resolving from the authenticated session/user context instead of trusting a URL parameter at all.
+7. Do not leak whether another valid object exists through different error messages, timing, or response details where avoidable.
+
+### Preferred mindset
+- internal DB identity may remain numeric if desired
+- public-facing identity must be non-predictable where exposure would be sensitive
+- authorization is mandatory even when the identifier is random
+
+---
+
+## Anti-Enumeration and Anti-Extraction — STRICT
+
+Claude must build routes, lookups, and APIs to resist enumeration and data extraction attempts.
+
+### Required protections
+- avoid sequential public identifiers for sensitive records
+- throttle repeated lookup attempts where appropriate
+- log suspicious repeated lookup failures or scanning patterns
+- return safe generic not-found / unauthorized behavior where appropriate
+- do not expose whether nearby identifiers exist
+- paginate and scope list endpoints tightly
+- never allow a user to switch a parameter and browse other users' data
+
+### Test requirement
+Whenever a route or endpoint references an object, test at least this scenario:
+- User A tries to access User B's object by changing the identifier
+- access must be denied even if the identifier is valid
+- access must also be denied whether the identifier is predictable or random
+
+If a resource is private, sensitive, tenant-scoped, or user-owned, assume attackers will try to guess, iterate, scrape, or fuzz its identifier. Design the route and authorization model accordingly.
+
 ---
 
 ## Mobile / Desktop Separation — STRICT
@@ -66,35 +562,239 @@ is exactly what users see inside the APK. Therefore, whenever working on the mob
 web and the APK must be treated as **one deliverable**.
 
 ### Rules
-1. **Mobile web changes flow to the app automatically — no rebuild needed.** Any change to a
-   mobile Blade view, controller, route, JS, CSS, or backend logic appears in the installed
-   APK the moment it's deployed, because the app loads the live site. Do **not** tell the user
-   to rebuild the APK for content/UI/logic changes.
-2. **Every mobile feature must actually work inside a WebView.** When building a mobile
-   feature, verify it functions in the Android WebView, not just a desktop browser. In
-   particular:
-   - Camera / QR scanning / photo capture use `getUserMedia` — the `CAMERA` permission is
-     already declared in `mobile/android/app/src/main/AndroidManifest.xml`. If a new feature
-     needs another device capability (mic, geolocation beyond what's declared, notifications),
-     **add the matching Android permission there** as part of the same task.
-   - Avoid browser-only APIs that Android WebView blocks or handles differently (e.g. certain
-     downloads, `window.open` popups, native file pickers) without a WebView-safe fallback.
-3. **Only rebuild/re-sign the APK when the NATIVE shell changes** — app icon, name, splash,
-   colors, permissions, Capacitor plugins, or the `server.url`. In that case, do the full
-   loop as one unit: edit config → `npx cap sync android` → rebuild (`npm run build:release`)
-   → re-verify the signed artifact. See `mobile/README.md`.
-4. **Keep the shell config in sync with reality.** If the production URL, app name, or brand
-   color changes on the web side, update `mobile/capacitor.config.json` (and re-sync) in the
-   same change — never let the app point at a stale URL or show stale branding.
-5. **Never break a mobile view in a way that only shows up in the app.** Since the APK has no
-   browser chrome (no address bar, no easy refresh), a mobile view that soft-locks or clips
-   off-screen is worse in the app than on web. The existing mobile-forms/safe-area rules below
-   apply doubly here.
+1. **Mobile web changes flow to the app automatically — no rebuild needed.** Any change to a mobile Blade view, controller, route, JS, CSS, or backend logic appears in the installed APK the moment it's deployed, because the app loads the live site. Do **not** tell the user to rebuild the APK for content/UI/logic changes.
+2. **Every mobile feature must actually work inside a WebView.** When building a mobile feature, verify it functions in the Android WebView, not just a desktop browser. In particular:
+   - Camera / QR scanning / photo capture use `getUserMedia` — the `CAMERA` permission is already declared in `mobile/android/app/src/main/AndroidManifest.xml`. If a new feature needs another device capability (mic, geolocation beyond what's declared, notifications), **add the matching Android permission there** as part of the same task.
+   - Avoid browser-only APIs that Android WebView blocks or handles differently (e.g. certain downloads, `window.open` popups, native file pickers) without a WebView-safe fallback.
+3. **Only rebuild/re-sign the APK when the NATIVE shell changes** — app icon, name, splash, colors, permissions, Capacitor plugins, or the `server.url`. In that case, do the full loop as one unit: edit config → `npx cap sync android` → rebuild (`npm run build:release`) → re-verify the signed artifact. See `mobile/README.md`.
+4. **Keep the shell config in sync with reality.** If the production URL, app name, or brand color changes on the web side, update `mobile/capacitor.config.json` (and re-sync) in the same change — never let the app point at a stale URL or show stale branding.
+5. **Never break a mobile view in a way that only shows up in the app.** Since the APK has no browser chrome (no address bar, no easy refresh), a mobile view that soft-locks or clips off-screen is worse in the app than on web. The existing mobile-forms/safe-area rules below apply doubly here.
 
-> Practical summary: **mobile web work = app work.** Build mobile features so they work in the
-> WebView, add any needed native permission alongside, and only touch `mobile/` + rebuild when
-> the native shell itself changes. Full setup, build, and signing details live in
-> `mobile/README.md`.
+> Practical summary: **mobile web work = app work.** Build mobile features so they work in the WebView, add any needed native permission alongside, and only touch `mobile/` + rebuild when the native shell itself changes. Full setup, build, and signing details live in `mobile/README.md`.
+
+---
+
+## Component-First Architecture — STRICT
+
+**Rule:** Everything built in this project must follow a reusable component-first architecture. Before creating any new UI block, script, interaction pattern, or layout fragment, first check whether the same need is already covered by an existing component, partial, helper, widget, or view pattern.
+
+### Decision order
+Before creating anything new, always evaluate in this order:
+1. **Reuse existing component as-is**
+2. **Reuse existing component with props / slots / options**
+3. **Extend an existing component without breaking current usage**
+4. **Compose multiple existing components together**
+5. **Create a new reusable component only if none of the above solves the need cleanly**
+
+### Rules
+- Do not duplicate markup, JS behaviors, or visual patterns if an equivalent already exists.
+- Prefer shared Blade components, Alpine widgets, partials, and reusable JS helpers over page-local one-off implementations.
+- New components must be generic enough for future reuse unless the requirement is truly one-off.
+- If a new reusable component is created, add it to the **Blade Component Library — REUSE FIRST** section immediately.
+- Keep business logic outside presentational components whenever possible.
+- Prefer consistency and reuse over cleverness.
+
+### Required mindset
+Claude must continuously ask:
+- Do we already have this?
+- Can an existing component handle this with props?
+- Can I extend the existing component safely?
+- Should this become a shared component instead of page-only code?
+
+The default answer should be reuse first, extension second, creation last.
+
+---
+
+## Standalone Self-Contained Components — STRICT
+
+**Rule:** Every reusable component must be as standalone and self-contained as possible so it can be moved, reused, or rendered in another place with minimal or no extra wiring.
+
+A component must not depend on hidden page-specific code, fragile global assumptions, or unrelated surrounding markup in order to work.
+
+### What "standalone" means in this project
+Each component should include or clearly own:
+- its own markup structure
+- its own local behavior
+- its own internal state handling when applicable
+- its own event binding logic
+- its own validation or guard logic when applicable
+- its own render/update logic when applicable
+
+A component should work when dropped into another compatible view without needing custom rewrites.
+
+### What a component must NOT rely on
+Do not create components that only work because:
+- another page script happens to initialize them
+- a random global variable exists
+- a sibling element elsewhere in the page is required
+- a hidden inline script in another file does the real work
+- a page-specific DOM structure is silently assumed
+- undocumented manual setup is required every time
+
+If a component needs setup, that setup must be part of the component itself or explicitly documented as a formal input/API of the component.
+
+### Allowed shared foundations
+Standalone does **not** mean duplicating the entire framework stack inside every component.
+
+Components may rely on the project's approved shared foundations only:
+- Laravel / Blade
+- Tailwind design tokens and utility classes
+- Alpine.js
+- jQuery
+- approved shared helper utilities already established in the project
+- approved shell behaviors already part of the application
+
+But they must not rely on hidden page-specific glue code outside their contract.
+
+### Required design standard
+A reusable component should ideally be:
+- plug-and-play
+- self-initializing or explicitly initializable
+- configurable through props / data attributes / slots / options
+- isolated in behavior
+- safe to reuse in multiple places
+- predictable in required inputs and outputs
+
+### Preferred implementation style
+- If a component needs JavaScript, keep that behavior inside the component file or in a clearly named dedicated companion script/module.
+- If a component dispatches or listens to events, use clear event names and document them in the component library section.
+- If a component needs IDs, generate or require stable IDs explicitly.
+- If a component needs AJAX, it should own its request flow and DOM patch behavior, or expose a clearly defined API for it.
+- If a component needs animation, the animation must belong to that component and not depend on unrelated page code.
+
+### Reuse test
+Before considering a component complete, ask:
+1. Can this be used in another page without rewriting its internals?
+2. Does it depend on any hidden external script or page-only structure?
+3. Are its inputs and outputs clear?
+4. Can it initialize itself safely?
+5. Will it behave consistently wherever it is reused?
+
+If the answer is no, the component is not yet standalone enough.
+
+A component must never require mystery code from elsewhere to function. If it depends on something, that dependency must be part of the approved shared foundation or explicitly declared in the component's contract.
+
+---
+
+## Frontend Technology Decision Rules — STRICT
+
+This project uses multiple frontend patterns intentionally:
+- Laravel Blade
+- Tailwind CSS
+- Alpine.js
+- jQuery
+- AJAX / fetch
+- Chart.js
+- Select2
+- React (when explicitly justified)
+
+### Default rule
+Prefer the simplest technology that fits the task while preserving performance, maintainability, and harmony with the existing codebase.
+
+### Use Blade when
+- rendering server-driven page structure
+- building reusable layout/view components
+- rendering initial page state
+- the feature is mostly static or form-based
+- the UI belongs naturally in the server-rendered flow
+
+### Use Alpine when
+- toggling dropdowns, modals, tabs, sheets, accordions, or inline UI state
+- the interaction is local to one rendered region
+- a lightweight declarative behavior is enough
+
+### Use jQuery + AJAX when
+- updating existing Laravel views in place
+- submitting forms without reload
+- patching DOM regions after API responses
+- integrating with existing project scripts and legacy patterns
+- working inside admin/member views that already use this pattern
+
+### Use React only when
+- the feature is truly state-heavy, highly interactive, or component-driven
+- the interaction complexity would be awkward or brittle in Blade + Alpine + jQuery
+- the feature benefits from isolated client-side state management
+- it can be introduced without fragmenting the product experience
+
+### React constraints
+- Do not introduce React casually for simple CRUD/forms/modals that fit the existing stack
+- Do not create a parallel frontend architecture unless explicitly requested
+- Any React usage must still match the same design system, routes, API contracts, and no-reload rules
+
+### Universal rule
+Regardless of technology:
+- no unnecessary page refreshes
+- in-place updates after writes
+- reusable components first
+- same product feel across all views
+
+---
+
+## Optimization, Speed, and Harmony — STRICT
+
+**Rule:** Claude must optimize for speed, harmony, and maintainability from the start, not as a later cleanup step.
+
+### Priorities
+1. Speed
+2. Harmony
+3. Reuse
+4. Maintainability
+5. Clarity
+6. Scalability
+
+### Speed rules
+- Prefer in-place updates over reloads
+- Minimize unnecessary DOM work
+- Reuse existing components instead of duplicating heavy markup
+- Use partial rendering for complex sections when needed
+- Debounce live search inputs when appropriate
+- Throttle expensive listeners when appropriate
+- Keep animations lightweight and performant
+- Avoid large page-specific monolithic scripts when smaller reusable modules will do
+
+### Harmony rules
+The platform must feel like one unified product.
+That means:
+- same visual language
+- same spacing rhythm
+- same interaction logic
+- same component behaviors
+- same naming conventions
+- same UX expectations across pages
+
+### Avoid
+- duplicate components solving the same problem
+- duplicate JS behaviors with slightly different naming
+- inconsistent UI patterns for the same action
+- unnecessary framework mixing
+- animations that reduce responsiveness
+- refactors that reduce consistency with established project patterns
+
+---
+
+## Mobile Device Capabilities and Animation — STRICT
+
+Claude must be comfortable building mobile-web features that use supported browser / WebView device capabilities when required, such as:
+- camera
+- microphone
+- geolocation
+- file picking / image capture
+- share actions
+- vibration / haptic-like feedback where supported
+
+### Rules
+- always detect capability support first
+- always request permission correctly
+- always provide fallback behavior if unsupported
+- always ensure the feature still works inside the Android WebView shell
+
+Claude must also be comfortable building polished UI animation using:
+- Tailwind transitions
+- Alpine transitions
+- CSS transitions / keyframes
+- lightweight JS-driven animation when necessary
+
+Animations must improve clarity and feel, never reduce speed or usability. Respect `prefers-reduced-motion` where appropriate.
 
 ---
 
@@ -139,6 +839,8 @@ Club logos, brand logos, and business/chain logos are supplied as transparent PN
 
 5. For **complex re-rendered sections** (lists, cards with conditional content), regenerate the innerHTML from the returned JSON rather than patching individual text nodes.
 
+> Returned payloads are subject to the security rules above — return only fields the viewer is authorized to see, never internal ids/paths/flags they shouldn't have.
+
 ### Established pattern (member profile page):
 - Server returns `member` object in update response
 - `submitForm()` in profile modal dispatches `member-profile-updated` with the member data
@@ -161,6 +863,7 @@ Apply this same pattern to every other feature: health records, goals, affiliati
    - **Refresh signal** — send `{action:'refresh'}` and have the view silently re-fetch its data from a JSON endpoint and re-render. **Use this when the same change renders differently per user** (different ids/content/permissions), e.g. a club class where each user sees their own card variant. Don't try to hand-craft per-user card payloads.
 5. **Fan out to the whole audience**, not just the obvious user. A class change touches enrolled members + the coach + substitute(s) + the actor — push to all of them.
 6. **Dedup client listeners** that live inside shell-swapped content: the mobile shell re-runs inline scripts on every AJAX nav, so store the handler on `window.__xxx` and `removeEventListener` the previous one before re-adding, or listeners stack up.
+7. **Scope every payload to its audience** (see Security Coverage §11). Send the minimum necessary data; a recipient must never receive fields they aren't authorized to see. When the same change renders differently per user, use the refresh signal rather than oversharing.
 
 ### Reference implementation
 `/me/schedule`: `scheduleData()` returns the schedule as JSON; `pushScheduleRefresh($userIds)` publishes `{action:'refresh'}` on the `schedule` channel to every affected user; the list view's `realtime:schedule` handler calls `reloadData()` on `refresh` (and patches individual cards on `created/updated/deleted`). Personal-session edits use the targeted-patch shape; club-class/substitute changes use the refresh shape.
@@ -190,7 +893,7 @@ Update or add a tool (in `app/Mcp/Tools/`, registered in `app/Mcp/Servers/TakeOn
 ### What does NOT need an MCP change
 Pure UI/styling/copy edits, internal refactors, and changes with no new readable/actionable surface. When unsure, err toward adding the tool — an integration that can't see a feature is worse than one extra tool.
 
-> Rationale: external systems (n8n, Claude, other services) consume the platform through this one server. If a feature ships to the web but not the MCP, every integration silently drifts out of date. The MCP is part of the deliverable, not an afterthought.
+> Rationale: external systems (n8n, Claude, other services) consume the platform through this one server. If a feature ships to the web but not the MCP, every integration silently drifts out of date. The MCP is part of the deliverable, not an afterthought. MCP tools are a full attack surface — the Security sections above apply to them exactly as they do to web routes.
 
 ---
 
@@ -259,6 +962,56 @@ Intentionally **deferred indefinitely** — additional cost not wanted at this s
 
 ---
 
+## Upload Storage Structure and File Naming — STRICT
+
+**Rule:** Every uploaded file must be stored in a clear, organized, entity-based folder structure, and every stored filename must be generated by the application. Never store uploads using their original client filename.
+
+### Folder structure
+Uploads must be grouped by:
+1. owner type
+2. owner identifier
+3. feature area
+4. optional child record identifier where applicable
+
+Examples:
+- `people/{person_public_id}/profile/`
+- `people/{person_public_id}/attachments/`
+- `people/{person_public_id}/posts/{post_public_id}/`
+- `people/{person_public_id}/documents/`
+- `clubs/{club_public_id}/logo/`
+- `clubs/{club_public_id}/documents/`
+- `clubs/{club_public_id}/posts/{post_public_id}/`
+- `clubs/{club_public_id}/gallery/`
+
+Do not dump unrelated uploads into shared flat folders.
+
+### File naming
+- Never store the original uploaded filename.
+- Never store a filename derived from the original name by adding a suffix, prefix, timestamp, or slug.
+- Always generate the stored filename on the server.
+- Use a random, UUID, ULID, hash-like, or timestamp-plus-random generated filename.
+- The extension must be assigned safely by the server based on validated file type rules.
+- The original filename may be discarded entirely or stored only as untrusted metadata when explicitly needed, but never used as the storage filename.
+
+### Display title
+- The human-readable file title must come from a separate form input and be stored separately in the database.
+- The display title is for UI only.
+- The physical stored filename is for storage only.
+- Never treat the original uploaded filename as the display title automatically unless explicitly required and safely sanitized.
+
+### Security requirements
+- Folder paths must be application-generated, never user-controlled.
+- Do not allow path traversal or nested user-provided paths.
+- Files must be validated by authorization, type, size, and real content rules before storage.
+- Sensitive uploads should be stored in private/non-public storage and served through controlled access.
+- Publicly accessible files must still follow generated naming and proper access design.
+
+### Required mindset
+Storage structure must be readable to developers, but filenames must be non-meaningful to attackers.
+Organized folders, random filenames, and separate display titles are mandatory.
+
+---
+
 ## Delete Files Before Records — STRICT
 
 **Rule:** Whenever a record owns uploaded files (proof images, photos, documents, attachments, media), the **files MUST be deleted FIRST, then the record**. Never delete a row and leave its uploaded files orphaned in storage. This applies to every delete path — admin actions, cleanup scripts, manual DB maintenance, and bulk wipes.
@@ -305,6 +1058,7 @@ if ($path === null) {
 ```
 - Validate the request with **`UploadImageRequest`** (or the same rules): `image` = `starts_with:data:image/`; `folder` = `regex:/^[A-Za-z0-9_\-\/]+$/`; `filename` = `regex:/^[A-Za-z0-9_\-]+$/` (blocks traversal + stray extensions).
 - The extension is assigned by the trait — do **not** append `.$ext` yourself, and don't trust `$request->filename` to already carry one.
+- The `$folder` must be built by the app from the owning entity's public id per **Upload Storage Structure and File Naming** — never passed through from raw client input.
 - Endpoint-level regression coverage lives in `tests/Feature/UploadSecurityTest.php`; the trait's unit coverage is `tests/Feature/StoresBase64ImagesTest.php`. Add a case when you add an endpoint.
 
 ---
@@ -345,6 +1099,7 @@ A large, cohesive demo dataset wired to the super admin (`superadmin@takeone.bh`
 - **Purge:** `php artisan demo:purge` (`--force` to skip prompt). Removes **exactly** what was seeded.
 - **How removal stays exact & safe:** `demo:seed` records every created row id (and any uploaded file) to a **manifest** at `storage/app/private/demo/manifest.json` (`App\Support\DemoManifest`). `demo:purge` reads it, deletes files first (defensively scanning file-bearing columns in case images were uploaded to demo records via the UI), then deletes rows in reverse-FK order inside a transaction. It can never touch real imported members or the super-admin account. Second safety net: demo clubs use slug `demo-*` and demo users `@demo.takeone.bh`.
 - Commands: `app/Console/Commands/DemoSeed.php`, `app/Console/Commands/DemoPurge.php`. Only one manifest at a time (re-seed requires purge or `--fresh`).
+- Demo/trial utilities are **not** exempt from the Security First rules — they run against the real environment and real storage.
 
 ---
 
@@ -403,7 +1158,7 @@ Use the `frontend-design` skill whenever the user asks to build or design new UI
 
 **Do not trigger on:** pure backend changes, bug fixes to existing UI, or minor copy/label edits.
 
-The skill must still respect all Design Rules above — it enhances quality but does not override the rule against modifying existing UI without instruction.
+The skill must still respect all Design Rules above — it enhances quality but does not override the rule against modifying existing UI without instruction, the Component-First / Standalone Component rules, or any Security rule.
 
 #### Design System — the skill MUST follow these patterns exactly
 
@@ -425,7 +1180,7 @@ The skill must still respect all Design Rules above — it enhances quality but 
 - Labels/metadata: `text-xs text-muted-foreground`
 
 **Layout patterns:**
-- Page wrapper: `max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4` (member pages) or `space-y-6` inside `admin-club` layout
+- Page wrapper: `px-4 sm:px-6 lg:px-8 py-4` (member pages) or `space-y-6` inside `admin-club` layout — **full width, no `max-w-* mx-auto` cap** (matches `/admin`'s edge-to-edge sidebar content; removed from every desktop page in July 2026)
 - Page header: `flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4` with a title block on the left and action buttons on the right
 - Cards: `bg-white rounded-xl shadow-sm border border-gray-100 p-4` or `p-6`
 - Grids: `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6`
@@ -477,7 +1232,7 @@ The skill must still respect all Design Rules above — it enhances quality but 
 
 ## Blade Component Library — REUSE FIRST
 
-**Rule:** Before building any new UI element, check this catalog. If a component covers the need, use it — do not re-implement it inline. When a new reusable component is created, add it here immediately.
+**Rule:** Before building any new UI element, check this catalog. If a component covers the need, use it — do not re-implement it inline. When a new reusable component is created, add it here immediately. New components must satisfy the **Standalone Self-Contained Components** contract.
 
 All components live in `resources/views/components/` and are called as `<x-{name}>`.
 
@@ -528,22 +1283,22 @@ All components live in `resources/views/components/` and are called as `<x-{name
 | `<x-qr-code>` | Offline QR (bacon, server-rendered SVG) — trigger button opens a modal with the code + Download PNG/SVG + Copy link + optional printable poster. Build target URLs via `App\Http\Controllers\QrController::clubPageUrl/clubRegisterUrl/memberUrl/eventUrl()`; poster routes are `qr.club.page`, `qr.club.register`, `qr.member`, `qr.event`. QR rendering helper: `App\Support\Qr::svg()`. | `url` (required), `title`, `caption`, `filename`, `label`, `icon`, `size`, `posterUrl`, `buttonClass` |
 | `<x-stat-card>` | KPI stat card with sparkline, trend indicator, and live-update API (`StatCard.update(cardId, detail)`). Supports click navigation via `href`, `modal`, or `on-click`. | `label`, `value`, `sub-label`, `icon` (bi-*), `icon-bg`, `icon-color`, `size` (`sm`\|`md`\|`lg`), `spark-data`, `spark-labels`, `spark-color`, `trend`, `trend-up`, `refresh-event`, `card-id`, `href`, `modal`, `on-click` |
 | `<x-admin-hero>` | Platform/club-admin page hero band (purple gradient, control-center style) — title + optional eyebrow/subtitle, optional right-side `count` chip, and an `actions` slot for buttons/badges. Used on the platform dashboard + admin list pages. | `title` (required), `eyebrow`, `subtitle`, `icon` (bi-*), `count`, `countLabel`; slot: `actions` |
+| `<x-financial-chart>` | Monthly income/expense Chart.js bar chart with drill-down modal | `monthlyData`, `transactions`, `currency`, `canvasId`, `maintainAspectRatio`, `canvasHeightAttr`, `containerClass` |
+| `<x-location-map>` | Leaflet map with address search and lat/lng hidden inputs | `id`, `latName`, `lngName`, `addressName`, `lat`, `lng`, `address`, `defaultLat`, `defaultLng`, `height`, `required` |
+| `<x-client-paginator>` | Client-side pagination for any list filtered via JS. Renders the container div and injects the `ClientPaginator` JS class (once per page). Instantiate in JS: `new ClientPaginator({ itemsSelector, containerId, perPage, countBadgeId, scrollTargetId, labelSingular, labelPlural, filterFn })` then call `.refresh()` when filters change. Registered in `window._pagers[id]` for inline `onclick` access. | `id` (required), `perPage` (default `20`) |
 
 > **`<x-stat-card>` sparkline alignment rule:** Always pass `:spark-data` from the same domain as the card's value (e.g. revenue card → monthly revenue array, not monthly member counts). When no real time-series exists yet, pass `array_fill(0, 12, 0)` as a flat baseline — never reuse another card's unrelated data array. The component is `flex flex-col` with `mt-auto` on the sparkline, so it always pins to the bottom of the card in equal-height grid rows. Do not remove these classes from the component.
 >
 > **`<x-stat-card>` constrained eager-loading:** When loading models for stat card data via constrained eager loads (e.g. `user:id,name,...`), always include `updated_at` in the column list. The `member-card` component uses `$member->updated_at->timestamp` for image cache-busting — omitting it causes a null-dereference that silently breaks the AJAX response.
 >
 > **`@json()` in Blade with nested arrays:** Do NOT write `@json($arr['key'] ?? [0,0,...,0])` — Blade's bracket-matcher chokes on `['key']` followed by `?? [literal array]` inside a single `@json()` call. Pre-assign to a `@php` variable first, then use `@json($variable)`.
-| `<x-financial-chart>` | Monthly income/expense Chart.js bar chart with drill-down modal | `monthlyData`, `transactions`, `currency`, `canvasId`, `maintainAspectRatio`, `canvasHeightAttr`, `containerClass` |
-| `<x-location-map>` | Leaflet map with address search and lat/lng hidden inputs | `id`, `latName`, `lngName`, `addressName`, `lat`, `lng`, `address`, `defaultLat`, `defaultLng`, `height`, `required` |
-| `<x-client-paginator>` | Client-side pagination for any list filtered via JS. Renders the container div and injects the `ClientPaginator` JS class (once per page). Instantiate in JS: `new ClientPaginator({ itemsSelector, containerId, perPage, countBadgeId, scrollTargetId, labelSingular, labelPlural, filterFn })` then call `.refresh()` when filters change. Registered in `window._pagers[id]` for inline `onclick` access. | `id` (required), `perPage` (default `20`) |
 
 ### Form Utilities
 
 | Tag | Purpose | Key props |
 |-----|---------|-----------|
 | `<x-select-menu>` | **Generic styled dropdown — the default replacement for any native `<select>`** (Design Rule #4). Rounded trigger (rotating chevron, purple focus ring) + `rounded-xl` fade/slide panel with `hover:bg-muted/60` rows and a `text-primary` check on the selected item; closes on click-outside/escape. Two modes: pass **`model`** (an Alpine state path, e.g. `cat`) to bind a property in the PARENT Alpine scope (use instead of `x-model`); OR omit `model` and pass **`value`** for a standalone server-form control (seeds state, posts via the hidden `name` input). Prefer a specialized `<x-*-dropdown>` when the vocabulary matches (gender/country/etc.). Do NOT use for JS-coupled selects (options read by `id`/`data-*`, built in JS strings, `form.reset()`-cleared, or dynamic `x-for` options) — those stay native. | `model`, `value`, `options` (`[['value'=>,'label'=>], …]`), `name`, `placeholder`, `error`, `change` (Alpine expr run after pick), `panelClass` |
-| `<x-rich-text-editor>` | WYSIWYG rich-text editor (Alpine + `contenteditable`). Toolbar: bold/italic/underline/strikethrough, text color, H1/H2/H3/paragraph/quote, bullet+numbered lists, indent, align, link (inline URL bar, no native prompt)/unlink, horizontal rule, undo/redo, clear. Submits HTML via a hidden `<textarea name="{name}">`. Supports `dir="rtl"`. | `name`, `id`, `value`, `dir`, `placeholder`, `minHeight` |
+| `<x-rich-text-editor>` | WYSIWYG rich-text editor (Alpine + `contenteditable`). Toolbar: bold/italic/underline/strikethrough, text color, H1/H2/H3/paragraph/quote, bullet+numbered lists, indent, align, link (inline URL bar, no native prompt)/unlink, horizontal rule, undo/redo, clear. Submits HTML via a hidden `<textarea name="{name}">`. Supports `dir="rtl"`. ⚠️ Its output is untrusted HTML — sanitize server-side before storing and never echo it unescaped without sanitization. | `name`, `id`, `value`, `dir`, `placeholder`, `minHeight` |
 | `<x-image-upload>` | Inline image upload with crop preview (uses takeone-cropper) | `id`, `name`, `width`, `height`, `shape`, `folder`, `filename`, `uploadUrl`, `currentImage`, `placeholder`, `placeholderIcon`, `buttonText`, `rounded`, `showPreview` |
 | `<x-takeone-cropper>` | Raw cropper widget (used inside `image-upload`). Pass `:uploadAsIs="true"` to show a second "Upload As Is" button alongside "Crop & Apply". Customize its label with `uploadAsIsText`. | `id`, `width`, `height`, `shape`, `folder`, `filename`, `uploadUrl`, `currentImage`, `buttonText`, `buttonClass`, `mode` (ajax\|form), `inputName`, `canvasHeight`, `uploadAsIs`, `uploadAsIsText` |
 | `<x-schedule-time-picker>` | Days-of-week multi-select + start/end time inputs | `id`, `daysName`, `startTimeName`, `endTimeName`, `selectedDays`, `startTime`, `endTime`, `required`, `showLabels` |
@@ -559,7 +1314,7 @@ All components live in `resources/views/components/` and are called as `<x-{name
 - Use `@stack('scripts')` / `@stack('modals')` to inject page-specific JS and modals
 - AJAX responses return `response()->json(['success' => true/false, 'message' => '...'])`
 - Authorization checks follow the pattern: super-admin → own profile → family relationship → club admin of member
-- Throttle middleware is applied on all write routes (`throttle:member-write`, `throttle:admin-write`, `throttle:uploads`, etc.)
+- Throttle middleware is applied on all write routes (`throttle:member-write`, `throttle:admin-write`, `throttle:uploads`, etc.) — and on expensive reads/lookups per the anti-enumeration rules
 - **Guard `@php` helper-function declarations.** The member profile (`components-templates/member/show.blade.php`) and the super-admin member view (`family/show.blade.php`) are near-identical twins that each declare top-level PHP helpers in `@php` blocks (`calculateTimeDifference`, `getChangeIcon`, and `calculateAgeAtDate` in their `affiliations-enhanced` partials). Any PHP function declared in a Blade `@php` block MUST be wrapped in `if (! function_exists('name')) { … }` — otherwise rendering both views (or the same view twice) in one request/process is a "Cannot redeclare" fatal. JS functions inside `<script>` are exempt.
 
 ### Member profile — self-service create flows (built on `member/show` + mirrored to `family/show`)
@@ -576,3 +1331,4 @@ The member/family profile "Actions" menu creates records via shared endpoints on
 - **Public profile shows only safe data** (name, photo, clubs active+history, skills, medals, challenge win-rate). It must NEVER expose health/billing/documents/contacts/family — those live only on the family/admin-gated `member.show`. `User::canViewPublicProfile()` = any signed-in viewer not blocked either way; viewing your own → redirect to `member.show`.
 - **The old `/u/{slug}` wall + follow notifications now redirect to `people.show`** (was `member.show`, which 404'd for non-family). New "view another member" links should target `people.show`, not `member.show`.
 - Follow routes are `wall.follow` (POST) / `wall.unfollow` (DELETE) bound by `{user:slug}` — use the slug, and DELETE to unfollow. Tests: `PeopleDiscoveryTest`.
+- The `/people/{uuid}` binding is the reference for the **Unpredictable Resource Identifiers** rule: public key = uuid, and authorization still runs on every request.

@@ -48,6 +48,29 @@
     </div>
 </div>
 
+{{-- Other parent (child only, when the focus person has recorded spouses) —
+     so a child is correctly linked to the spouse who is their actual mother/
+     father, instead of only descending from the one person you're adding
+     from. Silent when there's exactly one spouse (auto-linked); a required
+     pick when there are 2+, so kids from different spouses don't get mixed. --}}
+<div x-show="type === 'child' && spouses.length === 1" x-transition>
+    <p class="text-xs text-muted-foreground bg-accent/60 rounded-lg px-3 py-2">
+        <i class="bi bi-info-circle me-1"></i>
+        {{ __('Also linking as child of') }} <span x-text="spouses[0] ? spouses[0].name : ''" class="font-semibold text-foreground"></span>
+    </p>
+</div>
+<div x-show="type === 'child' && spouses.length > 1" x-transition>
+    <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Who is the other parent?') }}</label>
+    <div class="grid grid-cols-2 gap-2">
+        <template x-for="sp in spouses" :key="sp.id">
+            <button type="button" @click="other_parent_id = sp.id"
+                :class="other_parent_id === sp.id ? 'border-primary bg-accent text-primary' : 'border-gray-200 text-gray-600'"
+                class="py-2.5 rounded-xl border-2 font-medium text-sm transition truncate px-2" x-text="sp.name"></button>
+        </template>
+    </div>
+    <p class="text-xs text-muted-foreground mt-1.5">{{ __('So this child is correctly linked to their actual mother/father, not mixed with your other spouse\'s kids.') }}</p>
+</div>
+
 {{-- Marriage state (spouse only) --}}
 <div x-show="type === 'spouse'" x-transition>
     <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Status') }}</label>

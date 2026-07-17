@@ -774,7 +774,6 @@
         </div>
     </div>
 </div>
-@endsection
 
 @include('admin.club.members.partials.member-popup')
 
@@ -983,11 +982,16 @@ function bulkEnrollModalData() {
     };
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Member card click → quick-view popup (delegate from grid)
-    document.getElementById('membersGrid')?.addEventListener('click', function(e) {
+// Member card / table row click → quick-view popup.
+// Delegated on document (not #membersGrid/#membersTableBody) so it survives the
+// admin-shell SPA nav swapping those elements out, and guarded so it's only bound once
+// even if this script re-runs after a shell navigation.
+if (!window.__membersCardClickBound) {
+    window.__membersCardClickBound = true;
+    document.addEventListener('click', function(e) {
         const wrapper = e.target.closest('.member-card-wrapper[data-member-id]');
         if (!wrapper) return;
+        if (!wrapper.closest('#membersGrid') && !wrapper.closest('#membersTableBody')) return;
         e.preventDefault();
         e.stopPropagation();
         const userId   = wrapper.getAttribute('data-member-id');
@@ -996,18 +1000,9 @@ document.addEventListener('DOMContentLoaded', function() {
             window.openMemberPopup(userId, popupUrl);
         }
     });
+}
 
-    // Table row click → same quick-view popup (delegate from table body)
-    document.getElementById('membersTableBody')?.addEventListener('click', function(e) {
-        const row = e.target.closest('.member-card-wrapper[data-member-id]');
-        if (!row) return;
-        const userId   = row.getAttribute('data-member-id');
-        const popupUrl = row.getAttribute('data-popup-url');
-        if (userId && popupUrl && window.openMemberPopup) {
-            window.openMemberPopup(userId, popupUrl);
-        }
-    });
-
+document.addEventListener('DOMContentLoaded', function() {
     loadMemberCards();
     loadNationalityFlags();
 });
@@ -1762,3 +1757,4 @@ document.getElementById('importMembersModal').addEventListener('click', function
 });
 </script>
 @endpush
+@endsection

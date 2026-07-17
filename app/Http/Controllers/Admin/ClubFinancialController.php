@@ -5,11 +5,16 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreTransactionRequest;
 use App\Http\Requests\Admin\UpdateTransactionRequest;
+use App\Models\ClubMemberSubscription;
 use App\Models\ClubRecurringExpense;
 use App\Models\ClubTransaction;
+use App\Models\Order;
 use App\Models\Tenant;
 use App\Services\FinancialService;
+use App\Support\ClubCache;
 use App\Traits\HandlesClubAuthorization;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ClubFinancialController extends Controller
 {
@@ -19,14 +24,164 @@ class ClubFinancialController extends Controller
     {
         $this->authorizeClub($club);
 
-        $transactions = ClubTransaction::where('tenant_id', $club->id)->with(['subscription.user'])->latest('transaction_date')->get();
-        $summary = $financials->getSummary($club->id, $transactions);
-        $monthlyData = $financials->getMonthlyData($transactions, $club->id);
-        $pendingSubscriptions = $financials->getCashToCollect($club->id);
+        $isTestMode = (bool) $club->is_test_mode;
+
+        $transactions = ClubTransaction::where('tenant_id', $club->id)->where('is_test', $isTestMode)->with(['subscription.user'])->latest('transaction_date')->get();
+        $summary = $financials->getSummary($club->id, $transactions, $isTestMode);
+        $monthlyData = $financials->getMonthlyData($transactions, $club->id, $isTestMode);
+        $pendingSubscriptions = $financials->getCashToCollect($club->id, $isTestMode);
         $expenseCategories = $financials->getExpenseBreakdown($transactions);
         $recurringExpenses = ClubRecurringExpense::where('tenant_id', $club->id)->orderBy('day_of_month')->get();
 
-        return view(\App\Support\ClubView::pick('financials'), compact('club', 'transactions', 'summary', 'monthlyData', 'pendingSubscriptions', 'expenseCategories', 'recurringExpenses'));
+        return view(\App\Support\ClubView::pick('financials'), compact('club', 'transactions', 'summary', 'monthlyData', 'pendingSubscriptions', 'expenseCategories', 'recurringExpenses', 'isTestMode'));
+    }
+
+    /**
+     * Every test-tagged financial row for this club, for the "switch to Live"
+     * review screen. The admin picks which rows to keep (real) vs. let go
+     * (test) before the mode switch is finalized.
+     */
+    public function testData(Tenant $club)
+    {
+        $this->authorizeClub($club);
+
+        $transactions = ClubTransaction::where('tenant_id', $club->id)
+            ->where('is_test', true)
+            ->orderByDesc('transaction_date')
+            ->get(['id', 'type', 'description', 'category', 'amount', 'transaction_date'])
+            ->map(fn ($t) => [
+                'id' => $t->id,
+                'type' => $t->type,
+                'description' => $t->description,
+                'category' => $t->category,
+                'amount' => (float) $t->amount,
+                'date' => optional($t->transaction_date)->format('d M Y'),
+            ]);
+
+        $subscriptions = ClubMemberSubscription::where('tenant_id', $club->id)
+            ->where('is_test', true)
+            ->with('user:id,full_name,name', 'package:id,name')
+            ->orderByDesc('start_date')
+            ->get()
+            ->map(fn ($s) => [
+                'id' => $s->id,
+                'name' => $s->user->full_name ?? $s->user->name ?? __('admin.fin_member'),
+                'package' => $s->package->name ?? null,
+                'amount' => (float) ($s->amount_paid ?: $s->amount_due),
+                'status' => $s->payment_status,
+                'date' => optional($s->start_date)->format('d M Y'),
+            ]);
+
+        $orders = Order::where('tenant_id', $club->id)
+            ->where('is_test', true)
+            ->orderByDesc('created_at')
+            ->get(['id', 'reference', 'total', 'currency', 'status', 'created_at'])
+            ->map(fn ($o) => [
+                'id' => $o->id,
+                'reference' => $o->reference,
+                'total' => (float) $o->total,
+                'currency' => $o->currency,
+                'status' => $o->status,
+                'date' => optional($o->created_at)->format('d M Y'),
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'transactions' => $transactions,
+            'subscriptions' => $subscriptions,
+            'orders' => $orders,
+            'total' => $transactions->count() + $subscriptions->count() + $orders->count(),
+        ]);
+    }
+
+    /**
+     * Switch a club between Test and Live mode.
+     *
+     * Test → Live optionally carries keep_* id lists (rows the admin marked
+     * "this one was real" in the review screen): those graduate to is_test =
+     * false instead of being deleted. Everything else tagged is_test = true
+     * is permanently removed. Live → Test never touches existing data.
+     */
+    public function switchMode(Request $request, Tenant $club)
+    {
+        $this->authorizeClub($club);
+
+        $data = $request->validate([
+            'mode' => 'required|in:test,live',
+            'keep_transaction_ids' => 'array',
+            'keep_transaction_ids.*' => 'integer',
+            'keep_subscription_ids' => 'array',
+            'keep_subscription_ids.*' => 'integer',
+            'keep_order_ids' => 'array',
+            'keep_order_ids.*' => 'integer',
+        ]);
+
+        if ($data['mode'] === 'test') {
+            $club->is_test_mode = true;
+            $club->save();
+            Tenant::forgetTestModeCache($club->id);
+
+            return response()->json(['success' => true, 'message' => 'Club switched to Test Mode.']);
+        }
+
+        $keepTransactionIds = $data['keep_transaction_ids'] ?? [];
+        $keepSubscriptionIds = $data['keep_subscription_ids'] ?? [];
+        $keepOrderIds = $data['keep_order_ids'] ?? [];
+
+        DB::transaction(function () use ($club, $keepTransactionIds, $keepSubscriptionIds, $keepOrderIds) {
+            ClubTransaction::where('tenant_id', $club->id)->where('is_test', true)
+                ->whereIn('id', $keepTransactionIds)->update(['is_test' => false]);
+            ClubTransaction::where('tenant_id', $club->id)->where('is_test', true)
+                ->whereNotIn('id', $keepTransactionIds)->get()->each(fn ($t) => $t->delete());
+
+            ClubMemberSubscription::where('tenant_id', $club->id)->where('is_test', true)
+                ->whereIn('id', $keepSubscriptionIds)->update(['is_test' => false]);
+            ClubMemberSubscription::where('tenant_id', $club->id)->where('is_test', true)
+                ->whereNotIn('id', $keepSubscriptionIds)->get()->each(fn ($s) => $s->delete());
+
+            Order::where('tenant_id', $club->id)->where('is_test', true)
+                ->whereIn('id', $keepOrderIds)->update(['is_test' => false]);
+            // Force-delete (not soft-delete) so DeletesUploadedFiles purges payment_proof_path.
+            Order::where('tenant_id', $club->id)->where('is_test', true)
+                ->whereNotIn('id', $keepOrderIds)->get()->each(fn ($o) => $o->forceDelete());
+
+            $club->is_test_mode = false;
+            $club->save();
+        });
+
+        Tenant::forgetTestModeCache($club->id);
+        ClubCache::flushAll($club->id);
+
+        $this->notifyClubAdmins($club);
+
+        return response()->json(['success' => true, 'message' => 'Club switched to Live Mode.']);
+    }
+
+    /**
+     * Best-effort MQTT fan-out so any other open admin session for this club
+     * refreshes its financials view after a mode switch.
+     */
+    private function notifyClubAdmins(Tenant $club): void
+    {
+        $adminIds = DB::table('user_roles')
+            ->join('roles', 'roles.id', '=', 'user_roles.role_id')
+            ->where('user_roles.tenant_id', $club->id)
+            ->where('roles.slug', 'club-admin')
+            ->pluck('user_roles.user_id')
+            ->push($club->owner_user_id)
+            ->filter()
+            ->unique();
+
+        if ($adminIds->isEmpty()) {
+            return;
+        }
+
+        rescue(fn () => Realtime()->publishMany(
+            $adminIds->map(fn ($id) => [
+                'topic' => Realtime()->userTopic((int) $id, 'financials'),
+                'payload' => ['action' => 'refresh'],
+            ])->all()
+        ), null, false);
     }
 
     public function storeIncome(StoreTransactionRequest $request, Tenant $club, FinancialService $financials)

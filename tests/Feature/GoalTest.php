@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\Goal;
 use App\Models\UserRelationship;
 use Tests\TestCase;
 
 class GoalTest extends TestCase
 {
+    private const TINY_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
     private function payload(array $overrides = []): array
     {
         return array_merge([
@@ -16,6 +19,7 @@ class GoalTest extends TestCase
             'unit' => 'kg',
             'target_date' => now()->addMonth()->toDateString(),
             'priority_level' => 'high',
+            'before_proof' => self::TINY_PNG,
         ], $overrides);
     }
 
@@ -34,6 +38,19 @@ class GoalTest extends TestCase
             'status' => 'active',
             'unit' => 'kg',
         ]);
+
+        $goal = Goal::where('user_id', $user->id)->firstOrFail();
+        $this->assertNotNull($goal->before_proof);
+    }
+
+    public function test_goal_creation_requires_a_before_photo(): void
+    {
+        $user = $this->createUser();
+
+        $this->actingAs($user)
+            ->postJson("/member/{$user->id}/goal", $this->payload(['before_proof' => '']))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['before_proof']);
     }
 
     public function test_guardian_can_create_a_goal_for_their_dependent(): void
@@ -84,5 +101,93 @@ class GoalTest extends TestCase
             ->postJson("/member/{$user->id}/goal", $this->payload(['target_date' => now()->subDay()->toDateString()]))
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['target_date']);
+    }
+
+    public function test_completing_a_goal_requires_an_after_photo(): void
+    {
+        $user = $this->createUser();
+        $goal = Goal::create([
+            'user_id' => $user->id,
+            'title' => 'Run 10k',
+            'start_date' => now()->toDateString(),
+            'target_date' => now()->addWeek()->toDateString(),
+            'current_progress_value' => 5,
+            'target_value' => 10,
+            'status' => 'active',
+            'unit' => 'km',
+            'before_proof' => 'goal-proofs/before.png',
+        ]);
+
+        $this->actingAs($user)
+            ->putJson("/member/goal/{$goal->id}", [
+                'current_progress_value' => 10,
+                'status' => 'completed',
+            ])
+            ->assertUnprocessable();
+
+        $this->assertDatabaseHas('goals', ['id' => $goal->id, 'status' => 'active', 'completed_at' => null]);
+    }
+
+    public function test_updating_progress_without_completing_ignores_an_empty_after_proof(): void
+    {
+        // Regression guard: the desktop edit form's "after photo" input is always present
+        // in the DOM (just hidden via CSS), so a plain progress update submits it as ''.
+        $user = $this->createUser();
+        $goal = Goal::create([
+            'user_id' => $user->id,
+            'title' => 'Run 10k',
+            'start_date' => now()->toDateString(),
+            'target_date' => now()->addWeek()->toDateString(),
+            'current_progress_value' => 5,
+            'target_value' => 10,
+            'status' => 'active',
+            'unit' => 'km',
+            'before_proof' => 'goal-proofs/before.png',
+        ]);
+
+        $this->actingAs($user)
+            ->putJson("/member/goal/{$goal->id}", [
+                'current_progress_value' => 7,
+                'status' => 'active',
+                'after_proof' => '',
+            ])
+            ->assertOk()
+            ->assertJson(['success' => true]);
+
+        $this->assertDatabaseHas('goals', ['id' => $goal->id, 'current_progress_value' => 7, 'status' => 'active']);
+    }
+
+    public function test_completing_a_goal_with_an_after_photo_stamps_completion(): void
+    {
+        $user = $this->createUser();
+        $goal = Goal::create([
+            'user_id' => $user->id,
+            'title' => 'Run 10k',
+            'start_date' => now()->subDays(3)->toDateString(),
+            'target_date' => now()->addWeek()->toDateString(),
+            'current_progress_value' => 5,
+            'target_value' => 10,
+            'status' => 'active',
+            'unit' => 'km',
+            'before_proof' => 'goal-proofs/before.png',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->putJson("/member/goal/{$goal->id}", [
+                'current_progress_value' => 10,
+                'status' => 'completed',
+                'after_proof' => self::TINY_PNG,
+            ])
+            ->assertOk()
+            ->assertJson(['success' => true]);
+
+        $response->assertJsonPath('goal.status', 'completed');
+        $this->assertNotNull($response->json('goal.days_taken'));
+        $this->assertNotNull($response->json('goal.after_proof'));
+
+        $goal->refresh();
+        $this->assertSame('completed', $goal->status);
+        $this->assertNotNull($goal->completed_at);
+        $this->assertNotNull($goal->after_proof);
     }
 }

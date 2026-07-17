@@ -14,6 +14,7 @@ window.instructorEditSheet = function () {
         skills: [],
         skillDraft: '',
         photoPreview: '',
+        staffType: 'instructor',
         compType: 'volunteer',
         wageAmount: '',
         wagePeriod: 'monthly',
@@ -31,6 +32,7 @@ window.instructorEditSheet = function () {
             this.skills = Array.isArray(d.skills) ? [...d.skills] : [];
             this.photoPreview = d.photo || '';
             this.skillDraft = '';
+            this.staffType = d.staff_type || 'instructor';
             this.compType = d.compensation_type === 'paid' ? 'paid' : 'volunteer';
             this.wageAmount = (d.wage_amount ?? '') === null ? '' : (d.wage_amount ?? '');
             this.wagePeriod = d.wage_period || 'monthly';
@@ -149,7 +151,9 @@ window.instructorEditSheet = function () {
 
                 @include('admin.club.instructors.partials.compensation-fields')
 
-                @include('admin.club.instructors.partials.package-slots-fields')
+                <div x-show="staffType === 'instructor'" x-transition>
+                    @include('admin.club.instructors.partials.package-slots-fields')
+                </div>
             </form>
 
             {{-- Footer --}}

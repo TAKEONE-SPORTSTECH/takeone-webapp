@@ -14,7 +14,7 @@
     ];
 @endphp
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6"
+<div class="px-4 sm:px-6 lg:px-8 py-6"
      x-data="ftAddRelativeData({ addUrl: '{{ route('me.family.relative') }}', csrf: '{{ csrf_token() }}' })"
      @ft:add.window="openFor($event.detail)">
 
@@ -28,7 +28,7 @@
                 {{ __('Tap any relative to explore their branch — the tree reaches as far as your family goes.') }}
             </p>
         </div>
-        <button type="button" @click="openFor({ focusId: {{ $rootPersonId }}, focusName: '{{ __('you') }}' })"
+        <button type="button" @click="openFor({ focusId: {{ $rootPersonId }}, focusName: '{{ __('you') }}', spouses: window.FamilyTree.spousesOf({{ $rootPersonId }}) })"
             class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium flex items-center gap-2">
             <i class="bi bi-person-plus"></i>{{ __('Add relative') }}
         </button>
@@ -88,6 +88,40 @@
                     class="px-5 py-2 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 transition disabled:opacity-60 flex items-center gap-2">
                     <span x-show="!submitting"><i class="bi bi-check-lg mr-1"></i>{{ __('Add relative') }}</span>
                     <span x-show="submitting" class="flex items-center gap-2"><i class="bi bi-arrow-repeat animate-spin"></i>{{ __('Saving…') }}</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Manage-relationships modal --}}
+    <div x-data="ftManageData({ removeUrl: '{{ route('me.family.relative.remove') }}', csrf: '{{ csrf_token() }}' })"
+         @ft:manage.window="openFor($event.detail)"
+         x-show="open" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-4" @keydown.escape.window="close()">
+        <div x-show="open" x-transition.opacity class="absolute inset-0 bg-black/50" @click="close()"></div>
+
+        <div x-show="open"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+             class="relative w-full max-w-md max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl">
+
+            <div class="flex-shrink-0 px-6 pt-5 pb-4 border-b border-gray-100 flex items-start justify-between">
+                <div>
+                    <h3 class="text-xl font-bold text-gray-900">{{ __('Manage relationships') }}</h3>
+                    <p class="text-sm text-muted-foreground">
+                        <span class="font-semibold text-primary" x-text="personName"></span>
+                    </p>
+                </div>
+                <button type="button" @click="close()" class="text-gray-400 hover:text-gray-600 text-xl"><i class="bi bi-x-lg"></i></button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto px-6 py-5">
+                @include('family.partials.manage-relative-fields')
+            </div>
+
+            <div class="flex-shrink-0 px-6 py-4 border-t border-gray-100 flex justify-end">
+                <button type="button" @click="close()"
+                    class="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition">
+                    {{ __('Close') }}
                 </button>
             </div>
         </div>

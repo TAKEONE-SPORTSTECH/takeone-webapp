@@ -27,7 +27,13 @@ class PeopleRecommendationService
 
     public function suggest(User $me, int $limit = 24): Collection
     {
-        $myClubIds = DB::table('memberships')->where('user_id', $me->id)->pluck('tenant_id');
+        // Confirmed clubs only — memberships.status is set to 'active' the instant
+        // a subscription record exists, even a still-pending self-registration, so
+        // it can't be used to mean "the club actually confirmed this member".
+        $myClubIds = DB::table('club_member_subscriptions')
+            ->where('user_id', $me->id)
+            ->where('status', 'active')
+            ->pluck('tenant_id')->unique();
         $myFollowingIds = DB::table('user_follows')->where('follower_id', $me->id)->pluck('followee_id');
 
         $blockedIds = UserBlock::where('blocker_id', $me->id)->pluck('blocked_id')
@@ -37,14 +43,17 @@ class PeopleRecommendationService
         $exclude = collect([$me->id])->merge($blockedIds)->merge($myFollowingIds)->unique();
 
         // --- Signal 1: club-mates (shared-club count + one sample club per user) ---
-        $clubMates = $myClubIds->isEmpty() ? collect() : DB::table('memberships')
+        // Candidates must themselves be confirmed members (not merely pending).
+        $clubMates = $myClubIds->isEmpty() ? collect() : DB::table('club_member_subscriptions')
             ->whereIn('tenant_id', $myClubIds)
+            ->where('status', 'active')
             ->whereNotIn('user_id', $exclude)
-            ->select('user_id', DB::raw('COUNT(*) as shared'))
+            ->select('user_id', DB::raw('COUNT(DISTINCT tenant_id) as shared'))
             ->groupBy('user_id')->get()->keyBy('user_id');
 
-        $sampleClubByUser = $myClubIds->isEmpty() ? collect() : DB::table('memberships')
+        $sampleClubByUser = $myClubIds->isEmpty() ? collect() : DB::table('club_member_subscriptions')
             ->whereIn('tenant_id', $myClubIds)
+            ->where('status', 'active')
             ->whereNotIn('user_id', $exclude)
             ->get(['user_id', 'tenant_id'])
             ->groupBy('user_id')->map(fn ($rows) => $rows->first()->tenant_id);

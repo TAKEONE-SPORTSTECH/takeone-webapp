@@ -62,7 +62,7 @@
 
     .mp-avatar-ring {
         background: conic-gradient(from 210deg, #fff, hsl(250 80% 85%), #fff, hsl(280 80% 85%), #fff);
-        padding: 3px; border-radius: 28px;
+        padding: 3px; border-radius: 25px;
         box-shadow: 0 12px 30px rgba(60,20,120,.45);
     }
 
@@ -142,16 +142,28 @@
             @endif
 
             {{-- Profile picture --}}
-            <div class="relative inline-block flex-shrink-0">
+            <div class="relative inline-block flex-shrink-0" x-data="{ zoom: false }">
                 <div class="mp-avatar-ring inline-block">
                     @if($user->profile_picture)
                         <img id="mpAvatarImg" src="{{ asset('storage/'.$user->profile_picture) }}?v={{ optional($user->updated_at)->timestamp }}"
-                             alt="{{ $user->full_name }}" class="w-28 h-28 rounded-[25px] object-cover block">
+                             alt="{{ $user->full_name }}" class="w-28 aspect-[3/4] rounded-[22px] object-cover block cursor-pointer" @click="zoom=true">
                     @else
-                        <div id="mpAvatarFallback" class="w-28 h-28 rounded-[25px] bg-white/20 grid place-items-center text-4xl font-black">{{ $initials }}</div>
+                        <div id="mpAvatarFallback" class="w-28 aspect-[3/4] rounded-[22px] bg-white/20 grid place-items-center text-4xl font-black">{{ $initials }}</div>
                     @endif
                 </div>
                 <span class="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-green-400 border-[3px] border-white"></span>
+
+                @if($user->profile_picture)
+                    {{-- Full, uncropped view of the profile picture — tap the avatar to open, tap away to close --}}
+                    <template x-teleport="body">
+                        <div x-show="zoom" x-cloak class="fixed inset-0 z-[80] flex items-center justify-center p-4" @click="zoom=false" @keydown.escape.window="zoom=false">
+                            <div x-show="zoom" x-transition.opacity class="absolute inset-0 bg-black/90"></div>
+                            <button type="button" class="absolute top-4 right-4 rtl:right-auto rtl:left-4 w-10 h-10 rounded-full bg-white/10 text-white grid place-items-center z-10" @click.stop="zoom=false"><i class="bi bi-x-lg text-lg"></i></button>
+                            <img x-show="zoom" x-transition src="{{ asset('storage/'.$user->profile_picture) }}?v={{ optional($user->updated_at)->timestamp }}"
+                                 alt="{{ $user->full_name }}" class="relative rounded-2xl object-contain" style="max-width:80vw; max-height:85vh;" @click.stop>
+                        </div>
+                    </template>
+                @endif
             </div>
 
             {{-- Right controls: share, with the chat button stacked underneath --}}
@@ -226,24 +238,6 @@
                  class="mp-card m-press cursor-pointer bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col items-center mp-reveal" style="animation-delay:.3s">
                 <div class="mp-ring" style="--p:{{ (int) $challengeWinRate }}"><b>{{ (int) $challengeWinRate }}%</b></div>
                 <p class="text-[11px] text-muted-foreground mt-2 font-medium">{{ __('member.challenge') }}</p>
-            </div>
-            {{-- sessions --}}
-            <div role="button" tabindex="0" @click="goTab('attendance')" @keydown.enter.space.prevent="goTab('attendance')"
-                 class="mp-card m-press cursor-pointer bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col items-center justify-center mp-reveal" style="animation-delay:.32s">
-                <p class="text-2xl font-black text-primary" data-count="{{ $sessionsCompleted }}">0</p>
-                <p class="text-[11px] text-muted-foreground mt-1 font-medium">{{ __('member.sessions') }}</p>
-            </div>
-            {{-- medals --}}
-            <div role="button" tabindex="0" @click="goTab('tournaments')" @keydown.enter.space.prevent="goTab('tournaments')"
-                 class="mp-card m-press cursor-pointer bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col items-center justify-center mp-reveal" style="animation-delay:.36s">
-                <p class="text-2xl font-black text-amber-500" data-count="{{ $medalsTotal }}">0</p>
-                <p class="text-[11px] text-muted-foreground mt-1 font-medium">{{ __('member.medals') }}</p>
-            </div>
-            {{-- clubs --}}
-            <div role="button" tabindex="0" @click="goTab('clubs')" @keydown.enter.space.prevent="goTab('clubs')"
-                 class="mp-card m-press cursor-pointer bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col items-center justify-center mp-reveal" style="animation-delay:.4s">
-                <p class="text-2xl font-black text-primary" data-count="{{ $totalAffiliations }}">0</p>
-                <p class="text-[11px] text-muted-foreground mt-1 font-medium">{{ __('member.clubs') }}</p>
             </div>
         </div>
     </div>
@@ -667,8 +661,6 @@
                     </div>
                 @endif
                 <p class="text-[11px] text-muted-foreground text-center">{{ __('member.last_recorded') }} <span x-text="latest.label || @js(optional($latest->recorded_at)->format('d M Y'))">{{ optional($latest->recorded_at)->format('d M Y') }}</span><span x-show="ago()" class="text-muted-foreground/70"> · <span x-text="ago()"></span></span></p>
-            @else
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center"><i class="bi bi-heart-pulse text-3xl text-gray-300"></i><p class="text-sm text-muted-foreground mt-2">{{ __('member.no_health_records') }}</p></div>
             @endif
 
             {{-- ===== Weight tracking ===== --}}
@@ -790,28 +782,286 @@
         </div>
 
         {{-- ===== Goals ===== --}}
-        <div x-show="tab==='goals'" x-transition.opacity x-cloak class="space-y-3">
+        @php
+            $goalsJs = $goals->map(fn ($g) => [
+                'id' => $g->id,
+                'title' => $g->title,
+                'description' => $g->description,
+                'unit' => $g->unit,
+                'target_value' => (float) $g->target_value,
+                'current_progress_value' => (float) $g->current_progress_value,
+                'status' => $g->status,
+                'target_date' => optional($g->target_date)->format('M j, Y'),
+                'before_proof' => $g->before_proof ? asset('storage/'.$g->before_proof) : null,
+                'after_proof' => $g->after_proof ? asset('storage/'.$g->after_proof) : null,
+                'completed_at' => optional($g->completed_at)->format('M j, Y'),
+                'days_taken' => $g->days_taken,
+            ])->values();
+        @endphp
+        <div x-show="tab==='goals'" x-transition.opacity x-cloak class="space-y-3"
+             x-data="goalsManager({
+                storeUrl: '{{ route('member.store-goal', $user->id) }}',
+                updateUrlBase: '{{ url('/member/goal') }}',
+                csrf: '{{ csrf_token() }}',
+                today: '{{ now()->format('Y-m-d') }}',
+                goals: @js($goalsJs),
+                canEdit: @js((bool) ($canEditBasic ?? false)),
+                i18n: {
+                    pickDate: @js(__('member.pick_a_date')), clear: @js(__('member.clear')), today: @js(__('member.today')),
+                    months: @js([__('challenge.personal_challenge_create_month_january'),__('challenge.personal_challenge_create_month_february'),__('challenge.personal_challenge_create_month_march'),__('challenge.personal_challenge_create_month_april'),__('challenge.personal_challenge_create_month_may'),__('challenge.personal_challenge_create_month_june'),__('challenge.personal_challenge_create_month_july'),__('challenge.personal_challenge_create_month_august'),__('challenge.personal_challenge_create_month_september'),__('challenge.personal_challenge_create_month_october'),__('challenge.personal_challenge_create_month_november'),__('challenge.personal_challenge_create_month_december')]),
+                    dows: @js([__('challenge.personal_challenge_create_dow_su'),__('challenge.personal_challenge_create_dow_mo'),__('challenge.personal_challenge_create_dow_tu'),__('challenge.personal_challenge_create_dow_we'),__('challenge.personal_challenge_create_dow_th'),__('challenge.personal_challenge_create_dow_fr'),__('challenge.personal_challenge_create_dow_sa')]),
+                    pleaseChooseImage: @js(__('Please fill in all required fields and add a photo.')),
+                    invalidImage: @js(__('Please choose an image file.')),
+                    networkError: @js(__('Something went wrong. Please try again.')),
+                    goalCreated: @js(__('member.goal_created')),
+                    goalUpdated: @js(__('member.goal_updated')),
+                }
+             })">
             <div class="grid grid-cols-3 gap-2">
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 text-center"><p class="text-xl font-black text-primary">{{ $activeGoalsCount }}</p><p class="text-[10px] text-muted-foreground">{{ __('member.goals_active') }}</p></div>
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 text-center"><p class="text-xl font-black text-green-600">{{ $completedGoalsCount }}</p><p class="text-[10px] text-muted-foreground">{{ __('member.goals_done') }}</p></div>
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 text-center"><p class="text-xl font-black text-amber-500">{{ $successRate }}%</p><p class="text-[10px] text-muted-foreground">{{ __('member.goals_success') }}</p></div>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 text-center"><p class="text-xl font-black text-primary" x-text="activeCount"></p><p class="text-[10px] text-muted-foreground">{{ __('member.goals_active') }}</p></div>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 text-center"><p class="text-xl font-black text-green-600" x-text="doneCount"></p><p class="text-[10px] text-muted-foreground">{{ __('member.goals_done') }}</p></div>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 text-center"><p class="text-xl font-black text-amber-500" x-text="successRate + '%'"></p><p class="text-[10px] text-muted-foreground">{{ __('member.goals_success') }}</p></div>
             </div>
-            @forelse($goals as $g)
-                @php
-                    $tv = (float) ($g->target_value ?: 0); $cv = (float) ($g->current_progress_value ?: 0);
-                    $pct = $tv > 0 ? min(100, round($cv / $tv * 100)) : ($g->status === 'completed' ? 100 : 0);
-                @endphp
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                    <div class="flex items-start justify-between gap-2">
-                        <p class="font-semibold text-foreground">{{ $g->title }}</p>
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-medium capitalize flex-shrink-0 {{ $g->status==='completed'?'bg-green-100 text-green-700':($g->status==='active'?'bg-accent text-primary':'bg-gray-100 text-gray-500') }}">{{ str_replace('_',' ',$g->status) }}</span>
-                    </div>
-                    <div class="mt-2 h-2 rounded-full bg-muted overflow-hidden"><div class="h-full rounded-full bg-primary" style="width: {{ $pct }}%"></div></div>
-                    <p class="text-[11px] text-muted-foreground mt-1">{{ $cv }} / {{ $tv ?: '—' }} {{ $g->unit }} · {{ $pct }}%</p>
-                </div>
-            @empty
+
+            @if($canEditBasic ?? false)
+                <button type="button" @click="openAdd()" class="m-press w-full flex items-center justify-center gap-2 bg-primary text-white rounded-2xl py-3 font-semibold text-sm shadow-sm">
+                    <i class="bi bi-plus-lg"></i>{{ __('member.add_goal') }}
+                </button>
+            @endif
+
+            <template x-if="!goals.length">
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center"><i class="bi bi-bullseye text-3xl text-gray-300"></i><p class="text-sm text-muted-foreground mt-2">{{ __('member.no_goals') }}</p></div>
-            @endforelse
+            </template>
+
+            <template x-for="g in goals" :key="g.id">
+                <div class="m-card m-press cursor-pointer bg-white rounded-2xl shadow-sm border border-gray-100 p-4" @click="openDetail(g)">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="font-semibold text-foreground truncate" x-text="g.title"></p>
+                            <p class="text-[11px] text-muted-foreground truncate mt-0.5" x-show="g.description" x-text="g.description"></p>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0" :class="g.status==='completed' ? 'bg-green-100 text-green-700' : 'bg-accent text-primary'" x-text="g.status==='completed' ? @js(__('member.goal_achieved')) : @js(__('member.goals_active'))"></span>
+                    </div>
+                    <div class="mt-2 h-2 rounded-full bg-muted overflow-hidden"><div class="h-full rounded-full bg-primary transition-all" :style="'width:' + pct(g) + '%'"></div></div>
+                    <p class="text-[11px] text-muted-foreground mt-1"><span x-text="g.current_progress_value"></span> / <span x-text="g.target_value || '—'"></span> <span x-text="g.unit"></span> · <span x-text="pct(g)"></span>% · <span x-text="g.target_date"></span></p>
+
+                    <template x-if="g.before_proof || g.after_proof">
+                        <div class="flex items-center gap-2 mt-3">
+                            <template x-if="g.before_proof">
+                                <div class="flex-1 min-w-0">
+                                    <img :src="g.before_proof" class="w-full h-20 object-cover rounded-xl" alt="">
+                                    <p class="text-[10px] text-muted-foreground text-center mt-1">{{ __('member.before') }}</p>
+                                </div>
+                            </template>
+                            <template x-if="g.after_proof">
+                                <div class="flex-1 min-w-0">
+                                    <img :src="g.after_proof" class="w-full h-20 object-cover rounded-xl" alt="">
+                                    <p class="text-[10px] text-muted-foreground text-center mt-1">{{ __('member.after') }}</p>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                    <template x-if="g.status==='completed' && g.days_taken !== null">
+                        <p class="text-[11px] font-semibold text-green-600 mt-2 flex items-center gap-1"><i class="bi bi-trophy-fill"></i><span x-text="g.days_taken"></span> {{ __('member.days_to_achieve') }}</p>
+                    </template>
+                </div>
+            </template>
+
+            {{-- Add-goal bottom sheet (teleported to body) --}}
+            <template x-teleport="body">
+                <div x-show="addOpen" x-cloak class="fixed inset-0 z-[70]" @keydown.escape.window="addOpen=false">
+                    <div x-show="addOpen" x-transition.opacity class="absolute inset-0 bg-black/50" @click="addOpen=false"></div>
+                    <div x-show="addOpen"
+                         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                         class="absolute inset-x-0 bottom-0 max-h-[92vh] flex flex-col bg-white rounded-t-3xl shadow-2xl">
+                        <div class="flex-shrink-0 px-5 pt-3 pb-4 border-b border-gray-100">
+                            <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
+                            <h3 class="text-lg font-bold text-gray-900">{{ __('member.add_goal') }}</h3>
+                        </div>
+                        <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.goal_title') }}</label>
+                                <input type="text" x-model="addForm.title" maxlength="150" placeholder="{{ __('member.goal_title_placeholder') }}" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.goal_description') }} <span class="text-muted-foreground font-normal">({{ __('challenge.personal_challenge_create_optional') }})</span></label>
+                                <textarea x-model="addForm.description" rows="2" maxlength="1000" placeholder="{{ __('member.goal_description_placeholder') }}" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"></textarea>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.goal_target_value') }}</label>
+                                    <input type="number" step="0.1" min="0" x-model="addForm.target_value" inputmode="decimal" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.goal_unit') }}</label>
+                                    <input type="text" x-model="addForm.unit" maxlength="30" placeholder="{{ __('member.goal_unit_placeholder') }}" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                                </div>
+                            </div>
+
+                            {{-- Custom target-date calendar popover (Design Rule #4 — no native <input type=date>) --}}
+                            <div class="relative" :style="dateOpen ? 'z-index:1100' : ''" x-data="{ view: goalDateView(addForm.target_date) }" x-init="$watch('addOpen', v => { if (v) view = goalDateView(addForm.target_date) })" @click.outside="dateOpen=false" @keydown.escape="dateOpen=false">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.goal_target_date') }}</label>
+                                <button type="button" @click="dateOpen=!dateOpen" class="w-full px-3 py-2.5 border rounded-xl text-sm bg-white text-start flex items-center gap-2 outline-none transition-colors" :class="dateOpen ? 'ring-2 ring-purple-500 border-transparent' : 'border-gray-200'">
+                                    <i class="bi bi-calendar-event text-gray-400 flex-shrink-0"></i>
+                                    <span class="flex-1 truncate" :class="addForm.target_date ? 'text-foreground' : 'text-gray-400'" x-text="addForm.target_date ? fmtDate(addForm.target_date) : i18n.pickDate"></span>
+                                    <i class="bi bi-chevron-down text-gray-400 text-xs transition-transform flex-shrink-0" :class="dateOpen ? 'rotate-180' : ''"></i>
+                                </button>
+                                <div x-show="dateOpen" x-cloak x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0" class="absolute mt-1.5 w-full bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden p-3">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <button type="button" @click="view = view.m===0 ? {y:view.y-1,m:11} : {y:view.y,m:view.m-1}" class="m-press w-8 h-8 rounded-lg grid place-items-center text-muted-foreground hover:bg-muted/60"><i class="bi bi-chevron-left text-sm"></i></button>
+                                        <p class="text-sm font-bold text-foreground" x-text="i18n.months[view.m] + ' ' + view.y"></p>
+                                        <button type="button" @click="view = view.m===11 ? {y:view.y+1,m:0} : {y:view.y,m:view.m+1}" class="m-press w-8 h-8 rounded-lg grid place-items-center text-muted-foreground hover:bg-muted/60"><i class="bi bi-chevron-right text-sm"></i></button>
+                                    </div>
+                                    <div class="grid grid-cols-7 gap-1 mb-1">
+                                        <template x-for="dw in i18n.dows" :key="dw"><span class="text-[10px] font-bold text-muted-foreground text-center py-1" x-text="dw"></span></template>
+                                    </div>
+                                    <div class="grid grid-cols-7 gap-1">
+                                        <template x-for="(d, i) in goalCalGrid(view)" :key="i">
+                                            <button type="button" :disabled="!d || goalIsPast(view, d)" @click="if (d && !goalIsPast(view, d)) { addForm.target_date = goalIso(view, d); dateOpen=false }"
+                                                class="h-9 rounded-lg text-sm grid place-items-center transition-colors"
+                                                :class="!d ? 'invisible' : (goalIso(view,d)===addForm.target_date ? 'bg-primary text-white font-bold' : (goalIsPast(view,d) ? 'text-gray-300 cursor-not-allowed' : 'text-foreground hover:bg-muted/60'))"
+                                                x-text="d"></button>
+                                        </template>
+                                    </div>
+                                    <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+                                        <button type="button" @click="addForm.target_date=''; dateOpen=false" class="text-[11px] font-semibold text-muted-foreground hover:text-foreground">{{ __('member.clear') }}</button>
+                                        <button type="button" @click="addForm.target_date = today; dateOpen=false" class="text-[11px] font-semibold text-primary">{{ __('member.today') }}</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('member.goal_before_photo') }}</label>
+                                <label class="relative flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl p-6 cursor-pointer hover:border-primary/50 transition-colors overflow-hidden">
+                                    <template x-if="!addForm.beforePreview">
+                                        <div class="text-center">
+                                            <i class="bi bi-camera text-3xl text-gray-300"></i>
+                                            <p class="text-sm text-muted-foreground mt-2">{{ __('member.goal_before_photo_hint') }}</p>
+                                        </div>
+                                    </template>
+                                    <template x-if="addForm.beforePreview">
+                                        <img :src="addForm.beforePreview" class="max-h-56 rounded-xl object-contain" alt="">
+                                    </template>
+                                    <input type="file" accept="image/*" class="hidden" @change="pickBeforePhoto($event)">
+                                </label>
+                            </div>
+                        </div>
+                        <div class="flex-shrink-0 px-5 pt-3 border-t border-gray-100 flex gap-3" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
+                            <button type="button" @click="addOpen=false" class="flex-1 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium active:scale-[.98] transition">{{ __('shared.cancel') }}</button>
+                            <button type="button" @click="submitAdd()" :disabled="addSubmitting" class="flex-1 py-3 rounded-xl bg-primary text-white font-semibold active:scale-[.98] transition disabled:opacity-60 flex items-center justify-center gap-2">
+                                <span x-show="!addSubmitting"><i class="bi bi-check-lg mr-1"></i>{{ __('member.create_goal') }}</span>
+                                <span x-show="addSubmitting" class="flex items-center gap-2"><i class="bi bi-arrow-repeat animate-spin"></i>…</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            {{-- Goal detail / update / achieve bottom sheet (teleported to body) --}}
+            <template x-teleport="body">
+                <div x-show="detailOpen" x-cloak class="fixed inset-0 z-[70]" @keydown.escape.window="detailOpen=false">
+                    <div x-show="detailOpen" x-transition.opacity class="absolute inset-0 bg-black/50" @click="detailOpen=false"></div>
+                    <div x-show="detailOpen"
+                         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                         class="absolute inset-x-0 bottom-0 max-h-[92vh] flex flex-col bg-white rounded-t-3xl shadow-2xl">
+                        <div class="flex-shrink-0 px-5 pt-3 pb-4 border-b border-gray-100">
+                            <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
+                            <div class="flex items-start justify-between gap-2">
+                                <h3 class="text-lg font-bold text-gray-900 min-w-0 truncate" x-text="activeGoal && activeGoal.title"></h3>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0" :class="activeGoal && activeGoal.status==='completed' ? 'bg-green-100 text-green-700' : 'bg-accent text-primary'" x-text="activeGoal && (activeGoal.status==='completed' ? @js(__('member.goal_achieved')) : @js(__('member.goals_active')))"></span>
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                            <p class="text-sm text-muted-foreground" x-show="activeGoal && activeGoal.description" x-text="activeGoal && activeGoal.description"></p>
+
+                            <div class="rounded-xl bg-muted/40 p-3">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-sm font-semibold text-foreground"><span x-text="activeGoal && activeGoal.current_progress_value"></span> / <span x-text="activeGoal && activeGoal.target_value"></span> <span x-text="activeGoal && activeGoal.unit"></span></span>
+                                    <span class="text-sm font-bold text-primary" x-text="activeGoal && pct(activeGoal) + '%'"></span>
+                                </div>
+                                <div class="h-2 rounded-full bg-white overflow-hidden"><div class="h-full rounded-full bg-primary transition-all" :style="'width:' + (activeGoal ? pct(activeGoal) : 0) + '%'"></div></div>
+                                <p class="text-[11px] text-muted-foreground mt-2 flex items-center gap-1"><i class="bi bi-calendar-event"></i>{{ __('member.goal_target_date') }}: <span x-text="activeGoal && activeGoal.target_date"></span></p>
+                                <template x-if="activeGoal && activeGoal.status==='completed' && activeGoal.days_taken !== null">
+                                    <p class="text-[11px] font-semibold text-green-600 mt-1 flex items-center gap-1"><i class="bi bi-trophy-fill"></i><span x-text="activeGoal.days_taken"></span> {{ __('member.days_to_achieve') }}</p>
+                                </template>
+                            </div>
+
+                            {{-- Full, uncropped photos — tap either one for a clear, full-screen view --}}
+                            <template x-if="activeGoal && (activeGoal.before_proof || activeGoal.after_proof)">
+                                <div class="grid gap-2" :class="(activeGoal.before_proof && activeGoal.after_proof) ? 'grid-cols-2' : 'grid-cols-1'">
+                                    <template x-if="activeGoal.before_proof">
+                                        <button type="button" class="m-press block" @click="lightboxImage = activeGoal.before_proof">
+                                            <img :src="activeGoal.before_proof" class="w-full max-h-72 object-contain rounded-xl bg-muted border border-gray-100" alt="">
+                                            <p class="text-[11px] text-muted-foreground text-center mt-1">{{ __('member.before') }}</p>
+                                        </button>
+                                    </template>
+                                    <template x-if="activeGoal.after_proof">
+                                        <button type="button" class="m-press block" @click="lightboxImage = activeGoal.after_proof">
+                                            <img :src="activeGoal.after_proof" class="w-full max-h-72 object-contain rounded-xl bg-muted border border-gray-100" alt="">
+                                            <p class="text-[11px] text-muted-foreground text-center mt-1">{{ __('member.after') }}</p>
+                                        </button>
+                                    </template>
+                                </div>
+                            </template>
+
+                            <template x-if="editable">
+                                <div class="space-y-4 pt-1 border-t border-gray-100">
+                                    <div class="pt-3">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.update_progress') }} (<span x-text="activeGoal && activeGoal.unit"></span>)</label>
+                                        <input type="number" step="0.1" min="0" x-model="progressValue" inputmode="decimal" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                                    </div>
+
+                                    <label class="flex items-center gap-2.5 bg-muted/40 rounded-xl p-3 cursor-pointer">
+                                        <input type="checkbox" x-model="achieving" class="w-4 h-4 rounded accent-primary flex-shrink-0">
+                                        <span class="text-sm font-semibold text-foreground">{{ __('member.mark_as_achieved') }}</span>
+                                    </label>
+
+                                    <template x-if="achieving">
+                                        <div>
+                                            <p class="text-[11px] text-muted-foreground mb-2">{{ __('member.mark_as_achieved_hint') }}</p>
+                                            <label class="relative flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl p-6 cursor-pointer hover:border-primary/50 transition-colors overflow-hidden">
+                                                <template x-if="!afterPreview">
+                                                    <div class="text-center">
+                                                        <i class="bi bi-camera text-3xl text-gray-300"></i>
+                                                        <p class="text-sm text-muted-foreground mt-2">{{ __('member.goal_after_photo_hint') }}</p>
+                                                    </div>
+                                                </template>
+                                                <template x-if="afterPreview">
+                                                    <img :src="afterPreview" class="max-h-56 rounded-xl object-contain" alt="">
+                                                </template>
+                                                <input type="file" accept="image/*" class="hidden" @change="pickAfterPhoto($event)">
+                                            </label>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                        <div class="flex-shrink-0 px-5 pt-3 border-t border-gray-100 flex gap-3" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
+                            <template x-if="editable">
+                                <button type="button" @click="detailOpen=false" class="flex-1 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium active:scale-[.98] transition">{{ __('shared.cancel') }}</button>
+                            </template>
+                            <button type="button" x-show="!editable" @click="detailOpen=false" class="flex-1 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium active:scale-[.98] transition">{{ __('shared.close') }}</button>
+                            <template x-if="editable">
+                                <button type="button" @click="submitUpdate()" :disabled="updateSubmitting || (achieving && !afterProof)" class="flex-1 py-3 rounded-xl bg-primary text-white font-semibold active:scale-[.98] transition disabled:opacity-60 flex items-center justify-center gap-2">
+                                    <span x-show="!updateSubmitting"><i class="bi bi-check-lg mr-1"></i>{{ __('member.save') }}</span>
+                                    <span x-show="updateSubmitting" class="flex items-center gap-2"><i class="bi bi-arrow-repeat animate-spin"></i>…</span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            {{-- Photo lightbox — full, uncropped view of a before/after proof photo --}}
+            <template x-teleport="body">
+                <div x-show="lightboxImage" x-cloak class="fixed inset-0 z-[80] flex items-center justify-center p-4" @click="lightboxImage=null" @keydown.escape.window="lightboxImage=null">
+                    <div x-show="lightboxImage" x-transition.opacity class="absolute inset-0 bg-black/90"></div>
+                    <button type="button" class="absolute top-4 right-4 rtl:right-auto rtl:left-4 w-10 h-10 rounded-full bg-white/10 text-white grid place-items-center z-10" @click.stop="lightboxImage=null"><i class="bi bi-x-lg text-lg"></i></button>
+                    <img x-show="lightboxImage" x-transition :src="lightboxImage" class="relative max-w-full max-h-full object-contain rounded-lg" @click.stop alt="">
+                </div>
+            </template>
         </div>
 
         {{-- ===== Tournaments ===== --}}
@@ -989,16 +1239,41 @@
                 <div class="flex-1 space-y-2">
                     <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('member.completed') }}</span><span class="font-bold text-green-600">{{ $sessionsCompleted }}</span></div>
                     <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('member.no_shows') }}</span><span class="font-bold text-red-500">{{ $noShows }}</span></div>
-                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('member.total_sessions') }}</span><span class="font-bold">{{ $attendanceRecords->count() }}</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('member.total_sessions') }}</span><span class="font-bold">{{ $totalSessions }}</span></div>
                 </div>
             </div>
-            @foreach($attendanceRecords->take(8) as $rec)
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex items-center gap-3">
-                    <span class="w-2 h-2 rounded-full {{ $rec->status==='completed'?'bg-green-500':($rec->status==='no_show'?'bg-red-500':'bg-amber-400') }}"></span>
-                    <span class="text-sm text-foreground flex-1 truncate capitalize">{{ str_replace('_',' ',$rec->status) }}</span>
-                    <span class="text-xs text-muted-foreground">{{ optional($rec->session_datetime)->format('d M, H:i') }}</span>
+
+            {{-- Class schedule — every dated occurrence of the subscribed package's classes
+                 (attended, missed, or still upcoming), tap to open that class's schedule detail. --}}
+            @if($scheduleSessions->isNotEmpty())
+                @php
+                    $statusStyles = [
+                        'attended' => ['bg-green-50 text-green-600', 'bi-check-lg', __('member.attended')],
+                        'missed' => ['bg-red-50 text-red-500', 'bi-x-lg', __('member.missed')],
+                        'upcoming' => ['bg-gray-100 text-gray-500', 'bi-clock', __('member.upcoming')],
+                    ];
+                @endphp
+                <p class="text-xs font-bold text-muted-foreground uppercase tracking-wider px-1">{{ __('member.class_schedule') }}</p>
+                @foreach($scheduleSessions as $session)
+                    @php [$badgeClass, $icon, $label] = $statusStyles[$session->status]; @endphp
+                    <a href="{{ $session->url }}" class="m-press block bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex items-center gap-3">
+                        <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0 {{ $badgeClass }}">
+                            <i class="bi {{ $icon }}"></i>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm font-semibold text-foreground truncate">{{ $session->title }}</p>
+                            <p class="text-[11px] text-muted-foreground mt-0.5">{{ $session->date->format('d M Y') }} · {{ $session->start_time }}@if($session->coach) · {{ $session->coach }}@endif</p>
+                        </div>
+                        <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $badgeClass }}">{{ $label }}</span>
+                        <i class="bi bi-chevron-left rtl:rotate-180 text-muted-foreground/60 text-xs flex-shrink-0"></i>
+                    </a>
+                @endforeach
+            @else
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
+                    <i class="bi bi-calendar-x text-2xl text-gray-300"></i>
+                    <p class="text-sm text-muted-foreground mt-2">{{ __('member.no_schedule_sessions') }}</p>
                 </div>
-            @endforeach
+            @endif
         </div>
 
         {{-- ===== Challenges — this member's head-to-head history (reached via the Challenge stat card) ===== --}}
@@ -1682,5 +1957,195 @@ window.__mpBillingRealtime = (e) => {
     }
 };
 window.addEventListener('realtime:payments', window.__mpBillingRealtime);
+
+// Goals tab: reactive list + AJAX add/update (no page reload). Pure calendar
+// helpers take their args explicitly (no `this`) so they're safe to call bare
+// from the nested date-picker's own x-data scope.
+function goalDateView(dateStr) {
+    var base = dateStr ? new Date(dateStr + 'T00:00:00') : new Date();
+    return { y: base.getFullYear(), m: base.getMonth() };
+}
+function goalCalGrid(view) {
+    var start = new Date(view.y, view.m, 1).getDay();
+    var days = new Date(view.y, view.m + 1, 0).getDate();
+    var cells = [];
+    for (var i = 0; i < start; i++) cells.push(null);
+    for (var d = 1; d <= days; d++) cells.push(d);
+    return cells;
+}
+function goalIso(view, d) {
+    return view.y + '-' + String(view.m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+}
+function goalIsPast(view, d) {
+    if (!d) return false;
+    var t = new Date(); t.setHours(0, 0, 0, 0);
+    return new Date(view.y, view.m, d) < t;
+}
+function fmtDate(val) {
+    if (!val) return '';
+    var d = new Date(val + 'T00:00:00');
+    return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// A phone camera photo can be several MB — base64-encoded raw, that easily blows
+// past the server's post_max_size and the upload silently fails. Downscale onto a
+// canvas (max 1600px) and re-encode as JPEG before it ever becomes a data URI.
+function resizeImageToDataUrl(file, maxDim, quality) {
+    return new Promise(function (resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function () {
+            var img = new Image();
+            img.onload = function () {
+                var width = img.width, height = img.height;
+                if (width > maxDim || height > maxDim) {
+                    if (width > height) { height = Math.round(height * (maxDim / width)); width = maxDim; }
+                    else { width = Math.round(width * (maxDim / height)); height = maxDim; }
+                }
+                var canvas = document.createElement('canvas');
+                canvas.width = width; canvas.height = height;
+                canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', quality || 0.85));
+            };
+            img.onerror = function () { reject(new Error('image_decode_failed')); };
+            img.src = reader.result;
+        };
+        reader.onerror = function () { reject(new Error('file_read_failed')); };
+        reader.readAsDataURL(file);
+    });
+}
+
+window.goalsManager = function (cfg) {
+    return {
+        goals: cfg.goals || [],
+        canEdit: !!cfg.canEdit,
+        i18n: cfg.i18n || {},
+        today: cfg.today,
+
+        addOpen: false, addSubmitting: false, dateOpen: false,
+        addForm: { title: '', description: '', target_value: '', unit: '', target_date: '', beforeProof: null, beforePreview: null },
+
+        detailOpen: false, updateSubmitting: false, editable: false, lightboxImage: null,
+        activeGoal: null, progressValue: 0, achieving: false, afterProof: null, afterPreview: null,
+
+        pct(g) {
+            var tv = parseFloat(g.target_value) || 0;
+            var cv = parseFloat(g.current_progress_value) || 0;
+            if (tv > 0) return Math.min(100, Math.round((cv / tv) * 100));
+            return g.status === 'completed' ? 100 : 0;
+        },
+        get activeCount() { return this.goals.filter(function (g) { return g.status === 'active'; }).length; },
+        get doneCount() { return this.goals.filter(function (g) { return g.status === 'completed'; }).length; },
+        get successRate() {
+            if (!this.goals.length) return 0;
+            return Math.round((this.doneCount / this.goals.length) * 100);
+        },
+        fmtDate: fmtDate,
+
+        openAdd() {
+            this.addForm = { title: '', description: '', target_value: '', unit: '', target_date: '', beforeProof: null, beforePreview: null };
+            this.dateOpen = false;
+            this.addOpen = true;
+        },
+        async pickBeforePhoto(e) {
+            var f = e.target.files && e.target.files[0];
+            if (!f) return;
+            if (!f.type.startsWith('image/')) { window.showToast && window.showToast('error', this.i18n.invalidImage); return; }
+            try {
+                var dataUrl = await resizeImageToDataUrl(f, 1600, 0.85);
+                this.addForm.beforeProof = dataUrl;
+                this.addForm.beforePreview = dataUrl;
+            } catch (err) {
+                window.showToast && window.showToast('error', this.i18n.invalidImage);
+            }
+        },
+        async submitAdd() {
+            var f = this.addForm;
+            if (!f.title || !f.target_value || !f.unit || !f.target_date || !f.beforeProof) {
+                window.showToast && window.showToast('error', this.i18n.pleaseChooseImage);
+                return;
+            }
+            this.addSubmitting = true;
+            try {
+                var res = await fetch(cfg.storeUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                    body: JSON.stringify({
+                        title: f.title, description: f.description || null,
+                        target_value: f.target_value, unit: f.unit, target_date: f.target_date,
+                        before_proof: f.beforeProof,
+                    }),
+                });
+                var data = await res.json().catch(function () { return {}; });
+                if (res.ok && data.success) {
+                    this.goals.unshift(Object.assign({
+                        current_progress_value: 0, status: 'active', after_proof: null, completed_at: null, days_taken: null, description: f.description || null,
+                    }, data.goal));
+                    this.addOpen = false;
+                    window.showToast && window.showToast('success', data.message || this.i18n.goalCreated);
+                } else if (data.errors) {
+                    var first = Object.values(data.errors)[0];
+                    window.showToast && window.showToast('error', Array.isArray(first) ? first[0] : first);
+                } else {
+                    window.showToast && window.showToast('error', data.message || this.i18n.networkError);
+                }
+            } catch (e) {
+                window.showToast && window.showToast('error', this.i18n.networkError);
+            } finally {
+                this.addSubmitting = false;
+            }
+        },
+
+        openDetail(g) {
+            this.activeGoal = g;
+            this.editable = this.canEdit && g.status === 'active';
+            this.progressValue = g.current_progress_value;
+            this.achieving = false;
+            this.afterProof = null;
+            this.afterPreview = null;
+            this.lightboxImage = null;
+            this.detailOpen = true;
+        },
+        async pickAfterPhoto(e) {
+            var f = e.target.files && e.target.files[0];
+            if (!f) return;
+            if (!f.type.startsWith('image/')) { window.showToast && window.showToast('error', this.i18n.invalidImage); return; }
+            try {
+                var dataUrl = await resizeImageToDataUrl(f, 1600, 0.85);
+                this.afterProof = dataUrl;
+                this.afterPreview = dataUrl;
+            } catch (err) {
+                window.showToast && window.showToast('error', this.i18n.invalidImage);
+            }
+        },
+        async submitUpdate() {
+            if (!this.activeGoal) return;
+            if (this.achieving && !this.afterProof) return;
+            this.updateSubmitting = true;
+            try {
+                var body = { current_progress_value: this.progressValue, status: this.achieving ? 'completed' : 'active' };
+                if (this.achieving) body.after_proof = this.afterProof;
+
+                var res = await fetch(cfg.updateUrlBase + '/' + this.activeGoal.id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                var data = await res.json().catch(function () { return {}; });
+                if (res.ok && data.success) {
+                    var idx = this.goals.findIndex(function (g) { return g.id === data.goal.id; });
+                    if (idx !== -1) this.goals[idx] = Object.assign({}, this.goals[idx], data.goal);
+                    this.detailOpen = false;
+                    window.showToast && window.showToast('success', data.message || this.i18n.goalUpdated);
+                } else {
+                    window.showToast && window.showToast('error', data.message || this.i18n.networkError);
+                }
+            } catch (e) {
+                window.showToast && window.showToast('error', this.i18n.networkError);
+            } finally {
+                this.updateSubmitting = false;
+            }
+        },
+    };
+};
 </script>
 @endsection

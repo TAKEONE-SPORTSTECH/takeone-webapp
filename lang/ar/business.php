@@ -7,6 +7,7 @@ return [
     'clubs'             => 'الأندية',
     'menu'              => 'القائمة',
     'no_clubs_linked'   => 'لم يُربط أي نادٍ بعد.',
+    'create_club'       => 'إنشاء نادٍ',
     'explore_clubs'     => 'استكشاف الأندية',
     'personal_view'     => 'العرض الشخصي',
 

@@ -45,6 +45,8 @@ class ClubTransaction extends Model
         'transaction_date',
         'reference_number',
         'subscription_id',
+        'instructor_id',
+        'is_test',
     ];
 
     /**
@@ -55,7 +57,21 @@ class ClubTransaction extends Model
     protected $casts = [
         'amount' => 'decimal:2',
         'transaction_date' => 'date',
+        'is_test' => 'boolean',
     ];
+
+    /**
+     * Stamp the club's current test/live mode onto new transactions, unless
+     * the caller already set it explicitly.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $transaction): void {
+            if (is_null($transaction->is_test) && $transaction->tenant_id) {
+                $transaction->is_test = Tenant::isTestMode($transaction->tenant_id);
+            }
+        });
+    }
 
     /**
      * Get the club that owns the transaction.
@@ -79,6 +95,14 @@ class ClubTransaction extends Model
     public function subscription(): BelongsTo
     {
         return $this->belongsTo(ClubMemberSubscription::class, 'subscription_id');
+    }
+
+    /**
+     * The staff member this transaction pays (wage / final settlement), if any.
+     */
+    public function instructor(): BelongsTo
+    {
+        return $this->belongsTo(ClubInstructor::class, 'instructor_id');
     }
 
     /**

@@ -9,6 +9,7 @@ window.instructorAddSheet = function () {
         skills: [],
         skillDraft: '',
         photoPreview: '',
+        staffType: 'instructor',
         compType: 'volunteer',       // 'volunteer' | 'paid'
         wageAmount: '',
         wagePeriod: 'monthly',
@@ -29,7 +30,7 @@ window.instructorAddSheet = function () {
         reset() {
             this.mode = 'new'; this.skills = []; this.skillDraft = ''; this.photoPreview = '';
             this.search = ''; this.results = []; this.selectedId = ''; this.selectedName = '';
-            this.compType = 'volunteer'; this.wageAmount = ''; this.wagePeriod = 'monthly'; this.slotIds = [];
+            this.staffType = 'instructor'; this.compType = 'volunteer'; this.wageAmount = ''; this.wagePeriod = 'monthly'; this.slotIds = [];
             const f = this.$refs.form; if (f) f.reset();
         },
         close() { this.open = false; },
@@ -261,7 +262,9 @@ window.instructorAddSheet = function () {
 
                 @include('admin.club.instructors.partials.compensation-fields')
 
-                @include('admin.club.instructors.partials.package-slots-fields')
+                <div x-show="staffType === 'instructor'" x-transition>
+                    @include('admin.club.instructors.partials.package-slots-fields')
+                </div>
             </form>
 
             {{-- Footer --}}

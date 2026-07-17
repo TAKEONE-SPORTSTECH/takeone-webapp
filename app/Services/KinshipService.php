@@ -382,6 +382,34 @@ class KinshipService
         return array_keys($seen);
     }
 
+    /**
+     * Person ids with a DIRECT parent-link or union edge to $person (one hop
+     * only — not the whole reachable family). Use this to guard "is this
+     * person already linked to me specifically", as distinct from
+     * connectedComponent()'s "reachable anywhere in my extended family" —
+     * e.g. a spouse's child is reachable via the spouse but isn't necessarily
+     * YOUR direct child until that edge is recorded too.
+     *
+     * @param  array<int,string>  $statuses  edge statuses to count as "linked"
+     * @return array<int,int>
+     */
+    public function directPersonIds(Person $person, array $statuses = ['confirmed', 'pending']): array
+    {
+        $ids = collect()
+            ->merge(PersonParentLink::whereIn('status', $statuses)->where('parent_person_id', $person->id)->pluck('child_person_id'))
+            ->merge(PersonParentLink::whereIn('status', $statuses)->where('child_person_id', $person->id)->pluck('parent_person_id'))
+            ->merge(PersonUnion::whereIn('status', $statuses)->where('person_low_id', $person->id)->pluck('person_high_id'))
+            ->merge(PersonUnion::whereIn('status', $statuses)->where('person_high_id', $person->id)->pluck('person_low_id'));
+
+        return $ids->unique()->values()->all();
+    }
+
+    /** Is there already a direct edge between these two specific people? */
+    public function areDirectlyLinked(Person $a, Person $b, array $statuses = ['confirmed', 'pending']): bool
+    {
+        return in_array($b->id, $this->directPersonIds($a, $statuses), true);
+    }
+
     // =====================================================================
     // Ego-centric neighborhood — the bounded window a tree view renders
     // =====================================================================
@@ -440,7 +468,7 @@ class KinshipService
         }
 
         $ids = array_keys($depth);
-        $persons = Person::whereIn('id', $ids)->with('user:id,profile_picture,updated_at')->get()->keyBy('id');
+        $persons = Person::whereIn('id', $ids)->with('user:id,profile_picture,updated_at,nationality')->get()->keyBy('id');
 
         $nodes = [];
         foreach ($ids as $id) {
@@ -461,6 +489,12 @@ class KinshipService
                 'photo' => $p->photo,
                 'user_photo' => $p->user?->profile_picture,
                 'user_v' => $p->user?->updated_at?->timestamp,
+                // Strict allowlist (2 letters only) before this ever reaches the
+                // client — it's rendered into a CSS class name there, so never
+                // forward anything but a clean ISO2 code.
+                'nationality' => preg_match('/^[A-Za-z]{2}$/', (string) $p->user?->nationality)
+                    ? strtolower($p->user->nationality)
+                    : null,
                 'birth_year' => $p->birth_date?->format('Y'),
                 'death_year' => $p->death_date?->format('Y'),
             ];
@@ -553,7 +587,28 @@ class KinshipService
             return null; // no common ancestor
         }
 
+        // Siblings need one more check than a plain distance pair can tell:
+        // whether they share ALL confirmed parents (full) or only some (half)
+        // — e.g. two of a father's children by different wives are each other's
+        // half-siblings, not siblings, even though both are one step from him.
+        if ($d1 === 1 && $d2 === 1) {
+            return $this->siblingTerm($from, $to, $to->gender);
+        }
+
         return $this->labelFromDistances($d1, $d2, $to->gender);
+    }
+
+    /** Full sibling (identical confirmed-parent sets) vs half-sibling (share only some). */
+    private function siblingTerm(Person $from, Person $to, ?string $gender): string
+    {
+        $fromParents = $from->parentLinks()->where('status', 'confirmed')->pluck('parent_person_id')->sort()->values();
+        $toParents = $to->parentLinks()->where('status', 'confirmed')->pluck('parent_person_id')->sort()->values();
+
+        $isFull = $fromParents->isNotEmpty() && $fromParents->diff($toParents)->isEmpty() && $toParents->diff($fromParents)->isEmpty();
+
+        return $isFull
+            ? $this->term($gender, 'brother', 'sister', 'sibling')
+            : $this->term($gender, 'half-brother', 'half-sister', 'half-sibling');
     }
 
     /**
@@ -808,5 +863,40 @@ class KinshipService
         };
 
         return $n.$suffix;
+    }
+
+    /**
+     * Notify the counterpart of a still-pending family edge that someone added
+     * them, so they can confirm it. No-op once confirmed/account-less (nobody
+     * to ask). Shared by every place that creates a family edge (the tree's
+     * "add relative" and the platform-wide "link existing member as family").
+     */
+    public function notifyCounterpartOfRequest(PersonParentLink|PersonUnion $edge, User $actor, string $type): void
+    {
+        if ($edge->status !== 'pending') {
+            return; // auto-confirmed (account-less counterpart) — nobody to ask
+        }
+
+        // Find the other person's account, if any.
+        $otherPersonId = $edge instanceof PersonParentLink
+            ? ($edge->parent_person_id === $this->personFor($actor)->id ? $edge->child_person_id : $edge->parent_person_id)
+            : $edge->partnerIdOf($this->personFor($actor)->id);
+
+        $other = Person::with('user')->find($otherPersonId);
+        if (! $other?->user_id) {
+            return;
+        }
+
+        \App\Models\UserNotification::notifyUser(
+            $other->user_id,
+            'family_request',
+            __(':name added you as family (:rel).', ['name' => $actor->full_name, 'rel' => __($type)]),
+            [
+                'actor_id' => $actor->id,
+                'icon' => 'bi-diagram-3',
+                'body' => __('Open your family tree to confirm.'),
+                'action_url' => route('me.family'),
+            ],
+        );
     }
 }

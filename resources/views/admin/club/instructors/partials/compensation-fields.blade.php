@@ -1,7 +1,19 @@
 {{-- Shared compensation UI for the mobile add/edit instructor sheets.
-     Expects Alpine state: compType ('volunteer'|'paid'), wageAmount, wagePeriod. --}}
+     Expects Alpine state: compType ('volunteer'|'paid'), wageAmount, wagePeriod, staffType. --}}
 <div class="pt-1 space-y-3">
     <div class="flex items-center gap-2">
+        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">{{ __('admin.ins_staff_type') }}</span>
+        <div class="flex-1 h-px bg-gray-100"></div>
+    </div>
+    <x-select-menu model="staffType" :options="[
+        ['value' => 'instructor', 'label' => __('admin.ins_staff_type_instructor')],
+        ['value' => 'secretary',  'label' => __('admin.ins_staff_type_secretary')],
+        ['value' => 'operator',   'label' => __('admin.ins_staff_type_operator')],
+        ['value' => 'cleaner',    'label' => __('admin.ins_staff_type_cleaner')],
+        ['value' => 'other',      'label' => __('admin.ins_staff_type_other')],
+    ]" />
+
+    <div class="flex items-center gap-2 pt-1">
         <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">{{ __('admin.ins_compensation') }}</span>
         <div class="flex-1 h-px bg-gray-100"></div>
     </div>
@@ -32,6 +44,7 @@
         </div>
     </div>
 
+    <input type="hidden" name="staff_type" :value="staffType">
     <input type="hidden" name="compensation_type" :value="compType">
     <input type="hidden" name="wage_amount" :value="compType === 'paid' ? wageAmount : ''">
     <input type="hidden" name="wage_period" :value="compType === 'paid' ? wagePeriod : ''">

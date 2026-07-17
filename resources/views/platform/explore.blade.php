@@ -3,10 +3,26 @@
 @section('content')
 <div class="tf-container" x-data="exploreApp()">
     <!-- Hero Section -->
-    <div class="text-center mb-3">
-        <h1 class="text-4xl md:text-5xl font-bold text-primary mb-2">{!! __('explore.hero_title') !!}</h1>
-        <p class="text-lg md:text-xl text-muted-foreground mb-3">{{ __('explore.hero_sub') }}</p>
-        <p class="text-muted-foreground"><span id="currentLocation" class="badge bg-primary text-white rounded-full px-3 py-2 text-lg"><i class="bi bi-geo-alt-fill me-1"></i>{{ __('explore.detecting_location') }}</span></p>
+    <div class="relative text-center mb-3">
+        <div class="pointer-events-none absolute inset-x-0 -top-4 flex justify-center" aria-hidden="true">
+            <div class="w-96 h-24 rounded-full opacity-50" style="background: radial-gradient(circle, hsl(250 65% 65% / 0.16), transparent 70%);"></div>
+        </div>
+
+        <div class="relative">
+            <span class="inline-flex items-center gap-1.5 mb-2 px-3 py-1 rounded-full bg-accent text-primary text-[11px] font-bold tracking-[0.14em] uppercase">
+                <i class="bi bi-compass"></i>{{ __('explore.hero_eyebrow') }}
+            </span>
+            <h1 class="text-3xl md:text-4xl font-bold text-primary mb-1.5 whitespace-nowrap">{{ __('explore.hero_title') }}</h1>
+            <p class="text-base md:text-lg text-muted-foreground mb-3">{{ __('explore.hero_sub') }}</p>
+
+            <div class="inline-flex items-center gap-2 bg-white border border-border rounded-full pl-3 pr-4 py-1.5 shadow-sm">
+                <span class="relative flex h-2.5 w-2.5">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60"></span>
+                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+                </span>
+                <span id="currentLocation" class="text-sm font-semibold text-foreground"><i class="bi bi-geo-alt-fill me-1 text-primary"></i>{{ __('explore.detecting_location') }}</span>
+            </div>
+        </div>
     </div>
 
     <!-- Search Bar with Near Me Button -->

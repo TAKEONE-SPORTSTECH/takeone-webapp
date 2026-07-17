@@ -7,6 +7,7 @@ use App\Models\PersonParentLink;
 use App\Models\PersonUnion;
 use App\Models\User;
 use App\Models\UserNotification;
+use App\Models\UserRelationship;
 use App\Services\FamilyService;
 use App\Services\KinshipService;
 use Illuminate\Http\JsonResponse;
@@ -52,9 +53,18 @@ class FamilyTreeController extends Controller
         }
 
         $data = $this->kin->neighborhood($focus, $root);
+
+        // Precompute once (avoids an N+1 per edge): which of this window's
+        // people does the viewer manage as a recognized guardian? Lets a
+        // guardian confirm/reject a pending parent-link aimed at their
+        // managed-dependent minor, who can never confirm anything themselves.
+        $personUserIds = Person::whereIn('id', array_column($data['nodes'], 'id'))
+            ->whereNotNull('user_id')->pluck('user_id', 'id');
+        $guardianOfUserIds = UserRelationship::where('guardian_user_id', Auth::id())->pluck('dependent_user_id');
+
         $data['nodes'] = array_map(fn ($n) => $this->decorateNode($n), $data['nodes']);
-        $data['parentEdges'] = array_map(fn ($e) => $this->decorateEdge($e, $root->id, (int) Auth::id()), $data['parentEdges']);
-        $data['unions'] = array_map(fn ($e) => $this->decorateEdge($e, $root->id, (int) Auth::id()), $data['unions']);
+        $data['parentEdges'] = array_map(fn ($e) => $this->decorateEdge($e, $root->id, (int) Auth::id(), $personUserIds, $guardianOfUserIds), $data['parentEdges']);
+        $data['unions'] = array_map(fn ($e) => $this->decorateEdge($e, $root->id, (int) Auth::id(), $personUserIds, $guardianOfUserIds), $data['unions']);
 
         return response()->json($data);
     }
@@ -66,6 +76,7 @@ class FamilyTreeController extends Controller
             'focus_person_id' => ['required', 'integer'],
             'type' => ['required', Rule::in(['parent', 'child', 'spouse'])],
             'existing_person_id' => ['nullable', 'integer'],
+            'other_parent_person_id' => ['nullable', 'integer'],
             'full_name' => ['required_without:existing_person_id', 'nullable', 'string', 'max:120'],
             'gender' => ['nullable', Rule::in(['m', 'f'])],
             'birth_date' => ['nullable', 'date'],
@@ -89,7 +100,7 @@ class FamilyTreeController extends Controller
             && empty($validated['existing_person_id'])
             && $focus->user_id
             && empty($validated['is_deceased'])) {
-            return $this->registerChildDependent($focus, $validated, $actor);
+            return $this->registerChildDependent($focus, $root, $validated, $actor);
         }
 
         // Resolve the counterpart: an existing (visible) person, or a brand-new node.
@@ -117,7 +128,15 @@ class FamilyTreeController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
 
-        $this->notifyCounterpartOfRequest($edge, $actor, $validated['type']);
+        $this->kin->notifyCounterpartOfRequest($edge, $actor, $validated['type']);
+
+        // A child can have a second parent recorded in the same step — e.g. the
+        // acting parent has 2+ spouses and picked which one is the mother/father
+        // of this specific child, so the two kids don't get "mixed" under a
+        // single undifferentiated parent set.
+        if ($validated['type'] === 'child' && ! empty($validated['other_parent_person_id'])) {
+            $this->linkSecondParent((int) $validated['other_parent_person_id'], $root, Person::find($edge->child_person_id), $actor);
+        }
 
         return response()->json([
             'success' => true,
@@ -126,6 +145,31 @@ class FamilyTreeController extends Controller
                 : __('Relative added.'),
             'status' => $edge->status,
         ]);
+    }
+
+    /**
+     * Link a second parent to a child — e.g. the spouse who is the child's
+     * actual mother/father — so a person with multiple spouses never has
+     * their kids "mixed" under a single undifferentiated parent. Reuses the
+     * same pending/confirmed + notification logic every other edge uses.
+     */
+    private function linkSecondParent(int $otherParentId, Person $root, ?Person $child, User $actor, bool $autoConfirm = false): void
+    {
+        if (! $child) {
+            return;
+        }
+        $otherParent = $this->resolveFocus($otherParentId, $root);
+        if ($otherParent === null || $otherParent->id === $child->id) {
+            return; // not a real, visible relative — silently skip rather than fail the whole request
+        }
+
+        $edge = $this->kin->linkParent($otherParent, $child, $actor);
+        if ($autoConfirm && $edge->status !== 'confirmed') {
+            $this->kin->confirm($edge, $actor);
+
+            return; // already settled — no confirmation request to send
+        }
+        $this->kin->notifyCounterpartOfRequest($edge, $actor, 'parent');
     }
 
     /** Confirm or reject a pending relationship request aimed at the viewer. */
@@ -149,8 +193,11 @@ class FamilyTreeController extends Controller
             return response()->json(['success' => false, 'message' => 'Request no longer available.'], 404);
         }
 
-        // Only the counterpart (a person on the edge that isn't the requester) may respond.
-        if (! $this->edgeTouches($edge, $me->id) || $edge->created_by_user_id === $actor->id) {
+        // Only the counterpart may respond — or a recognized guardian responding
+        // on behalf of their managed-dependent minor, who (per design) can
+        // never confirm anything themselves.
+        $canRespond = $this->edgeTouches($edge, $me->id) || $this->guardianCanRespondFor($edge, $actor);
+        if (! $canRespond || $edge->created_by_user_id === $actor->id) {
             return response()->json(['success' => false, 'message' => 'This request is not yours to answer.'], 403);
         }
 
@@ -174,11 +221,65 @@ class FamilyTreeController extends Controller
     }
 
     /**
+     * Remove/unlink a relationship (parent-link or union) from the graph —
+     * e.g. correcting a mistaken or duplicate relative. Either edge can be
+     * removed by anyone who can already see both people it connects (the
+     * same visibility rule "add relative" already uses), not just the two
+     * people directly on the edge — so a family admin can fix a mistake
+     * anywhere in their visible tree, not only relationships touching them.
+     */
+    public function removeRelative(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'edge_type' => ['required', Rule::in(['parent', 'union'])],
+            'edge_id' => ['required', 'integer'],
+        ]);
+
+        $actor = Auth::user();
+        $root = $this->kin->personFor($actor);
+        $visible = $this->kin->connectedComponent($root, ['confirmed', 'pending']);
+
+        /** @var PersonParentLink|PersonUnion|null $edge */
+        $edge = $validated['edge_type'] === 'parent'
+            ? PersonParentLink::find($validated['edge_id'])
+            : PersonUnion::find($validated['edge_id']);
+
+        if (! $edge) {
+            return response()->json(['success' => false, 'message' => 'Relationship not found.'], 404);
+        }
+
+        $touches = $edge instanceof PersonParentLink
+            ? [$edge->parent_person_id, $edge->child_person_id]
+            : [$edge->person_low_id, $edge->person_high_id];
+
+        if (array_diff($touches, $visible) !== []) {
+            return response()->json(['success' => false, 'message' => 'You cannot manage this relationship.'], 403);
+        }
+
+        // Let each side know their family connection was removed, unless they're the one removing it.
+        foreach (Person::whereIn('id', $touches)->whereNotNull('user_id')->get() as $person) {
+            if ((int) $person->user_id === (int) $actor->id) {
+                continue;
+            }
+            UserNotification::notifyUser(
+                $person->user_id,
+                'family_removed',
+                __(':name removed a family connection.', ['name' => $actor->full_name]),
+                ['actor_id' => $actor->id, 'icon' => 'bi-diagram-3', 'action_url' => route('me.family')],
+            );
+        }
+
+        $edge->delete();
+
+        return response()->json(['success' => true, 'message' => __('Relationship removed.')]);
+    }
+
+    /**
      * Register a real family dependent (User + UserRelationship) under an
      * account-holding focus, link it into the tree, and return success. This is
      * what makes "add a child" in the tree also appear on the Family page.
      */
-    private function registerChildDependent(Person $focus, array $v, User $actor): JsonResponse
+    private function registerChildDependent(Person $focus, Person $root, array $v, User $actor): JsonResponse
     {
         $guardian = User::find($focus->user_id);
         if (! $guardian) {
@@ -198,6 +299,17 @@ class FamilyTreeController extends Controller
         $edge = $this->kin->linkParent($focus, $childPerson, $actor);
         if ($edge->status !== 'confirmed') {
             $this->kin->confirm($edge, $actor); // a managed dependent needs no confirmation
+        }
+
+        // Same reasoning as the general child branch: record the actual other
+        // parent (e.g. which of the guardian's spouses is the mother) instead
+        // of leaving this child looking like they only descend from one side.
+        // Auto-confirmed like the primary edge above — the guardian already has
+        // full, unilateral authority over a dependent they manage, so requiring
+        // the other spouse to separately confirm "yes, also my child" here would
+        // just leave the half/full-sibling distinction wrong in the meantime.
+        if (! empty($v['other_parent_person_id'])) {
+            $this->linkSecondParent((int) $v['other_parent_person_id'], $root, $childPerson, $actor, autoConfirm: true);
         }
 
         return response()->json([
@@ -239,6 +351,25 @@ class FamilyTreeController extends Controller
             : in_array($personId, [$edge->person_low_id, $edge->person_high_id], true);
     }
 
+    /**
+     * May $actor confirm/reject this pending PARENT-link on behalf of one of
+     * the two people on it, because they're that person's recognized
+     * guardian (UserRelationship)? A managed-dependent minor can never
+     * confirm anything themselves, so their real guardian stands in.
+     */
+    private function guardianCanRespondFor(PersonParentLink|PersonUnion $edge, User $actor): bool
+    {
+        if (! $edge instanceof PersonParentLink) {
+            return false;
+        }
+
+        $userIds = Person::whereIn('id', [$edge->parent_person_id, $edge->child_person_id])
+            ->whereNotNull('user_id')
+            ->pluck('user_id');
+
+        return UserRelationship::where('guardian_user_id', $actor->id)->whereIn('dependent_user_id', $userIds)->exists();
+    }
+
     /** Add the resolved avatar URL to a node payload (service stays HTTP-free). */
     private function decorateNode(array $node): array
     {
@@ -253,17 +384,24 @@ class FamilyTreeController extends Controller
     }
 
     /**
-     * A pending edge is answerable by the viewer when it touches their own node
-     * and they are not the one who created it. Strips the internal created_by.
+     * A pending edge is answerable by the viewer when it touches their own
+     * node, OR (for a parent-link) they're the recognized guardian of one of
+     * the two people on it — a managed-dependent minor can never confirm
+     * anything themselves, so their real guardian stands in. Never answerable
+     * by whoever created the request. Strips the internal created_by.
      */
-    private function decorateEdge(array $edge, int $rootPersonId, int $viewerUserId): array
+    private function decorateEdge(array $edge, int $rootPersonId, int $viewerUserId, $personUserIds, $guardianOfUserIds): array
     {
         $endpoints = $edge['type'] === 'parent'
             ? [$edge['p'], $edge['c']]
             : [$edge['a'], $edge['b']];
 
+        $touchesRoot = in_array($rootPersonId, $endpoints, true);
+        $guardianCanRespond = $edge['type'] === 'parent'
+            && collect($endpoints)->map(fn ($id) => $personUserIds[$id] ?? null)->filter()->intersect($guardianOfUserIds)->isNotEmpty();
+
         $edge['can_respond'] = $edge['status'] === 'pending'
-            && in_array($rootPersonId, $endpoints, true)
+            && ($touchesRoot || $guardianCanRespond)
             && $edge['created_by'] !== $viewerUserId;
 
         unset($edge['created_by']);
@@ -271,32 +409,4 @@ class FamilyTreeController extends Controller
         return $edge;
     }
 
-    private function notifyCounterpartOfRequest(PersonParentLink|PersonUnion $edge, $actor, string $type): void
-    {
-        if ($edge->status !== 'pending') {
-            return; // auto-confirmed (account-less counterpart) — nobody to ask
-        }
-
-        // Find the other person's account, if any.
-        $otherPersonId = $edge instanceof PersonParentLink
-            ? ($edge->parent_person_id === $this->kin->personFor($actor)->id ? $edge->child_person_id : $edge->parent_person_id)
-            : $edge->partnerIdOf($this->kin->personFor($actor)->id);
-
-        $other = Person::with('user')->find($otherPersonId);
-        if (! $other?->user_id) {
-            return;
-        }
-
-        UserNotification::notifyUser(
-            $other->user_id,
-            'family_request',
-            __(':name added you as family (:rel).', ['name' => $actor->full_name, 'rel' => __($type)]),
-            [
-                'actor_id' => $actor->id,
-                'icon' => 'bi-diagram-3',
-                'body' => __('Open your family tree to confirm.'),
-                'action_url' => route('me.family'),
-            ],
-        );
-    }
 }

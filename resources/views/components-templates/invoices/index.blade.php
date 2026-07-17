@@ -4,7 +4,7 @@
 @php
     $hasOutstanding = $summary['outstanding'] > 0;
 @endphp
-<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6" x-data="billsPage()">
+<div class="px-4 sm:px-6 lg:px-8 py-6" x-data="billsPage()">
 
     {{-- ── Header ── --}}
     <div class="flex items-center justify-between gap-4 mb-6">

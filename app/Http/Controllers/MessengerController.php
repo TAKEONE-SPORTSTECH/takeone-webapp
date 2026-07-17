@@ -780,6 +780,12 @@ class MessengerController extends Controller
             'attachment' => $attachment,
             'is_latest' => $this->isLatest($conversation, $message),
             'created_at_human' => 'just now',
+            // Raw UTC instant — the client formats this in the VIEWER's own
+            // timezone. Never trust a server-formatted wall-clock string here;
+            // config('app.timezone') is UTC, which isn't any real user's
+            // timezone, so a pre-formatted string was silently wrong for
+            // everyone (e.g. always 3 hours behind for a Bahrain-based user).
+            'created_at' => $message->created_at->toIso8601String(),
             'time' => $message->created_at->format('g:i A'),
         ];
 

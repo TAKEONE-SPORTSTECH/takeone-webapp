@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Models\ClubMemberSubscription;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -10,7 +11,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Title;
 
 #[Title('Search people')]
-#[Description('Platform-wide search for discoverable members by name, email or phone. Returns only SAFE public fields (name, slug, uuid) of members who have not opted out of discovery — never health, billing, contacts or family data.')]
+#[Description('Search for discoverable members who share a club-owner-confirmed membership with the acting user (never platform-wide — mirrors the web "Find People" scoping). Returns only SAFE public fields (name, slug, uuid) of members who have not opted out of discovery — never health, billing, contacts or family data.')]
 class SearchPeopleTool extends BaseTool
 {
     public function schema(JsonSchema $schema): array
@@ -37,10 +38,19 @@ class SearchPeopleTool extends BaseTool
             return Response::error('Search query must be at least 2 characters.');
         }
 
+        // Club-scoped, same as the web feature: until a club actually confirms the
+        // acting user's own membership, there is no club-mate pool to search.
+        $clubMateIds = ClubMemberSubscription::confirmedClubMateIds($user->id);
+
+        if ($clubMateIds->isEmpty()) {
+            return Response::json(['query' => $q, 'count' => 0, 'people' => []]);
+        }
+
         $limit = $this->pageSize($request->get('limit'));
 
         $people = User::query()
             ->where('is_discoverable', true)
+            ->whereIn('id', $clubMateIds)
             ->where('id', '!=', $user->id)
             ->where(function ($sub) use ($q) {
                 $sub->where('full_name', 'like', "%{$q}%")

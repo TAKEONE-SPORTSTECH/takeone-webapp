@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 py-4">
+<div class="px-4 py-4">
     <div class="flex justify-center">
         <div class="w-full md:w-2/3">
             <div class="card shadow-sm">

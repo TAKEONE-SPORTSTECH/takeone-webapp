@@ -37,7 +37,7 @@ return [
 
     // Tabs
     'tab_overview' => 'Info',
-    'tab_health' => 'Health',
+    'tab_health' => 'Physique',
     'tab_goals' => 'Goals',
     'tab_tournaments' => 'Tournaments',
     'tab_clubs' => 'Clubs',
@@ -103,6 +103,32 @@ return [
     'goals_done' => 'Done',
     'goals_success' => 'Success',
     'no_goals' => 'No goals set.',
+    'add_goal' => 'Add goal',
+    'goal_title' => 'Goal',
+    'goal_title_placeholder' => 'e.g. Bench press 80kg',
+    'goal_description' => 'Description',
+    'goal_description_placeholder' => 'Optional details',
+    'goal_target_value' => 'Target',
+    'goal_unit' => 'Unit',
+    'goal_unit_placeholder' => 'kg, min, reps…',
+    'goal_target_date' => 'Achieve by',
+    'goal_before_photo' => 'Before photo',
+    'goal_before_photo_hint' => 'Tap to add a "before" photo',
+    'goal_after_photo' => 'After photo',
+    'goal_after_photo_hint' => 'Tap to add an "after" photo',
+    'create_goal' => 'Create goal',
+    'goal_created' => 'Goal created.',
+    'update_progress' => 'Update progress',
+    'mark_as_achieved' => 'Mark as achieved',
+    'mark_as_achieved_hint' => 'Attach an "after" photo to close this goal.',
+    'goal_updated' => 'Goal updated.',
+    'goal_achieved' => 'Achieved',
+    'days_to_achieve' => 'days to achieve',
+    'before' => 'Before',
+    'after' => 'After',
+    'pick_a_date' => 'Pick a date',
+    'clear' => 'Clear',
+    'today' => 'Today',
 
     // Tournaments
     'no_tournaments' => 'No tournaments yet.',
@@ -127,6 +153,11 @@ return [
     'completed' => 'Completed',
     'no_shows' => 'No-shows',
     'total_sessions' => 'Total sessions',
+    'class_schedule' => 'Class schedule',
+    'attended' => 'Attended',
+    'missed' => 'Missed',
+    'upcoming' => 'Upcoming',
+    'no_schedule_sessions' => 'No scheduled classes for this enrollment yet.',
 
     // Billing
     'invoice' => 'Invoice',
@@ -207,6 +238,40 @@ return [
     'js_could_not_add' => 'Could not add member.',
     'js_went_wrong' => 'Something went wrong. Please try again.',
 
+    // Add-member chooser (New / Search Existing)
+    'add_member_chooser_subtitle' => 'How would you like to add them?',
+    'add_new_title' => 'Add New Person',
+    'add_new_desc' => 'Register someone who doesn\'t have an account yet.',
+    'search_existing_title' => 'Search Existing Member',
+    'search_existing_desc' => 'Find and link someone who already has an account.',
+
+    // Search-existing sheet/modal
+    'search_existing_sheet_subtitle' => 'Find them by name, phone, email, or their guardian.',
+    'search_existing_placeholder' => 'Search by name, phone, or email…',
+    'searching' => 'Searching…',
+    'no_results' => 'No matches found.',
+    'change' => 'Change',
+    'link_notice' => 'They\'ll need to confirm this connection before it appears on their side.',
+    'link_as_family' => 'Link as Family',
+    'linking' => 'Linking…',
+
+    // Phone auto-suggest (inside the manual "new member" form)
+    'suggest_existing_prefix' => 'Looks like this is',
+    'suggest_existing_cta' => 'Tap to link them instead of creating a duplicate',
+
+    // Search/lookup "matched via" labels
+    'matched_via_phone' => 'Same phone number',
+    'matched_via_contact' => 'Matched by phone/email',
+    'matched_via_name' => 'Matched by name',
+    'matched_via_guardian' => 'Guardian: :name',
+
+    // Link-existing outcomes
+    'cannot_link_self' => 'You can\'t link yourself as family.',
+    'already_linked' => 'This person is already part of your family.',
+    'link_request_sent' => 'Request sent — it appears once they confirm.',
+    'link_added' => 'Linked to your family.',
+    'manage_relationships' => 'Manage relationships',
+
     // ===== Super-admin password controls =====
     'account_security' => 'Account Security',
     'super_admin_only' => 'Super-admin only',
@@ -245,6 +310,7 @@ return [
     'templates_member_show_add_health_update' => 'Add Health Update',
     'templates_member_show_add_tournament_participation' => 'Add Tournament Participation',
     'templates_member_show_edit_info' => 'Edit Info',
+    'templates_member_show_edit_photo' => 'Edit photo',
     'templates_member_show_set_a_goal' => 'Set a Goal',
     'templates_member_show_reset_password' => 'Reset Password',
     'templates_member_show_generate_password' => 'Generate Password',

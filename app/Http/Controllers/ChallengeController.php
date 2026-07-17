@@ -21,14 +21,16 @@ class ChallengeController extends Controller
      |  Hub
      * =================================================================== */
 
-    public function index(): View
+    public function index(Request $request): View
     {
         $me = Auth::user();
 
         $challenges = $this->myChallengeViews($me->id);
         $duels = $this->myDuelViews($me->id);
 
-        return view('personal.challenge', compact('challenges', 'duels'));
+        $isMobile = (bool) $request->attributes->get('is_mobile');
+
+        return view($isMobile ? 'personal.mobile.challenge' : 'personal.desktop.challenge', compact('challenges', 'duels'));
     }
 
     public function show(Challenge $challenge): View
@@ -40,7 +42,7 @@ class ChallengeController extends Controller
         return view('personal.challenge-show', ['c' => $c]);
     }
 
-    public function duel(Duel $duel): View
+    public function duel(Duel $duel, Request $request): View
     {
         $me = Auth::user();
         // Participants and the duel's witnesses may view it.
@@ -49,7 +51,9 @@ class ChallengeController extends Controller
         $duel->load(['challenger', 'opponent', 'event', 'media.user', 'witnesses.user']);
         $d = $this->duelView($duel, $me->id);
 
-        return view('personal.duel-show', ['d' => $d]);
+        $isMobile = (bool) $request->attributes->get('is_mobile');
+
+        return view($isMobile ? 'personal.mobile.duel-show' : 'personal.desktop.duel-show', ['d' => $d]);
     }
 
     public function create(): View
@@ -116,7 +120,7 @@ class ChallengeController extends Controller
         return view('personal.challenge-create', compact('opponents', 'athletes', 'myAvatar', 'facilities', 'events'));
     }
 
-    public function history(): View
+    public function history(Request $request): View
     {
         $me = Auth::user();
 
@@ -126,7 +130,9 @@ class ChallengeController extends Controller
         $solo = collect($this->myChallengeViews($me->id))
             ->where('status', 'completed')->values()->all();
 
-        return view('personal.challenge-history', compact('duels', 'solo'));
+        $isMobile = (bool) $request->attributes->get('is_mobile');
+
+        return view($isMobile ? 'personal.mobile.challenge-history' : 'personal.desktop.challenge-history', compact('duels', 'solo'));
     }
 
     /* ===================================================================

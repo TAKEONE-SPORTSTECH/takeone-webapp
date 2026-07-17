@@ -53,7 +53,7 @@
     $bottomTabs = [
         ['route'=>'admin.club.dashboard',  'icon'=>'bi-speedometer2',    'label'=>__('admin.nav_home')],
         ['route'=>'admin.club.members',    'icon'=>'bi-people',          'label'=>__('admin.nav_members')],
-        ['route'=>'admin.club.financials', 'icon'=>'bi-currency-dollar', 'label'=>__('admin.nav_billing')],
+        ['route'=>'admin.club.financials', 'icon'=>'bi-bank',            'label'=>__('admin.nav_billing'), 'raised'=>true],
         ['route'=>'admin.club.packages',   'icon'=>'bi-box',             'label'=>__('admin.nav_packages')],
     ];
 
@@ -152,11 +152,21 @@
         <div class="grid grid-cols-5">
             @foreach($bottomTabs as $tab)
                 @php $active = $currentRoute === $tab['route']; @endphp
-                <a href="{{ route($tab['route'], $clubId) }}" data-shell-link data-route="{{ $tab['route'] }}"
-                   class="shell-tab flex flex-col items-center justify-center gap-0.5 py-2.5 {{ $active ? 'is-active' : '' }}">
-                    <i class="bi {{ $tab['icon'] }} text-lg"></i>
-                    <span class="text-[10px] font-medium">{{ $tab['label'] }}</span>
-                </a>
+                @if($tab['raised'] ?? false)
+                    <a href="{{ route($tab['route'], $clubId) }}" data-shell-link data-route="{{ $tab['route'] }}"
+                       class="shell-tab flex flex-col items-center justify-end gap-1 pb-2">
+                        <span class="relative -mt-7 w-16 h-16 rounded-full grid place-items-center border-4 border-white bg-primary text-white transition-transform active:scale-95">
+                            <i class="bi {{ $tab['icon'] }} text-2xl"></i>
+                        </span>
+                        <span class="text-[10px] font-semibold {{ $active ? 'text-primary' : 'text-muted-foreground' }}">{{ $tab['label'] }}</span>
+                    </a>
+                @else
+                    <a href="{{ route($tab['route'], $clubId) }}" data-shell-link data-route="{{ $tab['route'] }}"
+                       class="shell-tab flex flex-col items-center justify-center gap-0.5 py-2.5 {{ $active ? 'is-active' : '' }}">
+                        <i class="bi {{ $tab['icon'] }} text-lg"></i>
+                        <span class="text-[10px] font-medium">{{ $tab['label'] }}</span>
+                    </a>
+                @endif
             @endforeach
             @php $shopActive = $currentRoute === 'admin.club.shop'; @endphp
             <a href="{{ route('admin.club.shop', $clubId) }}" data-shell-link data-route="admin.club.shop"

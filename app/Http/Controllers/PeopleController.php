@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ClubAchievement;
+use App\Models\ClubMemberSubscription;
 use App\Models\Duel;
 use App\Models\User;
 use App\Services\PeopleRecommendationService;
@@ -21,13 +22,18 @@ class PeopleController extends Controller
     /** The Find-People search page with a "Suggested for you" default state. */
     public function index(Request $request, PeopleRecommendationService $recommender)
     {
-        $suggestions = $recommender->suggest(Auth::user());
+        $me = Auth::user();
+        $hasConfirmedClub = $me->hasConfirmedClubMembership();
+
+        // Discovery is club-scoped: until a club actually confirms the member,
+        // there is no club-mate pool to suggest from — show the join CTA instead.
+        $suggestions = $hasConfirmedClub ? $recommender->suggest($me) : collect();
 
         $isMobile = (bool) $request->attributes->get('is_mobile');
 
         // The mobile shell labels its header from $shellTitle for routes that
         // aren't in its own nav list.
-        return view($isMobile ? 'people.mobile.index' : 'people.desktop.index', compact('suggestions'))
+        return view($isMobile ? 'people.mobile.index' : 'people.desktop.index', compact('suggestions', 'hasConfirmedClub'))
             ->with('shellTitle', __('personal.find_people'));
     }
 
@@ -36,6 +42,11 @@ class PeopleController extends Controller
     {
         $me = Auth::user();
         $q = trim((string) $request->query('q', ''));
+
+        // No confirmed club membership yet → no club-mate pool to search.
+        if (! $me->hasConfirmedClubMembership()) {
+            return response()->json(['success' => true, 'query' => $q, 'people' => []]);
+        }
 
         // Blocks are mutual: hide anyone the viewer blocked or who blocked them.
         $blockedIds = \App\Models\UserBlock::idsBlockedEitherWayWith($me->id);
@@ -98,6 +109,25 @@ class PeopleController extends Controller
         $activeAffil = $affiliations->whereNull('end_date')->values();
         $pastAffil = $affiliations->whereNotNull('end_date')->values();
 
+        // Real club memberships (memberships table) aren't always mirrored into a
+        // manually-entered ClubAffiliation record — merge in any active membership
+        // that doesn't already have one, so a real member is never shown as clubless.
+        $affiliatedTenantIds = $affiliations->pluck('tenant_id')->filter()->map(fn ($id) => (int) $id)->all();
+        $unaffiliatedMemberships = $person->memberClubs()
+            ->wherePivot('status', 'active')
+            ->get(['tenants.id', 'tenants.club_name', 'tenants.logo', 'tenants.slug', 'tenants.country'])
+            ->reject(fn ($tenant) => in_array((int) $tenant->id, $affiliatedTenantIds, true))
+            ->map(fn ($tenant) => (object) [
+                'tenant_id' => $tenant->id,
+                'tenant' => $tenant,
+                'club_name' => $tenant->club_name,
+                'logo' => $tenant->logo,
+                'start_date' => $tenant->pivot->created_at,
+                'end_date' => null,
+            ])
+            ->values();
+        $activeAffil = $activeAffil->concat($unaffiliatedMemberships)->values();
+
         // Medals earned via the person's clubs' achievements (safe, public).
         $awards = $clubIds->isEmpty() ? collect() : ClubAchievement::whereIn('tenant_id', $clubIds)
             ->where('status', 'active')
@@ -119,6 +149,21 @@ class PeopleController extends Controller
         $duelWins = Duel::where('status', 'completed')->where('winner_id', $person->id)->count();
         $winRate = $duelsTotal > 0 ? round(($duelWins / $duelsTotal) * 100) : 0;
 
+        $duels = Duel::where('status', 'completed')
+            ->where(fn ($q) => $q->where('challenger_id', $person->id)->orWhere('opponent_id', $person->id))
+            ->with(['challenger:id,full_name,profile_picture', 'opponent:id,full_name,profile_picture'])
+            ->orderByDesc('completed_at')
+            ->get()
+            ->map(function ($duel) use ($person) {
+                $isChallenger = (int) $duel->challenger_id === (int) $person->id;
+                $rival = $isChallenger ? $duel->opponent : $duel->challenger;
+                $duel->rival_name = $rival->full_name ?? ($duel->opponent_name ?: __('shared.unknown'));
+                $duel->rival_picture = $rival->profile_picture ?? null;
+                $duel->result = $duel->winner_id === null ? 'draw' : ((int) $duel->winner_id === (int) $person->id ? 'win' : 'loss');
+
+                return $duel;
+            });
+
         $skills = $affiliations->flatMap(fn ($a) => $a->skillAcquisitions->pluck('skill_name'))
             ->filter()->unique()->take(12)->values();
 
@@ -134,6 +179,7 @@ class PeopleController extends Controller
             'winRate' => $winRate,
             'duelsTotal' => $duelsTotal,
             'duelWins' => $duelWins,
+            'duels' => $duels,
         ];
 
         $isMobile = (bool) $request->attributes->get('is_mobile');
@@ -141,19 +187,9 @@ class PeopleController extends Controller
         return view($isMobile ? 'people.mobile.show' : 'people.desktop.show', $data);
     }
 
-    /** IDs of every user who shares at least one active club membership with the given user. */
+    /** IDs of every user sharing a club-owner-confirmed membership with the given user. */
     private function clubMateIds(User $user): \Illuminate\Support\Collection
     {
-        $clubIds = $user->memberClubs()->wherePivot('status', 'active')->pluck('tenants.id');
-
-        if ($clubIds->isEmpty()) {
-            return collect();
-        }
-
-        return \Illuminate\Support\Facades\DB::table('memberships')
-            ->whereIn('tenant_id', $clubIds)
-            ->where('status', 'active')
-            ->distinct()
-            ->pluck('user_id');
+        return ClubMemberSubscription::confirmedClubMateIds($user->id);
     }
 }

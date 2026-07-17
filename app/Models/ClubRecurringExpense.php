@@ -14,6 +14,7 @@ class ClubRecurringExpense extends Model
 
     protected $fillable = [
         'tenant_id',
+        'instructor_id',
         'description',
         'amount',
         'category',
@@ -33,6 +34,15 @@ class ClubRecurringExpense extends Model
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    /**
+     * The staff member this recurring wage rule pays, if this row is a staff wage
+     * (as opposed to a generic recurring expense like rent).
+     */
+    public function instructor(): BelongsTo
+    {
+        return $this->belongsTo(ClubInstructor::class, 'instructor_id');
     }
 
     /**

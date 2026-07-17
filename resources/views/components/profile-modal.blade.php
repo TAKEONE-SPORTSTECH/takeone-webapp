@@ -85,7 +85,7 @@
 <!-- Member Profile Modal ({{ $mode }}) -->
 <div x-data="{{ $alpineComponent }}()" x-init="init()" x-show="open" x-cloak
      class="fixed inset-0 z-50 overflow-y-auto"
-     x-on:{{ $eventName }}.window="open = true"
+     x-on:{{ $eventName }}.window="open = true; if ($event.detail && $event.detail.tab) activeTab = $event.detail.tab"
      @keydown.escape.window="closeModal()">
 
     <!-- Backdrop -->

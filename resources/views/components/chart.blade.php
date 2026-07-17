@@ -90,7 +90,20 @@
 <script>
 window.TakeoneChart = {
     _queue: [],
+    _configs: {},
     render(cfg) {
+        // Remember every config so charts can be re-drawn after an in-place
+        // (admin SPA) navigation swaps the <canvas> for a fresh, empty element.
+        // The per-chart render() call script is deduped by the shell navigator
+        // (runs once per session), so re-drawing must be driven from here.
+        if (cfg && cfg.canvasId) this._configs[cfg.canvasId] = cfg;
+        if (!this._navWired) {
+            this._navWired = true;
+            window.addEventListener('shell:navigated', () => {
+                Object.values(this._configs).forEach(c => this.render(c));
+            });
+        }
+
         // Defer until Chart.js + DOM are ready.
         if (typeof Chart === 'undefined' || document.readyState === 'loading') {
             this._queue.push(cfg);

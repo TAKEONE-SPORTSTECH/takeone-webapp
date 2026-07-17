@@ -95,6 +95,37 @@
             </div>
         </div>
     </template>
+
+    {{-- Manage-relationships bottom sheet (teleported so the shell transform can't clip it) --}}
+    <div x-data="ftManageData({ removeUrl: '{{ route('me.family.relative.remove') }}', csrf: '{{ csrf_token() }}' })"
+         @ft:manage.window="openFor($event.detail)">
+    <template x-teleport="body">
+        <div x-show="open" x-cloak class="fixed inset-0 z-[60]" @keydown.escape.window="close()">
+            <div x-show="open" x-transition.opacity class="absolute inset-0 bg-black/40" @click="close()"></div>
+
+            <div x-show="open"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                 class="absolute inset-x-0 bottom-0 max-h-[92vh] flex flex-col bg-white rounded-t-3xl shadow-2xl">
+
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 border-b border-gray-100">
+                    <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
+                    <h3 class="text-lg font-bold text-gray-900">{{ __('Manage relationships') }}</h3>
+                    <p class="text-sm text-muted-foreground">
+                        <span class="font-semibold text-primary" x-text="personName"></span>
+                    </p>
+                </div>
+
+                <div class="flex-1 overflow-y-auto px-5 py-4"
+                     style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
+                    @include('family.partials.manage-relative-fields')
+                </div>
+            </div>
+        </div>
+    </template>
+    </div>
 </div>
 
 @include('family.partials.tree-runtime')

@@ -3,11 +3,22 @@
 @section('title', __('personal.find_people'))
 
 @section('content')
-<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6" x-data="peopleSearch(@js($suggestions))">
+<div class="px-4 sm:px-6 lg:px-8 py-6" x-data="peopleSearch(@js($suggestions))">
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2"><i class="bi bi-people text-primary"></i>{{ __('personal.find_people') }}</h1>
         <p class="text-sm text-muted-foreground mt-1">{{ __('personal.search_people_hint') }}</p>
     </div>
+
+    @unless($hasConfirmedClub)
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 px-6 py-16 text-center">
+            <i class="bi bi-people text-4xl text-gray-300"></i>
+            <p class="font-semibold text-gray-900 mt-4">{{ __('personal.people_no_club_title') }}</p>
+            <p class="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">{{ __('personal.people_no_club_desc') }}</p>
+            <a href="{{ route('clubs.explore') }}" class="inline-flex items-center gap-2 mt-5 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium">
+                <i class="bi bi-plus-lg"></i>{{ __('personal.people_register_cta') }}
+            </a>
+        </div>
+    @else
 
     <div class="relative mb-6">
         <i class="bi bi-search absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
@@ -100,6 +111,7 @@
             </template>
         </div>
     </template>
+    @endunless
 </div>
 @endsection
 

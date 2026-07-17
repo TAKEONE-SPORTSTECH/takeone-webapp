@@ -7,7 +7,9 @@ use App\Http\Requests\Admin\StoreInstructorRequest;
 use App\Http\Requests\Admin\UpdateInstructorRequest;
 use App\Http\Requests\UploadImageRequest;
 use App\Models\ClubInstructor;
+use App\Models\ClubRecurringExpense;
 use App\Models\ClubTransaction;
+use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Traits\HandlesClubAuthorization;
@@ -25,6 +27,7 @@ class ClubInstructorController extends Controller
     {
         $this->authorizeClub($club);
         $instructors = ClubInstructor::where('tenant_id', $club->id)
+            ->where('is_active', true)
             ->orderBy('sort_order')->orderBy('id')
             ->with('user')->get();
 
@@ -33,8 +36,15 @@ class ClubInstructorController extends Controller
         $slotCountByInstructor = $packageSlots->whereNotNull('instructor_id')
             ->groupBy('instructor_id')->map->count();
 
+        // Assignable roles for the "Manage Access" action in the 3-dot menu — every
+        // role a club-admin may assign (excludes the platform super-admin role, the
+        // implicit "member" default, and per-member custom-permission pseudo-roles).
+        $availableRoles = Role::whereNotIn('slug', ['super-admin', 'member'])
+            ->where('slug', 'not like', 'member-%')
+            ->orderBy('id')->get(['id', 'slug', 'name']);
+
         return view(\App\Support\ClubView::pick('instructors'),
-            compact('club', 'instructors', 'packageSlots', 'slotCountByInstructor'));
+            compact('club', 'instructors', 'packageSlots', 'slotCountByInstructor', 'availableRoles'));
     }
 
     /**
@@ -117,13 +127,14 @@ class ClubInstructorController extends Controller
             'tenant_id' => $clubId,
             'user_id' => $userId,
             'role' => $role,
+            'staff_type' => $request->input('staff_type', 'instructor'),
             'sort_order' => (int) ClubInstructor::where('tenant_id', $clubId)->max('sort_order') + 1,
         ] + $this->compensationData($request));
 
         $this->applyTranslations($instructor, $request);
 
         $this->assignPackageSlots($instructor, $request, $clubId);
-        $this->syncInstructorWageExpense($instructor);
+        $this->syncInstructorRecurringExpense($instructor);
 
         return back()->with('success', 'Instructor added successfully.');
     }
@@ -136,10 +147,13 @@ class ClubInstructorController extends Controller
             abort(403);
         }
 
-        $instructor->update(['role' => $request->role] + $this->compensationData($request));
+        $instructor->update([
+            'role' => $request->role,
+            'staff_type' => $request->input('staff_type', $instructor->staff_type ?: 'instructor'),
+        ] + $this->compensationData($request, $instructor));
         $this->applyTranslations($instructor, $request);
         $this->assignPackageSlots($instructor, $request, $club->id);
-        $this->syncInstructorWageExpense($instructor);
+        $this->syncInstructorRecurringExpense($instructor);
 
         try {
             $skills = $request->skills ? json_decode($request->skills, true, 512, JSON_THROW_ON_ERROR) : null;
@@ -168,6 +182,13 @@ class ClubInstructorController extends Controller
         return back()->with('success', 'Instructor updated successfully.');
     }
 
+    /**
+     * Remove a staff member from the active roster. This is a soft-terminate, not a
+     * delete: any money still owed for the unpaid stretch since their last wage
+     * payment is posted as a one-time settlement expense, their recurring wage rule
+     * is paused, and the record itself is kept (is_active = false) so wage history
+     * and the settlement transaction stay linked and queryable.
+     */
     public function destroyInstructor(Tenant $club, ClubInstructor $instructor)
     {
         $this->authorizeClub($club);
@@ -176,9 +197,55 @@ class ClubInstructorController extends Controller
             abort(403);
         }
 
-        $instructor->delete();
+        $settlement = $this->calculateSettlement($instructor);
 
-        return response()->json(['success' => true, 'message' => 'Instructor removed from club successfully.']);
+        if ($settlement['amount'] > 0) {
+            $name = $instructor->user->full_name ?? $instructor->user->name ?? 'Staff member';
+
+            ClubTransaction::create([
+                'tenant_id' => $club->id,
+                'user_id' => $instructor->user_id,
+                'instructor_id' => $instructor->id,
+                'type' => 'expense',
+                'category' => 'salaries',
+                'amount' => $settlement['amount'],
+                'payment_method' => $instructor->recurringExpense?->payment_method ?? 'bank_transfer',
+                'description' => "Final settlement — {$name} ({$settlement['days']} days)",
+                'transaction_date' => now()->toDateString(),
+            ]);
+        }
+
+        ClubRecurringExpense::where('tenant_id', $club->id)
+            ->where('instructor_id', $instructor->id)
+            ->update(['is_active' => false]);
+
+        $instructor->update(['is_active' => false]);
+
+        $message = $settlement['amount'] > 0
+            ? 'Staff member removed. Final settlement of '.$club->currency.' '.number_format($settlement['amount'], 2).' recorded.'
+            : 'Staff member removed from club successfully.';
+
+        return response()->json(['success' => true, 'message' => $message, 'settlement_amount' => $settlement['amount']]);
+    }
+
+    /**
+     * Preview (no writes) the settlement that terminating this staff member would post,
+     * so the confirm dialog can show the admin the amount before they commit.
+     */
+    public function terminationPreview(Tenant $club, ClubInstructor $instructor)
+    {
+        $this->authorizeClub($club);
+        abort_if($instructor->tenant_id !== $club->id, 403);
+
+        $settlement = $this->calculateSettlement($instructor);
+
+        return response()->json([
+            'success' => true,
+            'settlement_amount' => $settlement['amount'],
+            'days' => $settlement['days'],
+            'daily_rate' => $settlement['daily_rate'],
+            'currency' => $club->currency,
+        ]);
     }
 
     public function uploadInstructorPhoto(UploadImageRequest $request, Tenant $club, $instructorId)
@@ -217,16 +284,29 @@ class ClubInstructorController extends Controller
     }
 
     /**
-     * Normalise the volunteer/paid compensation fields from the request.
+     * Normalise the volunteer/paid compensation fields from the request. `paid_since`
+     * marks when this staff member actually started being paid — NOT their hire date —
+     * so a volunteer converted to paid only owes settlement from that conversion point,
+     * not retroactively from whenever they originally joined. Pass the pre-update
+     * $instructor on edits so an already-paid staff member keeps their existing
+     * paid_since instead of it being reset on every save.
      */
-    private function compensationData(Request $request): array
+    private function compensationData(Request $request, ?ClubInstructor $instructor = null): array
     {
         $paid = $request->input('compensation_type') === ClubInstructor::COMPENSATION_PAID;
+        $wasPaid = $instructor?->compensation_type === ClubInstructor::COMPENSATION_PAID;
+
+        $paidSince = match (true) {
+            ! $paid => null,
+            $wasPaid && $instructor->paid_since => $instructor->paid_since,
+            default => now(),
+        };
 
         return [
             'compensation_type' => $paid ? ClubInstructor::COMPENSATION_PAID : ClubInstructor::COMPENSATION_VOLUNTEER,
             'wage_amount' => $paid ? $request->input('wage_amount') : null,
             'wage_period' => $paid ? $request->input('wage_period') : null,
+            'paid_since' => $paidSince,
         ];
     }
 
@@ -286,6 +366,19 @@ class ClubInstructorController extends Controller
      */
     private function assignPackageSlots(ClubInstructor $instructor, Request $request, int $clubId): void
     {
+        // Only instructors teach package classes — secretaries/operators/cleaners/
+        // other staff must never hold a slot. Clear any stale assignment (e.g. a
+        // former instructor converted to another staff type) and ignore whatever
+        // was submitted, regardless of UI state.
+        if (($instructor->staff_type ?: 'instructor') !== 'instructor') {
+            DB::table('club_package_activities')
+                ->where('instructor_id', $instructor->id)
+                ->update(['instructor_id' => null, 'updated_at' => now()]);
+            $instructor->activities()->detach();
+
+            return;
+        }
+
         if (! $request->has('package_slots')) {
             return;
         }
@@ -317,38 +410,71 @@ class ClubInstructorController extends Controller
     }
 
     /**
-     * Reflect a paid instructor's wage into the club's Financials as a monthly expense.
-     * Keyed per instructor + month so re-saving updates rather than duplicates. Only a
-     * monthly wage maps to a concrete recurring figure; session/hourly rates depend on
-     * usage and are not auto-posted here. Future months would be created by a scheduled job.
+     * Reflect a paid+monthly staff member's wage as a recurring expense rule, so the
+     * existing daily `expenses:process-recurring` cron auto-posts it to the ledger
+     * every month — no separate payroll scheduling needed. Keyed per instructor so
+     * re-saving updates the same rule rather than duplicating it. Session/hourly
+     * rates and volunteers have no fixed recurring figure; any existing rule for
+     * them is paused (not deleted — keeps last_run_at history for settlement math).
      */
-    private function syncInstructorWageExpense(ClubInstructor $instructor): void
+    private function syncInstructorRecurringExpense(ClubInstructor $instructor): void
     {
-        $month = now()->format('Y-m');
-        $ref = "wage:instructor:{$instructor->id}:{$month}";
         $monthly = $instructor->monthlyWageCost();
 
         if ($monthly === null) {
-            ClubTransaction::where('tenant_id', $instructor->tenant_id)
-                ->where('reference_number', $ref)
-                ->delete();
+            ClubRecurringExpense::where('tenant_id', $instructor->tenant_id)
+                ->where('instructor_id', $instructor->id)
+                ->update(['is_active' => false]);
 
             return;
         }
 
-        $name = $instructor->user->full_name ?? $instructor->user->name ?? 'Instructor';
+        $name = $instructor->user->full_name ?? $instructor->user->name ?? 'Staff member';
+        $existingDay = ClubRecurringExpense::where('tenant_id', $instructor->tenant_id)
+            ->where('instructor_id', $instructor->id)
+            ->value('day_of_month');
 
-        ClubTransaction::updateOrCreate(
-            ['tenant_id' => $instructor->tenant_id, 'reference_number' => $ref],
+        ClubRecurringExpense::updateOrCreate(
+            ['tenant_id' => $instructor->tenant_id, 'instructor_id' => $instructor->id],
             [
-                'user_id' => $instructor->user_id,
-                'type' => 'expense',
-                'category' => 'Instructor Wage',
+                'description' => ucfirst($instructor->staff_type ?: 'instructor').' wage — '.$name,
                 'amount' => $monthly,
-                'payment_method' => 'cash',
-                'description' => 'Monthly instructor wage — '.$name,
-                'transaction_date' => now()->startOfMonth()->toDateString(),
+                'category' => 'salaries',
+                'payment_method' => 'bank_transfer',
+                'day_of_month' => $existingDay ?? ($instructor->paid_since ?? $instructor->created_at)->day,
+                'is_active' => true,
             ]
         );
+    }
+
+    /**
+     * Pro-rated payout still owed to a paid+monthly staff member, for the stretch of
+     * time since their last posted wage payment (or since they started being paid,
+     * if never paid yet). Deliberately uses `paid_since`, NOT the hire date — a
+     * volunteer converted to paid should only be owed settlement from the point
+     * they actually started being paid, not retroactively for their entire
+     * volunteer tenure. Staff who aren't paid-monthly (volunteer, session/hourly)
+     * have nothing automatically owed since there's no fixed recurring figure to
+     * prorate.
+     *
+     * @return array{amount: float, days: int, daily_rate: float}
+     */
+    private function calculateSettlement(ClubInstructor $instructor): array
+    {
+        if ($instructor->monthlyWageCost() === null) {
+            return ['amount' => 0.0, 'days' => 0, 'daily_rate' => 0.0];
+        }
+
+        $recurring = $instructor->recurringExpense;
+        $periodStart = $recurring?->last_run_at
+            ? \Carbon\Carbon::parse($recurring->last_run_at)->addDay()->startOfDay()
+            : ($instructor->paid_since ?? $instructor->created_at)->copy()->startOfDay();
+
+        $today = now()->startOfDay();
+        $days = $periodStart->greaterThan($today) ? 0 : $periodStart->diffInDays($today) + 1;
+        $dailyRate = (float) $instructor->wage_amount / now()->daysInMonth;
+        $amount = round($dailyRate * $days, 2);
+
+        return ['amount' => $amount, 'days' => $days, 'daily_rate' => round($dailyRate, 2)];
     }
 }

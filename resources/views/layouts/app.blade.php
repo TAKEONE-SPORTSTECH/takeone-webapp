@@ -324,7 +324,6 @@
                               style="color: hsl(220 9% 46%)"
                               :style="{ opacity: fading ? 0 : 1 }"
                               x-text="hints[i]">{{ __('nav.layouts_app_search_placeholder') }}</span>
-                        <kbd class="cmd-kbd">⌘K</kbd>
                     </button>
                 </div>
                 @endauth
@@ -593,52 +592,85 @@
                                     <p class="text-sm font-semibold text-foreground">{{ Auth::user()->full_name }}</p>
                                     <p class="text-xs text-muted-foreground">{{ Auth::user()->email }}</p>
                                 </div>
+                                @php
+                                    $ownedBusiness = Auth::user()->ownedBusiness;
+                                    $businessApprovedDesktop = $ownedBusiness && $ownedBusiness->isApproved();
+                                @endphp
+                                {{-- Item set below is kept identical to the mobile account drawer
+                                     (layouts/personal-mobile.blade.php) — same routes, same order,
+                                     same grouping — so the account menu never drifts between views. --}}
                                 <div class="py-1">
-                                    <a class="profile-dropdown-item" href="{{ route('member.show', Auth::user()->uuid) }}">
-                                        <i class="bi bi-person me-2"></i>{{ __('nav.layouts_app_profile') }}
+                                    <a class="profile-dropdown-item" href="{{ route('me.app') }}">
+                                        <i class="bi bi-phone me-2"></i>{{ __('nav.get_app') }}
                                     </a>
-                                    <a class="profile-dropdown-item" href="{{ route('member.show', Auth::user()->uuid) }}#affiliations">
-                                        <i class="bi bi-diagram-3 me-2"></i>{{ __('nav.layouts_app_affiliations') }}
+                                </div>
+                                <div class="border-t border-border py-1">
+                                    <a class="profile-dropdown-item" href="{{ route('member.show', Auth::user()->uuid) }}#affiliations"
+                                       onclick="var t=document.getElementById('affiliations-tab'); if(t){t.click();}">
+                                        <i class="bi bi-diagram-3 me-2"></i>{{ __('nav.affiliations') }}
                                     </a>
-                                    <a class="profile-dropdown-item" href="{{ route('me.schedule') }}">
-                                        <i class="bi bi-calendar-event me-2"></i>{{ __('nav.layouts_app_sessions') }}
+                                    <a class="profile-dropdown-item" href="{{ route('member.show', Auth::user()->uuid) }}#goals"
+                                       onclick="var t=document.getElementById('goals-tab'); if(t){t.click();}">
+                                        <i class="bi bi-graph-up-arrow me-2"></i>{{ __('nav.my_progress') }}
                                     </a>
+                                </div>
+                                <div class="border-t border-border py-1">
                                     <a class="profile-dropdown-item" href="{{ route('members.index') }}">
-                                        <i class="bi bi-people me-2"></i>{{ __('nav.layouts_app_family') }}
+                                        <i class="bi bi-people me-2"></i>{{ __('nav.family') }}
+                                    </a>
+                                    <a class="profile-dropdown-item" href="{{ route('me.packages') }}">
+                                        <i class="bi bi-box me-2"></i>{{ __('nav.my_packages') }}
                                     </a>
                                     <a class="profile-dropdown-item" href="{{ route('bills.index') }}">
                                         <i class="bi bi-receipt me-2"></i>{{ __('nav.layouts_app_payments_subscriptions') }}
                                     </a>
-                                    @php
-                                        $ownedBusiness = Auth::user()->ownedBusiness;
-                                    @endphp
-                                    @if($ownedBusiness && $ownedBusiness->isApproved())
+                                </div>
+                                <div class="border-t border-border py-1">
+                                    <a class="profile-dropdown-item" href="{{ route('me.people') }}">
+                                        <i class="bi bi-people-fill me-2"></i>{{ __('personal.find_people') }}
+                                    </a>
+                                    @unless(Auth::user()->isExploreLocked())
+                                    <a class="profile-dropdown-item" href="{{ route('clubs.explore') }}">
+                                        <i class="bi bi-compass me-2"></i>{{ __('nav.explore_clubs') }}
+                                    </a>
+                                    @endunless
+                                    <button type="button" class="profile-dropdown-item w-full text-start" @click="open = false; window.dispatchEvent(new CustomEvent('qr-scan:open'))">
+                                        <i class="bi bi-qr-code-scan me-2"></i>{{ __('header.scan_qr') }}
+                                    </button>
+                                </div>
+                                <div class="border-t border-border py-1">
+                                    @if($businessApprovedDesktop)
                                     <a class="profile-dropdown-item" href="{{ route('business.dashboard') }}">
-                                        <i class="bi bi-buildings me-2"></i>{{ __('nav.layouts_app_manage_business') }}
+                                        <i class="bi bi-buildings me-2"></i>{{ __('nav.business_account') }}
                                     </a>
-                                    @endif
-                                    @if(!$ownedBusiness || !$ownedBusiness->isApproved())
+                                    @else
                                     <a class="profile-dropdown-item" href="{{ route('business.setup') }}">
-                                        <i class="bi bi-buildings me-2"></i>{{ $ownedBusiness ? __('nav.layouts_app_business_status', ['status' => $ownedBusiness->status]) : __('nav.layouts_app_create_business') }}
+                                        <i class="bi bi-buildings me-2"></i>{{ __('nav.business_account') }}
                                     </a>
                                     @endif
                                 </div>
-                                @if(Auth::user()->isSuperAdmin())
                                 <div class="border-t border-border py-1">
+                                    <a class="profile-dropdown-item" href="{{ route('me.settings') }}">
+                                        <i class="bi bi-gear me-2"></i>{{ __('nav.account_settings') }}
+                                    </a>
+                                    @if(Auth::user()->isSuperAdmin())
                                     <a class="profile-dropdown-item" href="{{ route('admin.platform.index') }}">
-                                        <i class="bi bi-shield-check me-2"></i>{{ __('nav.layouts_app_admin_panel') }}
+                                        <i class="bi bi-shield-check me-2"></i>{{ __('nav.admin_panel') }}
                                     </a>
-                                </div>
-                                @endif
-                                <div class="border-t border-border py-1">
-                                    <a class="profile-dropdown-item" href="{{ route('security.show') }}">
-                                        <i class="bi bi-shield-lock me-2"></i>{{ __('nav.layouts_app_security') }}
-                                    </a>
+                                    @endif
                                 </div>
                                 <div class="border-t border-border py-1">
+                                    @if(session()->has('impersonate.original_id'))
+                                    <form method="POST" action="{{ route('impersonate.leave') }}">
+                                        @csrf
+                                        <button type="submit" class="profile-dropdown-item w-full text-start !text-amber-700">
+                                            <i class="bi bi-incognito me-2"></i>{{ __('nav.exit_impersonation') }}
+                                        </button>
+                                    </form>
+                                    @endif
                                     <a class="profile-dropdown-item" href="{{ route('logout') }}"
                                        onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                                        <i class="bi bi-box-arrow-right me-2"></i>{{ __('nav.layouts_app_sign_out') }}
+                                        <i class="bi bi-box-arrow-right me-2"></i>{{ __('nav.sign_out') }}
                                     </a>
                                     <form id="logout-form" action="{{ route('logout') }}" method="POST" class="hidden">
                                         @csrf
@@ -836,8 +868,7 @@
                 </div>
                 @endif
 
-                <!-- Nav Links (mirrors the desktop profile menu) -->
-                @php $ownedBusinessMobile = Auth::user()->ownedBusiness; @endphp
+                <!-- Primary nav (duplicates the top navbar's icon buttons at narrow widths) -->
                 <nav class="space-y-1">
                     <a class="drawer-link" href="{{ route('clubs.explore') }}">
                         <i class="bi bi-compass text-lg w-5 text-center"></i>{{ __('nav.layouts_app_explore') }}
@@ -848,38 +879,64 @@
                             <span class="ms-auto min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center">{{ $chatUnread > 99 ? '99+' : $chatUnread }}</span>
                         @endif
                     </a>
-                    <a class="drawer-link" href="{{ route('member.show', Auth::user()->uuid) }}">
-                        <i class="bi bi-person text-lg w-5 text-center"></i>{{ __('nav.layouts_app_profile') }}
+                </nav>
+
+                {{-- Account menu — item set kept identical to the mobile account drawer
+                     (layouts/personal-mobile.blade.php) and the desktop profile dropdown
+                     above: same routes, same order, same grouping. --}}
+                @php
+                    $ownedBusinessMobile = Auth::user()->ownedBusiness;
+                    $businessApprovedMobileDrawer = $ownedBusinessMobile && $ownedBusinessMobile->isApproved();
+                @endphp
+                <nav class="space-y-1 mt-4 pt-4 border-t border-border">
+                    <a class="drawer-link" href="{{ route('me.app') }}">
+                        <i class="bi bi-phone text-lg w-5 text-center"></i>{{ __('nav.get_app') }}
                     </a>
-                    <a class="drawer-link" href="{{ route('member.show', Auth::user()->uuid) }}#affiliations">
-                        <i class="bi bi-diagram-3 text-lg w-5 text-center"></i>{{ __('nav.layouts_app_affiliations') }}
+                    <a class="drawer-link" href="{{ route('member.show', Auth::user()->uuid) }}#affiliations"
+                       onclick="var t=document.getElementById('affiliations-tab'); if(t){t.click();}">
+                        <i class="bi bi-diagram-3 text-lg w-5 text-center"></i>{{ __('nav.affiliations') }}
                     </a>
-                    <a class="drawer-link" href="{{ route('me.schedule') }}">
-                        <i class="bi bi-calendar-event text-lg w-5 text-center"></i>{{ __('nav.layouts_app_sessions') }}
+                    <a class="drawer-link" href="{{ route('member.show', Auth::user()->uuid) }}#goals"
+                       onclick="var t=document.getElementById('goals-tab'); if(t){t.click();}">
+                        <i class="bi bi-graph-up-arrow text-lg w-5 text-center"></i>{{ __('nav.my_progress') }}
                     </a>
                     <a class="drawer-link" href="{{ route('members.index') }}">
-                        <i class="bi bi-people text-lg w-5 text-center"></i>{{ __('nav.layouts_app_family') }}
+                        <i class="bi bi-people text-lg w-5 text-center"></i>{{ __('nav.family') }}
+                    </a>
+                    <a class="drawer-link" href="{{ route('me.packages') }}">
+                        <i class="bi bi-box text-lg w-5 text-center"></i>{{ __('nav.my_packages') }}
                     </a>
                     <a class="drawer-link" href="{{ route('bills.index') }}">
                         <i class="bi bi-receipt text-lg w-5 text-center"></i>{{ __('nav.layouts_app_payments_subscriptions') }}
                     </a>
-                    @if($ownedBusinessMobile && $ownedBusinessMobile->isApproved())
+                    <a class="drawer-link" href="{{ route('me.people') }}">
+                        <i class="bi bi-people-fill text-lg w-5 text-center"></i>{{ __('personal.find_people') }}
+                    </a>
+                    @unless(Auth::user()->isExploreLocked())
+                    <a class="drawer-link" href="{{ route('clubs.explore') }}">
+                        <i class="bi bi-compass text-lg w-5 text-center"></i>{{ __('nav.explore_clubs') }}
+                    </a>
+                    @endunless
+                    <button type="button" class="drawer-link w-full text-start" onclick="window.dispatchEvent(new CustomEvent('qr-scan:open'))">
+                        <i class="bi bi-qr-code-scan text-lg w-5 text-center"></i>{{ __('header.scan_qr') }}
+                    </button>
+                    @if($businessApprovedMobileDrawer)
                     <a class="drawer-link" href="{{ route('business.dashboard') }}">
-                        <i class="bi bi-buildings text-lg w-5 text-center"></i>{{ __('nav.layouts_app_manage_business') }}
+                        <i class="bi bi-buildings text-lg w-5 text-center"></i>{{ __('nav.business_account') }}
                     </a>
                     @else
                     <a class="drawer-link" href="{{ route('business.setup') }}">
-                        <i class="bi bi-buildings text-lg w-5 text-center"></i>{{ $ownedBusinessMobile ? __('nav.layouts_app_business_status', ['status' => $ownedBusinessMobile->status]) : __('nav.layouts_app_create_business') }}
+                        <i class="bi bi-buildings text-lg w-5 text-center"></i>{{ __('nav.business_account') }}
                     </a>
                     @endif
+                    <a class="drawer-link" href="{{ route('me.settings') }}">
+                        <i class="bi bi-gear text-lg w-5 text-center"></i>{{ __('nav.account_settings') }}
+                    </a>
                     @if(Auth::user()->isSuperAdmin())
                     <a class="drawer-link" href="{{ route('admin.platform.index') }}">
-                        <i class="bi bi-shield-check text-lg w-5 text-center"></i>{{ __('nav.layouts_app_admin_panel') }}
+                        <i class="bi bi-shield-check text-lg w-5 text-center"></i>{{ __('nav.admin_panel') }}
                     </a>
                     @endif
-                    <a class="drawer-link" href="{{ route('security.show') }}">
-                        <i class="bi bi-shield-lock text-lg w-5 text-center"></i>{{ __('nav.layouts_app_security') }}
-                    </a>
                 </nav>
 
                 <div class="mt-auto pt-4 border-t border-border">
@@ -887,13 +944,13 @@
                     <form method="POST" action="{{ route('impersonate.leave') }}">
                         @csrf
                         <button type="submit" class="drawer-link w-full !text-amber-700">
-                            <i class="bi bi-incognito text-lg w-5 text-center"></i>{{ __('nav.layouts_app_exit_impersonation') }}
+                            <i class="bi bi-incognito text-lg w-5 text-center"></i>{{ __('nav.exit_impersonation') }}
                         </button>
                     </form>
                     @endif
                     <a class="drawer-link !text-destructive" href="{{ route('logout') }}"
                        onclick="event.preventDefault(); document.getElementById('logout-form-mobile').submit();">
-                        <i class="bi bi-box-arrow-right text-lg w-5 text-center"></i>{{ __('nav.layouts_app_sign_out') }}
+                        <i class="bi bi-box-arrow-right text-lg w-5 text-center"></i>{{ __('nav.sign_out') }}
                     </a>
                     <form id="logout-form-mobile" action="{{ route('logout') }}" method="POST" class="hidden">
                         @csrf
@@ -917,6 +974,10 @@
     </div>
     </div>
     @endif
+
+    @auth
+    @include('partials.qr-scanner')
+    @endauth
 
     <main>
         @yield('content')

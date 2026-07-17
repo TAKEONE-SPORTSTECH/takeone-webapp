@@ -2,7 +2,8 @@
 
 return [
     'explore'           => 'Explore',
-    'hero_title'        => 'Find your<br>perfect fit',
+    'hero_eyebrow'      => 'Discover nearby',
+    'hero_title'        => 'Find Your Perfect Fit',
     'hero_sub'          => 'Clubs, trainers, clinics & more near you',
     'detecting_location' => 'Detecting location...',
     'search_placeholder' => 'Search clubs, trainers...',

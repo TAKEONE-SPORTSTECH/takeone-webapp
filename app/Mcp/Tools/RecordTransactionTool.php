@@ -84,6 +84,7 @@ class RecordTransactionTool extends BaseTool
                 'description' => $transaction->description,
                 'transaction_date' => optional($transaction->transaction_date)->toDateString(),
                 'recorded_by' => $user->full_name ?? $user->name,
+                'is_test' => $transaction->is_test,
             ],
         ]);
     }

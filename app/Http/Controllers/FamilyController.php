@@ -13,19 +13,24 @@ use App\Models\Attendance;
 use App\Models\Goal;
 use App\Models\Invoice;
 use App\Models\TournamentEvent;
+use App\Models\Person;
 use App\Models\User;
+use App\Models\UserNotification;
 use App\Models\UserRelationship;
 use App\Services\FamilyService;
+use App\Services\KinshipService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class FamilyController extends Controller
 {
+    use \App\Traits\ComputesAttendanceStats;
     use \App\Traits\StoresBase64Images;
 
     protected $familyService;
 
-    public function __construct(FamilyService $familyService)
+    public function __construct(FamilyService $familyService, private readonly KinshipService $kin)
     {
         $this->familyService = $familyService;
     }
@@ -89,12 +94,19 @@ class FamilyController extends Controller
         $completedGoalsCount = $goals->where('status', 'completed')->count();
         $successRate = $goals->count() > 0 ? round(($completedGoalsCount / $goals->count()) * 100) : 0;
 
-        // Fetch attendance data
+        // Attendance log (manual entries via the "Add attendance record" feature) — still used
+        // for the entry list, but the summary numbers below no longer derive from it.
         $attendanceRecords = $user->attendanceRecords()->orderBy('session_datetime', 'desc')->get();
-        $sessionsCompleted = $attendanceRecords->where('status', 'completed')->count();
-        $noShows = $attendanceRecords->where('status', 'no_show')->count();
-        $totalSessions = $attendanceRecords->count();
-        $attendanceRate = $totalSessions > 0 ? round(($sessionsCompleted / $totalSessions) * 100, 1) : 0;
+
+        // Attendance summary: total sessions = the package's scheduled classes across the
+        // subscription period; completed = trainer-marked class_attendances for those classes.
+        [
+            'sessionsCompleted' => $sessionsCompleted,
+            'noShows' => $noShows,
+            'totalSessions' => $totalSessions,
+            'attendanceRate' => $attendanceRate,
+            'scheduleSessions' => $scheduleSessions,
+        ] = $this->computeAttendanceStats($user);
 
         // Fetch affiliations data with enhanced relationships
         $clubAffiliations = $user->clubAffiliations()
@@ -154,7 +166,9 @@ class FamilyController extends Controller
             'attendanceRecords' => $attendanceRecords,
             'sessionsCompleted' => $sessionsCompleted,
             'noShows' => $noShows,
+            'totalSessions' => $totalSessions,
             'attendanceRate' => $attendanceRate,
+            'scheduleSessions' => $scheduleSessions,
             'clubAffiliations' => $clubAffiliations,
             'totalAffiliations' => $totalAffiliations,
             'distinctSkills' => $distinctSkills,
@@ -314,6 +328,222 @@ class FamilyController extends Controller
     }
 
     /**
+     * Exact-match auto-suggest while filling the manual "new member" form:
+     * does this phone number already belong to a real account? Phone numbers
+     * aren't unique in this system (families routinely share one), so this
+     * can return more than one candidate — the caller lets the user pick.
+     */
+    public function lookup(Request $request)
+    {
+        $data = $request->validate([
+            'mobile_code' => ['nullable', 'string', 'max:10'],
+            'mobile' => ['required', 'string', 'max:20'],
+        ]);
+
+        $me = Auth::user();
+        $exclude = $this->linkedUserIds($me);
+        $exclude[] = $me->id;
+
+        $matches = User::query()
+            ->where('mobile->number', $data['mobile'])
+            ->when(! empty($data['mobile_code']), fn ($q) => $q->where('mobile->code', $data['mobile_code']))
+            ->whereNotIn('id', $exclude)
+            ->limit(5)
+            ->get(['id', 'full_name', 'name', 'profile_picture', 'updated_at']);
+
+        return response()->json([
+            'success' => true,
+            'matches' => $matches->map(fn ($u) => $this->candidatePayload($u, __('member.matched_via_phone')))->values(),
+        ]);
+    }
+
+    /**
+     * Platform-wide search for an existing member to link as family, instead
+     * of registering a duplicate account. Fuzzy name/guardian matches are
+     * restricted to discoverable users (mirrors the People-search rule); an
+     * exact phone/email match always surfaces — you already have to know the
+     * exact value to find someone that way.
+     */
+    public function searchExisting(Request $request)
+    {
+        $q = trim((string) $request->query('q', ''));
+        if ($q === '') {
+            return response()->json(['success' => true, 'results' => []]);
+        }
+
+        $me = Auth::user();
+        $exclude = $this->linkedUserIds($me);
+        $exclude[] = $me->id;
+
+        $digits = preg_replace('/\D+/', '', $q);
+        $looksLikeEmail = str_contains($q, '@');
+        $hasDigits = $digits !== '' && strlen($digits) >= 6;
+
+        $results = collect();
+
+        if ($looksLikeEmail || $hasDigits) {
+            $exact = User::query()
+                ->whereNotIn('id', $exclude)
+                ->where(function ($w) use ($q, $digits, $looksLikeEmail, $hasDigits) {
+                    if ($looksLikeEmail) {
+                        $w->orWhere('email', $q);
+                    }
+                    if ($hasDigits) {
+                        $w->orWhere('mobile->number', $digits);
+                    }
+                })
+                ->limit(10)
+                ->get(['id', 'full_name', 'name', 'profile_picture', 'updated_at']);
+
+            foreach ($exact as $u) {
+                $results->push($this->candidatePayload($u, __('member.matched_via_contact')));
+            }
+        }
+
+        $byName = User::query()
+            ->where('is_discoverable', true)
+            ->whereNotIn('id', $exclude)
+            ->where('full_name', 'like', "%{$q}%")
+            ->limit(15)
+            ->get(['id', 'full_name', 'name', 'profile_picture', 'updated_at']);
+
+        foreach ($byName as $u) {
+            $results->push($this->candidatePayload($u, __('member.matched_via_name')));
+        }
+
+        $byGuardian = UserRelationship::query()
+            ->whereHas('guardian', function ($g) use ($q, $digits, $hasDigits) {
+                $g->where('full_name', 'like', "%{$q}%");
+                if ($hasDigits) {
+                    $g->orWhere('mobile->number', 'like', "%{$digits}%");
+                }
+            })
+            ->whereHas('dependent', fn ($d) => $d->where('is_discoverable', true)->whereNotIn('id', $exclude))
+            ->with(['dependent:id,full_name,name,profile_picture,updated_at', 'guardian:id,full_name,name'])
+            ->limit(15)
+            ->get();
+
+        foreach ($byGuardian as $rel) {
+            $guardianName = $rel->guardian->full_name ?: $rel->guardian->name;
+            $results->push($this->candidatePayload($rel->dependent, __('member.matched_via_guardian', ['name' => $guardianName])));
+        }
+
+        return response()->json([
+            'success' => true,
+            'results' => $results->unique('id')->take(15)->values(),
+        ]);
+    }
+
+    /**
+     * Link an existing platform account as family (Parent / Child / Spouse —
+     * the only relationships the family-tree graph can represent as a real
+     * edge). Reuses the same KinshipService edge-creation the Family Tree's
+     * "add relative" already uses, just resolving the counterpart from a
+     * platform-wide search instead of requiring them to already be in the
+     * viewer's graph.
+     */
+    public function linkExisting(Request $request)
+    {
+        $data = $request->validate([
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+            'type' => ['required', 'in:parent,child,spouse'],
+        ]);
+
+        $actor = Auth::user();
+        if ((int) $data['user_id'] === (int) $actor->id) {
+            return response()->json(['success' => false, 'message' => __('member.cannot_link_self')], 422);
+        }
+
+        $target = User::findOrFail($data['user_id']);
+        $me = $this->kin->personFor($actor);
+        $counterpart = $this->kin->personFor($target);
+
+        // Only block a DIRECT duplicate (already your recorded parent/child/
+        // spouse) — being reachable via someone else (e.g. your spouse's
+        // child, before you're recorded as their other parent too) must not
+        // block linking, that's exactly the case this action exists for.
+        if ($this->kin->areDirectlyLinked($me, $counterpart)) {
+            return response()->json(['success' => false, 'message' => __('member.already_linked')], 422);
+        }
+
+        try {
+            $edge = match ($data['type']) {
+                'parent' => $this->kin->addParent($me, $counterpart, $actor),
+                'child' => $this->kin->addChild($me, $counterpart, $actor),
+                'spouse' => $this->kin->addSpouse($me, $counterpart, $actor, ['state' => 'married']),
+            };
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        // A minor with no phone/smartphone of their own can never log in to
+        // confirm anything, so "wait for the child to confirm" is meaningless
+        // for a managed dependent. But auto-confirming for ANYONE who merely
+        // finds an existing managed-dependent child would let a stranger
+        // claim someone else's kid as their own with zero review — so only
+        // skip confirmation when there's genuinely no existing guardian yet
+        // (the actor is registering as the first one) or the actor is
+        // already one of the child's recognized guardians (recording an
+        // already-established relationship, not asserting a new one).
+        // Otherwise, route the approval to the EXISTING guardian(s) instead
+        // of the child — they're the ones who can meaningfully act on it.
+        if ($data['type'] === 'child' && $edge->status === 'pending') {
+            $existingGuardianIds = UserRelationship::where('dependent_user_id', $target->id)->pluck('guardian_user_id');
+
+            if ($existingGuardianIds->isEmpty() || $existingGuardianIds->contains($actor->id)) {
+                $this->kin->confirm($edge, $actor);
+            } else {
+                foreach ($existingGuardianIds->unique() as $guardianId) {
+                    UserNotification::notifyUser(
+                        $guardianId,
+                        'family_request',
+                        __(':name wants to be added as a parent of :child.', ['name' => $actor->full_name, 'child' => $target->full_name]),
+                        ['actor_id' => $actor->id, 'icon' => 'bi-diagram-3', 'action_url' => route('me.family')],
+                    );
+                }
+            }
+        } elseif ($edge->status === 'pending') {
+            $this->kin->notifyCounterpartOfRequest($edge, $actor, $data['type']);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $edge->status === 'pending'
+                ? __('member.link_request_sent')
+                : __('member.link_added'),
+            'status' => $edge->status,
+        ]);
+    }
+
+    /** User ids already reachable (confirmed) in the viewer's family graph — used to exclude already-linked people from search/lookup results. */
+    /**
+     * User ids DIRECTLY linked to $me — used to exclude people from search/
+     * lookup results since they're already your recorded parent/child/spouse.
+     * Deliberately NOT the whole connectedComponent(): someone reachable only
+     * via a spouse (e.g. their child, before you're linked as the other
+     * parent too) must still be searchable — that's the whole point of this
+     * action.
+     */
+    private function linkedUserIds(User $me): array
+    {
+        $person = $this->kin->personFor($me);
+        $personIds = $this->kin->directPersonIds($person);
+
+        return Person::whereIn('id', $personIds)->whereNotNull('user_id')->pluck('user_id')->all();
+    }
+
+    /** Minimal, safe candidate payload for search/lookup results — name + avatar only, never raw contact info. */
+    private function candidatePayload(User $u, string $matchedVia): array
+    {
+        return [
+            'id' => $u->id,
+            'name' => $u->full_name ?: $u->name,
+            'avatar' => $u->profile_picture ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
+            'matched_via' => $matchedVia,
+        ];
+    }
+
+    /**
      * Display the specified family member.
      *
      * @param  int  $id
@@ -378,12 +608,19 @@ class FamilyController extends Controller
         $completedGoalsCount = $goals->where('status', 'completed')->count();
         $successRate = $goals->count() > 0 ? round(($completedGoalsCount / $goals->count()) * 100) : 0;
 
-        // Fetch attendance data for the dependent
+        // Attendance log (manual entries via the "Add attendance record" feature) — still used
+        // for the entry list, but the summary numbers below no longer derive from it.
         $attendanceRecords = $relationship->dependent->attendanceRecords()->orderBy('session_datetime', 'desc')->get();
-        $sessionsCompleted = $attendanceRecords->where('status', 'completed')->count();
-        $noShows = $attendanceRecords->where('status', 'no_show')->count();
-        $totalSessions = $attendanceRecords->count();
-        $attendanceRate = $totalSessions > 0 ? round(($sessionsCompleted / $totalSessions) * 100, 1) : 0;
+
+        // Attendance summary: total sessions = the package's scheduled classes across the
+        // subscription period; completed = trainer-marked class_attendances for those classes.
+        [
+            'sessionsCompleted' => $sessionsCompleted,
+            'noShows' => $noShows,
+            'totalSessions' => $totalSessions,
+            'attendanceRate' => $attendanceRate,
+            'scheduleSessions' => $scheduleSessions,
+        ] = $this->computeAttendanceStats($relationship->dependent);
 
         // Fetch affiliations data for the dependent with enhanced relationships
         $clubAffiliations = $relationship->dependent->clubAffiliations()
@@ -437,7 +674,9 @@ class FamilyController extends Controller
             'attendanceRecords' => $attendanceRecords,
             'sessionsCompleted' => $sessionsCompleted,
             'noShows' => $noShows,
+            'totalSessions' => $totalSessions,
             'attendanceRate' => $attendanceRate,
+            'scheduleSessions' => $scheduleSessions,
             'clubAffiliations' => $clubAffiliations,
             'totalAffiliations' => $totalAffiliations,
             'distinctSkills' => $distinctSkills,

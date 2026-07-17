@@ -26,7 +26,7 @@ class FinancialService
      * Calculate summary totals from an already-loaded transaction collection.
      * Includes cash-to-collect from unpaid subscriptions (requires one extra query).
      */
-    public function getSummary(int $clubId, Collection $transactions): array
+    public function getSummary(int $clubId, Collection $transactions, bool $isTestMode = true): array
     {
         $byType = $transactions->groupBy('type');
         $totalIncome = (float) $byType->get('income', collect())->sum('amount');
@@ -39,6 +39,7 @@ class FinancialService
             'refunds' => $totalRefunds,
             'net_profit' => $totalIncome - $totalExpenses - $totalRefunds,
             'pending' => (float) ClubMemberSubscription::where('tenant_id', $clubId)
+                ->where('is_test', $isTestMode)
                 ->whereIn('payment_status', ['unpaid', 'pending_approval'])
                 ->sum('amount_due'),
         ];
@@ -47,24 +48,28 @@ class FinancialService
     /**
      * Build 12-month income/expense/profit chart data from a transaction collection.
      */
-    public function getMonthlyData(Collection $transactions, int $clubId): array
+    public function getMonthlyData(Collection $transactions, int $clubId, bool $isTestMode = true): array
     {
-        $cutoff = now()->subMonths(11)->startOfMonth();
+        // Calendar-year view: always Jan → Dec of the current year.
+        $yearStart = now()->startOfYear();
+        $yearEnd = now()->endOfYear();
+
         $byMonth = $transactions
-            ->filter(fn ($t) => Carbon::parse($t->transaction_date)->gte($cutoff))
+            ->filter(fn ($t) => Carbon::parse($t->transaction_date)->between($yearStart, $yearEnd))
             ->groupBy(fn ($t) => Carbon::parse($t->transaction_date)->format('Y-m'));
 
         // Monthly cash to collect: unpaid subscriptions grouped by start_date month (PHP-side, DB-agnostic)
         $pendingByMonth = ClubMemberSubscription::where('tenant_id', $clubId)
+            ->where('is_test', $isTestMode)
             ->whereIn('payment_status', ['unpaid', 'pending_approval'])
-            ->where('start_date', '>=', $cutoff)
+            ->whereBetween('start_date', [$yearStart, $yearEnd])
             ->get(['start_date', 'amount_due'])
             ->groupBy(fn ($s) => Carbon::parse($s->start_date)->format('Y-m'))
             ->map(fn ($items) => $items->sum('amount_due'));
 
         $monthlyData = [];
-        for ($i = 11; $i >= 0; $i--) {
-            $date = now()->copy()->subMonths($i);
+        for ($m = 1; $m <= 12; $m++) {
+            $date = $yearStart->copy()->month($m);
             $month = $byMonth->get($date->format('Y-m'), collect());
             $income = (float) $month->where('type', 'income')->sum('amount');
             $expense = (float) $month->where('type', 'expense')->sum('amount');
@@ -81,8 +86,6 @@ class FinancialService
             ];
         }
 
-        usort($monthlyData, fn ($a, $b) => (int) explode('-', $a['year_month'])[1] <=> (int) explode('-', $b['year_month'])[1]);
-
         return $monthlyData;
     }
 
@@ -90,11 +93,12 @@ class FinancialService
      * Unpaid / pending subscriptions that make up the "Cash to Collect" figure.
      * Returned with user + package so the transactions modal can list them per month.
      */
-    public function getCashToCollect(int $clubId): Collection
+    public function getCashToCollect(int $clubId, bool $isTestMode = true): Collection
     {
         $cutoff = now()->subMonths(11)->startOfMonth();
 
         return ClubMemberSubscription::where('tenant_id', $clubId)
+            ->where('is_test', $isTestMode)
             ->whereIn('payment_status', ['unpaid', 'pending_approval'])
             ->where('start_date', '>=', $cutoff)
             ->with(['user', 'package'])

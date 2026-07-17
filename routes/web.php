@@ -48,6 +48,7 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
 // Business (Chain) dashboard — requires an APPROVED business
 Route::middleware(['auth', 'verified', 'two-factor', 'business'])->prefix('business')->name('business.')->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\BusinessDashboardController::class, 'index'])->name('dashboard');
+    Route::post('/clubs', [App\Http\Controllers\BusinessClubController::class, 'store'])->name('clubs.store')->middleware('throttle:admin-write');
 });
 
 // Market item creators — PREVIEW of the reusable product/category form
@@ -103,6 +104,8 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     Route::delete('/schedule/synced/{token}/rate-class', [App\Http\Controllers\PersonalMobileController::class, 'rateClassDestroy'])->name('schedule.rate.class.destroy')->middleware('throttle:social');
     Route::post('/schedule/synced/{token}/cancel', [App\Http\Controllers\PersonalMobileController::class, 'classCancel'])->name('schedule.cancel')->middleware('throttle:admin-write');
     Route::delete('/schedule/synced/{token}/cancel', [App\Http\Controllers\PersonalMobileController::class, 'classUncancel'])->name('schedule.uncancel')->middleware('throttle:admin-write');
+    // Clear a one-off training-program variation for a single dated occurrence (reverts to the recurring plan).
+    Route::delete('/schedule/synced/{token}/program', [App\Http\Controllers\PersonalMobileController::class, 'programReset'])->name('schedule.program.reset')->middleware('throttle:admin-write');
     Route::get('/schedule/{session}', [App\Http\Controllers\PersonalMobileController::class, 'scheduleShow'])->name('schedule.show')->whereNumber('session');
     Route::put('/schedule/{session}', [App\Http\Controllers\PersonalMobileController::class, 'update'])->name('schedule.update')->whereNumber('session')->middleware('throttle:member-write');
     Route::delete('/schedule/{session}', [App\Http\Controllers\PersonalMobileController::class, 'destroy'])->name('schedule.destroy')->whereNumber('session')->middleware('throttle:member-write');
@@ -112,6 +115,7 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     Route::get('/family/data', [App\Http\Controllers\FamilyTreeController::class, 'data'])->name('family.data');
     Route::post('/family/relative', [App\Http\Controllers\FamilyTreeController::class, 'addRelative'])->name('family.relative')->middleware('throttle:member-write');
     Route::post('/family/respond', [App\Http\Controllers\FamilyTreeController::class, 'respond'])->name('family.respond')->middleware('throttle:member-write');
+    Route::delete('/family/relative', [App\Http\Controllers\FamilyTreeController::class, 'removeRelative'])->name('family.relative.remove')->middleware('throttle:member-write');
     Route::get('/profile', [App\Http\Controllers\PersonalMobileController::class, 'profile'])->name('profile');
     Route::get('/packages', [App\Http\Controllers\PersonalMobileController::class, 'packages'])->name('packages');
     Route::get('/progress', [App\Http\Controllers\PersonalMobileController::class, 'progress'])->name('progress');
@@ -371,6 +375,8 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])->prefi
     Route::put('/members/{id}', [App\Http\Controllers\Admin\PlatformController::class, 'updateMember'])->name('platform.members.update')->middleware('throttle:admin-write');
     Route::delete('/members/{id}', [App\Http\Controllers\Admin\PlatformController::class, 'destroyMember'])->name('platform.members.destroy')->middleware('throttle:admin-write');
     Route::post('/members/{id}/upload-picture', [App\Http\Controllers\Admin\PlatformController::class, 'uploadMemberPicture'])->name('platform.members.upload-picture')->middleware('throttle:uploads');
+    Route::delete('/members/{id}/profile-picture', [App\Http\Controllers\Admin\PlatformController::class, 'removeMemberPicture'])->name('platform.members.remove-picture')->middleware('throttle:admin-write');
+    Route::put('/members/{id}/profile-picture/visibility', [App\Http\Controllers\Admin\PlatformController::class, 'updateMemberPictureVisibility'])->name('platform.members.picture-visibility')->middleware('throttle:admin-write');
     Route::post('/members/{id}/health', [App\Http\Controllers\Admin\PlatformController::class, 'storeMemberHealth'])->name('platform.members.store-health')->middleware('throttle:admin-write');
     Route::put('/members/{id}/health/{recordId}', [App\Http\Controllers\Admin\PlatformController::class, 'updateMemberHealth'])->name('platform.members.update-health')->middleware('throttle:admin-write');
     Route::post('/members/{id}/tournament', [App\Http\Controllers\Admin\PlatformController::class, 'storeMemberTournament'])->name('platform.members.store-tournament')->middleware('throttle:admin-write');
@@ -455,6 +461,7 @@ Route::middleware(['auth', 'verified', 'two-factor', 'tenant', 'throttle:admin-w
     Route::post('/instructors/{instructor}/upload-photo', [App\Http\Controllers\Admin\ClubInstructorController::class, 'uploadInstructorPhoto'])->name('instructors.upload-photo')->middleware('throttle:uploads');
     Route::put('/instructors/{instructor}', [App\Http\Controllers\Admin\ClubInstructorController::class, 'updateInstructor'])->name('instructors.update');
     Route::delete('/instructors/{instructor}', [App\Http\Controllers\Admin\ClubInstructorController::class, 'destroyInstructor'])->name('instructors.destroy');
+    Route::get('/instructors/{instructor}/termination-preview', [App\Http\Controllers\Admin\ClubInstructorController::class, 'terminationPreview'])->name('instructors.termination-preview');
 
     // Activities
     Route::get('/activities', [App\Http\Controllers\Admin\ClubActivityController::class, 'activities'])->name('activities');
@@ -541,6 +548,8 @@ Route::middleware(['auth', 'verified', 'two-factor', 'tenant', 'throttle:admin-w
     Route::put('/financials/recurring/{recurringExpense}', [App\Http\Controllers\Admin\ClubFinancialController::class, 'updateRecurringExpense'])->name('financials.recurring.update');
     Route::delete('/financials/recurring/{recurringExpense}', [App\Http\Controllers\Admin\ClubFinancialController::class, 'destroyRecurringExpense'])->name('financials.recurring.destroy');
     Route::patch('/financials/recurring/{recurringExpense}/toggle', [App\Http\Controllers\Admin\ClubFinancialController::class, 'toggleRecurringExpense'])->name('financials.recurring.toggle');
+    Route::get('/financials/test-data', [App\Http\Controllers\Admin\ClubFinancialController::class, 'testData'])->name('financials.test-data');
+    Route::post('/financials/mode', [App\Http\Controllers\Admin\ClubFinancialController::class, 'switchMode'])->name('financials.mode')->middleware('throttle:admin-write');
 
     // Messages
     Route::get('/messages', [App\Http\Controllers\Admin\ClubMessageController::class, 'messages'])->name('messages');
@@ -609,6 +618,8 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     Route::delete('/member/{id}/confirm-delete', [MemberController::class, 'confirmDelete'])->name('member.confirm-delete');
     Route::delete('/member/{id}', [MemberController::class, 'destroy'])->name('member.destroy')->middleware('throttle:member-write');
     Route::post('/member/{id}/upload-picture', [MemberController::class, 'uploadPicture'])->name('member.upload-picture')->middleware('throttle:uploads');
+    Route::delete('/member/{id}/profile-picture', [MemberController::class, 'removeProfilePicture'])->name('member.remove-picture')->middleware('throttle:member-write');
+    Route::put('/member/{id}/profile-picture/visibility', [MemberController::class, 'updateProfilePictureVisibility'])->name('member.picture-visibility')->middleware('throttle:member-write');
     Route::post('/member/{id}/upload-document', [MemberController::class, 'uploadDocument'])->name('member.upload-document')->middleware('throttle:uploads');
     Route::delete('/member/{id}/document', [MemberController::class, 'deleteDocument'])->name('member.delete-document')->middleware('throttle:member-write');
     Route::post('/member/{id}/reset-password', [MemberController::class, 'resetPassword'])->name('member.reset-password')->middleware('throttle:member-write');
@@ -635,6 +646,9 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
         return redirect()->route('members.create');
     })->name('family.create');
     Route::post('/family', [FamilyController::class, 'store'])->name('family.store')->middleware('throttle:member-write');
+    Route::post('/family/lookup', [FamilyController::class, 'lookup'])->name('family.lookup')->middleware('throttle:member-write');
+    Route::get('/family/search-existing', [FamilyController::class, 'searchExisting'])->name('family.search-existing');
+    Route::post('/family/link-existing', [FamilyController::class, 'linkExisting'])->name('family.link-existing')->middleware('throttle:member-write');
     Route::get('/family/{id}', function ($id) {
         $user = \App\Models\User::findOrFail($id);
 

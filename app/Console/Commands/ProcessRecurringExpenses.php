@@ -18,7 +18,7 @@ class ProcessRecurringExpenses extends Command
         $today = Carbon::today();
         $dayOfMonth = (int) $today->format('j'); // day without leading zero
 
-        $recurring = ClubRecurringExpense::with('tenant')
+        $recurring = ClubRecurringExpense::with('tenant', 'instructor')
             ->where('is_active', true)
             ->where('day_of_month', $dayOfMonth)
             ->get();
@@ -46,6 +46,8 @@ class ProcessRecurringExpenses extends Command
                 'payment_method' => $expense->payment_method,
                 'reference_number' => $expense->notes,
                 'transaction_date' => $today->toDateString(),
+                'instructor_id' => $expense->instructor_id,
+                'user_id' => $expense->instructor?->user_id,
             ]);
 
             $expense->update(['last_run_at' => $today->toDateString()]);

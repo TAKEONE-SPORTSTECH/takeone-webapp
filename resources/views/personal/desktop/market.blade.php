@@ -1,0 +1,285 @@
+@extends('layouts.app')
+
+@section('title', __('nav.tab_market'))
+
+@php
+    $list     = array_values($products);
+    $featured = collect($list)->where('featured', true)->values();
+    $deals    = collect($list)->whereNotNull('old')->values();
+    $meta     = collect($list)->map(fn ($p) => ['cat' => $p['cat'], 'name' => strtolower($p['name'].' '.$p['brand'])])->values();
+@endphp
+
+@section('content')
+@include('partials.market-cart-animations')
+<div class="px-4 sm:px-6 lg:px-8 py-6" x-data="marketHub({{ Illuminate\Support\Js::from($meta) }})">
+
+    @include('partials.personal-desktop-subnav')
+
+    {{-- ===== Hero: title + search + cart/orders ===== --}}
+    <div class="rounded-2xl shadow-sm p-6 text-white relative overflow-hidden mb-6" style="background: linear-gradient(135deg, hsl(250 65% 65%), hsl(250 65% 52%));">
+        <div class="absolute -end-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+        <div class="relative flex items-center justify-between gap-4 flex-wrap">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-white/70">{{ __('market.personal_market_eyebrow') }}</p>
+                <h1 class="text-2xl font-black mt-0.5">{{ __('market.personal_market_title') }}</h1>
+            </div>
+            <div class="flex items-center gap-3 flex-1 max-w-md min-w-[220px]">
+                <div class="relative flex-1">
+                    <i class="bi bi-search absolute start-3.5 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none"></i>
+                    <input x-model="q" type="search" placeholder="{{ __('market.personal_market_search_placeholder') }}"
+                           class="w-full ps-10 pe-3 py-2.5 bg-white/15 border border-white/25 backdrop-blur rounded-xl text-sm text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/40">
+                </div>
+                <a href="{{ route('me.orders') }}"
+                   class="w-11 h-11 flex-shrink-0 rounded-xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center hover:bg-white/25 transition-colors" aria-label="{{ __('market.my_orders') }}">
+                    <i class="bi bi-receipt text-lg"></i>
+                </a>
+                <button type="button" @click="cartOpen=true"
+                        class="relative w-11 h-11 flex-shrink-0 rounded-xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center hover:bg-white/25 transition-colors">
+                    <i class="bi bi-bag text-lg" :class="cartBump ? 'cart-bump' : ''"></i>
+                    <span x-show="count>0" x-transition
+                          class="absolute -top-1 -end-1 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold grid place-items-center"
+                          :class="cartBump ? 'cart-pop' : ''" x-text="count"></span>
+                    <span x-show="cartBump" x-cloak class="cart-plus">+1</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- ===== Category chips ===== --}}
+    <div class="flex gap-2 overflow-x-auto scrollbar-hide pb-1 mb-6">
+        @foreach($categories as $c)
+            <button type="button" @click="cat='{{ $c['key'] }}'"
+                    class="flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold border shadow-sm transition-colors"
+                    :class="cat==='{{ $c['key'] }}' ? 'bg-primary text-white border-primary' : 'bg-white text-muted-foreground border-gray-100 hover:border-gray-200'">
+                <i class="bi {{ $c['icon'] }}"></i> {{ $c['label'] }}
+            </button>
+        @endforeach
+    </div>
+
+    {{-- ===== Featured carousel ===== --}}
+    @if($featured->isNotEmpty())
+    <div class="mb-6" x-show="cat==='all' && q===''" x-transition>
+        <h2 class="text-sm font-black text-foreground flex items-center gap-2 mb-2.5"><i class="bi bi-stars text-primary"></i> {{ __('market.personal_market_featured') }}</h2>
+        <div class="flex gap-3 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory">
+            @foreach($featured as $p)
+                <a href="{{ route('me.market.show', $p['id']) }}"
+                   class="snap-start flex-shrink-0 w-72 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-shadow text-white relative"
+                   style="background: linear-gradient(135deg, {{ $p['color'] }}, {{ $p['color'] }}bb);">
+                    @if(!empty($p['image']))
+                        <img src="{{ $p['image'] }}" alt="{{ $p['name'] }}" loading="lazy" class="absolute inset-0 w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/5"></div>
+                    @else
+                        <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
+                    @endif
+                    <div class="relative p-4 h-40 flex flex-col">
+                        @if($p['badge'])<span class="self-start px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/20 backdrop-blur">{{ $p['badge'] }}</span>@endif
+                        @if(empty($p['image']))
+                            <i class="bi {{ $p['icon'] }} text-4xl mt-auto opacity-90"></i>
+                        @else
+                            <span class="mt-auto"></span>
+                        @endif
+                        <h3 class="font-black text-base mt-2 leading-tight drop-shadow-sm">{{ $p['name'] }}</h3>
+                        <div class="flex items-center justify-between mt-1">
+                            <span class="text-sm font-bold drop-shadow-sm">BHD {{ number_format($p['price'], 2) }}</span>
+                            <span class="text-[11px] bg-white/20 backdrop-blur px-2 py-0.5 rounded-full"><i class="bi bi-star-fill text-[9px]"></i> {{ $p['rating'] }}</span>
+                        </div>
+                    </div>
+                </a>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
+    {{-- ===== Flash deals strip ===== --}}
+    @if($deals->isNotEmpty())
+    <div class="mb-6" x-show="cat==='all' && q===''" x-transition>
+        <div class="rounded-2xl p-5 text-white relative overflow-hidden" style="background: linear-gradient(135deg, #ef4444, #f59e0b);">
+            <div class="absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-white/10"></div>
+            <div class="relative flex items-center justify-between">
+                <div>
+                    <p class="text-[11px] font-bold uppercase tracking-wide flex items-center gap-1.5"><i class="bi bi-lightning-charge-fill"></i> {{ __('market.personal_market_flash_deals') }}</p>
+                    <h3 class="text-lg font-black mt-0.5">{{ __('market.personal_market_flash_subtitle') }}</h3>
+                </div>
+                <div class="text-end">
+                    <p class="text-[10px] text-white/80 uppercase">{{ __('market.personal_market_ends_in') }}</p>
+                    <p class="text-base font-black tabular-nums" x-text="countdown"></p>
+                </div>
+            </div>
+            <div class="relative flex gap-3 mt-3 overflow-x-auto scrollbar-hide">
+                @foreach($deals as $p)
+                    @php $off = $p['old'] ? round(($p['old'] - $p['price']) / $p['old'] * 100) : 0; @endphp
+                    <a href="{{ route('me.market.show', $p['id']) }}"
+                       class="flex-shrink-0 w-32 bg-white rounded-xl p-2.5 text-foreground hover:shadow-md transition-shadow">
+                        @if(!empty($p['image']))
+                            <div class="aspect-square rounded-lg overflow-hidden mb-2">
+                                <img src="{{ $p['image'] }}" alt="{{ $p['name'] }}" loading="lazy" class="w-full h-full object-cover">
+                            </div>
+                        @else
+                            <div class="aspect-square rounded-lg grid place-items-center mb-2" style="background: {{ $p['color'] }}15;">
+                                <i class="bi {{ $p['icon'] }} text-2xl" style="color: {{ $p['color'] }};"></i>
+                            </div>
+                        @endif
+                        <p class="text-[11px] font-bold truncate">{{ $p['name'] }}</p>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                            <span class="text-xs font-black text-foreground">BHD {{ number_format($p['price'], 2) }}</span>
+                            <span class="text-[9px] font-bold text-red-500">-{{ $off }}%</span>
+                        </div>
+                    </a>
+                @endforeach
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- ===== Product grid ===== --}}
+    <h2 class="text-sm font-black text-foreground flex items-center gap-2 mb-3">
+        <i class="bi bi-shop text-primary"></i> <span x-text="cat==='all' ? '{{ __('market.personal_market_all_products') }}' : '{{ __('market.personal_market_products') }}'"></span>
+    </h2>
+    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+        @foreach($list as $p)
+            <div x-show="(cat==='all' || cat==='{{ $p['cat'] }}') && '{{ strtolower($p['name'].' '.$p['brand']) }}'.includes(q.toLowerCase())"
+                 x-transition class="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-primary/30 transition-all overflow-hidden flex flex-col">
+                <a href="{{ route('me.market.show', $p['id']) }}" class="block relative">
+                    @if(!empty($p['image']))
+                        <div class="aspect-square">
+                            <img src="{{ $p['image'] }}" alt="{{ $p['name'] }}" loading="lazy" class="w-full h-full object-cover">
+                        </div>
+                    @else
+                        <div class="aspect-square grid place-items-center" style="background: linear-gradient(160deg, {{ $p['color'] }}18, {{ $p['color'] }}08);">
+                            <i class="bi {{ $p['icon'] }} text-5xl" style="color: {{ $p['color'] }};"></i>
+                        </div>
+                    @endif
+                    @if($p['badge'])
+                        <span class="absolute top-2 start-2 px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
+                              style="background: {{ $p['badge']==='Sale' ? '#ef4444' : ($p['badge']==='New' ? '#10b981' : $p['color']) }};">{{ $p['badge'] }}</span>
+                    @endif
+                </a>
+                <div class="p-3 flex flex-col flex-1">
+                    <div class="flex items-center justify-between gap-2">
+                        <p class="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider truncate">{{ $p['brand'] }}</p>
+                        @if((int) $p['reviews'] > 0)
+                            <span class="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-medium text-muted-foreground">
+                                <i class="bi bi-star-fill text-amber-400 text-[9px]"></i>{{ $p['rating'] }}
+                            </span>
+                        @endif
+                    </div>
+                    <a href="{{ route('me.market.show', $p['id']) }}"
+                       class="block font-bold text-foreground text-[13px] leading-tight mt-0.5 truncate hover:text-primary transition-colors">{{ $p['name'] }}</a>
+                    <div class="flex items-center justify-between gap-2 mt-2">
+                        <p class="min-w-0 truncate text-[15px] font-black text-foreground leading-none">
+                            @if(!empty($p['hasVariants']))<span class="text-[9px] font-semibold text-muted-foreground">{{ __('market.from_price') }} </span>@endif BHD {{ number_format($p['price'], 2) }}@if($p['old'])<span class="ms-1 text-[10px] font-medium text-muted-foreground line-through">{{ number_format($p['old'], 2) }}</span>@endif
+                        </p>
+                        @if(!empty($p['hasVariants']))
+                            <a href="{{ route('me.market.show', $p['id']) }}"
+                               class="w-9 h-9 shrink-0 rounded-xl grid place-items-center text-white hover:opacity-90 transition-opacity" style="background: {{ $p['color'] }};" title="{{ __('market.choose_options') }}">
+                                <i class="bi bi-sliders text-sm"></i>
+                            </a>
+                        @else
+                            <button type="button"
+                                    @click="add({{ Illuminate\Support\Js::from(['id'=>$p['id'],'name'=>$p['name'],'price'=>$p['price'],'color'=>$p['color'],'icon'=>$p['icon']]) }})"
+                                    class="w-9 h-9 shrink-0 rounded-xl grid place-items-center text-white hover:opacity-90 transition-opacity" style="background: {{ $p['color'] }};" aria-label="{{ __('market.add_to_cart') }}">
+                                <i class="bi bi-plus-lg text-sm"></i>
+                            </button>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        @endforeach
+    </div>
+
+    <div x-show="!hasResults()" x-cloak class="bg-white rounded-2xl border border-gray-100 px-5 py-16 text-center">
+        <i class="bi bi-search text-3xl text-gray-300"></i>
+        <p class="text-sm text-muted-foreground mt-3">{{ __('market.personal_market_no_results') }}</p>
+    </div>
+
+    {{-- ===== Cart drawer — right-side slide-in panel (desktop pattern) ===== --}}
+    <div x-show="cartOpen" x-cloak class="fixed inset-0 z-[80]" style="display:none;">
+        <div class="absolute inset-0 bg-black/40" @click="cartOpen=false" x-transition.opacity></div>
+        <div class="absolute inset-y-0 end-0 w-full max-w-md bg-white shadow-2xl flex flex-col"
+             x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-x-full rtl:-translate-x-full" x-transition:enter-end="translate-x-0"
+             x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full rtl:-translate-x-full">
+            <div class="p-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+                <h3 class="font-black text-foreground flex items-center gap-2">
+                    <button type="button" x-show="cartStep==='pay'" @click="cartStep='cart'" class="-ms-1 w-7 h-7 grid place-items-center" aria-label="{{ __('market.back') }}"><i class="bi bi-arrow-left"></i></button>
+                    <i class="bi" :class="cartStep==='pay' ? 'bi-shield-lock' : 'bi-bag'"></i>
+                    <span x-text="cartStep==='pay' ? @js(__('market.pay_title')) : @js(__('market.your_cart'))"></span>
+                    <span class="text-muted-foreground font-medium" x-show="cartStep==='cart'" x-text="`(${count})`"></span>
+                </h3>
+                <button type="button" @click="cartOpen=false" class="w-8 h-8 rounded-full bg-muted grid place-items-center hover:bg-gray-200 transition-colors"><i class="bi bi-x-lg text-xs"></i></button>
+            </div>
+
+            {{-- Step 1 · cart items --}}
+            <div class="flex-1 overflow-y-auto p-4 space-y-3" x-show="cartStep==='cart'">
+                <template x-if="items.length===0">
+                    <div class="text-center py-16">
+                        <i class="bi bi-bag-x text-3xl text-gray-300"></i>
+                        <p class="text-sm text-muted-foreground mt-2">{{ __('market.cart_empty') }}</p>
+                    </div>
+                </template>
+                <template x-for="it in items" :key="(it.id) + ':' + (it.variantId || '')">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-xl grid place-items-center flex-shrink-0" :style="`background:${it.color}18`">
+                            <i class="bi text-xl" :class="it.icon" :style="`color:${it.color}`"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm font-bold text-foreground truncate" x-text="it.name"></p>
+                            <p x-show="it.variantLabel" class="text-[11px] text-muted-foreground truncate" x-text="it.variantLabel"></p>
+                            <p class="text-xs text-muted-foreground">BHD <span x-text="it.price.toFixed(2)"></span></p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" @click="dec(it)" class="w-7 h-7 rounded-lg bg-muted grid place-items-center hover:bg-gray-200 transition-colors"><i class="bi bi-dash text-xs"></i></button>
+                            <span class="w-5 text-center text-sm font-bold" x-text="it.qty"></span>
+                            <button type="button" @click="inc(it)" class="w-7 h-7 rounded-lg bg-muted grid place-items-center hover:bg-gray-200 transition-colors"><i class="bi bi-plus text-xs"></i></button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            {{-- Step 2 · payment proof --}}
+            <div class="flex-1 overflow-y-auto p-4 space-y-4" x-show="cartStep==='pay'" x-cloak>
+                <input type="file" x-ref="proofInput" accept="image/*" class="hidden" @change="pickProof($event)">
+                <div class="flex gap-2 text-[13px] text-muted-foreground bg-muted rounded-xl p-3">
+                    <i class="bi bi-info-circle mt-0.5 text-primary"></i>
+                    <span>{{ __('market.pay_instructions') }}</span>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-foreground mb-2">{{ __('market.upload_proof') }} <span class="text-red-500">*</span></p>
+                    <button type="button" @click="$refs.proofInput.click()"
+                            class="w-full rounded-2xl border-2 border-dashed border-gray-200 overflow-hidden grid place-items-center min-h-[140px] hover:border-primary transition-colors">
+                        <template x-if="proof"><img :src="proof" alt="" class="w-full max-h-60 object-contain"></template>
+                        <template x-if="!proof">
+                            <span class="text-center text-muted-foreground py-6">
+                                <i class="bi bi-receipt-cutoff text-3xl text-primary"></i>
+                                <span class="block text-sm font-medium mt-2">{{ __('market.upload_proof') }}</span>
+                                <span class="block text-[11px] mt-0.5">{{ __('market.proof_hint') }}</span>
+                            </span>
+                        </template>
+                    </button>
+                    <button type="button" x-show="proof" @click="$refs.proofInput.click()" class="text-xs text-primary font-medium mt-1.5">{{ __('market.change_proof') }}</button>
+                </div>
+            </div>
+
+            {{-- Footer --}}
+            <div class="p-4 border-t border-gray-100 flex-shrink-0" x-show="items.length>0">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-sm text-muted-foreground">{{ __('market.total') }}</span>
+                    <span class="text-lg font-black text-foreground">BHD <span x-text="total.toFixed(2)"></span></span>
+                </div>
+                <button type="button" x-show="cartStep==='cart'" @click="cartStep='pay'"
+                        class="w-full py-3 rounded-xl bg-primary text-white font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors">
+                    <i class="bi bi-shield-lock"></i> {{ __('market.continue_to_pay') }}
+                </button>
+                <button type="button" x-show="cartStep==='pay'" @click="checkout()" :disabled="!proof || placing"
+                        class="w-full py-3 rounded-xl bg-primary text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-primary/90 transition-colors">
+                    <i class="bi" :class="placing ? 'bi-arrow-repeat animate-spin' : 'bi-bag-check'"></i>
+                    <span x-text="placing ? @js(__('market.placing')) : @js(__('market.place_order'))"></span>
+                </button>
+                <p class="text-[11px] text-muted-foreground text-center mt-2" x-show="cartStep==='pay' && !proof" x-cloak>{{ __('market.proof_required') }}</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@include('partials.market-hub-script')
+@endsection

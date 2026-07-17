@@ -18,7 +18,7 @@
 @endphp
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+<div class="px-4 sm:px-6 lg:px-8 py-4">
 
     <!-- Header -->
     <div class="flex justify-between items-center mb-4">
@@ -37,13 +37,21 @@
     <div class="bg-white rounded-xl shadow-sm mb-4">
         <div class="flex flex-col sm:flex-row">
             <!-- Profile Picture -->
-            <div class="w-full sm:w-[180px] sm:min-h-[250px] overflow-hidden rounded-t-xl sm:rounded-t-none sm:rounded-s-xl flex-shrink-0" style="min-height: 150px;">
+            <div class="relative w-full sm:w-[180px] aspect-[3/4] overflow-hidden rounded-t-xl sm:rounded-t-none sm:rounded-s-xl flex-shrink-0">
                 @if($relationship->dependent->profile_picture)
                     <img id="member-profile-pic" src="{{ asset('storage/' . $relationship->dependent->profile_picture) }}?v={{ $relationship->dependent->updated_at->timestamp }}" alt="{{ $relationship->dependent->full_name }}" class="w-full h-full" style="object-fit: cover;">
                 @endif
                 <div id="member-profile-placeholder" class="w-full h-full flex items-center justify-center text-white font-bold" style="font-size: 3rem; background: linear-gradient(135deg, {{ $relationship->dependent->gender === 'Male' ? '#0d6efd 0%, #0a58ca 100%' : '#d63384 0%, #a61e4d 100%' }}); {{ $relationship->dependent->profile_picture ? 'display:none;' : '' }}">
                     {{ mb_strtoupper(mb_substr($relationship->dependent->full_name, 0, 1, 'UTF-8'), 'UTF-8') }}
                 </div>
+                @if($relationship->relationship_type == 'self' || Auth::id() == $relationship->guardian_user_id || $relationship->relationship_type == 'admin_view')
+                    <button type="button"
+                            onclick="window.dispatchEvent(new CustomEvent('open-photo-edit-modal'))"
+                            class="absolute top-2 right-2 w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-primary hover:bg-accent transition-colors"
+                            aria-label="{{ __('member.templates_member_show_edit_photo') }}">
+                        <i class="bi bi-pencil-fill text-sm"></i>
+                    </button>
+                @endif
             </div>
 
             <!-- Profile Info -->
@@ -1292,6 +1300,26 @@
                                                     {{ ucfirst($goal->priority_level) }}
                                                 </span>
                                             </div>
+
+                                            @if($goal->before_proof || $goal->after_proof)
+                                                <div class="flex gap-2 mt-3">
+                                                    @if($goal->before_proof)
+                                                        <div class="flex-1 min-w-0">
+                                                            <img src="{{ asset('storage/'.$goal->before_proof) }}" class="w-full h-20 rounded-md object-cover border border-gray-200" alt="">
+                                                            <small class="text-gray-500 block text-center mt-1">{{ __('member.before') }}</small>
+                                                        </div>
+                                                    @endif
+                                                    @if($goal->after_proof)
+                                                        <div class="flex-1 min-w-0">
+                                                            <img src="{{ asset('storage/'.$goal->after_proof) }}" class="w-full h-20 rounded-md object-cover border border-gray-200" alt="">
+                                                            <small class="text-gray-500 block text-center mt-1">{{ __('member.after') }}</small>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            @endif
+                                            @if($goal->status === 'completed' && $goal->days_taken !== null)
+                                                <div class="mt-2 text-green-700 text-sm font-semibold flex items-center gap-1"><i class="bi bi-trophy-fill"></i>{{ $goal->days_taken }} {{ __('member.days_to_achieve') }}</div>
+                                            @endif
                                         </div>
                                     </div>
                                 </div>
@@ -1786,6 +1814,12 @@
                                     <option value="clock">{{ __('member.templates_member_show_icon_endurance') }}</option>
                                 </select>
                             </div>
+                            <div class="col-span-full">
+                                <label for="goal_add_before_photo" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.goal_before_photo') }} <span class="text-red-600">*</span></label>
+                                <input type="file" accept="image/*" id="goal_add_before_photo" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary">
+                                <input type="hidden" name="before_proof" id="goal_add_before_photo_b64">
+                                <img id="goal_add_before_photo_preview" class="hidden mt-2 h-24 rounded-md object-cover border border-gray-200" alt="">
+                            </div>
                         </div>
                     </div>
                     <div class="flex justify-end gap-2 p-4 border-t border-gray-200 bg-gray-50">
@@ -1848,6 +1882,13 @@
                                     <div class="h-full bg-primary transition-all" role="progressbar" id="progressPreview" style="width: 0%; background: linear-gradient(90deg, #8b5cf6 0%, #10b981 100%);"></div>
                                 </div>
                                 <small class="text-gray-500 mt-1 block" id="progressTextPreview">Progress: 0.0 / 170.0 lbs (0.0%)</small>
+                            </div>
+                            <div class="col-span-full hidden" id="goalEditAfterPhotoWrap">
+                                <label for="goal_edit_after_photo" class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.goal_after_photo') }} <span class="text-red-600">*</span></label>
+                                <p class="text-xs text-gray-500 mb-1">{{ __('member.mark_as_achieved_hint') }}</p>
+                                <input type="file" accept="image/*" id="goal_edit_after_photo" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary">
+                                <input type="hidden" name="after_proof" id="goal_edit_after_photo_b64">
+                                <img id="goal_edit_after_photo_preview" class="hidden mt-2 h-24 rounded-md object-cover border border-gray-200" alt="">
                             </div>
                         </div>
                     </div>
@@ -2701,6 +2742,10 @@
 
             // Update form action
             goalEditForm.action = `/member/goal/${goalId}`;
+            // Remembered so the status-change listener only demands an "after" photo
+            // the first time a goal is closed — re-saving an already-completed goal
+            // (e.g. tweaking progress) shouldn't ask for a new one.
+            goalEditForm.dataset.originalStatus = goal.status;
 
             // Populate modal fields
             document.getElementById('goalTitleDisplay').textContent = goal.title;
@@ -2709,6 +2754,15 @@
             document.getElementById('goal_status').value = goal.status;
             document.getElementById('goalUnitDisplay').textContent = goal.unit;
             document.getElementById('goalTargetDisplay').textContent = `${goal.target_value} ${goal.unit}`;
+
+            // Reset the "after photo" upload each time the modal opens
+            const afterInput = document.getElementById('goal_edit_after_photo');
+            const afterB64 = document.getElementById('goal_edit_after_photo_b64');
+            const afterPreview = document.getElementById('goal_edit_after_photo_preview');
+            if (afterInput) afterInput.value = '';
+            if (afterB64) afterB64.value = '';
+            if (afterPreview) { afterPreview.src = ''; afterPreview.classList.add('hidden'); }
+            toggleGoalAfterPhotoBlock();
 
             // Update icon
             const iconElement = document.getElementById('goalIconDisplay').querySelector('i');
@@ -2738,6 +2792,70 @@
 
         // Update progress preview on input change
         document.getElementById('current_progress_value').addEventListener('input', updateProgressPreview);
+
+        // Show the "after photo" upload only when closing a goal for the first time.
+        function toggleGoalAfterPhotoBlock() {
+            const wrap = document.getElementById('goalEditAfterPhotoWrap');
+            if (!wrap) return;
+            const closingNow = document.getElementById('goal_status').value === 'completed'
+                && goalEditForm.dataset.originalStatus !== 'completed';
+            wrap.classList.toggle('hidden', !closingNow);
+        }
+        document.getElementById('goal_status').addEventListener('change', toggleGoalAfterPhotoBlock);
+
+        // A phone camera photo can be several MB — base64-encoded raw, that easily blows
+        // past the server's post_max_size and the upload silently fails. Downscale onto a
+        // canvas (max 1600px) and re-encode as JPEG before it ever becomes a data URI.
+        function resizeImageToDataUrl(file, maxDim, quality) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const img = new Image();
+                    img.onload = () => {
+                        let width = img.width, height = img.height;
+                        if (width > maxDim || height > maxDim) {
+                            if (width > height) { height = Math.round(height * (maxDim / width)); width = maxDim; }
+                            else { width = Math.round(width * (maxDim / height)); height = maxDim; }
+                        }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width; canvas.height = height;
+                        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                        resolve(canvas.toDataURL('image/jpeg', quality || 0.85));
+                    };
+                    img.onerror = () => reject(new Error('image_decode_failed'));
+                    img.src = reader.result;
+                };
+                reader.onerror = () => reject(new Error('file_read_failed'));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Convert a picked file into a base64 data URI, filling a hidden input + preview <img>.
+        function wireBase64Photo(fileInputId, hiddenInputId, previewId) {
+            const fileInput = document.getElementById(fileInputId);
+            const hidden = document.getElementById(hiddenInputId);
+            const preview = document.getElementById(previewId);
+            if (!fileInput || !hidden) return;
+            fileInput.addEventListener('change', async function () {
+                const f = fileInput.files && fileInput.files[0];
+                if (!f) return;
+                if (!f.type.startsWith('image/')) {
+                    if (window.showToast) window.showToast('error', '{{ __('Please choose an image file.') }}');
+                    fileInput.value = '';
+                    return;
+                }
+                try {
+                    const dataUrl = await resizeImageToDataUrl(f, 1600, 0.85);
+                    hidden.value = dataUrl;
+                    if (preview) { preview.src = dataUrl; preview.classList.remove('hidden'); }
+                } catch (e) {
+                    if (window.showToast) window.showToast('error', '{{ __('Please choose an image file.') }}');
+                    fileInput.value = '';
+                }
+            });
+        }
+        wireBase64Photo('goal_add_before_photo', 'goal_add_before_photo_b64', 'goal_add_before_photo_preview');
+        wireBase64Photo('goal_edit_after_photo', 'goal_edit_after_photo_b64', 'goal_edit_after_photo_preview');
 
         // Patch a goal card in place from the server-returned goal object (no reload)
         function patchGoalCard(goal) {
@@ -2779,6 +2897,28 @@
             if (goal.status !== 'active') {
                 const editBtn = card.querySelector('.edit-goal-btn');
                 if (editBtn) editBtn.remove();
+            }
+
+            // First-time completion: server now returns before/after photos + days_taken —
+            // render them once, right after the status/priority badges.
+            if (goal.status === 'completed' && (goal.before_proof || goal.after_proof) && !card.querySelector('[data-goal-photos]')) {
+                const badges = card.querySelector('[data-goal-status-badge]')?.closest('.flex.gap-2.flex-wrap');
+                if (badges) {
+                    const photos = document.createElement('div');
+                    photos.className = 'flex gap-2 mt-3';
+                    photos.setAttribute('data-goal-photos', '');
+                    photos.innerHTML =
+                        (goal.before_proof ? '<div class="flex-1 min-w-0"><img src="' + goal.before_proof + '" class="w-full h-20 rounded-md object-cover border border-gray-200" alt=""><small class="text-gray-500 block text-center mt-1">{{ __("member.before") }}</small></div>' : '') +
+                        (goal.after_proof ? '<div class="flex-1 min-w-0"><img src="' + goal.after_proof + '" class="w-full h-20 rounded-md object-cover border border-gray-200" alt=""><small class="text-gray-500 block text-center mt-1">{{ __("member.after") }}</small></div>' : '');
+                    badges.insertAdjacentElement('afterend', photos);
+
+                    if (goal.days_taken !== null && goal.days_taken !== undefined) {
+                        const daysEl = document.createElement('div');
+                        daysEl.className = 'mt-2 text-green-700 text-sm font-semibold flex items-center gap-1';
+                        daysEl.innerHTML = '<i class="bi bi-trophy-fill"></i>' + goal.days_taken + ' {{ __("member.days_to_achieve") }}';
+                        photos.insertAdjacentElement('afterend', daysEl);
+                    }
+                }
             }
         }
 
@@ -2873,6 +3013,9 @@
                                 '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary" data-goal-status-badge>{{ __("member.templates_member_show_status_active") }}</span>' +
                                 '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ' + priorityClass + '">' + escapeHtml((goal.priority_level || 'medium').charAt(0).toUpperCase() + (goal.priority_level || 'medium').slice(1)) + '</span>' +
                             '</div>' +
+                            (goal.before_proof
+                                ? '<div class="flex gap-2 mt-3"><div class="flex-1 min-w-0"><img src="' + goal.before_proof + '" class="w-full h-20 rounded-md object-cover border border-gray-200" alt=""><small class="text-gray-500 block text-center mt-1">{{ __("member.before") }}</small></div></div>'
+                                : '') +
                         '</div>' +
                     '</div>';
                 return wrap;
@@ -2907,6 +3050,8 @@
                         if (cnt) cnt.textContent = (parseInt(cnt.textContent, 10) || 0) + 1;
                         goalAddForm.reset();
                         document.getElementById('goal_add_current').value = '0';
+                        const beforePreview = document.getElementById('goal_add_before_photo_preview');
+                        if (beforePreview) { beforePreview.src = ''; beforePreview.classList.add('hidden'); }
                         window.dispatchEvent(new CustomEvent('close-goal-add-modal'));
                         if (window.showToast) window.showToast('success', data.message || '{{ __("member.templates_member_show_goal_created") }}');
                     } else if (status === 422 && data.errors) {
@@ -3513,6 +3658,14 @@ document.addEventListener('DOMContentLoaded', function() {
     :uploadUrl="$relationship->relationship_type === 'admin_view' ? route('admin.platform.members.upload-picture', $relationship->dependent->id) : route('member.upload-picture', $relationship->dependent->id)"
     :showRelationshipFields="$relationship->relationship_type !== 'admin_view' && $relationship->relationship_type !== 'self'"
     :relationship="$relationship"
+/>
+
+<!-- Quick Photo Edit Modal (opened from the pencil icon on the profile picture) -->
+<x-photo-edit-modal
+    :user="$relationship->dependent"
+    :uploadUrl="$relationship->relationship_type === 'admin_view' ? route('admin.platform.members.upload-picture', $relationship->dependent->id) : route('member.upload-picture', $relationship->dependent->id)"
+    :removeUrl="$relationship->relationship_type === 'admin_view' ? route('admin.platform.members.remove-picture', $relationship->dependent->id) : route('member.remove-picture', $relationship->dependent->id)"
+    :visibilityUrl="$relationship->relationship_type === 'admin_view' ? route('admin.platform.members.picture-visibility', $relationship->dependent->id) : route('member.picture-visibility', $relationship->dependent->id)"
 />
 
 <!-- Reset Password Modal -->

@@ -1,4 +1,4 @@
-@props(['club' => null, 'mode' => 'create'])
+@props(['club' => null, 'mode' => 'create', 'context' => 'admin'])
 
 @php
     $isEdit = $mode === 'edit' && $club;
@@ -24,6 +24,12 @@
         <div class="invalid-feedback">{{ __('shared.tabs_basic_info_club_name_error_feedback') }}</div>
     </div>
 
+    @if($context === 'business')
+        {{-- Business-dashboard flow: the acting business owner IS the club owner —
+             enforced server-side too (StoreClubRequest::prepareForValidation), so no
+             picker is needed or shown. --}}
+        <input type="hidden" id="owner_user_id" name="owner_user_id" value="{{ auth()->id() }}">
+    @else
     <!-- Club Owner -->
     <div class="mb-4">
         <label class="form-label">
@@ -111,6 +117,7 @@
             </div>
         </div>
     </div>
+    @endif
 
     <!-- Established Date -->
     <div class="mb-4">

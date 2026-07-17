@@ -175,13 +175,20 @@
                                             {{ $re->is_active ? __('admin.auto_expense_modal_pause') : __('admin.auto_expense_modal_resume') }}
                                         </button>
                                     </form>
-                                    <form action="{{ route('admin.club.financials.recurring.destroy', [$club->slug, $re->id]) }}" method="POST"
-                                          onsubmit="event.preventDefault(); (async (f) => { const ok = await window.confirmAction({ title: '{{ __('admin.auto_expense_modal_remove_title') }}', message: '{{ __('admin.auto_expense_modal_remove_message') }}', type: 'danger', confirmText: '{{ __('admin.auto_expense_modal_remove_confirm') }}' }); if (ok) f.submit(); })(this); return false;">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger text-xs">
-                                            <i class="bi bi-trash"></i>
+                                    @if($re->instructor_id)
+                                        <button type="button" class="btn btn-sm btn-outline-danger text-xs" disabled
+                                                title="{{ __('admin.auto_expense_modal_staff_linked_hint') }}">
+                                            <i class="bi bi-person-badge"></i>
                                         </button>
-                                    </form>
+                                    @else
+                                        <form action="{{ route('admin.club.financials.recurring.destroy', [$club->slug, $re->id]) }}" method="POST"
+                                              onsubmit="event.preventDefault(); (async (f) => { const ok = await window.confirmAction({ title: '{{ __('admin.auto_expense_modal_remove_title') }}', message: '{{ __('admin.auto_expense_modal_remove_message') }}', type: 'danger', confirmText: '{{ __('admin.auto_expense_modal_remove_confirm') }}' }); if (ok) f.submit(); })(this); return false;">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="btn btn-sm btn-outline-danger text-xs">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    @endif
                                 </div>
                             </div>
                             @empty

@@ -30,6 +30,7 @@ class BusinessDashboardController extends Controller
             'business' => $business,
             'clubs' => $data['clubs'],
             'totals' => $data['totals'],
+            'revenueChart' => $data['revenue_chart'],
         ]);
     }
 }

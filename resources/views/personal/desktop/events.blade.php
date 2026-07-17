@@ -1,0 +1,198 @@
+@extends('layouts.app')
+
+@section('title', __('personal.personal_events_title'))
+
+@php
+    $demoList = array_values($demo);
+    $feat = collect($demoList)->firstWhere('ended', false);
+    $upcomingCount = collect($demoList)->where('ended', false)->count();
+    $pastCount = collect($demoList)->where('ended', true)->count();
+    $joinedCount = collect($demoList)->where('joined', true)->where('ended', false)->count();
+    $clubCount = collect($demoList)->pluck('club')->unique()->count();
+@endphp
+
+@section('content')
+<div class="px-4 sm:px-6 lg:px-8 py-6" x-data="{ seg: 'upcoming' }">
+
+    @include('partials.personal-desktop-subnav')
+
+    {{-- ===== Hero stat bar ===== --}}
+    <div class="rounded-2xl shadow-sm p-6 text-white relative overflow-hidden mb-6" style="background: linear-gradient(135deg, hsl(250 65% 65%), hsl(250 65% 52%));">
+        <div class="absolute -end-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+        <div class="relative flex items-center justify-between flex-wrap gap-4">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-white/70">{{ __('personal.personal_events_your_clubs') }}</p>
+                <h1 class="text-2xl font-black mt-0.5">{{ __('personal.personal_events_title') }}</h1>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-4 py-2.5 text-center min-w-[84px]">
+                    <p class="text-lg font-black leading-none">{{ $upcomingCount }}</p>
+                    <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('personal.personal_events_upcoming') }}</p>
+                </div>
+                <div class="rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-4 py-2.5 text-center min-w-[84px]">
+                    <p class="text-lg font-black leading-none">{{ $joinedCount }}</p>
+                    <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('personal.personal_events_joined') }}</p>
+                </div>
+                <div class="rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-4 py-2.5 text-center min-w-[84px]">
+                    <p class="text-lg font-black leading-none">{{ $clubCount }}</p>
+                    <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('personal.personal_events_clubs') }}</p>
+                </div>
+                <a href="{{ route('me.events.create') }}"
+                   class="px-4 h-[52px] rounded-2xl bg-white/15 border border-white/25 backdrop-blur flex items-center gap-2 text-sm font-semibold hover:bg-white/25 transition-colors">
+                    <i class="bi bi-plus-lg"></i> {{ __('personal.personal_events_create_event') }}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    @if(empty($demoList))
+        <div class="bg-white rounded-2xl border border-gray-100 px-5 py-16 text-center">
+            <i class="bi bi-calendar-x text-4xl text-gray-300"></i>
+            <p class="text-sm font-bold text-foreground mt-3">{{ __('personal.personal_events_no_events_yet') }}</p>
+            <p class="text-xs text-muted-foreground mt-1">{{ __('personal.personal_events_create_check_back') }}</p>
+            <a href="{{ route('me.events.create') }}"
+               class="inline-flex items-center gap-2 mt-4 px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors">
+                <i class="bi bi-plus-lg"></i> {{ __('personal.personal_events_create_event') }}
+            </a>
+        </div>
+    @else
+
+    {{-- ===== Featured spotlight ===== --}}
+    @if($feat)
+    <div x-show="seg==='upcoming'" x-transition class="mb-6">
+        <a href="{{ route('me.events.show', $feat['key']) }}"
+           class="block rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-shadow border border-gray-100 text-white relative">
+            <div class="relative p-6 flex items-center justify-between gap-6 flex-wrap"
+                 style="background: linear-gradient(135deg, {{ $feat['color'] }}, {{ $feat['color'] }}cc);">
+                <div class="absolute -end-6 -top-6 w-32 h-32 rounded-full bg-white/10"></div>
+                <div class="absolute -end-2 bottom-2 w-24 h-24 rounded-full bg-white/10"></div>
+                <div class="relative min-w-0 flex-1">
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/20 backdrop-blur">
+                        <i class="bi bi-stars"></i> {{ __('personal.personal_events_featured') }}
+                    </span>
+                    <h2 class="text-2xl font-black mt-3 leading-tight">{{ $feat['title'] }}</h2>
+                    <p class="text-sm text-white/85 mt-1 flex items-center gap-1.5">
+                        <i class="bi bi-geo-alt-fill text-xs"></i>{{ $feat['location'] }}
+                    </p>
+                    <div class="flex items-center gap-4 mt-4 text-xs font-medium">
+                        <span class="inline-flex items-center gap-1.5"><i class="bi bi-calendar3"></i>{{ $feat['wday'] }} {{ $feat['day'] }} {{ $feat['mon'] }}</span>
+                        <span class="inline-flex items-center gap-1.5"><i class="bi bi-clock-fill"></i>{{ $feat['time'] }}</span>
+                    </div>
+                </div>
+                <div class="relative w-full sm:w-64 flex-shrink-0">
+                    <div class="flex items-center justify-between text-[11px] text-white/80 mb-1.5">
+                        <span>{{ $feat['going'] }} {{ __('personal.personal_events_going') }}</span>
+                        <span>{{ $feat['cap'] - $feat['going'] }} {{ __('personal.personal_events_spots_left') }}</span>
+                    </div>
+                    <div class="h-1.5 rounded-full bg-white/25 overflow-hidden">
+                        <div class="h-full rounded-full bg-white" style="width: {{ round($feat['going'] / $feat['cap'] * 100) }}%"></div>
+                    </div>
+                    <span class="mt-4 w-full py-2.5 rounded-xl bg-white text-foreground font-bold text-sm flex items-center justify-center gap-2">
+                        <i class="bi bi-arrow-right-circle"></i> {{ __('personal.personal_events_view_details') }}
+                    </span>
+                </div>
+            </div>
+        </a>
+    </div>
+    @endif
+
+    {{-- ===== Segmented filter ===== --}}
+    @php $segCounts = ['upcoming' => $upcomingCount, 'joined' => $joinedCount, 'past' => $pastCount]; @endphp
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-1 flex mb-6 max-w-md">
+        @foreach(['upcoming'=>__('personal.personal_events_upcoming'), 'joined'=>__('personal.personal_events_joined'), 'past'=>__('personal.personal_events_past')] as $key=>$label)
+            <button type="button" @click="seg='{{ $key }}'"
+                    class="flex-1 py-2 rounded-xl text-xs font-semibold transition-colors"
+                    :class="seg==='{{ $key }}' ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-muted'">
+                {{ $label }}<span class="opacity-70">@if($segCounts[$key]) ({{ $segCounts[$key] }})@endif</span>
+            </button>
+        @endforeach
+    </div>
+
+    {{-- ===== Event grid ===== --}}
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        @foreach($demoList as $e)
+            @php $isEnded = $e['ended'] ? 'true' : 'false'; $isJoined = $e['joined'] ? 'true' : 'false'; @endphp
+            <a href="{{ route('me.events.show', $e['key']) }}"
+               x-show="(seg==='upcoming' && !{{ $isEnded }}) || (seg==='joined' && {{ $isJoined }} && !{{ $isEnded }}) || (seg==='past' && {{ $isEnded }})"
+               x-transition
+               class="block bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-primary/30 hover:shadow-md transition-all p-4 flex items-start gap-3.5 {{ $e['ended'] ? 'opacity-75' : '' }}">
+                <div class="flex flex-col items-center justify-center w-14 h-16 rounded-2xl text-white flex-shrink-0 relative"
+                     style="background: linear-gradient(160deg, {{ $e['color'] }}, {{ $e['color'] }}d0);">
+                    <span class="text-[9px] uppercase tracking-wide opacity-80">{{ $e['wday'] }}</span>
+                    <span class="text-xl font-black leading-none">{{ $e['day'] }}</span>
+                    <span class="text-[9px] uppercase tracking-wide opacity-80">{{ $e['mon'] }}</span>
+                </div>
+
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                              style="background: {{ $e['color'] }}1a; color: {{ $e['color'] }};">
+                            <i class="bi {{ $e['icon'] }}"></i> {{ $e['tag'] }}
+                        </span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">{{ $e['level'] }}</span>
+                        @if($e['ended'])
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-500"><i class="bi bi-check2-circle"></i> {{ __('personal.personal_events_finished') }}</span>
+                        @endif
+                    </div>
+                    <h3 class="font-bold text-foreground mt-1.5 truncate">{{ $e['title'] }}</h3>
+                    <p class="text-xs text-muted-foreground mt-0.5 truncate flex items-center gap-1.5">
+                        <i class="bi bi-geo-alt text-[11px]"></i>{{ $e['location'] }}
+                    </p>
+
+                    @php $pFree = str_contains(strtolower($e['participant_fee']), 'free') || str_contains(strtolower($e['participant_fee']), 'qualified'); @endphp
+                    <div class="flex items-center gap-1.5 mt-2 flex-wrap">
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold {{ $pFree ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600' }}">
+                            <i class="bi bi-person-check"></i> {{ ($pFree || $e['ended']) ? $e['participant_fee'] : __('personal.personal_events_join').' · '.$e['participant_fee'] }}
+                        </span>
+                        @if($e['spectator'])
+                            @php $sFree = str_contains(strtolower($e['spectator']['fee']), 'free'); @endphp
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold {{ $sFree ? 'bg-sky-50 text-sky-600' : 'bg-purple-50 text-primary' }}">
+                                <i class="bi bi-ticket-perforated"></i> {{ $sFree ? __('personal.personal_events_watch_free') : __('personal.personal_events_ticket').' · '.$e['spectator']['fee'] }}
+                            </span>
+                        @endif
+                    </div>
+
+                    <div class="flex items-center justify-between mt-2.5">
+                        <span class="inline-flex items-center -space-x-1.5">
+                            @foreach(array_slice($e['participants'], 0, 4) as $i => $pp)
+                                @php $ini = collect(explode(' ', $pp['name']))->map(fn($x)=>mb_substr($x,0,1))->take(2)->implode(''); @endphp
+                                <span class="w-5 h-5 rounded-full grid place-items-center text-white text-[8px] font-bold border border-white" style="background: hsl({{ ($i*70)%360 }} 55% 60%);">{{ $ini }}</span>
+                            @endforeach
+                            <span class="text-[11px] text-muted-foreground ps-2.5">{{ $e['going'] }} {{ __('personal.personal_events_joined_verb') }}</span>
+                        </span>
+                        <span class="text-[11px] font-bold text-primary px-2.5 py-1 rounded-lg bg-accent inline-flex items-center gap-1">
+                            {{ __('personal.personal_events_view') }} <i class="bi bi-chevron-right text-[9px]"></i>
+                        </span>
+                    </div>
+                </div>
+            </a>
+        @endforeach
+
+        @if($upcomingCount === 0)
+            <div x-show="seg==='upcoming'" x-transition class="bg-white rounded-2xl border border-gray-100 px-5 py-10 text-center col-span-full">
+                <i class="bi bi-calendar-x text-3xl text-gray-300"></i>
+                <p class="text-sm text-muted-foreground mt-2">{{ __('personal.personal_events_no_upcoming') }}</p>
+            </div>
+        @endif
+        @if($joinedCount === 0)
+            <div x-show="seg==='joined'" x-transition class="bg-white rounded-2xl border border-gray-100 px-5 py-10 text-center col-span-full">
+                <i class="bi bi-bookmark-x text-3xl text-gray-300"></i>
+                <p class="text-sm text-muted-foreground mt-2">{{ __('personal.personal_events_no_joined') }}</p>
+            </div>
+        @endif
+        @if($pastCount === 0)
+            <div x-show="seg==='past'" x-transition class="bg-white rounded-2xl border border-gray-100 px-5 py-10 text-center col-span-full">
+                <i class="bi bi-clock-history text-3xl text-gray-300"></i>
+                <p class="text-sm text-muted-foreground mt-2">{{ __('personal.personal_events_no_past') }}</p>
+            </div>
+        @endif
+    </div>
+
+    <p class="text-center text-[11px] text-muted-foreground mt-6 px-8 leading-relaxed" x-show="seg==='upcoming'">
+        <i class="bi bi-info-circle"></i>
+        {{ __('personal.personal_events_footer_hint') }}
+    </p>
+    @endif
+
+</div>
+@endsection

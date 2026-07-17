@@ -4,23 +4,58 @@
 
 @section('chain-content')
 @php $cur = $totals['currency']; @endphp
-<div class="space-y-5">
+<div class="-mx-4 -mt-4 pb-4">
 
-    {{-- Hero summary --}}
-    <div class="m-hero rounded-2xl text-white p-5 shadow-lg">
-        <div class="relative z-10">
-            <p class="text-xs font-semibold text-white/80 uppercase tracking-wider">{{ __('business.chain_revenue') }}</p>
-            <p class="text-[2rem] leading-tight font-extrabold mt-1 tabular-nums">{{ $cur }} {{ number_format($totals['revenue'], 2) }}</p>
-            <div class="flex items-center gap-2 mt-3">
-                <span class="inline-flex items-center gap-1.5 text-xs font-medium bg-white/15 backdrop-blur rounded-full px-3 py-1.5">
-                    <i class="bi bi-diagram-3"></i>{{ $totals['clubs'] }} {{ $totals['clubs'] == 1 ? __('business.club_one') : __('business.club_many') }}
-                </span>
-                <span class="inline-flex items-center gap-1.5 text-xs font-medium bg-white/15 backdrop-blur rounded-full px-3 py-1.5">
-                    <i class="bi bi-people"></i>{{ number_format($totals['members']) }} {{ __('business.members') }}
-                </span>
+    {{-- ===== Hero (full-width) ===== --}}
+    <header class="m-hero px-5 pt-7 pb-12 text-white relative overflow-hidden">
+        <div class="absolute -end-8 -top-8 w-36 h-36 rounded-full bg-white/10"></div>
+        <div class="flex items-center justify-between relative z-10">
+            <div>
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">{{ __('business.chain_revenue') }}</p>
+                <h1 class="text-2xl font-black mt-0.5 tabular-nums">{{ $cur }} {{ number_format($totals['revenue'], 2) }}</h1>
+            </div>
+            <div class="flex items-center gap-2">
+                <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-club-modal', { detail: { mode: 'create' } }))"
+                        class="m-press w-12 h-12 rounded-2xl bg-white/20 border border-white/30 backdrop-blur grid place-items-center active:scale-95 transition-transform" aria-label="{{ __('business.create_club') }}">
+                    <i class="bi bi-plus-lg text-xl"></i>
+                </button>
+                <button type="button" @click="drawer = true" class="m-press w-12 h-12 rounded-2xl bg-white/20 border border-white/30 backdrop-blur grid place-items-center active:scale-95 transition-transform" aria-label="{{ __('business.menu') }}">
+                    <i class="bi bi-grid text-xl"></i>
+                </button>
             </div>
         </div>
-    </div>
+
+        <div class="flex gap-2 mt-5 relative z-10">
+            <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
+                <p class="text-lg font-black leading-none">{{ $totals['clubs'] }}</p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ $totals['clubs'] == 1 ? __('business.club_one') : __('business.club_many') }}</p>
+            </div>
+            <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
+                <p class="text-lg font-black leading-none">{{ number_format($totals['members']) }}</p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('business.members') }}</p>
+            </div>
+            <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
+                <p class="text-lg font-black leading-none tabular-nums">{{ $cur }} {{ number_format($totals['net'], 0) }}</p>
+                <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('business.net') }}</p>
+            </div>
+        </div>
+    </header>
+
+    <div class="px-4 -mt-6 relative z-10 space-y-5">
+
+    {{-- Revenue per club --}}
+    @if($clubs->isNotEmpty())
+        <x-chart
+            type="line"
+            :labels="$revenueChart['labels']"
+            :datasets="$revenueChart['datasets']"
+            :valuePrefix="$cur . ' '"
+            title="{{ __('business.clubs') }}"
+            subtitle="{{ __('business.chain_revenue') }}"
+            icon="bi-graph-up-arrow"
+            :height="220"
+        />
+    @endif
 
     {{-- KPI grid --}}
     <div class="mobile-stagger grid grid-cols-2 gap-3">
@@ -57,6 +92,10 @@
             <div class="m-card p-8 text-center">
                 <i class="bi bi-diagram-3 text-3xl text-gray-300 m-float inline-block"></i>
                 <p class="text-sm text-muted-foreground mt-2">{{ __('business.no_clubs_linked') }}</p>
+                <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-club-modal', { detail: { mode: 'create' } }))"
+                        class="m-press mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-medium">
+                    <i class="bi bi-plus-lg"></i>{{ __('business.create_club') }}
+                </button>
             </div>
         @else
             <div class="mobile-stagger space-y-3">
@@ -92,5 +131,10 @@
         @endif
     </div>
 
+    </div>
 </div>
+
+<template x-teleport="body">
+    <x-club-modal mode="create" context="business" />
+</template>
 @endsection

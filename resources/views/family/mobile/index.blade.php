@@ -62,26 +62,36 @@
                     ? asset('storage/'.$dependent->profile_picture).'?v='.optional($dependent->updated_at)->timestamp
                     : null;
             @endphp
-            <a href="{{ route('member.show', $dependent->uuid) }}"
-               class="m-card m-press flex items-center gap-3.5 bg-white rounded-2xl p-3 shadow-sm border border-gray-100">
-                <span class="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center overflow-hidden flex-shrink-0 ring-1 ring-black/5">
-                    @if($avatar)
-                        <img src="{{ $avatar }}" alt="" class="w-14 h-14 object-cover">
-                    @else
-                        <i class="bi bi-person text-2xl text-muted-foreground"></i>
-                    @endif
-                </span>
-                <div class="min-w-0 flex-1">
-                    <p class="font-semibold text-[15px] text-foreground truncate">{{ $dependent->full_name }}</p>
-                    <div class="mt-1.5 flex items-center gap-2 flex-wrap">
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-accent text-primary">{{ $relLabel }}</span>
-                        @if($age !== null)
-                            <span class="text-[11px] text-muted-foreground flex items-center gap-1"><i class="bi bi-cake2"></i>{{ $age }} {{ __('family.years') }}</span>
+            <div class="relative">
+                <a href="{{ route('member.show', $dependent->uuid) }}"
+                   class="m-card m-press flex items-center gap-3.5 bg-white rounded-2xl p-3 shadow-sm border border-gray-100">
+                    <span class="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center overflow-hidden flex-shrink-0 ring-1 ring-black/5">
+                        @if($avatar)
+                            <img src="{{ $avatar }}" alt="" class="w-14 h-14 object-cover">
+                        @else
+                            <i class="bi bi-person text-2xl text-muted-foreground"></i>
                         @endif
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <p class="font-semibold text-[15px] text-foreground truncate pe-8">{{ $dependent->full_name }}</p>
+                        <div class="mt-1.5 flex items-center gap-2 flex-wrap">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-accent text-primary">{{ $relLabel }}</span>
+                            @if($age !== null)
+                                <span class="text-[11px] text-muted-foreground flex items-center gap-1"><i class="bi bi-cake2"></i>{{ $age }} {{ __('family.years') }}</span>
+                            @endif
+                        </div>
                     </div>
-                </div>
-                <i class="bi bi-chevron-right text-muted-foreground flex-shrink-0"></i>
-            </a>
+                    <i class="bi bi-chevron-right text-muted-foreground flex-shrink-0"></i>
+                </a>
+                @if(!empty($relationship->edges))
+                    <button type="button"
+                            onclick="event.preventDefault(); event.stopPropagation(); window.dispatchEvent(new CustomEvent('ft:manage', { detail: {{ Illuminate\Support\Js::from(['personId' => $relationship->person_id, 'personName' => $dependent->full_name, 'edges' => $relationship->edges]) }} }));"
+                            class="absolute top-2.5 end-2.5 w-8 h-8 rounded-full bg-white/90 backdrop-blur border border-gray-100 flex items-center justify-center text-muted-foreground active:scale-95 transition-transform z-10"
+                            aria-label="{{ __('member.manage_relationships') }}">
+                        <i class="bi bi-three-dots text-sm"></i>
+                    </button>
+                @endif
+            </div>
         @empty
             <div class="bg-white rounded-2xl px-6 py-14 text-center shadow-sm border border-gray-100">
                 <i class="bi bi-people text-5xl text-gray-300 m-float inline-block"></i>
@@ -97,7 +107,52 @@
         </button>
     </div>
 
-    {{-- Add Family Member — mobile-native bottom sheet (not the desktop 4-tab modal) --}}
+    {{-- Add Family Member — chooser (New / Search Existing), then the matching sheet --}}
+    <x-member-add-chooser-mobile />
     <x-member-create-sheet-mobile :formAction="route('family.store')" />
+    <x-member-search-existing-sheet-mobile />
+
+    {{-- Manage-relationships bottom sheet — remove a mistaken/duplicate family
+         link directly from this list (same action + component the Family Tree uses). --}}
+    <div x-data="ftManageData({ removeUrl: '{{ route('me.family.relative.remove') }}', csrf: '{{ csrf_token() }}' })"
+         @ft:manage.window="openFor($event.detail)">
+    <template x-teleport="body">
+        <div x-show="open" x-cloak class="fixed inset-0 z-[60]" @keydown.escape.window="close()">
+            <div x-show="open" x-transition.opacity class="absolute inset-0 bg-black/40" @click="close()"></div>
+
+            <div x-show="open"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                 class="absolute inset-x-0 bottom-0 max-h-[92vh] flex flex-col bg-white rounded-t-3xl shadow-2xl">
+
+                <div class="flex-shrink-0 px-5 pt-3 pb-4 border-b border-gray-100">
+                    <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
+                    <h3 class="text-lg font-bold text-gray-900">{{ __('member.manage_relationships') }}</h3>
+                    <p class="text-sm text-muted-foreground">
+                        <span class="font-semibold text-primary" x-text="personName"></span>
+                    </p>
+                </div>
+
+                <div class="flex-1 overflow-y-auto px-5 py-4"
+                     style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
+                    @include('family.partials.manage-relative-fields')
+                </div>
+            </div>
+        </div>
+    </template>
+    </div>
 </div>
+
+@include('family.partials.tree-runtime')
+
+<script>
+    window.addEventListener('family-member-linked', function () {
+        window.location.reload();
+    });
+    window.addEventListener('family-relative-removed', function () {
+        window.location.reload();
+    });
+</script>
 @endsection

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -44,11 +45,13 @@ class ClubInstructor extends Model
         'tenant_id',
         'user_id',
         'role',
+        'staff_type',
         'rating',
         'sort_order',
         'compensation_type',
         'wage_amount',
         'wage_period',
+        'paid_since',
         'is_active',
     ];
 
@@ -60,12 +63,16 @@ class ClubInstructor extends Model
     protected $casts = [
         'rating' => 'decimal:2',
         'wage_amount' => 'decimal:2',
+        'paid_since' => 'datetime',
         'is_active' => 'boolean',
     ];
 
     public const COMPENSATION_VOLUNTEER = 'volunteer';
 
     public const COMPENSATION_PAID = 'paid';
+
+    /** Valid values for staff_type — instructors and other club employees alike. */
+    public const STAFF_TYPES = ['instructor', 'secretary', 'operator', 'cleaner', 'other'];
 
     public function isPaid(): bool
     {
@@ -125,6 +132,14 @@ class ClubInstructor extends Model
     public function reviews(): HasMany
     {
         return $this->hasMany(InstructorReview::class, 'instructor_id');
+    }
+
+    /**
+     * The recurring wage rule (if any) auto-posting this staff member's pay to the ledger.
+     */
+    public function recurringExpense(): HasOne
+    {
+        return $this->hasOne(ClubRecurringExpense::class, 'instructor_id');
     }
 
     /**

@@ -67,7 +67,7 @@ class PersonalEventController extends Controller
 
     /* ===================== Pages ===================== */
 
-    public function index(): View
+    public function index(Request $request): View
     {
         $me = Auth::user();
         $clubIds = $me->memberClubs()->pluck('tenants.id');
@@ -104,10 +104,12 @@ class PersonalEventController extends Controller
         $myReg = $this->myRegistrations($me->id, $all->pluck('id'));
         $demo = $all->map(fn ($e) => $this->eventView($e, $me->id, $myReg))->values()->all();
 
-        return view('personal.events', compact('demo'));
+        $isMobile = (bool) $request->attributes->get('is_mobile');
+
+        return view($isMobile ? 'personal.mobile.events' : 'personal.desktop.events', compact('demo'));
     }
 
-    public function show(ClubEvent $event): View
+    public function show(ClubEvent $event, Request $request): View
     {
         $me = Auth::user();
         $this->assertVisible($event, $me);
@@ -125,7 +127,9 @@ class PersonalEventController extends Controller
         $banned = $this->isBanned($event, $me->id);
         $elig = $this->competeEligibility($event, $me, $myReg->get($event->id));
 
-        return view('personal.event-show', [
+        $isMobile = (bool) $request->attributes->get('is_mobile');
+
+        return view($isMobile ? 'personal.mobile.event-show' : 'personal.desktop.event-show', [
             'e' => $e,
             'canManage' => $canManage,
             'isTkd' => $event->sport === 'taekwondo',

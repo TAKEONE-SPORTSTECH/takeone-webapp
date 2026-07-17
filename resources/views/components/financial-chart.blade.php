@@ -25,7 +25,7 @@
     ];
 @endphp
 
-<div id="{{ $wrapperId }}" class="mb-6">
+<div id="{{ $wrapperId }}">
 
     {{-- Reusable chart component does all the rendering --}}
     <x-chart
@@ -38,8 +38,8 @@
         :legend="true"
         :click-event="$clickEvent"
         title="Financial Overview"
-        subtitle="Last 12 months · income, expenses &amp; profit"
-        badge="12M"
+        subtitle="{{ now()->year }} · income, expenses &amp; profit"
+        badge="{{ now()->year }}"
         hint="Click any month on the chart to view its transactions"
         :container-class="$containerClass"
     />

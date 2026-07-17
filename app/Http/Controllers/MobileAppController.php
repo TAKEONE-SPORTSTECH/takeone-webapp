@@ -23,12 +23,14 @@ class MobileAppController extends Controller
         ]);
     }
 
-    /** The in-shell hub page (mobile). */
+    /** The "Get the App" hub page (mobile shell or desktop). */
     public function page(Request $request)
     {
         $apkExists = is_file(public_path(ltrim((string) config('mobile_app.apk_url'), '/')));
 
-        return view('personal.get-app', [
+        $isMobile = (bool) $request->attributes->get('is_mobile');
+
+        return view($isMobile ? 'personal.mobile.get-app' : 'personal.desktop.get-app', [
             'shellTitle' => 'TAKEONE App',
             'versionName' => (string) config('mobile_app.version_name'),
             'versionCode' => (int) config('mobile_app.version_code'),

@@ -31,7 +31,7 @@ class PersonalMobileController extends Controller
         return Auth::user()->memberClubs()->pluck('tenants.id');
     }
 
-    public function home(): View
+    public function home(Request $request): View
     {
         $user = Auth::user();
 
@@ -141,7 +141,10 @@ class PersonalMobileController extends Controller
         $activity->markSeen($user, 'feed:all');
         $feedTabDots = $activity->feedTabDots($user);
 
-        return view('personal.home', compact('user', 'posts', 'personalPosts', 'followingPosts', 'suggestions', 'allPosts', 'feedTabDots'));
+        $isMobile = (bool) $request->attributes->get('is_mobile');
+        $viewData = compact('user', 'posts', 'personalPosts', 'followingPosts', 'suggestions', 'allPosts', 'feedTabDots');
+
+        return view($isMobile ? 'personal.mobile.home' : 'personal.desktop.home', $viewData);
     }
 
     /**
@@ -207,7 +210,7 @@ class PersonalMobileController extends Controller
         ];
     }
 
-    public function schedule(): View
+    public function schedule(Request $request): View
     {
         ['weekDays' => $weekDays, 'sessions' => $sessions, 'members' => $members, 'todayKey' => $todayKey, 'todayShort' => $todayShort] = $this->assembleSchedule();
 
@@ -215,10 +218,13 @@ class PersonalMobileController extends Controller
         $iconChoices = $this->scheduleIconChoices();
         $colorChoices = $this->scheduleColorChoices();
 
-        return view('personal.schedule', compact(
+        $isMobile = (bool) $request->attributes->get('is_mobile');
+        $viewData = compact(
             'weekDays', 'sessions', 'members', 'todayKey', 'todayShort',
             'subjectsList', 'iconChoices', 'colorChoices'
-        ));
+        );
+
+        return view($isMobile ? 'personal.mobile.schedule' : 'personal.desktop.schedule', $viewData);
     }
 
     /** Live JSON of the schedule — used to re-render in place on a realtime 'refresh'. */
@@ -235,7 +241,7 @@ class PersonalMobileController extends Controller
     }
 
     /** Personal-session detail with the full workout breakdown (DB-backed). */
-    public function scheduleShow(int $session): View
+    public function scheduleShow(int $session, Request $request): View
     {
         [$members, $subjectKeys] = $this->scheduleMembers();
 
@@ -270,7 +276,10 @@ class PersonalMobileController extends Controller
         $coachAvatar = null;
         $canEngage = false;            // no club reactions/rating on personal sessions
 
-        return view('personal.schedule-show', compact('s', 'member', 'subjectsList', 'isOwner', 'synced', 'location', 'clubFacilities', 'clubInstructors', 'coachLink', 'coachAvatar', 'canEngage'));
+        $isMobile = (bool) $request->attributes->get('is_mobile');
+        $viewData = compact('s', 'member', 'subjectsList', 'isOwner', 'synced', 'location', 'clubFacilities', 'clubInstructors', 'coachLink', 'coachAvatar', 'canEngage');
+
+        return view($isMobile ? 'personal.mobile.schedule-show' : 'personal.desktop.schedule-show', $viewData);
     }
 
     /**
@@ -510,7 +519,7 @@ class PersonalMobileController extends Controller
     /** URL-safe token identifying a club class slot: paId|day|startTime. */
     private function syncedToken(int $paId, string $day, string $start): string
     {
-        return rtrim(strtr(base64_encode("$paId|$day|$start"), '+/', '-_'), '=');
+        return \App\Support\SyncedClassToken::encode($paId, $day, $start);
     }
 
     /** Short display label for a club slot's location (facility name / address / text). */
@@ -1147,6 +1156,25 @@ class PersonalMobileController extends Controller
             } catch (\Throwable $e) { /* bad date → keep the next occurrence */
             }
         }
+
+        // A one-time program variation for THIS exact date overrides the recurring
+        // intensity/focus/notes/workout for display, without touching the base slot.
+        $programOverride = \App\Models\ClassProgramOverride::where('package_activity_id', $paId)
+            ->where('slot_day', $day)->where('slot_start', (string) $start)
+            ->whereDate('date', $occDate)
+            ->with('setBy:id,name,full_name')
+            ->first();
+        if ($programOverride) {
+            $s['intensity'] = $programOverride->intensity;
+            $s['focus'] = $programOverride->focus ?? [];
+            $s['notes'] = $programOverride->notes;
+            $s['workout'] = array_merge(['warmup' => [], 'main' => [], 'cooldown' => []], $programOverride->workout ?? []);
+        }
+        $programOverridden = (bool) $programOverride;
+        $programOverrideBy = $programOverride?->setBy
+            ? ($programOverride->setBy->full_name ?: $programOverride->setBy->name)
+            : null;
+
         // Attendance is markable only DURING the class — not before it starts, not after
         // it ends. Interpret the wall-clock start/end in the CLUB's timezone (server runs
         // UTC) so the window is correct in real time.
@@ -1433,7 +1461,9 @@ class PersonalMobileController extends Controller
                 ->sortBy('name')->values()
             : collect();
 
-        return view('personal.schedule-show', [
+        $isMobile = (bool) $request->attributes->get('is_mobile');
+
+        return view($isMobile ? 'personal.mobile.schedule-show' : 'personal.desktop.schedule-show', [
             's' => $s, 'member' => $member, 'isOwner' => false, 'synced' => true,
             'canEditClub' => $canEditClub, 'editSlot' => $editSlot, 'updateUrl' => $updateUrl,
             'occurrenceDate' => $occDate, 'occurrenceLabel' => $occurrence->format('D, M j'),
@@ -1454,6 +1484,9 @@ class PersonalMobileController extends Controller
             'cancelCreditable' => $cancelCreditable,
             'cancelUrl' => route('me.schedule.cancel', ['token' => $token]),
             'uncancelUrl' => route('me.schedule.uncancel', ['token' => $token]),
+            'programOverridden' => $programOverridden,
+            'programOverrideBy' => $programOverrideBy,
+            'programResetUrl' => route('me.schedule.program.reset', ['token' => $token]),
             'myCredits' => $myCredits,
             'location' => $location,
             'clubFacilities' => $clubFacilities,
@@ -1975,6 +2008,36 @@ class PersonalMobileController extends Controller
     }
 
     /**
+     * Clear a one-off training-program override for a single dated occurrence
+     * of a club class, reverting the display back to the recurring plan
+     * stored on the package activity's schedule JSON (which this never touched).
+     */
+    public function programReset(Request $request, string $token): JsonResponse
+    {
+        $pa = $this->classFromToken($token);
+        if (! $this->canEditClass($pa)) {
+            return response()->json(['success' => false, 'message' => 'You can’t change this class.'], 403);
+        }
+        [$paId, $day, $start] = $this->decodeSyncedToken($token);
+        $data = $request->validate(['date' => ['required', 'date']]);
+
+        \App\Models\ClassProgramOverride::where('package_activity_id', $paId)
+            ->where('slot_day', $day)->where('slot_start', (string) $start)
+            ->whereDate('date', $data['date'])->delete();
+
+        $className = $pa->activity->name ?? 'your class';
+        $this->notifyClassRecipients(
+            $pa,
+            $className.' program reset',
+            'The '.\Carbon\Carbon::parse($data['date'])->format('D, M j').' class now follows the recurring plan again.',
+            $token,
+        );
+        $this->pushScheduleRefresh($this->classAudience($pa, [Auth::id()]));
+
+        return response()->json(['success' => true, 'message' => 'Program reset to the recurring plan.']);
+    }
+
+    /**
      * Credit each enrolled member a make-up for one cancelled date: a tracked
      * credit + a subscription end_date extension (so it survives expiry).
      * Returns affected user ids. Idempotent per (class, member, date).
@@ -2023,12 +2086,7 @@ class PersonalMobileController extends Controller
     /** Decode a club-class token into [paId, day, start] (paId null when malformed). */
     private function decodeSyncedToken(string $token): array
     {
-        $parts = explode('|', (string) base64_decode(strtr($token, '-_', '+/')));
-        if (count($parts) < 2) {
-            return [null, null, null];
-        }
-
-        return [(int) $parts[0], $parts[1], $parts[2] ?? ''];
+        return \App\Support\SyncedClassToken::decode($token);
     }
 
     /**
@@ -2058,8 +2116,13 @@ class PersonalMobileController extends Controller
             return response()->json(['success' => false, 'message' => 'You can’t edit this class.'], 403);
         }
 
-        // Same field set as a personal session, minus the family "subject".
+        // Same field set as a personal session, minus the family "subject", plus a
+        // scope choice: 'recurring' changes the permanent weekly plan (default,
+        // existing behaviour); 'once' saves the rich-content fields as a one-time
+        // variation for a single dated occurrence, leaving the recurring plan untouched.
         $data = $request->validate([
+            'scope' => ['nullable', 'in:recurring,once'],
+            'date' => ['required_if:scope,once', 'date_format:Y-m-d'],
             'day' => ['required', 'in:sunday,monday,tuesday,wednesday,thursday,friday,saturday'],
             'start_time' => ['nullable', 'string', 'max:12'],
             'end_time' => ['nullable', 'string', 'max:12'],
@@ -2154,15 +2217,43 @@ class PersonalMobileController extends Controller
         $slot['icon'] = ($data['icon'] ?? null) ?: null;
         $slot['color'] = ($data['color'] ?? null) ?: null;
         $slot['coach'] = ($data['coach'] ?? null) ?: null;
-        $slot['intensity'] = ($data['intensity'] ?? null) ?: null;
-        $slot['focus'] = $focus;
-        $slot['notes'] = ($data['notes'] ?? null) ?: null;
-        $slot['workout'] = ['warmup' => $warmup, 'main' => $main, 'cooldown' => $cooldown];
+
+        // Rich content (intensity/focus/notes/workout) only overwrites the RECURRING
+        // plan when scope=recurring. For scope=once it's saved as a dated override
+        // below instead — $slot keeps whatever it already had, so the base JSON
+        // (and therefore every other week) is left completely untouched.
+        $scope = $data['scope'] ?? 'recurring';
+        if ($scope === 'recurring') {
+            $slot['intensity'] = ($data['intensity'] ?? null) ?: null;
+            $slot['focus'] = $focus;
+            $slot['notes'] = ($data['notes'] ?? null) ?: null;
+            $slot['workout'] = ['warmup' => $warmup, 'main' => $main, 'cooldown' => $cooldown];
+        }
 
         $sched[$idx] = $slot;
 
         $pa->schedule = json_encode(array_values($sched));
         $pa->save();
+
+        if ($scope === 'once') {
+            // NOTE: deliberately not updateOrCreate() — its naive attribute-match lookup
+            // compares the raw 'date' string against the date-cast column and misses an
+            // existing row (the cast serializes with a time part), throwing a unique-
+            // constraint violation on the second save instead of updating. Look the row
+            // up with whereDate() (as everywhere else in this file) and save explicitly.
+            $override = \App\Models\ClassProgramOverride::where('package_activity_id', $paId)
+                ->where('slot_day', $origDay)->where('slot_start', $origStart)
+                ->whereDate('date', $data['date'])
+                ->first() ?? new \App\Models\ClassProgramOverride([
+                    'package_activity_id' => $paId, 'slot_day' => $origDay, 'slot_start' => $origStart, 'date' => $data['date'],
+                ]);
+            $override->intensity = ($data['intensity'] ?? null) ?: null;
+            $override->focus = $focus;
+            $override->notes = ($data['notes'] ?? null) ?: null;
+            $override->workout = ['warmup' => $warmup, 'main' => $main, 'cooldown' => $cooldown];
+            $override->set_by = Auth::id();
+            $override->save();
+        }
 
         // Notify everyone enrolled + the coach + any substitutes, and deep-link
         // them to the (possibly rescheduled) class. Token reflects the new slot.
@@ -2171,8 +2262,10 @@ class PersonalMobileController extends Controller
         $className = $slot['title'] ?: ($pa->activity->name ?? 'Your class');
         $this->notifyClassRecipients(
             $pa,
-            $className.' was updated',
-            'The class schedule or details changed. Tap to see what’s new.',
+            $scope === 'once' ? $className.' program updated' : $className.' was updated',
+            $scope === 'once'
+                ? 'The '.\Carbon\Carbon::parse($data['date'])->format('D, M j').' class has a one-time program change. Tap to see what’s new.'
+                : 'The class schedule or details changed. Tap to see what’s new.',
             $newToken,
             $subIds,
         );
@@ -2182,8 +2275,9 @@ class PersonalMobileController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Class schedule updated.',
+            'message' => $scope === 'once' ? 'Program saved for this date.' : 'Class schedule updated.',
             'redirect' => route('me.schedule'),
+            'once' => $scope === 'once',
         ]);
     }
 
@@ -2626,7 +2720,7 @@ class PersonalMobileController extends Controller
         ]);
     }
 
-    public function packages(): View
+    public function packages(Request $request): View
     {
         $subscriptions = ClubMemberSubscription::where('user_id', Auth::id())
             ->with([
@@ -2640,7 +2734,9 @@ class PersonalMobileController extends Controller
             ->latest()
             ->get();
 
-        return view('personal.packages', compact('subscriptions'));
+        $isMobile = (bool) $request->attributes->get('is_mobile');
+
+        return view($isMobile ? 'personal.mobile.packages' : 'personal.desktop.packages', compact('subscriptions'));
     }
 
     public function progress(): View
@@ -3135,7 +3231,7 @@ class PersonalMobileController extends Controller
         return compact('posts', 'following', 'mine');
     }
 
-    public function market(): View
+    public function market(Request $request): View
     {
         // Real products from the clubs this member belongs to.
         $clubIds = $this->clubIds();
@@ -3158,10 +3254,12 @@ class PersonalMobileController extends Controller
             ->concat($defined->map(fn ($c) => ['key' => $c->key, 'label' => $c->label, 'icon' => $c->icon]))
             ->values()->all();
 
-        return view('personal.market', compact('products', 'categories'));
+        $isMobile = (bool) $request->attributes->get('is_mobile');
+
+        return view($isMobile ? 'personal.mobile.market' : 'personal.desktop.market', compact('products', 'categories'));
     }
 
-    public function marketShow(int $product): View
+    public function marketShow(int $product, Request $request): View
     {
         $model = \App\Models\ClubProduct::where('status', 'published')->findOrFail($product);
         $p = $model->toCardArray();
@@ -3206,7 +3304,9 @@ class PersonalMobileController extends Controller
             $breakdown[$s] = (int) round((($dist[$s] ?? 0) / $total) * 100);
         }
 
-        return view('personal.market-show', compact('p', 'related', 'reviews', 'breakdown'));
+        $isMobile = (bool) $request->attributes->get('is_mobile');
+
+        return view($isMobile ? 'personal.mobile.market-show' : 'personal.desktop.market-show', compact('p', 'related', 'reviews', 'breakdown'));
     }
 
     /** Shared curated dummy marketplace — categories + products (keyed by id). */
@@ -3516,11 +3616,13 @@ class PersonalMobileController extends Controller
         ];
     }
 
-    public function settings(): View
+    public function settings(Request $request): View
     {
         $user = Auth::user();
 
-        return view('personal.settings', compact('user'));
+        $isMobile = (bool) $request->attributes->get('is_mobile');
+
+        return view($isMobile ? 'personal.mobile.settings' : 'personal.desktop.settings', compact('user'));
     }
 
     /** Mark an app section / feed-tab as seen (clears its unseen indicator). */

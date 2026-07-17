@@ -17,7 +17,9 @@
                 </button>
             </div>
             <div class="modal-body px-6 py-4">
-                <form action="{{ route('admin.club.financials.expense', $club->slug) }}" method="POST" id="expenseForm">
+                <form x-data="{ isRecurring: false }"
+                      :action="isRecurring ? '{{ route('admin.club.financials.recurring.store', $club->slug) }}' : '{{ route('admin.club.financials.expense', $club->slug) }}'"
+                      method="POST" id="expenseForm">
                     @csrf
                     <input type="hidden" name="_expense_type" x-bind:value="expenseType">
 
@@ -90,6 +92,22 @@
                             <small class="text-muted-foreground">{{ __('shared.components_expense_modal_description_help') }}</small>
                         </div>
 
+                        {{-- Recurring toggle --}}
+                        <div x-show="expenseType === 'expense'" x-transition class="flex items-center justify-between rounded-lg border border-border px-3 py-2.5">
+                            <div class="flex items-center gap-2.5">
+                                <span class="w-9 h-9 rounded-lg bg-accent flex items-center justify-center flex-shrink-0"><i class="bi bi-arrow-repeat text-primary"></i></span>
+                                <div>
+                                    <p class="text-sm font-medium text-foreground">{{ __('shared.components_expense_modal_recurring') }}</p>
+                                    <p class="text-xs text-muted-foreground">{{ __('shared.components_expense_modal_recurring_help') }}</p>
+                                </div>
+                            </div>
+                            <button type="button" role="switch" :aria-checked="isRecurring.toString()" @click="isRecurring = !isRecurring"
+                                    class="relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors"
+                                    :class="isRecurring ? 'bg-primary' : 'bg-gray-200'">
+                                <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform" :class="isRecurring ? 'translate-x-6' : 'translate-x-1'"></span>
+                            </button>
+                        </div>
+
                         {{-- Amount & Date --}}
                         <div class="grid grid-cols-2 gap-4">
                             <div>
@@ -98,8 +116,10 @@
                                 <small class="text-muted-foreground">{{ __('shared.components_expense_modal_amount_help') }}</small>
                             </div>
                             <div>
-                                <label class="form-label">{{ __('shared.components_expense_modal_date') }} <span class="text-destructive">*</span></label>
-                                <input type="date" name="transaction_date" class="form-control" value="{{ date('Y-m-d') }}" max="{{ date('Y-m-d') }}" required>
+                                <label class="form-label" x-text="isRecurring ? '{{ __('shared.components_expense_modal_recurring_day') }}' : '{{ __('shared.components_expense_modal_date') }}'"></label>
+                                <input type="date" :name="isRecurring ? 'recurring_date' : 'transaction_date'" class="form-control"
+                                       value="{{ date('Y-m-d') }}" :max="isRecurring ? null : '{{ date('Y-m-d') }}'" required>
+                                <small x-show="isRecurring" x-cloak class="text-muted-foreground">{{ __('shared.components_expense_modal_recurring_day_help') }}</small>
                             </div>
                         </div>
 
@@ -130,13 +150,14 @@
                         {{-- Notes --}}
                         <div>
                             <label class="form-label">{{ __('shared.components_expense_modal_notes') }}</label>
-                            <textarea name="reference_number" class="form-control" rows="2" placeholder="{{ __('shared.components_expense_modal_notes_placeholder') }}"></textarea>
+                            <textarea :name="isRecurring ? 'notes' : 'reference_number'" class="form-control" rows="2" placeholder="{{ __('shared.components_expense_modal_notes_placeholder') }}"></textarea>
                         </div>
 
                         <div class="flex justify-end gap-2 pt-4">
                             <button type="button" class="btn btn-outline-secondary" @click="showExpenseModal = false">{{ __('shared.cancel') }}</button>
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-lg me-2"></i>{{ __('shared.components_expense_modal_record_transaction') }}
+                                <i class="bi me-2" :class="isRecurring ? 'bi-arrow-repeat' : 'bi-check-lg'"></i>
+                                <span x-text="isRecurring ? '{{ __('shared.components_expense_modal_record_recurring') }}' : '{{ __('shared.components_expense_modal_record_transaction') }}'"></span>
                             </button>
                         </div>
                     </div>

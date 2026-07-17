@@ -3,7 +3,7 @@
 @section('title', __('business.business_setup_page_title'))
 
 @section('content')
-<div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="px-4 sm:px-6 lg:px-8 py-8">
 
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-900">{{ __('business.business_setup_heading') }}</h1>

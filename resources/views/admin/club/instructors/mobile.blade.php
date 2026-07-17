@@ -9,8 +9,15 @@
     $insAvgRating = $insRated->count() ? round($insRated->avg('rating'), 1) : 0;
 @endphp
 <div class="-mx-4 -mt-4"
-     x-data="{ removeInstructorId: null, removeInstructorName: '' }"
-     @instructor-removed.window="removeInstructorId = null; removeInstructorName = ''">
+     x-data="{
+        removeInstructorId: null, removeInstructorName: '', removeSettlement: null,
+        openRemove(id, name) {
+            this.removeInstructorId = id; this.removeInstructorName = name; this.removeSettlement = null;
+            fetch(`{{ url('admin/club/' . $club->slug . '/instructors') }}/${id}/termination-preview`, { headers: { 'Accept': 'application/json' } })
+                .then(r => r.json()).then(d => { if (d.success) this.removeSettlement = d; });
+        }
+     }"
+     @instructor-removed.window="removeInstructorId = null; removeInstructorName = ''; removeSettlement = null">
 
     {{-- ===== Hero ===== --}}
     <header class="m-hero px-5 pt-7 pb-6 text-white relative overflow-hidden">
@@ -83,8 +90,14 @@
                             <span class="font-medium">{{ __('admin.ins_edit') }}</span>
                         </button>
                         <button type="button"
+                                class="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted/60 flex items-center gap-3"
+                                @click="openMenu = false; window.dispatchEvent(new CustomEvent('open-manage-access', { detail: { userId: {{ $ins->user_id }}, name: @js($u->full_name ?? $u->name) } }))">
+                            <span class="w-7 h-7 rounded-lg bg-purple-100 flex items-center justify-center shrink-0"><i class="bi bi-shield-lock text-purple-600 text-xs"></i></span>
+                            <span class="font-medium">{{ __('admin.ins_manage_access') }}</span>
+                        </button>
+                        <button type="button"
                                 class="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 flex items-center gap-3"
-                                @click="openMenu = false; removeInstructorId = {{ $ins->id }}; removeInstructorName = @js($u->full_name ?? $u->name)">
+                                @click="openMenu = false; openRemove({{ $ins->id }}, @js($u->full_name ?? $u->name))">
                             <span class="w-7 h-7 rounded-lg bg-red-100 flex items-center justify-center shrink-0"><i class="bi bi-person-dash text-red-600 text-xs"></i></span>
                             <span class="font-medium">{{ __('admin.ins_remove') }}</span>
                         </button>
@@ -106,6 +119,12 @@
                         </p>
                         <p class="text-xs text-muted-foreground truncate">{{ ($isOwner ? __('admin.owner') : ($ins->role ?? __('admin.instructor'))) . $expSuffix }}</p>
                         <div class="mt-1">
+                            @if(($ins->staff_type ?? 'instructor') !== 'instructor')
+                                @php $staffIcons = ['secretary' => 'bi-person-vcard', 'operator' => 'bi-gear', 'cleaner' => 'bi-stars', 'other' => 'bi-person-badge']; @endphp
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700">
+                                    <i class="bi {{ $staffIcons[$ins->staff_type] ?? 'bi-person-badge' }}"></i>{{ __('admin.ins_staff_type_'.$ins->staff_type) }}
+                                </span>
+                            @endif
                             @if($ins->compensation_type === 'paid' && $ins->wage_amount)
                                 @php $perLabels = ['monthly' => __('admin.ins_per_month'), 'session' => __('admin.ins_per_session'), 'hourly' => __('admin.ins_per_hour')]; @endphp
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-50 text-green-700">
@@ -157,6 +176,11 @@
                         <div><i class="bi bi-info-circle mr-1"></i>{{ __('admin.ins_remove_note_role') }}</div>
                         <div>{{ __('admin.ins_remove_note_account') }}</div>
                     </div>
+                    <div x-show="removeSettlement && removeSettlement.settlement_amount > 0" x-cloak
+                         class="rounded-xl bg-red-50 border border-red-100 mt-2 p-3 text-xs text-red-800">
+                        <i class="bi bi-cash-coin mr-1"></i>{{ __('admin.ins_remove_settlement_note') }}
+                        <span class="font-semibold" x-text="removeSettlement ? ('{{ $club->currency }} ' + Number(removeSettlement.settlement_amount).toFixed(2) + ' (' + removeSettlement.days + ' {{ __('admin.ins_days') }})') : ''"></span>
+                    </div>
                 </div>
                 <div class="border-t px-5 py-4 flex justify-end gap-2">
                     <button type="button" class="px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 bg-white" @click="removeInstructorId = null">{{ __('admin.cancel') }}</button>
@@ -171,6 +195,7 @@
 
     @include('admin.club.instructors.mobile-add')
     @include('admin.club.instructors.mobile-edit')
+    @include('admin.club.instructors.partials.manage-access-modal')
 
     {{-- Inline (inside #shell-content) so it also runs after an in-shell AJAX swap,
          which only re-executes scripts within the swapped content. --}}
@@ -181,6 +206,7 @@ window.instructorData = {
     {{ $instructor->id }}: {
         name: @json($instructor->user->full_name ?? $instructor->user->name ?? ''),
         role: @json($instructor->role ?? ''),
+        staff_type: @json($instructor->staff_type ?? 'instructor'),
         translations: @json($instructor->translations ?? []),
         experience: @json($instructor->user->experience_years ?? null),
         skills: @json($instructor->user->skills ?? []),

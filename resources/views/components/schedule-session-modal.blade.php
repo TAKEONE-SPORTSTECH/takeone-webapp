@@ -90,11 +90,18 @@
         {{-- Scrollable body --}}
         <form @submit.prevent="save()" class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
 
-            {{-- Editing a club class? Show which club it belongs to. --}}
-            <template x-if="clubMode">
+            {{-- Editing a club class? Show which club it belongs to, and whether this
+                 edit changes the recurring plan or just one dated occurrence. --}}
+            <template x-if="clubMode && !onceMode">
                 <div class="rounded-xl p-3 flex items-center gap-2.5" :style="`background:${form.color}14`">
                     <i class="bi bi-buildings text-lg" :style="`color:${form.color}`"></i>
                     <p class="text-xs text-muted-foreground">{{ __('shared.schedule_session_modal_editing_club_class') }}<span x-show="clubName"> · <span class="font-semibold text-foreground" x-text="clubName"></span></span>{{ __('shared.schedule_session_modal_changes_apply') }}</p>
+                </div>
+            </template>
+            <template x-if="clubMode && onceMode">
+                <div class="rounded-xl p-3 flex items-center gap-2.5 bg-amber-50 border border-amber-100">
+                    <i class="bi bi-calendar2-week text-lg text-amber-600"></i>
+                    <p class="text-xs text-amber-700" x-text="'{{ __('shared.schedule_session_modal_once_notice') }}'.replace(':date', onceLabel)"></p>
                 </div>
             </template>
 
@@ -115,6 +122,8 @@
                 </div>
             </template>
 
+            <template x-if="!onceMode">
+            <div class="space-y-4">
             {{-- Title + discipline --}}
             <div class="grid grid-cols-1 gap-3">
                 <div>
@@ -245,6 +254,8 @@
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                 </div>
             </div>
+            </div>
+            </template>
 
             {{-- Intensity --}}
             <div>
@@ -259,6 +270,8 @@
             </div>
 
             {{-- Icon + colour --}}
+            <template x-if="!onceMode">
+            <div class="space-y-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('shared.schedule_session_modal_icon') }}</label>
                 <div class="flex flex-wrap gap-2">
@@ -283,6 +296,8 @@
                     </template>
                 </div>
             </div>
+            </div>
+            </template>
 
             {{-- Focus chips --}}
             <div>
@@ -408,6 +423,7 @@ function scheduleSessionForm(cfg) {
     return {
         show: false, mode: 'create', saving: false, focusInput: '',
         clubMode: false, clubUrl: null, clubName: '',
+        onceMode: false, onceDate: null, onceLabel: '',
         subjects: cfg.subjects || [],
         facilities: cfg.facilities || [],
         instructors: cfg.instructors || [],
@@ -477,6 +493,7 @@ function scheduleSessionForm(cfg) {
             this.focusInput = '';
             this.coachOpen = false; this.coachQuery = '';
             this.clubMode = false; this.clubUrl = null; this.clubName = '';
+            this.onceMode = false; this.onceDate = null; this.onceLabel = '';
             const isClub = detail && (detail.source === 'synced' || detail.source === 'teaching') && detail.update_url;
 
             if (isClub) {
@@ -485,6 +502,13 @@ function scheduleSessionForm(cfg) {
                 this.clubMode = true;
                 this.clubUrl = detail.update_url;
                 this.clubName = detail.club || '';
+                if (detail.once) {
+                    // One-time program variation for a single dated occurrence —
+                    // only the content fields apply; the recurring plan is untouched.
+                    this.onceMode = true;
+                    this.onceDate = detail.occ_date;
+                    this.onceLabel = detail.occ_label || detail.occ_date;
+                }
                 this.fillFrom(detail);
             } else if (detail && detail.id && detail.source === 'personal') {
                 // Edit an existing personal session from its card object.
@@ -564,6 +588,12 @@ function scheduleSessionForm(cfg) {
             };
             // Personal sessions carry a family "subject"; club classes don't.
             if (! this.clubMode) payload.subject = this.form.subject;
+            // Club classes choose a scope: 'once' saves the rich-content fields as a
+            // one-time variation for onceDate only, leaving the recurring plan untouched.
+            if (this.clubMode) {
+                payload.scope = this.onceMode ? 'once' : 'recurring';
+                if (this.onceMode) payload.date = this.onceDate;
+            }
             try {
                 const res = await fetch(url, {
                     method: method,
@@ -578,7 +608,7 @@ function scheduleSessionForm(cfg) {
                     return;
                 }
                 window.showToast('success', data.message || '{{ __('shared.schedule_session_modal_toast_saved') }}');
-                window.dispatchEvent(new CustomEvent('schedule-session-saved', { detail: { session: data.session, mode: this.mode } }));
+                window.dispatchEvent(new CustomEvent('schedule-session-saved', { detail: { session: data.session, mode: this.mode, once: this.onceMode } }));
                 this.close();
             } catch (e) {
                 window.showToast('error', '{{ __('shared.schedule_session_modal_toast_network_error') }}');

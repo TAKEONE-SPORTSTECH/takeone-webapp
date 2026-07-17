@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -204,7 +205,28 @@ class Tenant extends Model
         'vat_percentage' => 'decimal:2',
         'phone' => 'array',
         'settings' => 'array',
+        'is_test_mode' => 'boolean',
     ];
+
+    private const TEST_MODE_CACHE_PREFIX = 'tenant:test_mode:';
+
+    /**
+     * Whether this club is currently in Test Mode. Cached forever so every
+     * financial-record write doesn't hit the DB; the cache is invalidated in
+     * ClubFinancialController::switchMode() whenever the mode changes.
+     */
+    public static function isTestMode(int $id): bool
+    {
+        return Cache::rememberForever(
+            self::TEST_MODE_CACHE_PREFIX.$id,
+            fn () => (bool) (static::where('id', $id)->value('is_test_mode') ?? true)
+        );
+    }
+
+    public static function forgetTestModeCache(int $id): void
+    {
+        Cache::forget(self::TEST_MODE_CACHE_PREFIX.$id);
+    }
 
     /**
      * Get the owner user that owns the tenant.

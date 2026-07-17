@@ -69,28 +69,9 @@
     </div>
 
     {{-- ===== Content ===== --}}
-    <main id="shell-content" data-shell-id="business" data-route="{{ $currentRoute }}" data-title="{{ __('business.dashboard') }}" class="mobile-stagger px-4 py-4 pb-24 min-h-[60vh]">
+    <main id="shell-content" data-shell-id="business" data-route="{{ $currentRoute }}" data-title="{{ __('business.dashboard') }}" class="mobile-stagger px-4 py-4 min-h-[60vh]">
         @yield('chain-content')
     </main>
-
-    {{-- ===== Bottom tab bar ===== --}}
-    <nav class="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-border lg:hidden">
-        <div class="grid grid-cols-3">
-            <a href="{{ route('business.dashboard') }}" data-shell-link data-route="business.dashboard"
-               class="shell-tab flex flex-col items-center justify-center gap-0.5 py-2.5 {{ $currentRoute === 'business.dashboard' ? 'is-active' : '' }}">
-                <i class="bi bi-speedometer2 text-lg"></i>
-                <span class="text-[10px] font-medium">{{ __('business.dashboard') }}</span>
-            </a>
-            <a href="#clubs" class="shell-tab flex flex-col items-center justify-center gap-0.5 py-2.5 text-muted-foreground">
-                <i class="bi bi-diagram-3 text-lg"></i>
-                <span class="text-[10px] font-medium">{{ __('business.clubs') }}</span>
-            </a>
-            <button @click="drawer = true" class="shell-tab flex flex-col items-center justify-center gap-0.5 py-2.5 text-muted-foreground">
-                <i class="bi bi-grid text-lg"></i>
-                <span class="text-[10px] font-medium">{{ __('business.menu') }}</span>
-            </button>
-        </div>
-    </nav>
 
 </div>
 

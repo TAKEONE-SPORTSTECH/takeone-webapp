@@ -3,8 +3,15 @@
 {{-- Styles moved to app.css (Phase 6) --}}
 
 @section('club-admin-content')
-<div class="space-y-6" x-data="{ showAddInstructorModal: false, removeInstructorId: null, removeInstructorName: '', showEditInstructorModal: false }"
-     @instructor-removed.window="removeInstructorId = null; removeInstructorName = ''">
+<div class="space-y-6" x-data="{
+        showAddInstructorModal: false, removeInstructorId: null, removeInstructorName: '', removeSettlement: null, showEditInstructorModal: false,
+        openRemove(id, name) {
+            this.removeInstructorId = id; this.removeInstructorName = name; this.removeSettlement = null;
+            fetch(`{{ url('admin/club/' . $club->slug . '/instructors') }}/${id}/termination-preview`, { headers: { 'Accept': 'application/json' } })
+                .then(r => r.json()).then(d => { if (d.success) this.removeSettlement = d; });
+        }
+     }"
+     @instructor-removed.window="removeInstructorId = null; removeInstructorName = ''; removeSettlement = null">
     @if ($errors->any())
     <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg" role="alert">
         <ul class="list-disc list-inside">
@@ -48,6 +55,9 @@
             cardClass="instructor-card"
         >
             <x-slot:badges>
+                @if(($instructor->staff_type ?? 'instructor') !== 'instructor')
+                    <span class="badge bg-info">{{ __('admin.ins_staff_type_'.$instructor->staff_type) }}</span>
+                @endif
                 <span class="badge bg-primary">{{ $instructor->role ?? __('admin.club_instructors_index_trainer') }}</span>
                 @if($instructor->user?->experience_years)
                     <span class="badge bg-info">{{ $instructor->user->experience_years }} {{ __('admin.club_instructors_index_yrs_exp') }}</span>
@@ -126,8 +136,16 @@
                         <span class="font-medium">{{ __('admin.club_instructors_index_edit_instructor') }}</span>
                     </button>
                     <button type="button"
+                            class="w-full text-start px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors duration-150"
+                            @click="openMenu = false; window.dispatchEvent(new CustomEvent('open-manage-access', { detail: { userId: {{ $instructor->user_id }}, name: @js($user->full_name ?? $user->name) } }))">
+                        <span class="w-7 h-7 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
+                            <i class="bi bi-shield-lock text-purple-600 text-xs"></i>
+                        </span>
+                        <span class="font-medium">{{ __('admin.ins_manage_access') }}</span>
+                    </button>
+                    <button type="button"
                             class="w-full text-start px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors duration-150"
-                            @click="openMenu = false; removeInstructorId = {{ $instructor->id }}; removeInstructorName = '{{ addslashes($user->full_name ?? $user->name) }}'">
+                            @click="openMenu = false; openRemove({{ $instructor->id }}, @js($user->full_name ?? $user->name))">
                         <span class="w-7 h-7 rounded-lg bg-red-100 flex items-center justify-center shrink-0">
                             <i class="bi bi-person-dash text-red-600 text-xs"></i>
                         </span>
@@ -177,6 +195,10 @@
                         <div><i class="bi bi-info-circle me-1"></i>{{ __('admin.club_instructors_index_remove_note_pre') }}<strong>{{ __('admin.club_instructors_index_remove_note_role') }}</strong>{{ __('admin.club_instructors_index_remove_note_post') }}</div>
                         <div>{{ __('admin.club_instructors_index_remove_note2_pre') }}<strong>{{ __('admin.club_instructors_index_remove_note2_strong') }}</strong>{{ __('admin.club_instructors_index_remove_note2_post') }}</div>
                     </div>
+                    <div x-show="removeSettlement && removeSettlement.settlement_amount > 0" x-cloak class="alert alert-danger mt-2 text-sm">
+                        <i class="bi bi-cash-coin me-1"></i>{{ __('admin.ins_remove_settlement_note') }}
+                        <span class="font-semibold" x-text="removeSettlement ? ('{{ $club->currency }} ' + Number(removeSettlement.settlement_amount).toFixed(2) + ' (' + removeSettlement.days + ' {{ __('admin.ins_days') }})') : ''"></span>
+                    </div>
                 </div>
                 <div class="modal-footer border-t px-6 py-4 flex justify-end gap-3">
                     <button type="button" class="btn btn-secondary" @click="removeInstructorId = null">{{ __('shared.cancel') }}</button>
@@ -190,6 +212,7 @@
 
     @include('admin.club.instructors.add')
     @include('admin.club.instructors.edit')
+    @include('admin.club.instructors.partials.manage-access-modal')
 </div>
 
 @push('scripts')
@@ -200,6 +223,7 @@ window.instructorData = {
     {{ $instructor->id }}: {
         name: @json($instructor->user->full_name ?? $instructor->user->name ?? ''),
         role: @json($instructor->role ?? ''),
+        staff_type: @json($instructor->staff_type ?? 'instructor'),
         translations: @json($instructor->translations ?? []),
         experience: @json($instructor->user->experience_years ?? null),
         skills: @json($instructor->user->skills ?? []),

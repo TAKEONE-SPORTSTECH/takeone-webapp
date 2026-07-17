@@ -37,22 +37,28 @@ class ClubFinancialsTool extends BaseTool
             return Response::error('Financials are only available to club admins, owners, or super-admins.');
         }
 
-        $income = (float) $club->transactions()->where('type', 'income')->sum('amount');
-        $expenses = (float) $club->transactions()->where('type', 'expense')->sum('amount');
+        // Scope to the club's current Test/Live mode so these numbers always
+        // match what the admin dashboard shows — test and live data never mix.
+        $isTestMode = (bool) $club->is_test_mode;
+
+        $income = (float) $club->transactions()->where('is_test', $isTestMode)->where('type', 'income')->sum('amount');
+        $expenses = (float) $club->transactions()->where('is_test', $isTestMode)->where('type', 'expense')->sum('amount');
 
         $cashToCollect = (float) $club->subscriptions()
+            ->where('is_test', $isTestMode)
             ->whereIn('payment_status', ['unpaid', 'partial', 'pending'])
             ->sum('amount_due');
 
         return Response::json([
             'club' => ['id' => $club->id, 'name' => $club->club_name, 'slug' => $club->slug],
             'currency' => $club->currency,
+            'mode' => $isTestMode ? 'test' : 'live',
             'total_income' => round($income, 2),
             'total_expenses' => round($expenses, 2),
             'net' => round($income - $expenses, 2),
             'cash_to_collect' => round($cashToCollect, 2),
-            'transactions_count' => $club->transactions()->count(),
-            'active_subscriptions' => $club->subscriptions()->where('status', 'active')->count(),
+            'transactions_count' => $club->transactions()->where('is_test', $isTestMode)->count(),
+            'active_subscriptions' => $club->subscriptions()->where('is_test', $isTestMode)->where('status', 'active')->count(),
         ]);
     }
 }

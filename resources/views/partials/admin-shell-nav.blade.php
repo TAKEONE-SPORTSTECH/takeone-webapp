@@ -232,6 +232,11 @@
         if (!mainEl()) return;
         navigate(window.location.href, false);
     });
+
+    // Exposed so a page can re-fetch + swap its own current route in place
+    // (e.g. after an action that changes what the whole page renders, not
+    // just one widget) without a hard browser reload.
+    window.__adminShellRefresh = function () { return navigate(window.location.href, false); };
 })();
 </script>
 @endpush

@@ -7,6 +7,7 @@ return [
     'clubs'             => 'Clubs',
     'menu'              => 'Menu',
     'no_clubs_linked'   => 'No clubs linked yet.',
+    'create_club'       => 'Create Club',
     'explore_clubs'     => 'Explore clubs',
     'personal_view'     => 'Personal view',
 

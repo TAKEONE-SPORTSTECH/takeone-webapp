@@ -407,86 +407,7 @@
             </template>
         </div>
 
-        <script>
-        // Attendance toggles for the shown occurrence — optimistic, persisted via AJAX.
-        function classAttendance(cfg) {
-            return {
-                att: cfg.attended || {},
-                members: cfg.members || {},        // id -> {name, attended, total, breakdown[{date,label,attended}]}
-                busy: {},
-                bd: null,                          // attendance-breakdown sheet payload (a members[id] ref)
-                nowTs: Date.now(),
-                // Occurrence start/end as local epochs (browser clock → correct window regardless of server TZ).
-                _mk: function (hhmm) {
-                    if (!hhmm || !cfg.date) return null;
-                    var p = String(hhmm).split(':');
-                    var d = new Date(cfg.date + 'T00:00:00');         // local midnight of the occurrence
-                    d.setHours(parseInt(p[0], 10) || 0, parseInt(p[1], 10) || 0, 0, 0);
-                    return d.getTime();
-                },
-                get startTs() { return this._mk(cfg.startTime); },
-                get endTs() {
-                    var end = this._mk(cfg.endTime) || this._mk(cfg.startTime);   // prefer end; fall back to start
-                    var s = this._mk(cfg.startTime), e = this._mk(cfg.endTime);
-                    if (end != null && e != null && s != null && e <= s) end += 86400000;  // crosses midnight
-                    return end;
-                },
-                // Attendance is markable only DURING the class. The server (club timezone) is
-                // authoritative for the initial state; the local clock flips these live while
-                // the page is open.
-                get hasStarted() { return cfg.startedServer === true || (this.startTs != null && this.nowTs >= this.startTs); },
-                get isOver()     { return cfg.endedServer === true   || (this.endTs   != null && this.nowTs >= this.endTs); },
-                get notStarted() { return !this.hasStarted; },
-                get canMarkNow() { return this.hasStarted && !this.isOver; },
-                init() {
-                    var self = this;
-                    if (window.__attTick) clearInterval(window.__attTick);   // dedup across shell swaps
-                    window.__attTick = setInterval(function () { self.nowTs = Date.now(); }, 1000);
-                },
-                openBreakdown(id) { this.bd = this.members[id] || null; },
-                rateLabel(id) { const m = this.members[id]; return (m && m.total > 0) ? (m.attended + '/' + m.total) : ''; },
-                rateClass(id) {
-                    const m = this.members[id];
-                    if (!m || !m.total) return '';
-                    const p = m.attended / m.total;
-                    return p >= 0.75 ? 'bg-green-50 text-green-600' : (p >= 0.5 ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-500');
-                },
-                // Reflect a just-toggled attendance into the member's rate + breakdown.
-                syncRate(id, attended) {
-                    const m = this.members[id];
-                    if (!m) return;
-                    const row = (m.breakdown || []).find(b => b.key === cfg.curKey);
-                    if (row) row.attended = attended;            // this session is in the counted history
-                    m.attended = (m.breakdown || []).filter(b => b.attended).length;
-                },
-                get presentCount() { return Object.values(this.att).filter(Boolean).length; },
-                async toggle(id) {
-                    if (this.busy[id]) return;
-                    if (this.notStarted) { window.showToast('info', '{{ __("personal.personal_schedule_show_not_started_toast") }}'); return; }
-                    if (this.isOver) { window.showToast('info', '{{ __("personal.personal_schedule_show_attendance_closed") }}'); return; }
-                    const next = !this.att[id];
-                    this.att[id] = next;          // optimistic
-                    this.busy[id] = true;
-                    try {
-                        const res = await fetch(cfg.url, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                            credentials: 'same-origin',
-                            body: JSON.stringify({ user_id: id, date: cfg.date }),
-                        });
-                        const data = await res.json().catch(() => ({}));
-                        if (!res.ok || !data.success) { this.att[id] = !next; window.showToast('error', data.message || '{{ __("personal.personal_schedule_show_could_not_attendance") }}'); }
-                        else { this.att[id] = !!data.attended; this.syncRate(id, !!data.attended); }
-                    } catch (e) {
-                        this.att[id] = !next;
-                        window.showToast('error', '{{ __("personal.personal_schedule_show_network_error") }}');
-                    } finally {
-                        this.busy[id] = false;
-                    }
-                },
-            };
-        }
-        </script>
+        @include('partials.class-attendance-script')
     @endif
 
     {{-- ===== Location (tap the map → open in Google Maps, zoomed to the spot) — after the people list ===== --}}
@@ -682,78 +603,7 @@
             </div>
         </div>
 
-        <script>
-        function classReviewsCard(cfg) {
-            return {
-                avg: (cfg.avg ?? null),
-                count: cfg.count || 0,
-                reviews: cfg.reviews || [],
-                dist: cfg.dist || {},
-                myUserId: cfg.myUserId || null,
-                myRating: cfg.myRating || 0,
-                myComment: cfg.myComment || '',
-                deleting: false,
-                // Has the current user already rated this class?
-                get hasReview() { return this.myRating > 0; },
-                // Written reviews from everyone except the current user (theirs shows in its own block).
-                get othersReviews() {
-                    const me = String(this.myUserId);
-                    return (this.reviews || []).filter(r => String(r.user_id) !== me);
-                },
-                // No review yet → open the rating form straight away.
-                startReview() { window.dispatchEvent(new CustomEvent('open-review-form')); },
-                // Already reviewed → confirm first, then open the form pre-filled to edit.
-                async editMine() {
-                    const ok = await window.confirmAction({
-                        title: '{{ __("personal.personal_schedule_show_revise_title") }}',
-                        message: '{{ __("personal.personal_schedule_show_revise_message") }}',
-                        type: 'info',
-                        confirmText: '{{ __("personal.personal_schedule_show_edit_review") }}',
-                        cancelText: '{{ __("personal.personal_schedule_show_keep_as_is") }}',
-                    });
-                    if (ok) window.dispatchEvent(new CustomEvent('open-review-form'));
-                },
-                // Already reviewed → confirm, then delete the review entirely.
-                async deleteMine() {
-                    if (this.deleting) return;
-                    const ok = await window.confirmAction({
-                        title: '{{ __("personal.personal_schedule_show_delete_title") }}',
-                        message: '{{ __("personal.personal_schedule_show_delete_message") }}',
-                        type: 'danger',
-                        confirmText: '{{ __("shared.delete") }}',
-                        cancelText: '{{ __("shared.cancel") }}',
-                    });
-                    if (!ok) return;
-                    this.deleting = true;
-                    try {
-                        const res = await fetch(cfg.deleteUrl, {
-                            method: 'DELETE',
-                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                            credentials: 'same-origin',
-                        });
-                        const data = await res.json().catch(() => ({}));
-                        if (!res.ok || !data.success) { window.showToast('error', data.message || '{{ __("personal.personal_schedule_show_could_not_delete_review") }}'); return; }
-                        this.avg = (data.average ?? null); this.count = data.count || 0;
-                        this.reviews = data.comments || []; this.dist = data.distribution || {};
-                        this.myRating = 0; this.myComment = '';
-                        // Reset the form's state too, so reopening it starts fresh.
-                        window.dispatchEvent(new CustomEvent('class-review-deleted', { detail: { average: (data.average ?? null), count: data.count || 0 } }));
-                        window.showToast('success', data.message || '{{ __("personal.personal_schedule_show_review_deleted") }}');
-                    } catch (e) { window.showToast('error', '{{ __("personal.personal_schedule_show_network_error") }}'); }
-                    finally { this.deleting = false; }
-                },
-                // Live patch when the current user submits/updates their class rating.
-                patch(d) {
-                    if (!d) return;
-                    if (d.average !== undefined) this.avg = d.average;
-                    if (d.count !== undefined) this.count = d.count || 0;
-                    if (d.comments !== undefined) this.reviews = d.comments || [];
-                    if (d.distribution !== undefined) this.dist = d.distribution || {};
-                    if (d.mine) { this.myRating = d.mine.rating || 0; this.myComment = d.mine.comment || ''; }
-                },
-            };
-        }
-        </script>
+        @include('partials.class-reviews-script')
     @endif
 
     {{-- ===== Trainee engagement: rating form sheet (emoji + rate class + rate trainer) ===== --}}
@@ -881,62 +731,7 @@
             @endif
         </div>
 
-        <script>
-        function classEngage(cfg) {
-            return {
-                panel: false, savingAll: false,
-                counts: cfg.counts || {}, mine: cfg.mine || null, rating: cfg.rating || 0, comment: cfg.comment || '',
-                classRating: cfg.classRating || 0, classComment: cfg.classComment || '',
-                classAvg: (cfg.classAvg ?? null), classCount: cfg.classCount || 0, comments: cfg.comments || [],
-                async react(emoji) {
-                    try {
-                        const res = await fetch(cfg.reactUrl, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                            credentials: 'same-origin', body: JSON.stringify({ emoji: emoji, date: cfg.date }),
-                        });
-                        const data = await res.json().catch(() => ({}));
-                        if (!res.ok || !data.success) { window.showToast('error', data.message || '{{ __("personal.personal_schedule_show_could_not_react") }}'); return; }
-                        this.counts = data.counts || {}; this.mine = data.mine || null;
-                    } catch (e) { window.showToast('error', '{{ __("personal.personal_schedule_show_network_error") }}'); }
-                },
-                rate(n) { this.rating = n; },           // select locally; saved on submit
-                rateClass(n) { this.classRating = n; }, // select locally; saved on submit
-                // One submit: save whichever ratings were given, then close the sheet.
-                async submitAll() {
-                    if (this.savingAll) return;
-                    if (this.classRating < 1 && this.rating < 1) { this.panel = false; return; }
-                    this.savingAll = true;
-                    try {
-                        if (this.classRating > 0) await this._post(cfg.rateClassUrl, { rating: this.classRating, comment: this.classComment || null }, (data) => {
-                            this.classAvg = (data.average ?? null); this.classCount = data.count || 0; this.comments = data.comments || [];
-                            // Patch the standalone "Trainee reviews" card (lives in its own Alpine scope, beneath the map).
-                            window.dispatchEvent(new CustomEvent('class-reviews-updated', { detail: {
-                                average: (data.average ?? null), count: data.count || 0,
-                                comments: data.comments || [], distribution: data.distribution || {},
-                                mine: { rating: this.classRating, comment: this.classComment || '' },
-                            }}));
-                        });
-                        if (this.rating > 0) await this._post(cfg.rateUrl, { rating: this.rating, comment: this.comment || null, date: cfg.date });
-                        window.showToast('success', '{{ __("personal.personal_schedule_show_rating_saved") }}');
-                        this.panel = false;
-                    } catch (e) { window.showToast('error', e.message || '{{ __("personal.personal_schedule_show_could_not_save_rating") }}'); }
-                    finally { this.savingAll = false; }
-                },
-                async _post(url, body, onOk) {
-                    const res = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                        credentials: 'same-origin', body: JSON.stringify(body),
-                    });
-                    const data = await res.json().catch(() => ({}));
-                    if (!res.ok || !data.success) throw new Error(data.message || '{{ __("personal.personal_schedule_show_could_not_save_rating") }}');
-                    if (onOk) onOk(data);
-                    return data;
-                },
-            };
-        }
-        </script>
+        @include('partials.class-engage-script')
     @endif
 
     {{-- ===== Action ===== --}}
@@ -1041,6 +836,41 @@
                             <i class="bi bi-chevron-right text-gray-300"></i>
                         </button>
 
+                        {{-- One-time program variation for THIS dated occurrence only --}}
+                        @if(empty($programOverridden))
+                        <button type="button"
+                                @click="menuOpen=false; window.dispatchEvent(new CustomEvent('open-schedule-form', { detail: Object.assign({}, window.__schedClass, { once: true, occ_date: {{ Illuminate\Support\Js::from($occurrenceDate) }}, occ_label: {{ Illuminate\Support\Js::from($occurrenceLabel) }} }) }))"
+                                class="m-press w-full text-start rounded-2xl p-4 flex items-center gap-3 bg-white border border-border">
+                            <span class="w-11 h-11 rounded-xl grid place-items-center text-white flex-shrink-0 bg-sky-500"><i class="bi bi-calendar2-week text-lg"></i></span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-bold text-foreground">{{ __('personal.personal_schedule_show_customize_program') }}</span>
+                                <span class="block text-[11px] text-muted-foreground">{{ __('personal.personal_schedule_show_customize_program_desc') }}</span>
+                            </span>
+                            <i class="bi bi-chevron-right text-gray-300"></i>
+                        </button>
+                        @else
+                        <button type="button"
+                                @click="menuOpen=false; window.dispatchEvent(new CustomEvent('open-schedule-form', { detail: Object.assign({}, window.__schedClass, { once: true, occ_date: {{ Illuminate\Support\Js::from($occurrenceDate) }}, occ_label: {{ Illuminate\Support\Js::from($occurrenceLabel) }} }) }))"
+                                class="m-press w-full text-start rounded-2xl p-4 flex items-center gap-3 bg-white border border-sky-200">
+                            <span class="w-11 h-11 rounded-xl grid place-items-center text-white flex-shrink-0 bg-sky-500"><i class="bi bi-calendar2-check text-lg"></i></span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-bold text-foreground">{{ __('personal.personal_schedule_show_program_customized') }}</span>
+                                <span class="block text-[11px] text-muted-foreground">{{ __('personal.personal_schedule_show_program_customized_desc', ['name' => $programOverrideBy ?? __('personal.personal_schedule_show_someone')]) }}</span>
+                            </span>
+                            <i class="bi bi-chevron-right text-gray-300"></i>
+                        </button>
+                        <button type="button"
+                                @click="menuOpen=false; window.dispatchEvent(new CustomEvent('reset-program'))"
+                                class="m-press w-full text-start rounded-2xl p-4 flex items-center gap-3 bg-white border border-red-200">
+                            <span class="w-11 h-11 rounded-xl grid place-items-center text-red-500 flex-shrink-0 bg-red-50"><i class="bi bi-arrow-counterclockwise text-lg"></i></span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-bold text-foreground">{{ __('personal.personal_schedule_show_reset_program') }}</span>
+                                <span class="block text-[11px] text-muted-foreground">{{ __('personal.personal_schedule_show_reset_program_desc') }}</span>
+                            </span>
+                            <i class="bi bi-chevron-right text-gray-300"></i>
+                        </button>
+                        @endif
+
                         {{-- Assign / change substitute --}}
                         <button type="button"
                                 @click="menuOpen=false; window.dispatchEvent(new CustomEvent('open-substitute-sheet'))"
@@ -1102,6 +932,40 @@
             </div>
             </template>
         </div>
+
+        {{-- Reset a one-off program override back to the recurring plan (no sheet — just a confirm). --}}
+        @if(!empty($programOverridden))
+        <div x-data="{
+                resetUrl: '{{ $programResetUrl }}',
+                date: {{ Illuminate\Support\Js::from($occurrenceDate) }},
+                csrf: '{{ csrf_token() }}',
+                async reset() {
+                    const ok = await window.confirmAction({
+                        title: '{{ __('personal.personal_schedule_show_reset_program') }}',
+                        message: '{{ __('personal.personal_schedule_show_reset_program_confirm') }}',
+                        type: 'danger',
+                        confirmText: '{{ __('personal.personal_schedule_show_reset_program') }}',
+                    });
+                    if (!ok) return;
+                    try {
+                        const res = await fetch(this.resetUrl, {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                            credentials: 'same-origin',
+                            body: JSON.stringify({ date: this.date }),
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok || !data.success) { window.showToast('error', data.message || '{{ __('personal.personal_schedule_show_reset_program_failed') }}'); return; }
+                        window.showToast('success', data.message || '{{ __('personal.personal_schedule_show_program_reset_done') }}');
+                        window.location.reload();
+                    } catch (e) {
+                        window.showToast('error', '{{ __('personal.personal_schedule_show_reset_program_failed') }}');
+                    }
+                }
+             }"
+             @reset-program.window="reset()">
+        </div>
+        @endif
 
         {{-- Substitute sheet (trigger-only — opened from the menu via window events) --}}
         <x-substitute-picker
@@ -1183,54 +1047,7 @@
             </template>
         </div>
 
-        <script>
-        function classCancelTool(cfg) {
-            return {
-                open: false, busy: false,
-                todayStr: new Date().toISOString().slice(0, 10),
-                form: { from: cfg.date, to: '', reason: '', credit: true },
-                async submit() {
-                    if (!this.form.from) { window.showToast('error', '{{ __("personal.personal_schedule_show_pick_date") }}'); return; }
-                    this.busy = true;
-                    try {
-                        const res = await fetch(cfg.cancelUrl, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                            credentials: 'same-origin',
-                            body: JSON.stringify({ from: this.form.from, to: this.form.to || null, reason: this.form.reason || null, credit: this.form.credit }),
-                        });
-                        const data = await res.json().catch(() => ({}));
-                        if (!res.ok || !data.success) { window.showToast('error', data.message || '{{ __("personal.personal_schedule_show_could_not_cancel") }}'); this.busy = false; return; }
-                        window.showToast('success', data.message || '{{ __("personal.personal_schedule_show_class_cancelled") }}');
-                        this.open = false; this._back();
-                    } catch (e) { window.showToast('error', '{{ __("personal.personal_schedule_show_network_error") }}'); }
-                    finally { this.busy = false; }
-                },
-                async restore() {
-                    this.busy = true;
-                    try {
-                        const res = await fetch(cfg.uncancelUrl, {
-                            method: 'DELETE',
-                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                            credentials: 'same-origin',
-                            body: JSON.stringify({ date: cfg.date }),
-                        });
-                        const data = await res.json().catch(() => ({}));
-                        if (!res.ok || !data.success) { window.showToast('error', data.message || '{{ __("personal.personal_schedule_show_could_not_restore") }}'); this.busy = false; return; }
-                        window.showToast('success', data.message || '{{ __("personal.personal_schedule_show_class_restored") }}');
-                        this._back();
-                    } catch (e) { window.showToast('error', '{{ __("personal.personal_schedule_show_network_error") }}'); }
-                    finally { this.busy = false; }
-                },
-                _back() {
-                    setTimeout(function () {
-                        var a = document.querySelector('a[data-route="me.schedule"]');
-                        if (a) a.click(); else window.location.href = cfg.listUrl;
-                    }, 400);
-                },
-            };
-        }
-        </script>
+        @include('partials.class-cancel-script')
     @endif
 
 </div>
@@ -1247,8 +1064,14 @@
         // Club class this detail renders + where to PUT edits (full form).
         window.__schedClass = Object.assign({}, {{ Illuminate\Support\Js::from($s) }}, { update_url: '{{ $updateUrl }}' });
         @endif
-        // After an edit/delete from the detail page, return to the live schedule list.
-        window.addEventListener('schedule-session-saved', function () {
+        // After an edit/delete from the detail page, return to the live schedule list —
+        // EXCEPT a one-time program override, which stays on this same detail page and
+        // just reloads it so the new content shows immediately.
+        window.addEventListener('schedule-session-saved', function (e) {
+            if (e.detail && e.detail.once) {
+                setTimeout(function () { window.location.reload(); }, 300);
+                return;
+            }
             setTimeout(function () {
                 var a = document.querySelector('a[data-route="me.schedule"]');
                 if (a) a.click(); else window.location.href = "{{ route('me.schedule') }}";

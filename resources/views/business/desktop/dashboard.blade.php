@@ -3,7 +3,7 @@
 @section('title', $business->name . ' · ' . __('business.business_desktop_dashboard_title'))
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+<div class="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -20,6 +20,10 @@
                 <p class="text-sm text-muted-foreground">{{ __('business.business_desktop_dashboard_chain_performance', ['count' => $totals['clubs'], 'clubs' => Str::plural('club', $totals['clubs'])]) }}</p>
             </div>
         </div>
+        <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-club-modal', { detail: { mode: 'create' } }))"
+                class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors">
+            <i class="bi bi-plus-lg"></i>{{ __('business.create_club') }}
+        </button>
     </div>
 
     {{-- KPI cards --}}
@@ -58,6 +62,10 @@
             <div class="p-10 text-center">
                 <i class="bi bi-diagram-3 text-4xl text-gray-300"></i>
                 <p class="text-sm text-muted-foreground mt-3">{{ __('business.business_desktop_dashboard_no_clubs') }}</p>
+                <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-club-modal', { detail: { mode: 'create' } }))"
+                        class="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors">
+                    <i class="bi bi-plus-lg"></i>{{ __('business.create_club') }}
+                </button>
             </div>
         @else
             <div class="overflow-x-auto">
@@ -105,5 +113,8 @@
         @endif
     </div>
 
+    <template x-teleport="body">
+        <x-club-modal mode="create" context="business" />
+    </template>
 </div>
 @endsection

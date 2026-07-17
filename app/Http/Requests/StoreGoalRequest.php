@@ -23,6 +23,7 @@ class StoreGoalRequest extends FormRequest
             'target_date' => 'required|date|after_or_equal:today',
             'priority_level' => 'nullable|in:low,medium,high',
             'icon_type' => 'nullable|string|max:40',
+            'before_proof' => 'required|string|starts_with:data:image/',
         ];
     }
 }

@@ -6,16 +6,16 @@
 @php
     $avatar = $person->profile_picture ? asset('storage/'.$person->profile_picture).'?v='.optional($person->updated_at)->timestamp : null;
 @endphp
-<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6" x-data="{ following: {{ $isFollowing ? 'true' : 'false' }} }">
+<div class="px-4 sm:px-6 lg:px-8 py-6" x-data="{ following: {{ $isFollowing ? 'true' : 'false' }} }">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {{-- Left: identity + actions --}}
         <div class="lg:col-span-1">
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center">
-                <span class="w-28 h-28 rounded-2xl overflow-hidden grid place-items-center ring-1 ring-gray-100 shadow-sm mx-auto">
+                <span class="w-28 h-[149px] rounded-[22px] overflow-hidden grid place-items-center ring-1 ring-gray-100 shadow-sm mx-auto">
                     @if($avatar)
-                        <img src="{{ $avatar }}" alt="{{ $person->full_name }}" class="w-28 h-28 object-cover">
+                        <img src="{{ $avatar }}" alt="{{ $person->full_name }}" class="w-28 h-[149px] object-cover">
                     @else
-                        <x-gender-avatar :gender="$person->gender" class="w-28 h-28" />
+                        <x-gender-avatar :gender="$person->gender" class="w-28 h-[149px]" />
                     @endif
                 </span>
                 <h1 class="mt-4 text-xl font-bold text-gray-900">{{ $person->full_name }}</h1>

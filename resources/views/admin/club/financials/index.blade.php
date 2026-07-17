@@ -11,16 +11,158 @@
     $marginPct     = $totalIncome > 0 ? round(($netIncome / $totalIncome) * 100, 1) : 0;
     $incomeCount   = $transactions->where('type','income')->count();
     $expenseCount  = $transactions->where('type','expense')->count();
+    $refundCount   = $transactions->where('type','refund')->count();
+
+    // "Pending" = cash still to collect from members who enrolled/renewed but haven't paid yet
+    // (App\Services\FinancialService::getCashToCollect() — same source as the "Cash to Collect"
+    // stat card and the mobile ledger's Pending filter). Some subscription flows (walk-in, admin
+    // enroll, explore self-registration) create a matching ClubTransaction alongside the
+    // subscription — those already surface as an "Unpaid"/"Pending" ledger row below too. But the
+    // QR self-registration wizard (WizardRegistrationController) creates the subscription with no
+    // transaction at all, so it would otherwise never appear in the desktop ledger. Mirrors the
+    // mobile ledger exactly (partials/../mobile.blade.php $pendingLedger): every pending
+    // subscription gets its own row here, even the rare one that also has a matching transaction
+    // row — keeps the "All"/"Pending" counts identical between mobile and desktop.
+    $pendingLedgerRows = $pendingSubscriptions->map(function ($sub) use ($club) {
+        $name = $sub->user->full_name ?? $sub->user->name ?? __('admin.fin_member');
+        return [
+            'subscription_id'  => $sub->id,
+            'name'             => $name,
+            'package'          => $sub->package->name ?? null,
+            'amount'           => (float) ($sub->amount_due ?? 0),
+            'status'           => $sub->payment_status,
+            'date'             => $sub->start_date ? \Illuminate\Support\Carbon::parse($sub->start_date) : null,
+            'description'      => 'Package: '.($sub->package->name ?? ''),
+            'proof_of_payment' => $sub->proof_of_payment ? route('admin.club.subscriptions.payment-proof', ['club' => $club, 'subscription' => $sub->id]) : '',
+        ];
+    })->values();
+
+    $ledgerFilterCounts = [
+        'all'     => $transactions->count() + $pendingLedgerRows->count(),
+        'pending' => $pendingLedgerRows->count(),
+        'income'  => $incomeCount,
+        'expense' => $expenseCount,
+        'refund'  => $refundCount,
+    ];
+
+    // Single date-sorted ledger — pending rows are interleaved with transactions by date rather
+    // than grouped together, matching a normal chronological ledger.
+    $ledgerRows = $pendingLedgerRows->map(fn ($p) => ['kind' => 'pending', 'sort_date' => $p['date'], 'data' => $p])
+        ->concat($transactions->map(fn ($t) => ['kind' => 'transaction', 'sort_date' => $t->transaction_date, 'data' => $t]))
+        ->sortByDesc(fn ($row) => $row['sort_date'] ?? \Illuminate\Support\Carbon::minValue())
+        ->values();
+
+    // Per-row {type, status} in the same order as the single @foreach below — lets the Alpine
+    // filter/pagination combo rank rows without re-scanning the DOM.
+    $ledgerMeta = $ledgerRows->map(fn ($row) => $row['kind'] === 'pending'
+        ? ['type' => 'pending', 'status' => $row['data']['status']]
+        : ['type' => $row['data']->type, 'status' => $row['data']->subscription?->payment_status ?? null]
+    )->values();
 @endphp
 
 <div x-data="{
+    testMode: {{ $isTestMode ? 'true' : 'false' }},
+    modeSwitching: false,
+    showModeReviewModal: false,
+    reviewData: { transactions: [], subscriptions: [], orders: [] },
+    async toggleMode() {
+        if (this.modeSwitching) return;
+        if (this.testMode) {
+            // Test → Live: fetch what's test-tagged first, review if anything exists.
+            this.modeSwitching = true;
+            try {
+                const r = await fetch(`{{ url('admin/club/'.$club->slug.'/financials/test-data') }}`, { headers: { 'Accept': 'application/json' } });
+                const d = await r.json();
+                if (!d.success) { window.showToast('error', '{{ __('admin.club_financials_index_error') }}'); return; }
+                if (d.total === 0) {
+                    const ok = await window.confirmAction({
+                        title: '{{ __('admin.club_financials_index_mode_switch_title') }}',
+                        message: '{{ __('admin.club_financials_index_mode_switch_to_live_empty') }}',
+                        type: 'default',
+                        confirmText: '{{ __('admin.club_financials_index_mode_go_live') }}',
+                    });
+                    if (ok) await this.commitMode('live', {});
+                } else {
+                    this.reviewData = {
+                        transactions: d.transactions.map(t => ({ ...t, keep: false })),
+                        subscriptions: d.subscriptions.map(s => ({ ...s, keep: false })),
+                        orders: d.orders.map(o => ({ ...o, keep: false })),
+                    };
+                    this.showModeReviewModal = true;
+                }
+            } catch { window.showToast('error', '{{ __('admin.club_financials_index_error') }}'); }
+            finally { this.modeSwitching = false; }
+        } else {
+            const ok = await window.confirmAction({
+                title: '{{ __('admin.club_financials_index_mode_switch_title') }}',
+                message: '{{ __('admin.club_financials_index_mode_switch_to_test_message') }}',
+                type: 'default',
+                confirmText: '{{ __('admin.club_financials_index_mode_go_test') }}',
+            });
+            if (ok) await this.commitMode('test', {});
+        }
+    },
+    async confirmModeReview() {
+        const ok = await window.confirmAction({
+            title: '{{ __('admin.club_financials_index_mode_switch_title') }}',
+            message: '{{ __('admin.club_financials_index_mode_switch_to_live_message') }}',
+            type: 'danger',
+            confirmText: '{{ __('admin.club_financials_index_mode_go_live') }}',
+        });
+        if (!ok) return;
+        await this.commitMode('live', {
+            keep_transaction_ids: this.reviewData.transactions.filter(r => r.keep).map(r => r.id),
+            keep_subscription_ids: this.reviewData.subscriptions.filter(r => r.keep).map(r => r.id),
+            keep_order_ids: this.reviewData.orders.filter(r => r.keep).map(r => r.id),
+        });
+    },
+    async commitMode(mode, keepIds) {
+        this.modeSwitching = true;
+        try {
+            const fd = new FormData();
+            fd.append('_token', document.querySelector('meta[name=csrf-token]')?.content);
+            fd.append('mode', mode);
+            Object.entries(keepIds).forEach(([key, ids]) => (ids || []).forEach(id => fd.append(key + '[]', id)));
+            const r = await fetch(`{{ url('admin/club/'.$club->slug.'/financials/mode') }}`, { method: 'POST', body: fd, headers: { 'Accept': 'application/json' } });
+            const d = await r.json();
+            if (d.success) {
+                this.showModeReviewModal = false;
+                window.showToast('success', d.message);
+                if (window.__adminShellRefresh) window.__adminShellRefresh();
+            } else {
+                window.showToast('error', d.message || '{{ __('admin.club_financials_index_error') }}');
+            }
+        } catch { window.showToast('error', '{{ __('admin.club_financials_index_error') }}'); }
+        finally { this.modeSwitching = false; }
+    },
     activeTab: 'ledger',
     ledgerPage: 1,
     ledgerPerPage: 25,
-    ledgerTotal: {{ $transactions->count() }},
-    get ledgerTotalPages() { return Math.max(1, Math.ceil(this.ledgerTotal / this.ledgerPerPage)); },
+    ledgerFilter: 'all',
+    ledgerMeta: @js($ledgerMeta),
+    get ledgerTotal() { return this.ledgerMeta.length; },
+    get ledgerFilteredIndices() {
+        return this.ledgerMeta
+            .map((row, i) => ({ row, i }))
+            .filter(({ row }) => this.rowMatchesLedgerFilter(row))
+            .map(({ i }) => i);
+    },
+    get ledgerFilteredTotal() { return this.ledgerFilteredIndices.length; },
+    get ledgerTotalPages() { return Math.max(1, Math.ceil(this.ledgerFilteredTotal / this.ledgerPerPage)); },
     get ledgerStart() { return (this.ledgerPage - 1) * this.ledgerPerPage; },
     get ledgerEnd()   { return this.ledgerPage * this.ledgerPerPage; },
+    setLedgerFilter(key) { this.ledgerFilter = key; this.ledgerPage = 1; },
+    rowMatchesLedgerFilter(row) {
+        if (!row) return true;
+        if (this.ledgerFilter === 'all') return true;
+        if (this.ledgerFilter === 'pending') return row.status === 'unpaid' || row.status === 'pending_approval';
+        return row.type === this.ledgerFilter;
+    },
+    ledgerRowVisible(i) {
+        if (!this.rowMatchesLedgerFilter(this.ledgerMeta[i])) return false;
+        const rank = this.ledgerFilteredIndices.indexOf(i);
+        return rank >= this.ledgerStart && rank < this.ledgerEnd;
+    },
     showIncomeModal: false,
     showExpenseModal: false,
     showAutoExpenseModal: false,
@@ -39,6 +181,19 @@
     openEdit(t) { this.editTransaction = t; this.showEditModal = true; },
     openDelete(id, ref) { this.deleteTransactionId = id; this.deleteTransactionRef = ref; this.showDeleteModal = true; },
     openTransactionDetail(id) { this.activeTransaction = window.transactionData?.[id] || null; this.showTransactionDetailModal = true; },
+    openPendingDetail(p) {
+        this.activeTransaction = {
+            transaction_date: p.date_label,
+            amount: p.amount,
+            member_name: p.name,
+            payment_status: p.status,
+            description: p.description,
+            proof_of_payment: p.proof_of_payment,
+            subscription_id: p.subscription_id,
+            refund_proof: '',
+        };
+        this.showTransactionDetailModal = true;
+    },
     openRefundModal(t) { this.refundTarget = t; this.showRefundModal = true; },
     async processRefund() {
         if (this.refundingPayment || !this.refundTarget) return;
@@ -54,7 +209,7 @@
                 this.showRefundModal = false;
                 window.applyFinancials?.(d.financials);
                 window.patchLedgerStatus?.(d.subscription_id, d.payment_status);
-                if (window.prependLedgerRow?.(d.transaction)) this.ledgerTotal++;
+                if (window.prependLedgerRow?.(d.transaction)) this.ledgerMeta.push({ type: 'refund', status: null });
                 window.showToast('success', d.message || '{{ __("admin.club_financials_index_refund_success") }}');
             }
             else window.showToast('error', d.message || '{{ __("admin.club_financials_index_refund_failed") }}');
@@ -98,6 +253,14 @@
         <h2 class="text-xl font-bold text-gray-900">{{ __('admin.club_financials_index_financials') }}</h2>
         <p class="text-sm text-gray-500 mt-1">{{ __('admin.club_financials_index_subtitle') }}</p>
     </div>
+    <div class="flex flex-wrap items-center gap-3">
+        <button type="button" @click="toggleMode()" :disabled="modeSwitching" role="switch" :aria-checked="!testMode"
+                class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors disabled:opacity-50"
+                :class="testMode ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200' : 'bg-green-50 text-green-700 ring-1 ring-green-200'">
+            <i class="bi" :class="testMode ? 'bi-cone-striped' : 'bi-broadcast'"></i>
+            <span x-text="testMode ? '{{ __('admin.club_financials_index_mode_test') }}' : '{{ __('admin.club_financials_index_mode_live') }}'"></span>
+            <i class="bi bi-arrow-repeat" :class="modeSwitching && 'animate-spin'"></i>
+        </button>
     <div class="flex flex-wrap gap-2" x-data="{ open: false }">
         <div class="relative">
             <button type="button" @click="open = !open" @click.outside="open = false" @keydown.escape="open = false"
@@ -128,6 +291,7 @@
                 </button>
             </div>
         </div>
+    </div>
     </div>
 </div>
 
@@ -236,7 +400,7 @@
 {{-- ─── Tabs ─── --}}
 <div class="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
 
-    <div class="border-b border-gray-100 px-1 overflow-x-auto">
+    <div class="border-b border-gray-100 px-1 overflow-x-auto scrollbar-hide">
         <nav class="-mb-px flex min-w-max">
             <button @click="activeTab='ledger'"
                 class="px-5 py-3.5 text-sm font-medium border-b-2 transition-colors"
@@ -247,7 +411,7 @@
                 {{ __('admin.club_financials_index_ledger') }}
                 <span id="ledgerCountBadge" class="ms-1.5 px-2 py-0.5 rounded-full text-xs font-medium"
                     :class="activeTab==='ledger' ? 'bg-accent text-primary' : 'bg-gray-100 text-gray-500'">
-                    {{ $transactions->count() }}
+                    {{ $transactions->count() + $pendingLedgerRows->count() }}
                 </span>
             </button>
             <button @click="activeTab='expenses'"
@@ -271,8 +435,27 @@
 
     {{-- ── Ledger tab ── --}}
     <div x-show="activeTab==='ledger'" x-transition.opacity.duration.150ms>
-        @if($transactions->count() > 0)
-        <div class="overflow-x-auto">
+        @if($transactions->count() > 0 || $pendingLedgerRows->count() > 0)
+        {{-- Filter pills --}}
+        <div class="flex items-center gap-1.5 overflow-x-auto scrollbar-hide px-5 py-3 border-b border-gray-100">
+            @foreach([
+                'all'     => [__('admin.fin_filter_all'), $ledgerFilterCounts['all']],
+                'pending' => [__('admin.fin_filter_pending'), $ledgerFilterCounts['pending']],
+                'income'  => [__('admin.fin_income'), $ledgerFilterCounts['income']],
+                'expense' => [__('admin.fin_expense'), $ledgerFilterCounts['expense']],
+                'refund'  => [__('admin.fin_refunds'), $ledgerFilterCounts['refund']],
+            ] as $key => [$label, $count])
+                <button type="button" @click="setLedgerFilter('{{ $key }}')"
+                    :class="ledgerFilter === '{{ $key }}' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'"
+                    class="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors">
+                    {{ $label }} <span class="opacity-70">{{ $count }}</span>
+                </button>
+            @endforeach
+        </div>
+
+        <p x-show="ledgerFilteredTotal === 0" x-cloak class="text-sm text-gray-400 py-8 text-center">{{ __('admin.fin_no_results') }}</p>
+
+        <div class="overflow-x-auto" x-show="ledgerFilteredTotal > 0">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-gray-100 bg-gray-50/60">
@@ -286,14 +469,68 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-50" id="ledgerBody">
-                    @foreach($transactions as $t)
+                    @foreach($ledgerRows as $row)
+                    @if($row['kind'] === 'pending')
+                    @php $p = $row['data']; @endphp
+                    <tr class="group transition-colors hover:bg-gray-50/70 cursor-pointer"
+                        data-sub-id="{{ $p['subscription_id'] }}" data-txn-type="pending"
+                        x-show="ledgerRowVisible({{ $loop->index }})"
+                        @click="openPendingDetail(@js([
+                            'name'             => $p['name'],
+                            'date_label'       => $p['date']?->format('M d, Y') ?? '—',
+                            'amount'           => $p['amount'],
+                            'status'           => $p['status'],
+                            'description'      => $p['description'],
+                            'proof_of_payment' => $p['proof_of_payment'],
+                            'subscription_id'  => $p['subscription_id'],
+                        ]))">
+
+                        <td class="px-5 py-3.5 whitespace-nowrap text-gray-500 text-xs">
+                            {{ $p['date']?->format('d M Y') ?? '—' }}
+                        </td>
+
+                        <td class="px-5 py-3.5">
+                            <div class="flex items-center gap-2.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0"></span>
+                                <span class="text-gray-800 font-medium truncate max-w-[180px]">{{ $p['name'] }}</span>
+                            </div>
+                        </td>
+
+                        <td class="px-5 py-3.5 text-gray-500 text-xs capitalize">{{ $p['package'] ?? '—' }}</td>
+
+                        <td class="px-5 py-3.5"><span class="text-gray-300">—</span></td>
+
+                        <td class="px-5 py-3.5 js-status-cell">
+                            @if($p['status'] === 'pending_approval')
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600">
+                                    <i class="bi bi-hourglass-split text-[10px]"></i> {{ __('admin.club_financials_index_status_pending') }}
+                                </span>
+                            @else
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-600">
+                                    <i class="bi bi-clock-fill text-[10px]"></i> {{ __('admin.club_financials_index_status_unpaid') }}
+                                </span>
+                            @endif
+                        </td>
+
+                        <td class="px-5 py-3.5 text-end font-semibold tabular-nums whitespace-nowrap text-amber-600">
+                            {{ $currency }} {{ number_format($p['amount'], 2) }}
+                        </td>
+
+                        <td class="px-3 py-3.5">
+                            <div class="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i class="bi bi-chevron-right text-gray-300 text-xs"></i>
+                            </div>
+                        </td>
+                    </tr>
+                    @else
                     @php
+                        $t = $row['data'];
                         $subPayStatus = $t->subscription?->payment_status ?? null;
                         $isClickable  = $t->type === 'income' && $t->subscription_id && $subPayStatus !== null;
                     @endphp
                     <tr class="group transition-colors hover:bg-gray-50/70 {{ $isClickable ? 'cursor-pointer' : '' }}"
                         data-sub-id="{{ $t->subscription_id ?? '' }}" data-txn-type="{{ $t->type }}"
-                        x-show="{{ $loop->index }} >= ledgerStart && {{ $loop->index }} < ledgerEnd"
+                        x-show="ledgerRowVisible({{ $loop->index }})"
                         {{ $isClickable ? '@click=openTransactionDetail('.$t->id.')' : '' }}>
 
                         <td class="px-5 py-3.5 whitespace-nowrap text-gray-500 text-xs">
@@ -382,6 +619,7 @@
                             </div>
                         </td>
                     </tr>
+                    @endif
                     @endforeach
                 </tbody>
             </table>
@@ -390,8 +628,8 @@
         {{-- Ledger pagination --}}
         <div class="flex items-center justify-between px-5 py-3.5 border-t border-gray-100 text-sm" x-show="ledgerTotalPages > 1">
             <span class="text-gray-400 text-xs">
-                {{ __('admin.club_financials_index_showing') }} <strong class="text-gray-700" x-text="ledgerStart + 1"></strong>–<strong class="text-gray-700" x-text="Math.min(ledgerEnd, ledgerTotal)"></strong>
-                {{ __('admin.club_financials_index_of') }} <strong class="text-gray-700" x-text="ledgerTotal"></strong>
+                {{ __('admin.club_financials_index_showing') }} <strong class="text-gray-700" x-text="ledgerStart + 1"></strong>–<strong class="text-gray-700" x-text="Math.min(ledgerEnd, ledgerFilteredTotal)"></strong>
+                {{ __('admin.club_financials_index_of') }} <strong class="text-gray-700" x-text="ledgerFilteredTotal"></strong>
             </span>
             <div class="flex items-center gap-1.5">
                 <button @click="ledgerPage = Math.max(1, ledgerPage - 1)" :disabled="ledgerPage === 1"
@@ -558,11 +796,19 @@
 @include('admin.club.financials.partials.delete-modal')
 @include('admin.club.financials.partials.transaction-detail-modal')
 @include('admin.club.financials.partials.refund-modal')
+@include('admin.club.financials.partials.mode-review-modal')
 
 </div>{{-- /x-data root --}}
 
 @push('scripts')
 <script>
+// Another admin session switched this club's Test/Live mode — refresh in place.
+if (window.__financialsModeHandler) window.removeEventListener('realtime:financials', window.__financialsModeHandler);
+window.__financialsModeHandler = function (e) {
+    if (e.detail?.action === 'refresh' && window.__adminShellRefresh) window.__adminShellRefresh();
+};
+window.addEventListener('realtime:financials', window.__financialsModeHandler);
+
 window.transactionData = {
     @foreach($transactions as $t)
     {{ $t->id }}: {
@@ -653,7 +899,7 @@ window.prependLedgerRow = function (t) {
     tr.className = 'group transition-colors hover:bg-gray-50/70';
     tr.setAttribute('data-sub-id', '');
     tr.setAttribute('data-txn-type', 'refund');
-    tr.setAttribute('x-show', 'ledgerPage === 1');
+    tr.setAttribute('x-show', "ledgerPage === 1 && (ledgerFilter === 'all' || ledgerFilter === 'refund')");
     tr.innerHTML =
         '<td class="px-5 py-3.5 whitespace-nowrap text-gray-500 text-xs">' + esc(t.transaction_date || '—') + '</td>' +
         '<td class="px-5 py-3.5"><div class="flex items-center gap-2.5">' +
