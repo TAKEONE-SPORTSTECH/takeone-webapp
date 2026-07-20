@@ -9,6 +9,12 @@
     // Distinct activities offered across all packages (the same activity used by
     // many packages counts once) — not a per-package sum.
     $pkgActivities = $packages->flatMap(fn ($p) => $p->activities)->unique('id')->count();
+
+    // Public directory page per activity name, resolved in ONE query for the whole
+    // page — an activity row links to it when the discipline exists in the catalog.
+    $activityLinks = \App\Models\ActivityCatalog::linksForNames(
+        $packages->flatMap(fn ($p) => $p->activities)->pluck('name')
+    );
 @endphp
 <div class="-mx-4 -mt-4"
      x-data="{ removePackageId: null, removePackageName: '' }"
@@ -124,10 +130,30 @@
                                         if ($day) $groups[$key]['days'][] = \Illuminate\Support\Carbon::parse($day)->locale(app()->getLocale())->isoFormat('ddd');
                                     }
                                 @endphp
+                                @php $actLink = $activityLinks[mb_strtolower(trim($act->name))] ?? null; @endphp
                                 <div class="rounded-xl bg-muted/30 p-2.5">
                                     <div class="flex items-center justify-between gap-2">
-                                        <p class="text-xs font-semibold text-foreground truncate min-w-0"><i class="bi bi-activity text-primary mr-1"></i>{{ $act->name }}</p>
-                                        @if($ins)
+                                        @if($actLink)
+                                            {{-- Tap the discipline to read what it actually is (public directory page). --}}
+                                            <a href="{{ $actLink }}" class="m-press text-xs font-semibold text-foreground truncate min-w-0 no-underline inline-flex items-center gap-1">
+                                                <i class="bi bi-activity text-primary"></i><span class="truncate">{{ $act->name }}</span>
+                                                <i class="bi bi-chevron-right text-[8px] text-primary rtl:rotate-180 flex-shrink-0"></i>
+                                            </a>
+                                        @else
+                                            <p class="text-xs font-semibold text-foreground truncate min-w-0"><i class="bi bi-activity text-primary mr-1"></i>{{ $act->name }}</p>
+                                        @endif
+                                        @if($ins && !empty($ins['user_id']))
+                                            {{-- Tap the coach to open their trainer profile. `trainer.show` binds
+                                                 the USER, not the ClubInstructor row — hence user_id. --}}
+                                            <a href="{{ route('trainer.show', $ins['user_id']) }}"
+                                               class="m-press inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground flex-shrink-0 no-underline">
+                                                <span class="w-5 h-5 rounded-full bg-accent overflow-hidden flex items-center justify-center">
+                                                    @if(!empty($ins['image']))<img src="{{ asset('storage/'.$ins['image']) }}" alt="" class="w-5 h-5 object-cover">@else<i class="bi bi-person text-primary text-[10px]"></i>@endif
+                                                </span>
+                                                <span class="truncate max-w-[7rem]">{{ $ins['name'] }}</span>
+                                                <i class="bi bi-chevron-right text-[8px] text-primary rtl:rotate-180"></i>
+                                            </a>
+                                        @elseif($ins)
                                             <span class="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground flex-shrink-0">
                                                 <span class="w-5 h-5 rounded-full bg-accent overflow-hidden flex items-center justify-center">
                                                     @if(!empty($ins['image']))<img src="{{ asset('storage/'.$ins['image']) }}" alt="" class="w-5 h-5 object-cover">@else<i class="bi bi-person text-primary text-[10px]"></i>@endif

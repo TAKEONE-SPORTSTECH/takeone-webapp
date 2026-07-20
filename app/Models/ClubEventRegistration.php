@@ -15,6 +15,8 @@ class ClubEventRegistration extends Model
         'role',
         'status',
         'paid',
+        'payment_proof',
+        'paid_at',
         'category_id',
         'weight',
         'weighed_in_at',
@@ -26,6 +28,7 @@ class ClubEventRegistration extends Model
     protected $casts = [
         'registered_at' => 'datetime',
         'weighed_in_at' => 'datetime',
+        'paid_at' => 'datetime',
         'paid' => 'boolean',
         'weight' => 'decimal:2',
     ];

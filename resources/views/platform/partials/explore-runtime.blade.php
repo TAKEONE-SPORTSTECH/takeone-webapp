@@ -750,9 +750,9 @@ function exploreApp() {
 
                     const trainerCard = document.createElement('div');
                     trainerCard.innerHTML = `
-                        <div class="card border border-gray-100 shadow-sm overflow-hidden club-card cursor-pointer rounded-2xl" onclick="window.location.href='${trainer.url}'">
+                        <div class="card border border-gray-100 shadow-sm overflow-hidden club-card cursor-pointer rounded-2xl h-full flex flex-col" onclick="window.location.href='${trainer.url}'">
                             <!-- Cover Image -->
-                            <div class="relative overflow-hidden h-48">
+                            <div class="relative overflow-hidden bg-gray-50" style="aspect-ratio: 16 / 9;">
                                 ${coverHtml}
                                 <!-- Personal Trainer Badge -->
                                 <div class="absolute top-2 start-2">
@@ -761,9 +761,9 @@ function exploreApp() {
                             </div>
 
                             <!-- Card Body -->
-                            <div class="p-4 bg-white">
-                                <div class="mb-3">
-                                    <h3 class="font-semibold mb-2 club-title text-lg text-foreground">${trainer.name}</h3>
+                            <div class="p-4 bg-white flex-1 flex flex-col">
+                                <div class="mb-3" style="min-height:6.25rem;">
+                                    <h3 class="font-semibold mb-2 club-title text-lg text-foreground" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:3.5rem;">${trainer.name}</h3>
                                     <div class="flex items-center mb-1 text-sm text-primary">
                                         <i class="bi bi-patch-check-fill me-1"></i>
                                         <span class="font-semibold">${trainer.role}</span>
@@ -790,7 +790,7 @@ function exploreApp() {
                                 </div>
 
                                 <!-- Action Buttons -->
-                                <div class="flex gap-2">
+                                <div class="flex gap-2 mt-auto">
                                     <a href="${trainer.url}" class="btn btn-primary flex-1 font-semibold text-sm text-center" onclick="event.stopPropagation()">
                                         <i class="bi bi-calendar-plus me-1"></i>{{ __('explore.book_session') }}
                                     </a>
@@ -837,28 +837,28 @@ function exploreApp() {
                 }
 
                 card.innerHTML = `
-                    <div class="card border border-gray-100 shadow-sm overflow-hidden club-card cursor-pointer rounded-2xl" onclick="window.location.href='${club.url}'">
+                    <div class="card border border-gray-100 shadow-sm overflow-hidden club-card cursor-pointer rounded-2xl h-full flex flex-col" onclick="window.location.href='${club.url}'">
                         <!-- Cover Image -->
-                        <div class="relative overflow-hidden h-48">
+                        <div class="relative overflow-hidden bg-gray-50" style="aspect-ratio: 16 / 9;">
                             ${coverImageHtml}
 
                             <!-- Club Logo - Bottom Left -->
                             <div class="absolute bottom-2 start-2">
-                                <div class="bg-white shadow border p-0.5 w-20 h-20 rounded-full">
+                                <div class="bg-white border border-gray-200 p-0.5 w-20 h-20 rounded-full">
                                     ${logoHtml}
                                 </div>
                             </div>
 
                             <!-- Sports Club Badge - Top Left -->
                             <div class="absolute top-2 start-2">
-                                <span class="badge text-white px-3 py-1 bg-destructive rounded-full text-xs font-semibold"><i class="bi bi-building me-1"></i>{{ __('explore.sports_club_badge') }}</span>
+                                <span class="badge text-white px-3 py-1 bg-red-600 rounded-full text-xs font-semibold"><i class="bi bi-building me-1"></i>{{ __('explore.sports_club_badge') }}</span>
                             </div>
                         </div>
 
                         <!-- Card Body -->
-                        <div class="p-4 bg-white">
-                            <div class="mb-3">
-                                <h3 class="font-semibold mb-2 club-title text-lg text-foreground">${club.club_name}</h3>
+                        <div class="p-4 bg-white flex-1 flex flex-col">
+                            <div class="mb-3" style="min-height:6.25rem;">
+                                <h3 class="font-semibold mb-2 club-title text-lg text-foreground" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:3.5rem;">${club.club_name}</h3>
                                 <div class="flex items-center justify-between gap-2 mb-1 text-sm">
                                     <div class="flex items-center min-w-0 text-primary">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1 shrink-0">
@@ -911,7 +911,7 @@ function exploreApp() {
                             </div>
 
                             <!-- Action Buttons -->
-                            <div class="flex gap-2">
+                            <div class="flex gap-2 mt-auto">
                                 <button class="btn btn-primary flex-1 font-semibold text-sm" onclick="event.stopPropagation(); event.preventDefault(); window.openJoinModal(${club.id}, '${club.slug}', '${club.club_name.replace(/'/g, "\\\\'")}', '${club.country_code}')">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1">
                                         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>

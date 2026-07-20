@@ -1,6 +1,12 @@
 @extends('layouts.admin-club')
 
 @section('club-admin-content')
+@php
+    // Public directory page per activity name — resolved once for the whole grid.
+    $activityLinks = \App\Models\ActivityCatalog::linksForNames(
+        collect($packages ?? [])->flatMap(fn ($p) => $p->activities ?? [])->pluck('name')
+    );
+@endphp
 <div x-data="{
     showPackageModal: false,
     packageModalMode: 'add',
@@ -28,7 +34,7 @@
     @if(isset($packages) && count($packages) > 0)
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         @foreach($packages as $package)
-        <x-package-card :package="$package" :club="$club" :instructors-map="$instructorsMap">
+        <x-package-card :package="$package" :club="$club" :instructors-map="$instructorsMap" :activity-links="$activityLinks">
             <x-slot:actions>
                 <button class="btn btn-sm btn-outline-primary" title="{{ __('shared.edit') }}"
                         @click="openEditModal(packagesData.find(p => p.id === {{ $package->id }}))">

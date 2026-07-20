@@ -248,7 +248,7 @@ html, body { overflow: hidden !important; height: 100% !important; }
         ['label'=>__('nav.layouts_admin_club_group_people'), 'items'=>[
             ['route'=>'admin.club.members',      'icon'=>'bi-person-plus',    'label'=>__('nav.layouts_admin_club_nav_members')],
             ['route'=>'admin.club.instructors',  'icon'=>'bi-people',         'label'=>__('nav.layouts_admin_club_nav_instructors')],
-            ['route'=>'admin.club.roles',        'icon'=>'bi-shield-check',   'label'=>__('nav.layouts_admin_club_nav_roles')],
+            ['route'=>'admin.club.roles',        'icon'=>'bi-person-lock',    'label'=>__('nav.layouts_admin_club_nav_roles')],
         ]],
         ['label'=>__('nav.layouts_admin_club_group_programs'), 'items'=>[
             ['route'=>'admin.club.activities',   'icon'=>'bi-activity',       'label'=>__('nav.layouts_admin_club_nav_activities')],
@@ -302,7 +302,7 @@ html, body { overflow: hidden !important; height: 100% !important; }
         <div class="emp-actions emp-collapse-hide">
             @if(Auth::user()->isSuperAdmin())
                 <a href="{{ route('admin.platform.clubs') }}" class="emp-sb-btn" title="{{ __('nav.layouts_admin_club_back_to_clubs') }}"><i class="bi bi-arrow-left"></i></a>
-                <a href="{{ route('admin.platform.index') }}" class="emp-sb-btn" title="{{ __('nav.layouts_admin_club_admin_dashboard') }}"><i class="bi bi-shield-check"></i></a>
+                <a href="{{ route('admin.platform.index') }}" class="emp-sb-btn" title="{{ __('nav.layouts_admin_club_admin_dashboard') }}"><i class="bi bi-sliders2"></i></a>
                 <a href="{{ route('me.home') }}" class="emp-sb-btn" title="{{ __('nav.layouts_admin_club_my_home') }}"><i class="bi bi-house"></i></a>
             @else
                 <a href="{{ route('clubs.explore') }}" class="emp-sb-btn" title="{{ __('nav.layouts_admin_club_back_to_explore') }}"><i class="bi bi-arrow-left"></i></a>

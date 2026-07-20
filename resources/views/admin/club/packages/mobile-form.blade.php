@@ -377,7 +377,7 @@ window.packageFormSheet = function () {
             {{-- Footer --}}
             <div class="px-4 py-3 bg-gray-50 border-t flex-shrink-0 flex items-center gap-2" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));">
                 <button type="button" @click="open = false" class="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 bg-white text-sm font-medium">{{ __('admin.cancel') }}</button>
-                <button type="button" @click="$refs.form.requestSubmit()" class="flex-1 btn btn-primary py-2.5">
+                <button type="button" @click="if (!(name || '').trim()) { lang = 'en' } $nextTick(() => $refs.form.requestSubmit())" class="flex-1 btn btn-primary py-2.5">
                     <i class="bi bi-check-lg mr-1"></i><span x-text="mode === 'edit' ? '{{ __('admin.pkg_update') }}' : '{{ __('admin.pkg_create') }}'"></span>
                 </button>
             </div>

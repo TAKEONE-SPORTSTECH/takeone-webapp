@@ -3594,6 +3594,11 @@ a.text-decoration-none:hover .family-card { text-decoration: none; }
 .m-in-pop   { animation: m-pop  .5s  cubic-bezier(.22,.61,.36,1) both; }
 .m-in-fade  { animation: m-fade .6s ease both; }
 
+/* Drill-down panel entrance — used by the mobile hub-and-spoke pattern when a
+   detail panel replaces the hub (see "Mobile Pattern Language" in CLAUDE.md). */
+.m-panel-in { animation: m-panel .34s cubic-bezier(.22,.61,.36,1) both; }
+@keyframes m-panel { from { opacity: 0; transform: translate3d(0, 10px, 0); } to { opacity: 1; transform: none; } }
+
 /* Tap micro-interaction — tactile press for cards/buttons/links on mobile. */
 .m-press { transition: transform .14s cubic-bezier(.22,.61,.36,1), box-shadow .2s ease; -webkit-tap-highlight-color: transparent; }
 .m-press:active { transform: scale(.975); }
@@ -3640,7 +3645,7 @@ a.text-decoration-none:hover .family-card { text-decoration: none; }
 
 /* Respect users who prefer less motion. */
 @media (prefers-reduced-motion: reduce) {
-    .mobile-stagger > *, .m-in, .m-in-pop, .m-in-fade, .m-bar-fill, .m-hero::after, .m-float, .m-skeleton {
+    .mobile-stagger > *, .m-in, .m-in-pop, .m-in-fade, .m-panel-in, .m-bar-fill, .m-hero::after, .m-float, .m-skeleton {
         animation: none !important;
         opacity: 1 !important;
         transform: none !important;

@@ -168,7 +168,7 @@
                                             <label for="editPackageName" class="form-label font-medium">
                                                 {{ __('admin.club_packages_edit_package_name') }} <span class="text-destructive">*</span>
                                             </label>
-                                            <input type="text" id="editPackageName" name="name" required x-show="lang==='en'" placeholder="{{ __('admin.club_packages_edit_name_placeholder') }}" class="form-control">
+                                            <input type="text" id="editPackageName" name="name" :required="lang==='en'" x-show="lang==='en'" placeholder="{{ __('admin.club_packages_edit_name_placeholder') }}" class="form-control">
                                             <input type="text" id="editPackageNameAr" name="translations[name][ar]" dir="rtl" x-show="lang==='ar'" x-cloak placeholder="الاسم بالعربية" class="form-control">
                                         </div>
 

@@ -346,6 +346,20 @@ Route::middleware(['auth', 'two-factor'])->group(function () {
 });
 
 // Platform Admin routes (Super Admin only)
+// "Write with AI" for rich-text fields — available to any authenticated user
+// (generation only; no data access or writes).
+Route::post('/ai/compose', [App\Http\Controllers\AiComposeController::class, 'compose'])
+    ->middleware(['auth', 'verified', 'throttle:copilot'])
+    ->name('ai.compose');
+
+// PUBLIC viewer for a global-directory activity — rich, shareable content page
+// (QR-linked). No auth: general sport knowledge, no tenant/personal data. Bound
+// by a non-guessable uuid and throttled to blunt scraping/enumeration; guests
+// are prompted to sign in on the page itself.
+Route::get('/activity/{activity:uuid}', [App\Http\Controllers\ActivityCatalogController::class, 'show'])
+    ->middleware('throttle:120,1')
+    ->name('activity.show');
+
 Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [App\Http\Controllers\Admin\PlatformController::class, 'home'])->name('platform.index');
 
@@ -361,6 +375,29 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])->prefi
     Route::delete('/clubs/{club}', [App\Http\Controllers\Admin\PlatformController::class, 'destroyClub'])->name('platform.clubs.destroy')->middleware('throttle:admin-write');
     Route::post('/clubs/{club}/upload-logo', [App\Http\Controllers\Admin\PlatformController::class, 'uploadClubLogo'])->name('platform.clubs.upload-logo')->middleware('throttle:uploads');
     Route::post('/clubs/{club}/upload-cover', [App\Http\Controllers\Admin\PlatformController::class, 'uploadClubCover'])->name('platform.clubs.upload-cover')->middleware('throttle:uploads');
+
+    // Global activity directory (shared catalog reused across clubs)
+    Route::get('/activities', [App\Http\Controllers\Admin\PlatformActivityController::class, 'index'])->name('platform.activities');
+    Route::post('/activities', [App\Http\Controllers\Admin\PlatformActivityController::class, 'store'])->name('platform.activities.store')->middleware('throttle:admin-write');
+    Route::post('/activities/generate-content', [App\Http\Controllers\Admin\PlatformActivityController::class, 'generateContent'])->name('platform.activities.generate')->middleware('throttle:copilot');
+    Route::put('/activities/{activity:uuid}', [App\Http\Controllers\Admin\PlatformActivityController::class, 'update'])->name('platform.activities.update')->middleware('throttle:admin-write');
+    Route::post('/activities/{activity:uuid}/image', [App\Http\Controllers\Admin\PlatformActivityController::class, 'generateImage'])->name('platform.activities.image')->middleware('throttle:admin-write');
+    Route::post('/activities/upload-image', [App\Http\Controllers\Admin\PlatformActivityController::class, 'uploadImageStore'])->name('platform.activities.upload-image')->middleware('throttle:uploads');
+    Route::post('/activities/{activity:uuid}/set-image', [App\Http\Controllers\Admin\PlatformActivityController::class, 'setImage'])->name('platform.activities.set-image')->middleware('throttle:admin-write');
+    Route::delete('/activities/{activity:uuid}', [App\Http\Controllers\Admin\PlatformActivityController::class, 'destroy'])->name('platform.activities.destroy')->middleware('throttle:admin-write');
+
+    // AI provider settings (text / voice / image — local or cloud)
+    Route::get('/ai', [App\Http\Controllers\Admin\AiProviderController::class, 'index'])->name('ai.index');
+    Route::post('/ai/providers', [App\Http\Controllers\Admin\AiProviderController::class, 'store'])->name('ai.store')->middleware('throttle:admin-write');
+    Route::put('/ai/providers/{provider}', [App\Http\Controllers\Admin\AiProviderController::class, 'update'])->name('ai.update')->middleware('throttle:admin-write');
+    Route::delete('/ai/providers/{provider}', [App\Http\Controllers\Admin\AiProviderController::class, 'destroy'])->name('ai.destroy')->middleware('throttle:admin-write');
+    Route::post('/ai/providers/{provider}/test', [App\Http\Controllers\Admin\AiProviderController::class, 'test'])->name('ai.test')->middleware('throttle:admin-write');
+
+    // Copilot ("Coach") — page-aware AI assistant (thin slice: create a club)
+    Route::post('/copilot/message', [App\Http\Controllers\Admin\CopilotController::class, 'message'])->name('copilot.message')->middleware('throttle:copilot');
+    Route::post('/copilot/apply', [App\Http\Controllers\Admin\CopilotController::class, 'apply'])->name('copilot.apply')->middleware('throttle:copilot');
+    Route::post('/copilot/stt', [App\Http\Controllers\Admin\CopilotController::class, 'stt'])->name('copilot.stt')->middleware('throttle:copilot');
+    Route::post('/copilot/tts', [App\Http\Controllers\Admin\CopilotController::class, 'tts'])->name('copilot.tts')->middleware('throttle:copilot');
 
     // Club API endpoints for modal
     Route::get('/api/users', [App\Http\Controllers\Admin\ClubApiController::class, 'getUsers']);
@@ -415,6 +452,9 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])->prefi
 // Club Admin routes (Club owners and admins)
 Route::middleware(['auth', 'verified', 'two-factor', 'tenant', 'throttle:admin-write'])->prefix('admin/club/{club}')->name('admin.club.')->group(function () {
     // Dashboard & club details
+    // Bare club-admin root → dashboard, so /admin/club/{club} never dead-ends on a 405
+    // (only PUT/DELETE live at `/`). Auth/tenant scope still enforced by the group middleware.
+    Route::get('/', fn ($club) => redirect()->route('admin.club.dashboard', $club))->name('home');
     Route::get('/dashboard', [App\Http\Controllers\Admin\ClubAdminController::class, 'dashboard'])->name('dashboard');
     // Shop — club store: products held in stock or dropshipped.
     Route::get('/shop', [App\Http\Controllers\Admin\ClubShopController::class, 'shop'])->name('shop');
@@ -465,6 +505,7 @@ Route::middleware(['auth', 'verified', 'two-factor', 'tenant', 'throttle:admin-w
 
     // Activities
     Route::get('/activities', [App\Http\Controllers\Admin\ClubActivityController::class, 'activities'])->name('activities');
+    Route::get('/activities/library', [App\Http\Controllers\Admin\ClubActivityController::class, 'activityLibrary'])->name('activities.library');
     Route::post('/activities', [App\Http\Controllers\Admin\ClubActivityController::class, 'storeActivity'])->name('activities.store');
     Route::put('/activities/{activity}', [App\Http\Controllers\Admin\ClubActivityController::class, 'updateActivity'])->name('activities.update');
     Route::delete('/activities/{activity}', [App\Http\Controllers\Admin\ClubActivityController::class, 'destroyActivity'])->name('activities.destroy');
@@ -481,6 +522,10 @@ Route::middleware(['auth', 'verified', 'two-factor', 'tenant', 'throttle:admin-w
     Route::put('/events/{event}', [App\Http\Controllers\Admin\ClubEventController::class, 'updateEvent'])->name('events.update');
     Route::delete('/events/{event}', [App\Http\Controllers\Admin\ClubEventController::class, 'destroyEvent'])->name('events.destroy');
     Route::patch('/events/{event}/archive', [App\Http\Controllers\Admin\ClubEventController::class, 'archiveEvent'])->name('events.archive');
+    Route::get('/events/{event}/participants', [App\Http\Controllers\Admin\ClubEventController::class, 'participants'])->name('events.participants');
+    Route::get('/events/{event}/participants/{registration}/proof', [App\Http\Controllers\Admin\ClubEventController::class, 'participantProof'])->name('events.participants.proof');
+    Route::post('/events/{event}/participants/{registration}/paid', [App\Http\Controllers\Admin\ClubEventController::class, 'markParticipantPaid'])->name('events.participants.paid')->middleware('throttle:admin-write');
+    Route::delete('/events/{event}/participants/{registration}', [App\Http\Controllers\Admin\ClubEventController::class, 'removeParticipant'])->name('events.participants.remove')->middleware('throttle:admin-write');
 
     // Timeline
     Route::get('/timeline', [App\Http\Controllers\Admin\ClubTimelineController::class, 'timeline'])->name('timeline');

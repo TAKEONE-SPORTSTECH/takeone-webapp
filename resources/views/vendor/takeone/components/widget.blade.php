@@ -37,7 +37,25 @@
 
 @if($inline)
 {{-- Inline mode: render the crop UI directly in the page (no modal popup), like a form section. --}}
-<div class="cropper-inline-wrapper bg-white rounded-xl border border-border p-4 text-left" id="cropperInline_{{ $id }}">
+<div class="cropper-inline-wrapper bg-white rounded-xl border border-border p-4 text-center" id="cropperInline_{{ $id }}">
+    @if($mode === 'form')
+    {{-- Preview box (shows the current/cropped image) + the hidden inputs the form submits. --}}
+    <div class="cropper-preview-container mb-3" id="previewContainer_{{ $id }}">
+        @if($currentImage)
+        <img src="{{ $currentImage }}" id="preview_{{ $id }}" class="cropper-preview-image"
+             style="width: {{ $previewWidth }}px; height: {{ $previewHeight }}px; border-radius: {{ $shape === 'circle' ? '50%' : '8px' }};">
+        <button type="button" class="cropper-remove-btn" id="removeBtn_{{ $id }}" onclick="removeImage_{{ $id }}()"><i class="bi bi-x"></i></button>
+        @else
+        <div id="preview_{{ $id }}" class="cropper-preview-placeholder"
+             style="width: {{ $previewWidth }}px; height: {{ $previewHeight }}px; border-radius: {{ $shape === 'circle' ? '50%' : '8px' }};">
+            <i class="bi bi-image" style="font-size: 2rem;"></i>
+        </div>
+        @endif
+    </div>
+    <input type="hidden" name="{{ $inputName }}" id="hiddenInput_{{ $id }}" value="">
+    <input type="hidden" name="{{ $inputName }}_folder" value="{{ $folder }}">
+    <input type="hidden" name="{{ $inputName }}_filename" value="{{ $filename }}">
+    @endif
     @include('takeone::components.widget-crop-body', ['showClose' => false])
 </div>
 @elseif($mode === 'form')
@@ -248,7 +266,7 @@ $(function() {
                 previewContainer.addClass('has-image');
 
                 // Close modal
-                $('#cropperModal_{{ $id }}').modal('hide');
+                (function(){ var _m = document.querySelector('#cropperModal_{{ $id }}'); if (_m && window.bsModal) { try { window.bsModal.hide(_m); } catch(e){} } })();
 @if($inline)
                 hideEditor_{{ $id }}();
 @endif
@@ -274,7 +292,7 @@ $(function() {
                         folder: '{{ $folder }}',
                         filename: '{{ $filename }}'
                     }).done((res) => {
-                    $('#cropperModal_{{ $id }}').modal('hide');
+                    (function(){ var _m = document.querySelector('#cropperModal_{{ $id }}'); if (_m && window.bsModal) { try { window.bsModal.hide(_m); } catch(e){} } })();
 @if($inline)
                     hideEditor_{{ $id }}();
 @endif
@@ -372,19 +390,21 @@ $(function() {
                         </button>
                     `);
                     previewContainer.addClass('has-image');
-                    $('#cropperModal_{{ $id }}').modal('hide');
+                    (function(){ var _m = document.querySelector('#cropperModal_{{ $id }}'); if (_m && window.bsModal) { try { window.bsModal.hide(_m); } catch(e){} } })();
 @if($inline)
                     hideEditor_{{ $id }}();
 @endif
                     btn.prop('disabled', false).text('{{ $uploadAsIsText }}');
                 } else {
+                    // "Upload As Is": send the ORIGINAL file bytes untouched — no
+                    // canvas re-encode — so quality is preserved exactly.
                     $.post("{{ $uploadUrl }}", {
                         _token: "{{ csrf_token() }}",
-                        image: base64,
+                        image: event.target.result,
                         folder: '{{ $folder }}',
                         filename: '{{ $filename }}'
                     }).done((res) => {
-                        $('#cropperModal_{{ $id }}').modal('hide');
+                        (function(){ var _m = document.querySelector('#cropperModal_{{ $id }}'); if (_m && window.bsModal) { try { window.bsModal.hide(_m); } catch(e){} } })();
 @if($inline)
                         hideEditor_{{ $id }}();
 @endif

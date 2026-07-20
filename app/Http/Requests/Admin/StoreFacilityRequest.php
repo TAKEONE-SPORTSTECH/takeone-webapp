@@ -19,7 +19,7 @@ class StoreFacilityRequest extends FormRequest
             'address' => 'nullable|string|max:500',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
-            'maps_url' => 'nullable|url|max:500',
+            'maps_url' => 'nullable|url|starts_with:http://,https://|max:500',
             'is_available' => 'nullable|boolean',
             'translations' => ['nullable', 'array'],
             'translations.*.*' => ['nullable', 'string', 'max:2000'],

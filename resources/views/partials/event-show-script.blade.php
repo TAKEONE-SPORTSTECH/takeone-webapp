@@ -11,6 +11,48 @@ x-data="{
         cap: {{ $e['cap'] }},
         byQual: {{ $byQual ? 'true' : 'false' }},
         joinedDivision: '',
+        // ----- Payment proof (paid participant events, manual proof-of-payment) -----
+        paymentPending: {{ ($e['payment_pending'] ?? false) ? 'true' : 'false' }},
+        proofOpen: false,
+        proofData: null,
+        proofPreview: null,
+        proofSubmitting: false,
+        openProof() {
+            this.proofData = null; this.proofPreview = null; this.proofOpen = true;
+        },
+        closeProof() { this.proofOpen = false; },
+        pickProof(e) {
+            const f = e.target.files && e.target.files[0];
+            if (!f) return;
+            if (!f.type.startsWith('image/')) { window.showToast('error', '{{ __("personal.event_show_proof_pick_image") }}'); e.target.value = ''; return; }
+            const r = new FileReader();
+            r.onload = () => { this.proofData = r.result; this.proofPreview = r.result; };
+            r.readAsDataURL(f);
+        },
+        // Re-calls register() with the proof attached — updateOrCreate keeps it idempotent
+        // and re-runs every eligibility/capacity check. paid stays false (awaiting approval).
+        async submitProof() {
+            if (!this.proofData || this.proofSubmitting) return;
+            this.proofSubmitting = true;
+            let res = null, d = {};
+            try {
+                res = await fetch('{{ route('me.events.register', $e['key']) }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ payment_proof: this.proofData }),
+                });
+                d = await res.json().catch(() => ({}));
+                if (!res.ok || !d.success) throw new Error(d.message || '{{ __("personal.event_show_action_failed") }}');
+            } catch (e) { this.proofSubmitting = false; window.showToast('error', e.message); return; }
+            this.proofSubmitting = false;
+            this.going = true;
+            this.goingCount = d.going ?? this.goingCount;
+            if (d.division) this.joinedDivision = d.division;
+            this.paymentPending = true;
+            this.proofOpen = false;
+            window.showToast('success', d.message);
+        },
         async req(url, method, body) {
             if (this.busy) return null;
             this.busy = true;

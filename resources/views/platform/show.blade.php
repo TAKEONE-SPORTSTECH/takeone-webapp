@@ -2,10 +2,17 @@
 
 @section('title', $club->club_name)
 
-@push('styles')
-@if($club->logo)
-<link rel="icon" type="image/png" href="{{ asset('storage/' . $club->logo) }}">
+@php $clubIcon = $club->logo ?: $club->favicon; @endphp
+@if($clubIcon)
+@section('favicon')
+@php $clubIconUrl = asset('storage/' . $clubIcon) . '?v=' . ($club->updated_at?->timestamp ?? '1'); @endphp
+<link rel="icon" type="image/png" href="{{ $clubIconUrl }}">
+<link rel="shortcut icon" type="image/png" href="{{ $clubIconUrl }}">
+<link rel="apple-touch-icon" href="{{ $clubIconUrl }}">
+@endsection
 @endif
+
+@push('styles')
 <style>main { overflow-x: hidden; }</style>
 @endpush
 
@@ -584,12 +591,17 @@
                             'image'   => $instructor->user?->profile_picture ?? null,
                         ]];
                     })->toArray();
+
+                    // Public directory page per activity name — one query for the grid.
+                    $activityLinks = \App\Models\ActivityCatalog::linksForNames(
+                        $club->packages->flatMap(fn ($p) => $p->activities ?? [])->pluck('name')
+                    );
                 @endphp
                 @if($club->packages->count() > 0)
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     @foreach($club->packages as $package)
                     <div class="{{ $package->is_applicable ? '' : 'opacity-60' }}">
-                    <x-package-card :package="$package" :club="$club" :instructors-map="$instructorsMap">
+                    <x-package-card :package="$package" :club="$club" :instructors-map="$instructorsMap" :activity-links="$activityLinks">
                         <x-slot:footer>
                             @if($package->is_applicable)
                             <button

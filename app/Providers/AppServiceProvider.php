@@ -125,6 +125,12 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
 
+        // Copilot ("Coach") chat + confirm: bursty conversational use gets its own
+        // bucket so a chat session can't exhaust the shared admin-write limit.
+        RateLimiter::for('copilot', function (Request $request) {
+            return Limit::perMinute(40)->by($request->user()?->id ?: $request->ip());
+        });
+
         // Backup restore: 3 per hour per user — extremely destructive operation.
         RateLimiter::for('backup', function (Request $request) {
             return Limit::perHour(3)->by($request->user()?->id ?: $request->ip());

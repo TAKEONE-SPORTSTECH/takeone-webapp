@@ -5,6 +5,14 @@
     'dir' => 'ltr',
     'placeholder' => '',
     'minHeight' => '150px',
+    // AI helper (magic wand): when enabled, a wand button generates professional
+    // content for this field. The system prompt is built from aiLabel + aiPurpose.
+    'aiEnabled' => true,
+    'aiLabel' => '',
+    'aiPurpose' => '',
+    // Editors sharing an aiGroup are language pairs: generating one also fills
+    // the other language (e.g. EN requirements ↔ AR requirements).
+    'aiGroup' => null,
 ])
 
 @php $id = $id ?? 'rte_' . \Illuminate\Support\Str::random(6); @endphp
@@ -23,6 +31,17 @@
                  cursor: pointer; overflow: hidden; background: transparent; display: inline-flex; align-items: center; justify-content: center;
                  color: #4b5563; font-size: 14px; transition: background .12s, color .12s; }
     .rte-color:hover { background: #ede9fb; color: hsl(250 65% 55%); }
+    /* AI magic-wand button — constant gentle pulse to signal "AI here" */
+    .rte-ai { color: hsl(250 65% 55%); }
+    .rte-ai:hover { background: #ede9fb; color: hsl(250 60% 48%); }
+    .rte-ai i { animation: rteWand 1.8s ease-in-out infinite; transform-origin: center; }
+    @keyframes rteWand { 0%, 100% { transform: scale(1) rotate(0deg); opacity: .8; } 50% { transform: scale(1.2) rotate(-8deg); opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .rte-ai i { animation: none; } }
+    .rte-aibar { display: flex; gap: 6px; align-items: center; padding: 6px 8px; border-bottom: 1px solid #f1f1f4; background: #f6f5ff; }
+    .rte-aibar input { flex: 1; min-width: 0; font-size: 13px; padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 8px; outline: none; }
+    .rte-aibar input:focus { border-color: hsl(250 65% 65%); box-shadow: 0 0 0 3px hsl(250 65% 65% / 0.15); }
+    .rte-ai-generate { font-size: 13px; padding: 6px 12px; border-radius: 8px; border: none; cursor: pointer; background: hsl(250 65% 65%); color: #fff; white-space: nowrap; }
+    .rte-ai-generate:disabled { opacity: .6; }
     .rte-color input[type="color"] { position: absolute; inset: 0; width: 100%; height: 100%; min-width: 0; min-height: 0; opacity: 0; cursor: pointer; border: none; padding: 0; margin: 0; }
     .rte-color i { pointer-events: none; }
     .rte-linkbar { display: flex; gap: 6px; align-items: center; padding: 6px 8px; border-bottom: 1px solid #f1f1f4; background: #f6f5ff; }
@@ -42,7 +61,8 @@
     .rte-editor p { margin: .35em 0; }
     .rte-editor blockquote { border-inline-start: 3px solid hsl(250 65% 75%); padding-inline-start: 12px; margin: .5em 0; color: #4b5563; font-style: italic; }
     .rte-editor hr { border: none; border-top: 1px solid #e5e7eb; margin: .8em 0; }
-    [dir="rtl"] .rte-editor { text-align: right; }
+    /* Arabic glyphs render visually smaller at the same px — bump size/leading in RTL. */
+    [dir="rtl"] .rte-editor { text-align: right; font-size: 16px; line-height: 2; }
 </style>
 <script>
     function richTextEditor(opts) {
@@ -112,13 +132,88 @@
             unlink() {
                 this.exec('unlink');
             },
+            // ── AI helper ─────────────────────────────────────────────
+            aiOpen: false,
+            aiPrompt: '',
+            aiLoading: false,
+            openAi() {
+                this.aiOpen = true;
+                this.$nextTick(() => this.$refs.aiInput && this.$refs.aiInput.focus());
+            },
+            async generateAi() {
+                if (this.aiLoading) return;
+                this.aiLoading = true;
+                try {
+                    const res = await fetch(opts.composeUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                        },
+                        body: JSON.stringify({
+                            label: opts.aiLabel || '',
+                            purpose: opts.aiPurpose || '',
+                            instructions: this.aiPrompt || '',
+                            current: this.$refs.editor.innerHTML.trim(),
+                            dir: opts.dir || 'ltr',
+                            // Paired editor → also generate the other language.
+                            both: !!opts.aiGroup,
+                        }),
+                    });
+                    const data = await res.json();
+                    if (data.success && data.html) {
+                        this.$refs.editor.innerHTML = data.html;
+                        this.sync();
+                        // Fill the paired-language editor too, if any.
+                        if (opts.aiGroup && data.other_html) {
+                            window.dispatchEvent(new CustomEvent('rte:ai-fill', {
+                                detail: { group: opts.aiGroup, lang: data.other_lang, html: data.other_html },
+                            }));
+                        }
+                        this.aiOpen = false;
+                        this.aiPrompt = '';
+                        window.showToast && window.showToast('success', opts.aiGroup && data.other_html ? 'Content generated (English + Arabic)' : 'Content generated');
+                    } else {
+                        window.showToast && window.showToast('error', data.message || 'Could not generate content.');
+                    }
+                } catch (e) {
+                    window.showToast && window.showToast('error', 'Could not generate content.');
+                } finally {
+                    this.aiLoading = false;
+                }
+            },
+            // Allow external JS to set this editor's content by id (e.g. a modal
+            // prefilling on edit/duplicate). Matches the component's id prop.
+            onSetContent(detail) {
+                if (detail && detail.id === opts.rteId) {
+                    this.$refs.editor.innerHTML = detail.html || '';
+                    this.sync();
+                }
+            },
+            // Receive the paired-language content generated by the sibling editor.
+            onAiFill(detail) {
+                if (! detail || ! opts.aiGroup) return;
+                const myLang = (opts.dir === 'rtl') ? 'ar' : 'en';
+                if (detail.group === opts.aiGroup && detail.lang === myLang && detail.html) {
+                    this.$refs.editor.innerHTML = detail.html;
+                    this.sync();
+                }
+            },
         };
     }
 </script>
 @endonce
 
-<div x-data="richTextEditor({ initial: @js($value) })" class="rte-wrap" {{ $attributes }}>
+<div x-data="richTextEditor({ initial: @js($value), dir: @js($dir), aiLabel: @js($aiLabel ?: $name), aiPurpose: @js($aiPurpose), aiGroup: @js($aiGroup), rteId: @js($id), composeUrl: @js(url('/ai/compose')) })"
+     @rte:ai-fill.window="onAiFill($event.detail)"
+     @rte:set-content.window="onSetContent($event.detail)"
+     class="rte-wrap" {{ $attributes }}>
     <div class="rte-toolbar">
+        @if($aiEnabled)
+        <button type="button" class="rte-btn rte-ai" title="Write with AI" @mousedown.prevent="openAi()"><i class="bi bi-magic"></i></button>
+        <span class="rte-sep"></span>
+        @endif
         <button type="button" class="rte-btn" :class="{ 'is-active': active.bold }" title="Bold" @mousedown.prevent="exec('bold')"><i class="bi bi-type-bold"></i></button>
         <button type="button" class="rte-btn" :class="{ 'is-active': active.italic }" title="Italic" @mousedown.prevent="exec('italic')"><i class="bi bi-type-italic"></i></button>
         <button type="button" class="rte-btn" :class="{ 'is-active': active.underline }" title="Underline" @mousedown.prevent="exec('underline')"><i class="bi bi-type-underline"></i></button>
@@ -151,6 +246,19 @@
         <button type="button" class="rte-btn" title="Redo" @mousedown.prevent="exec('redo')"><i class="bi bi-arrow-clockwise"></i></button>
         <button type="button" class="rte-btn" title="Clear formatting" @mousedown.prevent="exec('removeFormat')"><i class="bi bi-eraser"></i></button>
     </div>
+
+    @if($aiEnabled)
+    <div class="rte-aibar" x-show="aiOpen" x-cloak x-transition>
+        <input type="text" x-ref="aiInput" x-model="aiPrompt"
+               placeholder="Optional — tell the AI what you want, or leave blank to auto-write"
+               @keydown.enter.prevent="generateAi()" @keydown.escape.prevent="aiOpen = false">
+        <button type="button" class="rte-ai-generate" @mousedown.prevent="generateAi()" :disabled="aiLoading">
+            <span x-show="!aiLoading"><i class="bi bi-stars"></i> Generate</span>
+            <span x-show="aiLoading"><i class="bi bi-arrow-repeat"></i> Writing…</span>
+        </button>
+        <button type="button" class="rte-link-cancel" @mousedown.prevent="aiOpen = false">Cancel</button>
+    </div>
+    @endif
 
     <div class="rte-linkbar" x-show="linkOpen" x-cloak x-transition>
         <input type="text" x-ref="linkInput" x-model="linkUrl" placeholder="https://example.com"

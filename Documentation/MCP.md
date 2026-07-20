@@ -78,6 +78,7 @@ Or point a local client (Claude Desktop) at `php artisan mcp:start takeone`. If
 | `record_transaction` | write | admin | Log a manual income/expense for a club |
 | `notify_member` | write | admin/guardian | Send an in-app + live (MQTT) notification |
 | `enroll_members` | write | admin | Batch-enroll active members into a package, marked as already paid |
+| `list_activity_catalog` | read | any | The global activity directory — shared platform-wide catalog of activities (EN/AR) any club can reuse. Read-only, non-sensitive (search + paginate) |
 
 - **Clubs** are addressed by numeric id **or** slug. **Members** by uuid (preferred) or id.
 - Amounts are in each club's own currency.

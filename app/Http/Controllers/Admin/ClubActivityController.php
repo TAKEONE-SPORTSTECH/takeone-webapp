@@ -28,13 +28,49 @@ class ClubActivityController extends Controller
         return view(\App\Support\ClubView::pick('activities'), compact('club', 'activities', 'facilities'));
     }
 
+    /**
+     * The global activity directory — a canonical, platform-wide catalog of
+     * activities any club can reuse instead of re-typing the same activity for
+     * every club. Backed by the tenant-agnostic `activity_catalog` table (see
+     * ActivityCatalog), so it is NOT limited to the current club's own rows.
+     * Only safe, shareable fields are exposed (name/description/picture/icon).
+     */
+    public function activityLibrary(Tenant $club)
+    {
+        $this->authorizeClub($club);
+
+        $locale = app()->getLocale();
+
+        $items = \App\Models\ActivityCatalog::query()
+            ->where('is_active', true)
+            ->orderByDesc('usage_count')
+            ->orderBy('name')
+            ->get(['name', 'description', 'translations', 'variants', 'picture_url', 'icon'])
+            ->map(fn ($a) => [
+                'name' => $a->tr('name', $locale),      // localized — for display in the picker
+                'name_en' => $a->name,                  // base — what gets stored as the club activity name
+                'description' => $a->description,       // base/English — stored + preview
+                'description_local' => $a->tr('description', $locale),
+                'translations' => $a->translations,     // AR name + description, carried onto the new activity
+                'variants' => $a->variants ?: [],       // suggested styles/federations
+                'icon' => $a->icon,
+                'picture_url' => $a->picture_url,
+                'picture_src' => $a->picture_url ? asset('storage/'.$a->picture_url) : null,
+            ])
+            ->filter(fn ($a) => filled($a['name']))
+            ->values();
+
+        return response()->json(['activities' => $items]);
+    }
+
     public function storeActivity(StoreActivityRequest $request, Tenant $club)
     {
         $this->authorizeClub($club);
         $clubId = $club->id;
 
-        $data = $request->only(['name', 'description', 'notes', 'duration_minutes']);
+        $data = $request->only(['name', 'style', 'description', 'notes', 'duration_minutes']);
         $data['tenant_id'] = $clubId;
+        $this->sanitizeActivityDescription($request, $data);
 
         if ($request->filled('picture') && str_starts_with($request->input('picture'), 'data:image')) {
             $data['picture_url'] = $this->storeBase64Image($request->input('picture'), 'clubs/'.$clubId.'/activities', 'activity_'.time());
@@ -54,6 +90,10 @@ class ClubActivityController extends Controller
 
         $this->applyTranslations($activity, $request);
 
+        // Contribute this activity to the global directory (deduped by slug) so
+        // it becomes reusable by other clubs — the whole point of the catalog.
+        $this->contributeToCatalog($activity, $clubId);
+
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
@@ -71,7 +111,8 @@ class ClubActivityController extends Controller
         $clubId = $club->id;
         $activity = ClubActivity::where('tenant_id', $clubId)->findOrFail($activityId);
 
-        $data = $request->only(['name', 'description', 'notes', 'duration_minutes']);
+        $data = $request->only(['name', 'style', 'description', 'notes', 'duration_minutes']);
+        $this->sanitizeActivityDescription($request, $data);
 
         if ($request->filled('picture') && str_starts_with($request->input('picture'), 'data:image')) {
             if ($activity->picture_url && Storage::disk('public')->exists($activity->picture_url)) {
@@ -101,6 +142,52 @@ class ClubActivityController extends Controller
     }
 
     /**
+     * The activity description is now rich HTML (rich-text editor + AI wand), so
+     * sanitize it — and its Arabic translation — before persisting.
+     */
+    private function sanitizeActivityDescription($request, array &$data): void
+    {
+        if (! empty($data['description'])) {
+            $data['description'] = \App\Support\HtmlSanitizer::clean($data['description']);
+        }
+
+        // Style/federation is short plain text — strip any markup defensively.
+        if (array_key_exists('style', $data)) {
+            $style = trim(strip_tags((string) $data['style']));
+            $data['style'] = $style !== '' ? $style : null;
+        }
+
+        $ar = $request->input('translations.description.ar');
+        if (filled($ar)) {
+            $translations = $request->input('translations', []);
+            $translations['description']['ar'] = \App\Support\HtmlSanitizer::clean($ar);
+            $request->merge(['translations' => $translations]);
+        }
+    }
+
+    /**
+     * Upsert this club activity into the global directory (keyed by canonical
+     * slug) and bump its usage counter. Best-effort — never blocks the save.
+     */
+    private function contributeToCatalog(ClubActivity $activity, int $tenantId): void
+    {
+        try {
+            $entry = \App\Models\ActivityCatalog::contribute([
+                'name' => $activity->name,
+                'description' => $activity->description,
+                'translations' => $activity->translations,
+                'picture_url' => $activity->picture_url,
+                'style' => $activity->style,
+                'style_ar' => $activity->tr('style', 'ar') === $activity->style ? null : $activity->tr('style', 'ar'),
+            ], $tenantId);
+
+            $entry->increment('usage_count');
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
+    /**
      * Build the JSON payload used by the activities page to update a card in place.
      */
     private function activityPayload(ClubActivity $activity): array
@@ -110,6 +197,7 @@ class ClubActivityController extends Controller
         return [
             'id' => $activity->id,
             'name' => $activity->name,
+            'style' => $activity->style,
             'description' => $activity->description,
             'translations' => $activity->translations,
             'notes' => $activity->notes,

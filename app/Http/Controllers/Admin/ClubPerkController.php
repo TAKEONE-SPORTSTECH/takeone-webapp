@@ -55,6 +55,10 @@ class ClubPerkController extends Controller
 
         $this->applyTranslations($perk, $request);
 
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Perk created successfully.', 'perk' => $perk->fresh()]);
+        }
+
         return back()->with('success', 'Perk created successfully.');
     }
 
@@ -86,6 +90,10 @@ class ClubPerkController extends Controller
         $perk->update($data);
 
         $this->applyTranslations($perk, $request);
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Perk updated successfully.', 'perk' => $perk->fresh()]);
+        }
 
         return back()->with('success', 'Perk updated successfully.');
     }

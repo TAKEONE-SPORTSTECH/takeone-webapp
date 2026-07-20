@@ -70,7 +70,9 @@
                 $sections = [
                     ['admin.platform.clubs',     'bi-building',     __('platform.section_clubs_title'),      __('platform.section_clubs_desc'), null],
                     ['admin.platform.members',   'bi-people',       __('platform.section_members_title'),    __('platform.section_members_desc'), null],
+                    ['admin.platform.activities','bi-lightning-charge', __('platform.section_activities_title'), __('platform.section_activities_desc'), null],
                     ['admin.platform.businesses','bi-buildings',    __('platform.section_businesses_title'), __('platform.section_businesses_desc'), $stats['businessesPending'] ?: null],
+                    ['admin.ai.index',           'bi-robot',        __('platform.section_ai_title'),         __('platform.section_ai_desc'), null],
                     ['admin.platform.audit-log', 'bi-journal-text', __('platform.section_audit_title'),      __('platform.section_audit_desc'), null],
                     ['admin.platform.backup',    'bi-database',     __('platform.section_backup_title'),     __('platform.section_backup_desc'), null],
                 ];

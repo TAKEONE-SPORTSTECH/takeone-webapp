@@ -46,6 +46,7 @@ class ClubTransaction extends Model
         'reference_number',
         'subscription_id',
         'instructor_id',
+        'recurring_expense_id',
         'is_test',
     ];
 

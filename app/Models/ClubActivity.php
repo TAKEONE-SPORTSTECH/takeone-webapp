@@ -16,7 +16,7 @@ class ClubActivity extends Model
     use BelongsToTenant, HasFactory, HasTranslations, LogsActivity;
 
     /** Translatable fields (notes is internal/admin-only and intentionally excluded). */
-    protected array $translatable = ['name', 'description'];
+    protected array $translatable = ['name', 'description', 'style'];
 
     public function getActivitylogOptions(): LogOptions
     {
@@ -42,6 +42,7 @@ class ClubActivity extends Model
     protected $fillable = [
         'tenant_id',
         'name',
+        'style',
         'duration_minutes',
         'frequency_per_week',
         'facility_id',

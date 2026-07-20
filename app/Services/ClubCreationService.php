@@ -43,41 +43,57 @@ class ClubCreationService
 
         $data['status'] = $request->input('club_status', 'active');
         $data['public_profile_enabled'] = $request->boolean('public_profile_enabled', true);
+        $data['social_links'] = $request->input('social_links', []);
+        $data['bank_accounts'] = $request->input('bank_accounts', []);
 
-        return DB::transaction(function () use ($data, $request) {
+        return $this->create($data);
+    }
+
+    /**
+     * Create a club from a fully-prepared data array (paths already stored,
+     * status/owner already decided). Shared commit path for the request-based
+     * callers above and the Copilot draft-confirm flow. Optional `social_links`
+     * / `bank_accounts` array keys are peeled off and persisted as relations.
+     *
+     * @param  array<string,mixed>  $data
+     */
+    public function create(array $data): Tenant
+    {
+        $socialLinks = $data['social_links'] ?? [];
+        $bankAccounts = $data['bank_accounts'] ?? [];
+        unset($data['social_links'], $data['bank_accounts'], $data['phone_code'], $data['phone_number']);
+
+        return DB::transaction(function () use ($data, $socialLinks, $bankAccounts) {
             $club = Tenant::create($data);
 
-            if ($request->has('social_links')) {
-                foreach ($request->social_links as $index => $link) {
-                    if (! empty($link['platform']) && ! empty($link['url'])) {
-                        ClubSocialLink::create([
-                            'tenant_id' => $club->id,
-                            'platform' => $link['platform'],
-                            'url' => $link['url'],
-                            'display_order' => $index,
-                        ]);
-                    }
+            foreach ($socialLinks as $index => $link) {
+                if (! empty($link['platform']) && ! empty($link['url'])) {
+                    ClubSocialLink::create([
+                        'tenant_id' => $club->id,
+                        'platform' => $link['platform'],
+                        'url' => $link['url'],
+                        'display_order' => $index,
+                    ]);
                 }
             }
 
-            if ($request->has('bank_accounts')) {
-                foreach ($request->bank_accounts as $account) {
-                    if (! empty($account['bank_name']) && ! empty($account['account_name'])) {
-                        ClubBankAccount::create([
-                            'tenant_id' => $club->id,
-                            'bank_name' => $account['bank_name'],
-                            'account_name' => $account['account_name'],
-                            'account_number' => $account['account_number'] ?? null,
-                            'iban' => $account['iban'] ?? null,
-                            'swift_code' => $account['swift_code'] ?? null,
-                            'benefitpay_account' => $account['benefitpay_account'] ?? null,
-                        ]);
-                    }
+            foreach ($bankAccounts as $account) {
+                if (! empty($account['bank_name']) && ! empty($account['account_name'])) {
+                    ClubBankAccount::create([
+                        'tenant_id' => $club->id,
+                        'bank_name' => $account['bank_name'],
+                        'account_name' => $account['account_name'],
+                        'account_number' => $account['account_number'] ?? null,
+                        'iban' => $account['iban'] ?? null,
+                        'swift_code' => $account['swift_code'] ?? null,
+                        'benefitpay_account' => $account['benefitpay_account'] ?? null,
+                    ]);
                 }
             }
 
-            $owner = User::find($data['owner_user_id']);
-            $owner?->assignRole('club-admin', $club->id);
+            if (! empty($data['owner_user_id'])) {
+                User::find($data['owner_user_id'])?->assignRole('club-admin', $club->id);
+            }
 
             return $club;
         });

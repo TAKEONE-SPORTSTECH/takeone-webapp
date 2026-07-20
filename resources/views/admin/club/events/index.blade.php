@@ -21,6 +21,7 @@ $eventsJson = $events->map(function($e) {
         'tags_str'           => $e->tags ? implode(', ', $e->tags) : '',
         'tags'         => $e->tags ?? [],
         'color'        => $e->color ?? '#1d4ed8',
+        'participant_fee' => $e->participant_fee ?? '',
         'is_archived'  => (bool) $e->is_archived,
         'images'       => collect($e->images ?? [])->map(fn($p) => str_starts_with($p, 'http') ? $p : asset('storage/' . $p))->values()->toArray(),
         'images_paths' => $e->images ?? [],
@@ -113,6 +114,10 @@ $eventsJson = $events->map(function($e) {
 
                         {{-- Actions --}}
                         <div class="flex gap-2 flex-shrink-0" @click.stop>
+                            <a href="{{ route('admin.club.events.participants', [$club->slug, $event->id]) }}"
+                               class="btn btn-sm btn-outline-secondary" title="{{ __('admin.evt_participants') }}">
+                                <i class="bi bi-people"></i>
+                            </a>
                             <button @click="openEdit({{ $event->id }})"
                                     class="btn btn-sm btn-outline-secondary" title="{{ __('shared.edit') }}">
                                 <i class="bi bi-pencil"></i>
@@ -532,7 +537,16 @@ const emptyForm = {
     location: '', level: '', description: '',
     max_capacity: '', tags_str: '', tags: [],
     color: '#1d4ed8', images: [], images_paths: [],
+    fee_type: 'free', fee_amount: '',
 };
+
+// Parse a stored participant_fee string ("BHD 10") into { type, amount }.
+function parseEventFee(raw) {
+    const s = String(raw ?? '').trim();
+    if (!s) return { type: 'free', amount: '' };
+    const m = s.match(/[\d.]+/);
+    return { type: 'paid', amount: m ? m[0] : '' };
+}
 
 function eventsAdmin() {
     return {
@@ -564,7 +578,8 @@ function eventsAdmin() {
             if (!ev) return;
             this.isEdit      = true;
             this.formAction  = baseEditUrl + '/' + id;
-            this.formData    = { ...emptyForm, ...ev };
+            const fee        = parseEventFee(ev.participant_fee);
+            this.formData    = { ...emptyForm, ...ev, fee_type: fee.type, fee_amount: fee.amount };
             this.locationTab = ev.location?.startsWith('http') ? 'url' : 'facility';
             this.showModal   = true;
             resetEventImages();

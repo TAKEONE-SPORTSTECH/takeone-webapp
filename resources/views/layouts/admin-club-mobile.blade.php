@@ -19,7 +19,7 @@
         __('admin.nav_group_people') => [
             ['route'=>'admin.club.members',     'icon'=>'bi-people',        'label'=>__('admin.nav_members')],
             ['route'=>'admin.club.instructors', 'icon'=>'bi-person-badge',  'label'=>__('admin.nav_instructors')],
-            ['route'=>'admin.club.roles',       'icon'=>'bi-shield-check',  'label'=>__('admin.nav_roles')],
+            ['route'=>'admin.club.roles',       'icon'=>'bi-person-lock',   'label'=>__('admin.nav_roles')],
             ['route'=>'admin.club.messages',    'icon'=>'bi-chat-dots',     'label'=>__('admin.nav_messages')],
             ['route'=>'admin.club.notifications','icon'=>'bi-bell',         'label'=>__('admin.nav_notifications')],
         ],
@@ -53,7 +53,7 @@
     $bottomTabs = [
         ['route'=>'admin.club.dashboard',  'icon'=>'bi-speedometer2',    'label'=>__('admin.nav_home')],
         ['route'=>'admin.club.members',    'icon'=>'bi-people',          'label'=>__('admin.nav_members')],
-        ['route'=>'admin.club.financials', 'icon'=>'bi-bank',            'label'=>__('admin.nav_billing'), 'raised'=>true],
+        ['route'=>'admin.club.financials', 'icon'=>'bi-currency-dollar',  'label'=>__('admin.nav_billing'), 'raised'=>true],
         ['route'=>'admin.club.packages',   'icon'=>'bi-box',             'label'=>__('admin.nav_packages')],
     ];
 
@@ -112,31 +112,40 @@
                         @endif
                     @endforeach
                 @endforeach
-                {{-- Back out --}}
+                {{-- ===== Footer: split into labelled sections so actions / leaving the club / account never blur together ===== --}}
                 <div class="border-t border-border mt-3 pt-3">
+
+                    {{-- Actions you take *inside* this club --}}
+                    <p class="px-2 mb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{{ __('admin.nav_group_actions') }}</p>
                     <button type="button" @click="showNotificationModal = true; drawer = false" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent">
                         <i class="bi bi-send text-lg w-5 text-center"></i>{{ __('admin.send_notification') }}
                     </button>
+
+                    {{-- Links that leave this club's workspace --}}
+                    <p class="px-2 mt-3 mb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{{ __('admin.nav_group_go_to') }}</p>
                     @if(Auth::user()->isSuperAdmin())
                         <a href="{{ route('admin.platform.index') }}"
                            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent">
-                            <i class="bi bi-shield-check text-lg w-5 text-center"></i>{{ __('nav.admin_club_mobile_admin_dashboard') }}
+                            <i class="bi bi-sliders2 text-lg w-5 text-center"></i>{{ __('nav.admin_panel') }}
+                        </a>
+                        <a href="{{ route('admin.platform.clubs') }}"
+                           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent">
+                            <i class="bi bi-arrow-left text-lg w-5 text-center"></i>{{ __('nav.admin_club_mobile_back_to_clubs') }}
                         </a>
                         <a href="{{ route('me.home') }}"
                            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent">
                             <i class="bi bi-house text-lg w-5 text-center"></i>{{ __('nav.admin_club_mobile_my_home') }}
                         </a>
-                        <a href="{{ route('admin.platform.clubs') }}"
-                           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-accent">
-                            <i class="bi bi-arrow-left text-lg w-5 text-center"></i>{{ __('nav.admin_club_mobile_back_to_clubs') }}
-                        </a>
                     @else
                         <a href="{{ $hasBusiness ? route('business.dashboard') : route('clubs.explore') }}"
-                           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-accent">
+                           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-accent">
                             <i class="bi bi-arrow-left text-lg w-5 text-center"></i>{{ $hasBusiness ? __('admin.back_to_chain') : __('admin.back_to_explore') }}
                         </a>
                     @endif
-                    @include('partials.mobile-account-links')
+
+                    {{-- Personal account --}}
+                    <p class="px-2 mt-3 mb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{{ __('admin.nav_group_account') }}</p>
+                    @include('partials.mobile-account-links', ['hideAdminPanel' => true])
                 </div>
             </nav>
         </aside>
@@ -182,4 +191,7 @@
 </div>
 
 @include('partials.mobile-shell-nav')
+{{-- Define window.LocationMap once per full load so it persists across in-place
+     shell navigations (its @push block doesn't re-run on AJAX swaps). --}}
+@include('partials.location-map-runtime')
 @endsection

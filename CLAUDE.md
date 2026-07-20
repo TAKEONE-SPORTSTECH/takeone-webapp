@@ -1,5 +1,22 @@
 # TAKEONE Project — Claude Instructions
 
+## TOP PRIORITY — Design-First: Creative, Innovative, Artistic, Modern — STRICT
+
+**Rule:** Always focus on design. Every piece of UI built in this project must be creative, innovative, artistic, and modern. Never ship plain, default-looking, or "good enough" UI.
+
+- **Design is a requirement, not a polish step.** Any new page, component, modal, sheet, card, list, empty state, or loading state must look intentionally designed — considered composition, rhythm, hierarchy, motion, and detail.
+- **No generic AI/template aesthetics.** No stock boxy card grids, no unstyled form stacks, no bare tables. Bring art direction: layered depth, purposeful whitespace, expressive typography scale, meaningful iconography, tasteful micro-interactions and transitions.
+- **Use the `frontend-design` skill for any new UI work** (see the Skills section) and follow the Design System tokens exactly.
+- **Modern means:** fluid responsive layouts, smooth Alpine/CSS transitions, thoughtful states (hover / focus / active / empty / loading / error), and a mobile experience that is animated and creative (see [[feedback_mobile_creative_design]]), never a stripped-down desktop.
+- **Boundaries this rule does NOT override:**
+  - Design Rule #1 — never redesign existing UI unless explicitly asked. Creativity applies to what you are *building*, not to unrequested makeovers.
+  - The Design System palette/typography/tokens — be creative *within* the system, never with off-palette one-off styles.
+  - Security, Component-First reuse, and the No-Reload / Realtime rules. If a visual flourish weakens security or performance, it loses.
+
+> Ask on every UI task: *would a great product designer be proud to ship this screen?* If not, it is not done.
+
+---
+
 ## Project Overview
 
 Laravel 12 SaaS platform for sports clubs (TAKEONE-SPORTSTECH). Multi-tenant architecture.
@@ -1149,6 +1166,55 @@ Status: Complete. Key patterns:
 
 ---
 
+## Mobile Pattern Language — the BASE for every mobile view — STRICT
+
+**Rule:** Every mobile view — new or edited — is built from the named patterns below. This is the default vocabulary; do not invent a new structure when one of these fits, and never port a desktop layout to mobile unchanged. When a desktop screen is dense (many tabs, many fields, long tables), the mobile answer is **restructure**, not shrink.
+
+> Canonical reference implementations: `resources/views/admin/club/details/mobile.blade.php` (hub + drill-down, completion ring, live preview), `resources/views/admin/club/roles/mobile.blade.php` (hub + drill-down, coverage meter, search + filter chips, live upsert into a panel list) and `resources/views/admin/club/roles/mobile-access-form.blade.php` (bottom sheet, selection cards, progressive disclosure).
+
+### The core principle
+**One screen, one job.** The reason the pattern works is not the styling — it is that each screen asks the user for one thing. The same tokens applied to 40 fields on a single scroll still feel bad. If a mobile screen is doing more than one job, split it before styling it.
+
+### 1. Structure — Hub-and-spoke drill-down
+*(a.k.a. list-detail / master-detail; iOS "hierarchical navigation")*
+
+The replacement for desktop tabs. A **hub** lists the sections; tapping one opens a focused **detail panel** with a back affordance.
+
+- Hub rows are a **grouped inset list**: rounded card, leading icon tile (colored per section), title, one-line summary, trailing `bi-chevron-right` (add `rtl:rotate-180`).
+- Panels are **in-page `x-show` sections, not `position: fixed`** — a sticky panel header (`sticky top-0`, back · title · Save) avoids the transform/teleport trap entirely.
+- Keep the submit reachable twice: in the sticky header AND as a full-width button at the end of the panel.
+- Support deep links (`#section`) and, on validation failure, reopen the offending panel.
+- **One form wrapping all panels** when the backend expects one submit — hidden `x-show` fields still post. Never split into per-panel partial saves unless the endpoint genuinely supports it (check for "absent key wipes data" behavior first).
+
+### 2. Progressive disclosure
+Long lists collapse into groups that are **closed by default**, each showing a live count badge so the state is readable without expanding. Add per-group and global **Select all / Clear** actions when the items are checkboxes. Use `x-show` + `x-transition` — **`x-collapse` is NOT available** (the Alpine collapse plugin is not registered in this project).
+
+### 3. Controls
+- **Selection cards** replace any dropdown with a short, known option set (≈2–7 items): full-width tappable rows acting as a radio group — icon tile, label, radio-style check circle, `border-primary bg-primary/5` when selected. Never a pop-over inside a scroll container: an `absolute` panel is clipped by any `overflow-y-auto` ancestor.
+- Keep a styled Alpine dropdown (`<x-select-menu>` / `<x-*-dropdown>`) only for long or searchable vocabularies (country, currency, timezone).
+- Native `<select>` / native date-time pickers remain banned (Design Rule #4).
+- Tap targets ≥44px; checkboxes ≥18px.
+
+### 4. Feedback & motivation
+- **Completion meter** — a progress ring / "profile strength" scored from real signals, plus a **status dot** per hub row (green = done, amber = missing). Makes "is my setup finished?" answerable without opening anything.
+- **Live preview / direct manipulation** — edit the thing, not a form describing it. Bind the hero (name, logo, cover) or a phone mockup to the inputs so changes are visible as they are typed or picked.
+- **Bottom sheet** for focused sub-tasks, with a drag handle; teleported to `<body>` per the rule above.
+
+### 5. Motion & surface
+Reuse the shared motion system in `app.css` — `m-hero` (mesh-gradient band + sheen), `m-card`, `m-press`, `m-float`, `m-bar-fill`, `mobile-stagger`, `m-in*`, and **`m-panel-in`** (the drill-down panel entrance). Do not invent parallel animation classes. Respect `prefers-reduced-motion` (the shared classes already do).
+
+### Anti-patterns — do not ship
+- Desktop tabs rendered as a horizontal scroll strip on mobile.
+- A read-only mobile page for a screen that is editable on desktop, plus a "edit this from desktop" note. Mobile must reach feature parity (see **Mobile / Desktop Separation** + the APK rule — mobile web *is* the Android app).
+- An absolutely-positioned dropdown inside a scrolling sheet body.
+- One endless scroll of every field, or a checkbox wall with no grouping.
+- Native browser dialogs, native selects, off-palette one-off styling.
+
+### Naming
+When describing this work, the phrase is: **"a mobile-first settings hub with drill-down detail panels and progressive disclosure."**
+
+---
+
 ## Skills
 
 ### `frontend-design`
@@ -1298,6 +1364,7 @@ All components live in `resources/views/components/` and are called as `<x-{name
 | Tag | Purpose | Key props |
 |-----|---------|-----------|
 | `<x-select-menu>` | **Generic styled dropdown — the default replacement for any native `<select>`** (Design Rule #4). Rounded trigger (rotating chevron, purple focus ring) + `rounded-xl` fade/slide panel with `hover:bg-muted/60` rows and a `text-primary` check on the selected item; closes on click-outside/escape. Two modes: pass **`model`** (an Alpine state path, e.g. `cat`) to bind a property in the PARENT Alpine scope (use instead of `x-model`); OR omit `model` and pass **`value`** for a standalone server-form control (seeds state, posts via the hidden `name` input). Prefer a specialized `<x-*-dropdown>` when the vocabulary matches (gender/country/etc.). Do NOT use for JS-coupled selects (options read by `id`/`data-*`, built in JS strings, `form.reset()`-cleared, or dynamic `x-for` options) — those stay native. | `model`, `value`, `options` (`[['value'=>,'label'=>], …]`), `name`, `placeholder`, `error`, `change` (Alpine expr run after pick), `panelClass` |
+| `<x-date-picker>` | **Calendar field — the default replacement for `<input type="date">`** (Design Rule #4). Rounded trigger (calendar icon, formatted date, rotating chevron) + a month grid that expands **inside the normal flow** — never `position: absolute` — so a scrolling bottom-sheet body can't clip it. Today is ringed, the selection is filled `bg-primary`, out-of-range days are disabled, and Today / Clear sit in the footer. Value is always an ISO `YYYY-MM-DD` string. Pass **`model`** (Alpine path in the parent scope) to bind parent state, or omit it and pass **`value`** for a standalone server-form control posted via `name`. Use `min-expr` / `max-expr` / `name-expr` when the bound range or field name is itself reactive (e.g. a form that toggles between a one-off date and a recurring day). All behaviour is inline `x-data` — no registration script, so it survives mobile-shell content swaps. | `model`, `value`, `name`, `min`, `max`, `minExpr`, `maxExpr`, `nameExpr`, `placeholder`, `error`, `change`, `dayOnly` |
 | `<x-rich-text-editor>` | WYSIWYG rich-text editor (Alpine + `contenteditable`). Toolbar: bold/italic/underline/strikethrough, text color, H1/H2/H3/paragraph/quote, bullet+numbered lists, indent, align, link (inline URL bar, no native prompt)/unlink, horizontal rule, undo/redo, clear. Submits HTML via a hidden `<textarea name="{name}">`. Supports `dir="rtl"`. ⚠️ Its output is untrusted HTML — sanitize server-side before storing and never echo it unescaped without sanitization. | `name`, `id`, `value`, `dir`, `placeholder`, `minHeight` |
 | `<x-image-upload>` | Inline image upload with crop preview (uses takeone-cropper) | `id`, `name`, `width`, `height`, `shape`, `folder`, `filename`, `uploadUrl`, `currentImage`, `placeholder`, `placeholderIcon`, `buttonText`, `rounded`, `showPreview` |
 | `<x-takeone-cropper>` | Raw cropper widget (used inside `image-upload`). Pass `:uploadAsIs="true"` to show a second "Upload As Is" button alongside "Crop & Apply". Customize its label with `uploadAsIsText`. | `id`, `width`, `height`, `shape`, `folder`, `filename`, `uploadUrl`, `currentImage`, `buttonText`, `buttonClass`, `mode` (ajax\|form), `inputName`, `canvasHeight`, `uploadAsIs`, `uploadAsIsText` |

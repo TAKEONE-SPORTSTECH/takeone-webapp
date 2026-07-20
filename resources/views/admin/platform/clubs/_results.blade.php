@@ -13,16 +13,18 @@
                     : '';
                 $countryName = $countryNames[$cc] ?? $cc;
             @endphp
-            <div class="club-card-wrapper w-full"
+            <div class="club-card-wrapper w-full h-full"
                  data-club-country="{{ $cc }}"
                  data-club-id="{{ $club->id }}"
                  data-club-name="{{ $club->club_name }}"
                  data-club-address="{{ $club->address ?? '' }}"
                  data-club-owner="{{ $club->owner->full_name ?? '' }}">
-                <a href="{{ route('admin.club.dashboard', $club->slug) }}" class="no-underline">
-                    <div class="card border shadow-sm overflow-hidden club-card cursor-pointer transition-all duration-300">
+                <a href="{{ route('admin.club.dashboard', $club->slug) }}" class="no-underline block h-full">
+                    {{-- h-full + flex-col so every card fills the grid row equally, and the
+                         body can push the stats grid to a common baseline (mt-auto below). --}}
+                    <div class="card border shadow-sm overflow-hidden club-card cursor-pointer transition-all duration-300 h-full flex flex-col">
                         <!-- Cover Image -->
-                        <div class="relative overflow-hidden h-48">
+                        <div class="relative overflow-hidden h-48 flex-shrink-0">
                             @if($club->cover_image)
                                 <img src="{{ asset('storage/' . $club->cover_image) }}" alt="{{ $club->club_name }}" loading="lazy" class="w-full h-full object-cover club-cover-img transition-transform duration-300">
                             @else
@@ -70,25 +72,23 @@
                     </div>
 
                         <!-- Card Body -->
-                        <div class="p-4 bg-white">
+                        <div class="p-4 bg-white flex-1 flex flex-col">
                             <div class="mb-3">
-                                <!-- Club Name -->
-                                <h3 class="font-semibold mb-2 club-title text-lg text-foreground transition-colors duration-300">{{ $club->club_name }}</h3>
+                                <!-- Club Name (single line so every card's title block is the same height) -->
+                                <h3 class="font-semibold mb-2 club-title text-lg text-foreground transition-colors duration-300 truncate">{{ $club->club_name }}</h3>
 
-                                <!-- Address -->
-                                @if($club->address)
-                                    <div class="flex items-center text-muted-foreground text-sm">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1 shrink-0">
-                                            <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path>
-                                            <circle cx="12" cy="10" r="3"></circle>
-                                        </svg>
-                                        <span class="truncate">{{ $club->address }}</span>
-                                    </div>
-                                @endif
+                                <!-- Address — always rendered (placeholder when missing) to keep the block height uniform -->
+                                <div class="flex items-center text-muted-foreground text-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1 shrink-0 {{ $club->address ? '' : 'opacity-40' }}">
+                                        <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path>
+                                        <circle cx="12" cy="10" r="3"></circle>
+                                    </svg>
+                                    <span class="truncate {{ $club->address ? '' : 'opacity-40' }}">{{ $club->address ?: '—' }}</span>
+                                </div>
                             </div>
 
-                            <!-- Stats Grid -->
-                            <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                            <!-- Stats Grid — mt-auto pins it to the card bottom so it lines up across cards -->
+                            <div class="grid grid-cols-3 gap-2 text-center text-xs mt-auto">
                                 <div class="p-2 rounded bg-primary/5">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-1 text-primary">
                                         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>

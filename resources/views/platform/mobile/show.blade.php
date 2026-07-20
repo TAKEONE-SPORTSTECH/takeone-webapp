@@ -3,6 +3,16 @@
 @section('hide-navbar', true)
 @section('title', $club->club_name)
 
+@php $clubIcon = $club->logo ?: $club->favicon; @endphp
+@if($clubIcon)
+@section('favicon')
+@php $clubIconUrl = asset('storage/' . $clubIcon) . '?v=' . ($club->updated_at?->timestamp ?? '1'); @endphp
+<link rel="icon" type="image/png" href="{{ $clubIconUrl }}">
+<link rel="shortcut icon" type="image/png" href="{{ $clubIconUrl }}">
+<link rel="apple-touch-icon" href="{{ $clubIconUrl }}">
+@endsection
+@endif
+
 @section('content')
 @php
     $instructorsMap = $club->instructors->mapWithKeys(function ($instructor) {
@@ -12,6 +22,11 @@
             'image' => $instructor->user?->profile_picture ?? null,
         ]];
     })->toArray();
+
+    // Public directory page per activity name — one query for the whole page.
+    $activityLinks = \App\Models\ActivityCatalog::linksForNames(
+        $club->packages->flatMap(fn ($p) => $p->activities ?? [])->pluck('name')
+    );
 
     $cover = $club->cover_image ? asset('storage/'.$club->cover_image)
            : ($club->galleryImages->first() ? asset('storage/'.$club->galleryImages->first()->image_path) : null);
@@ -119,15 +134,17 @@
         </div>
     @endif
 
-    {{-- ===== Tabs ===== --}}
-    <div class="sticky top-0 z-30 bg-white border-b border-border overflow-x-auto scrollbar-hide">
-        <div class="flex gap-1 px-2 w-max">
+    {{-- ===== Tabs — all five share the width so nothing hides off-screen.
+         A hidden tab is a tab nobody taps; long labels shrink their own text
+         instead of pushing the rail into a horizontal scroll. ===== --}}
+    <div class="sticky top-0 z-30 bg-white border-b border-border">
+        <div class="flex w-full">
             @foreach(['about'=>__('club.tab_about'),'packages'=>__('club.tab_packages'),'schedule'=>__('club.tab_schedule'),'events'=>__('club.tab_events'),'reviews'=>__('club.tab_reviews')] as $key => $label)
                 <button type="button" @click="tab='{{ $key }}'"
-                        class="m-press relative px-3.5 py-3 text-sm font-semibold whitespace-nowrap transition-colors"
+                        class="m-press relative flex-1 min-w-0 px-1 py-3 text-[13px] font-semibold transition-colors"
                         :class="tab==='{{ $key }}' ? 'text-primary' : 'text-muted-foreground'">
-                    {{ $label }}
-                    <span x-show="tab==='{{ $key }}'" class="absolute bottom-0 inset-x-2 h-0.5 bg-primary rounded-full"></span>
+                    <span class="block truncate">{{ $label }}</span>
+                    <span x-show="tab==='{{ $key }}'" class="absolute bottom-0 inset-x-3 h-0.5 bg-primary rounded-full"></span>
                 </button>
             @endforeach
         </div>
@@ -632,7 +649,7 @@
                 <div class="space-y-4">
                     @foreach($club->packages as $package)
                         <div class="{{ $package->is_applicable ? '' : 'opacity-60' }}">
-                            <x-package-card-mobile :package="$package" :club="$club" :instructors-map="$instructorsMap">
+                            <x-package-card-mobile :package="$package" :club="$club" :instructors-map="$instructorsMap" :activity-links="$activityLinks">
                                 <x-slot:footer>
                                     @if($package->is_applicable)
                                         <button onclick="openSelectPackageModal({{ $package->id }})"

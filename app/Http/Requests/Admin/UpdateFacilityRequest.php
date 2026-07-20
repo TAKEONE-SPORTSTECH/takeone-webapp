@@ -15,10 +15,11 @@ class UpdateFacilityRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:1000',
             'address' => 'nullable|string',
             'gps_lat' => 'nullable|numeric',
             'gps_long' => 'nullable|numeric',
-            'maps_url' => 'nullable|url|max:500',
+            'maps_url' => 'nullable|url|starts_with:http://,https://|max:500',
             'is_available' => 'nullable|boolean',
             'facility_images' => 'nullable|array',
             'facility_images.*' => 'image|max:4096',

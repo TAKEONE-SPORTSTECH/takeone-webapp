@@ -736,6 +736,9 @@
                 </button>
             </div>
         @endif
+
+        {{-- Optional manual proof-of-payment (paid participant events) --}}
+        @include('partials.event-payment-proof')
     </div>
 
     {{-- In-place division confirmation (taekwondo) --}}

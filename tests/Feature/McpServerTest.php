@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Mcp\Tools\ClubFinancialsTool;
 use App\Mcp\Tools\ClubStaffTool;
 use App\Mcp\Tools\EnrollMembersTool;
+use App\Mcp\Tools\ListActivityCatalogTool;
 use App\Mcp\Tools\ListClubsTool;
 use App\Mcp\Tools\RecordTransactionTool;
 use App\Mcp\Tools\SearchPeopleTool;
@@ -39,6 +40,32 @@ class McpServerTest extends TestCase
         $result = $this->callTool(WhoAmITool::class);
 
         $this->assertStringContainsString('Not authenticated', $result['error']);
+    }
+
+    public function test_activity_catalog_requires_authentication(): void
+    {
+        config(['takeone-mcp.stdio_user_id' => null]);
+
+        $result = $this->callTool(ListActivityCatalogTool::class);
+
+        $this->assertStringContainsString('Not authenticated', $result['error']);
+    }
+
+    public function test_activity_catalog_lists_the_global_directory_with_search(): void
+    {
+        $user = $this->createUser();
+        $this->actingAs($user);
+
+        \App\Models\ActivityCatalog::create(['name' => 'Taekwondo']);
+        \App\Models\ActivityCatalog::create(['name' => 'Underwater Basket Weaving']);
+
+        $all = $this->callTool(ListActivityCatalogTool::class);
+        $this->assertGreaterThanOrEqual(2, $all['total']);
+
+        $filtered = $this->callTool(ListActivityCatalogTool::class, ['search' => 'taekwon']);
+        $names = collect($filtered['activities'])->pluck('name');
+        $this->assertTrue($names->contains('Taekwondo'));
+        $this->assertFalse($names->contains('Underwater Basket Weaving'));
     }
 
     public function test_who_am_i_reports_identity_and_roles(): void

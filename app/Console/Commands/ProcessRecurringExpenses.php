@@ -3,56 +3,31 @@
 namespace App\Console\Commands;
 
 use App\Models\ClubRecurringExpense;
-use App\Models\ClubTransaction;
-use Carbon\Carbon;
+use App\Services\RecurringExpenseService;
 use Illuminate\Console\Command;
 
 class ProcessRecurringExpenses extends Command
 {
     protected $signature = 'expenses:process-recurring';
 
-    protected $description = 'Create expense transactions for active recurring expenses due today';
+    protected $description = "Post this month's expense for every active recurring expense not yet posted";
 
-    public function handle(): int
+    public function handle(RecurringExpenseService $recurringExpenses): int
     {
-        $today = Carbon::today();
-        $dayOfMonth = (int) $today->format('j'); // day without leading zero
-
-        $recurring = ClubRecurringExpense::with('tenant', 'instructor')
+        // Every active rule that has not posted this month — not only the ones whose
+        // day_of_month happens to be today. A monthly wage is an expense of the month
+        // it covers, so it must weigh on that month's net from the start of the month;
+        // waiting for the due day made a club look profitable until payday.
+        $rules = ClubRecurringExpense::with('tenant', 'instructor')
             ->where('is_active', true)
-            ->where('day_of_month', $dayOfMonth)
             ->get();
-
-        if ($recurring->isEmpty()) {
-            $this->info('No recurring expenses due today.');
-
-            return 0;
-        }
 
         $count = 0;
 
-        foreach ($recurring as $expense) {
-            // Skip if already processed this month
-            if ($expense->hasRunThisMonth()) {
-                continue;
+        foreach ($rules as $rule) {
+            if ($recurringExpenses->postForCurrentMonth($rule)) {
+                $count++;
             }
-
-            ClubTransaction::create([
-                'tenant_id' => $expense->tenant_id,
-                'type' => 'expense',
-                'description' => $expense->description,
-                'amount' => $expense->amount,
-                'category' => $expense->category,
-                'payment_method' => $expense->payment_method,
-                'reference_number' => $expense->notes,
-                'transaction_date' => $today->toDateString(),
-                'instructor_id' => $expense->instructor_id,
-                'user_id' => $expense->instructor?->user_id,
-            ]);
-
-            $expense->update(['last_run_at' => $today->toDateString()]);
-
-            $count++;
         }
 
         $this->info("Processed {$count} recurring expense(s).");

@@ -684,6 +684,9 @@
                     </div>
                 @endif
 
+                {{-- Optional manual proof-of-payment (paid participant events) --}}
+                @include('partials.event-payment-proof')
+
                 <div x-show="joinedDivision" x-cloak class="mt-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex items-center gap-2 text-xs">
                     <i class="bi bi-diagram-3 text-primary"></i>
                     <span class="text-muted-foreground">{{ __('personal.event_show_placed_in') }} <span class="font-bold text-foreground" x-text="joinedDivision"></span></span>

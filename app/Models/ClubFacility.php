@@ -15,8 +15,8 @@ class ClubFacility extends Model
 {
     use BelongsToTenant, HasFactory, HasTranslations, LogsActivity;
 
-    /** Translatable fields (no description column exists on this model). */
-    protected array $translatable = ['name', 'address'];
+    /** Translatable fields. */
+    protected array $translatable = ['name', 'address', 'description'];
 
     public function getActivitylogOptions(): LogOptions
     {
@@ -42,6 +42,7 @@ class ClubFacility extends Model
     protected $fillable = [
         'tenant_id',
         'name',
+        'description',
         'photo',
         'images',
         'address',

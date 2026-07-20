@@ -83,8 +83,27 @@ class ClubRoleController extends Controller
         $canEdit = (bool) (auth()->user()?->isSuperAdmin());
         $totalPerms = $allPermissions->count();
 
+        // The actual "team": users who hold a real assigned role in THIS club (not
+        // the implicit "member" default, not the platform super-admin). These are
+        // who the roles page is really about — distinct from plain club members.
+        $holderIds = \Illuminate\Support\Facades\DB::table('user_roles')
+            ->join('roles', 'roles.id', '=', 'user_roles.role_id')
+            ->where('user_roles.tenant_id', $clubId)
+            ->where('roles.slug', '!=', 'member')
+            ->where('roles.slug', '!=', 'super-admin')
+            ->pluck('user_roles.user_id')->unique()->all();
+
+        $roleHolders = User::whereIn('id', $holderIds)->orderBy('name')->get()->map(fn (User $u) => [
+            'id' => $u->id,
+            'name' => $u->full_name,
+            'avatar' => $u->profile_picture ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
+            'roles' => $u->getRolesForTenant($clubId)
+                ->reject(fn ($r) => $r->slug === 'member' || $r->slug === 'super-admin')
+                ->pluck('name')->values()->all(),
+        ])->values();
+
         return view(\App\Support\ClubView::pick('roles'), compact(
-            'club', 'members', 'availableRoles', 'rolesData', 'groupsData', 'canEdit', 'totalPerms', 'packages'
+            'club', 'members', 'availableRoles', 'rolesData', 'groupsData', 'canEdit', 'totalPerms', 'packages', 'roleHolders'
         ));
     }
 

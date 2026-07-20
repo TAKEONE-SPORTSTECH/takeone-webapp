@@ -49,9 +49,19 @@
                         <h4 class="text-xl font-bold mb-1" x-text="mode === 'edit' ? 'Edit Club' : 'Create New Club'"></h4>
                         <p class="text-muted-foreground text-sm mb-0">{{ __('shared.components_club_modal_subtitle') }}</p>
                     </div>
-                    <button @click="closeModal()" class="text-muted-foreground hover:text-foreground transition-colors">
-                        <i class="bi bi-x-lg text-xl"></i>
-                    </button>
+                    <div class="flex items-center gap-1">
+                        <!-- Ask Coach — opens the AI assistant (continuously animated) -->
+                        <button type="button"
+                                @click="window.openCopilot && window.openCopilot()"
+                                title="{{ __('copilot.fab_title') }}"
+                                class="relative inline-flex items-center justify-center w-9 h-9 rounded-full bg-primary text-white hover:bg-primary/90 transition-colors">
+                            <span class="absolute inline-flex h-full w-full rounded-full bg-primary opacity-60 animate-ping"></span>
+                            <i class="bi bi-stars relative text-lg"></i>
+                        </button>
+                        <button @click="closeModal()" class="text-muted-foreground hover:text-foreground transition-colors w-9 h-9 flex items-center justify-center">
+                            <i class="bi bi-x-lg text-xl"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Progress Indicator -->

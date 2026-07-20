@@ -99,14 +99,28 @@ class StaffCompensationTest extends TestCase
         $this->assertNotNull($instructor->paid_since);
         $this->assertTrue($instructor->paid_since->isSameDay(Carbon::parse('2026-06-20')));
 
-        // Terminated 10 days after becoming paid — settlement must be scoped to
-        // those 10 days, NOT backdated to their 2024 hire/volunteer start date.
+        // Becoming paid on the 20th posts June's wage pro-rated to the 11 days it
+        // covers (20th–30th), NOT backdated to their 2024 hire/volunteer start date.
+        $this->assertDatabaseHas('club_transactions', [
+            'tenant_id' => $club->id,
+            'instructor_id' => $instructor->id,
+            'category' => 'salaries',
+            'amount' => '110.00',
+        ]);
+
+        // Terminated on the 30th: the posted wage already covers every worked day, so
+        // there is no extra settlement to pay on top of it.
         Carbon::setTestNow('2026-06-30');
 
         $this->actingAs($owner)
             ->deleteJson("/admin/club/{$club->slug}/instructors/{$instructor->id}")
             ->assertOk()
-            ->assertJson(['success' => true, 'settlement_amount' => 110.0]);
+            ->assertJson(['success' => true, 'settlement_amount' => 0]);
+
+        $this->assertSame(
+            110.0,
+            (float) ClubTransaction::where('instructor_id', $instructor->id)->sum('amount')
+        );
     }
 
     public function test_process_recurring_command_posts_transaction_linked_to_staff(): void
@@ -229,6 +243,81 @@ class StaffCompensationTest extends TestCase
             'amount' => number_format($expectedAmount, 2, '.', ''),
         ]);
         $this->assertDatabaseHas('club_recurring_expenses', ['id' => $recurring->id, 'is_active' => false]);
+    }
+
+    /**
+     * A wage is an expense of the month it covers: hiring on the 3rd for a wage due
+     * on the 25th must weigh on this month's net immediately, not from payday.
+     */
+    public function test_hiring_paid_monthly_staff_posts_the_wage_for_the_current_month(): void
+    {
+        Carbon::setTestNow('2026-05-03');
+
+        $owner = $this->createUser();
+        $club = $this->createClub($owner);
+        $staffUser = $this->createUser();
+
+        $this->actingAs($owner)
+            ->post("/admin/club/{$club->slug}/instructors", [
+                'creation_type' => 'existing',
+                'selected_member_id' => $staffUser->id,
+                'specialty_existing' => 'Front Desk',
+                'staff_type' => 'secretary',
+                'compensation_type' => 'paid',
+                'wage_amount' => 500,
+                'wage_period' => 'monthly',
+            ])
+            ->assertRedirect();
+
+        $instructor = ClubInstructor::where('tenant_id', $club->id)->where('user_id', $staffUser->id)->firstOrFail();
+
+        $this->assertDatabaseHas('club_transactions', [
+            'tenant_id' => $club->id,
+            'instructor_id' => $instructor->id,
+            'type' => 'expense',
+            'category' => 'salaries',
+            'amount' => 467.74, // 500 pro-rated over the 29 days of May it covers (3rd–31st)
+        ]);
+
+        $summary = app(\App\Services\FinancialService::class)->getSummary(
+            $club->id,
+            ClubTransaction::where('tenant_id', $club->id)->get(),
+            (bool) $club->is_test_mode
+        );
+        $this->assertSame(-467.74, (float) $summary['net_profit']);
+    }
+
+    public function test_pausing_a_wage_prorates_the_month_already_posted(): void
+    {
+        Carbon::setTestNow('2026-05-01');
+
+        $owner = $this->createUser();
+        $club = $this->createClub($owner);
+        $staffUser = $this->createUser();
+
+        $this->actingAs($owner)->post("/admin/club/{$club->slug}/instructors", [
+            'creation_type' => 'existing',
+            'selected_member_id' => $staffUser->id,
+            'specialty_existing' => 'Front Desk',
+            'staff_type' => 'secretary',
+            'compensation_type' => 'paid',
+            'wage_amount' => 310, // 310 / 31 days in May = 10/day
+            'wage_period' => 'monthly',
+        ]);
+
+        $instructor = ClubInstructor::where('tenant_id', $club->id)->where('user_id', $staffUser->id)->firstOrFail();
+        $recurring = ClubRecurringExpense::where('instructor_id', $instructor->id)->firstOrFail();
+
+        // Paused on the 10th: the club should carry 10 days of wage, not the full month.
+        Carbon::setTestNow('2026-05-10');
+        $this->actingAs($owner)
+            ->patchJson("/admin/club/{$club->slug}/financials/recurring/{$recurring->id}/toggle")
+            ->assertOk();
+
+        $this->assertDatabaseHas('club_transactions', [
+            'recurring_expense_id' => $recurring->id,
+            'amount' => '100.00',
+        ]);
     }
 
     public function test_terminating_volunteer_staff_creates_no_settlement(): void

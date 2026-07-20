@@ -80,7 +80,7 @@ class ClubFacilityController extends Controller
 
         $facility = ClubFacility::where('tenant_id', $clubId)->findOrFail($facilityId);
 
-        $data = $request->only(['name', 'address', 'gps_lat', 'gps_long', 'maps_url']);
+        $data = $request->only(['name', 'description', 'address', 'gps_lat', 'gps_long', 'maps_url']);
         $data['is_available'] = $request->has('is_available');
 
         try {

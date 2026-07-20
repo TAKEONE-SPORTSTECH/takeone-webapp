@@ -101,7 +101,9 @@
     <!-- Clubs Grid -->
     <div class="flex justify-center" id="clubsGrid" style="display: none;">
         <div class="w-full">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="clubsContainer">
+            {{-- Fixed-width cards (320px) that wrap and stay centered — they don't stretch as the screen widens.
+                 grid-template-columns is inlined so it works without a Tailwind rebuild. --}}
+            <div class="grid gap-5" style="grid-template-columns: repeat(auto-fill, 320px); grid-auto-rows: 1fr; justify-content: center;" id="clubsContainer">
                 <!-- Club cards will be inserted here -->
             </div>
         </div>

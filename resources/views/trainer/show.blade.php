@@ -11,595 +11,422 @@
 @if(request()->routeIs('trainer.show.public'))
 <style>@media (max-width: 768px) { nav { display: none !important; } }</style>
 @endif
+<style>
+    /* ── Trainer profile — desktop, full-width magazine layout ─────────── */
+    .tp-hero {
+        position: relative; overflow: hidden;
+        background:
+            radial-gradient(1100px 480px at 82% -10%, hsl(262 70% 62% / .55), transparent 60%),
+            radial-gradient(760px 420px at 8% 120%, hsl(250 80% 55% / .5), transparent 60%),
+            linear-gradient(135deg, hsl(250 66% 56%), hsl(262 60% 48%));
+    }
+    .tp-hero::after { /* subtle dot grid */
+        content: ""; position: absolute; inset: 0; opacity: .12; pointer-events: none;
+        background-image: radial-gradient(#fff 1px, transparent 1.4px);
+        background-size: 22px 22px;
+    }
+    .tp-hero-blob { position: absolute; border-radius: 9999px; filter: blur(6px); background: #fff; opacity: .06; pointer-events: none; }
+    .tp-glass { background: hsl(0 0% 100% / .14); border: 1px solid hsl(0 0% 100% / .22); backdrop-filter: blur(8px); }
+    .tp-avatar-ring { box-shadow: 0 0 0 6px #fff, 0 22px 48px -14px hsl(250 60% 30% / .55); }
+    @media (min-width: 1024px) { .tp-sticky { position: sticky; top: 1.5rem; } }
+    .tp-stat { transition: transform .25s ease, box-shadow .25s ease; }
+    .tp-stat:hover { transform: translateY(-3px); }
+    .tp-tab { position: relative; }
+    .tp-tab.is-active { color: hsl(250 55% 50%); }
+    .tp-tab.is-active::after { content: ""; position: absolute; inset-inline: .5rem; bottom: -1px; height: 3px; border-radius: 3px; background: hsl(250 65% 60%); }
+    .tp-section-kicker { display: inline-flex; align-items: center; gap: .5rem; font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: hsl(250 40% 55%); }
+    .tp-section-kicker::before { content: ""; height: 2px; width: 26px; border-radius: 3px; background: linear-gradient(90deg, hsl(250 65% 62%), hsl(262 60% 55%)); }
+</style>
 @endpush
 
 @section('content')
 @php
-    // $user is the primary model (User). Club context comes from their instructor records.
     $primaryInstructor = $user->clubInstructors->first();
     $club = $primaryInstructor?->tenant;
-    $isMale = ($user->gender ?? '') === 'Male';
-    // $reviews and $stats are passed from the controller
+    $role = $primaryInstructor?->tr('role');
+    // Distinct clubs this person works at
+    $clubs = $user->clubInstructors->map->tenant->filter()->unique('id')->values();
+    $skills = is_array($user->skills) ? array_values(array_filter($user->skills)) : [];
+    $initial = mb_strtoupper(mb_substr($user->full_name ?? '?', 0, 1, 'UTF-8'), 'UTF-8');
+
+    $statCards = [
+        ['label' => __('trainer.trainer_show_clients'),        'value' => $stats['clients'],        'icon' => 'bi-people-fill'],
+        ['label' => __('trainer.trainer_show_sessions'),       'value' => $stats['sessions'],       'icon' => 'bi-activity'],
+        ['label' => __('trainer.trainer_show_rating'),         'value' => $stats['rating'] > 0 ? $stats['rating'] : '—', 'icon' => 'bi-star-fill'],
+        ['label' => __('trainer.trainer_show_certifications'), 'value' => $stats['certifications'], 'icon' => 'bi-patch-check-fill'],
+    ];
+
+    $trainerPhone   = $user->mobile_formatted ?? null;
+    $trainerEmail   = $user->email ?? null;
+    $trainerSocials = $user->social_links ?? [];
+    $socialIcons = [
+        'facebook'=>['icon'=>'bi-facebook','label'=>'Facebook'],'instagram'=>['icon'=>'bi-instagram','label'=>'Instagram'],
+        'twitter'=>['icon'=>'bi-twitter-x','label'=>'Twitter/X'],'linkedin'=>['icon'=>'bi-linkedin','label'=>'LinkedIn'],
+        'youtube'=>['icon'=>'bi-youtube','label'=>'YouTube'],'tiktok'=>['icon'=>'bi-tiktok','label'=>'TikTok'],
+        'snapchat'=>['icon'=>'bi-snapchat','label'=>'Snapchat'],'whatsapp'=>['icon'=>'bi-whatsapp','label'=>'WhatsApp'],
+        'telegram'=>['icon'=>'bi-telegram','label'=>'Telegram'],'discord'=>['icon'=>'bi-discord','label'=>'Discord'],
+        'github'=>['icon'=>'bi-github','label'=>'GitHub'],'spotify'=>['icon'=>'bi-spotify','label'=>'Spotify'],
+    ];
+    $hasContact = $trainerPhone || $trainerEmail || !empty(array_filter($trainerSocials));
+
+    $dayOrder = ['saturday','sunday','monday','tuesday','wednesday','thursday','friday'];
+    $dayAbbr  = ['saturday'=>'Sat','sunday'=>'Sun','monday'=>'Mon','tuesday'=>'Tue','wednesday'=>'Wed','thursday'=>'Thu','friday'=>'Fri'];
+    $todayKey = strtolower(now()->format('l'));
+    $todayIndex = array_search($todayKey, $dayOrder);
+    $visibleDays = array_slice($dayOrder, $todayIndex !== false ? $todayIndex : 0);
 @endphp
 
-<div class="min-h-screen bg-gray-50" x-data="{ activeTab: 'about' }">
-    <div class="p-4 space-y-6">
+<div class="bg-background min-h-screen pb-16" x-data="{ activeTab: 'about' }">
 
-        {{-- Back Button --}}
-        @if(!request()->routeIs('trainer.show.public'))
-        <a href="{{ url()->previous() }}" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors mb-2">
-            <i class="bi bi-arrow-left"></i>
-            <span>{{ __('shared.back') }}</span>
-        </a>
-        @endif
+    {{-- ══════════ HERO ══════════ --}}
+    <section class="tp-hero text-white">
+        <span class="tp-hero-blob" style="width:260px;height:260px;top:-70px;right:16%;"></span>
+        <span class="tp-hero-blob" style="width:180px;height:180px;bottom:-60px;left:6%;"></span>
 
-        {{-- ========== Header Card ========== --}}
-        <div class="tf-card">
-            <div class="flex flex-col md:flex-row gap-6">
-                {{-- Avatar --}}
-                <div class="relative flex-shrink-0">
-                    @if($user->profile_picture)
-                        <img src="{{ asset('storage/' . $user->profile_picture) }}"
-                             alt="{{ $user->full_name }}"
-                             class="w-32 h-32 md:w-48 md:h-48 rounded-full object-cover border-4 {{ $isMale ? 'border-blue-400/40' : 'border-purple-400/20' }}">
-                    @else
-                        <div class="w-32 h-32 md:w-48 md:h-48 rounded-full border-4 {{ $isMale ? 'border-blue-400/40 bg-blue-100' : 'border-purple-400/20 bg-purple-100' }} flex items-center justify-center">
-                            <span class="text-4xl md:text-6xl font-bold {{ $isMale ? 'text-blue-600' : 'text-purple-600' }}">
-                                {{ mb_strtoupper(mb_substr($user->full_name, 0, 1, 'UTF-8'), 'UTF-8') }}
+        <div class="relative mx-auto max-w-[1400px] px-6 lg:px-10 pt-8 pb-12">
+            @if(!request()->routeIs('trainer.show.public'))
+            <a href="{{ url()->previous() }}" class="inline-flex items-center gap-2 text-sm text-white/80 hover:text-white transition-colors mb-6">
+                <i class="bi bi-arrow-left"></i><span>{{ __('shared.back') }}</span>
+            </a>
+            @endif
+
+            <div class="flex flex-col lg:flex-row lg:items-center gap-8">
+                {{-- Identity --}}
+                <div class="flex-1 min-w-0">
+                    @if($role)
+                        <span class="tp-glass inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold text-white mb-4">
+                            <i class="bi bi-mortarboard-fill"></i> {{ $role }}
+                        </span>
+                    @endif
+                    <h1 class="text-4xl lg:text-6xl font-black tracking-tight leading-[1.05] mb-4">{{ $user->full_name }}</h1>
+
+                    <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-white/85">
+                        <span class="inline-flex items-center gap-1.5">
+                            <i class="bi bi-star-fill text-amber-300"></i>
+                            <span class="font-bold text-white">{{ $stats['rating'] > 0 ? $stats['rating'] : 'N/A' }}</span>
+                            <span class="text-white/70">({{ $reviews->count() }} {{ __('trainer.trainer_show_tab_reviews') }})</span>
+                        </span>
+                        @if($user->experience_years)
+                            <span class="inline-flex items-center gap-1.5">
+                                <i class="bi bi-graph-up-arrow"></i>
+                                {{ $user->experience_years }} {{ $user->experience_years == 1 ? __('trainer.trainer_show_year') : __('trainer.trainer_show_years') }} {{ __('trainer.trainer_show_experience_word') }}
                             </span>
+                        @endif
+                        @if($club)
+                            <span class="inline-flex items-center gap-1.5"><i class="bi bi-geo-alt-fill"></i>{{ $club->club_name }}</span>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Stat strip --}}
+                <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 lg:min-w-[440px]">
+                    @foreach($statCards as $s)
+                        <div class="tp-stat tp-glass rounded-2xl p-4 text-center">
+                            <i class="bi {{ $s['icon'] }} text-white/70 mb-1.5"></i>
+                            <p class="text-2xl font-black text-white leading-none">{{ $s['value'] }}</p>
+                            <p class="text-[11px] uppercase tracking-wide text-white/70 mt-1.5">{{ $s['label'] }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {{-- ══════════ BODY ══════════ --}}
+    <div class="mx-auto max-w-[1400px] px-6 lg:px-10 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+            {{-- ───── SIDEBAR ───── --}}
+            <aside class="lg:col-span-4 xl:col-span-3 space-y-5 tp-sticky self-start">
+
+                {{-- Portrait (always 3:4) + club logo --}}
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                    <div class="flex items-center gap-4">
+                        <div class="w-32 flex-shrink-0">
+                            <div class="aspect-[3/4] rounded-xl overflow-hidden bg-accent ring-1 ring-gray-100">
+                                @if($user->profile_picture)
+                                    <img src="{{ asset('storage/' . $user->profile_picture) }}" alt="{{ $user->full_name }}" class="w-full h-full object-cover">
+                                @else
+                                    <div class="w-full h-full flex items-center justify-center">
+                                        <span class="text-5xl font-black text-primary">{{ $initial }}</span>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                        @if($club?->logo)
+                            <div class="flex-1 flex items-center justify-center min-w-0">
+                                <img src="{{ asset('storage/' . $club->logo) }}" alt="{{ $club->club_name }}" class="max-h-24 max-w-full object-contain">
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Certifications / skills --}}
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                    <p class="tp-section-kicker mb-3">{{ __('trainer.trainer_show_certifications') }}</p>
+                    @if(count($skills) > 0)
+                        <div class="flex flex-wrap gap-2">
+                            @foreach($skills as $skill)
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-accent text-primary">
+                                    <i class="bi bi-patch-check-fill"></i>{{ $skill }}
+                                </span>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="text-sm text-muted-foreground">{{ __('trainer.trainer_show_no_certifications') }}</p>
+                    @endif
+                </div>
+
+                {{-- Clubs --}}
+                @if($clubs->count() > 0)
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                    <p class="tp-section-kicker mb-3">{{ __('trainer.trainer_show_clients') }}</p>
+                    <div class="space-y-2">
+                        @foreach($clubs as $c)
+                            <a href="{{ $c->url ?? '#' }}" class="flex items-center gap-3 p-2 -mx-1 rounded-xl hover:bg-muted/60 transition-colors no-underline">
+                                <span class="w-9 h-9 flex-shrink-0 flex items-center justify-center">
+                                    @if($c->logo)
+                                        <img src="{{ asset('storage/' . $c->logo) }}" class="w-full h-full object-contain" alt="{{ $c->club_name }}">
+                                    @else
+                                        <span class="w-9 h-9 rounded-lg bg-accent flex items-center justify-center text-primary font-bold text-sm">{{ mb_substr($c->club_name,0,1) }}</span>
+                                    @endif
+                                </span>
+                                <span class="text-sm font-medium text-foreground truncate">{{ $c->club_name }}</span>
+                                <i class="bi bi-chevron-right ms-auto text-xs text-muted-foreground"></i>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
+                {{-- Contact --}}
+                @if($hasContact)
+                <div id="trainer-contact" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                    <p class="tp-section-kicker mb-3">{{ __('trainer.trainer_show_contact_information') }}</p>
+                    <div class="space-y-2.5">
+                        @if($trainerPhone)
+                            <a href="tel:{{ $trainerPhone }}" class="flex items-center gap-3 text-sm text-foreground hover:text-primary transition-colors">
+                                <span class="w-9 h-9 rounded-lg bg-accent flex items-center justify-center text-primary"><i class="bi bi-telephone-fill"></i></span>
+                                <span class="font-medium">{{ $trainerPhone }}</span>
+                            </a>
+                        @endif
+                        @if($trainerEmail)
+                            <a href="mailto:{{ $trainerEmail }}" class="flex items-center gap-3 text-sm text-foreground hover:text-primary transition-colors break-all">
+                                <span class="w-9 h-9 rounded-lg bg-accent flex items-center justify-center text-primary flex-shrink-0"><i class="bi bi-envelope-fill"></i></span>
+                                <span class="font-medium">{{ $trainerEmail }}</span>
+                            </a>
+                        @endif
+                    </div>
+                    @if(!empty(array_filter($trainerSocials)))
+                        <div class="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100">
+                            @foreach($trainerSocials as $platform => $url)
+                                @if(!empty($url) && isset($socialIcons[$platform]))
+                                    <a href="{{ $url }}" target="_blank" rel="noopener noreferrer" title="{{ $socialIcons[$platform]['label'] }}"
+                                       class="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-foreground hover:bg-primary hover:text-white hover:border-primary transition-all">
+                                        <i class="bi {{ $socialIcons[$platform]['icon'] }}"></i>
+                                    </a>
+                                @endif
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+                @endif
+            </aside>
+
+            {{-- ───── MAIN ───── --}}
+            <main class="lg:col-span-8 xl:col-span-9 space-y-6">
+
+                {{-- Tabs --}}
+                <div x-ref="tabs" id="trainer-tabs" class="bg-white rounded-2xl shadow-sm border border-gray-100 px-2">
+                    <nav class="flex items-center gap-1 overflow-x-auto">
+                        @foreach([['about','trainer_show_tab_about','bi-person-badge'],['schedule','trainer_show_tab_schedule','bi-calendar-week'],['reviews','trainer_show_tab_reviews','bi-star']] as $t)
+                            <button @click="activeTab = '{{ $t[0] }}'"
+                                    :class="activeTab === '{{ $t[0] }}' ? 'is-active' : 'text-muted-foreground hover:text-foreground'"
+                                    class="tp-tab flex items-center gap-2 px-5 py-4 text-sm font-semibold whitespace-nowrap transition-colors">
+                                <i class="bi {{ $t[2] }}"></i>{{ __('trainer.'.$t[1]) }}
+                            </button>
+                        @endforeach
+                    </nav>
+                </div>
+
+                {{-- ===== ABOUT ===== --}}
+                <div x-show="activeTab === 'about'" x-cloak class="space-y-6">
+                    {{-- Bio --}}
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8">
+                        <p class="tp-section-kicker mb-4">{{ __('trainer.trainer_show_biography') }}</p>
+                        <p class="text-foreground/90 leading-relaxed text-lg">{{ $user->bio ?? __('trainer.trainer_show_no_biography') }}</p>
+
+                        @if($activities->count() > 0)
+                            <div class="mt-8 pt-6 border-t border-gray-100">
+                                <p class="tp-section-kicker mb-4">{{ __('trainer.trainer_show_classes_taught') }}</p>
+                                <div class="flex flex-wrap gap-2.5">
+                                    @foreach($activities as $activity)
+                                        <span class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-2 border-gray-100 rounded-full hover:border-primary hover:bg-accent hover:text-primary transition-all cursor-default">
+                                            <i class="bi bi-lightning-charge-fill text-xs"></i>{{ $activity->name }}
+                                        </span>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+
+                    {{-- Highlights --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                        @php
+                            $highlights = [
+                                ['label'=>__('trainer.trainer_show_specialty'),   'value'=>$role ?? __('trainer.trainer_show_trainer_fallback'), 'icon'=>'bi-award-fill'],
+                                ['label'=>__('trainer.trainer_show_experience'),  'value'=>($user->experience_years ?? 0).' '.(($user->experience_years ?? 0) == 1 ? __('trainer.trainer_show_year') : __('trainer.trainer_show_years')), 'icon'=>'bi-graph-up-arrow'],
+                                ['label'=>__('trainer.trainer_show_rating'),      'value'=>($stats['rating'] > 0 ? $stats['rating'] : '—'), 'icon'=>'bi-star-fill'],
+                            ];
+                        @endphp
+                        @foreach($highlights as $h)
+                            <div class="group relative overflow-hidden bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-all">
+                                <div class="absolute -top-8 -end-8 w-24 h-24 rounded-full bg-accent/60 transition-transform group-hover:scale-125"></div>
+                                <div class="relative">
+                                    <div class="w-11 h-11 rounded-xl bg-accent flex items-center justify-center text-primary mb-3"><i class="bi {{ $h['icon'] }} text-lg"></i></div>
+                                    <p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">{{ $h['label'] }}</p>
+                                    <p class="text-lg font-bold text-foreground mt-0.5">{{ $h['value'] }}</p>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+
+                {{-- ===== SCHEDULE ===== --}}
+                <div x-show="activeTab === 'schedule'" x-cloak
+                     x-data="{
+                         activeDay: '{{ $todayKey }}',
+                         getStatus(start, end) {
+                             const now = new Date(); const pad = n => String(n).padStart(2,'0');
+                             const t = pad(now.getHours()) + ':' + pad(now.getMinutes());
+                             if (t < start) return 'upcoming'; if (t <= end) return 'live'; return 'finished';
+                         }
+                     }">
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                            <div>
+                                <h3 class="text-xl font-bold text-foreground">{{ __('trainer.trainer_show_weekly_schedule') }}</h3>
+                                <p class="text-sm text-muted-foreground">{{ __('trainer.trainer_show_schedule_subtitle') }}</p>
+                            </div>
+                        </div>
+
+                        @if(count($scheduleSlots) > 0)
+                            <div class="flex flex-wrap gap-2 mb-6">
+                                @foreach($visibleDays as $dayKey)
+                                    <button type="button" @click="activeDay = '{{ $dayKey }}'"
+                                            :class="activeDay === '{{ $dayKey }}' ? 'bg-primary text-white border-primary' : 'bg-white text-muted-foreground border-gray-200 hover:border-primary hover:text-primary'"
+                                            class="px-5 py-2 rounded-full border text-sm font-semibold transition-colors {{ $dayKey === $todayKey ? 'ring-2 ring-primary/30' : '' }}">
+                                        {{ $dayAbbr[$dayKey] }}
+                                    </button>
+                                @endforeach
+                            </div>
+
+                            <div class="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                                @foreach($scheduleSlots as $slot)
+                                    <div class="class-card"
+                                         x-show="@js(array_map('strval', $slot['days'])).includes(activeDay)"
+                                         :class="activeDay === '{{ $todayKey }}' ? getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') + '-card' : ''"
+                                         :style="{ order: activeDay === '{{ $todayKey }}' ? ({'live':0,'upcoming':1,'finished':2}[getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}')] ?? 0) : null }"
+                                         x-cloak>
+                                        <div class="class-thumb">
+                                            @if($slot['picture_url'])
+                                                <img src="{{ asset('storage/' . $slot['picture_url']) }}" alt="{{ $slot['activity_name'] }}" class="w-full h-full object-cover">
+                                            @else
+                                                <div class="w-full h-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center min-h-[80px]"><i class="bi bi-activity text-white text-xl"></i></div>
+                                            @endif
+                                        </div>
+                                        <div class="flex-grow flex flex-col">
+                                            <div class="flex justify-between items-start mb-1">
+                                                <div>
+                                                    <h6 class="text-base font-bold mb-0">{{ $slot['activity_name'] }}</h6>
+                                                    <div class="class-meta text-muted-foreground flex items-center gap-x-4 mt-0.5 text-sm">
+                                                        <span><i class="bi bi-clock me-1"></i>{{ \Carbon\Carbon::parse($slot['start'])->format('g:i A') }} – {{ \Carbon\Carbon::parse($slot['end'])->format('g:i A') }}</span>
+                                                        <span class="flex items-center gap-1 ms-2"><i class="bi bi-stopwatch"></i>{{ $slot['duration'] }} {{ __('trainer.trainer_show_min') }}</span>
+                                                    </div>
+                                                    @if($slot['facility_name'])
+                                                        <div class="text-sm text-muted-foreground mt-0.5"><i class="bi bi-geo-alt me-1"></i>{{ $slot['facility_name'] }}</div>
+                                                    @endif
+                                                </div>
+                                                <div class="flex flex-col items-end gap-2 shrink-0">
+                                                    <div x-show="activeDay === '{{ $todayKey }}'">
+                                                        <span x-show="getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') === 'live'" class="status-chip status-ongoing"><span class="live-dot"></span> {{ __('trainer.trainer_show_ongoing') }}</span>
+                                                        <span x-show="getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') === 'upcoming'" class="status-chip status-bookable"><i class="bi bi-clock-fill"></i> {{ __('trainer.trainer_show_upcoming') }}</span>
+                                                        <span x-show="getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') === 'finished'" class="status-chip status-finished"><i class="bi bi-check-circle-fill"></i> {{ __('trainer.trainer_show_finished') }}</span>
+                                                    </div>
+                                                    @if($slot['club_name'])
+                                                        <a href="{{ $slot['club_url'] ?? '#' }}" class="text-xs font-medium text-primary hover:underline flex items-center gap-1"><i class="bi bi-building"></i> {{ $slot['club_name'] }}</a>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                            <div class="flex flex-wrap gap-1 mt-2">
+                                                @if($slot['package_name'])<span class="pill-tag">{{ $slot['package_name'] }}</span>@endif
+                                                @foreach($slot['days'] as $d)<span class="pill-tag">{{ $dayAbbr[$d] ?? ucfirst(substr($d,0,3)) }}</span>@endforeach
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+
+                                <div x-show="!@js(collect($scheduleSlots)->map(fn($s) => $s['days'])->flatten()->unique()->values()->toArray()).includes(activeDay)" class="text-center py-16 xl:col-span-2">
+                                    <i class="bi bi-calendar-x text-muted-foreground text-5xl"></i>
+                                    <p class="text-lg font-medium mt-4">{{ __('trainer.trainer_show_no_classes_day') }}</p>
+                                    <p class="text-sm text-muted-foreground mt-2">{{ __('trainer.trainer_show_try_different_day') }}</p>
+                                </div>
+                            </div>
+                        @else
+                            <div class="text-center py-12">
+                                <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center"><i class="bi bi-calendar-x text-2xl text-muted-foreground"></i></div>
+                                <p class="text-muted-foreground">{{ __('trainer.trainer_show_no_classes_scheduled') }}</p>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- ===== REVIEWS ===== --}}
+                <div x-show="activeTab === 'reviews'" x-cloak class="space-y-6">
+                    @if(!empty($reactionTotal) && $reactionTotal > 0)
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                            <p class="tp-section-kicker mb-3"><i class="bi bi-emoji-smile"></i>{{ __('trainer.trainer_show_class_reactions') }} · {{ $reactionTotal }}</p>
+                            <div class="flex flex-wrap gap-2">
+                                @foreach($reactions as $emoji => $cnt)
+                                    <span class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-muted">
+                                        <span class="text-xl leading-none">{{ $emoji }}</span><span class="text-sm font-bold text-foreground">{{ $cnt }}</span>
+                                    </span>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
+                    @if($reviews->count() > 0)
+                        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                            @foreach($reviews as $review)
+                                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-all">
+                                    <div class="flex items-start justify-between mb-3">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-11 h-11 rounded-full bg-gradient-to-br from-primary to-[hsl(262_60%_55%)] flex items-center justify-center shadow-sm">
+                                                <span class="text-base font-bold text-white">{{ mb_strtoupper(mb_substr($review->reviewer->full_name ?? 'A', 0, 1, 'UTF-8'), 'UTF-8') }}</span>
+                                            </div>
+                                            <div>
+                                                <p class="font-bold text-sm text-foreground">{{ $review->reviewer->full_name ?? __('trainer.trainer_show_anonymous') }}</p>
+                                                <p class="text-xs text-muted-foreground inline-flex items-center gap-1"><i class="bi bi-clock"></i>{{ $review->formatted_date }}</p>
+                                            </div>
+                                        </div>
+                                        <div class="inline-flex items-center gap-0.5 px-2.5 py-1 bg-amber-50 rounded-lg border border-amber-100">
+                                            @for($i = 0; $i < $review->rating; $i++)<i class="bi bi-star-fill text-amber-400 text-xs"></i>@endfor
+                                        </div>
+                                    </div>
+                                    @if($review->comment)<p class="text-foreground/80 leading-relaxed text-sm">{{ $review->comment }}</p>@endif
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 text-center py-16">
+                            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center"><i class="bi bi-chat text-2xl text-muted-foreground"></i></div>
+                            <p class="text-muted-foreground">{{ __('trainer.trainer_show_no_reviews') }}</p>
                         </div>
                     @endif
                 </div>
 
-                <div class="flex-1">
-                    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-4">
-                        <div>
-                            <h1 class="text-3xl font-bold mb-2">{{ $user->full_name }}</h1>
-                            <div class="flex items-center gap-4 mb-3 flex-wrap">
-                                {{-- Rating --}}
-                                <div class="flex items-center gap-1">
-                                    <i class="bi bi-star-fill text-yellow-400"></i>
-                                    <span class="font-semibold">{{ $stats['rating'] > 0 ? $stats['rating'] : 'N/A' }}</span>
-                                    <span class="text-gray-500">({{ $stats['certifications'] }} {{ __('trainer.trainer_show_certifications_lower') }})</span>
-                                </div>
-                                {{-- Specialty Badge --}}
-                                @if($primaryInstructor?->role)
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-purple-600 text-white">
-                                    {{ $primaryInstructor->tr('role') }}
-                                </span>
-                                @endif
-                                {{-- Experience Badge --}}
-                                @if($user->experience_years)
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
-                                    {{ $user->experience_years }} {{ $user->experience_years == 1 ? __('trainer.trainer_show_year') : __('trainer.trainer_show_years') }} {{ __('trainer.trainer_show_experience_word') }}
-                                </span>
-                                @endif
-                            </div>
-                            @if($user->bio)
-                                <p class="text-gray-500 mb-4">{{ $user->bio }}</p>
-                            @endif
-                            @if($club)
-                                <div class="flex items-center gap-2 text-sm text-gray-500">
-                                    <i class="bi bi-geo-alt"></i>
-                                    <span>{{ $club->club_name }}</span>
-                                </div>
-                            @endif
-                        </div>
-
-                        <div class="flex flex-col gap-2">
-                            <button class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium">
-                                <i class="bi bi-calendar"></i>
-                                {{ __('trainer.trainer_show_book_session') }}
-                            </button>
-                            <button class="inline-flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
-                                <i class="bi bi-chat"></i>
-                                {{ __('trainer.trainer_show_message') }}
-                            </button>
-                        </div>
-                    </div>
-
-                    {{-- Stats Grid --}}
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div class="text-center p-3 border rounded-lg {{ $isMale ? 'border-blue-200' : 'border-gray-200' }}">
-                            <p class="text-2xl font-bold {{ $isMale ? 'text-blue-600' : 'text-purple-600' }}">{{ $stats['clients'] }}</p>
-                            <p class="text-xs text-gray-500">{{ __('trainer.trainer_show_clients') }}</p>
-                        </div>
-                        <div class="text-center p-3 border rounded-lg {{ $isMale ? 'border-blue-200' : 'border-gray-200' }}">
-                            <p class="text-2xl font-bold {{ $isMale ? 'text-sky-600' : 'text-teal-600' }}">{{ $stats['sessions'] }}</p>
-                            <p class="text-xs text-gray-500">{{ __('trainer.trainer_show_sessions') }}</p>
-                        </div>
-                        <div class="text-center p-3 border rounded-lg {{ $isMale ? 'border-blue-200' : 'border-gray-200' }}">
-                            <p class="text-2xl font-bold {{ $isMale ? 'text-indigo-600' : 'text-amber-600' }}">{{ $stats['rating'] }}</p>
-                            <p class="text-xs text-gray-500">{{ __('trainer.trainer_show_rating') }}</p>
-                        </div>
-                        <div class="text-center p-3 border rounded-lg {{ $isMale ? 'border-blue-200' : 'border-gray-200' }}">
-                            <p class="text-2xl font-bold {{ $isMale ? 'text-blue-600' : 'text-purple-600' }}">{{ $stats['certifications'] }}</p>
-                            <p class="text-xs text-gray-500">{{ __('trainer.trainer_show_certifications') }}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- ========== Tabs ========== --}}
-        <div>
-            {{-- Tab Buttons --}}
-            <div class="grid grid-cols-4 bg-gray-100 rounded-lg p-1 gap-1">
-                <button @click="activeTab = 'about'"
-                        :class="activeTab === 'about' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-                        class="py-2 px-4 rounded-md text-sm font-medium transition-all">
-                    {{ __('trainer.trainer_show_tab_about') }}
-                </button>
-                <button @click="activeTab = 'schedule'"
-                        :class="activeTab === 'schedule' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-                        class="py-2 px-4 rounded-md text-sm font-medium transition-all">
-                    {{ __('trainer.trainer_show_tab_schedule') }}
-                </button>
-                <button @click="activeTab = 'reviews'"
-                        :class="activeTab === 'reviews' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-                        class="py-2 px-4 rounded-md text-sm font-medium transition-all">
-                    {{ __('trainer.trainer_show_tab_reviews') }}
-                </button>
-                <button @click="activeTab = 'contact'"
-                        :class="activeTab === 'contact' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
-                        class="py-2 px-4 rounded-md text-sm font-medium transition-all">
-                    {{ __('trainer.trainer_show_tab_contact') }}
-                </button>
-            </div>
-
-            {{-- ===== ABOUT TAB ===== --}}
-            <div x-show="activeTab === 'about'" x-cloak class="mt-6 space-y-6">
-
-                {{-- Bio Card --}}
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div class="bg-gradient-to-br {{ $isMale ? 'from-blue-50/50 via-blue-100/30 to-blue-50/20' : 'from-purple-50 via-teal-50 to-amber-50' }} p-6 border-b">
-                        <div class="flex items-start gap-4">
-                            <div class="p-3 rounded-xl bg-white shadow-sm border">
-                                <i class="bi bi-people text-xl text-purple-600"></i>
-                            </div>
-                            <div class="flex-1">
-                                <h3 class="text-xl font-bold mb-2">{{ __('trainer.trainer_show_about_heading') }} {{ $user->full_name }}</h3>
-                                <p class="text-sm text-gray-500">{{ __('trainer.trainer_show_professional_subtitle') }}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="p-6 space-y-6">
-                        {{-- Biography --}}
-                        <div class="space-y-3">
-                            <div class="flex items-center gap-2 mb-3">
-                                <div class="h-1 w-8 bg-gradient-to-r {{ $isMale ? 'from-blue-500 to-sky-500' : 'from-purple-500 to-teal-500' }} rounded-full"></div>
-                                <span class="text-sm font-semibold text-gray-500 uppercase tracking-wide">{{ __('trainer.trainer_show_biography') }}</span>
-                            </div>
-                            <p class="text-gray-800 leading-relaxed text-base ps-10">
-                                {{ $user->bio ?? __('trainer.trainer_show_no_biography') }}
-                            </p>
-                        </div>
-
-                        {{-- Info Grid --}}
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                            {{-- Specialty Card --}}
-                            <div class="group relative overflow-hidden rounded-xl border bg-gradient-to-br {{ $isMale ? 'from-blue-100/50 to-blue-50/30' : 'from-purple-50 to-purple-100/50' }} p-5 hover:shadow-md transition-all duration-300">
-                                <div class="absolute top-0 end-0 w-24 h-24 {{ $isMale ? 'bg-blue-500/10' : 'bg-purple-500/10' }} rounded-full -me-12 -mt-12 transition-transform group-hover:scale-110"></div>
-                                <div class="relative flex items-start gap-4">
-                                    <div class="p-2.5 rounded-lg {{ $isMale ? 'bg-blue-100/50' : 'bg-purple-100' }}">
-                                        <i class="bi bi-award text-lg {{ $isMale ? 'text-blue-600' : 'text-purple-600' }}"></i>
-                                    </div>
-                                    <div class="flex-1">
-                                        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">{{ __('trainer.trainer_show_specialty') }}</p>
-                                        <p class="text-lg font-bold text-gray-900">{{ $primaryInstructor?->tr('role') ?? __('trainer.trainer_show_trainer_fallback') }}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {{-- Experience Card --}}
-                            <div class="group relative overflow-hidden rounded-xl border bg-gradient-to-br {{ $isMale ? 'from-sky-50/50 to-sky-100/30' : 'from-teal-50 to-teal-100/50' }} p-5 hover:shadow-md transition-all duration-300">
-                                <div class="absolute top-0 end-0 w-24 h-24 {{ $isMale ? 'bg-blue-500/10' : 'bg-purple-500/10' }} rounded-full -me-12 -mt-12 transition-transform group-hover:scale-110"></div>
-                                <div class="relative flex items-start gap-4">
-                                    <div class="p-2.5 rounded-lg {{ $isMale ? 'bg-sky-100/50' : 'bg-teal-100' }}">
-                                        <i class="bi bi-graph-up text-lg {{ $isMale ? 'text-sky-600' : 'text-teal-600' }}"></i>
-                                    </div>
-                                    <div class="flex-1">
-                                        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">{{ __('trainer.trainer_show_experience') }}</p>
-                                        <p class="text-lg font-bold text-gray-900">{{ $user->experience_years ?? 0 }} {{ ($user->experience_years ?? 0) == 1 ? __('trainer.trainer_show_year') : __('trainer.trainer_show_years') }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Classes Taught --}}
-                        @if($activities->count() > 0)
-                            <div class="space-y-4 pt-2">
-                                <div class="flex items-center gap-2">
-                                    <div class="h-1 w-8 bg-gradient-to-r from-amber-500 to-purple-500 rounded-full"></div>
-                                    <span class="text-sm font-semibold text-gray-500 uppercase tracking-wide">{{ __('trainer.trainer_show_classes_taught') }}</span>
-                                </div>
-                                <div class="flex flex-wrap gap-2.5 ps-10">
-                                    @foreach($activities as $activity)
-                                        <span class="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium border-2 rounded-full hover:bg-purple-50 hover:border-purple-400 transition-all cursor-default">
-                                            <i class="bi bi-activity text-sm"></i>
-                                            {{ $activity->name }}
-                                        </span>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-
-                {{-- Achievements Card --}}
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div class="bg-gradient-to-br {{ $isMale ? 'from-blue-50/50 via-blue-100/30 to-blue-50/20' : 'from-purple-50 via-teal-50 to-amber-50' }} p-6 border-b">
-                        <div class="flex items-start gap-4">
-                            <div class="p-3 rounded-xl bg-white shadow-sm border">
-                                <i class="bi bi-award text-xl text-amber-500"></i>
-                            </div>
-                            <div class="flex-1">
-                                <h3 class="text-xl font-bold mb-2">{{ __('trainer.trainer_show_achievements_title') }}</h3>
-                                <p class="text-sm text-gray-500">{{ __('trainer.trainer_show_achievements_subtitle') }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="p-6">
-                        @php
-                            $achievements = [
-                                ['title' => __('trainer.trainer_show_ach_top_rated'), 'icon' => 'bi-award', 'gradient' => $isMale ? 'from-blue-100/40 to-blue-50/20' : 'from-purple-100/50 to-purple-50', 'iconColor' => $isMale ? 'text-blue-600' : 'text-purple-600'],
-                                ['title' => __('trainer.trainer_show_ach_sessions_completed'), 'icon' => 'bi-activity', 'gradient' => $isMale ? 'from-sky-100/40 to-sky-50/20' : 'from-teal-100/50 to-teal-50', 'iconColor' => $isMale ? 'text-sky-600' : 'text-teal-600'],
-                                ['title' => __('trainer.trainer_show_ach_client_favorite'), 'icon' => 'bi-heart', 'gradient' => $isMale ? 'from-indigo-100/40 to-indigo-50/20' : 'from-amber-100/50 to-amber-50', 'iconColor' => $isMale ? 'text-indigo-600' : 'text-amber-600'],
-                            ];
-                        @endphp
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            @foreach($achievements as $achievement)
-                                <div class="group relative overflow-hidden rounded-xl border bg-gradient-to-br {{ $achievement['gradient'] }} p-5 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-                                    <div class="absolute top-0 end-0 w-20 h-20 bg-gradient-to-br from-white/50 to-transparent rounded-full -me-10 -mt-10 transition-transform group-hover:scale-150"></div>
-                                    <div class="relative flex flex-col items-center text-center gap-3">
-                                        <div class="w-14 h-14 rounded-full bg-white shadow-md flex items-center justify-center group-hover:scale-110 transition-transform">
-                                            <i class="bi {{ $achievement['icon'] }} text-2xl {{ $achievement['iconColor'] }}"></i>
-                                        </div>
-                                        <p class="font-bold text-sm">{{ $achievement['title'] }}</p>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Certifications Card --}}
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div class="bg-gradient-to-br {{ $isMale ? 'from-blue-50/50 via-blue-100/30 to-blue-50/20' : 'from-purple-50 via-teal-50 to-amber-50' }} p-6 border-b">
-                        <div class="flex items-start gap-4">
-                            <div class="p-3 rounded-xl bg-white shadow-sm border">
-                                <i class="bi bi-award text-xl text-teal-600"></i>
-                            </div>
-                            <div class="flex-1">
-                                <h3 class="text-xl font-bold mb-2">{{ __('trainer.trainer_show_certifications_title') }}</h3>
-                                <p class="text-sm text-gray-500">{{ __('trainer.trainer_show_certifications_subtitle') }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="p-6">
-                        @if(is_array($user->skills) && count($user->skills) > 0)
-                            <div class="space-y-6">
-                                @foreach($user->skills as $skill)
-                                    <div class="group border rounded-xl overflow-hidden bg-gradient-to-br from-white {{ $isMale ? 'to-blue-50/30' : 'to-teal-50/30' }} hover:shadow-lg transition-all">
-                                        <div class="p-5 space-y-4">
-                                            <div class="mb-3">
-                                                <h4 class="font-bold text-xl mb-1">{{ $skill }}</h4>
-                                            </div>
-                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div class="flex items-center gap-3 p-3 bg-white border rounded-lg">
-                                                    <div class="p-2 rounded-lg bg-purple-100">
-                                                        <i class="bi bi-award text-purple-600"></i>
-                                                    </div>
-                                                    <div class="flex-1">
-                                                        <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">{{ __('trainer.trainer_show_certification') }}</p>
-                                                        <p class="font-semibold">{{ $skill }}</p>
-                                                    </div>
-                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-gray-200">
-                                                        {{ __('trainer.trainer_show_verified') }}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        @else
-                            <div class="text-center py-12">
-                                <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                                    <i class="bi bi-award text-2xl text-gray-400"></i>
-                                </div>
-                                <p class="text-gray-500">{{ __('trainer.trainer_show_no_certifications') }}</p>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            </div>
-
-            {{-- ===== SCHEDULE TAB ===== --}}
-            @php
-                $dayOrder    = ['saturday','sunday','monday','tuesday','wednesday','thursday','friday'];
-                $dayAbbr     = ['saturday'=>'Sat','sunday'=>'Sun','monday'=>'Mon','tuesday'=>'Tue','wednesday'=>'Wed','thursday'=>'Thu','friday'=>'Fri'];
-                $todayKey    = strtolower(now()->format('l'));
-                $todayIndex  = array_search($todayKey, $dayOrder);
-                $visibleDays = array_slice($dayOrder, $todayIndex !== false ? $todayIndex : 0);
-            @endphp
-            <div x-show="activeTab === 'schedule'" x-cloak class="mt-6 space-y-6"
-                 x-data="{
-                     activeDay: '{{ $todayKey }}',
-                     getStatus(start, end) {
-                         const now = new Date();
-                         const pad = n => String(n).padStart(2, '0');
-                         const t = pad(now.getHours()) + ':' + pad(now.getMinutes());
-                         if (t < start) return 'upcoming';
-                         if (t <= end) return 'live';
-                         return 'finished';
-                     }
-                 }">
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div class="bg-gradient-to-br {{ $isMale ? 'from-blue-50/50 via-blue-100/30 to-blue-50/20' : 'from-purple-50 via-teal-50 to-amber-50' }} p-6 border-b">
-                        <div class="flex items-start gap-4">
-                            <div class="p-3 rounded-xl bg-white shadow-sm border">
-                                <i class="bi bi-clock text-xl text-blue-500"></i>
-                            </div>
-                            <div class="flex-1">
-                                <h3 class="text-xl font-bold mb-2">{{ __('trainer.trainer_show_weekly_schedule') }}</h3>
-                                <p class="text-sm text-gray-500">{{ __('trainer.trainer_show_schedule_subtitle') }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="p-6">
-
-                @if(count($scheduleSlots) > 0)
-                {{-- Day filter chips (today onwards in the week) --}}
-                <div class="flex flex-wrap justify-center gap-2 mb-5">
-                    @foreach($visibleDays as $dayKey)
-                    <button type="button"
-                            @click="activeDay = '{{ $dayKey }}'"
-                            :class="activeDay === '{{ $dayKey }}' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary'"
-                            class="px-5 py-2 rounded-full border text-sm font-semibold transition-colors {{ $dayKey === $todayKey ? 'ring-2 ring-primary/30' : '' }}">
-                        {{ $dayAbbr[$dayKey] }}
-                    </button>
-                    @endforeach
-                </div>
-
-                <div class="max-w-3xl mx-auto flex flex-col gap-3">
-                    @foreach($scheduleSlots as $slot)
-                    <div class="class-card"
-                         x-show="@js(array_map('strval', $slot['days'])).includes(activeDay)"
-                         :class="activeDay === '{{ $todayKey }}' ? getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') + '-card' : ''"
-                         :style="{ order: activeDay === '{{ $todayKey }}' ? ({'live':0,'upcoming':1,'finished':2}[getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}')] ?? 0) : null }"
-                         x-cloak>
-                        <div class="class-thumb">
-                            @if($slot['picture_url'])
-                            <img src="{{ asset('storage/' . $slot['picture_url']) }}" alt="{{ $slot['activity_name'] }}" class="w-full h-full object-cover">
-                            @else
-                            <div class="w-full h-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center min-h-[80px]">
-                                <i class="bi bi-activity text-white text-xl"></i>
-                            </div>
-                            @endif
-                        </div>
-                        <div class="flex-grow flex flex-col">
-                            <div class="flex justify-between items-start mb-1">
-                                <div>
-                                    <h6 class="text-base font-bold mb-0">{{ $slot['activity_name'] }}</h6>
-                                    <div class="class-meta text-muted-foreground flex items-center gap-x-4 mt-0.5 text-sm">
-                                        <span><i class="bi bi-clock me-1"></i>{{ \Carbon\Carbon::parse($slot['start'])->format('g:i A') }} – {{ \Carbon\Carbon::parse($slot['end'])->format('g:i A') }}</span>
-                                        <span class="flex items-center gap-1 ms-2"><i class="bi bi-stopwatch"></i>{{ $slot['duration'] }} {{ __('trainer.trainer_show_min') }}</span>
-                                    </div>
-                                    @if($slot['facility_name'])
-                                    <div class="text-sm text-muted-foreground mt-0.5">
-                                        <i class="bi bi-geo-alt me-1"></i>{{ $slot['facility_name'] }}
-                                    </div>
-                                    @endif
-                                </div>
-                                {{-- Status badge + club link --}}
-                                <div class="flex flex-col items-end gap-2 shrink-0">
-                                    <div x-show="activeDay === '{{ $todayKey }}'">
-                                        <span x-show="getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') === 'live'" class="status-chip status-ongoing">
-                                            <span class="live-dot"></span> {{ __('trainer.trainer_show_ongoing') }}
-                                        </span>
-                                        <span x-show="getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') === 'upcoming'" class="status-chip status-bookable">
-                                            <i class="bi bi-clock-fill"></i> {{ __('trainer.trainer_show_upcoming') }}
-                                        </span>
-                                        <span x-show="getStatus('{{ $slot['start'] }}', '{{ $slot['end'] }}') === 'finished'" class="status-chip status-finished">
-                                            <i class="bi bi-check-circle-fill"></i> {{ __('trainer.trainer_show_finished') }}
-                                        </span>
-                                    </div>
-                                    @if($slot['club_name'])
-                                    <a href="{{ $slot['club_url'] ?? '#' }}"
-                                       class="text-xs font-medium text-primary hover:underline flex items-center gap-1">
-                                        <i class="bi bi-building"></i> {{ $slot['club_name'] }}
-                                    </a>
-                                    @endif
-                                </div>
-                            </div>
-                            <div class="flex flex-wrap gap-1 mt-2">
-                                @if($slot['package_name'])
-                                <span class="pill-tag">{{ $slot['package_name'] }}</span>
-                                @endif
-                                @foreach($slot['days'] as $d)
-                                <span class="pill-tag">{{ $dayAbbr[$d] ?? ucfirst(substr($d,0,3)) }}</span>
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
-                    @endforeach
-
-                    {{-- Empty state for filtered day --}}
-                    <div x-show="!@js(collect($scheduleSlots)->map(fn($s) => $s['days'])->flatten()->unique()->values()->toArray()).includes(activeDay)"
-                         class="text-center py-16">
-                        <i class="bi bi-calendar-x text-muted-foreground text-5xl"></i>
-                        <p class="text-lg font-medium mt-4">{{ __('trainer.trainer_show_no_classes_day') }}</p>
-                        <p class="text-sm text-muted-foreground mt-2">{{ __('trainer.trainer_show_try_different_day') }}</p>
-                    </div>
-                </div>
-                @else
-                <div class="text-center py-12">
-                    <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                        <i class="bi bi-calendar-x text-2xl text-gray-400"></i>
-                    </div>
-                    <p class="text-gray-500">{{ __('trainer.trainer_show_no_classes_scheduled') }}</p>
-                </div>
-                @endif
-
-                    </div>{{-- /card body --}}
-                </div>{{-- /card --}}
-            </div>
-
-            {{-- ===== REVIEWS TAB ===== --}}
-            <div x-show="activeTab === 'reviews'" x-cloak class="mt-6 space-y-6">
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div class="bg-gradient-to-br {{ $isMale ? 'from-blue-50/50 via-blue-100/30 to-blue-50/20' : 'from-purple-50 via-teal-50 to-amber-50' }} p-6 border-b">
-                        <div class="flex items-start gap-4">
-                            <div class="p-3 rounded-xl bg-white shadow-sm border">
-                                <i class="bi bi-chat text-xl text-teal-600"></i>
-                            </div>
-                            <div class="flex-1">
-                                <h3 class="text-xl font-bold mb-2">{{ __('trainer.trainer_show_client_reviews') }}</h3>
-                                <p class="text-sm text-gray-500">{{ __('trainer.trainer_show_reviews_subtitle') }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="p-6 space-y-4">
-                        @if(!empty($reactionTotal) && $reactionTotal > 0)
-                            <div class="p-4 border rounded-xl bg-white">
-                                <p class="text-sm font-semibold text-gray-500 mb-2"><i class="bi bi-emoji-smile me-1"></i> {{ __('trainer.trainer_show_class_reactions') }} · {{ $reactionTotal }}</p>
-                                <div class="flex flex-wrap gap-2">
-                                    @foreach($reactions as $emoji => $cnt)
-                                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100">
-                                            <span class="text-xl leading-none">{{ $emoji }}</span>
-                                            <span class="text-sm font-bold text-gray-700">{{ $cnt }}</span>
-                                        </span>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endif
-                        @forelse($reviews as $review)
-                            <div class="group p-5 border rounded-xl bg-gradient-to-br from-white {{ $isMale ? 'to-blue-50/30' : 'to-purple-50/30' }} hover:shadow-md transition-all">
-                                <div class="flex items-start justify-between mb-3">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-12 h-12 rounded-full bg-gradient-to-br {{ $isMale ? 'from-blue-500 to-sky-500' : 'from-purple-500 to-teal-500' }} flex items-center justify-center shadow-sm">
-                                            <span class="text-lg font-bold text-white">
-                                                {{ mb_strtoupper(mb_substr($review->reviewer->full_name ?? 'A', 0, 1, 'UTF-8'), 'UTF-8') }}
-                                            </span>
-                                        </div>
-                                        <div>
-                                            <p class="font-bold text-base">{{ $review->reviewer->full_name ?? __('trainer.trainer_show_anonymous') }}</p>
-                                            <p class="text-xs text-gray-500 flex items-center gap-1">
-                                                <i class="bi bi-clock text-xs"></i>
-                                                {{ $review->formatted_date }}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div class="flex items-center gap-1 px-3 py-1.5 bg-yellow-50 rounded-lg border border-yellow-200">
-                                        @for($i = 0; $i < $review->rating; $i++)
-                                            <i class="bi bi-star-fill text-yellow-500 text-sm"></i>
-                                        @endfor
-                                    </div>
-                                </div>
-                                @if($review->comment)
-                                    <p class="text-gray-500 leading-relaxed ps-15">{{ $review->comment }}</p>
-                                @endif
-                            </div>
-                        @empty
-                            <div class="text-center py-12">
-                                <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                                    <i class="bi bi-chat text-2xl text-gray-400"></i>
-                                </div>
-                                <p class="text-gray-500">{{ __('trainer.trainer_show_no_reviews') }}</p>
-                            </div>
-                        @endforelse
-                    </div>
-                </div>
-            </div>
-
-            {{-- ===== CONTACT TAB ===== --}}
-            <div x-show="activeTab === 'contact'" x-cloak class="mt-6 space-y-6">
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div class="bg-gradient-to-br {{ $isMale ? 'from-blue-50/50 via-blue-100/30 to-blue-50/20' : 'from-purple-50 via-teal-50 to-amber-50' }} p-6 border-b">
-                        <div class="flex items-start gap-4">
-                            <div class="p-3 rounded-xl bg-white shadow-sm border">
-                                <i class="bi bi-telephone text-xl text-blue-500"></i>
-                            </div>
-                            <div class="flex-1">
-                                <h3 class="text-xl font-bold mb-2">{{ __('trainer.trainer_show_contact_information') }}</h3>
-                                <p class="text-sm text-gray-500">{{ __('trainer.trainer_show_contact_subtitle') }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="p-6 space-y-4">
-                        @php
-                            $trainerPhone = $user->mobile_formatted ?? null;
-                            $trainerEmail = $user->email ?? null;
-                            $trainerSocials = $user->social_links ?? [];
-                            $socialIcons = [
-                                'facebook'  => ['icon' => 'bi-facebook',  'hover' => 'hover:from-blue-600 hover:to-blue-500',      'label' => 'Facebook'],
-                                'instagram' => ['icon' => 'bi-instagram', 'hover' => 'hover:from-pink-500 hover:to-orange-500',    'label' => 'Instagram'],
-                                'twitter'   => ['icon' => 'bi-twitter-x', 'hover' => 'hover:from-gray-800 hover:to-gray-700',      'label' => 'Twitter/X'],
-                                'linkedin'  => ['icon' => 'bi-linkedin',  'hover' => 'hover:from-blue-700 hover:to-blue-600',      'label' => 'LinkedIn'],
-                                'youtube'   => ['icon' => 'bi-youtube',   'hover' => 'hover:from-red-600 hover:to-red-500',        'label' => 'YouTube'],
-                                'tiktok'    => ['icon' => 'bi-tiktok',    'hover' => 'hover:from-gray-900 hover:to-gray-800',      'label' => 'TikTok'],
-                                'snapchat'  => ['icon' => 'bi-snapchat',  'hover' => 'hover:from-yellow-400 hover:to-yellow-300',  'label' => 'Snapchat'],
-                                'whatsapp'  => ['icon' => 'bi-whatsapp',  'hover' => 'hover:from-green-500 hover:to-green-400',    'label' => 'WhatsApp'],
-                                'telegram'  => ['icon' => 'bi-telegram',  'hover' => 'hover:from-sky-500 hover:to-sky-400',        'label' => 'Telegram'],
-                                'discord'   => ['icon' => 'bi-discord',   'hover' => 'hover:from-indigo-600 hover:to-indigo-500',  'label' => 'Discord'],
-                                'github'    => ['icon' => 'bi-github',    'hover' => 'hover:from-gray-800 hover:to-gray-700',      'label' => 'GitHub'],
-                                'spotify'   => ['icon' => 'bi-spotify',   'hover' => 'hover:from-green-600 hover:to-green-500',    'label' => 'Spotify'],
-                            ];
-                        @endphp
-
-                        {{-- Phone --}}
-                        <div class="group flex items-center gap-4 p-5 border rounded-xl bg-gradient-to-r from-white to-blue-50/30 hover:border-blue-400 hover:shadow-md transition-all">
-                            <div class="p-3 rounded-xl bg-blue-50 group-hover:bg-blue-100 transition-colors">
-                                <i class="bi bi-telephone text-xl text-blue-500"></i>
-                            </div>
-                            <div class="flex-1">
-                                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{{ __('trainer.trainer_show_phone') }}</p>
-                                @if($trainerPhone)
-                                    <a href="tel:{{ $trainerPhone }}" class="font-bold text-base hover:text-blue-600 transition-colors">{{ $trainerPhone }}</a>
-                                @else
-                                    <p class="font-bold text-base text-gray-400">{{ __('trainer.trainer_show_not_provided') }}</p>
-                                @endif
-                            </div>
-                        </div>
-
-                        {{-- Email --}}
-                        <div class="group flex items-center gap-4 p-5 border rounded-xl bg-gradient-to-r from-white {{ $isMale ? 'to-sky-50/30 hover:border-sky-400' : 'to-purple-50/30 hover:border-purple-400' }} hover:shadow-md transition-all">
-                            <div class="p-3 rounded-xl bg-purple-50 group-hover:bg-purple-100 transition-colors">
-                                <i class="bi bi-envelope text-xl text-purple-600"></i>
-                            </div>
-                            <div class="flex-1">
-                                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{{ __('trainer.trainer_show_email') }}</p>
-                                @if($trainerEmail)
-                                    <a href="mailto:{{ $trainerEmail }}" class="font-bold text-base hover:text-purple-600 transition-colors">{{ $trainerEmail }}</a>
-                                @else
-                                    <p class="font-bold text-base text-gray-400">{{ __('trainer.trainer_show_not_provided') }}</p>
-                                @endif
-                            </div>
-                        </div>
-
-                        {{-- Social Media --}}
-                        @if(!empty(array_filter($trainerSocials)))
-                        <div class="pt-4">
-                            <p class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">{{ __('trainer.trainer_show_connect_social') }}</p>
-                            <div class="flex flex-wrap gap-3">
-                                @foreach($trainerSocials as $platform => $url)
-                                    @if(!empty($url) && isset($socialIcons[$platform]))
-                                    <a href="{{ $url }}" target="_blank" rel="noopener noreferrer"
-                                       title="{{ $socialIcons[$platform]['label'] }}"
-                                       class="flex-1 min-w-[3rem] inline-flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-lg bg-white hover:bg-gradient-to-r {{ $socialIcons[$platform]['hover'] }} hover:text-white hover:border-transparent transition-all">
-                                        <i class="bi {{ $socialIcons[$platform]['icon'] }} text-lg"></i>
-                                    </a>
-                                    @endif
-                                @endforeach
-                            </div>
-                        </div>
-                        @endif
-                    </div>
-                </div>
-            </div>
-
+            </main>
         </div>
     </div>
 </div>

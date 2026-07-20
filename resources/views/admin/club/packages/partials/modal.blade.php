@@ -143,7 +143,7 @@
                                     <div>
                                         <div class="mb-3">
                                             <label for="packageName" class="form-label font-medium">{{ __('admin.packages_partials_modal_package_name') }} <span class="text-destructive">*</span></label>
-                                            <input type="text" id="packageName" name="name" required x-show="lang==='en'" placeholder="{{ __('admin.packages_partials_modal_package_name_placeholder') }}" class="form-control">
+                                            <input type="text" id="packageName" name="name" :required="lang==='en'" x-show="lang==='en'" placeholder="{{ __('admin.packages_partials_modal_package_name_placeholder') }}" class="form-control">
                                             <input type="text" id="packageNameAr" name="translations[name][ar]" dir="rtl" x-show="lang==='ar'" x-cloak placeholder="الاسم بالعربية" class="form-control">
                                         </div>
                                         <div class="mb-3">

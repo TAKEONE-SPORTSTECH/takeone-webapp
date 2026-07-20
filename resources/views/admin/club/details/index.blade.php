@@ -75,12 +75,20 @@
                             <input type="text" name="translations[club_name][ar]" dir="rtl" x-show="lang==='ar'" x-cloak class="form-control" placeholder="اسم النادي بالعربية" value="{{ old('translations.club_name.ar', data_get($club ?? null, 'translations.club_name.ar')) }}">
                         </div>
                         <div>
-                            <label class="form-label">{{ __('admin.club_details_index_slogan_label') }}</label>
+                            <label class="form-label flex items-center gap-2">{{ __('admin.club_details_index_slogan_label') }}
+                                <x-ai-field-wand target='[name="slogan"]' pair='[name="translations[slogan][ar]"]'
+                                    ai-label="Club slogan"
+                                    :ai-purpose="'A short, catchy one-line tagline for '.$club->club_name.', a sports club.'" />
+                            </label>
                             <input type="text" name="slogan" class="form-control" value="{{ old('slogan', $club->slogan) }}" x-show="lang==='en'" placeholder="{{ __('admin.club_details_index_slogan_placeholder') }}">
                             <input type="text" name="translations[slogan][ar]" dir="rtl" x-show="lang==='ar'" x-cloak class="form-control" placeholder="شعار النادي بالعربية" value="{{ old('translations.slogan.ar', data_get($club ?? null, 'translations.slogan.ar')) }}">
                         </div>
                         <div>
-                            <label class="form-label">{{ __('admin.club_details_index_description_label') }}</label>
+                            <label class="form-label flex items-center gap-2">{{ __('admin.club_details_index_description_label') }}
+                                <x-ai-field-wand target='[name="description"]' pair='[name="translations[description][ar]"]'
+                                    ai-label="Club description"
+                                    :ai-purpose="'A short, engaging 1-2 sentence description of '.$club->club_name.', a sports club — what it offers and who it is for.'" />
+                            </label>
                             <textarea name="description" class="form-control" rows="3" x-show="lang==='en'" placeholder="{{ __('admin.club_details_index_description_placeholder') }}">{{ old('description', $club->description) }}</textarea>
                             <textarea name="translations[description][ar]" dir="rtl" x-show="lang==='ar'" x-cloak class="form-control" rows="3" placeholder="وصف النادي بالعربية">{{ old('translations.description.ar', data_get($club ?? null, 'translations.description.ar')) }}</textarea>
                         </div>
@@ -318,6 +326,7 @@
                             :height="200"
                             shape="square"
                             mode="form"
+                            :inline="true"
                             inputName="logo"
                             folder="clubs/{{ $club->id }}/branding"
                             :filename="'logo_' . time()"
@@ -326,6 +335,8 @@
                             :currentImage="$club->logo ? asset('storage/' . $club->logo) : ''"
                             :buttonText="__('admin.club_details_index_change_logo')"
                             buttonClass="btn btn-outline-secondary"
+                            :uploadAsIs="true"
+                            :uploadAsIsText="__('admin.club_details_index_upload_without_cropping')"
                         />
                     </div>
 
@@ -341,6 +352,7 @@
                             :height="64"
                             shape="square"
                             mode="form"
+                            :inline="true"
                             inputName="favicon"
                             folder="clubs/{{ $club->id }}/branding"
                             :filename="'favicon_' . time()"
@@ -349,6 +361,8 @@
                             :currentImage="$club->favicon ? asset('storage/' . $club->favicon) : ''"
                             :buttonText="__('admin.club_details_index_change_favicon')"
                             buttonClass="btn btn-outline-secondary"
+                            :uploadAsIs="true"
+                            :uploadAsIsText="__('admin.club_details_index_upload_without_cropping')"
                         />
                     </div>
 
@@ -360,15 +374,16 @@
                         <small class="text-muted block mb-3">{{ __('admin.club_details_index_cover_recommendation') }}</small>
                         <x-takeone-cropper
                             id="clubDetailCover"
-                            :width="600"
-                            :height="338"
+                            :width="640"
+                            :height="360"
                             shape="square"
                             mode="form"
+                            :inline="true"
                             inputName="cover_image"
                             folder="clubs/{{ $club->id }}/branding"
                             :filename="'cover_' . time()"
-                            :previewWidth="400"
-                            :previewHeight="225"
+                            :previewWidth="480"
+                            :previewHeight="270"
                             :currentImage="$club->cover_image ? asset('storage/' . $club->cover_image) : ''"
                             :buttonText="__('admin.club_details_index_change_cover')"
                             buttonClass="btn btn-outline-secondary"
@@ -472,9 +487,13 @@
                         <small class="text-muted block mb-3">{{ __('admin.club_details_index_reg_requirements_help') }}</small>
                         <p class="small font-semibold mb-1"><span class="fi fi-gb me-1"></span> {{ __('admin.club_details_index_english') }}</p>
                         <x-rich-text-editor name="registration_requirements" :value="$club->registration_requirements ?? ''"
+                            ai-label="Registration requirements" ai-group="registration_requirements"
+                            :ai-purpose="'What a new member must provide to register at '.$club->club_name.' — e.g. valid ID/CPR, recent photo, minimum age, medical clearance for contact sports, proof of payment. Present as a short checklist.'"
                             :placeholder="__('admin.club_details_index_reg_requirements_placeholder')" />
                         <p class="small font-semibold mb-1 mt-3"><span class="fi fi-bh me-1"></span> {{ __('admin.club_details_index_arabic') }}</p>
                         <x-rich-text-editor name="translations[registration_requirements][ar]" :value="$reqAr" dir="rtl"
+                            ai-label="Registration requirements (Arabic)" ai-group="registration_requirements"
+                            :ai-purpose="'What a new member must provide to register at '.$club->club_name.' — ID/CPR, recent photo, minimum age, medical clearance, proof of payment. Present as a short checklist.'"
                             placeholder="ما يحتاجه الأعضاء للتسجيل…" />
                     </div>
 
@@ -484,9 +503,13 @@
                         <small class="text-muted block mb-3">{{ __('admin.club_details_index_terms_help') }}</small>
                         <p class="small font-semibold mb-1"><span class="fi fi-gb me-1"></span> {{ __('admin.club_details_index_english') }}</p>
                         <x-rich-text-editor name="registration_terms" :value="$club->registration_terms ?? ''" min-height="200px"
+                            ai-label="Registration terms & conditions" ai-group="registration_terms"
+                            :ai-purpose="'Professional joining terms & conditions for '.$club->club_name.', covering membership, payment and refunds, code of conduct, liability and injury risk, and cancellation. Use clear headed sections.'"
                             :placeholder="__('admin.club_details_index_terms_placeholder')" />
                         <p class="small font-semibold mb-1 mt-3"><span class="fi fi-bh me-1"></span> {{ __('admin.club_details_index_arabic') }}</p>
                         <x-rich-text-editor name="translations[registration_terms][ar]" :value="$termsAr" dir="rtl" min-height="200px"
+                            ai-label="Registration terms & conditions (Arabic)" ai-group="registration_terms"
+                            :ai-purpose="'Professional joining terms & conditions for '.$club->club_name.', covering membership, payment and refunds, conduct, liability and injury risk, and cancellation. Use clear headed sections.'"
                             placeholder="شروط وأحكام النادي للانضمام…" />
                     </div>
                 </div>

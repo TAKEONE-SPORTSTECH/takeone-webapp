@@ -16,6 +16,7 @@
     'showAddress' => true,
     'showCoords' => true,
     'showLabels' => true,
+    'addressPlaceholder' => 'Enter address and press Enter to search',
     'mapClass' => 'rounded-lg overflow-hidden border border-border bg-muted/30',
 ])
 
@@ -40,7 +41,7 @@
                    name="{{ $addressName }}"
                    value="{{ $address }}"
                    @if($required) required @endif
-                   placeholder="Enter address and press Enter to search"
+                   placeholder="{{ $addressPlaceholder }}"
                    class="form-control">
         </div>
     @else

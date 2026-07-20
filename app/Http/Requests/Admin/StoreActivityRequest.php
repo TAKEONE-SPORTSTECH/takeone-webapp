@@ -15,12 +15,13 @@ class StoreActivityRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:2000',
+            'style' => 'nullable|string|max:100',
+            'description' => 'nullable|string|max:20000',
             'notes' => 'nullable|string|max:1000',
             'duration_minutes' => 'nullable|integer|min:1|max:1440',
             'existing_picture_url' => 'nullable|string',
             'translations' => ['nullable', 'array'],
-            'translations.*.*' => ['nullable', 'string', 'max:2000'],
+            'translations.*.*' => ['nullable', 'string', 'max:20000'],
         ];
     }
 

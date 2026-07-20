@@ -11,6 +11,7 @@ use App\Models\ClubTransaction;
 use App\Models\Order;
 use App\Models\Tenant;
 use App\Services\FinancialService;
+use App\Services\RecurringExpenseService;
 use App\Support\ClubCache;
 use App\Traits\HandlesClubAuthorization;
 use Illuminate\Http\Request;
@@ -253,7 +254,7 @@ class ClubFinancialController extends Controller
             'notes' => 'nullable|string|max:255',
         ]);
 
-        ClubRecurringExpense::create([
+        $rule = ClubRecurringExpense::create([
             'tenant_id' => $club->id,
             'description' => $data['description'],
             'amount' => $data['amount'],
@@ -263,6 +264,10 @@ class ClubFinancialController extends Controller
             'notes' => $data['notes'] ?? null,
             'is_active' => true,
         ]);
+
+        // Post it for the current month right away so the net reflects the commitment
+        // immediately instead of only after the due day (see RecurringExpenseService).
+        app(RecurringExpenseService::class)->postForCurrentMonth($rule);
 
         return back()->with('success', 'Recurring expense added successfully.');
     }
@@ -290,6 +295,9 @@ class ClubFinancialController extends Controller
             'notes' => $data['notes'] ?? null,
         ]);
 
+        // Correct this month's posted row (or post it, if the rule had not run yet).
+        app(RecurringExpenseService::class)->postForCurrentMonth($recurringExpense);
+
         return back()->with('success', 'Recurring expense updated successfully.');
     }
 
@@ -298,7 +306,16 @@ class ClubFinancialController extends Controller
         $this->authorizeClub($club);
         abort_if($recurringExpense->tenant_id !== $club->id, 403);
 
+        // Prorate this month's posted row before the rule (and its link) disappears.
+        app(RecurringExpenseService::class)->stopForCurrentMonth($recurringExpense);
+
         $recurringExpense->delete();
+
+        // The mobile view patches its list in place, so answer AJAX with JSON
+        // instead of a redirect it would have to follow.
+        if (request()->expectsJson()) {
+            return response()->json(['success' => true, 'message' => 'Recurring expense removed.']);
+        }
 
         return back()->with('success', 'Recurring expense removed.');
     }
@@ -310,6 +327,22 @@ class ClubFinancialController extends Controller
 
         $recurringExpense->update(['is_active' => ! $recurringExpense->is_active]);
 
-        return back()->with('success', 'Recurring expense '.($recurringExpense->is_active ? 'activated' : 'paused').'.');
+        $recurringExpenses = app(RecurringExpenseService::class);
+
+        $recurringExpense->is_active
+            ? $recurringExpenses->postForCurrentMonth($recurringExpense)
+            : $recurringExpenses->stopForCurrentMonth($recurringExpense);
+
+        $message = 'Recurring expense '.($recurringExpense->is_active ? 'activated' : 'paused').'.';
+
+        if (request()->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'is_active' => (bool) $recurringExpense->is_active,
+            ]);
+        }
+
+        return back()->with('success', $message);
     }
 }

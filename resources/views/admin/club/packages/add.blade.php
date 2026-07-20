@@ -165,7 +165,7 @@
                                             <label for="packageName" class="form-label font-medium">
                                                 {{ __('admin.club_packages_add_label_package_name') }} <span class="text-destructive">*</span>
                                             </label>
-                                            <input type="text" id="packageName" name="name" required x-show="lang==='en'" placeholder="{{ __('admin.club_packages_add_placeholder_package_name') }}" class="form-control">
+                                            <input type="text" id="packageName" name="name" :required="lang==='en'" x-show="lang==='en'" placeholder="{{ __('admin.club_packages_add_placeholder_package_name') }}" class="form-control">
                                             <input type="text" name="translations[name][ar]" dir="rtl" x-show="lang==='ar'" x-cloak placeholder="الاسم بالعربية" class="form-control" value="{{ old('translations.name.ar') }}">
                                         </div>
 

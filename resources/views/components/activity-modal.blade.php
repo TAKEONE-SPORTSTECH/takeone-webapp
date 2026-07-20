@@ -20,7 +20,7 @@
      @if($isEdit)
      x-init="$watch('showEditModal', value => { if (value) { setTimeout(() => initEditForm(), 100) } })"
      @else
-     x-init="$watch('showAddModal', value => { if (value && duplicateData) { setTimeout(() => initDuplicate(), 100) } })"
+     x-init="$watch('showAddModal', value => { if (value) { setTimeout(() => { if (duplicateData) { initDuplicate() } else { window.dispatchEvent(new CustomEvent('rte:set-content', { detail: { id: 'addActivityDescRte', html: '' } })); window.dispatchEvent(new CustomEvent('rte:set-content', { detail: { id: 'addActivityDescRteAr', html: '' } })); } }, 100) } })"
      @endif
      class="fixed inset-0 z-50 overflow-y-auto"
      x-transition:enter="transition ease-out duration-300"
@@ -34,7 +34,7 @@
 
     <!-- Modal Content -->
     <div class="flex min-h-full items-center justify-center p-4">
-        <div class="modal-content border-0 shadow-lg w-full max-w-lg relative rounded-xl overflow-hidden"
+        <div class="modal-content border-0 shadow-lg w-full max-w-2xl relative rounded-xl overflow-hidden"
              @click.stop>
             <!-- Header -->
             <div class="modal-header border-b border-border px-6 py-4">
@@ -142,26 +142,58 @@
                             <span id="{{ $prefix }}ActivityError_name" class="text-destructive text-xs hidden block"></span>
                         </div>
 
-                        <!-- Description -->
+                        <!-- Style / Federation (optional) — e.g. WTF/ITF Taekwondo, Shotokan Karate -->
                         <div class="space-y-2">
-                            <label for="{{ $prefix }}ActivityDescription" class="block text-sm font-medium text-foreground">
+                            <label for="{{ $prefix }}ActivityStyle" class="block text-sm font-medium text-foreground">
+                                Style / Federation
+                            </label>
+                            <input type="text"
+                                   id="{{ $prefix }}ActivityStyle"
+                                   name="style"
+                                   x-show="lang==='en'"
+                                   placeholder="e.g. WTF, ITF, Shotokan (optional)"
+                                   class="form-control"
+                                   maxlength="100">
+                            <input type="text"
+                                   id="{{ $prefix }}ActivityStyleAr"
+                                   name="translations[style][ar]"
+                                   dir="rtl"
+                                   x-show="lang==='ar'"
+                                   x-cloak
+                                   class="form-control"
+                                   placeholder="النمط أو الاتحاد بالعربية"
+                                   maxlength="100"
+                                   value="{{ old('translations.style.ar', data_get($activity ?? null, 'translations.style.ar')) }}">
+                            <p class="text-xs text-muted-foreground">Optional — the specific style, federation, or variant you teach.</p>
+                        </div>
+
+                        <!-- Description (rich text + AI magic wand) -->
+                        @php
+                            $activityDescPurpose = 'A rich, engaging description of this club activity — its origins and history, what a typical session involves, its benefits, and who it suits. Use short headed sections and paragraphs.';
+                        @endphp
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-foreground">
                                 {{ __('shared.components_activity_modal_description') }}
                             </label>
-                            <textarea id="{{ $prefix }}ActivityDescription"
-                                      name="description"
-                                      rows="3"
-                                      x-show="lang==='en'"
-                                      placeholder="{{ __('shared.components_activity_modal_description_placeholder') }}"
-                                      class="form-control resize-none"
-                                      oninput="clearActivityFieldError('{{ $prefix }}', 'description')"></textarea>
-                            <textarea id="{{ $prefix }}ActivityDescriptionAr"
-                                      name="translations[description][ar]"
-                                      rows="3"
-                                      dir="rtl"
-                                      x-show="lang==='ar'"
-                                      x-cloak
-                                      class="form-control resize-none"
-                                      placeholder="الوصف بالعربية">{{ old('translations.description.ar', data_get($activity ?? null, 'translations.description.ar')) }}</textarea>
+                            <div x-show="lang==='en'">
+                                <x-rich-text-editor
+                                    name="description"
+                                    id="{{ $prefix }}ActivityDescRte"
+                                    :value="old('description', data_get($activity ?? null, 'description'))"
+                                    ai-label="Activity description"
+                                    :ai-purpose="$activityDescPurpose"
+                                    ai-group="activity_desc_{{ $prefix }}" />
+                            </div>
+                            <div x-show="lang==='ar'" x-cloak>
+                                <x-rich-text-editor
+                                    name="translations[description][ar]"
+                                    id="{{ $prefix }}ActivityDescRteAr"
+                                    dir="rtl"
+                                    :value="old('translations.description.ar', data_get($activity ?? null, 'translations.description.ar'))"
+                                    ai-label="Activity description (Arabic)"
+                                    :ai-purpose="$activityDescPurpose"
+                                    ai-group="activity_desc_{{ $prefix }}" />
+                            </div>
                             <span id="{{ $prefix }}ActivityError_description" class="text-destructive text-xs hidden block"></span>
                         </div>
 
@@ -232,10 +264,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (data) {
             form.action = data.action;
             document.getElementById('editActivityName').value = data.name || '';
-            document.getElementById('editActivityDescription').value = data.description || '';
+            document.getElementById('editActivityStyle').value = data.style || '';
+            window.dispatchEvent(new CustomEvent('rte:set-content', { detail: { id: 'editActivityDescRte', html: data.description || '' } }));
             document.getElementById('editActivityNotes').value = data.notes || '';
             document.getElementById('editActivityNameAr').value = data.translations?.name?.ar || '';
-            document.getElementById('editActivityDescriptionAr').value = data.translations?.description?.ar || '';
+            document.getElementById('editActivityStyleAr').value = data.translations?.style?.ar || '';
+            window.dispatchEvent(new CustomEvent('rte:set-content', { detail: { id: 'editActivityDescRteAr', html: data.translations?.description?.ar || '' } }));
             updateCropperPreview(data.pictureUrl);
             clearAllActivityErrors('edit');
         }
@@ -259,8 +293,15 @@ function initDuplicate() {
     const component = el ? Alpine.$data(el) : null;
     if (component && component.duplicateData) {
         const data = component.duplicateData;
-        document.getElementById('addActivityName').value = data.name + '{{ __("shared.components_activity_modal_copy_suffix") }}';
-        document.getElementById('addActivityDescription').value = data.description || '';
+        document.getElementById('addActivityName').value = data.fromLibrary ? (data.name || '') : (data.name + '{{ __("shared.components_activity_modal_copy_suffix") }}');
+        const addNameArEl = document.getElementById('addActivityNameAr');
+        if (addNameArEl) addNameArEl.value = (data.translations && data.translations.name && data.translations.name.ar) || '';
+        const addStyleEl = document.getElementById('addActivityStyle');
+        if (addStyleEl) addStyleEl.value = data.style || '';
+        const addStyleArEl = document.getElementById('addActivityStyleAr');
+        if (addStyleArEl) addStyleArEl.value = (data.translations && data.translations.style && data.translations.style.ar) || '';
+        window.dispatchEvent(new CustomEvent('rte:set-content', { detail: { id: 'addActivityDescRte', html: data.description || '' } }));
+        window.dispatchEvent(new CustomEvent('rte:set-content', { detail: { id: 'addActivityDescRteAr', html: (data.translations && data.translations.description && data.translations.description.ar) || '' } }));
         document.getElementById('addActivityNotes').value = data.notes || '';
         clearAllActivityErrors('add');
 

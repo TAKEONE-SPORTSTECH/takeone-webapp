@@ -18,6 +18,8 @@ use Illuminate\View\View;
 
 class PersonalEventController extends Controller
 {
+    use \App\Traits\StoresBase64Images;
+
     public function __construct(
         private \App\Sports\Combat\Engine\DrawEngine $draws,
         private \App\Sports\Combat\Engine\Scheduler $scheduler,
@@ -469,6 +471,9 @@ class PersonalEventController extends Controller
 
         $data = $request->validate([
             'category_id' => ['nullable', 'integer', Rule::exists('event_categories', 'id')->where('event_id', $event->id)],
+            // Optional manual proof-of-payment (base64 data-URI). No gateway — the
+            // club admin approves it elsewhere; here we only RECORD it.
+            'payment_proof' => ['nullable', 'string', 'starts_with:data:image'],
         ]);
 
         // Participation-by-qualification events can't be self-joined.
@@ -536,14 +541,40 @@ class PersonalEventController extends Controller
 
         $paidFee = $event->participant_fee && ! str_contains(strtolower($event->participant_fee), 'free');
 
+        // Optional proof-of-payment (paid participant events only). Manual flow —
+        // we record the member's proof on the PRIVATE disk and leave paid=false so
+        // the club admin still has to approve it. Registration succeeds either way
+        // (the member may pay at the venue instead).
+        $existing = ClubEventRegistration::where('event_id', $event->id)->where('user_id', $me->id)->first();
+        $proofPath = $existing?->payment_proof;
+        $storedNewProof = false;
+        if ($paidFee && ! empty($data['payment_proof'])) {
+            $stored = $this->storeBase64Image(
+                $data['payment_proof'],
+                'event-payment-proofs/'.$event->tenant_id.'/'.$event->id,
+                'reg_'.$me->id.'_'.time(),
+                'local',
+            );
+            if (! $stored) {
+                return response()->json(['success' => false, 'message' => 'Please upload a valid image (JPG or PNG).'], 422);
+            }
+            // Replace any previous proof file so we don't orphan it in storage.
+            if ($proofPath && $proofPath !== $stored) {
+                rescue(fn () => \Illuminate\Support\Facades\Storage::disk('local')->delete($proofPath), null, false);
+            }
+            $proofPath = $stored;
+            $storedNewProof = true;
+        }
+
         ClubEventRegistration::updateOrCreate(
             ['event_id' => $event->id, 'user_id' => $me->id],
             [
                 'role' => 'participant',
                 'status' => 'joined',
-                'paid' => ! $paidFee,        // free → instantly "settled"; paid → awaiting proof
+                'paid' => ! $paidFee,        // free → instantly "settled"; paid → awaiting approval
                 'category_id' => $categoryId,
                 'weight' => $weight,
+                'payment_proof' => $paidFee ? $proofPath : null,
                 'registered_at' => now(),
             ]
         );
@@ -554,11 +585,14 @@ class PersonalEventController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => ($paidFee
-                ? 'Spot reserved · '.$event->participant_fee.' — confirm payment at the club'
-                : "You're in! See you there 🎉").$note,
+            'message' => ($storedNewProof
+                ? 'Spot reserved · payment sent for review'
+                : ($paidFee
+                    ? 'Spot reserved · '.$event->participant_fee.' — confirm payment at the club'
+                    : "You're in! See you there 🎉")).$note,
             'role' => 'participant',
             'division' => $division,
+            'pending_payment' => $paidFee && (bool) $proofPath,   // proof recorded, awaiting approval
             'going' => $event->participantRegistrations()->count(),
         ]);
     }
@@ -874,6 +908,8 @@ class PersonalEventController extends Controller
             'spectators_total' => $spectatorsTotal,
             'bans_list' => $full ? $this->bansList($e) : [],
             'joined' => $reg && $reg->role === 'participant',
+            // The member's OWN proof-of-payment is awaiting the club's approval.
+            'payment_pending' => $reg && $reg->role === 'participant' && ! $reg->paid && (bool) $reg->payment_proof,
             'watching' => $reg && $reg->role === 'spectator',
             'started' => $e->hasStarted(),
             'ended' => $e->hasEnded(),

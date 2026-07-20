@@ -2,6 +2,9 @@
     'package',
     'club' => null,
     'instructorsMap' => [],
+    // ['activity name (lower-cased)' => public directory URL]. Build it once per page
+    // with ActivityCatalog::linksForNames() and pass it in — never resolve per card.
+    'activityLinks' => [],
 ])
 
 @php
@@ -174,7 +177,16 @@
                         <div class="flex gap-3">
                             <div class="flex-1 min-w-0 space-y-3">
                                 <div class="flex items-start justify-between gap-2">
-                                    <h5 class="font-semibold text-base">{{ $activity->title ?? $activity->name }}</h5>
+                                    @php $actLink = $activityLinks[mb_strtolower(trim($activity->name ?? ''))] ?? null; @endphp
+                                    @if($actLink)
+                                        {{-- Click the discipline to read what it is (public directory page). --}}
+                                        <a href="{{ $actLink }}" class="font-semibold text-base text-foreground hover:text-primary transition-colors inline-flex items-center gap-1.5 no-underline group/act">
+                                            <span>{{ $activity->title ?? $activity->name }}</span>
+                                            <i class="bi bi-box-arrow-up-right text-primary text-[10px] opacity-0 group-hover/act:opacity-100 transition-opacity"></i>
+                                        </a>
+                                    @else
+                                        <h5 class="font-semibold text-base">{{ $activity->title ?? $activity->name }}</h5>
+                                    @endif
                                     @if($instructor)
                                         <a href="{{ route('trainer.show', $instructor['user_id']) }}"
                                            class="flex items-center gap-1.5 bg-primary/10 rounded-full px-2 py-1 hover:bg-primary/20 transition-colors">

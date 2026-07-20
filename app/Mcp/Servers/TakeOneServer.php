@@ -5,6 +5,7 @@ namespace App\Mcp\Servers;
 use App\Mcp\Tools\ClubFinancialsTool;
 use App\Mcp\Tools\ClubStaffTool;
 use App\Mcp\Tools\EnrollMembersTool;
+use App\Mcp\Tools\ListActivityCatalogTool;
 use App\Mcp\Tools\GetClubTool;
 use App\Mcp\Tools\GetMemberTool;
 use App\Mcp\Tools\ListClubsTool;
@@ -57,6 +58,7 @@ class TakeOneServer extends Server
         RecordTransactionTool::class,
         NotifyMemberTool::class,
         EnrollMembersTool::class,
+        ListActivityCatalogTool::class,
     ];
 
     protected array $resources = [

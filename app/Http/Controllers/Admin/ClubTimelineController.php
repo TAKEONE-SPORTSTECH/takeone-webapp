@@ -33,7 +33,7 @@ class ClubTimelineController extends Controller
             $imagePath = $request->file('image')->store('timeline/'.$club->slug, 'public');
         }
 
-        ClubTimelinePost::create([
+        $post = ClubTimelinePost::create([
             'tenant_id' => $club->id,
             'body' => $request->body,
             'category' => $request->category,
@@ -41,6 +41,10 @@ class ClubTimelineController extends Controller
             'posted_at' => $request->posted_at,
             'status' => $request->status,
         ]);
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Post created successfully.', 'post' => $post]);
+        }
 
         return back()->with('success', 'Post created successfully.');
     }
@@ -65,6 +69,10 @@ class ClubTimelineController extends Controller
         }
 
         $post->update($data);
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Post updated successfully.', 'post' => $post]);
+        }
 
         return back()->with('success', 'Post updated successfully.');
     }

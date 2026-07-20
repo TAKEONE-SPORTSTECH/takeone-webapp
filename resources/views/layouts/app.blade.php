@@ -9,7 +9,13 @@
     @endauth
 
     <title>@yield('title', config('app.name', 'Club SaaS'))</title>
-    <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
+    {{-- Single authoritative tab icon: a page can override it (e.g. a club page uses its logo)
+         by defining @section('favicon'); otherwise the platform default is used. --}}
+    @hasSection('favicon')
+        @yield('favicon')
+    @else
+        <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
+    @endif
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">

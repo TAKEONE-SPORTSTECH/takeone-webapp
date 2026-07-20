@@ -181,10 +181,14 @@
             <label class="form-label">{{ __('shared.tabs_basic_info_reg_requirements_label') }}</label>
             <div x-show="lang==='en'">
                 <x-rich-text-editor name="registration_requirements" :value="$club->registration_requirements ?? ''"
+                    ai-label="Registration requirements" ai-group="registration_requirements"
+                    :ai-purpose="'What a new member must provide to register at '.($club?->club_name ?: 'this sports club').' — e.g. valid ID/CPR, recent photo, minimum age, medical clearance for contact sports, proof of payment. Present as a short checklist.'"
                     placeholder="What members need to register — e.g. valid CPR/ID, recent photo, proof of payment, minimum age…" />
             </div>
             <div x-show="lang==='ar'" x-cloak>
                 <x-rich-text-editor name="translations[registration_requirements][ar]" :value="$reqAr" dir="rtl"
+                    ai-label="Registration requirements (Arabic)" ai-group="registration_requirements"
+                    :ai-purpose="'What a new member must provide to register at '.($club?->club_name ?: 'this sports club').' — ID/CPR, recent photo, minimum age, medical clearance, proof of payment. Present as a short checklist.'"
                     placeholder="ما يحتاجه الأعضاء للتسجيل — مثل بطاقة هوية سارية، صورة حديثة، إثبات دفع، الحد الأدنى للعمر…" />
             </div>
             <small class="text-muted-foreground">{{ __('shared.tabs_basic_info_leave_blank_hide') }}</small>
@@ -195,10 +199,14 @@
             <label class="form-label">{{ __('shared.tabs_basic_info_reg_terms_label') }}</label>
             <div x-show="lang==='en'">
                 <x-rich-text-editor name="registration_terms" :value="$club->registration_terms ?? ''" min-height="200px"
+                    ai-label="Registration terms & conditions" ai-group="registration_terms"
+                    :ai-purpose="'Professional joining terms & conditions for '.($club?->club_name ?: 'this sports club').', covering membership, payment and refunds, code of conduct, liability and injury risk, and cancellation. Use clear headed sections.'"
                     placeholder="Your club's terms &amp; conditions for joining. Leave blank to use the platform default." />
             </div>
             <div x-show="lang==='ar'" x-cloak>
                 <x-rich-text-editor name="translations[registration_terms][ar]" :value="$termsAr" dir="rtl" min-height="200px"
+                    ai-label="Registration terms & conditions (Arabic)" ai-group="registration_terms"
+                    :ai-purpose="'Professional joining terms & conditions for '.($club?->club_name ?: 'this sports club').', covering membership, payment and refunds, conduct, liability and injury risk, and cancellation. Use clear headed sections.'"
                     placeholder="شروط وأحكام النادي للانضمام. اتركه فارغًا لاستخدام الشروط الافتراضية." />
             </div>
             <small class="text-muted-foreground">{{ __('shared.tabs_basic_info_leave_blank_default') }}</small>

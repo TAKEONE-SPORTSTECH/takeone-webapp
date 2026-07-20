@@ -40,7 +40,8 @@
 {{-- the JS moves it onto <body> so it escapes any transformed ancestor (mobile shell). --}}
 <div id="editor_{{ $id }}" class="cropper-editor-overlay fixed inset-0 z-[80] flex items-end sm:items-center justify-center" style="display:none;">
     <div class="absolute inset-0 bg-black/60" id="editorBackdrop_{{ $id }}"></div>
-    <div class="relative bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col max-h-[92vh]">
+    <div class="relative bg-white w-full rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col max-h-[92vh]"
+         style="max-width: min(92vw, {{ max(512, (int) $width + 96) }}px);">
         {{-- Header --}}
         <div class="flex items-center justify-between px-4 py-3 bg-primary text-white rounded-t-3xl sm:rounded-t-2xl flex-shrink-0">
             <h5 class="text-base font-semibold flex items-center">

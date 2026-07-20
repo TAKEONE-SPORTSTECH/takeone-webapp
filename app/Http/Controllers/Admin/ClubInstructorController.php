@@ -12,6 +12,7 @@ use App\Models\ClubTransaction;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\RecurringExpenseService;
 use App\Traits\HandlesClubAuthorization;
 use App\Traits\PersistsTranslations;
 use App\Traits\StoresBase64Images;
@@ -123,6 +124,10 @@ class ClubInstructorController extends Controller
             'experience_years' => $experienceYears ?: null,
         ]);
 
+        // `role` (the staff member's specialty/title) is NOT NULL — the specialty
+        // field is optional in the form, so fall back to the staff type when blank.
+        $role = trim((string) $role) ?: ucfirst($request->input('staff_type', 'instructor'));
+
         $instructor = ClubInstructor::create([
             'tenant_id' => $clubId,
             'user_id' => $userId,
@@ -147,9 +152,11 @@ class ClubInstructorController extends Controller
             abort(403);
         }
 
+        $staffType = $request->input('staff_type', $instructor->staff_type ?: 'instructor');
         $instructor->update([
-            'role' => $request->role,
-            'staff_type' => $request->input('staff_type', $instructor->staff_type ?: 'instructor'),
+            // role is NOT NULL — keep the existing value or fall back to staff type when blank.
+            'role' => trim((string) $request->role) ?: ($instructor->role ?: ucfirst($staffType)),
+            'staff_type' => $staffType,
         ] + $this->compensationData($request, $instructor));
         $this->applyTranslations($instructor, $request);
         $this->assignPackageSlots($instructor, $request, $club->id);
@@ -215,9 +222,15 @@ class ClubInstructorController extends Controller
             ]);
         }
 
+        // Pause the wage rule and prorate this month's already-posted wage down to the
+        // days actually worked, so leaving on the 5th doesn't cost the club a full month.
         ClubRecurringExpense::where('tenant_id', $club->id)
             ->where('instructor_id', $instructor->id)
-            ->update(['is_active' => false]);
+            ->get()
+            ->each(function (ClubRecurringExpense $rule) {
+                $rule->update(['is_active' => false]);
+                app(RecurringExpenseService::class)->stopForCurrentMonth($rule);
+            });
 
         $instructor->update(['is_active' => false]);
 
@@ -424,7 +437,11 @@ class ClubInstructorController extends Controller
         if ($monthly === null) {
             ClubRecurringExpense::where('tenant_id', $instructor->tenant_id)
                 ->where('instructor_id', $instructor->id)
-                ->update(['is_active' => false]);
+                ->get()
+                ->each(function (ClubRecurringExpense $rule) {
+                    $rule->update(['is_active' => false]);
+                    app(RecurringExpenseService::class)->stopForCurrentMonth($rule);
+                });
 
             return;
         }
@@ -434,7 +451,7 @@ class ClubInstructorController extends Controller
             ->where('instructor_id', $instructor->id)
             ->value('day_of_month');
 
-        ClubRecurringExpense::updateOrCreate(
+        $rule = ClubRecurringExpense::updateOrCreate(
             ['tenant_id' => $instructor->tenant_id, 'instructor_id' => $instructor->id],
             [
                 'description' => ucfirst($instructor->staff_type ?: 'instructor').' wage — '.$name,
@@ -445,6 +462,10 @@ class ClubInstructorController extends Controller
                 'is_active' => true,
             ]
         );
+
+        // A wage counts against the month it covers, so post it now rather than waiting
+        // for the due day — otherwise the club's net looks profitable until payday.
+        app(RecurringExpenseService::class)->postForCurrentMonth($rule);
     }
 
     /**
@@ -466,6 +487,14 @@ class ClubInstructorController extends Controller
         }
 
         $recurring = $instructor->recurringExpense;
+
+        // This month's wage is already in the ledger (posted at the start of the month
+        // and pro-rated down to the last worked day on termination), so there is
+        // nothing left to settle — settling again would pay them twice.
+        if ($recurring && app(RecurringExpenseService::class)->postedThisMonth($recurring)) {
+            return ['amount' => 0.0, 'days' => 0, 'daily_rate' => 0.0];
+        }
+
         $periodStart = $recurring?->last_run_at
             ? \Carbon\Carbon::parse($recurring->last_run_at)->addDay()->startOfDay()
             : ($instructor->paid_since ?? $instructor->created_at)->copy()->startOfDay();

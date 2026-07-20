@@ -2,6 +2,9 @@
     'package',
     'club' => null,
     'instructorsMap' => [],
+    // ['activity name (lower-cased)' => public directory URL]. Build it once per page
+    // with ActivityCatalog::linksForNames() and pass it in — never resolve per card.
+    'activityLinks' => [],
 ])
 
 @php
@@ -145,7 +148,16 @@
 
                         <div class="rounded-xl bg-gray-50/70 border border-gray-100 p-2.5">
                             <div class="flex items-center justify-between gap-2 mb-1.5">
-                                <h5 class="text-[12px] font-bold text-foreground truncate">{{ $activity->tr('name') ?: ($activity->title ?? $activity->name) }}</h5>
+                                @php $actLink = $activityLinks[mb_strtolower(trim($activity->name ?? ''))] ?? null; @endphp
+                                @if($actLink)
+                                    {{-- Tap the discipline to read what it is (public directory page). --}}
+                                    <a href="{{ $actLink }}" class="m-press min-w-0 inline-flex items-center gap-1 no-underline">
+                                        <h5 class="text-[12px] font-bold text-foreground truncate">{{ $activity->tr('name') ?: ($activity->title ?? $activity->name) }}</h5>
+                                        <i class="bi bi-chevron-right text-[8px] text-primary rtl:rotate-180 flex-shrink-0"></i>
+                                    </a>
+                                @else
+                                    <h5 class="text-[12px] font-bold text-foreground truncate">{{ $activity->tr('name') ?: ($activity->title ?? $activity->name) }}</h5>
+                                @endif
                                 @if($instructor)
                                     <a href="{{ route('trainer.show', $instructor['user_id']) }}" class="m-press flex items-center gap-1 flex-shrink-0">
                                         @if($instructor['image'])
@@ -154,6 +166,7 @@
                                             <span class="w-4 h-4 rounded-full bg-primary/15 grid place-items-center text-[8px] font-bold text-primary">{{ mb_strtoupper(mb_substr($instructor['name'], 0, 1, 'UTF-8'), 'UTF-8') }}</span>
                                         @endif
                                         <span class="text-[10px] text-primary font-medium max-w-[5rem] truncate">{{ $instructor['name'] }}</span>
+                                        <i class="bi bi-chevron-right text-[8px] text-primary rtl:rotate-180 flex-shrink-0"></i>
                                     </a>
                                 @endif
                             </div>

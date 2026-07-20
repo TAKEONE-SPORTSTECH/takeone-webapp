@@ -8,6 +8,7 @@
     $activitiesJson = $activities->map(fn ($a) => [
         'id' => $a->id,
         'name' => $a->name,
+        'style' => $a->style,
         'description' => $a->description,
         'notes' => $a->notes,
         'duration_minutes' => $a->duration_minutes,
@@ -33,7 +34,7 @@
                 <h1 class="text-2xl font-black mt-0.5">{{ __('admin.nav_activities') }}</h1>
             </div>
             <div class="flex items-center gap-2">
-                <button type="button" @click="openAdd()"
+                <button type="button" @click="openChooser()"
                         class="m-press w-12 h-12 rounded-2xl bg-white/20 border border-white/30 backdrop-blur grid place-items-center active:scale-95 transition-transform" aria-label="{{ __('admin.club_activities_index_add_activity') }}">
                     <i class="bi bi-plus-lg text-xl"></i>
                 </button>
@@ -62,7 +63,7 @@
             <div class="m-card p-8 text-center">
                 <i class="bi bi-activity text-3xl text-gray-300 m-float"></i>
                 <p class="text-sm text-muted-foreground mt-2">{{ __('admin.act_none_yet') }}</p>
-                <button type="button" @click="openAdd()"
+                <button type="button" @click="openChooser()"
                         class="m-press mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-medium">
                     <i class="bi bi-plus-lg"></i>{{ __('admin.club_activities_index_add_activity') }}
                 </button>
@@ -84,6 +85,7 @@
                     </div>
                     <div class="p-3 flex flex-col flex-1">
                         <h3 class="font-semibold text-foreground text-[13px] leading-tight line-clamp-2" x-text="a.name"></h3>
+                        <span x-show="a.style" x-cloak class="inline-flex self-start mt-1 px-1.5 py-0.5 rounded-md bg-accent text-primary text-[10px] font-medium" x-text="a.style"></span>
                         <p class="text-[11px] text-muted-foreground mt-1 flex items-center gap-1 truncate" x-show="a.facility">
                             <i class="bi bi-geo-alt shrink-0"></i><span class="truncate" x-text="a.facility?.name"></span>
                         </p>
@@ -101,6 +103,101 @@
             </template>
         </div>
     </div>{{-- /content --}}
+
+    {{-- ===== Add chooser (existing vs create) ===== --}}
+    <template x-teleport="body">
+        <div x-show="chooserOpen" x-cloak class="fixed inset-0 z-[80] flex items-end" style="display:none;" @keydown.escape.window="chooserOpen=false">
+            <div class="absolute inset-0 bg-black/40" @click="chooserOpen=false"></div>
+            <div x-show="chooserOpen"
+                 x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                 x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                 class="relative w-full bg-white rounded-t-3xl overflow-hidden" style="padding-bottom: env(safe-area-inset-bottom);">
+                <div class="px-5 pt-3">
+                    <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3"></div>
+                    <h3 class="text-base font-bold text-gray-900 pb-3">{{ __('admin.club_activities_index_add_activity') }}</h3>
+                </div>
+                <div class="grid grid-cols-2 gap-3 px-5 pb-6">
+                    <button type="button" @click="openLibrary()" class="flex flex-col items-center gap-2 p-4 rounded-2xl border-2 border-dashed border-primary/30 active:scale-95 transition-transform">
+                        <span class="w-11 h-11 rounded-full bg-accent text-primary grid place-items-center"><i class="bi bi-collection text-xl"></i></span>
+                        <span class="font-semibold text-[13px] text-gray-900">Choose existing</span>
+                    </button>
+                    <button type="button" @click="chooserOpen=false; openAdd()" class="flex flex-col items-center gap-2 p-4 rounded-2xl border-2 border-dashed border-gray-200 active:scale-95 transition-transform">
+                        <span class="w-11 h-11 rounded-full bg-gray-100 text-gray-500 grid place-items-center"><i class="bi bi-plus-lg text-xl"></i></span>
+                        <span class="font-semibold text-[13px] text-gray-900">Create new</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    {{-- ===== Library picker (distinct activities across all clubs) ===== --}}
+    <template x-teleport="body">
+        <div x-show="libraryOpen" x-cloak class="fixed inset-0 z-[80] flex items-end" style="display:none;" @keydown.escape.window="libraryOpen=false">
+            <div class="absolute inset-0 bg-black/40" @click="libraryOpen=false"></div>
+            <div x-show="libraryOpen"
+                 x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                 x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                 class="relative w-full bg-white rounded-t-3xl max-h-[85vh] flex flex-col overflow-hidden">
+                <div class="flex-shrink-0 px-5 pt-3">
+                    <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3"></div>
+                    <h3 class="text-base font-bold text-gray-900">Choose an activity</h3>
+                    <p class="text-xs text-muted-foreground pb-2">Tap to add it to your club instantly</p>
+                    <div class="relative pb-3">
+                        <i class="bi bi-search absolute left-3 top-2.5 text-gray-400"></i>
+                        <input type="text" x-model="librarySearch" placeholder="Search…" class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm">
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto px-3 pb-6" style="padding-bottom: env(safe-area-inset-bottom);">
+                    <div x-show="libraryLoading" class="text-center py-8 text-muted-foreground"><i class="bi bi-arrow-repeat animate-spin text-xl"></i></div>
+                    <template x-if="!libraryLoading && filteredLibrary.length === 0"><div class="text-center py-8 text-sm text-muted-foreground">No activities found.</div></template>
+                    <template x-for="(a,i) in filteredLibrary" :key="i">
+                        <button type="button" @click="pickLibrary(a)" class="w-full text-left p-3 rounded-xl active:bg-muted/60 flex items-start gap-3">
+                            <template x-if="a.picture_src">
+                                <span class="w-9 h-9 rounded-lg overflow-hidden shrink-0 bg-muted"><img :src="a.picture_src" alt="" class="w-full h-full object-cover"></span>
+                            </template>
+                            <template x-if="!a.picture_src">
+                                <span class="w-9 h-9 rounded-lg bg-accent text-primary grid place-items-center shrink-0"><i class="bi" :class="a.icon || 'bi-activity'"></i></span>
+                            </template>
+                            <span class="min-w-0 flex-1"><span class="block font-semibold text-sm text-gray-900" x-text="a.name"></span><span class="text-xs text-muted-foreground line-clamp-1" x-text="((a.description_local||a.description)||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim()"></span></span>
+                            <i class="bi bi-plus-circle-fill text-primary text-lg self-center shrink-0" x-show="!saving"></i>
+                            <i class="bi bi-arrow-repeat animate-spin text-muted-foreground self-center shrink-0" x-show="saving" style="display:none;"></i>
+                        </button>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    {{-- ===== Style / federation chooser (only when the picked discipline has styles) ===== --}}
+    <template x-teleport="body">
+        <div x-show="styleOpen" x-cloak class="fixed inset-0 z-[85] flex items-end" style="display:none;" @keydown.escape.window="styleOpen=false; pendingActivity=null">
+            <div class="absolute inset-0 bg-black/40" @click="styleOpen=false; pendingActivity=null"></div>
+            <div x-show="styleOpen"
+                 x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                 x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                 class="relative w-full bg-white rounded-t-3xl max-h-[80vh] flex flex-col overflow-hidden" style="padding-bottom: env(safe-area-inset-bottom);">
+                <div class="flex-shrink-0 px-5 pt-3">
+                    <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3"></div>
+                    <h3 class="text-base font-bold text-gray-900">Choose a style</h3>
+                    <p class="text-xs text-muted-foreground pb-2"><span x-text="pendingActivity ? pendingActivity.name : ''"></span> has more than one style — pick the one you teach.</p>
+                </div>
+                <div class="flex-1 overflow-y-auto px-3 pb-5 space-y-2">
+                    <template x-for="(v, i) in (pendingActivity ? pendingActivity.variants : [])" :key="i">
+                        <button type="button" @click="chooseStyle(v)" :disabled="saving"
+                                class="w-full text-left px-4 py-3 rounded-xl border border-border active:bg-accent flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-lg bg-accent text-primary grid place-items-center shrink-0"><i class="bi bi-award"></i></span>
+                            <span class="font-medium text-sm text-gray-900" x-text="v.name"></span>
+                        </button>
+                    </template>
+                    <button type="button" @click="chooseStyle(null)" :disabled="saving"
+                            class="w-full text-left px-4 py-3 rounded-xl border border-dashed border-gray-200 active:bg-accent flex items-center gap-3">
+                        <span class="w-8 h-8 rounded-lg bg-gray-100 text-gray-500 grid place-items-center shrink-0"><i class="bi bi-dash-lg"></i></span>
+                        <span class="font-medium text-sm text-muted-foreground">Generic — no specific style</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </template>
 
     {{-- ===== Add / edit bottom-sheet (teleported so the fixed overlay escapes the shell transform) ===== --}}
     <template x-teleport="body">
@@ -151,6 +248,14 @@
                         <span x-show="errors.name" x-text="errors.name" class="text-red-500 text-xs mt-1 block"></span>
                     </div>
 
+                    {{-- Style / Federation (optional) --}}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Style / Federation</label>
+                        <input type="text" x-model="form.style" maxlength="100"
+                               class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                               placeholder="e.g. WTF, ITF, Shotokan (optional)">
+                    </div>
+
                     {{-- Duration --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('admin.club_activities_index_duration_minutes') }}</label>
@@ -162,7 +267,7 @@
                     {{-- Description --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('shared.components_activity_modal_description') }}</label>
-                        <textarea x-model="form.description" rows="3" maxlength="2000"
+                        <textarea x-model="form.description" rows="3" maxlength="20000"
                                   class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm resize-none"
                                   placeholder="{{ __('shared.components_activity_modal_description_placeholder') }}"></textarea>
                     </div>
@@ -324,6 +429,79 @@ window.activitiesAdmin = function (list, opts) {
         errors: {},
         form: { name: '', duration_minutes: '', description: '', notes: '', picture: null, pictureSrc: null, removePicture: false },
 
+        // --- Add chooser + cross-club library ---
+        chooserOpen: false,
+        libraryOpen: false,
+        library: [],
+        libraryLoading: false,
+        librarySearch: '',
+        openChooser() { this.chooserOpen = true; },
+        openLibrary() {
+            this.chooserOpen = false;
+            this.libraryOpen = true;
+            if (this.library.length === 0) {
+                this.libraryLoading = true;
+                fetch(this.base + '/library', { headers: { 'Accept': 'application/json' } })
+                    .then(r => r.json()).then(d => { this.library = d.activities || []; })
+                    .catch(() => {}).finally(() => { this.libraryLoading = false; });
+            }
+        },
+        get filteredLibrary() {
+            const q = this.librarySearch.trim().toLowerCase();
+            return q ? this.library.filter(a => (a.name || '').toLowerCase().includes(q)) : this.library;
+        },
+        // Choosing an existing activity adds it to THIS club immediately. If the
+        // discipline has styles/federations we ask which one first; otherwise
+        // it's a single tap. (Creating a new one still opens the full form.)
+        styleOpen: false,
+        pendingActivity: null,
+        pickLibrary(a) {
+            if ((a.variants || []).length > 0) {
+                this.pendingActivity = a;
+                this.libraryOpen = false;
+                this.styleOpen = true;
+                return;
+            }
+            this.addFromLibrary(a, null, null);
+        },
+        chooseStyle(v) {
+            const a = this.pendingActivity;
+            this.styleOpen = false;
+            this.pendingActivity = null;
+            if (a) this.addFromLibrary(a, v ? (v.name || null) : null, v ? (v.name_ar || null) : null);
+        },
+        async addFromLibrary(a, style, styleAr) {
+            if (this.saving) return;
+            this.saving = true;
+            const body = {
+                name: a.name_en || a.name || '',
+                description: a.description || '',
+                translations: Object.assign({}, a.translations || {}),
+            };
+            if (style) {
+                body.style = style;
+                if (styleAr) body.translations.style = { ar: styleAr };
+            }
+            if (a.picture_src) body.existing_picture_url = a.picture_src;
+            try {
+                const res = await fetch(this.storeUrl, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': this.csrf, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    credentials: 'same-origin', body: JSON.stringify(body),
+                });
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok || d.success === false) throw new Error(d.message || @js(__('shared.error')));
+                if (d.activity) {
+                    const i = this.list.findIndex(x => x.id === d.activity.id);
+                    if (i === -1) this.list.unshift(d.activity); else this.list[i] = d.activity;
+                }
+                this.libraryOpen = false;
+                window.showToast && window.showToast('success', d.message || @js(__('shared.done')));
+            } catch (e) {
+                window.showToast && window.showToast('error', e.message);
+            } finally { this.saving = false; }
+        },
+
         // --- Equipment manager state ---
         equipOpen: false,
         equipLoading: false,
@@ -335,7 +513,7 @@ window.activitiesAdmin = function (list, opts) {
         equipSelectedProductId: null,
         equipNewRequired: true,
 
-        blankForm() { return { name: '', duration_minutes: '', description: '', notes: '', picture: null, pictureSrc: null, removePicture: false }; },
+        blankForm() { return { name: '', style: '', duration_minutes: '', description: '', notes: '', picture: null, pictureSrc: null, removePicture: false }; },
 
         openAdd() {
             this.editingId = null;
@@ -348,6 +526,7 @@ window.activitiesAdmin = function (list, opts) {
             this.errors = {};
             this.form = {
                 name: a.name || '',
+                style: a.style || '',
                 duration_minutes: a.duration_minutes || '',
                 description: a.description || '',
                 notes: a.notes || '',
@@ -379,12 +558,19 @@ window.activitiesAdmin = function (list, opts) {
             this.saving = true;
             const body = {
                 name: this.form.name.trim(),
+                style: (this.form.style || '').trim() || null,
                 duration_minutes: this.form.duration_minutes || null,
                 description: this.form.description || '',
                 notes: this.form.notes || '',
             };
             // Only send a picture when the user picked a new one.
-            if (this.form.picture && this.form.picture.startsWith('data:image')) body.picture = this.form.picture;
+            if (this.form.picture && this.form.picture.startsWith('data:image')) {
+                body.picture = this.form.picture;
+            } else if (!this.editingId && this.form.existingPictureUrl) {
+                // Reusing an existing activity's image (from the library) — the
+                // server copies it into this club's storage.
+                body.existing_picture_url = this.form.existingPictureUrl;
+            }
 
             const url = this.editingId ? `${this.base}/${this.editingId}` : this.storeUrl;
             const method = this.editingId ? 'PUT' : 'POST';

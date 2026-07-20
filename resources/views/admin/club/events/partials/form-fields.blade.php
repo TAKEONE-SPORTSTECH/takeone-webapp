@@ -64,6 +64,30 @@
         <p class="text-xs text-muted-foreground mt-1">{{ __('admin.partials_form_fields_cancel_within_note') }}</p>
     </div>
     <div class="md:col-span-2">
+        <label class="form-label">{{ __('admin.evt_entry_fee') }}</label>
+        <div class="flex mb-2 border border-border rounded-lg overflow-hidden text-sm">
+            <button type="button"
+                    @click="formData.fee_type = 'free'"
+                    :class="formData.fee_type !== 'paid' ? 'bg-primary text-primary-foreground' : 'bg-muted/40 text-muted-foreground hover:bg-muted'"
+                    class="flex-1 py-1.5 px-3 font-medium transition-colors">
+                <i class="bi bi-unlock me-1"></i>{{ __('admin.evt_fee_free') }}
+            </button>
+            <button type="button"
+                    @click="formData.fee_type = 'paid'"
+                    :class="formData.fee_type === 'paid' ? 'bg-primary text-primary-foreground' : 'bg-muted/40 text-muted-foreground hover:bg-muted'"
+                    class="flex-1 py-1.5 px-3 font-medium transition-colors">
+                <i class="bi bi-cash-coin me-1"></i>{{ __('admin.evt_fee_paid') }}
+            </button>
+        </div>
+        <div x-show="formData.fee_type === 'paid'" class="relative">
+            <span class="absolute inset-y-0 start-0 flex items-center ps-3 text-sm text-muted-foreground pointer-events-none">{{ $club->currency }}</span>
+            <input type="number" min="0" step="any" x-model="formData.fee_amount" class="form-control ps-14"
+                   placeholder="{{ __('admin.evt_fee_amount_placeholder') }}">
+        </div>
+        <input type="hidden" name="participant_fee"
+               :value="formData.fee_type === 'paid' && formData.fee_amount !== '' && formData.fee_amount !== null ? '{{ $club->currency }} ' + formData.fee_amount : ''">
+    </div>
+    <div class="md:col-span-2">
         <label class="form-label">{{ __('admin.partials_form_fields_tags') }} <span class="text-xs text-muted-foreground">{{ __('admin.partials_form_fields_tags_hint') }}</span></label>
         <input type="text" name="tags" class="form-control" placeholder="{{ __('admin.partials_form_fields_tags_placeholder') }}" x-model="formData.tags_str">
     </div>
