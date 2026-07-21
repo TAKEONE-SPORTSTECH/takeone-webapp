@@ -40,8 +40,8 @@
 {{-- the JS moves it onto <body> so it escapes any transformed ancestor (mobile shell). --}}
 <div id="editor_{{ $id }}" class="cropper-editor-overlay fixed inset-0 z-[80] flex items-end sm:items-center justify-center" style="display:none;">
     <div class="absolute inset-0 bg-black/60" id="editorBackdrop_{{ $id }}"></div>
-    <div class="relative bg-white w-full rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col max-h-[92vh]"
-         style="max-width: min(92vw, {{ max(512, (int) $width + 96) }}px);">
+    <div class="relative w-full flex flex-col max-h-[92vh] {{ $sheetClass ?? 'rounded-t-3xl sm:rounded-2xl shadow-xl bg-white' }}"
+         style="max-width: {{ $sheetMaxWidth ?? 'min(92vw, '.max(512, (int) $width + 96).'px)' }};">
         {{-- Header --}}
         <div class="flex items-center justify-between px-4 py-3 bg-primary text-white rounded-t-3xl sm:rounded-t-2xl flex-shrink-0">
             <h5 class="text-base font-semibold flex items-center">
@@ -52,12 +52,15 @@
 
         {{-- Scrollable body --}}
         <div class="flex-1 overflow-y-auto overscroll-contain p-4">
+            @if($showControls ?? true)
             <p class="text-xs text-muted-foreground mb-2">
                 <i class="bi bi-info-circle mr-1"></i>Drag to reposition, then use the zoom &amp; rotation sliders.
             </p>
+            @endif
 
             <div id="box_{{ $id }}" class="takeone-canvas" style="height: {{ $canvasHeight }}px;"></div>
 
+            @if($showControls ?? true)
             <div class="grid grid-cols-12 gap-4 mt-4">
                 <div class="col-span-12 md:col-span-6 mb-1">
                     <label class="custom-slider-label block mb-2">Zoom Level</label>
@@ -68,20 +71,27 @@
                     <input type="range" class="form-range" id="rot_{{ $id }}" min="-180" max="180" step="1" value="0">
                 </div>
             </div>
+            @else
+            <p class="text-[11px] text-muted-foreground text-center mt-3 flex items-center justify-center gap-1.5">
+                <i class="bi bi-hand-index-thumb"></i>Drag to pan · pinch to zoom · twist to rotate
+            </p>
+            @endif
         </div>
 
         {{-- Sticky footer actions --}}
         <div class="px-4 py-3 bg-gray-50 border-t flex-shrink-0 flex items-center gap-2" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));">
+            @if($showCancel ?? true)
             <button type="button" class="flex-shrink-0 btn btn-outline-secondary py-2.5 px-4" id="cancelBtn_{{ $id }}">
                 Cancel
             </button>
+            @endif
             @if($uploadAsIs)
             <button type="button" class="flex-1 btn btn-outline-secondary py-2.5 font-bold" id="saveAsIs_{{ $id }}">
                 {{ $uploadAsIsText }}
             </button>
             @endif
             <button type="button" class="flex-1 btn btn-success py-2.5 font-bold" id="save_{{ $id }}">
-                @if($mode === 'form') Crop & Apply @else Crop & Save Image @endif
+                {{ $saveText ?? ($mode === 'form' ? 'Crop & Apply' : 'Crop & Save Image') }}
             </button>
         </div>
     </div>

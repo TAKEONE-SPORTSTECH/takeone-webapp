@@ -29,37 +29,40 @@
         </div>
     </div>
 
-    {{-- ===== Hero ===== --}}
-    <header class="ax-hero">
-        @if($img)
-            <div class="ax-hero-bg" style="background-image:url('{{ $img }}')"></div>
-            <div class="ax-hero-frame"><img class="ax-hero-img" src="{{ $img }}" alt="{{ $name }}"></div>
-        @else
-            <div class="ax-hero-bg ax-hero-bg--plain"></div>
-            <div class="ax-hero-icon"><i class="bi {{ $activity->icon ?: 'bi-activity' }}"></i></div>
-        @endif
-        <div class="ax-hero-grain"></div>
-        <div class="ax-hero-scrim"></div>
-
-        <div class="ax-topbar">
-            <a href="{{ url()->previous() }}" id="axBack" onclick="if(history.length>1){event.preventDefault();history.back();}" class="ax-ctrl" title="{{ $rtl ? 'رجوع' : 'Back' }}"><i class="bi bi-arrow-left"></i></a>
-            <div class="ax-topbar-right">
-                <button type="button" class="ax-ctrl" onclick="axShare()" title="{{ $rtl ? 'مشاركة' : 'Share' }}"><i class="bi bi-share"></i></button>
-                <x-qr-code :url="route('activity.show', $activity)" :title="$name" label="" icon="bi-qr-code" buttonClass="ax-ctrl" :size="248" :caption="$rtl ? 'امسح للفتح على الجوال' : 'Scan to open on your phone'" />
-            </div>
-        </div>
-
-        <div class="ax-hero-inner">
-            <div class="ax-eyebrow ax-rise" style="--d:.05s"><span class="ax-dot"></span> {{ $rtl ? 'دليل تيك ون للأنشطة' : 'THE TAKEONE ALMANAC' }}</div>
-            <h1 class="ax-title ax-rise" style="--d:.13s">{{ $name }}</h1>
-            @if(count($variants))
-                <div class="ax-chips ax-rise" style="--d:.22s">
-                    @foreach($variants as $v)<span class="ax-chip">{{ $rtl ? ($v['name_ar'] ?? $v['name']) : $v['name'] }}</span>@endforeach
-                </div>
+    {{-- ===== Hero (boxed banner — no dark tint) ===== --}}
+    <div class="ax-herowrap">
+        <header class="ax-hero">
+            @if($img)
+                <div class="ax-hero-bg" style="background-image:url('{{ $img }}')"></div>
+                <div class="ax-hero-frame"><img class="ax-hero-img" src="{{ $img }}" alt="{{ $name }}"></div>
+            @else
+                <div class="ax-hero-bg ax-hero-bg--plain"></div>
+                <div class="ax-hero-icon"><i class="bi {{ $activity->icon ?: 'bi-activity' }}"></i></div>
             @endif
-            <div class="ax-scrollcue ax-rise" style="--d:.4s"><span></span></div>
-        </div>
-    </header>
+            <div class="ax-hero-grain"></div>
+            {{-- subtle top fade behind the controls only (keeps the picture bright, controls legible) --}}
+            <div class="ax-hero-topfade"></div>
+
+            <div class="ax-topbar">
+                <a href="{{ url()->previous() }}" id="axBack" onclick="if(history.length>1){event.preventDefault();history.back();}" class="ax-ctrl" title="{{ $rtl ? 'رجوع' : 'Back' }}"><i class="bi bi-arrow-left"></i></a>
+                <div class="ax-topbar-right">
+                    <button type="button" class="ax-ctrl" onclick="axShare()" title="{{ $rtl ? 'مشاركة' : 'Share' }}"><i class="bi bi-share"></i></button>
+                    <x-qr-code :url="route('activity.show', $activity)" :title="$name" label="" icon="bi-qr-code" buttonClass="ax-ctrl" :size="248" :caption="$rtl ? 'امسح للفتح على الجوال' : 'Scan to open on your phone'" />
+                </div>
+            </div>
+        </header>
+    </div>
+
+    {{-- ===== Title band (clean, directly below the banner) ===== --}}
+    <div class="ax-band">
+        <div class="ax-eyebrow ax-rise" style="--d:.05s"><span class="ax-dot"></span> {{ $rtl ? 'دليل تيك ون للأنشطة' : 'THE TAKEONE ALMANAC' }}</div>
+        <h1 class="ax-title ax-rise" style="--d:.13s">{{ $name }}</h1>
+        @if(count($variants))
+            <div class="ax-chips ax-rise" style="--d:.22s">
+                @foreach($variants as $v)<span class="ax-chip">{{ $rtl ? ($v['name_ar'] ?? $v['name']) : $v['name'] }}</span>@endforeach
+            </div>
+        @endif
+    </div>
 
     {{-- ===== Body ===== --}}
     <div class="ax-shell">
@@ -139,14 +142,17 @@
     .ax-langbar { display: flex; justify-content: flex-end; margin-bottom: 1.25rem; }
 
     /* ── Hero ── */
-    .ax-hero { position: relative; width: 100%; aspect-ratio: 16/9; max-height: 86vh; min-height: 340px; overflow: hidden; background: #08080f; }
+    /* Full-bleed banner — expands edge-to-edge */
+    .ax-herowrap { width: 100%; }
+    .ax-hero { position: relative; width: 100%; aspect-ratio: 16/9; max-height: 78vh; min-height: 360px; overflow: hidden; background: #08080f; }
     .ax-hero-bg { position: absolute; inset: -8%; background-size: cover; background-position: center; filter: blur(40px) brightness(.46) saturate(1.25); transform: scale(1.14); animation: axZoom 28s ease-in-out infinite alternate; }
     .ax-hero-bg--plain { filter: none; animation: none; transform: none; background: radial-gradient(760px 440px at 28% 18%, hsl(250 66% 44%), transparent 70%), linear-gradient(135deg, hsl(252 56% 30%), hsl(250 48% 12%)); }
     .ax-hero-frame { position: absolute; inset: 0; z-index: 1; }
     .ax-hero-img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; animation: axImgIn 1.3s cubic-bezier(.16,.84,.28,1) both; }
     .ax-hero-icon { position: absolute; inset: 0; display: grid; place-items: center; z-index: 1; color: rgba(255,255,255,.9); font-size: 9rem; animation: axImgIn 1.1s ease both; }
-    .ax-hero-scrim { position: absolute; inset: 0; z-index: 2; pointer-events: none; background: linear-gradient(to top, rgba(6,6,12,.96), rgba(6,6,12,.5) 24%, rgba(6,6,12,.05) 50%, transparent 68%), radial-gradient(120% 80% at 50% 120%, rgba(0,0,0,.5), transparent 60%); }
-    .ax-hero-grain { position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: .45; mix-blend-mode: overlay; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E"); }
+    /* Bright image: no full dark scrim. Only a slim top fade so the back/share/QR controls stay legible. */
+    .ax-hero-topfade { position: absolute; top: 0; inset-inline: 0; height: 116px; z-index: 2; pointer-events: none; background: linear-gradient(to bottom, rgba(8,8,16,.34), transparent); }
+    .ax-hero-grain { position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: .12; mix-blend-mode: overlay; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E"); }
 
     .ax-topbar { position: absolute; top: 0; inset-inline: 0; z-index: 6; display: flex; align-items: center; justify-content: space-between; padding: clamp(14px, 2vw, 22px) var(--pad); animation: axFade .8s ease both; }
     .ax-topbar-right { display: flex; align-items: center; gap: .6rem; }
@@ -167,12 +173,13 @@
     .ax-cta-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 24px -16px rgba(45,35,85,.5); }
     .ax-cta-btn--primary { background: linear-gradient(145deg, var(--ax), var(--ax-deep)); color: #fff; border: 0; box-shadow: 0 12px 26px -14px hsl(250 60% 50% / .8); }
 
-    .ax-hero-inner { position: absolute; inset-inline: 0; bottom: 0; z-index: 4; padding: 0 var(--pad) clamp(1.75rem, 4vw, 3.25rem); max-width: 1200px; margin: 0 auto; }
-    .ax-eyebrow { display: inline-flex; align-items: center; gap: .55rem; color: hsl(250 100% 90%); font-size: .74rem; font-weight: 700; letter-spacing: .26em; text-transform: uppercase; margin-bottom: .85rem; }
+    /* Clean title band sitting directly under the boxed banner (light surface, dark ink) */
+    .ax-band { max-width: 1200px; margin: 0 auto; padding: clamp(1.4rem, 3.2vw, 2.4rem) var(--pad) 0; }
+    .ax-eyebrow { display: inline-flex; align-items: center; gap: .55rem; color: var(--ax-deep); font-size: .74rem; font-weight: 700; letter-spacing: .26em; text-transform: uppercase; margin-bottom: .8rem; }
     .ax-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--ax); box-shadow: 0 0 14px 2px var(--ax); animation: axPulse 2.4s ease-in-out infinite; }
-    .ax-title { font-family: var(--ax-display); color: #fff; font-weight: 900; letter-spacing: -.015em; line-height: .96; font-size: clamp(2.6rem, 6.2vw, 5.6rem); text-shadow: 0 6px 50px rgba(0,0,0,.55); margin: 0; }
-    .ax-chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.15rem; }
-    .ax-chip { padding: .42rem .95rem; border-radius: 999px; font-size: .8rem; font-weight: 600; color: #fff; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.24); backdrop-filter: blur(6px); }
+    .ax-title { font-family: var(--ax-display); color: var(--ax-ink); font-weight: 900; letter-spacing: -.015em; line-height: .98; font-size: clamp(2.3rem, 5.2vw, 4.4rem); margin: 0; }
+    .ax-chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.05rem; }
+    .ax-chip { padding: .42rem .95rem; border-radius: 999px; font-size: .8rem; font-weight: 600; color: var(--ax-deep); background: hsl(250 60% 96%); border: 1px solid hsl(250 55% 88%); }
     .ax-scrollcue { width: 26px; height: 42px; border-radius: 999px; border: 2px solid rgba(255,255,255,.4); margin-top: 1.5rem; position: relative; }
     .ax-scrollcue span { position: absolute; top: 8px; left: 50%; width: 4px; height: 8px; border-radius: 999px; background: #fff; transform: translateX(-50%); animation: axCue 1.7s ease-in-out infinite; }
 

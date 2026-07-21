@@ -1166,6 +1166,43 @@ Status: Complete. Key patterns:
 
 ---
 
+## One Cropper Everywhere — Mobile Uses `<x-takeone-cropper :inline>` — STRICT
+
+**Rule:** Every image crop/upload in a **mobile** view MUST use the shared `<x-takeone-cropper>` widget in **inline mode** (`:inline="true"`) — the mobile-first bottom-sheet crop editor. Never render the cropper's default **modal mode** on mobile, and never build a one-off/alternate cropper. There is exactly one cropper in this project; on phones it always appears as the same bottom sheet.
+
+### Why
+The default modal mode opens through the Bootstrap bridge with the LOCKED desktop dialog size (`max-width:75%; width:1000px`), which collapses to a cramped, clipped box on a phone. Inline mode is the purpose-built mobile bottom sheet: teleported to `<body>` (escapes the mobile-shell transform trap), scrollable body, safe-area sticky footer, delegated handlers, and an auto-fit crop viewport. It is already used by the profile-picture and photo-edit croppers.
+
+### How (canonical mobile invocation)
+```blade
+<x-takeone-cropper
+    id="…Mobile" mode="ajax" :inline="true"
+    :width="1600" :height="900" shape="rectangle" :canvasHeight="300"
+    folder="…" filename="…" :uploadUrl="route('…')"
+    sheetMaxWidth="100%"                                   {{-- match the host form's full-width sheet --}}
+    sheetClass="rounded-t-3xl shadow-2xl bg-background"    {{-- match the host sheet's shape/size --}}
+    :showControls="false"                                  {{-- drop sliders; pinch/twist gestures drive it --}}
+    :showCancel="false"                                    {{-- the header ✕ closes; no redundant Cancel --}}
+    saveText="Crop" :uploadAsIs="true" uploadAsIsText="Upload" />
+```
+- **Match the host sheet.** Set `sheetMaxWidth` / `sheetClass` so the crop sheet looks the same (shape + size) as the form it opens from. Defaults keep the old centered-card look for non-mobile callers, so overriding is opt-in and never touches the profile/photo croppers.
+- **Sliders vs gestures.** `:showControls="false"` hides the zoom/rotation sliders; the widget then enables **pinch-to-zoom + two-finger twist-to-rotate** (Cropme has no native pinch — the widget adds it). Single-finger pan is Cropme's. Leave `showControls` default (`true`) only where sliders are actually wanted.
+- **Labels / actions.** Customize with `saveText`, `uploadAsIsText`; hide the footer Cancel with `:showCancel="false"` (there is always a header ✕).
+
+### Non-negotiable gotchas (already handled inside the widget — do not regress)
+- **All handlers are delegated off `document`** (namespaced `.tk{id}`, guarded by `off()`), because in mobile the cropper renders inside a `<template x-teleport="body">` and `$(ready)` fires before Alpine teleports — direct `$('#id').on()` / `getElementById(...).addEventListener` silently bind to nothing and the picked image never loads. Never convert these back to direct binds.
+- **The crop element is resolved lazily inside `initCropper`** (not cached at `$(ready)`), for the same teleport reason.
+- **The viewport auto-fits the canvas.** Cropme throws *"Viewport height cannot be greater that container height"* if `width`/`height` exceed the `canvasHeight` box — the widget scales the viewport down (preserving aspect) only when it overflows. So a wide `:width`/`:height` (e.g. 1600×900 hero) is fine.
+- **⚠️ Crop at full resolution — never upscale a viewport-sized crop.** Because the on-screen viewport is auto-fit small, the crop MUST be taken from the SOURCE image via Cropme's `crop({ width: <output px> })` option (it re-renders from the original pixels), then normalized to exactly `width`×`height` on a canvas and JPEG-encoded (~0.92). The old handler cropped at the viewport size and *stretched that tiny image up* to `width`×`height` → severe blur. Do not reintroduce that upscale. The **Upload** (`uploadAsIs`) path already sends the original full-resolution bytes untouched. (Regression-tested with a high-frequency source: full-res crop preserved ~331 stripe edges vs **0** for the upscale path.)
+
+### Boundaries
+- Does **not** override the LOCKED profile-picture cropper config — the profile cropper keeps its desktop modal + fixed dims.
+- Desktop callers may keep modal mode (fine on a large screen); this rule is about the **mobile** experience.
+
+> Reference implementation: `resources/views/admin/platform/mobile/activities.blade.php` (activity hero uploader). The widget lives at `resources/views/vendor/takeone/components/widget.blade.php` + `widget-crop-body.blade.php`.
+
+---
+
 ## Mobile Pattern Language — the BASE for every mobile view — STRICT
 
 **Rule:** Every mobile view — new or edited — is built from the named patterns below. This is the default vocabulary; do not invent a new structure when one of these fits, and never port a desktop layout to mobile unchanged. When a desktop screen is dense (many tabs, many fields, long tables), the mobile answer is **restructure**, not shrink.
@@ -1367,7 +1404,7 @@ All components live in `resources/views/components/` and are called as `<x-{name
 | `<x-date-picker>` | **Calendar field — the default replacement for `<input type="date">`** (Design Rule #4). Rounded trigger (calendar icon, formatted date, rotating chevron) + a month grid that expands **inside the normal flow** — never `position: absolute` — so a scrolling bottom-sheet body can't clip it. Today is ringed, the selection is filled `bg-primary`, out-of-range days are disabled, and Today / Clear sit in the footer. Value is always an ISO `YYYY-MM-DD` string. Pass **`model`** (Alpine path in the parent scope) to bind parent state, or omit it and pass **`value`** for a standalone server-form control posted via `name`. Use `min-expr` / `max-expr` / `name-expr` when the bound range or field name is itself reactive (e.g. a form that toggles between a one-off date and a recurring day). All behaviour is inline `x-data` — no registration script, so it survives mobile-shell content swaps. | `model`, `value`, `name`, `min`, `max`, `minExpr`, `maxExpr`, `nameExpr`, `placeholder`, `error`, `change`, `dayOnly` |
 | `<x-rich-text-editor>` | WYSIWYG rich-text editor (Alpine + `contenteditable`). Toolbar: bold/italic/underline/strikethrough, text color, H1/H2/H3/paragraph/quote, bullet+numbered lists, indent, align, link (inline URL bar, no native prompt)/unlink, horizontal rule, undo/redo, clear. Submits HTML via a hidden `<textarea name="{name}">`. Supports `dir="rtl"`. ⚠️ Its output is untrusted HTML — sanitize server-side before storing and never echo it unescaped without sanitization. | `name`, `id`, `value`, `dir`, `placeholder`, `minHeight` |
 | `<x-image-upload>` | Inline image upload with crop preview (uses takeone-cropper) | `id`, `name`, `width`, `height`, `shape`, `folder`, `filename`, `uploadUrl`, `currentImage`, `placeholder`, `placeholderIcon`, `buttonText`, `rounded`, `showPreview` |
-| `<x-takeone-cropper>` | Raw cropper widget (used inside `image-upload`). Pass `:uploadAsIs="true"` to show a second "Upload As Is" button alongside "Crop & Apply". Customize its label with `uploadAsIsText`. | `id`, `width`, `height`, `shape`, `folder`, `filename`, `uploadUrl`, `currentImage`, `buttonText`, `buttonClass`, `mode` (ajax\|form), `inputName`, `canvasHeight`, `uploadAsIs`, `uploadAsIsText` |
+| `<x-takeone-cropper>` | Raw cropper widget (used inside `image-upload`). Pass `:inline="true"` for the **mobile-first bottom-sheet** crop editor (**required on mobile** — see *One Cropper Everywhere*); default is desktop modal mode. `:uploadAsIs="true"` shows a second full-res upload button (label via `uploadAsIsText`). `:showControls="false"` swaps the zoom/rotation sliders for pinch/twist touch gestures. `sheetMaxWidth`/`sheetClass` shape the inline sheet; `saveText` relabels the crop button; `:showCancel="false"` hides the footer Cancel (header ✕ closes). Viewport auto-fits `canvasHeight`; handlers are teleport-safe (delegated). | `id`, `width`, `height`, `shape`, `folder`, `filename`, `uploadUrl`, `currentImage`, `buttonText`, `buttonClass`, `mode` (ajax\|form), `inputName`, `canvasHeight`, `uploadAsIs`, `uploadAsIsText`, `inline`, `showControls`, `showCancel`, `saveText`, `sheetMaxWidth`, `sheetClass` |
 | `<x-schedule-time-picker>` | Days-of-week multi-select + start/end time inputs | `id`, `daysName`, `startTimeName`, `endTimeName`, `selectedDays`, `startTime`, `endTime`, `required`, `showLabels` |
 | `<x-social-links-editor>` | Editable list of social media links (add/remove/reorder) | `links`, `containerId` |
 | `<x-social-link-row>` | Single social link row — used internally by `social-links-editor` | `index`, `link` |

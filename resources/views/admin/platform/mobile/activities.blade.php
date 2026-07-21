@@ -232,21 +232,27 @@
                                 <i class="bi" :class="imgBusy ? 'bi-arrow-repeat animate-spin' : 'bi-image'"></i>
                                 <span x-text="imgBusy ? 'Generating image…' : (current && current.picture_src ? 'Regenerate image with AI' : 'Generate image with AI')"></span>
                             </button>
-                            {{-- The cropper's own button opens its modal (the proven pattern). --}}
+                            {{-- Mobile: inline mode → upload/camera tiles render in-flow and the crop
+                                 editor opens as a teleported bottom-sheet (mobile-first), instead of the
+                                 desktop Bootstrap modal that collapses on a phone. --}}
                             <x-takeone-cropper
                                 id="activityHeroCropperMobile"
                                 mode="ajax"
+                                :inline="true"
                                 :width="1600"
                                 :height="900"
                                 shape="rectangle"
-                                :canvasHeight="520"
+                                :canvasHeight="300"
                                 folder="activity-catalog/uploads"
                                 filename="hero"
                                 :uploadUrl="route('admin.platform.activities.upload-image')"
-                                buttonText="Upload image"
-                                buttonClass="w-full inline-flex items-center justify-center px-3 py-2.5 rounded-xl text-sm font-medium border border-gray-200 text-foreground hover:bg-accent transition-colors"
+                                sheetMaxWidth="100%"
+                                sheetClass="rounded-t-3xl shadow-2xl bg-background"
+                                saveText="Crop"
+                                :showCancel="false"
+                                :showControls="false"
                                 :uploadAsIs="true"
-                                uploadAsIsText="Upload without cropping" />
+                                uploadAsIsText="Upload" />
                         </div>
                         <p x-show="!editing" class="text-xs text-muted-foreground mt-1">Save the activity first, then generate or upload its image.</p>
 

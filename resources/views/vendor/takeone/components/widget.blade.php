@@ -24,6 +24,13 @@
     $uploadAsIs = $attributes->get('uploadAsIs', false);          // Show "Upload As Is" button alongside crop
     $uploadAsIsText = $attributes->get('uploadAsIsText', 'Upload As Is'); // Label for the as-is button
     $inline = filter_var($attributes->get('inline', false), FILTER_VALIDATE_BOOLEAN); // Render crop UI inline (no modal popup)
+
+    // Inline-mode bottom-sheet shape/size (lets a caller match the crop sheet to a host form's sheet).
+    $sheetMaxWidth = $attributes->get('sheetMaxWidth', 'min(92vw, ' . max(512, (int) $width + 96) . 'px)'); // CSS max-width of the sheet panel
+    $sheetClass = $attributes->get('sheetClass', 'rounded-t-3xl sm:rounded-2xl shadow-xl bg-white');         // rounding / shadow / bg of the sheet panel
+    $saveText = $attributes->get('saveText', $mode === 'form' ? 'Crop & Apply' : 'Crop & Save Image');       // label for the crop/save button
+    $showCancel = filter_var($attributes->get('showCancel', true), FILTER_VALIDATE_BOOLEAN);                 // show the footer Cancel button (inline mode)
+    $showControls = filter_var($attributes->get('showControls', true), FILTER_VALIDATE_BOOLEAN);            // show zoom/rotation sliders; when false, touch pinch/rotate gestures drive the crop
 @endphp
 
 <x-toast-notification />
@@ -110,7 +117,6 @@
 <script>
 $(function() {
     let cropper_{{ $id }} = null;
-    const el_{{ $id }} = document.getElementById("box_{{ $id }}");
     const zoomMin_{{ $id }} = 0.01;
     const zoomMax_{{ $id }} = 3;
     const currentImage_{{ $id }} = '{{ $currentImage }}';
@@ -123,14 +129,75 @@ $(function() {
         p.image.style.transform = t;
     }
 
+@if(! $showControls)
+    // Cropme has no native pinch/rotate — add two-finger pinch-to-zoom + twist-to-rotate that
+    // drive the same properties the (now-hidden) sliders used. Single-finger pan stays Cropme's.
+    function attachGestures_{{ $id }}(box) {
+        if (!box || box.dataset.gesturesBound) return;
+        box.dataset.gesturesBound = '1';
+        let active = false, startDist = 0, startAngle = 0, startScale = 1, startDeg = 0;
+        const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+        const ang = (t) => Math.atan2(t[1].clientY - t[0].clientY, t[1].clientX - t[0].clientX) * 180 / Math.PI;
+        box.addEventListener('touchstart', function (e) {
+            const c = cropper_{{ $id }};
+            if (e.touches.length === 2 && c && c.properties.image) {
+                active = true;
+                startDist = dist(e.touches);
+                startAngle = ang(e.touches);
+                startScale = c.properties.scale || 1;
+                startDeg = c.properties.deg || 0;
+                e.preventDefault();
+            }
+        }, { passive: false });
+        box.addEventListener('touchmove', function (e) {
+            const c = cropper_{{ $id }};
+            if (!active || e.touches.length !== 2 || !c) return;
+            e.preventDefault();
+            e.stopPropagation(); // keep Cropme's single-finger pan from also firing
+            if (startDist > 0) {
+                let s = startScale * (dist(e.touches) / startDist);
+                c.properties.scale = Math.min(Math.max(s, zoomMin_{{ $id }}), zoomMax_{{ $id }});
+            }
+            c.properties.deg = startDeg + (ang(e.touches) - startAngle);
+            applyTransform_{{ $id }}(c);
+        }, { passive: false });
+        box.addEventListener('touchend', function (e) {
+            if (e.touches.length < 2) active = false;
+        });
+    }
+@endif
+
     function initCropper_{{ $id }}(imageUrl) {
+        // Resolve the canvas at call time — in inline mode it lives inside an x-teleport
+        // template and isn't queryable until Alpine teleports it, so caching it at $(ready)
+        // would leave a stale/null element and the image would never render.
+        const box_{{ $id }} = document.getElementById("box_{{ $id }}");
+        if (!box_{{ $id }}) return;
         if (cropper_{{ $id }}) cropper_{{ $id }}.destroy();
 
-        cropper_{{ $id }} = new Cropme(el_{{ $id }}, {
+        // Cropme throws "viewport > container" if the requested viewport doesn't fit the canvas.
+        // Fit it (preserving aspect ratio) ONLY when it overflows — small viewports (e.g. the
+        // 300x400 profile crop) are left exactly as-is. Output stays {{ $width }}x{{ $height }}
+        // (the save handler re-renders the crop at that resolution).
+        let vpW_{{ $id }} = {{ $width }}, vpH_{{ $id }} = {{ $height }};
+        (function () {
+            const ch = {{ $canvasHeight }};
+            const cw = box_{{ $id }}.clientWidth || {{ $width }};
+            if (vpW_{{ $id }} > cw - 8 || vpH_{{ $id }} > ch - 8) {
+                const ar = {{ $width }} / {{ $height }};
+                vpH_{{ $id }} = Math.min(vpH_{{ $id }}, ch - 16);
+                vpW_{{ $id }} = vpH_{{ $id }} * ar;
+                if (vpW_{{ $id }} > cw - 16) { vpW_{{ $id }} = cw - 16; vpH_{{ $id }} = vpW_{{ $id }} / ar; }
+                vpW_{{ $id }} = Math.max(40, Math.round(vpW_{{ $id }}));
+                vpH_{{ $id }} = Math.max(40, Math.round(vpH_{{ $id }}));
+            }
+        })();
+
+        cropper_{{ $id }} = new Cropme(box_{{ $id }}, {
             container: { width: '100%', height: {{ $canvasHeight }} },
             viewport: {
-                width: {{ $width }},
-                height: {{ $height }},
+                width: vpW_{{ $id }},
+                height: vpH_{{ $id }},
                 type: '{{ $shape }}',
                 border: { enable: true, width: 2, color: '#fff' }
             },
@@ -138,6 +205,10 @@ $(function() {
             zoom: { min: zoomMin_{{ $id }}, max: zoomMax_{{ $id }}, enable: true, mouseWheel: true, slider: false },
             rotation: { enable: true, slider: false }
         });
+
+@if(! $showControls)
+        attachGestures_{{ $id }}(box_{{ $id }});
+@endif
 
         cropper_{{ $id }}.bind({ url: imageUrl }).then(() => {
             $('#zoom_{{ $id }}').val(0);
@@ -171,9 +242,9 @@ $(function() {
         if (fi) fi.value = '';
         if (ci) ci.value = '';
     }
-    document.getElementById('cancel_{{ $id }}')?.addEventListener('click', hideEditor_{{ $id }});
-    document.getElementById('cancelBtn_{{ $id }}')?.addEventListener('click', hideEditor_{{ $id }});
-    document.getElementById('editorBackdrop_{{ $id }}')?.addEventListener('click', hideEditor_{{ $id }});
+    // Delegated: these elements live inside an x-teleport template that isn't in the queryable
+    // DOM at $(ready) on SPA nav, so direct binding would silently miss them.
+    $(document).on('click.tk{{ $id }}', '#cancel_{{ $id }}, #cancelBtn_{{ $id }}, #editorBackdrop_{{ $id }}', hideEditor_{{ $id }});
 @else
     // Load current image when modal opens
     $('#cropperModal_{{ $id }}').on('shown.bs.modal', function() {
@@ -197,13 +268,18 @@ $(function() {
         }
     }
 
-    $('#input_{{ $id }}').on('change', function() {
+    // All handlers are DELEGATED off document (namespaced .tk{{ $id }}) so they work whether the
+    // cropper is in the page directly OR inside an x-teleport template that Alpine moves to <body>
+    // after $(ready). off() first guards against any re-execution stacking duplicates.
+    $(document).off('.tk{{ $id }}');
+
+    $(document).on('change.tk{{ $id }}', '#input_{{ $id }}', function() {
         handleFileSelect_{{ $id }}(this);
     });
 
     // "Take Photo" → open the device camera (capture input), then feed the same cropper flow.
     // On desktop (no camera capture support) this falls back to the normal file picker.
-    $('#camera_{{ $id }}').on('click', function() {
+    $(document).on('click.tk{{ $id }}', '#camera_{{ $id }}', function() {
         const camInput = document.getElementById('cameraInput_{{ $id }}');
         if (camInput && 'capture' in document.createElement('input')) {
             camInput.click();
@@ -212,7 +288,7 @@ $(function() {
         }
     });
 
-    $('#cameraInput_{{ $id }}').on('change', function() {
+    $(document).on('change.tk{{ $id }}', '#cameraInput_{{ $id }}', function() {
         handleFileSelect_{{ $id }}(this);
         // mirror the chosen file into the visible input's label by syncing the as-is path
         if (this.files && this.files[0]) {
@@ -224,7 +300,7 @@ $(function() {
         }
     });
 
-    $('#zoom_{{ $id }}').on('input', function() {
+    $(document).on('input.tk{{ $id }}', '#zoom_{{ $id }}', function() {
         if (!cropper_{{ $id }} || !cropper_{{ $id }}.properties.image) return;
         const p = parseFloat($(this).val());
         const scale = zoomMin_{{ $id }} + (zoomMax_{{ $id }} - zoomMin_{{ $id }}) * (p / 100);
@@ -232,13 +308,13 @@ $(function() {
         applyTransform_{{ $id }}(cropper_{{ $id }});
     });
 
-    $('#rot_{{ $id }}').on('input', function() {
+    $(document).on('input.tk{{ $id }}', '#rot_{{ $id }}', function() {
         if (cropper_{{ $id }}) {
             cropper_{{ $id }}.rotate(parseInt($(this).val(), 10));
         }
     });
 
-    $('#save_{{ $id }}').on('click', function() {
+    $(document).on('click.tk{{ $id }}', '#save_{{ $id }}', function() {
         if (!cropper_{{ $id }}) return;
         const btn = $(this);
 
@@ -246,7 +322,9 @@ $(function() {
             // Form mode: Store base64 in hidden input and update preview
             btn.prop('disabled', true).text('Processing...');
 
-            cropper_{{ $id }}.crop({ type: 'base64' }).then(base64 => {
+            // Crop from the source at full output resolution ({{ $width }}px wide) so quality survives
+            // an auto-fit (small) on-screen viewport. No-op for fixed-viewport croppers (profile).
+            cropper_{{ $id }}.crop({ type: 'base64', width: {{ $width }} }).then(base64 => {
                 // Store in hidden input
                 $('#hiddenInput_{{ $id }}').val(base64);
 
@@ -270,21 +348,28 @@ $(function() {
 @if($inline)
                 hideEditor_{{ $id }}();
 @endif
-                btn.prop('disabled', false).text('Crop & Apply');
+                btn.prop('disabled', false).text('{{ $saveText }}');
             });
         } else {
             // AJAX mode: Upload to server
             btn.prop('disabled', true).text('Uploading...');
 
-            cropper_{{ $id }}.crop({ type: 'base64' }).then(base64 => {
-                // Resize to viewport dimensions before upload to avoid sending full-resolution image
+            // Crop straight from the SOURCE image at full output resolution ({{ $width }}px wide) —
+            // Cropme's `width` option re-renders from the original pixels, so quality is preserved even
+            // though the on-screen viewport is auto-fit small. (The old path upscaled a viewport-sized
+            // crop → blurry.) Then normalize to EXACTLY {{ $width }}x{{ $height }} (the auto-fit viewport
+            // rounds to whole px, so cropme's derived height can be ±2px) and JPEG-encode.
+            cropper_{{ $id }}.crop({ type: 'base64', width: {{ $width }} }).then(hiRes => {
                 const img = new Image();
-                img.onload = function() {
+                img.onload = function () {
                     const canvas = document.createElement('canvas');
                     canvas.width = {{ $width }};
                     canvas.height = {{ $height }};
-                    canvas.getContext('2d').drawImage(img, 0, 0, {{ $width }}, {{ $height }});
-                    const compressed = canvas.toDataURL('image/jpeg', 0.88);
+                    const ctx = canvas.getContext('2d');
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    ctx.drawImage(img, 0, 0, {{ $width }}, {{ $height }});
+                    const compressed = canvas.toDataURL('image/jpeg', 0.92);
 
                     $.post("{{ $uploadUrl }}", {
                         _token: "{{ csrf_token() }}",
@@ -343,16 +428,16 @@ $(function() {
                 }).fail((err) => {
                     Toast.error('Upload Failed', err.responseJSON?.message || 'An error occurred while uploading.');
                 }).always(() => {
-                    btn.prop('disabled', false).text('Crop & Save Image');
+                    btn.prop('disabled', false).text('{{ $saveText }}');
                 });
                 };
-                img.src = base64;
+                img.src = hiRes;
             });
         }
     });
 
     @if($uploadAsIs)
-    $('#saveAsIs_{{ $id }}').on('click', function() {
+    $(document).on('click.tk{{ $id }}', '#saveAsIs_{{ $id }}', function() {
         const fileInput = document.getElementById('input_{{ $id }}');
         if (!fileInput.files || !fileInput.files[0]) return;
 

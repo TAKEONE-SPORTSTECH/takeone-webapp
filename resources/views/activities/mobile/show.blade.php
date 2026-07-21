@@ -22,7 +22,8 @@
             <div class="axm-hero-bg axm-hero-bg--plain"></div>
             <div class="axm-hero-icon"><i class="bi {{ $activity->icon ?: 'bi-activity' }}"></i></div>
         @endif
-        <div class="axm-hero-scrim"></div>
+        {{-- slim top fade behind controls only — keeps the picture bright --}}
+        <div class="axm-hero-topfade"></div>
         <div class="axm-topbar">
             <a href="{{ url()->previous() }}" id="axmBack" onclick="if(history.length>1){event.preventDefault();history.back();}" class="axm-ctrl" title="{{ $rtl ? 'رجوع' : 'Back' }}"><i class="bi bi-arrow-left"></i></a>
             <div class="axm-topbar-right">
@@ -30,15 +31,15 @@
                 <x-qr-code :url="route('activity.show', $activity)" :title="$name" label="" icon="bi-qr-code" buttonClass="axm-ctrl" :size="240" :caption="$rtl ? 'امسح للفتح على الجوال' : 'Scan to open on your phone'" />
             </div>
         </div>
-        <div class="axm-hero-cap">
-            <div class="axm-eyebrow"><span class="axm-dot"></span> {{ $rtl ? 'دليل تيك ون' : 'THE TAKEONE ALMANAC' }}</div>
-            <h1 class="axm-title">{{ $name }}</h1>
-        </div>
     </div>
 
     {{-- Sheet --}}
     <div class="axm-sheet">
-        <div class="axm-grip"></div>
+        {{-- Title band — directly below the bright banner --}}
+        <div class="axm-band">
+            <div class="axm-eyebrow"><span class="axm-dot"></span> {{ $rtl ? 'دليل تيك ون' : 'THE TAKEONE ALMANAC' }}</div>
+            <h1 class="axm-title">{{ $name }}</h1>
+        </div>
 
         @if(count($variants))
             <div class="axm-chips">@foreach($variants as $v)<span class="axm-chip">{{ $rtl ? ($v['name_ar'] ?? $v['name']) : $v['name'] }}</span>@endforeach</div>
@@ -91,12 +92,13 @@
     .axm-progress { position: fixed; inset-inline: 0; top: 0; height: 3px; z-index: 60; }
     .axm-progress span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--ax), hsl(288 72% 62%)); box-shadow: 0 0 10px hsl(250 70% 60% / .7); transition: width .1s linear; }
 
-    .axm-hero { position: relative; width: 100%; aspect-ratio: 16/9; max-height: 54vh; overflow: hidden; background: #08080f; }
+    /* Full-bleed banner — expands edge-to-edge */
+    .axm-hero { position: relative; width: 100%; aspect-ratio: 16/9; max-height: 58vh; overflow: hidden; background: #08080f; }
     .axm-hero-bg { position: absolute; inset: -8%; background-size: cover; background-position: center; filter: blur(28px) brightness(.44) saturate(1.15); transform: scale(1.16); animation: axmZoom 24s ease-in-out infinite alternate; }
     .axm-hero-bg--plain { filter: none; animation: none; transform: none; background: radial-gradient(500px 320px at 30% 18%, hsl(250 66% 46%), transparent 70%), linear-gradient(135deg, hsl(252 56% 30%), hsl(250 48% 12%)); }
     .axm-hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; z-index: 1; display: block; animation: axmImgIn 1.05s cubic-bezier(.16,.84,.28,1) both; }
     .axm-hero-icon { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.9); font-size: 5.5rem; z-index: 1; animation: axmImgIn 1s ease both; }
-    .axm-hero-scrim { position: absolute; inset: 0; z-index: 2; background: linear-gradient(to top, rgba(6,6,12,.94), rgba(6,6,12,.35) 45%, rgba(6,6,12,.15) 70%, transparent 100%); }
+    .axm-hero-topfade { position: absolute; top: 0; inset-inline: 0; height: 92px; z-index: 2; pointer-events: none; background: linear-gradient(to bottom, rgba(8,8,16,.36), transparent); }
     .axm-topbar { position: absolute; top: calc(10px + env(safe-area-inset-top)); inset-inline: 12px; z-index: 6; display: flex; align-items: center; justify-content: space-between; }
     .axm-topbar-right { display: flex; align-items: center; gap: .5rem; }
     .axm-factsrow { display: flex; align-items: center; gap: 1rem; margin: .9rem 0 0; }
@@ -119,13 +121,13 @@
         background: #fff; color: var(--ax-deep); border: 1px solid hsl(250 58% 85%); transition: transform .15s; }
     .axm-cta-btn:active { transform: scale(.98); }
     .axm-cta-btn--primary { background: linear-gradient(145deg, var(--ax), var(--ax-deep)); color: #fff; border: 0; box-shadow: 0 10px 22px -12px hsl(250 60% 50% / .8); }
-    .axm-hero-cap { position: absolute; inset-inline: 0; bottom: 0; z-index: 4; padding: 0 1.25rem 1.4rem; }
-    .axm-eyebrow { display: inline-flex; align-items: center; gap: .5rem; color: hsl(250 100% 90%); font-size: .62rem; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; }
+    /* Title band inside the sheet, just under the banner (light surface, dark ink) */
+    .axm-band { padding: .35rem .15rem .15rem; }
+    .axm-eyebrow { display: inline-flex; align-items: center; gap: .5rem; color: var(--ax-deep); font-size: .62rem; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; }
     .axm-dot { width: 6px; height: 6px; border-radius: 999px; background: var(--ax); box-shadow: 0 0 10px 1px var(--ax); animation: axmPulse 2.4s ease-in-out infinite; }
-    .axm-title { font-family: var(--ax-display); font-size: clamp(1.85rem, 8.5vw, 2.6rem); font-weight: 900; letter-spacing: -.02em; line-height: 1.02; color: #fff; margin: .45rem 0 0; text-shadow: 0 4px 30px rgba(0,0,0,.5); }
+    .axm-title { font-family: var(--ax-display); font-size: clamp(1.85rem, 8.5vw, 2.6rem); font-weight: 900; letter-spacing: -.02em; line-height: 1.02; color: var(--ax-ink); margin: .4rem 0 0; }
 
     .axm-sheet { position: relative; z-index: 3; margin-top: 0; background: hsl(230 24% 97%); padding: .4rem 1rem 3.5rem; min-height: 60vh; box-shadow: 0 -14px 44px -20px rgba(45,35,85,.28); }
-    .axm-grip { width: 42px; height: 4px; border-radius: 999px; background: hsl(230 14% 84%); margin: .6rem auto .9rem; }
     .axm-chips { display: flex; flex-wrap: wrap; gap: .4rem; margin: .2rem 0 .3rem; }
     .axm-chip { padding: .34rem .8rem; border-radius: 999px; font-size: .74rem; font-weight: 600; color: var(--ax-deep); background: hsl(250 72% 95%); border: 1px solid hsl(250 60% 88%); }
     .axm-facts { display: flex; gap: 1.1rem; margin: .9rem 0 0; padding: .2rem 0; }
