@@ -595,6 +595,18 @@
                             <span class="block text-xs text-muted-foreground mt-0.5">{{ __('admin.club_details_index_block_explore_help') }}</span>
                         </span>
                     </label>
+
+                    {{-- Email verification switch — hidden 0 so unchecking submits an explicit off --}}
+                    <input type="hidden" name="require_email_verification" value="0">
+                    <label class="flex items-start gap-3 cursor-pointer mt-4 pt-4 border-t border-gray-100">
+                        <input type="checkbox" name="require_email_verification" value="1"
+                               class="mt-0.5 w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
+                               @checked(old('require_email_verification', $club->require_email_verification)) >
+                        <span>
+                            <span class="block text-sm font-medium text-gray-900">Require email verification on sign-up</span>
+                            <span class="block text-xs text-muted-foreground mt-0.5">Members who register through this club's page must confirm their email before they get in. <strong class="text-amber-600">Turn this off only if the email service is down</strong> — new members will be let in immediately without verifying their email.</span>
+                        </span>
+                    </label>
                 </div>
             </div>
 

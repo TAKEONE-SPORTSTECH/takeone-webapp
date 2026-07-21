@@ -19,6 +19,7 @@ class UpdateClubRequest extends FormRequest
             'description' => 'nullable|string',
             'registration_terms' => 'nullable|string|max:50000',
             'registration_requirements' => 'nullable|string|max:50000',
+            'require_email_verification' => 'nullable|boolean',
             'registration_fee' => 'nullable|numeric|min:0',
             'enrollment_fee' => 'nullable|numeric|min:0',
             'commercial_reg_number' => 'nullable|string|max:100',

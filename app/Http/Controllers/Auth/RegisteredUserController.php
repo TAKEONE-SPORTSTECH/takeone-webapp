@@ -125,18 +125,36 @@ class RegisteredUserController extends Controller
                 $user->load('roles');
             }
 
-            event(new Registered($user));
+            // If the registrant came in through a club that has switched OFF email
+            // verification (mail-service escape hatch), verify them on creation and
+            // skip the verification email — they get straight in.
+            $clubSlug = data_get(session('club.context'), 'slug');
+            $club = $clubSlug ? \App\Models\Tenant::where('slug', $clubSlug)->first() : null;
+            $skipVerification = $club && ! $club->require_email_verification;
+
+            if ($skipVerification) {
+                $user->markEmailAsVerified();
+            } else {
+                event(new Registered($user));
+            }
 
             // Log the user in
             Auth::login($user);
 
-            // Send welcome email with verification link
-            try {
-                $intended = session('url.intended');
-                Mail::to($user->email)->queue(new WelcomeEmail($user, $user, null, $intended));
-            } catch (\Exception $e) {
-                // Log the error but don't stop the registration process
-                \Log::error('Failed to send welcome email: '.$e->getMessage());
+            // Send welcome email with verification link (skip when not verifying).
+            if (! $skipVerification) {
+                try {
+                    $intended = session('url.intended');
+                    Mail::to($user->email)->queue(new WelcomeEmail($user, $user, null, $intended));
+                } catch (\Exception $e) {
+                    // Log the error but don't stop the registration process
+                    \Log::error('Failed to send welcome email: '.$e->getMessage());
+                }
+            }
+
+            if ($skipVerification) {
+                return redirect(session('url.intended') ?: route('clubs.explore'))
+                    ->with('success', 'Registration successful! Welcome to TAKEONE.');
             }
 
             return redirect()->route('verification.notice')->with('success', 'Registration successful! Please check your email to verify your account.');

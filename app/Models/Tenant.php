@@ -166,6 +166,7 @@ class Tenant extends Model
         'description',
         'registration_terms',
         'registration_requirements',
+        'require_email_verification',
         'enrollment_fee',
         'registration_fee',
         'commercial_reg_number',
@@ -205,6 +206,7 @@ class Tenant extends Model
         'vat_percentage' => 'decimal:2',
         'phone' => 'array',
         'settings' => 'array',
+        'require_email_verification' => 'boolean',
         'is_test_mode' => 'boolean',
     ];
 

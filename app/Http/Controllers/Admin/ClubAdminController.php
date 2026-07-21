@@ -305,6 +305,13 @@ class ClubAdminController extends Controller
             $data['phone'] = ['code' => $request->phone_code, 'number' => $request->phone_number];
         }
 
+        // Email-verification switch — only touched when the details form actually
+        // submits it, so other partial updates never flip it. An unchecked toggle
+        // posts nothing, hence the hidden-field-backed boolean() read.
+        if ($request->has('require_email_verification')) {
+            $data['require_email_verification'] = $request->boolean('require_email_verification');
+        }
+
         if ($request->has('settings')) {
             $data['settings'] = array_merge($club->settings ?? [], $request->settings);
         }

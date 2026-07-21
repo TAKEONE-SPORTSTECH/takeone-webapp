@@ -618,6 +618,18 @@
                         <span class="block text-xs text-muted-foreground mt-0.5">{{ __('admin.club_details_index_block_explore_help') }}</span>
                     </span>
                 </label>
+
+                {{-- Email verification switch — hidden 0 so unchecking submits an explicit off --}}
+                <input type="hidden" name="require_email_verification" value="0">
+                <label class="flex items-start gap-3 cursor-pointer mt-4 pt-4 border-t border-gray-100">
+                    <input type="checkbox" name="require_email_verification" value="1"
+                           class="mt-0.5 w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary flex-shrink-0"
+                           @checked(old('require_email_verification', $club->require_email_verification))>
+                    <span>
+                        <span class="block text-sm font-medium text-foreground">Require email verification on sign-up</span>
+                        <span class="block text-xs text-muted-foreground mt-0.5">Members registering via this club must confirm their email first. <strong class="text-amber-600">Turn off only if the email service is down</strong> — new members get in immediately without verifying.</span>
+                    </span>
+                </label>
             </div>
 
             <div class="pb-2"><button type="submit" class="m-press w-full py-3.5 rounded-2xl bg-primary text-white font-semibold text-sm">{{ __('admin.cs_save_all') }}</button></div>

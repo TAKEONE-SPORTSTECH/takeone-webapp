@@ -453,18 +453,30 @@ class WizardRegistrationController extends Controller
 
             $intended = session('url.intended') ?: route('clubs.explore');
 
+            // A club may switch OFF email verification (escape hatch for a down
+            // mail service). For a brand-new account under such a club, mark the
+            // email verified on creation and skip the verification email.
+            $skipVerification = (! $isReturning) && ! $tenant->require_email_verification;
+
             if (! $isReturning) {
-                // Brand-new account: fire verification + log them in as before.
-                event(new Registered($parentUser));
+                if ($skipVerification) {
+                    $parentUser->markEmailAsVerified();   // straight in, no email needed
+                    $redirect = $intended;
+                } else {
+                    // Normal path: send the verification email and gate on it.
+                    event(new Registered($parentUser));
+                    $redirect = route('verification.notice');
+                }
                 Auth::login($parentUser, true);
-                $redirect = route('verification.notice');
             } else {
                 // Returning member: NEVER auto-login an unauthenticated visitor into
                 // an existing account. Just point them at the login page.
                 $redirect = route('login');
             }
 
-            if ($parentUser->email) {
+            // The welcome email carries the verification link — skip it when this
+            // club isn't verifying (it would just be undeliverable noise).
+            if ($parentUser->email && ! $skipVerification) {
                 try {
                     Mail::to($parentUser->email)->queue(new WelcomeEmail($parentUser, $parentUser, null, $intended));
                 } catch (\Exception $e) {
