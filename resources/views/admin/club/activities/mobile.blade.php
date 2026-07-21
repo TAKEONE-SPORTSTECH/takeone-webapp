@@ -11,7 +11,6 @@
         'style' => $a->style,
         'description' => $a->description,
         'notes' => $a->notes,
-        'duration_minutes' => $a->duration_minutes,
         'picture_src' => $a->picture_url ? asset('storage/'.$a->picture_url) : null,
         'facility' => $a->facility ? ['id' => $a->facility->id, 'name' => $a->facility->name] : null,
     ])->values();
@@ -88,9 +87,6 @@
                         <span x-show="a.style" x-cloak class="inline-flex self-start mt-1 px-1.5 py-0.5 rounded-md bg-accent text-primary text-[10px] font-medium" x-text="a.style"></span>
                         <p class="text-[11px] text-muted-foreground mt-1 flex items-center gap-1 truncate" x-show="a.facility">
                             <i class="bi bi-geo-alt shrink-0"></i><span class="truncate" x-text="a.facility?.name"></span>
-                        </p>
-                        <p class="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1" x-show="a.duration_minutes">
-                            <i class="bi bi-clock shrink-0"></i><span x-text="a.duration_minutes + ' {{ __('admin.club_activities_index_min') }}'"></span>
                         </p>
                         {{-- Action buttons: below the content so they never cover the image --}}
                         <div class="flex items-center gap-1.5 mt-3 pt-3 border-t border-gray-100">
@@ -256,14 +252,6 @@
                                placeholder="e.g. WTF, ITF, Shotokan (optional)">
                     </div>
 
-                    {{-- Duration --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('admin.club_activities_index_duration_minutes') }}</label>
-                        <input type="number" inputmode="numeric" min="1" max="1440" x-model="form.duration_minutes"
-                               class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                               placeholder="60">
-                    </div>
-
                     {{-- Description --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('shared.components_activity_modal_description') }}</label>
@@ -427,7 +415,7 @@ window.activitiesAdmin = function (list, opts) {
         editingId: null,
         saving: false,
         errors: {},
-        form: { name: '', duration_minutes: '', description: '', notes: '', picture: null, pictureSrc: null, removePicture: false },
+        form: { name: '', description: '', notes: '', picture: null, pictureSrc: null, removePicture: false },
 
         // --- Add chooser + cross-club library ---
         chooserOpen: false,
@@ -513,7 +501,7 @@ window.activitiesAdmin = function (list, opts) {
         equipSelectedProductId: null,
         equipNewRequired: true,
 
-        blankForm() { return { name: '', style: '', duration_minutes: '', description: '', notes: '', picture: null, pictureSrc: null, removePicture: false }; },
+        blankForm() { return { name: '', style: '', description: '', notes: '', picture: null, pictureSrc: null, removePicture: false }; },
 
         openAdd() {
             this.editingId = null;
@@ -527,7 +515,6 @@ window.activitiesAdmin = function (list, opts) {
             this.form = {
                 name: a.name || '',
                 style: a.style || '',
-                duration_minutes: a.duration_minutes || '',
                 description: a.description || '',
                 notes: a.notes || '',
                 picture: null,                 // only set when a NEW file is picked
@@ -559,7 +546,6 @@ window.activitiesAdmin = function (list, opts) {
             const body = {
                 name: this.form.name.trim(),
                 style: (this.form.style || '').trim() || null,
-                duration_minutes: this.form.duration_minutes || null,
                 description: this.form.description || '',
                 notes: this.form.notes || '',
             };

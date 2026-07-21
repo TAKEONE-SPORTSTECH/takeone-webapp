@@ -33,11 +33,14 @@ window.packageFormSheet = function () {
         editingIndex: null,
         draft: { activityId: '', dayValues: [], startTime: '', endTime: '', facilityId: '' },
         trainerAssignments: {},      // { activityId: instructorId }
+        openDD: null,                // id of the currently-open custom dropdown (Design Rule #4: no native <select>)
 
         // ── helpers ──
         dayName(v) { const d = this.weekDays.find(w => w.value === v); return d ? d.name : v; },
         activityName(id) { const a = this.activities.find(x => x.id === String(id)); return a ? a.name : ''; },
         facilityName(id) { const f = this.facilities.find(x => x.id === String(id)); return f ? f.name : ''; },
+        instructorName(id) { const i = this.instructors.find(x => x.id === String(id)); return i ? i.name : ''; },
+        toggleDD(id) { this.openDD = this.openDD === id ? null : id; },
         time12(t) {
             if (!t) return '';
             const [h, m] = t.split(':').map(Number);
@@ -81,8 +84,20 @@ window.packageFormSheet = function () {
                 facilityId: d.facilityId ? String(d.facilityId) : '',
                 facilityName: d.facilityId ? this.facilityName(d.facilityId) : '',
             };
-            if (this.editingIndex !== null) this.schedules[this.editingIndex] = entry;
-            else this.schedules.push(entry);
+            if (this.editingIndex !== null) {
+                // If the activity was changed on an existing schedule, carry its trainer over to
+                // the new activity so syncTrainers() (which prunes to current activities) doesn't
+                // silently drop the assignment.
+                const oldActivityId = this.schedules[this.editingIndex].activityId;
+                if (oldActivityId && oldActivityId !== entry.activityId
+                    && this.trainerAssignments[oldActivityId] != null
+                    && this.trainerAssignments[entry.activityId] == null) {
+                    this.trainerAssignments[entry.activityId] = this.trainerAssignments[oldActivityId];
+                }
+                this.schedules[this.editingIndex] = entry;
+            } else {
+                this.schedules.push(entry);
+            }
             this.resetDraft();
             this.syncTrainers();
         },
@@ -120,7 +135,12 @@ window.packageFormSheet = function () {
             this.gender = 'mixed'; this.age_min = ''; this.age_max = '';
             this.imagePreview = ''; this.existingImage = '';
             this.schedules = []; this.trainerAssignments = {}; this.resetDraft();
-            const f = this.$refs.form; if (f) f.reset();
+            // Do NOT call form.reset(): it blanks the DOM inputs, and x-model won't restore a
+            // field whose bound value is unchanged (e.g. duration 1→1), leaving it visually
+            // empty. Every field here is x-model/:value-bound EXCEPT the cover-image file input,
+            // so clear only that one.
+            const img = document.querySelector('#pkgFormMobile input[type="file"][name="image"]');
+            if (img) img.value = '';
         },
         openAdd() { this.mode = 'add'; this.editId = null; this.resetAll(); this.open = true; },
         openEdit(id) {
@@ -159,11 +179,15 @@ window.packageFormSheet = function () {
             this.open = true;
         },
 
-        submit() {
-            if (!this.name.trim()) { window.showToast('warning', '{{ __('admin.pkg_err_name') }}'); this.tab = 'basic'; return; }
-            if (!(parseFloat(this.price) >= 0) || this.price === '') { window.showToast('warning', '{{ __('admin.pkg_err_price') }}'); this.tab = 'basic'; return; }
-            if (!(parseInt(this.duration_months) >= 1)) { window.showToast('warning', '{{ __('admin.pkg_err_duration') }}'); this.tab = 'basic'; return; }
-            this.$refs.form.submit();
+        // Runs on the form's NATIVE submit event (fired by the type="submit" Save button).
+        // Its ONLY job is to CANCEL the submit when a field is invalid — never to cause it.
+        // The browser performs the real submission, so there is no reliance on $refs /
+        // getElementById / requestSubmit (all fragile once the form is teleported to <body>).
+        onSubmit(e) {
+            if (!(this.name || '').trim()) { e.preventDefault(); window.showToast('warning', '{{ __('admin.pkg_err_name') }}'); this.lang = 'en'; this.tab = 'basic'; return; }
+            if (!(parseFloat(this.price) >= 0) || this.price === '') { e.preventDefault(); window.showToast('warning', '{{ __('admin.pkg_err_price') }}'); this.tab = 'basic'; return; }
+            if (!(parseInt(this.duration_months) >= 1)) { e.preventDefault(); window.showToast('warning', '{{ __('admin.pkg_err_duration') }}'); this.tab = 'basic'; return; }
+            // valid → let the browser submit natively.
         },
     };
 };
@@ -210,8 +234,8 @@ window.packageFormSheet = function () {
                 </div>
             </div>
 
-            <form x-ref="form" method="POST" :action="formAction" enctype="multipart/form-data"
-                  class="flex-1 overflow-y-auto overscroll-contain px-4 py-4" @submit.prevent="submit()">
+            <form id="pkgFormMobile" method="POST" :action="formAction" enctype="multipart/form-data"
+                  class="flex-1 overflow-y-auto overscroll-contain px-4 py-4" @submit="onSubmit($event)">
                 @csrf
                 <input type="hidden" name="_method" :value="mode === 'edit' ? 'PUT' : 'POST'">
                 <input type="hidden" name="gender_restriction" :value="gender">
@@ -239,7 +263,7 @@ window.packageFormSheet = function () {
 
                     <div>
                         <label class="form-label">{{ __('admin.pkg_name') }} <span class="text-red-500">*</span></label>
-                        <input type="text" name="name" x-model="name" required x-show="lang==='en'" placeholder="{{ __('admin.pkg_name_ph') }}" class="form-control">
+                        <input type="text" name="name" x-model="name" x-show="lang==='en'" placeholder="{{ __('admin.pkg_name_ph') }}" class="form-control">
                         <input type="text" name="translations[name][ar]" x-model="name_ar" dir="rtl" x-show="lang==='ar'" x-cloak placeholder="الاسم بالعربية" class="form-control">
                     </div>
                     <div>
@@ -250,11 +274,11 @@ window.packageFormSheet = function () {
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="form-label">{{ __('admin.pkg_price') }} ({{ $club->currency ?: '' }}) <span class="text-red-500">*</span></label>
-                            <input type="number" name="price" x-model="price" step="0.01" min="0" required placeholder="0.00" class="form-control">
+                            <input type="number" name="price" x-model="price" step="0.01" min="0" placeholder="0.00" class="form-control">
                         </div>
                         <div>
                             <label class="form-label">{{ __('admin.pkg_duration') }} <span class="text-red-500">*</span></label>
-                            <input type="number" name="duration_months" x-model="duration_months" min="1" required class="form-control">
+                            <input type="number" name="duration_months" x-model="duration_months" min="1" class="form-control">
                         </div>
                     </div>
                     <div>
@@ -290,10 +314,28 @@ window.packageFormSheet = function () {
                     <div class="rounded-2xl border border-gray-100 bg-muted/20 p-3 space-y-3">
                         <div>
                             <label class="form-label">{{ __('admin.pkg_activity') }}</label>
-                            <select x-model="draft.activityId" class="form-select">
-                                <option value="">{{ __('admin.pkg_select_activity') }}</option>
-                                <template x-for="a in activities" :key="a.id"><option :value="a.id" x-text="a.name"></option></template>
-                            </select>
+                            {{-- Custom dropdown (Design Rule #4: no native <select>). In-flow panel so the
+                                 scrollable sheet body can't clip it. --}}
+                            <div class="relative" @click.outside="openDD==='act' && (openDD=null)">
+                                <button type="button" @click="toggleDD('act')" class="form-control items-center justify-between text-left">
+                                    <span :class="draft.activityId ? '' : 'text-muted-foreground'"
+                                          x-text="draft.activityId ? activityName(draft.activityId) : '{{ __('admin.pkg_select_activity') }}'"></span>
+                                    <i class="bi bi-chevron-down text-muted-foreground transition-transform shrink-0 ml-2" :class="openDD==='act' && 'rotate-180'"></i>
+                                </button>
+                                <div x-show="openDD==='act'" x-cloak x-transition.opacity.duration.150ms
+                                     class="mt-1 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden max-h-56 overflow-y-auto">
+                                    <button type="button" @click="draft.activityId=''; openDD=null"
+                                            class="w-full text-left px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted/60">{{ __('admin.pkg_select_activity') }}</button>
+                                    <template x-for="a in activities" :key="a.id">
+                                        <button type="button" @click="draft.activityId=String(a.id); openDD=null"
+                                                class="w-full text-left px-4 py-2.5 text-sm hover:bg-muted/60 flex items-center justify-between"
+                                                :class="String(draft.activityId)===String(a.id) ? 'text-primary bg-accent/40' : ''">
+                                            <span x-text="a.name"></span>
+                                            <i class="bi bi-check2 text-primary" x-show="String(draft.activityId)===String(a.id)"></i>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
                         </div>
                         <div>
                             <label class="form-label">{{ __('admin.pkg_days') }}</label>
@@ -317,10 +359,26 @@ window.packageFormSheet = function () {
                         </div>
                         <div>
                             <label class="form-label">{{ __('admin.pkg_facility') }}</label>
-                            <select x-model="draft.facilityId" class="form-select">
-                                <option value="">{{ __('admin.pkg_no_facility') }}</option>
-                                <template x-for="f in facilities" :key="f.id"><option :value="f.id" x-text="f.name"></option></template>
-                            </select>
+                            <div class="relative" @click.outside="openDD==='fac' && (openDD=null)">
+                                <button type="button" @click="toggleDD('fac')" class="form-control items-center justify-between text-left">
+                                    <span :class="draft.facilityId ? '' : 'text-muted-foreground'"
+                                          x-text="draft.facilityId ? facilityName(draft.facilityId) : '{{ __('admin.pkg_no_facility') }}'"></span>
+                                    <i class="bi bi-chevron-down text-muted-foreground transition-transform shrink-0 ml-2" :class="openDD==='fac' && 'rotate-180'"></i>
+                                </button>
+                                <div x-show="openDD==='fac'" x-cloak x-transition.opacity.duration.150ms
+                                     class="mt-1 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden max-h-56 overflow-y-auto">
+                                    <button type="button" @click="draft.facilityId=''; openDD=null"
+                                            class="w-full text-left px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted/60">{{ __('admin.pkg_no_facility') }}</button>
+                                    <template x-for="f in facilities" :key="f.id">
+                                        <button type="button" @click="draft.facilityId=String(f.id); openDD=null"
+                                                class="w-full text-left px-4 py-2.5 text-sm hover:bg-muted/60 flex items-center justify-between"
+                                                :class="String(draft.facilityId)===String(f.id) ? 'text-primary bg-accent/40' : ''">
+                                            <span x-text="f.name"></span>
+                                            <i class="bi bi-check2 text-primary" x-show="String(draft.facilityId)===String(f.id)"></i>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
                         </div>
                         <button type="button" @click="commitSchedule()" class="m-press w-full rounded-xl bg-primary text-white py-2.5 text-sm font-semibold">
                             <i class="bi bi-plus-lg mr-1"></i><span x-text="editingIndex !== null ? '{{ __('admin.pkg_update_schedule') }}' : '{{ __('admin.pkg_add_schedule') }}'"></span>
@@ -364,10 +422,28 @@ window.packageFormSheet = function () {
                         <template x-for="a in uniqueActivities" :key="a.id">
                             <div class="rounded-2xl border border-gray-100 p-3">
                                 <p class="font-semibold text-sm text-foreground mb-2"><i class="bi bi-activity text-primary mr-1"></i><span x-text="a.name"></span></p>
-                                <select x-model="trainerAssignments[a.id]" class="form-select">
-                                    <option value="">{{ __('admin.pkg_select_instructor') }}</option>
-                                    <template x-for="ins in instructors" :key="ins.id"><option :value="ins.id" x-text="ins.name"></option></template>
-                                </select>
+                                {{-- Custom dropdown — reads trainerAssignments[a.id] reactively (no native <select>,
+                                     no x-model/x-for options race). Unique open-state id per activity. --}}
+                                <div class="relative" @click.outside="openDD==='tr-'+a.id && (openDD=null)">
+                                    <button type="button" @click="toggleDD('tr-'+a.id)" class="form-control items-center justify-between text-left">
+                                        <span :class="trainerAssignments[a.id] ? '' : 'text-muted-foreground'"
+                                              x-text="trainerAssignments[a.id] ? instructorName(trainerAssignments[a.id]) : '{{ __('admin.pkg_select_instructor') }}'"></span>
+                                        <i class="bi bi-chevron-down text-muted-foreground transition-transform shrink-0 ml-2" :class="openDD==='tr-'+a.id && 'rotate-180'"></i>
+                                    </button>
+                                    <div x-show="openDD==='tr-'+a.id" x-cloak x-transition.opacity.duration.150ms
+                                         class="mt-1 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden max-h-56 overflow-y-auto">
+                                        <button type="button" @click="trainerAssignments[a.id]=''; openDD=null"
+                                                class="w-full text-left px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted/60">{{ __('admin.pkg_select_instructor') }}</button>
+                                        <template x-for="ins in instructors" :key="ins.id">
+                                            <button type="button" @click="trainerAssignments[a.id]=String(ins.id); openDD=null"
+                                                    class="w-full text-left px-4 py-2.5 text-sm hover:bg-muted/60 flex items-center justify-between"
+                                                    :class="String(trainerAssignments[a.id])===String(ins.id) ? 'text-primary bg-accent/40' : ''">
+                                                <span x-text="ins.name"></span>
+                                                <i class="bi bi-check2 text-primary" x-show="String(trainerAssignments[a.id])===String(ins.id)"></i>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
                             </div>
                         </template>
                     </div>
@@ -377,7 +453,7 @@ window.packageFormSheet = function () {
             {{-- Footer --}}
             <div class="px-4 py-3 bg-gray-50 border-t flex-shrink-0 flex items-center gap-2" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));">
                 <button type="button" @click="open = false" class="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 bg-white text-sm font-medium">{{ __('admin.cancel') }}</button>
-                <button type="button" @click="if (!(name || '').trim()) { lang = 'en' } $nextTick(() => $refs.form.requestSubmit())" class="flex-1 btn btn-primary py-2.5">
+                <button type="submit" form="pkgFormMobile" class="flex-1 btn btn-primary py-2.5">
                     <i class="bi bi-check-lg mr-1"></i><span x-text="mode === 'edit' ? '{{ __('admin.pkg_update') }}' : '{{ __('admin.pkg_create') }}'"></span>
                 </button>
             </div>

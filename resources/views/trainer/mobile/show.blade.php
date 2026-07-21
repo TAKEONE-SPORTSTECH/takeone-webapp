@@ -124,11 +124,11 @@
                 <p class="text-[13px] text-foreground/90 whitespace-pre-line">{{ $user->bio ?: __('trainer.no_bio') }}</p>
             </div>
 
-            @if(is_array($user->skills) && count($user->skills))
+            @if(($skills ?? collect())->count())
                 <div>
                     <p class="px-1 mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground/80">{{ __('trainer.specialities') }}</p>
                     <div class="flex flex-wrap gap-2">
-                        @foreach($user->skills as $skill)
+                        @foreach($skills as $skill)
                             <span class="tr-chip px-3 py-1.5 rounded-full text-[12px] font-semibold text-primary"><i class="bi bi-patch-check mr-1"></i>{{ $skill }}</span>
                         @endforeach
                     </div>

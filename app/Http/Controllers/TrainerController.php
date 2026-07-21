@@ -110,16 +110,23 @@ class TrainerController extends Controller
         $reactions = $reactionRows->groupBy('emoji')->map->count()->sortDesc();
         $reactionTotal = $reactionRows->count();
 
+        // Skills are now provenance-backed (SkillAcquisition), verified first.
+        // The legacy flat users.skills was backfilled into these rows.
+        $skills = \App\Models\SkillAcquisition::where('user_id', $user->id)
+            ->orderByRaw("CASE WHEN verification_status = 'verified' THEN 0 ELSE 1 END")
+            ->pluck('skill_name')
+            ->filter()->unique()->values();
+
         $stats = [
             'clients' => $user->clubInstructors->sum(fn ($i) => optional($i->tenant)->memberships()->count() ?? 0),
             'sessions' => $activities->sum('frequency_per_week') * 4,
             'rating' => round($reviews->avg('rating') ?? 0, 1),
-            'certifications' => is_array($user->skills) ? count($user->skills) : 0,
+            'certifications' => $skills->count(),
         ];
 
         $isMobile = request()->attributes->get('is_mobile', false);
         $view = $isMobile && view()->exists('trainer.mobile.show') ? 'trainer.mobile.show' : 'trainer.show';
 
-        return view($view, compact('user', 'activities', 'scheduleSlots', 'stats', 'reviews', 'reactions', 'reactionTotal'));
+        return view($view, compact('user', 'activities', 'scheduleSlots', 'stats', 'reviews', 'reactions', 'reactionTotal', 'skills'));
     }
 }

@@ -336,7 +336,7 @@ function clearActivityFieldError(prefix, field) {
 }
 
 function clearAllActivityErrors(prefix) {
-    ['name', 'description', 'notes', 'duration_minutes'].forEach(f => clearActivityFieldError(prefix, f));
+    ['name', 'description', 'notes'].forEach(f => clearActivityFieldError(prefix, f));
 }
 
 function submitActivityForm(prefix, formId) {
@@ -405,7 +405,7 @@ function submitActivityForm(prefix, formId) {
             btn.disabled = false;
             btn.innerHTML = originalHtml;
         } else if (response.status === 422 && data.errors) {
-            const fieldMap = { name: 'name', description: 'description', notes: 'notes', duration_minutes: 'duration_minutes' };
+            const fieldMap = { name: 'name', description: 'description', notes: 'notes' };
             let first = true;
             Object.keys(data.errors).forEach(field => {
                 if (fieldMap[field]) {

@@ -46,7 +46,7 @@
     $role = $primaryInstructor?->tr('role');
     // Distinct clubs this person works at
     $clubs = $user->clubInstructors->map->tenant->filter()->unique('id')->values();
-    $skills = is_array($user->skills) ? array_values(array_filter($user->skills)) : [];
+    $skills = ($skills ?? collect())->values()->all();
     $initial = mb_strtoupper(mb_substr($user->full_name ?? '?', 0, 1, 'UTF-8'), 'UTF-8');
 
     $statCards = [

@@ -100,6 +100,15 @@
                                 <a href="#" class="border border-gray-300 bg-white rounded px-2 py-1 no-underline" style="font-size: 1rem;">⭐ <span class="font-semibold text-gray-900">{{ $totalAffiliations }}</span></a>
                             </div>
 
+                            {{-- Self-reported medals are visible but never counted as verified in the hero badges above --}}
+                            @php $selfReportedTotal = array_sum($selfReportedCounts ?? []); @endphp
+                            @if($selfReportedTotal > 0)
+                                <div class="flex items-center gap-1.5 mb-3 text-xs text-gray-400" title="{{ __('Self-reported achievements are shown on your profile but are not counted as verified until a club confirms them.') }}">
+                                    <i class="bi bi-person-badge"></i>
+                                    <span>{{ __('+:count self-reported awaiting verification', ['count' => $selfReportedTotal]) }}</span>
+                                </div>
+                            @endif
+
                             <!-- Status Badges -->
                             <div id="profile-status-row" class="flex gap-3 mb-3 items-center flex-wrap">
                                 <span class="text-gray-500 text-sm">
@@ -1470,6 +1479,19 @@
                                                         <i class="bi bi-people me-1 ms-2"></i>{{ $event->participants_count }} {{ __('member.templates_member_show_participants') }}
                                                     @endif
                                                 </div>
+                                                {{-- Provenance: honest verification state + evidence + request action --}}
+                                                <div class="mt-2 flex items-center gap-2 flex-wrap" data-verify-row="{{ $event->uuid }}">
+                                                    <x-verification-badge data-verify-badge :status="$event->verification_status" :club="$event->verifiedByTenant?->tr('club_name') ?? $event->verifiedByTenant?->club_name" />
+                                                    @if($event->evidence_path)
+                                                        <a href="{{ route('member.tournament.evidence', [$event->user_id, $event->uuid]) }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-[11px] text-gray-500 hover:text-primary"><i class="bi bi-paperclip"></i>{{ __('Evidence') }}</a>
+                                                    @endif
+                                                    @if($event->clubAffiliation?->tenant_id && ! in_array($event->verification_status, ['verified','pending']))
+                                                        <button type="button" data-verify-btn onclick="requestAchievementVerification(this)" data-verify-url="{{ route('member.tournament.request-verification', [$event->user_id, $event->uuid]) }}" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"><i class="bi bi-patch-check"></i>{{ __('Request verification') }}</button>
+                                                    @endif
+                                                    @if($event->verification_status === 'rejected' && $event->verification_note)
+                                                        <span class="text-[11px] text-red-500 italic">{{ $event->verification_note }}</span>
+                                                    @endif
+                                                </div>
                                             </td>
                                             <td>
                                                 @if($event->clubAffiliation)
@@ -2122,6 +2144,20 @@
                                 <button type="button" class="border border-primary text-primary px-3 py-1.5 rounded text-sm hover:bg-primary hover:text-white transition-colors" id="addNotesMedia">
                                     <i class="bi bi-plus me-1"></i>{{ __('member.templates_member_show_add_another_note') }}
                                 </button>
+                            </div>
+                            {{-- Supporting evidence — helps a club verify the claim; never verifies it on its own --}}
+                            <div class="mt-6">
+                                <h6 class="mb-1 font-medium">{{ __('Supporting evidence') }} <span class="text-xs font-normal text-gray-400">({{ __('optional') }})</span></h6>
+                                <p class="text-xs text-gray-500 mb-2">{{ __('Attach a certificate or medal photo. It helps a club verify your claim — it does not verify it automatically.') }}</p>
+                                <label class="flex items-center gap-3 border border-dashed border-gray-300 rounded-lg px-4 py-3 cursor-pointer hover:border-primary transition-colors">
+                                    <i class="bi bi-cloud-arrow-up text-xl text-gray-400"></i>
+                                    <span class="text-sm text-gray-600" id="tournamentEvidenceLabel">{{ __('Choose an image (JPG, PNG, WebP)') }}</span>
+                                    <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" onchange="readTournamentEvidence(this)">
+                                </label>
+                                <input type="hidden" name="evidence" id="tournamentEvidenceInput">
+                                <div id="tournamentEvidencePreview" class="mt-2 hidden">
+                                    <img class="h-24 rounded-lg border border-gray-200 object-cover" alt="{{ __('Evidence preview') }}">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -3524,7 +3560,40 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.remove-result, .remove-note').forEach(button => {
             button.style.display = 'none';
         });
+
+        // Reset evidence picker
+        const evInput = document.getElementById('tournamentEvidenceInput');
+        const evPrev = document.getElementById('tournamentEvidencePreview');
+        const evLabel = document.getElementById('tournamentEvidenceLabel');
+        if (evInput) evInput.value = '';
+        if (evPrev) { evPrev.classList.add('hidden'); const img = evPrev.querySelector('img'); if (img) img.src = ''; }
+        if (evLabel) evLabel.textContent = '{{ __('Choose an image (JPG, PNG, WebP)') }}';
     });
+
+    // Read the chosen evidence image into a hidden field as a base64 data-URI.
+    // Client-side guardrails only; the server re-sniffs real bytes and rejects SVG.
+    function readTournamentEvidence(input) {
+        const file = input.files && input.files[0];
+        const hidden = document.getElementById('tournamentEvidenceInput');
+        const prev = document.getElementById('tournamentEvidencePreview');
+        const label = document.getElementById('tournamentEvidenceLabel');
+        if (!file) return;
+        if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) {
+            window.showToast && window.showToast('error', '{{ __('Unsupported image type.') }}');
+            input.value = ''; return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            window.showToast && window.showToast('error', '{{ __('Image is too large (max 5MB).') }}');
+            input.value = ''; return;
+        }
+        const reader = new FileReader();
+        reader.onload = e => {
+            if (hidden) hidden.value = e.target.result;
+            if (prev) { prev.classList.remove('hidden'); const img = prev.querySelector('img'); if (img) img.src = e.target.result; }
+            if (label) label.textContent = file.name;
+        };
+        reader.readAsDataURL(file);
+    }
 
     // Delete Account Modal functionality is now handled by Alpine.js
 
@@ -3626,12 +3695,84 @@ document.addEventListener('DOMContentLoaded', function() {
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">${escapeHtml(t.sport)}</span>
                 </div>
                 <div class="text-gray-500 text-sm mt-1">${meta}</div>
+                <div class="mt-2 flex items-center gap-2 flex-wrap" data-verify-row="${escapeHtml(t.uuid || '')}">${buildVerifyBlock(t)}</div>
             </td>
             <td>${affHtml}</td>
             <td>${perfHtml}</td>
             <td>${notesHtml}</td>`;
         return tr;
     }
+
+    // Honest provenance badge + evidence + request action for a JS-rendered row.
+    function verifyBadgeHtml(status, club) {
+        const map = {
+            verified:      ['bi-patch-check-fill','text-green-700','bg-green-50','border-green-200','{{ __('Verified') }}'],
+            pending:       ['bi-hourglass-split','text-amber-700','bg-amber-50','border-amber-200','{{ __('Pending review') }}'],
+            rejected:      ['bi-patch-exclamation','text-red-700','bg-red-50','border-red-200','{{ __('Not verified') }}'],
+            self_reported: ['bi-person-badge','text-gray-500','bg-gray-50','border-gray-200','{{ __('Self-reported') }}'],
+        };
+        const [icon, tc, bg, bd, label] = map[status] || map.self_reported;
+        const suffix = (status === 'verified' && club) ? `<span class="opacity-70 font-normal">· ${escapeHtml(club)}</span>` : '';
+        return `<span data-verify-badge class="inline-flex items-center gap-1 rounded-full border font-medium px-2 py-0.5 text-xs ${tc} ${bg} ${bd}"><i class="bi ${icon}"></i><span>${label}</span>${suffix}</span>`;
+    }
+
+    function buildVerifyBlock(t) {
+        const v = t.verification || {};
+        let html = verifyBadgeHtml(v.status || 'self_reported', v.verified_club);
+        if (v.evidence_url) {
+            html += `<a href="${escapeHtml(v.evidence_url)}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-[11px] text-gray-500 hover:text-primary"><i class="bi bi-paperclip"></i>{{ __('Evidence') }}</a>`;
+        }
+        if (v.can_request && v.request_url) {
+            html += `<button type="button" data-verify-btn onclick="requestAchievementVerification(this)" data-verify-url="${escapeHtml(v.request_url)}" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"><i class="bi bi-patch-check"></i>{{ __('Request verification') }}</button>`;
+        }
+        return html;
+    }
+
+    // Ask the named club to verify this self-claimed achievement.
+    async function requestAchievementVerification(btn) {
+        const url = btn.getAttribute('data-verify-url');
+        if (!url) return;
+        btn.disabled = true;
+        try {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            const data = await res.json();
+            if (data.success) {
+                const row = btn.closest('[data-verify-row]');
+                if (row && data.verification) patchVerifyRow(row, data.verification);
+                window.showToast && window.showToast('success', data.message);
+            } else {
+                btn.disabled = false;
+                window.showToast && window.showToast('error', data.message || '{{ __('Could not request verification.') }}');
+            }
+        } catch (e) {
+            btn.disabled = false;
+            window.showToast && window.showToast('error', '{{ __('Something went wrong.') }}');
+        }
+    }
+
+    // Patch a row's provenance UI in place (used by the request action AND live MQTT updates).
+    function patchVerifyRow(row, v) {
+        const badge = row.querySelector('[data-verify-badge]');
+        if (badge) badge.outerHTML = verifyBadgeHtml(v.status, v.verified_club);
+        // Once verified or pending, the request button no longer applies.
+        if (['verified', 'pending'].includes(v.status)) {
+            const b = row.querySelector('[data-verify-btn]');
+            if (b) b.remove();
+        }
+    }
+
+    // Live updates: a club admin verifying/rejecting elsewhere patches this profile instantly.
+    if (window.__memberVerifyHandler) window.removeEventListener('realtime:verification', window.__memberVerifyHandler);
+    window.__memberVerifyHandler = function (e) {
+        const d = e.detail || {};
+        if (d.action !== 'status' || !d.event_uuid) return;
+        const row = document.querySelector(`[data-verify-row="${d.event_uuid}"]`);
+        if (row) patchVerifyRow(row, { status: d.status, verified_club: d.verified_club });
+    };
+    window.addEventListener('realtime:verification', window.__memberVerifyHandler);
 
     function addTournamentRow(t) {
         const tbody = document.getElementById('tournamentsTableBody');

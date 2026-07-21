@@ -73,17 +73,20 @@ class FamilyController extends Controller
 
         // Fetch tournament data
         $tournamentEvents = $user->tournamentEvents()
-            ->with(['performanceResults', 'notesMedia', 'clubAffiliation'])
+            ->with(['performanceResults', 'notesMedia', 'clubAffiliation.tenant', 'verifiedByTenant'])
             ->orderBy('date', 'desc')
             ->get();
 
-        // Calculate award counts
-        $awardCounts = [
-            'special' => $tournamentEvents->flatMap->performanceResults->where('medal_type', 'special')->count(),
-            '1st' => $tournamentEvents->flatMap->performanceResults->where('medal_type', '1st')->count(),
-            '2nd' => $tournamentEvents->flatMap->performanceResults->where('medal_type', '2nd')->count(),
-            '3rd' => $tournamentEvents->flatMap->performanceResults->where('medal_type', '3rd')->count(),
+        // Hero badges count only authentic (verified) tournament medals; self-reported
+        // and pending claims are tallied separately (see the authenticity plan).
+        $countMedals = fn ($events) => [
+            'special' => $events->flatMap->performanceResults->where('medal_type', 'special')->count(),
+            '1st' => $events->flatMap->performanceResults->where('medal_type', '1st')->count(),
+            '2nd' => $events->flatMap->performanceResults->where('medal_type', '2nd')->count(),
+            '3rd' => $events->flatMap->performanceResults->where('medal_type', '3rd')->count(),
         ];
+        $awardCounts = $countMedals($tournamentEvents->where('verification_status', 'verified'));
+        $selfReportedCounts = $countMedals($tournamentEvents->where('verification_status', '!==', 'verified'));
 
         // Get unique sports for filter
         $sports = $tournamentEvents->pluck('sport')->unique()->sort()->values();
@@ -158,6 +161,7 @@ class FamilyController extends Controller
             'invoices' => $invoices,
             'tournamentEvents' => $tournamentEvents,
             'awardCounts' => $awardCounts,
+            'selfReportedCounts' => $selfReportedCounts,
             'sports' => $sports,
             'goals' => $goals,
             'activeGoalsCount' => $activeGoalsCount,
@@ -587,17 +591,20 @@ class FamilyController extends Controller
 
         // Fetch tournament data for the dependent
         $tournamentEvents = $relationship->dependent->tournamentEvents()
-            ->with(['performanceResults', 'notesMedia', 'clubAffiliation'])
+            ->with(['performanceResults', 'notesMedia', 'clubAffiliation.tenant', 'verifiedByTenant'])
             ->orderBy('date', 'desc')
             ->get();
 
-        // Calculate award counts
-        $awardCounts = [
-            'special' => $tournamentEvents->flatMap->performanceResults->where('medal_type', 'special')->count(),
-            '1st' => $tournamentEvents->flatMap->performanceResults->where('medal_type', '1st')->count(),
-            '2nd' => $tournamentEvents->flatMap->performanceResults->where('medal_type', '2nd')->count(),
-            '3rd' => $tournamentEvents->flatMap->performanceResults->where('medal_type', '3rd')->count(),
+        // Hero badges count only authentic (verified) tournament medals; self-reported
+        // and pending claims are tallied separately (see the authenticity plan).
+        $countMedals = fn ($events) => [
+            'special' => $events->flatMap->performanceResults->where('medal_type', 'special')->count(),
+            '1st' => $events->flatMap->performanceResults->where('medal_type', '1st')->count(),
+            '2nd' => $events->flatMap->performanceResults->where('medal_type', '2nd')->count(),
+            '3rd' => $events->flatMap->performanceResults->where('medal_type', '3rd')->count(),
         ];
+        $awardCounts = $countMedals($tournamentEvents->where('verification_status', 'verified'));
+        $selfReportedCounts = $countMedals($tournamentEvents->where('verification_status', '!==', 'verified'));
 
         // Get unique sports for filter
         $sports = $tournamentEvents->pluck('sport')->unique()->sort()->values();
@@ -666,6 +673,7 @@ class FamilyController extends Controller
             'invoices' => $invoices,
             'tournamentEvents' => $tournamentEvents,
             'awardCounts' => $awardCounts,
+            'selfReportedCounts' => $selfReportedCounts,
             'sports' => $sports,
             'goals' => $goals,
             'activeGoalsCount' => $activeGoalsCount,

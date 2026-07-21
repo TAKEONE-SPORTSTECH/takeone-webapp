@@ -2,17 +2,22 @@
 
 namespace App\Models;
 
+use App\Traits\HasVerificationState;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SkillAcquisition extends Model
 {
+    use HasVerificationState;
+
     protected $fillable = [
+        'user_id',
         'club_affiliation_id',
         'package_id',
         'activity_id',
         'instructor_id',
         'skill_name',
+        'activity_name',
         'icon',
         'duration_months',
         'start_date',
@@ -26,6 +31,25 @@ class SkillAcquisition extends Model
         'start_date' => 'date',
         'end_date' => 'date',
     ];
+
+    /** The member who owns this skill (denormalized; also reachable via the affiliation). */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /** The club that may confirm this skill (the named affiliation's platform club). */
+    public function attestingTenant(): ?Tenant
+    {
+        return $this->clubAffiliation?->tenant;
+    }
+
+    public function attestationLabel(): string
+    {
+        $activity = $this->activity?->tr('name') ?? $this->activity_name;
+
+        return trim(($this->skill_name ?? '').($activity ? ' · '.$activity : ''), ' ·');
+    }
 
     /**
      * Get the club affiliation that owns the skill acquisition.

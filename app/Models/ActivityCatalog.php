@@ -21,7 +21,7 @@ class ActivityCatalog extends Model
     protected array $translatable = ['name', 'description'];
 
     protected $fillable = [
-        'uuid', 'name', 'slug', 'description', 'translations', 'variants', 'image_prompt',
+        'uuid', 'name', 'slug', 'description', 'translations', 'variants', 'videos', 'image_prompt',
         'picture_url', 'icon', 'is_active', 'usage_count', 'source_tenant_id',
     ];
 
@@ -29,7 +29,51 @@ class ActivityCatalog extends Model
         'is_active' => 'boolean',
         'usage_count' => 'integer',
         'variants' => 'array',
+        'videos' => 'array',
     ];
+
+    /** A valid YouTube video id — the ONLY thing we ever embed. */
+    public const YOUTUBE_ID = '/^[A-Za-z0-9_-]{11}$/';
+
+    /** Hard cap on curated clips per activity (blunts payload/abuse). */
+    public const MAX_VIDEOS = 12;
+
+    /**
+     * Curated video clips, normalized and validated on every read (defense in
+     * depth — stored data is never trusted blindly at render/serialize time).
+     * Drops any entry without a well-formed YouTube id, coerces the display
+     * fields to safe strings, and caps the count. Index 0 is the featured clip.
+     *
+     * @return array<int, array{id:string, title:string, title_ar:?string, source:?string}>
+     */
+    public function sanitizedVideos(): array
+    {
+        $out = [];
+
+        foreach ((array) ($this->videos ?? []) as $v) {
+            if (! is_array($v)) {
+                continue;
+            }
+
+            $id = (string) ($v['id'] ?? '');
+            if (! preg_match(self::YOUTUBE_ID, $id)) {
+                continue;
+            }
+
+            $out[] = [
+                'id' => $id,
+                'title' => \Illuminate\Support\Str::limit(trim((string) ($v['title'] ?? '')), 140, '') ?: 'Video',
+                'title_ar' => trim((string) ($v['title_ar'] ?? '')) ?: null,
+                'source' => \Illuminate\Support\Str::limit(trim((string) ($v['source'] ?? '')), 80, '') ?: null,
+            ];
+
+            if (count($out) >= self::MAX_VIDEOS) {
+                break;
+            }
+        }
+
+        return $out;
+    }
 
     protected static function booted(): void
     {

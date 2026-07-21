@@ -125,7 +125,8 @@
             {{-- Medals --}}
             <div x-show="section === 'medals'" x-cloak x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
                 <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2.5">{{ __('personal.medals') }}</p>
-                @if($awards->count())
+                @php $medalEmoji = fn($mt) => ['1st'=>'🥇','2nd'=>'🥈','3rd'=>'🥉','special'=>'🏆'][$mt] ?? '🏅'; @endphp
+                @if($awards->count() || $verifiedMedals->count())
                     <div class="space-y-2">
                         @foreach($awards as $a)
                             @php $r = mb_strtolower($a->member_award ?? ''); $emoji = str_contains($r,'gold')?'🥇':(str_contains($r,'silver')?'🥈':(str_contains($r,'bronze')?'🥉':'🏅')); @endphp
@@ -137,12 +138,88 @@
                                 </div>
                             </div>
                         @endforeach
+                        @foreach($verifiedMedals as $t)
+                            @foreach($t->performanceResults as $r)
+                                <div class="flex items-center gap-3 rounded-xl border border-gray-100 p-2.5">
+                                    <span class="w-10 h-10 rounded-full bg-amber-50 grid place-items-center text-xl flex-shrink-0">{{ $medalEmoji($r->medal_type) }}</span>
+                                    <div class="min-w-0">
+                                        <p class="font-semibold text-sm text-foreground truncate">{{ $t->title }}</p>
+                                        <p class="text-[11px] text-muted-foreground truncate flex items-center gap-1"><i class="bi bi-patch-check-fill text-green-600"></i>{{ $t->verifiedByTenant?->tr('club_name') ?? $t->verifiedByTenant?->club_name }}</p>
+                                    </div>
+                                </div>
+                            @endforeach
+                        @endforeach
                     </div>
                 @else
                     <div class="py-6 text-center">
                         <i class="bi bi-award text-2xl text-muted-foreground/50"></i>
                         <p class="text-sm text-muted-foreground mt-1.5">{{ __('personal.no_medals') }}</p>
                     </div>
+                @endif
+
+                {{-- Awaiting peer/coach verification --}}
+                @if($vouchable->count())
+                    <div class="mt-4" x-data="peopleVouchMobile()">
+                        <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2">{{ __('Awaiting verification') }}</p>
+                        <div class="space-y-2">
+                            @foreach($vouchable as $t)
+                                <div class="flex items-center justify-between gap-2 rounded-xl border border-gray-100 p-2.5" data-vouch-card="{{ $t->uuid }}">
+                                    <div class="min-w-0">
+                                        <p class="font-semibold text-sm text-foreground truncate">{{ $t->title }}</p>
+                                        <p class="text-[11px] text-muted-foreground truncate">{{ $t->sport }} · {{ optional($t->date)->format('M Y') }}</p>
+                                    </div>
+                                    <div class="flex items-center gap-2 flex-shrink-0">
+                                        <x-verification-badge :status="$t->verification_status" size="xs" />
+                                        @if($canVouch)
+                                            <button type="button" @click="openVouch('{{ route('attestations.vouch', ['achievement', $t->uuid]) }}', $el.closest('[data-vouch-card]'))" class="text-xs font-medium text-primary border border-primary rounded-lg px-2.5 py-1">{{ __('Vouch') }}</button>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        {{-- Vouch bottom-sheet (teleported) --}}
+                        <template x-teleport="body">
+                            <div x-show="showModal" x-cloak class="fixed inset-0 z-[70]" @keydown.escape.window="showModal=false">
+                                <div x-show="showModal" x-transition.opacity class="absolute inset-0 bg-black/50" @click="showModal=false"></div>
+                                <div x-show="showModal" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                                     class="absolute inset-x-0 bottom-0 bg-background rounded-t-3xl shadow-2xl p-5" style="padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));">
+                                    <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3"></div>
+                                    <h3 class="font-bold text-foreground mb-1">{{ __('Vouch for this achievement') }}</h3>
+                                    <p class="text-xs text-muted-foreground mb-3">{{ __('Only vouch for what you personally witnessed.') }}</p>
+                                    <div class="grid grid-cols-2 gap-2 mb-3">
+                                        <template x-for="opt in relOptions" :key="opt.v">
+                                            <button type="button" @click="relationship=opt.v" class="px-3 py-2.5 rounded-xl border text-sm text-start" :class="relationship===opt.v ? 'border-primary bg-primary/5 text-primary font-medium' : 'border-gray-200 text-gray-600'" x-text="opt.l"></button>
+                                        </template>
+                                    </div>
+                                    <textarea x-model="note" rows="2" placeholder="{{ __('Add a note (optional)') }}" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent mb-3"></textarea>
+                                    <button type="button" @click="submit()" :disabled="saving" class="w-full bg-primary text-white py-3 rounded-xl font-semibold disabled:opacity-60">{{ __('Submit vouch') }}</button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    <script>
+                    function peopleVouchMobile() {
+                        return {
+                            showModal: false, saving: false, relationship: 'teammate', note: '', url: '', card: null,
+                            relOptions: [ { v:'coach', l:@js(__('Coach')) }, { v:'official', l:@js(__('Official')) }, { v:'teammate', l:@js(__('Teammate')) }, { v:'other', l:@js(__('Other')) } ],
+                            openVouch(url, card) { this.url = url; this.card = card; this.relationship = 'teammate'; this.note = ''; this.showModal = true; },
+                            async submit() {
+                                this.saving = true;
+                                try {
+                                    const res = await fetch(this.url, { method: 'POST', headers: { 'X-CSRF-TOKEN': @js(csrf_token()), 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify({ stance: 'vouch', relationship: this.relationship, note: this.note }) });
+                                    const data = await res.json();
+                                    if (data.success) {
+                                        if (this.card && data.verification && data.verification.status === 'verified') this.card.remove();
+                                        window.showToast && window.showToast('success', data.message);
+                                        this.showModal = false;
+                                    } else { window.showToast && window.showToast('error', data.message || @js(__('Could not record your vouch.'))); }
+                                } catch (e) { window.showToast && window.showToast('error', @js(__('Something went wrong.'))); }
+                                this.saving = false;
+                            },
+                        };
+                    }
+                    </script>
                 @endif
             </div>
 

@@ -56,7 +56,13 @@ class McpServerTest extends TestCase
         $user = $this->createUser();
         $this->actingAs($user);
 
-        \App\Models\ActivityCatalog::create(['name' => 'Taekwondo']);
+        \App\Models\ActivityCatalog::create([
+            'name' => 'Taekwondo',
+            'videos' => [
+                ['id' => 'aqz-KE-bpKQ', 'title' => 'Poomsae demo', 'source' => 'WT'],
+                ['id' => 'bad-id', 'title' => 'should be dropped'],     // invalid id → filtered out
+            ],
+        ]);
         \App\Models\ActivityCatalog::create(['name' => 'Underwater Basket Weaving']);
 
         $all = $this->callTool(ListActivityCatalogTool::class);
@@ -66,6 +72,12 @@ class McpServerTest extends TestCase
         $names = collect($filtered['activities'])->pluck('name');
         $this->assertTrue($names->contains('Taekwondo'));
         $this->assertFalse($names->contains('Underwater Basket Weaving'));
+
+        // Curated videos surface through the MCP, sanitized (invalid ids dropped).
+        $tkd = collect($filtered['activities'])->firstWhere('name', 'Taekwondo');
+        $this->assertCount(1, $tkd['videos']);
+        $this->assertSame('aqz-KE-bpKQ', $tkd['videos'][0]['id']);
+        $this->assertSame('Poomsae demo', $tkd['videos'][0]['title']);
     }
 
     public function test_who_am_i_reports_identity_and_roles(): void

@@ -827,6 +827,13 @@
                         <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_skill_name') }} <span class="text-danger">*</span></label>
                         <input type="text" name="skill_name" class="form-control" placeholder="{{ __('member.partials_affiliations_enhanced_skill_name_placeholder') }}" required>
                     </div>
+                    {{-- Provenance: which activity/discipline produced this skill (suggestions from the club's activities). --}}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">{{ __('Activity') }}</label>
+                        <input type="text" name="activity_name" id="addSkillActivity" list="skillActivityOptions" class="form-control" placeholder="{{ __('The discipline/class you trained') }}" autocomplete="off">
+                        <input type="hidden" name="activity_id" id="addSkillActivityId">
+                        <datalist id="skillActivityOptions"></datalist>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_proficiency_level') }} <span class="text-danger">*</span></label>
                         <select name="proficiency_level" class="form-select" required>
@@ -1240,7 +1247,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const wrapper = document.createElement('div');
         wrapper.innerHTML = `
             <div class="d-inline-flex align-items-center gap-1" id="skill-${skill.id}">
-                <span class="badge skill-badge bg-${skill.badge_color}" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true" title="<strong>${escapeHtml(skill.skill_name)}</strong><br>{{ __('member.partials_affiliations_enhanced_tooltip_proficiency') }} ${escapeHtml(skill.proficiency_level.charAt(0).toUpperCase() + skill.proficiency_level.slice(1))}<br>{{ __('member.partials_affiliations_enhanced_tooltip_duration') }} ${escapeHtml(skill.formatted_duration)}<br>${skill.start_label ? '{{ __("member.partials_affiliations_enhanced_tooltip_started") }} ' + escapeHtml(skill.start_label) : ''}">
+                <span class="badge skill-badge bg-${skill.badge_color}" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true" title="<strong>${escapeHtml(skill.skill_name)}</strong><br>${skill.activity ? '{{ __('Activity') }}: ' + escapeHtml(skill.activity) + '<br>' : ''}{{ __('member.partials_affiliations_enhanced_tooltip_proficiency') }} ${escapeHtml(skill.proficiency_level.charAt(0).toUpperCase() + skill.proficiency_level.slice(1))}<br>{{ __('member.partials_affiliations_enhanced_tooltip_duration') }} ${escapeHtml(skill.formatted_duration)}<br>${skill.start_label ? '{{ __("member.partials_affiliations_enhanced_tooltip_started") }} ' + escapeHtml(skill.start_label) : ''}${skill.verification && skill.verification.status ? '<br>{{ __('Status') }}: ' + escapeHtml(skill.verification.status.replace('_',' ')) : ''}">
                     <i class="bi bi-star-fill me-1"></i>${escapeHtml(skill.skill_name)}
                     <span class="badge bg-white text-dark ms-1" style="font-size: 0.65rem;">${escapeHtml(skill.proficiency_level.charAt(0).toUpperCase() + skill.proficiency_level.slice(1))}</span>
                 </span>
@@ -1313,6 +1320,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const mid = document.getElementById('addSkillMemberId').value;
         const btn = this.querySelector('[type=submit]');
         const form = this;
+        // If the typed activity matches one of the club's real activities, link its id.
+        const actInput = document.getElementById('addSkillActivity');
+        const actIdInput = document.getElementById('addSkillActivityId');
+        if (actInput && actIdInput) {
+            const match = (window.__skillActivityMap || {})[actInput.value.trim().toLowerCase()];
+            actIdInput.value = match || '';
+        }
         btn.disabled = true;
         affFetch(`/member/${mid}/affiliations/${affiliationId}/skills`, 'POST', formToObject(this))
             .then(res => {
@@ -1378,8 +1392,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const addSkillBtn = e.target.closest('.btn-add-skill');
         if (addSkillBtn) {
-            document.getElementById('addSkillAffiliationId').value = addSkillBtn.dataset.affiliationId;
-            document.getElementById('addSkillMemberId').value = addSkillBtn.dataset.memberId;
+            const affId = addSkillBtn.dataset.affiliationId;
+            const mid = addSkillBtn.dataset.memberId;
+            document.getElementById('addSkillAffiliationId').value = affId;
+            document.getElementById('addSkillMemberId').value = mid;
+            // Load the affiliation club's activities as suggestions; map name → id on submit.
+            const dl = document.getElementById('skillActivityOptions');
+            const actInput = document.getElementById('addSkillActivity');
+            const actIdInput = document.getElementById('addSkillActivityId');
+            if (dl) dl.innerHTML = '';
+            if (actInput) actInput.value = '';
+            if (actIdInput) actIdInput.value = '';
+            window.__skillActivityMap = {};
+            try {
+                const res = await fetch(`/member/${mid}/affiliations/${affId}/activities`, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                const data = await res.json();
+                (data.activities || []).forEach(a => {
+                    if (dl) { const o = document.createElement('option'); o.value = a.name; dl.appendChild(o); }
+                    if (a.id) window.__skillActivityMap[a.name.toLowerCase()] = a.id;
+                });
+            } catch (_) {}
             return;
         }
 

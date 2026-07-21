@@ -7,6 +7,7 @@
     $rtl = $locale === 'ar';
     $img = $activity->picture_url ? asset('storage/'.$activity->picture_url).'?v='.optional($activity->updated_at)->timestamp : null;
     $variants = $activity->variants ?: [];
+    $videos = $activity->sanitizedVideos();
 @endphp
 
 @section('content')
@@ -89,6 +90,9 @@
                     </div>
                 </div>
             @endif
+            {{-- video-first "Watch" lead — above the article (people watch, then read) --}}
+            <x-activity-videos :videos="$videos" :rtl="$rtl" />
+
             <div id="axChapters"></div>
 
             @guest
@@ -202,6 +206,12 @@
     .ax-idx a:hover { color: var(--ax-ink); }
     .ax-idx.active a { color: var(--ax-deep); }
     .ax-idx.active a::before { color: var(--ax-deep); }
+    /* "Watch" entry — no chapter number, keeps the numbered list starting at 01 */
+    .ax-idx--watch { counter-increment: none; }
+    .ax-idx--watch a { color: var(--ax-deep); font-weight: 700; }
+    .ax-idx--watch a::before { content: none; }
+    .ax-idx--watch a i { color: hsl(288 66% 52%); }
+    .ax-idx--watch.active a { color: hsl(288 66% 46%); }
 
     /* ── Chapters ── */
     .ax-article { min-width: 0; }
@@ -294,9 +304,11 @@ if (history.length <= 1) { ['axBack', 'axBackMini'].forEach(id => { const b = do
     // Page-chrome strings per language — kept in sync with the server markup so
     // the on-page toggle updates them too (page-only; preference is untouched).
     const LABELS = @js([
-        'en' => ['almanac' => 'THE TAKEONE ALMANAC', 'minread' => 'min read', 'chapters' => 'chapters', 'styles' => 'styles', 'sources' => 'sources', 'contents' => 'CONTENTS', 'foot' => 'From the TAKEONE global activity directory',
+        'en' => ['almanac' => 'THE TAKEONE ALMANAC', 'minread' => 'min read', 'chapters' => 'chapters', 'styles' => 'styles', 'sources' => 'sources', 'contents' => 'CONTENTS', 'foot' => 'From the TAKEONE global activity directory', 'watch' => 'Watch',
+                 'watch_eyebrow' => 'Press play · watch first', 'watch_more' => 'Techniques & archive', 'watch_swipe' => 'Swipe →',
                  'join_title' => 'Join TAKEONE', 'join_desc' => 'Sign in or create a free account to join clubs, track your training and more.', 'login' => 'Log in', 'register' => 'Create account'],
-        'ar' => ['almanac' => 'دليل تيك ون للأنشطة', 'minread' => 'دقيقة قراءة', 'chapters' => 'فصول', 'styles' => 'أنماط', 'sources' => 'مصادر', 'contents' => 'الفهرس', 'foot' => 'من دليل الأنشطة العالمي في تيك ون',
+        'ar' => ['almanac' => 'دليل تيك ون للأنشطة', 'minread' => 'دقيقة قراءة', 'chapters' => 'فصول', 'styles' => 'أنماط', 'sources' => 'مصادر', 'contents' => 'الفهرس', 'foot' => 'من دليل الأنشطة العالمي في تيك ون', 'watch' => 'مشاهدة',
+                 'watch_eyebrow' => 'شغّل الفيديو · شاهد أولاً', 'watch_more' => 'تقنيات وأرشيف', 'watch_swipe' => '← اسحب',
                  'join_title' => 'انضم إلى تيك ون', 'join_desc' => 'سجّل الدخول أو أنشئ حسابًا مجانيًا للانضمام إلى الأندية ومتابعة تدريبك والمزيد.', 'login' => 'تسجيل الدخول', 'register' => 'إنشاء حساب'],
     ]);
     const VARIANTS = @js(array_values($variants));
@@ -458,7 +470,25 @@ if (history.length <= 1) { ['axBack', 'axBackMini'].forEach(id => { const b = do
         set('axReadTime', Math.max(1, Math.round(words / 200))); set('axSecCount', sections.length);
         set('axSrcCount', out.querySelectorAll('.ax-link').length || '—');
         const f = document.getElementById('axFacts'); if (f) f.hidden = false;
-        const idxWrap = document.getElementById('axIndex'); if (idxWrap) idxWrap.hidden = !sections.length;
+
+        // A "Watch" entry at the top of the contents index when the activity has
+        // curated videos (the index is rebuilt each render, so re-added here).
+        const watchEl = document.getElementById('axm-watch');
+        if (idxList && watchEl) {
+            const li = document.createElement('li'); li.className = 'ax-idx ax-idx--watch'; li.dataset.target = 'axm-watch';
+            const a = document.createElement('a'); a.href = '#axm-watch'; a.innerHTML = '<i class="bi bi-play-fill"></i> ' + (L.watch || 'Watch');
+            a.addEventListener('click', ev => { ev.preventDefault(); watchEl.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+            li.appendChild(a); idxList.insertBefore(li, idxList.firstChild);
+        }
+        // Keep the video block's labels + direction in sync with the toggle.
+        if (watchEl) {
+            watchEl.setAttribute('dir', dir);
+            const eye = watchEl.querySelector('.axv-lead-eyebrow'), pulse = eye && eye.querySelector('.axv-lead-pulse');
+            if (eye && L.watch_eyebrow) { eye.textContent = ' ' + L.watch_eyebrow; if (pulse) eye.prepend(pulse); }
+            const h = watchEl.querySelector('.axv-railhead h3'); if (h && L.watch_more) h.textContent = L.watch_more;
+            const hint = watchEl.querySelector('.axv-railhint'); if (hint && L.watch_swipe) hint.textContent = L.watch_swipe;
+        }
+        const idxWrap = document.getElementById('axIndex'); if (idxWrap) idxWrap.hidden = !sections.length && !watchEl;
 
         // reveal + active index
         const chapters = Array.from(out.querySelectorAll('.ax-chapter'));
@@ -468,6 +498,7 @@ if (history.length <= 1) { ['axBack', 'axBackMini'].forEach(id => { const b = do
             chapters.forEach((c, i) => { c.style.transitionDelay = Math.min(i, 3) * 40 + 'ms'; revObs.observe(c); });
             actObs = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) idxItems.forEach(li => li.classList.toggle('active', li.dataset.target === e.target.id)); }), { rootMargin: '-45% 0px -50% 0px' });
             chapters.forEach(c => actObs.observe(c));
+            if (watchEl) actObs.observe(watchEl); // keep the Watch index entry in sync too
         } else chapters.forEach(c => c.classList.add('in'));
 
         if (!scrollBound) { window.addEventListener('scroll', onScroll, { passive: true }); scrollBound = true; }

@@ -19,10 +19,12 @@
         'is_active' => (bool) $a->is_active,
         'usage_count' => (int) $a->usage_count,
         'variants' => $a->variants ?: [],
+        'videos' => $a->sanitizedVideos(),
         'picture_src' => $a->picture_url ? asset('storage/'.$a->picture_url) : null,
         'update_url' => route('admin.platform.activities.update', $a),
         'destroy_url' => route('admin.platform.activities.destroy', $a),
     ])->values();
+    $verifyVideoUrl = route('admin.platform.activities.verify-video');
 @endphp
 
 @section('content')
@@ -283,6 +285,45 @@
                         </div>
                     </div>
 
+                    {{-- Videos — curated YouTube clips (1st = intro, then techniques + history) --}}
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-sm font-medium text-gray-700">Videos</label>
+                            <span class="text-xs text-muted-foreground" x-text="form.videos.length + '/' + {{ \App\Models\ActivityCatalog::MAX_VIDEOS }}"></span>
+                        </div>
+                        <p class="text-xs text-muted-foreground mb-2">Generated with the write-up, or paste your own. The top clip is featured. Links are verified before saving.</p>
+                        <div class="space-y-2">
+                            <template x-for="(v, i) in form.videos" :key="v.id">
+                                <div class="flex items-center gap-2 p-2 rounded-xl border border-gray-200 bg-white">
+                                    <img :src="'https://i.ytimg.com/vi/' + v.id + '/default.jpg'" alt="" class="w-16 h-10 object-cover rounded-md flex-shrink-0 bg-gray-100" loading="lazy">
+                                    <div class="min-w-0 flex-1">
+                                        <input type="text" x-model="v.title" maxlength="200" placeholder="Title" class="w-full bg-transparent text-sm font-medium text-gray-900 border-0 p-0 focus:ring-0 truncate">
+                                        <div class="flex items-center gap-1 text-xs text-muted-foreground">
+                                            <i class="bi bi-youtube text-red-500"></i><span x-text="v.source || 'YouTube'" class="truncate"></span>
+                                            <span x-show="i === 0" class="ml-1 px-1.5 py-0.5 rounded-full bg-accent text-primary font-semibold text-[10px]">Featured</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-0.5 flex-shrink-0">
+                                        <button type="button" @click="moveVideo(i,-1)" :disabled="i===0" class="m-press w-8 h-8 rounded-lg grid place-items-center text-gray-500 bg-muted/60 disabled:opacity-30"><i class="bi bi-arrow-up"></i></button>
+                                        <button type="button" @click="moveVideo(i,1)" :disabled="i===form.videos.length-1" class="m-press w-8 h-8 rounded-lg grid place-items-center text-gray-500 bg-muted/60 disabled:opacity-30"><i class="bi bi-arrow-down"></i></button>
+                                        <button type="button" @click="form.videos.splice(i,1)" class="m-press w-8 h-8 rounded-lg grid place-items-center text-red-500 bg-red-50"><i class="bi bi-x-lg"></i></button>
+                                    </div>
+                                </div>
+                            </template>
+                            <p class="text-xs text-muted-foreground" x-show="!form.videos.length">No videos yet — generate the content, or paste a link below.</p>
+                        </div>
+                        <div class="mt-2 flex items-center gap-2">
+                            <div class="relative flex-1 min-w-0">
+                                <i class="bi bi-youtube absolute left-3 top-1/2 -translate-y-1/2 text-red-500"></i>
+                                <input type="text" x-model="videoUrl" @keydown.enter.prevent="addVideoByUrl()" placeholder="Paste a YouTube link…" class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent">
+                            </div>
+                            <button type="button" @click="addVideoByUrl()" :disabled="vidBusy || !videoUrl.trim() || form.videos.length >= {{ \App\Models\ActivityCatalog::MAX_VIDEOS }}"
+                                    class="m-press inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border border-primary text-primary disabled:opacity-50 flex-shrink-0">
+                                <i class="bi" :class="vidBusy ? 'bi-arrow-repeat animate-spin' : 'bi-plus-lg'"></i><span>Add</span>
+                            </button>
+                        </div>
+                    </div>
+
                     {{-- Active toggle --}}
                     <label class="flex items-center gap-3 cursor-pointer select-none bg-white rounded-xl border border-gray-100 px-3 py-3">
                         <button type="button" @click="form.is_active = !form.is_active"
@@ -330,9 +371,12 @@ function activityDirectory(initial) {
         imgError: '',
         imgOk: false,
         current: null,
-        form: { name: '', name_ar: '', icon: '', description: '', description_ar: '', image_prompt: '', is_active: true, variants: [] },
+        form: { name: '', name_ar: '', icon: '', description: '', description_ar: '', image_prompt: '', is_active: true, variants: [], videos: [] },
         storeUrl: @js(route('admin.platform.activities.store')),
         generateUrl: @js(route('admin.platform.activities.generate')),
+        verifyVideoUrl: @js($verifyVideoUrl),
+        videoUrl: '',
+        vidBusy: false,
         csrf: document.querySelector('meta[name=csrf-token]').content,
 
         get filtered() {
@@ -345,7 +389,7 @@ function activityDirectory(initial) {
             );
         },
         blank() {
-            return { name: '', name_ar: '', icon: '', description: '', description_ar: '', image_prompt: '', is_active: true, variants: [] };
+            return { name: '', name_ar: '', icon: '', description: '', description_ar: '', image_prompt: '', is_active: true, variants: [], videos: [] };
         },
         openCreate() {
             this.editing = false;
@@ -369,10 +413,40 @@ function activityDirectory(initial) {
                 image_prompt: a.image_prompt || '',
                 is_active: !!a.is_active,
                 variants: (a.variants || []).map(v => ({ name: v.name || '', name_ar: v.name_ar || '' })),
+                videos: (a.videos || []).map(v => ({ id: v.id, title: v.title || '', source: v.source || '' })),
             };
             this.modalOpen = true;
         },
         addVariant() { this.form.variants.push({ name: '', name_ar: '' }); },
+        moveVideo(i, dir) {
+            const j = i + dir;
+            if (j < 0 || j >= this.form.videos.length) return;
+            const v = this.form.videos.splice(i, 1)[0];
+            this.form.videos.splice(j, 0, v);
+        },
+        async addVideoByUrl() {
+            const url = (this.videoUrl || '').trim();
+            if (this.vidBusy || !url) return;
+            if (this.form.videos.length >= {{ \App\Models\ActivityCatalog::MAX_VIDEOS }}) { window.showToast && window.showToast('error', 'Maximum videos reached.'); return; }
+            this.vidBusy = true;
+            try {
+                const res = await fetch(this.verifyVideoUrl, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': this.csrf, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ url }),
+                });
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok || d.success === false) throw new Error(d.message || 'Could not verify that link.');
+                if (this.form.videos.some(v => v.id === d.video.id)) { window.showToast && window.showToast('info', 'That video is already in the list.'); }
+                else { this.form.videos.push({ id: d.video.id, title: d.video.title || '', source: d.video.source || '' }); }
+                this.videoUrl = '';
+            } catch (e) {
+                window.showToast && window.showToast('error', e.message);
+            } finally {
+                this.vidBusy = false;
+            }
+        },
 
         async generateContent() {
             if (this.aiBusy || !this.form.name.trim()) return;
@@ -390,6 +464,9 @@ function activityDirectory(initial) {
                 this.form.description = d.description || this.form.description;
                 this.form.description_ar = d.description_ar || this.form.description_ar;
                 if (d.image_prompt) this.form.image_prompt = d.image_prompt;
+                if (Array.isArray(d.videos) && d.videos.length) {
+                    this.form.videos = d.videos.map(v => ({ id: v.id, title: v.title || '', source: v.source || '' }));
+                }
                 window.showToast && window.showToast('success', d.message || 'Draft generated.');
             } catch (e) {
                 window.showToast && window.showToast('error', e.message);

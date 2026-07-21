@@ -7,6 +7,7 @@
     $rtl = $locale === 'ar';
     $img = $activity->picture_url ? asset('storage/'.$activity->picture_url).'?v='.optional($activity->updated_at)->timestamp : null;
     $variants = $activity->variants ?: [];
+    $videos = $activity->sanitizedVideos();
 @endphp
 
 @section('content')
@@ -62,6 +63,9 @@
 
         {{-- sticky chapter navigator --}}
         <nav class="axm-chapnav" id="axmNav" hidden></nav>
+
+        {{-- video-first "Watch" lead — above the article (people watch, then read) --}}
+        <x-activity-videos :videos="$videos" :rtl="$rtl" />
 
         <div id="axmChapters"></div>
 
@@ -142,6 +146,8 @@
     .axm-navchip { flex-shrink: 0; display: inline-flex; align-items: center; gap: .4rem; padding: .42rem .8rem; border-radius: 999px; font-size: .8rem; font-weight: 600; color: var(--ax-soft); background: #fff; border: 1px solid var(--ax-line); cursor: pointer; white-space: nowrap; transition: all .2s; }
     .axm-navchip.active { color: #fff; background: linear-gradient(145deg, var(--ax), var(--ax-deep)); border-color: transparent; box-shadow: 0 8px 18px -10px hsl(250 60% 50% / .7); }
     .axm-navchip b { font-family: var(--ax-display); }
+    .axm-navchip--watch { color: var(--ax-deep); border-color: hsl(250 58% 84%); background: hsl(250 72% 96%); }
+    .axm-navchip--watch.active { color: #fff; background: linear-gradient(145deg, hsl(288 62% 58%), hsl(288 66% 46%)); }
 
     /* chapters */
     .axm-chapter { scroll-margin-top: 62px; margin-bottom: 1.1rem; }
@@ -214,9 +220,11 @@ if (history.length <= 1) { const b = document.getElementById('axmBack'); if (b) 
     // Page-chrome strings per language — kept in sync with the server markup so
     // the on-page toggle updates them too (page-only; preference is untouched).
     const LABELS = @js([
-        'en' => ['almanac' => 'THE TAKEONE ALMANAC', 'min' => 'min', 'chapters' => 'chapters', 'sources' => 'sources', 'foot' => 'TAKEONE global directory',
+        'en' => ['almanac' => 'THE TAKEONE ALMANAC', 'min' => 'min', 'chapters' => 'chapters', 'sources' => 'sources', 'foot' => 'TAKEONE global directory', 'watch' => 'Watch',
+                 'watch_eyebrow' => 'Press play · watch first', 'watch_more' => 'Techniques & archive', 'watch_swipe' => 'Swipe →',
                  'join_title' => 'Join TAKEONE', 'join_desc' => 'Sign in or create a free account to join clubs, track your training and more.', 'login' => 'Log in', 'register' => 'Create account'],
-        'ar' => ['almanac' => 'دليل تيك ون', 'min' => 'دقيقة', 'chapters' => 'فصول', 'sources' => 'مصادر', 'foot' => 'من دليل تيك ون العالمي',
+        'ar' => ['almanac' => 'دليل تيك ون', 'min' => 'دقيقة', 'chapters' => 'فصول', 'sources' => 'مصادر', 'foot' => 'من دليل تيك ون العالمي', 'watch' => 'مشاهدة',
+                 'watch_eyebrow' => 'شغّل الفيديو · شاهد أولاً', 'watch_more' => 'تقنيات وأرشيف', 'watch_swipe' => '← اسحب',
                  'join_title' => 'انضم إلى تيك ون', 'join_desc' => 'سجّل الدخول أو أنشئ حسابًا مجانيًا للانضمام إلى الأندية ومتابعة تدريبك والمزيد.', 'login' => 'تسجيل الدخول', 'register' => 'إنشاء حساب'],
     ]);
     const VARIANTS = @js(array_values($variants));
@@ -252,6 +260,24 @@ if (history.length <= 1) { const b = document.getElementById('axmBack'); if (b) 
         // Localize the page chrome to the chosen language.
         const L = LABELS[code] || LABELS.en || {};
         if (eyebrowEl && L.almanac) eyebrowEl.innerHTML = '<span class="axm-dot"></span> ' + L.almanac;
+
+        // A persistent "Watch" chip (first) when the activity has curated videos.
+        // The nav is rebuilt every render, so it's re-added here each time.
+        const watchEl = document.getElementById('axm-watch');
+        if (nav && watchEl) {
+            const wc = document.createElement('button'); wc.type = 'button'; wc.className = 'axm-navchip axm-navchip--watch'; wc.dataset.target = 'axm-watch';
+            wc.innerHTML = '<i class="bi bi-play-fill"></i> ' + (L.watch || 'Watch');
+            wc.addEventListener('click', () => watchEl.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+            nav.appendChild(wc);
+        }
+        // Keep the video block's labels + direction in sync with the toggle.
+        if (watchEl) {
+            watchEl.setAttribute('dir', dir);
+            const eye = watchEl.querySelector('.axv-lead-eyebrow'), pulse = eye && eye.querySelector('.axv-lead-pulse');
+            if (eye && L.watch_eyebrow) { eye.textContent = ' ' + L.watch_eyebrow; if (pulse) eye.prepend(pulse); }
+            const h = watchEl.querySelector('.axv-railhead h3'); if (h && L.watch_more) h.textContent = L.watch_more;
+            const hint = watchEl.querySelector('.axv-railhint'); if (hint && L.watch_swipe) hint.textContent = L.watch_swipe;
+        }
         const factSpans = document.querySelectorAll('#axmFacts .axm-fact > span');
         if (factSpans[0] && L.min) factSpans[0].textContent = L.min;
         if (factSpans[1] && L.chapters) factSpans[1].textContent = L.chapters;
@@ -321,7 +347,7 @@ if (history.length <= 1) { const b = document.getElementById('axmBack'); if (b) 
         const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
         set('axmRead', Math.max(1, Math.round(words / 200))); set('axmSecs', sections.length); set('axmSrc', out.querySelectorAll('.axm-link').length || '—');
         const f = document.getElementById('axmFacts'); if (f) f.hidden = false;
-        if (nav) nav.hidden = !sections.length;
+        if (nav) nav.hidden = !sections.length && !watchEl;
 
         const chapters = Array.from(out.querySelectorAll('.axm-chapter'));
         const chips = nav ? Array.from(nav.children) : [];
@@ -330,6 +356,7 @@ if (history.length <= 1) { const b = document.getElementById('axmBack'); if (b) 
             chapters.forEach(c => revObs.observe(c));
             actObs = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { chips.forEach(c => { const on = c.dataset.target === e.target.id; c.classList.toggle('active', on); if (on) c.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); }); } }), { rootMargin: '-40% 0px -55% 0px' });
             chapters.forEach(c => actObs.observe(c));
+            if (watchEl) actObs.observe(watchEl); // keep the Watch chip in sync too
         } else chapters.forEach(c => c.classList.add('in'));
 
         if (!scrollBound) { window.addEventListener('scroll', onScroll, { passive: true }); scrollBound = true; }

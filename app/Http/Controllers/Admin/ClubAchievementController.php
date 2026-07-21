@@ -5,9 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AchievementRequest;
 use App\Models\ClubAchievement;
+use App\Models\SkillAcquisition;
 use App\Models\Tenant;
+use App\Models\TournamentEvent;
+use App\Services\AchievementVerificationService;
 use App\Traits\HandlesClubAuthorization;
 use App\Traits\PersistsTranslations;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class ClubAchievementController extends Controller
@@ -21,6 +27,97 @@ class ClubAchievementController extends Controller
         $achievements = ClubAchievement::where('tenant_id', $club->id)->orderBy('sort_order')->orderBy('id')->get();
 
         return view(\App\Support\ClubView::pick('achievements'), compact('club', 'achievements'));
+    }
+
+    /**
+     * Member self-claimed records (tournament medals AND acquired skills) awaiting
+     * this club's attestation. Only records whose affiliation names THIS club show.
+     * Returns a normalized `$claims` list the view renders uniformly.
+     */
+    public function verifications(Tenant $club)
+    {
+        $this->authorizeClub($club);
+
+        $medals = TournamentEvent::whereHas('clubAffiliation', fn ($q) => $q->where('tenant_id', $club->id))
+            ->where('verification_status', TournamentEvent::STATUS_PENDING)
+            ->with(['user:id,uuid,name,full_name,gender,profile_picture,updated_at', 'performanceResults', 'clubAffiliation'])
+            ->orderByDesc('updated_at')->get()
+            ->map(fn ($m) => $this->normalizeClaim($club, 'achievement', $m));
+
+        $skills = SkillAcquisition::whereHas('clubAffiliation', fn ($q) => $q->where('tenant_id', $club->id))
+            ->where('verification_status', SkillAcquisition::STATUS_PENDING)
+            ->with(['user:id,uuid,name,full_name,gender,profile_picture,updated_at', 'activity', 'clubAffiliation'])
+            ->orderByDesc('updated_at')->get()
+            ->map(fn ($s) => $this->normalizeClaim($club, 'skill', $s));
+
+        $claims = $medals->concat($skills)->values();
+
+        return view(\App\Support\ClubView::pick('achievements.verifications'), compact('club', 'claims'));
+    }
+
+    public function confirmVerification(Tenant $club, string $type, string $uuid, AchievementVerificationService $service)
+    {
+        $this->authorizeClub($club);
+        $record = $this->resolveClubClaim($club, $type, $uuid);
+
+        try {
+            $service->clubConfirm($record, Auth::user());
+        } catch (AuthorizationException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 403);
+        }
+
+        return response()->json(['success' => true, 'message' => __('Verified.'), 'uuid' => $record->uuid, 'status' => $record->verification_status]);
+    }
+
+    public function rejectVerification(Request $request, Tenant $club, string $type, string $uuid, AchievementVerificationService $service)
+    {
+        $this->authorizeClub($club);
+        $record = $this->resolveClubClaim($club, $type, $uuid);
+        $note = $request->validate(['note' => 'nullable|string|max:500'])['note'] ?? null;
+
+        try {
+            $service->clubReject($record, Auth::user(), $note);
+        } catch (AuthorizationException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 403);
+        }
+
+        return response()->json(['success' => true, 'message' => __('Marked as not verified.'), 'uuid' => $record->uuid, 'status' => $record->verification_status]);
+    }
+
+    /** Verifiable record types actionable from the queue, keyed by route `{type}`. */
+    private const CLAIM_TYPES = ['achievement' => TournamentEvent::class, 'skill' => SkillAcquisition::class];
+
+    /** Resolve a pending record of the given type that names THIS club, or 404. */
+    private function resolveClubClaim(Tenant $club, string $type, string $uuid): \Illuminate\Database\Eloquent\Model
+    {
+        $class = self::CLAIM_TYPES[$type] ?? abort(404);
+
+        return $class::where('uuid', $uuid)
+            ->whereHas('clubAffiliation', fn ($q) => $q->where('tenant_id', $club->id))
+            ->with('clubAffiliation.tenant')
+            ->firstOrFail();
+    }
+
+    /** Flatten a medal/skill into the uniform shape the verification queue view renders. */
+    private function normalizeClaim(Tenant $club, string $type, \Illuminate\Database\Eloquent\Model $r): array
+    {
+        $u = $r->user;
+        $isMedal = $type === 'achievement';
+
+        return [
+            'type' => $type,
+            'uuid' => $r->uuid,
+            'user' => ['name' => $u?->full_name ?: $u?->name, 'uuid' => $u?->uuid, 'gender' => $u?->gender, 'profile_picture' => $u?->profile_picture],
+            'title' => $isMedal ? $r->title : $r->skill_name,
+            'sport' => $isMedal ? $r->sport : ($r->activity?->tr('name') ?? $r->activity_name),
+            'date' => $isMedal ? optional($r->date)->format('M j, Y') : ($r->start_date ? $r->start_date->format('M Y') : null),
+            'meta' => $isMedal ? null : ucfirst($r->proficiency_level ?? ''),
+            'club_name' => $r->clubAffiliation?->club_name,
+            'medals' => $isMedal ? $r->performanceResults->pluck('medal_type')->all() : [],
+            'evidence_url' => ($isMedal && $r->evidence_path) ? route('member.tournament.evidence', [$r->user_id, $r->uuid]) : null,
+            'confirm_url' => route('admin.club.achievements.verifications.confirm', [$club->slug ?? $club->id, $type, $r->uuid]),
+            'reject_url' => route('admin.club.achievements.verifications.reject', [$club->slug ?? $club->id, $type, $r->uuid]),
+        ];
     }
 
     public function storeAchievement(AchievementRequest $request, Tenant $club)

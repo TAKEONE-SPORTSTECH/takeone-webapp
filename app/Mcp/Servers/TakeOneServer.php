@@ -13,6 +13,7 @@ use App\Mcp\Tools\ListMembersTool;
 use App\Mcp\Tools\NotifyMemberTool;
 use App\Mcp\Tools\RecordTransactionTool;
 use App\Mcp\Tools\SearchPeopleTool;
+use App\Mcp\Tools\VerifyAchievementTool;
 use App\Mcp\Tools\WhoAmITool;
 use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Attributes\Instructions;
@@ -59,6 +60,7 @@ class TakeOneServer extends Server
         NotifyMemberTool::class,
         EnrollMembersTool::class,
         ListActivityCatalogTool::class,
+        VerifyAchievementTool::class,
     ];
 
     protected array $resources = [

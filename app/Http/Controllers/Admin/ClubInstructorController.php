@@ -10,6 +10,7 @@ use App\Models\ClubInstructor;
 use App\Models\ClubRecurringExpense;
 use App\Models\ClubTransaction;
 use App\Models\Role;
+use App\Models\SkillAcquisition;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\RecurringExpenseService;
@@ -123,6 +124,9 @@ class ClubInstructorController extends Controller
             'skills' => ! empty($skills) ? $skills : null,
             'experience_years' => $experienceYears ?: null,
         ]);
+        // Unified skills: mirror the admin-set certifications into provenance-backed
+        // (verified) SkillAcquisition rows, which is what every profile now reads.
+        $this->syncCertificationSkills((int) $userId, (int) $clubId, $skills ?: []);
 
         // `role` (the staff member's specialty/title) is NOT NULL — the specialty
         // field is optional in the form, so fall back to the staff type when blank.
@@ -177,6 +181,9 @@ class ClubInstructorController extends Controller
             $userUpdate['full_name'] = $request->name;
         }
         $instructor->user->update($userUpdate);
+        if ($skills !== null) {
+            $this->syncCertificationSkills((int) $instructor->user_id, (int) $club->id, $skills ?: []);
+        }
 
         if ($request->filled('photo') && str_starts_with($request->input('photo'), 'data:image')) {
             $photoPath = $this->storeBase64Image($request->input('photo'), 'users/'.$instructor->user_id, 'profile_'.time());
@@ -302,6 +309,35 @@ class ClubInstructorController extends Controller
      * so a volunteer converted to paid only owes settlement from that conversion point,
      * not retroactively from whenever they originally joined. Pass the pre-update
      * $instructor on edits so an already-paid staff member keeps their existing
+     * Mirror an instructor's admin-set certification skills into verified,
+     * provenance-backed SkillAcquisition rows (the single source every profile now
+     * reads). Certifications are user-owned with no affiliation, attributed to this club.
+     */
+    private function syncCertificationSkills(int $userId, int $clubId, array $skills): void
+    {
+        $names = collect($skills)->map(fn ($s) => trim((string) $s))->filter()->unique()->values();
+
+        // Drop this club's admin-managed certifications no longer in the list.
+        SkillAcquisition::where('user_id', $userId)
+            ->whereNull('club_affiliation_id')
+            ->where('verification_method', 'club_confirm')
+            ->where('verified_by_tenant_id', $clubId)
+            ->whereNotIn('skill_name', $names->all())
+            ->delete();
+
+        foreach ($names as $name) {
+            SkillAcquisition::firstOrCreate(
+                ['user_id' => $userId, 'club_affiliation_id' => null, 'skill_name' => $name],
+                [
+                    'proficiency_level' => 'advanced', 'duration_months' => 1, 'icon' => 'bi-patch-check',
+                    'verification_status' => SkillAcquisition::STATUS_VERIFIED, 'verification_method' => 'club_confirm',
+                    'verified_by_tenant_id' => $clubId, 'verified_at' => now(),
+                ],
+            );
+        }
+    }
+
+    /**
      * paid_since instead of it being reset on every save.
      */
     private function compensationData(Request $request, ?ClubInstructor $instructor = null): array

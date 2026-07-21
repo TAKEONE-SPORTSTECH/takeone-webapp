@@ -61,6 +61,10 @@ class ListActivityCatalogTool extends BaseTool
                 'styles' => collect($a->variants ?: [])->pluck('name')->values()->all(),
                 'icon' => $a->icon,
                 'has_image' => (bool) $a->picture_url,
+                // Curated video clips (YouTube). Sanitized/validated by the model.
+                'videos' => collect($a->sanitizedVideos())
+                    ->map(fn ($v) => ['id' => $v['id'], 'title' => $v['title'], 'source' => $v['source']])
+                    ->values()->all(),
                 'usage_count' => $a->usage_count,
             ])->values();
 

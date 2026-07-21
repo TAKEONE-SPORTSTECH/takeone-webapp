@@ -81,7 +81,8 @@
                 @endif
             </div>
 
-            @if($awards->count())
+            @php $medalEmoji = fn($mt) => ['1st'=>'🥇','2nd'=>'🥈','3rd'=>'🥉','special'=>'🏆'][$mt] ?? '🏅'; @endphp
+            @if($awards->count() || $verifiedMedals->count())
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                     <h2 class="text-sm font-bold text-gray-900 mb-3">{{ __('personal.medals') }}</h2>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -95,8 +96,99 @@
                                 </div>
                             </div>
                         @endforeach
+                        {{-- Club-verified tournament medals (attested → safe to show publicly) --}}
+                        @foreach($verifiedMedals as $t)
+                            @foreach($t->performanceResults as $r)
+                                <div class="flex items-center gap-3 border border-gray-100 rounded-xl p-3">
+                                    <span class="w-11 h-11 rounded-full bg-amber-50 grid place-items-center text-xl flex-shrink-0">{{ $medalEmoji($r->medal_type) }}</span>
+                                    <div class="min-w-0">
+                                        <p class="font-semibold text-sm text-gray-900 truncate">{{ $t->title }}</p>
+                                        <p class="text-[11px] text-muted-foreground truncate flex items-center gap-1"><i class="bi bi-patch-check-fill text-green-600"></i>{{ $t->verifiedByTenant?->tr('club_name') ?? $t->verifiedByTenant?->club_name }}</p>
+                                    </div>
+                                </div>
+                            @endforeach
+                        @endforeach
                     </div>
                 </div>
+            @endif
+
+            {{-- Self-reported achievements awaiting peer/coach attestation --}}
+            @if($vouchable->count())
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6" x-data="peopleVouch()">
+                    <h2 class="text-sm font-bold text-gray-900 mb-1">{{ __('Awaiting verification') }}</h2>
+                    <p class="text-xs text-muted-foreground mb-3">{{ __('Self-reported — not yet confirmed. If you witnessed this, you can vouch for it.') }}</p>
+                    <div class="space-y-2">
+                        @foreach($vouchable as $t)
+                            <div class="flex items-center justify-between gap-3 border border-gray-100 rounded-xl p-3" data-vouch-card="{{ $t->uuid }}">
+                                <div class="min-w-0">
+                                    <p class="font-semibold text-sm text-gray-900 truncate">{{ $t->title }}</p>
+                                    <p class="text-[11px] text-muted-foreground truncate">{{ $t->sport }} · {{ optional($t->date)->format('M Y') }}</p>
+                                </div>
+                                <div class="flex items-center gap-2 flex-shrink-0">
+                                    <x-verification-badge :status="$t->verification_status" size="xs" />
+                                    @if($canVouch)
+                                        <button type="button" @click="openVouch('{{ route('attestations.vouch', ['achievement', $t->uuid]) }}', $el.closest('[data-vouch-card]'))" class="text-xs font-medium text-primary border border-primary rounded-lg px-3 py-1.5 hover:bg-primary hover:text-white transition-colors">{{ __('Vouch') }}</button>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    {{-- Vouch modal --}}
+                    <template x-teleport="body">
+                        <div x-show="showModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-4" @keydown.escape.window="showModal=false">
+                            <div x-show="showModal" x-transition.opacity class="absolute inset-0 bg-black/50" @click="showModal=false"></div>
+                            <div x-show="showModal" x-transition class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-5">
+                                <h3 class="font-bold text-gray-900 mb-1">{{ __('Vouch for this achievement') }}</h3>
+                                <p class="text-xs text-muted-foreground mb-4">{{ __('Only vouch for what you personally witnessed. False attestations can be reversed.') }}</p>
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('Your relationship') }}</label>
+                                <div class="grid grid-cols-2 gap-2 mb-4">
+                                    <template x-for="opt in relOptions" :key="opt.v">
+                                        <button type="button" @click="relationship=opt.v" class="px-3 py-2.5 rounded-xl border text-sm text-start transition-colors" :class="relationship===opt.v ? 'border-primary bg-primary/5 text-primary font-medium' : 'border-gray-200 text-gray-600'" x-text="opt.l"></button>
+                                    </template>
+                                </div>
+                                <textarea x-model="note" rows="2" placeholder="{{ __('Add a note (optional)') }}" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent mb-4"></textarea>
+                                <div class="flex gap-2">
+                                    <button type="button" @click="showModal=false" class="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl text-sm font-medium">{{ __('shared.cancel') }}</button>
+                                    <button type="button" @click="submit()" :disabled="saving" class="flex-1 bg-primary text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-60">{{ __('Submit vouch') }}</button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <script>
+                function peopleVouch() {
+                    return {
+                        showModal: false, saving: false, relationship: 'teammate', note: '', url: '', card: null,
+                        relOptions: [
+                            { v: 'coach', l: @js(__('Coach')) },
+                            { v: 'official', l: @js(__('Official')) },
+                            { v: 'teammate', l: @js(__('Teammate')) },
+                            { v: 'other', l: @js(__('Other')) },
+                        ],
+                        openVouch(url, card) { this.url = url; this.card = card; this.relationship = 'teammate'; this.note = ''; this.showModal = true; },
+                        async submit() {
+                            this.saving = true;
+                            try {
+                                const res = await fetch(this.url, {
+                                    method: 'POST',
+                                    headers: { 'X-CSRF-TOKEN': @js(csrf_token()), 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                                    body: JSON.stringify({ stance: 'vouch', relationship: this.relationship, note: this.note }),
+                                });
+                                const data = await res.json();
+                                if (data.success) {
+                                    if (this.card && data.verification && data.verification.status === 'verified') this.card.remove();
+                                    window.showToast && window.showToast('success', data.message);
+                                    this.showModal = false;
+                                } else {
+                                    window.showToast && window.showToast('error', data.message || @js(__('Could not record your vouch.')));
+                                }
+                            } catch (e) { window.showToast && window.showToast('error', @js(__('Something went wrong.'))); }
+                            this.saving = false;
+                        },
+                    };
+                }
+                </script>
             @endif
         </div>
     </div>

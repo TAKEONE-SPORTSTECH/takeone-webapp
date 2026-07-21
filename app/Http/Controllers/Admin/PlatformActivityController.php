@@ -33,7 +33,7 @@ class PlatformActivityController extends Controller
      * directory. Uses the configured text provider (falls back to Ollama).
      * Does NOT save — the admin reviews and edits, then saves normally.
      */
-    public function generateContent(Request $request, AiManager $ai)
+    public function generateContent(Request $request, AiManager $ai, \App\Services\ActivityVideoResearcher $videos)
     {
         $this->guard();
 
@@ -81,6 +81,16 @@ class PlatformActivityController extends Controller
         $descEn = $this->pruneDeadLinks(HtmlSanitizer::clean($parsed['description_en'] ?? '') ?? '', $data['name'], $linkCache);
         $descAr = $this->pruneDeadLinks(HtmlSanitizer::clean($parsed['description_ar'] ?? '') ?? '', $data['name'], $linkCache);
 
+        // Turn the AI's search plan into REAL, embeddable videos: each query is
+        // searched on YouTube and every candidate verified via oEmbed, so a
+        // hallucinated or non-embeddable clip never reaches the draft. Best-effort
+        // — if research yields nothing, the draft simply carries no videos.
+        $plan = is_array($parsed['video_queries'] ?? null) ? $parsed['video_queries'] : [];
+        $resolved = $plan === [] ? [] : $videos->resolvePlan($plan, ActivityCatalog::MAX_VIDEOS);
+        $videoList = collect($resolved)
+            ->map(fn ($v) => ['id' => $v['id'], 'title' => $v['title'], 'source' => $v['source']])
+            ->values()->all();
+
         return response()->json([
             'success' => true,
             'message' => 'Draft generated — review, tweak and save.',
@@ -88,6 +98,7 @@ class PlatformActivityController extends Controller
             'description' => $descEn,
             'description_ar' => $descAr,
             'image_prompt' => is_string($parsed['image_prompt'] ?? null) ? trim($parsed['image_prompt']) : '',
+            'videos' => $videoList,
         ]);
     }
 
@@ -368,7 +379,8 @@ Return ONE JSON object and nothing else, with exactly these keys:
   "name_ar": "the activity name in Arabic",
   "description_en": "<html>",
   "description_ar": "<html>",
-  "image_prompt": "one English AI image prompt"
+  "image_prompt": "one English AI image prompt",
+  "video_queries": [ { "role": "intro|history|technique", "query": "a YouTube search query" } ]
 }
 
 Rules for description_en and description_ar (convey the SAME information in each language):
@@ -390,6 +402,12 @@ ARABIC QUALITY — description_ar and name_ar MUST be publication-grade Modern S
 - Style: clear, cohesive, and flowing — well-connected sentences with natural collocations (تلازم لفظي سليم). Avoid awkward literal phrasings, redundant words, and English syntax leaking into the Arabic.
 - PROOFREAD before returning: silently re-read the entire Arabic output end-to-end and FIX every grammatical, spelling, agreement, or word-choice error, and any phrase that a native speaker would find unnatural. Only output Arabic you are confident is correct and idiomatic.
 - Keep the exact same section order, emojis, HTML structure and factual content as the English version.
+
+Rules for video_queries (used to find real YouTube videos to embed on the page):
+- Provide 6-8 items, each a focused ENGLISH YouTube search query plus its role.
+- ORDER MATTERS. The FIRST item MUST be role "intro" — a query that finds an overview video answering "what is <activity>" (e.g. "what is aikido martial art explained for beginners"). Include EXACTLY ONE item with role "history" — a query for the activity's history/origins/founder (e.g. "history of aikido morihei ueshiba"). ALL remaining items are role "technique" — each a query for a specific technique, skill, form, or notable aspect of the activity (name the concrete technique, e.g. "aikido ikkyo technique tutorial", "aikido kotegaeshi demonstration").
+- Each query MUST include the activity's English name and be phrased to surface instructional / demonstration / documentary content. Keep them positive and educational — do NOT write comparison, debunking, "is it useless", or street-fight queries.
+- Queries only — do NOT output video ids or URLs (each query is searched and every result is verified server-side; unfindable or non-embeddable ones are dropped).
 
 Rules for image_prompt: one vivid cinematic prompt in this exact style — "A cinematic, ultra-detailed hero poster in dramatic dark fantasy game-art style, 16:9 widescreen. Two {ACTIVITY} athletes — a muscular male and a fierce female — mid-action performing an iconic technique, wearing attire authentic to the sport, with glowing energy effects; behind them a translucent mythic creature symbolic of the sport's home culture, an iconic landmark/cityscape of its origin, bold 3D title text '{ACTIVITY}' at the top; moody chiaroscuro lighting, rim-lit silhouettes, a cohesive palette, hyper-detailed digital painting, 4K premium game cover art quality."
 
@@ -563,6 +581,25 @@ PROMPT;
         return response()->json(['success' => true, 'message' => 'Activity removed from the directory.']);
     }
 
+    /**
+     * Verify a manually-pasted YouTube URL/id (admin "add video" in the editor):
+     * confirm it's a real, embeddable video and return {id,title,source}. No id
+     * is trusted from the client — it's re-fetched from YouTube's oEmbed here.
+     */
+    public function verifyVideo(Request $request, \App\Services\ActivityVideoResearcher $researcher)
+    {
+        $this->guard();
+
+        $data = $request->validate(['url' => ['required', 'string', 'max:300']]);
+
+        $video = $researcher->verifyOne($data['url']);
+        if ($video === null) {
+            return response()->json(['success' => false, 'message' => 'Not a valid, embeddable YouTube video.'], 422);
+        }
+
+        return response()->json(['success' => true, 'video' => $video]);
+    }
+
     /* ----------------------------------------------------------------- */
 
     private function validated(Request $request, ?ActivityCatalog $existing = null): array
@@ -578,6 +615,10 @@ PROMPT;
             'variants' => ['nullable', 'array', 'max:30'],
             'variants.*.name' => ['nullable', 'string', 'max:100'],
             'variants.*.name_ar' => ['nullable', 'string', 'max:100'],
+            'videos' => ['nullable', 'array', 'max:'.ActivityCatalog::MAX_VIDEOS],
+            'videos.*.id' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{11}$/'],
+            'videos.*.title' => ['nullable', 'string', 'max:200'],
+            'videos.*.source' => ['nullable', 'string', 'max:120'],
         ]);
     }
 
@@ -618,6 +659,26 @@ PROMPT;
             ], fn ($v) => $v !== null);
         }
         $entry->variants = $variants ?: null;
+
+        // Curated videos — keep only well-formed YouTube entries, in order, deduped.
+        $videos = [];
+        $seenVid = [];
+        foreach ($data['videos'] ?? [] as $row) {
+            $id = trim((string) ($row['id'] ?? ''));
+            if (! preg_match(ActivityCatalog::YOUTUBE_ID, $id) || isset($seenVid[$id])) {
+                continue;
+            }
+            $seenVid[$id] = true;
+            $videos[] = array_filter([
+                'id' => $id,
+                'title' => trim(strip_tags((string) ($row['title'] ?? ''))) ?: null,
+                'source' => trim(strip_tags((string) ($row['source'] ?? ''))) ?: null,
+            ], fn ($v) => $v !== null);
+            if (count($videos) >= ActivityCatalog::MAX_VIDEOS) {
+                break;
+            }
+        }
+        $entry->videos = $videos ?: null;
     }
 
     private function payload(ActivityCatalog $entry): array
@@ -634,6 +695,7 @@ PROMPT;
             'is_active' => (bool) $entry->is_active,
             'usage_count' => (int) $entry->usage_count,
             'variants' => $entry->variants ?: [],
+            'videos' => $entry->sanitizedVideos(),
             'picture_src' => $entry->picture_url ? asset('storage/'.$entry->picture_url) : null,
             'has_prompt' => filled($entry->image_prompt),
             'update_url' => route('admin.platform.activities.update', $entry),

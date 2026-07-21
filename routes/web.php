@@ -352,6 +352,15 @@ Route::post('/ai/compose', [App\Http\Controllers\AiComposeController::class, 'co
     ->middleware(['auth', 'verified', 'throttle:copilot'])
     ->name('ai.compose');
 
+// TEST/LAB — activity video-section design exploration (mobile). Static mock,
+// no data access. Defined BEFORE the {activity:uuid} route so the literal path
+// isn't captured by uuid binding. Remove before go-live.
+Route::get('/lab/activity-video', function () {
+    $activity = \App\Models\ActivityCatalog::where('uuid', '7c4afd25-1a69-48c1-8ba2-c1b136af0cea')->first();
+
+    return view('lab.activity-video', ['activity' => $activity]);
+})->middleware('throttle:60,1')->name('lab.activity-video');
+
 // PUBLIC viewer for a global-directory activity — rich, shareable content page
 // (QR-linked). No auth: general sport knowledge, no tenant/personal data. Bound
 // by a non-guessable uuid and throttled to blunt scraping/enumeration; guests
@@ -380,6 +389,7 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])->prefi
     Route::get('/activities', [App\Http\Controllers\Admin\PlatformActivityController::class, 'index'])->name('platform.activities');
     Route::post('/activities', [App\Http\Controllers\Admin\PlatformActivityController::class, 'store'])->name('platform.activities.store')->middleware('throttle:admin-write');
     Route::post('/activities/generate-content', [App\Http\Controllers\Admin\PlatformActivityController::class, 'generateContent'])->name('platform.activities.generate')->middleware('throttle:copilot');
+    Route::post('/activities/verify-video', [App\Http\Controllers\Admin\PlatformActivityController::class, 'verifyVideo'])->name('platform.activities.verify-video')->middleware('throttle:copilot');
     Route::put('/activities/{activity:uuid}', [App\Http\Controllers\Admin\PlatformActivityController::class, 'update'])->name('platform.activities.update')->middleware('throttle:admin-write');
     Route::post('/activities/{activity:uuid}/image', [App\Http\Controllers\Admin\PlatformActivityController::class, 'generateImage'])->name('platform.activities.image')->middleware('throttle:admin-write');
     Route::post('/activities/upload-image', [App\Http\Controllers\Admin\PlatformActivityController::class, 'uploadImageStore'])->name('platform.activities.upload-image')->middleware('throttle:uploads');
@@ -544,6 +554,10 @@ Route::middleware(['auth', 'verified', 'two-factor', 'tenant', 'throttle:admin-w
     Route::post('/achievements', [App\Http\Controllers\Admin\ClubAchievementController::class, 'storeAchievement'])->name('achievements.store');
     Route::put('/achievements/{achievement}', [App\Http\Controllers\Admin\ClubAchievementController::class, 'updateAchievement'])->name('achievements.update');
     Route::delete('/achievements/{achievement}', [App\Http\Controllers\Admin\ClubAchievementController::class, 'destroyAchievement'])->name('achievements.destroy');
+    // Member self-claimed achievement verification queue (club attests claims naming this club).
+    Route::get('/achievements/verifications', [App\Http\Controllers\Admin\ClubAchievementController::class, 'verifications'])->name('achievements.verifications');
+    Route::post('/achievements/verifications/{type}/{uuid}/confirm', [App\Http\Controllers\Admin\ClubAchievementController::class, 'confirmVerification'])->whereIn('type', ['achievement', 'skill'])->name('achievements.verifications.confirm')->middleware('throttle:admin-write');
+    Route::post('/achievements/verifications/{type}/{uuid}/reject', [App\Http\Controllers\Admin\ClubAchievementController::class, 'rejectVerification'])->whereIn('type', ['achievement', 'skill'])->name('achievements.verifications.reject')->middleware('throttle:admin-write');
 
     // Packages
     Route::get('/packages', [App\Http\Controllers\Admin\ClubPackageController::class, 'packages'])->name('packages');
@@ -672,6 +686,8 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     Route::post('/member/{id}/health', [MemberController::class, 'storeHealth'])->name('member.store-health')->middleware('throttle:member-write');
     Route::put('/member/{id}/health/{recordId}', [MemberController::class, 'updateHealth'])->name('member.update-health')->middleware('throttle:member-write');
     Route::post('/member/{id}/tournament', [MemberController::class, 'storeTournament'])->name('member.store-tournament')->middleware('throttle:member-write');
+    Route::post('/member/{id}/tournament/{uuid}/request-verification', [MemberController::class, 'requestTournamentVerification'])->name('member.tournament.request-verification')->middleware('throttle:member-write');
+    Route::get('/member/{id}/tournament/{uuid}/evidence', [MemberController::class, 'tournamentEvidence'])->name('member.tournament.evidence');
     Route::post('/member/{id}/goal', [MemberController::class, 'storeGoal'])->name('member.store-goal')->middleware('throttle:member-write');
     Route::post('/member/{id}/attendance', [MemberController::class, 'storeAttendance'])->name('member.store-attendance')->middleware('throttle:member-write');
     Route::post('/member/{id}/event-log', [MemberController::class, 'storeMemberEvent'])->name('member.store-event')->middleware('throttle:member-write');
@@ -681,7 +697,9 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     Route::post('/member/{id}/affiliations', [MemberController::class, 'storeAffiliation'])->name('member.store-affiliation')->middleware('throttle:member-write');
     Route::put('/member/{id}/affiliations/{affiliationId}', [MemberController::class, 'updateAffiliation'])->name('member.update-affiliation')->middleware('throttle:member-write');
     Route::delete('/member/{id}/affiliations/{affiliationId}', [MemberController::class, 'destroyAffiliation'])->name('member.destroy-affiliation')->middleware('throttle:member-write');
+    Route::get('/member/{id}/affiliations/{affiliationId}/activities', [MemberController::class, 'affiliationActivities'])->name('member.affiliation-activities')->middleware('throttle:60,1');
     Route::post('/member/{id}/affiliations/{affiliationId}/skills', [MemberController::class, 'storeAffiliationSkill'])->name('member.store-affiliation-skill')->middleware('throttle:member-write');
+    Route::post('/member/{id}/affiliations/{affiliationId}/skills/{uuid}/request-verification', [MemberController::class, 'requestSkillVerification'])->name('member.skill.request-verification')->middleware('throttle:member-write');
     Route::delete('/member/{id}/affiliations/{affiliationId}/skills/{skillId}', [MemberController::class, 'destroyAffiliationSkill'])->name('member.destroy-affiliation-skill')->middleware('throttle:member-write');
     Route::post('/member/{id}/affiliations/{affiliationId}/media', [MemberController::class, 'storeAffiliationMedia'])->name('member.store-affiliation-media')->middleware('throttle:uploads');
     Route::delete('/member/{id}/affiliations/{affiliationId}/media/{mediaId}', [MemberController::class, 'destroyAffiliationMedia'])->name('member.destroy-affiliation-media')->middleware('throttle:member-write');
@@ -710,6 +728,10 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     Route::post('/family/{id}/attendance', [MemberController::class, 'storeAttendance'])->name('family.store-attendance')->middleware('throttle:member-write');
     Route::post('/family/{id}/event-log', [MemberController::class, 'storeMemberEvent'])->name('family.store-event')->middleware('throttle:member-write');
     Route::post('/family/{id}/tournament', [MemberController::class, 'storeTournament'])->name('family.store-tournament')->middleware('throttle:member-write');
+    Route::post('/family/{id}/tournament/{uuid}/request-verification', [MemberController::class, 'requestTournamentVerification'])->name('family.tournament.request-verification')->middleware('throttle:member-write');
+
+    // Peer/coach attestation for a member's self-claimed record (achievement | skill), bound by uuid.
+    Route::post('/attestations/{type}/{uuid}/vouch', [App\Http\Controllers\AchievementVouchController::class, 'vouch'])->whereIn('type', ['achievement', 'skill'])->name('attestations.vouch')->middleware('throttle:member-write');
     Route::post('/family/{id}/upload-picture', [MemberController::class, 'uploadPicture'])->name('family.upload-picture')->middleware('throttle:uploads');
     Route::delete('/family/{id}', [MemberController::class, 'destroy'])->name('family.destroy')->middleware('throttle:member-write');
     Route::get('/family/dashboard', function () {

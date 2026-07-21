@@ -15,6 +15,7 @@ use App\Models\Goal;
 use App\Models\Invoice;
 use App\Models\Membership;
 use App\Models\Person;
+use App\Models\SkillAcquisition;
 use App\Models\TournamentEvent;
 use App\Models\User;
 use App\Models\UserRelationship;
@@ -235,17 +236,23 @@ class MemberController extends Controller
 
         // Fetch tournament data for the member
         $tournamentEvents = $relationship->dependent->tournamentEvents()
-            ->with(['performanceResults', 'notesMedia', 'clubAffiliation'])
+            ->with(['performanceResults', 'notesMedia', 'clubAffiliation.tenant', 'verifiedByTenant'])
             ->orderBy('date', 'desc')
             ->get();
 
-        // Calculate award counts
-        $awardCounts = [
-            'special' => $tournamentEvents->flatMap->performanceResults->where('medal_type', 'special')->count(),
-            '1st' => $tournamentEvents->flatMap->performanceResults->where('medal_type', '1st')->count(),
-            '2nd' => $tournamentEvents->flatMap->performanceResults->where('medal_type', '2nd')->count(),
-            '3rd' => $tournamentEvents->flatMap->performanceResults->where('medal_type', '3rd')->count(),
+        // Calculate award counts. The HERO badges must reflect only authentic
+        // medals: club-attested achievements (below) + tournament results a club
+        // has VERIFIED. Self-reported / pending claims are tallied separately so
+        // they stay visible on the owner's profile without being laundered into
+        // the headline number (see the authenticity plan).
+        $countMedals = fn ($events) => [
+            'special' => $events->flatMap->performanceResults->where('medal_type', 'special')->count(),
+            '1st' => $events->flatMap->performanceResults->where('medal_type', '1st')->count(),
+            '2nd' => $events->flatMap->performanceResults->where('medal_type', '2nd')->count(),
+            '3rd' => $events->flatMap->performanceResults->where('medal_type', '3rd')->count(),
         ];
+        $awardCounts = $countMedals($tournamentEvents->where('verification_status', 'verified'));
+        $selfReportedCounts = $countMedals($tournamentEvents->where('verification_status', '!==', 'verified'));
 
         // Get unique sports for filter
         $sports = $tournamentEvents->pluck('sport')->unique()->sort()->values();
@@ -423,6 +430,7 @@ class MemberController extends Controller
             'payments' => $payments,
             'tournamentEvents' => $tournamentEvents,
             'awardCounts' => $awardCounts,
+            'selfReportedCounts' => $selfReportedCounts,
             'sports' => $sports,
             'awardedAchievements' => $awardedAchievements,
             'goals' => $goals,
@@ -1071,9 +1079,9 @@ class MemberController extends Controller
             'type' => $validated['type'],
             'sport' => $validated['sport'],
             'date' => $validated['date'],
-            'time' => $validated['time'],
-            'location' => $validated['location'],
-            'participants_count' => $validated['participants_count'],
+            'time' => $validated['time'] ?? null,
+            'location' => $validated['location'] ?? null,
+            'participants_count' => $validated['participants_count'] ?? null,
         ]);
 
         // Create performance results
@@ -1094,6 +1102,20 @@ class MemberController extends Controller
             }
         }
 
+        // Optional supporting evidence — real-byte sniff, SVG rejected, private disk.
+        // Support only; it never verifies the claim (see AchievementVerificationService).
+        if (! empty($validated['evidence'])) {
+            $owner = User::find($id);
+            $folder = 'people/'.($owner?->uuid ?? $id).'/achievements/'.$tournament->uuid;
+            $path = $this->storeBase64Image($validated['evidence'], $folder, 'evidence', 'local');
+            if ($path === null) {
+                $tournament->delete();
+
+                return response()->json(['success' => false, 'message' => __('Invalid or unsupported evidence image.')], 422);
+            }
+            $tournament->forceFill(['evidence_path' => $path])->save();
+        }
+
         $tournament->load(['clubAffiliation', 'performanceResults', 'notesMedia']);
 
         return response()->json([
@@ -1104,12 +1126,101 @@ class MemberController extends Controller
     }
 
     /**
+     * Member (or guardian/super-admin) asks the named club to verify a self-claimed
+     * tournament. Status transitions live in AchievementVerificationService — this
+     * controller only authorizes and delegates.
+     */
+    public function requestTournamentVerification(Request $request, $id, string $uuid, \App\Services\AchievementVerificationService $service)
+    {
+        $this->authorizeMemberWrite(Auth::user(), (int) $id);
+
+        $tournament = TournamentEvent::where('uuid', $uuid)
+            ->where('user_id', $id)
+            ->with('clubAffiliation.tenant')
+            ->firstOrFail();
+
+        if (! $tournament->clubAffiliation?->tenant_id) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Link this record to a club on the platform to request verification.'),
+            ], 422);
+        }
+
+        $service->requestVerification($tournament, Auth::user());
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Verification requested from the club.'),
+            'verification' => $this->verificationPayload($tournament->fresh('verifiedByTenant')),
+        ]);
+    }
+
+    /**
+     * Stream a claim's private evidence image to an authorized viewer:
+     * the member / their guardian / super-admin, or an admin of the named club.
+     */
+    public function tournamentEvidence($id, string $uuid)
+    {
+        $tournament = TournamentEvent::where('uuid', $uuid)
+            ->where('user_id', $id)
+            ->with('clubAffiliation')
+            ->firstOrFail();
+
+        abort_unless($tournament->evidence_path, 404);
+
+        $user = Auth::user();
+        $canView = $user->hasRole('super-admin')
+            || (int) $user->id === (int) $id
+            || UserRelationship::where('guardian_user_id', $user->id)->where('dependent_user_id', $id)->exists()
+            || (($t = $tournament->clubAffiliation?->tenant_id) && $user->isClubAdmin((int) $t));
+
+        abort_unless($canView, 403);
+        abort_unless(Storage::disk('local')->exists($tournament->evidence_path), 404);
+
+        return response()->file(Storage::disk('local')->path($tournament->evidence_path));
+    }
+
+    /**
+     * Shared authorization ladder for member self-service writes:
+     * super-admin → own profile → confirmed guardian.
+     */
+    private function authorizeMemberWrite(User $user, int $memberId): void
+    {
+        if ($user->hasRole('super-admin') || (int) $user->id === $memberId) {
+            return;
+        }
+
+        UserRelationship::where('guardian_user_id', $user->id)
+            ->where('dependent_user_id', $memberId)
+            ->firstOrFail();
+    }
+
+    /**
+     * Verification block for in-place UI patching (No-Reload rule).
+     */
+    private function verificationPayload(TournamentEvent $tournament): array
+    {
+        return [
+            'status' => $tournament->verification_status,
+            'method' => $tournament->verification_method,
+            'verified_club' => $tournament->verifiedByTenant?->tr('club_name') ?? $tournament->verifiedByTenant?->club_name,
+            'can_request' => (bool) $tournament->clubAffiliation?->tenant_id
+                && ! in_array($tournament->verification_status, [TournamentEvent::STATUS_VERIFIED, TournamentEvent::STATUS_PENDING], true),
+            'request_url' => route('member.tournament.request-verification', [$tournament->user_id, $tournament->uuid]),
+            'evidence_url' => $tournament->evidence_path
+                ? route('member.tournament.evidence', [$tournament->user_id, $tournament->uuid])
+                : null,
+        ];
+    }
+
+    /**
      * Build a JSON-friendly payload for a tournament event for in-place rendering.
      */
     private function tournamentPayload(TournamentEvent $tournament): array
     {
         return [
             'id' => $tournament->id,
+            'uuid' => $tournament->uuid,
             'title' => $tournament->title,
             'type' => $tournament->type,
             'type_label' => ucfirst($tournament->type),
@@ -1118,6 +1229,7 @@ class MemberController extends Controller
             'time' => optional($tournament->time)->format('H:i'),
             'location' => $tournament->location,
             'participants_count' => $tournament->participants_count,
+            'verification' => $this->verificationPayload($tournament),
             'club_affiliation' => $tournament->clubAffiliation ? [
                 'club_name' => $tournament->clubAffiliation->club_name,
                 'location' => $tournament->clubAffiliation->location,
@@ -1554,9 +1666,42 @@ class MemberController extends Controller
         return response()->json(['success' => true, 'message' => 'Affiliation deleted successfully.']);
     }
 
+    /**
+     * Activities a member can attribute a skill to for a given affiliation:
+     * the named platform club's real activities, else global-catalog suggestions.
+     */
+    public function affiliationActivities($id, $affiliationId)
+    {
+        $this->authorizeForMember((int) $id);
+
+        $member = User::findOrFail($id);
+        $affiliation = $member->clubAffiliations()->findOrFail($affiliationId);
+
+        if ($affiliation->tenant_id) {
+            $activities = \App\Models\ClubActivity::where('tenant_id', $affiliation->tenant_id)
+                ->get(['id', 'name', 'translations'])
+                ->map(fn ($a) => ['id' => $a->id, 'name' => $a->tr('name') ?? $a->name])
+                ->values();
+
+            return response()->json(['linked' => true, 'activities' => $activities]);
+        }
+
+        // Off-platform club → free-text, with global directory suggestions.
+        $suggestions = \App\Models\ActivityCatalog::where('is_active', true)
+            ->orderByDesc('usage_count')->limit(50)
+            ->get(['id', 'name', 'translations'])
+            ->map(fn ($a) => ['id' => null, 'name' => $a->tr('name') ?? $a->name])
+            ->values();
+
+        return response()->json(['linked' => false, 'activities' => $suggestions]);
+    }
+
     public function storeAffiliationSkill(\Illuminate\Http\Request $request, $id, $affiliationId)
     {
         $this->authorizeForMember($id);
+
+        $member = User::findOrFail($id);
+        $affiliation = $member->clubAffiliations()->findOrFail($affiliationId);
 
         $validated = $request->validate([
             'skill_name' => 'required|string|max:255',
@@ -1564,30 +1709,90 @@ class MemberController extends Controller
             'start_date' => 'nullable|date',
             'duration_months' => 'nullable|integer|min:1|max:600',
             'notes' => 'nullable|string|max:500',
+            // Provenance: the activity that produced the skill. A real club activity
+            // (scoped to THIS affiliation's club) or a free-text name for off-platform.
+            'activity_id' => [
+                'nullable',
+                \Illuminate\Validation\Rule::exists('club_activities', 'id')->where('tenant_id', $affiliation->tenant_id),
+            ],
+            'activity_name' => 'nullable|string|max:255',
+            'instructor_id' => [
+                'nullable',
+                \Illuminate\Validation\Rule::exists('club_instructors', 'id')->where('tenant_id', $affiliation->tenant_id),
+            ],
         ]);
 
-        $member = User::findOrFail($id);
-        $affiliation = $member->clubAffiliations()->findOrFail($affiliationId);
         $skill = $affiliation->skillAcquisitions()->create([
+            'user_id' => $member->id,
             'skill_name' => $validated['skill_name'],
+            'activity_id' => $validated['activity_id'] ?? null,
+            'activity_name' => $validated['activity_name'] ?? null,
+            'instructor_id' => $validated['instructor_id'] ?? null,
             'proficiency_level' => $validated['proficiency_level'],
             'start_date' => $validated['start_date'] ?? null,
             'duration_months' => $validated['duration_months'] ?? 1,
             'notes' => $validated['notes'] ?? null,
             'icon' => 'bi-star',
         ]);
+        // status defaults to self_reported (HasVerificationState); never client-set.
 
         return response()->json([
             'success' => true,
             'message' => 'Skill added successfully.',
             'id' => $skill->id,
-            'skill' => [
-                'id' => $skill->id,
-                'skill_name' => $skill->skill_name,
-                'proficiency_level' => $skill->proficiency_level,
-                'formatted_duration' => $skill->formatted_duration,
-                'start_label' => $skill->start_date ? $skill->start_date->format('M Y') : null,
-                'badge_color' => $skill->proficiency_level == 'expert' ? 'danger' : ($skill->proficiency_level == 'advanced' ? 'warning' : ($skill->proficiency_level == 'intermediate' ? 'info' : 'secondary')),
+            'skill' => $this->skillPayload($skill->fresh(['activity'])),
+        ]);
+    }
+
+    /** JSON shape for a skill row (provenance + verification), for in-place rendering. */
+    private function skillPayload(SkillAcquisition $skill): array
+    {
+        return [
+            'id' => $skill->id,
+            'uuid' => $skill->uuid,
+            'skill_name' => $skill->skill_name,
+            'activity' => $skill->activity?->tr('name') ?? $skill->activity_name,
+            'proficiency_level' => $skill->proficiency_level,
+            'formatted_duration' => $skill->formatted_duration,
+            'start_label' => $skill->start_date ? $skill->start_date->format('M Y') : null,
+            'badge_color' => $skill->proficiency_level == 'expert' ? 'danger' : ($skill->proficiency_level == 'advanced' ? 'warning' : ($skill->proficiency_level == 'intermediate' ? 'info' : 'secondary')),
+            'verification' => [
+                'status' => $skill->verification_status,
+                'verified_club' => $skill->verifiedByTenant?->tr('club_name') ?? $skill->verifiedByTenant?->club_name,
+                'can_request' => (bool) $skill->clubAffiliation?->tenant_id
+                    && ! in_array($skill->verification_status, [SkillAcquisition::STATUS_VERIFIED, SkillAcquisition::STATUS_PENDING], true),
+                'request_url' => route('member.skill.request-verification', [$skill->user_id, $skill->club_affiliation_id ?? 0, $skill->uuid]),
+            ],
+        ];
+    }
+
+    /**
+     * Member (or guardian/super-admin) asks the named club to verify a self-claimed skill.
+     */
+    public function requestSkillVerification($id, $affiliationId, string $uuid, \App\Services\AchievementVerificationService $service)
+    {
+        $this->authorizeMemberWrite(Auth::user(), (int) $id);
+
+        $skill = SkillAcquisition::where('uuid', $uuid)
+            ->where('user_id', $id)
+            ->with('clubAffiliation.tenant')
+            ->firstOrFail();
+
+        if (! $skill->clubAffiliation?->tenant_id) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Link this skill to a club on the platform to request verification.'),
+            ], 422);
+        }
+
+        $service->requestVerification($skill, Auth::user());
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Verification requested from the club.'),
+            'verification' => [
+                'status' => $skill->verification_status,
+                'verified_club' => $skill->verifiedByTenant?->tr('club_name') ?? $skill->verifiedByTenant?->club_name,
             ],
         ]);
     }

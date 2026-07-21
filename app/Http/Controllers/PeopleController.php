@@ -142,6 +142,31 @@ class PeopleController extends Controller
                 return $mine ? $a : null;
             })->filter()->values();
 
+        // Tournament medals the person self-recorded AND a club has VERIFIED. Safe to show
+        // publicly precisely because they're attested; self-reported/pending never appear here.
+        $verifiedMedals = \App\Models\TournamentEvent::where('user_id', $person->id)
+            ->where('verification_status', \App\Models\TournamentEvent::STATUS_VERIFIED)
+            ->with(['performanceResults:id,tournament_event_id,medal_type', 'verifiedByTenant:id,club_name,slug,translations'])
+            ->orderByDesc('date')
+            ->get();
+
+        // Claims that CAN'T be club-confirmed (no platform club) and still need attestation —
+        // the peer/coach vouch path. Shown clearly as unverified, with a vouch CTA for eligible
+        // viewers. Never counted as medals; the server re-checks vouch eligibility on submit.
+        $vouchable = \App\Models\TournamentEvent::where('user_id', $person->id)
+            ->whereIn('verification_status', [\App\Models\TournamentEvent::STATUS_SELF_REPORTED, \App\Models\TournamentEvent::STATUS_PENDING])
+            ->where(fn ($q) => $q->whereNull('club_affiliation_id')
+                ->orWhereHas('clubAffiliation', fn ($qq) => $qq->whereNull('tenant_id')))
+            ->with('performanceResults:id,tournament_event_id,medal_type')
+            ->orderByDesc('date')
+            ->get();
+
+        // Best-effort UI gate; AchievementVerificationService enforces the real rule on submit.
+        $isFamily = \App\Models\UserRelationship::where(fn ($q) => $q->where('guardian_user_id', $me->id)->where('dependent_user_id', $person->id))
+            ->orWhere(fn ($q) => $q->where('guardian_user_id', $person->id)->where('dependent_user_id', $me->id))
+            ->exists();
+        $canVouch = $me->id !== $person->id && ! $isFamily;
+
         // Challenge (duel) win-rate.
         $duelsTotal = Duel::where('status', 'completed')
             ->where(fn ($q) => $q->where('challenger_id', $person->id)->orWhere('opponent_id', $person->id))
@@ -175,6 +200,9 @@ class PeopleController extends Controller
             'activeAffil' => $activeAffil,
             'pastAffil' => $pastAffil,
             'awards' => $awards,
+            'verifiedMedals' => $verifiedMedals,
+            'vouchable' => $vouchable,
+            'canVouch' => $canVouch,
             'skills' => $skills,
             'winRate' => $winRate,
             'duelsTotal' => $duelsTotal,

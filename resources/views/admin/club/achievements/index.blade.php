@@ -48,9 +48,15 @@ $achievementsJson = $achievements->map(function($a) {
             <h2 class="text-xl font-bold text-foreground">{{ __('admin.club_achievements_index_title') }}</h2>
             <p class="text-sm text-muted-foreground mt-0.5">{{ __('admin.club_achievements_index_subtitle') }}</p>
         </div>
-        <button @click="openAdd()" class="btn btn-primary">
-            <i class="bi bi-plus-lg me-2"></i>{{ __('admin.club_achievements_index_add_achievement') }}
-        </button>
+        <div class="flex items-center gap-2">
+            <a href="{{ route('admin.club.achievements.verifications', $club->slug ?? $club->id) }}" data-shell-link data-route="admin.club.achievements.verifications"
+               class="inline-flex items-center gap-2 border border-primary text-primary bg-transparent px-4 py-2 rounded-md text-sm font-medium hover:bg-primary hover:text-white transition-colors">
+                <i class="bi bi-patch-check"></i>{{ __('Verification requests') }}
+            </a>
+            <button @click="openAdd()" class="btn btn-primary">
+                <i class="bi bi-plus-lg me-2"></i>{{ __('admin.club_achievements_index_add_achievement') }}
+            </button>
+        </div>
     </div>
 
     {{-- Achievements list --}}

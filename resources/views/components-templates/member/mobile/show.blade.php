@@ -296,9 +296,9 @@
         $medalSheetItems = $achList->map(fn ($x) => $x['data'] + ['buckets' => $x['buckets']])->all();
     @endphp
 
-    {{-- ===== Medal showcase ===== --}}
-    @if($medalsTotal > 0)
-    <div class="px-4 mt-4"
+    {{-- ===== Medal showcase — always present, even at zero (counts VERIFIED medals only) ===== --}}
+    {{-- mt-3 here matches the tabs' mt-3 below, so the section has equal (and tight) space above and below. --}}
+    <div class="px-4 mt-3"
          x-data="{
             items: @js($medalSheetItems),
             sheetOpen: false, filterType: '', filterLabel: '', filterEmoji: '',
@@ -329,6 +329,14 @@
                 </button>
             @endforeach
         </div>
+
+        @if($isSelf)
+            {{-- Jumps to the Tournaments tab and opens the self-claim sheet (which lives in that tab's scope). --}}
+            <button type="button" @click="goTab('tournaments'); $dispatch('open-achievement-sheet')"
+                    class="m-press w-full mt-2.5 flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary/30 text-primary py-2.5 text-sm font-semibold hover:bg-primary/5 transition-colors">
+                <i class="bi bi-plus-lg"></i>{{ __('Add achievement') }}
+            </button>
+        @endif
 
         {{-- Filtered medal list — opens as a mobile bottom-sheet when a medal is tapped --}}
         <template x-teleport="body">
@@ -378,16 +386,22 @@
 
         {{-- Shared achievement detail sheet (opened from a list row) --}}
         @include('components-templates.member.mobile.partials.achievement-detail-sheet')
+
+        {{-- Self-reported medals are visible on the profile but not counted as verified above --}}
+        @php $mSelfReported = array_sum($selfReportedCounts ?? []); @endphp
+        @if($mSelfReported > 0)
+            <p class="text-[11px] text-muted-foreground/70 flex items-center gap-1 mt-2"><i class="bi bi-person-badge"></i>{{ __('+:count self-reported awaiting verification', ['count' => $mSelfReported]) }}</p>
+        @endif
     </div>
-    @endif
 
     {{-- ===== Sticky tabs ===== --}}
-    <div id="mpTabs" class="sticky top-14 z-30 bg-background/95 backdrop-blur mt-5 py-2">
+    {{-- mt-1 (4px) + py-2 (8px) ≈ 12px, so the gap below the medal boxes matches the mt-3 above them. --}}
+    <div id="mpTabs" class="sticky top-14 z-30 bg-background/95 backdrop-blur mt-1 py-2">
         <div class="mp-tabbar flex gap-1.5 px-4">
             @php
                 $mpTabs = [
                     'overview'=>__('member.tab_overview'),'health'=>__('member.tab_health'),'goals'=>__('member.tab_goals'),
-                    'clubs'=>__('member.tab_clubs'),
+                    'tournaments'=>__('member.tab_tournaments'),'clubs'=>__('member.tab_clubs'),
                 ];
                 // Billing is sensitive — only for the member's own people / affiliated club staff.
                 if ($canViewSensitive ?? false) $mpTabs['billing'] = __('member.tab_billing');
@@ -1065,7 +1079,22 @@
         </div>
 
         {{-- ===== Tournaments ===== --}}
-        <div x-show="tab==='tournaments'" x-transition.opacity x-cloak class="space-y-3">
+        @php
+            $tvStoreUrl = $relationship->relationship_type === 'admin_view'
+                ? route('admin.platform.members.store-tournament', $relationship->dependent->id)
+                : route('member.store-tournament', $relationship->dependent->id);
+            $tvAffiliations = ($clubAffiliations ?? collect())->map(fn ($a) => [
+                'id' => $a->id, 'name' => $a->club_name, 'linked' => (bool) $a->tenant_id,
+            ])->values();
+        @endphp
+        <div x-show="tab==='tournaments'" x-transition.opacity x-cloak class="space-y-3"
+             x-data="tournamentSheet({ storeUrl: '{{ $tvStoreUrl }}', csrf: '{{ csrf_token() }}', memberId: {{ (int) $relationship->dependent->id }}, canAdd: {{ $isSelf ? 'true' : 'false' }}, affiliations: @js($tvAffiliations) })"
+             @open-achievement-sheet.window="openAdd()">
+            @if($isSelf)
+                <button type="button" @click="openAdd()" class="m-press w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary/30 text-primary py-3 text-sm font-semibold hover:bg-primary/5 transition-colors">
+                    <i class="bi bi-plus-lg"></i>{{ __('Add achievement') }}
+                </button>
+            @endif
             @if(($awardedAchievements ?? collect())->isNotEmpty())
                 <div x-data="{ showAch:false, ach:null, idx:0,
                                openAch(a){ this.ach=a; this.idx=0; this.showAch=true; },
@@ -1100,6 +1129,7 @@
                 @endif
             @endif
 
+            <div id="mobileTournamentsList" class="space-y-3">
             @forelse($tournamentEvents as $t)
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                     <div class="flex items-start gap-3">
@@ -1118,14 +1148,130 @@
                                     @endforeach
                                 </div>
                             @endif
+                            {{-- Provenance: honest state + evidence + request action --}}
+                            <div class="mt-2 flex items-center gap-2 flex-wrap" data-verify-row="{{ $t->uuid }}">
+                                <x-verification-badge data-verify-badge :status="$t->verification_status" :club="$t->verifiedByTenant?->tr('club_name') ?? $t->verifiedByTenant?->club_name" />
+                                @if($t->evidence_path)
+                                    <a href="{{ route('member.tournament.evidence', [$t->user_id, $t->uuid]) }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary"><i class="bi bi-paperclip"></i>{{ __('Evidence') }}</a>
+                                @endif
+                                @if($isSelf && $t->clubAffiliation?->tenant_id && ! in_array($t->verification_status, ['verified','pending']))
+                                    <button type="button" data-verify-btn @click="requestVerify($el, '{{ route('member.tournament.request-verification', [$t->user_id, $t->uuid]) }}')" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary"><i class="bi bi-patch-check"></i>{{ __('Request verification') }}</button>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </div>
             @empty
                 @if(($awardedAchievements ?? collect())->isEmpty())
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center"><i class="bi bi-trophy text-3xl text-gray-300"></i><p class="text-sm text-muted-foreground mt-2">{{ __('member.no_tournaments') }}</p></div>
+                <div id="mobileTournamentsEmpty" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center"><i class="bi bi-trophy text-3xl text-gray-300"></i><p class="text-sm text-muted-foreground mt-2">{{ __('member.no_tournaments') }}</p></div>
                 @endif
             @endforelse
+            </div>
+
+            {{-- Self-claim bottom-sheet (teleported to body to escape transformed ancestors) --}}
+            <template x-teleport="body">
+                <div x-show="addOpen" x-cloak @keydown.escape.window="addOpen=false" class="fixed inset-0 z-[70]">
+                    <div x-show="addOpen" x-transition.opacity class="absolute inset-0 bg-black/50" @click="addOpen=false"></div>
+                    <div x-show="addOpen"
+                         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                         class="absolute inset-x-0 bottom-0 max-h-[92vh] flex flex-col bg-background rounded-t-3xl shadow-2xl">
+                        {{-- Header --}}
+                        <div class="flex-shrink-0 px-5 pt-3 pb-3 border-b border-gray-100">
+                            <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3"></div>
+                            <div class="flex items-center justify-between">
+                                <h3 class="font-bold text-foreground">{{ __('Add achievement') }}</h3>
+                                <button type="button" @click="addOpen=false" class="w-8 h-8 rounded-full grid place-items-center text-muted-foreground hover:bg-muted"><i class="bi bi-x-lg"></i></button>
+                            </div>
+                        </div>
+                        {{-- Body --}}
+                        <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Title') }}</label>
+                                <input type="text" x-model="form.title" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('e.g. National Championship 2019') }}">
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Sport') }}</label>
+                                    <input type="text" x-model="form.sport" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('e.g. Taekwondo') }}">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Date') }}</label>
+                                    <x-date-picker model="form.date" placeholder="{{ __('Pick a date') }}" />
+                                </div>
+                            </div>
+                            {{-- Type — selection cards --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('Type') }}</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <template x-for="opt in typeOptions" :key="opt.v">
+                                        <button type="button" @click="form.type=opt.v"
+                                                class="flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm text-start transition-colors"
+                                                :class="form.type===opt.v ? 'border-primary bg-primary/5 text-primary font-medium' : 'border-gray-200 text-gray-600'">
+                                            <i class="bi" :class="opt.icon"></i><span x-text="opt.l"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                            {{-- Club — selection cards (drives verification) --}}
+                            <div x-show="affiliations.length">
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('Club') }} <span class="text-xs font-normal text-gray-400">({{ __('for verification') }})</span></label>
+                                <div class="space-y-2">
+                                    <button type="button" @click="form.club_affiliation_id=null"
+                                            class="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm text-start transition-colors"
+                                            :class="!form.club_affiliation_id ? 'border-primary bg-primary/5' : 'border-gray-200'">
+                                        <i class="bi bi-person"></i>{{ __('Individual / no club') }}
+                                    </button>
+                                    <template x-for="a in affiliations" :key="a.id">
+                                        <button type="button" @click="form.club_affiliation_id=a.id"
+                                                class="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border text-sm text-start transition-colors"
+                                                :class="form.club_affiliation_id===a.id ? 'border-primary bg-primary/5' : 'border-gray-200'">
+                                            <span class="flex items-center gap-2 min-w-0"><i class="bi bi-trophy flex-shrink-0"></i><span class="truncate" x-text="a.name"></span></span>
+                                            <span x-show="a.linked" class="text-[10px] text-green-600 flex-shrink-0"><i class="bi bi-patch-check"></i> {{ __('verifiable') }}</span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                            {{-- Medal — selection cards --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('Result') }}</label>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <template x-for="opt in medalOptions" :key="opt.v">
+                                        <button type="button" @click="form.medal_type=opt.v"
+                                                class="flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl border text-xs transition-colors"
+                                                :class="form.medal_type===opt.v ? 'border-primary bg-primary/5 text-primary font-medium' : 'border-gray-200 text-gray-600'">
+                                            <span class="text-lg" x-text="opt.e"></span><span x-text="opt.l"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Location') }} <span class="text-xs font-normal text-gray-400">({{ __('optional') }})</span></label>
+                                <input type="text" x-model="form.location" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                            </div>
+                            {{-- Evidence --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Supporting evidence') }} <span class="text-xs font-normal text-gray-400">({{ __('optional') }})</span></label>
+                                <p class="text-xs text-gray-500 mb-2">{{ __('Helps a club verify — it does not verify automatically.') }}</p>
+                                <label class="flex items-center gap-3 border border-dashed border-gray-300 rounded-xl px-4 py-3 cursor-pointer">
+                                    <i class="bi bi-cloud-arrow-up text-xl text-gray-400"></i>
+                                    <span class="text-sm text-gray-600 truncate" x-text="evidenceName || '{{ __('Choose an image') }}'"></span>
+                                    <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" @change="readEvidence($event)">
+                                </label>
+                                <img x-show="evidencePreview" :src="evidencePreview" class="mt-2 h-20 rounded-lg border border-gray-200 object-cover" alt="">
+                            </div>
+                        </div>
+                        {{-- Sticky footer --}}
+                        <div class="flex-shrink-0 border-t border-gray-100 bg-background px-5 pt-3" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
+                            <button type="button" @click="submit()" :disabled="saving"
+                                    class="w-full bg-primary text-white py-3 rounded-xl font-semibold disabled:opacity-60 flex items-center justify-center gap-2">
+                                <span x-show="!saving">{{ __('Save achievement') }}</span>
+                                <span x-show="saving"><i class="bi bi-arrow-repeat animate-spin"></i></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
         </div>
 
         {{-- ===== Clubs / affiliations ===== --}}
@@ -2013,6 +2159,158 @@ function resizeImageToDataUrl(file, maxDim, quality) {
         reader.readAsDataURL(file);
     });
 }
+
+// ---- Achievement provenance helpers (shared; safe to redefine on shell re-run) ----
+window.verifyBadgeHtml = function (status, club) {
+    var map = {
+        verified:      ['bi-patch-check-fill','text-green-700','bg-green-50','border-green-200', @js(__('Verified'))],
+        pending:       ['bi-hourglass-split','text-amber-700','bg-amber-50','border-amber-200', @js(__('Pending review'))],
+        rejected:      ['bi-patch-exclamation','text-red-700','bg-red-50','border-red-200', @js(__('Not verified'))],
+        self_reported: ['bi-person-badge','text-gray-500','bg-gray-50','border-gray-200', @js(__('Self-reported'))],
+    };
+    var m = map[status] || map.self_reported;
+    var esc = window.__esc || (s => String(s ?? ''));
+    var suffix = (status === 'verified' && club) ? '<span class="opacity-70 font-normal">· ' + esc(club) + '</span>' : '';
+    return '<span data-verify-badge class="inline-flex items-center gap-1 rounded-full border font-medium px-2 py-0.5 text-xs ' + m[1] + ' ' + m[2] + ' ' + m[3] + '"><i class="bi ' + m[0] + '"></i><span>' + m[4] + '</span>' + suffix + '</span>';
+};
+window.patchVerifyRow = function (row, v) {
+    var badge = row.querySelector('[data-verify-badge]');
+    if (badge) badge.outerHTML = window.verifyBadgeHtml(v.status, v.verified_club);
+    if (['verified','pending'].includes(v.status)) { var b = row.querySelector('[data-verify-btn]'); if (b) b.remove(); }
+};
+// Live updates from a club admin verifying/rejecting elsewhere (dedup across shell swaps).
+if (window.__mobileVerifyHandler) window.removeEventListener('realtime:verification', window.__mobileVerifyHandler);
+window.__mobileVerifyHandler = function (e) {
+    var d = e.detail || {};
+    if (d.action !== 'status' || !d.event_uuid) return;
+    var row = document.querySelector('[data-verify-row="' + d.event_uuid + '"]');
+    if (row) window.patchVerifyRow(row, { status: d.status, verified_club: d.verified_club });
+};
+window.addEventListener('realtime:verification', window.__mobileVerifyHandler);
+
+window.tournamentSheet = function (cfg) {
+    var esc = window.__esc || (s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])));
+    window.__esc = esc;
+    return {
+        addOpen: false, saving: false,
+        affiliations: cfg.affiliations || [],
+        evidence: null, evidenceName: '', evidencePreview: '',
+        typeOptions: [
+            { v: 'championship', l: @js(__('Championship')), icon: 'bi-trophy' },
+            { v: 'tournament', l: @js(__('Tournament')), icon: 'bi-flag' },
+            { v: 'competition', l: @js(__('Competition')), icon: 'bi-people' },
+            { v: 'exhibition', l: @js(__('Exhibition')), icon: 'bi-stars' },
+        ],
+        medalOptions: [
+            { v: '', e: '—', l: @js(__('None')) },
+            { v: '1st', e: '🥇', l: @js(__('Gold')) },
+            { v: '2nd', e: '🥈', l: @js(__('Silver')) },
+            { v: '3rd', e: '🥉', l: @js(__('Bronze')) },
+            { v: 'special', e: '🏆', l: @js(__('Special')) },
+        ],
+        form: {},
+        blankForm() {
+            return { title: '', sport: '', date: '', type: 'tournament', location: '', club_affiliation_id: null, medal_type: '' };
+        },
+        openAdd() {
+            this.form = this.blankForm();
+            this.evidence = null; this.evidenceName = ''; this.evidencePreview = '';
+            this.addOpen = true;
+        },
+        readEvidence(ev) {
+            var file = ev.target.files && ev.target.files[0];
+            if (!file) return;
+            if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) { window.showToast && window.showToast('error', @js(__('Unsupported image type.'))); ev.target.value=''; return; }
+            if (file.size > 5 * 1024 * 1024) { window.showToast && window.showToast('error', @js(__('Image is too large (max 5MB).'))); ev.target.value=''; return; }
+            var r = new FileReader();
+            r.onload = e => { this.evidence = e.target.result; this.evidencePreview = e.target.result; this.evidenceName = file.name; };
+            r.readAsDataURL(file);
+        },
+        async submit() {
+            if (!this.form.title || !this.form.sport || !this.form.date) {
+                window.showToast && window.showToast('error', @js(__('Please fill in the title, sport and date.'))); return;
+            }
+            this.saving = true;
+            var fd = new FormData();
+            fd.append('title', this.form.title);
+            fd.append('sport', this.form.sport);
+            fd.append('date', this.form.date);
+            fd.append('type', this.form.type);
+            if (this.form.location) fd.append('location', this.form.location);
+            if (this.form.club_affiliation_id) fd.append('club_affiliation_id', this.form.club_affiliation_id);
+            if (this.form.medal_type) fd.append('performance_results[0][medal_type]', this.form.medal_type);
+            if (this.evidence) fd.append('evidence', this.evidence);
+            try {
+                var res = await fetch(cfg.storeUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': cfg.csrf, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: fd });
+                var data = await res.json();
+                if (data.success) {
+                    this.prependCard(data.tournament);
+                    this.addOpen = false;
+                    window.showToast && window.showToast('success', @js(__('Achievement added.')));
+                } else {
+                    window.showToast && window.showToast('error', data.message || @js(__('Could not save.')));
+                }
+            } catch (e) { window.showToast && window.showToast('error', @js(__('Something went wrong.'))); }
+            this.saving = false;
+        },
+        async requestVerify(el, url) {
+            el.disabled = true;
+            try {
+                var res = await fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': cfg.csrf, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                var data = await res.json();
+                if (data.success) {
+                    var row = el.closest('[data-verify-row]');
+                    if (row && data.verification) window.patchVerifyRow(row, data.verification);
+                    window.showToast && window.showToast('success', data.message);
+                } else { el.disabled = false; window.showToast && window.showToast('error', data.message || @js(__('Could not request verification.'))); }
+            } catch (e) { el.disabled = false; window.showToast && window.showToast('error', @js(__('Something went wrong.'))); }
+        },
+        prependCard(t) {
+            var list = document.getElementById('mobileTournamentsList');
+            if (!list) return;
+            var empty = document.getElementById('mobileTournamentsEmpty');
+            if (empty) empty.remove();
+            var mc = { '1st': 'bg-amber-100 text-amber-700', '2nd': 'bg-slate-100 text-slate-600', '3rd': 'bg-orange-100 text-orange-700', special: 'bg-accent text-primary' };
+            var medals = (t.performance_results || []).map(function (r) {
+                return '<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ' + (mc[r.medal_type] || 'bg-gray-100 text-gray-600') + '"><i class="bi bi-award-fill mr-0.5"></i>' + esc(r.medal_type ? r.medal_type.charAt(0).toUpperCase() + r.medal_type.slice(1) : '') + '</span>';
+            }).join('');
+            var v = t.verification || {};
+            var verifyExtra = '';
+            if (v.evidence_url) verifyExtra += '<a href="' + esc(v.evidence_url) + '" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary"><i class="bi bi-paperclip"></i>' + @js(__('Evidence')) + '</a>';
+            if (v.can_request && v.request_url) verifyExtra += '<button type="button" data-verify-btn onclick="window.requestAchievementVerification(this)" data-verify-url="' + esc(v.request_url) + '" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary"><i class="bi bi-patch-check"></i>' + @js(__('Request verification')) + '</button>';
+            var d = t.date ? new Date(t.date) : null;
+            var day = d ? String(d.getDate()).padStart(2, '0') : '—';
+            var mon = d ? d.toLocaleString('en', { month: 'short' }) : '';
+            var html =
+                '<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4"><div class="flex items-start gap-3">' +
+                '<div class="flex flex-col items-center justify-center w-12 flex-shrink-0"><span class="text-lg font-black text-primary leading-none">' + day + '</span><span class="text-[10px] uppercase text-muted-foreground">' + mon + '</span></div>' +
+                '<div class="min-w-0 flex-1"><p class="font-semibold text-foreground truncate">' + esc(t.title) + '</p>' +
+                '<p class="text-xs text-muted-foreground truncate">' + esc(t.sport) + (t.location ? ' · ' + esc(t.location) : '') + '</p>' +
+                (medals ? '<div class="flex flex-wrap gap-1 mt-2">' + medals + '</div>' : '') +
+                '<div class="mt-2 flex items-center gap-2 flex-wrap" data-verify-row="' + esc(t.uuid || '') + '">' + window.verifyBadgeHtml(v.status || 'self_reported', v.verified_club) + verifyExtra + '</div>' +
+                '</div></div></div>';
+            var wrap = document.createElement('div');
+            wrap.innerHTML = html;
+            list.insertBefore(wrap.firstElementChild, list.firstChild);
+        },
+    };
+};
+
+// Global request-verification handler (used by JS-inserted mobile cards).
+window.requestAchievementVerification = async function (btn) {
+    var url = btn.getAttribute('data-verify-url');
+    if (!url) return;
+    btn.disabled = true;
+    try {
+        var res = await fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': @js(csrf_token()), 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+        var data = await res.json();
+        if (data.success) {
+            var row = btn.closest('[data-verify-row]');
+            if (row && data.verification) window.patchVerifyRow(row, data.verification);
+            window.showToast && window.showToast('success', data.message);
+        } else { btn.disabled = false; window.showToast && window.showToast('error', data.message || @js(__('Could not request verification.'))); }
+    } catch (e) { btn.disabled = false; window.showToast && window.showToast('error', @js(__('Something went wrong.'))); }
+};
 
 window.goalsManager = function (cfg) {
     return {

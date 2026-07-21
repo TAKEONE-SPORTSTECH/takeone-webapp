@@ -24,3 +24,9 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 /docker/whatsapp/data
+
+# Security scan output (local only)
+/storage/zap-report/
+
+# Design draft images (local only)
+/draft/
