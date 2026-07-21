@@ -992,6 +992,9 @@
     <!-- Confirm Dialog -->
     <x-confirm-dialog />
 
+    <!-- Persistent low-stock alerts (club owner) — survives navigation until acknowledged -->
+    <x-low-stock-alerts />
+
     <!-- Toast Container (Alpine.js) -->
     @php $toastsEnabled = \App\Models\PlatformSetting::getBool('toasts_enabled', true); @endphp
     <div x-data="toastManager()" class="fixed top-20 right-4 z-[200] space-y-2 pointer-events-none">

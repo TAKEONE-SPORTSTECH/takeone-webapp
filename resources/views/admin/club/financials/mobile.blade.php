@@ -6,6 +6,8 @@
 @php
     $cur = $currency ?? ($club->currency ?: '');
     $today = date('Y-m-d');
+    $currentMonth = date('Y-m');   // ledger + hero default to this month; the hero stepper changes it
+    $shopOrders = $shopOrders ?? collect();   // order (ref => Order w/ items) for shop-sale line items
     $counts = [
         'all'     => $transactions->count() + $pendingSubscriptions->count(),
         'pending' => $pendingSubscriptions->count(),
@@ -23,6 +25,10 @@
             'id'              => 'pending-' . $sub->id,
             'type'            => 'pending',
             'label'           => $name,
+            'member'          => '',
+            'items'           => [],
+            'items_summary'   => '',
+            'month'           => $sub->start_date ? \Illuminate\Support\Carbon::parse($sub->start_date)->format('Y-m') : '',
             'amount'          => $amt,
             'amount_fmt'      => $cur . ' ' . number_format($amt, 2),
             'date_label'      => $sub->package?->name ?? __('admin.fin_awaiting'),
@@ -35,14 +41,30 @@
         ];
     })->values();
 
-    $txLedger = $transactions->map(function ($t) use ($cur) {
+    $txLedger = $transactions->map(function ($t) use ($cur, $shopOrders) {
         $sub        = $t->subscription;
         $refundable = $t->type === 'income' && $sub && $sub->payment_status === 'paid';
         $label      = $t->description ?: ucfirst($t->category ?? $t->type);
+        $payer      = $sub && $sub->user
+            ? ($sub->user->full_name ?? $sub->user->name)
+            : ($t->user->full_name ?? $t->user->name ?? '');
+
+        // What was actually sold — resolve the linked shop order and expose its line-item
+        // snapshots (name/variant/qty/total) so the ledger shows products, not just the code.
+        $order    = $t->reference_number ? $shopOrders->get($t->reference_number) : null;
+        $items    = $order ? $order->items->map(fn ($it) => [
+            'name'       => $it->name ?: __('admin.fin_item'),
+            'variant'    => $it->variant_label ?: trim(implode(' · ', array_filter([$it->brand, $it->color, $it->size]))),
+            'qty'        => (int) $it->qty,
+            'line_total' => $cur . ' ' . number_format((float) $it->line_total, 2),
+        ])->values()->all() : [];
+        $itemsSummary = $order
+            ? $order->items->map(fn ($it) => ($it->name ?: __('admin.fin_item')) . ' ×' . (int) $it->qty)->implode(' · ')
+            : '';
         $pmKey      = $t->payment_method ? ($t->payment_method === 'bank_transfer' ? 'bank' : $t->payment_method) : '';
         $dateLabel  = $t->transaction_date ? $t->transaction_date->locale(app()->getLocale())->isoFormat('D MMM YYYY') : '';
         $search     = mb_strtolower(trim(implode(' ', array_filter([
-            $label, $t->category, $t->type, $t->reference_number,
+            $label, $payer, $itemsSummary, $t->category, $t->type, $t->reference_number,
             number_format((float) $t->amount, 2), $dateLabel,
         ]))));
 
@@ -50,11 +72,16 @@
             'id'               => $t->id,
             'type'             => $t->type,
             'label'            => $label,
+            'member'           => $payer,
+            'month'            => $t->transaction_date ? $t->transaction_date->format('Y-m') : '',
             'amount'           => (float) $t->amount,
             'amount_fmt'       => $cur . ' ' . number_format((float) $t->amount, 2),
             'date_label'       => $dateLabel,
             'pm_label'         => $pmKey ? __('admin.fin_pm_' . $pmKey) : '',
             'search'           => $search,
+            // shop-sale line items (empty for everything else)
+            'items'            => $items,
+            'items_summary'    => $itemsSummary,
             // raw fields for the edit sheet
             'description'      => $t->description ?? '',
             'transaction_date' => $t->transaction_date?->format('Y-m-d'),
@@ -99,6 +126,20 @@
         'ih'       => (int) round(((float) ($m['income'] ?? 0)) / $peak * 100),
         'eh'       => (int) round(((float) ($m['expenses'] ?? 0)) / $peak * 100),
     ])->values();
+
+    // ── Hero sparkline: 12-month revenue curve (server-rendered SVG, no JS/library) —
+    //    same technique as the dashboard's dashSpark, mapped into a 0..100 × 0..30 box. ──
+    $sparkVals = $monthly->map(fn ($m) => (float) ($m['income'] ?? 0))->values();
+    $sparkN    = max($sparkVals->count(), 1);
+    $sparkPeak = max($sparkVals->max() ?: 0, 1);
+    $sparkPts  = [];
+    foreach ($sparkVals as $i => $v) {
+        $x = $sparkN > 1 ? round($i / ($sparkN - 1) * 100, 2) : 0;
+        $y = round(30 - ($v / $sparkPeak) * 26 - 2, 2);
+        $sparkPts[] = "$x,$y";
+    }
+    $sparkLine = implode(' ', $sparkPts);
+    $sparkArea = $sparkLine !== '' ? "0,30 {$sparkLine} 100,30" : '';
 
     // ── Reports: margin + payment-method distribution of real income ──
     $margin      = $incomeVal > 0 ? round($netVal / $incomeVal * 100, 1) : 0;
@@ -159,20 +200,46 @@
             </div>
 
             <div class="mt-4">
-                <p class="text-[11px] uppercase tracking-wide text-white/70">{{ __('admin.dash_net') }}</p>
+                {{-- Month scope — the hero + ledger both read the selected month; step back to
+                     review past months, capped at the current one (no future). --}}
+                <div class="flex items-center justify-between gap-2">
+                    <p class="text-[11px] uppercase tracking-wide text-white/70">{{ __('admin.dash_net') }}</p>
+                    <div class="inline-flex items-center gap-0.5 rounded-full bg-white/12 border border-white/20 p-0.5">
+                        <button type="button" @click="shiftMonth(-1)" aria-label="{{ __('admin.fin_prev_month') }}"
+                                class="m-press w-7 h-7 rounded-full grid place-items-center text-white/90 hover:bg-white/15 transition-colors">
+                            <i class="bi bi-chevron-left rtl:rotate-180 text-xs"></i>
+                        </button>
+                        <span class="min-w-[92px] text-center text-xs font-bold tracking-wide" x-text="monthLabel"></span>
+                        <button type="button" @click="shiftMonth(1)" :disabled="! canGoNextMonth" aria-label="{{ __('admin.fin_next_month') }}"
+                                class="m-press w-7 h-7 rounded-full grid place-items-center text-white/90 hover:bg-white/15 transition-colors disabled:opacity-30 disabled:pointer-events-none">
+                            <i class="bi bi-chevron-right rtl:rotate-180 text-xs"></i>
+                        </button>
+                    </div>
+                </div>
                 <p class="text-3xl font-black tabular-nums leading-none mt-1">
-                    <span x-text="(sum.net >= 0 ? '+' : '') + fmt0(sum.net)"></span><span class="text-sm font-bold ms-1">{{ $cur }}</span>
+                    <span x-text="(monthSum.net >= 0 ? '+' : '') + fmt0(monthSum.net)"></span><span class="text-sm font-bold ms-1">{{ $cur }}</span>
                 </p>
 
-                {{-- Income vs expenses in one bar --}}
-                <div class="mt-3 h-2 rounded-full bg-white/20 overflow-hidden flex">
-                    <div class="h-full bg-emerald-300 m-bar-fill" style="width: {{ $incomeShare }}%"></div>
-                    <div class="h-full bg-rose-300/90 m-bar-fill" style="width: {{ 100 - $incomeShare }}%"></div>
-                </div>
-                <div class="flex justify-between text-[11px] text-white/80 mt-1.5 tabular-nums">
-                    <span><i class="bi bi-circle-fill text-emerald-300 text-[7px] me-1"></i><span x-text="fmt0(sum.income)"></span> {{ __('market.stat_revenue') }}</span>
-                    <span>{{ __('admin.dash_expenses') }} <span x-text="fmt0(sum.expenses)"></span><i class="bi bi-circle-fill text-rose-300 text-[7px] ms-1"></i></span>
-                </div>
+                {{-- 12-month revenue curve for context (server-rendered SVG, no JS) --}}
+                @if($sparkLine !== '')
+                    <div class="mt-3.5">
+                        <svg viewBox="0 0 100 30" preserveAspectRatio="none" class="w-full h-10 overflow-visible" aria-hidden="true">
+                            <defs>
+                                <linearGradient id="finHeroSpark" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#fff" stop-opacity="0.30" />
+                                    <stop offset="100%" stop-color="#fff" stop-opacity="0" />
+                                </linearGradient>
+                            </defs>
+                            <polygon points="{{ $sparkArea }}" fill="url(#finHeroSpark)" />
+                            <polyline points="{{ $sparkLine }}" fill="none" stroke="#fff" stroke-width="1.5"
+                                      stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" opacity="0.92" />
+                        </svg>
+                    </div>
+                @endif
+
+                <p x-show="monthLedger.length === 0" x-cloak class="mt-2 text-[11px] text-white/70 flex items-center gap-1.5">
+                    <i class="bi bi-calendar-x"></i>{{ __('admin.fin_no_month_activity') }}
+                </p>
 
                 {{-- Why a figure may look "missing": these totals are POSTED cash only, in the
                      club's current data mode. Both caveats are stated rather than left implicit. --}}
@@ -237,7 +304,7 @@
                     <span class="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 grid place-items-center flex-shrink-0"><i class="bi bi-arrow-counterclockwise text-sm"></i></span>
                     <span class="text-[11px] font-semibold text-muted-foreground truncate">{{ __('admin.fin_refunds') }}</span>
                 </div>
-                <p class="text-lg font-black text-foreground tabular-nums mt-2"><span x-text="fmt0(sum.refunds)"></span> <span class="text-[10px] font-bold text-muted-foreground">{{ $cur }}</span></p>
+                <p class="text-lg font-black text-foreground tabular-nums mt-2"><span x-text="fmt0(monthSum.refunds)"></span> <span class="text-[10px] font-bold text-muted-foreground">{{ $cur }}</span></p>
             </div>
         </div>
 
@@ -320,8 +387,8 @@
             @endforeach
         </div>
 
-        <p x-show="ledger.length === 0" x-cloak class="text-sm text-muted-foreground py-10 text-center">{{ __('admin.fin_no_transactions') }}</p>
-        <p x-show="ledger.length > 0 && filteredLedger.length === 0" x-cloak class="text-sm text-muted-foreground py-10 text-center">{{ __('admin.fin_no_results') }}</p>
+        <p x-show="monthLedger.length === 0" x-cloak class="text-sm text-muted-foreground py-10 text-center">{{ __('admin.fin_no_month_activity') }}</p>
+        <p x-show="monthLedger.length > 0 && filteredLedger.length === 0" x-cloak class="text-sm text-muted-foreground py-10 text-center">{{ __('admin.fin_no_results') }}</p>
 
         <div class="divide-y divide-gray-50">
             <template x-for="r in filteredLedger" :key="r.id">
@@ -334,6 +401,16 @@
 
                     <div class="min-w-0 flex-1">
                         <p class="text-sm font-medium text-foreground truncate" x-text="r.label"></p>
+                        <template x-if="r.member">
+                            <p class="text-xs text-primary/90 truncate flex items-center gap-1">
+                                <i class="bi bi-person-circle text-[11px]"></i><span x-text="r.member"></span>
+                            </p>
+                        </template>
+                        <template x-if="r.items_summary">
+                            <p class="text-xs text-emerald-600/90 truncate flex items-center gap-1">
+                                <i class="bi bi-bag text-[11px]"></i><span x-text="r.items_summary"></span>
+                            </p>
+                        </template>
                         <p class="text-xs text-muted-foreground truncate">
                             <span x-text="r.date_label"></span><template x-if="r.pm_label"><span> · <span x-text="r.pm_label"></span></span></template>
                         </p>
@@ -708,6 +785,40 @@
                         </div>
                     </div>
 
+                    {{-- Paid by — the enrolled member this income belongs to (read-only; derived
+                         from the linked subscription, not editable here). --}}
+                    <div x-show="txMember" x-cloak class="mt-3 flex items-center gap-2.5 rounded-2xl bg-primary/5 border border-primary/10 px-3.5 py-2.5">
+                        <span class="w-8 h-8 rounded-full bg-primary/10 text-primary grid place-items-center flex-shrink-0">
+                            <i class="bi bi-person-fill text-sm"></i>
+                        </span>
+                        <span class="min-w-0">
+                            <span class="block text-[10px] font-semibold uppercase tracking-wide text-primary/60">{{ __('admin.fin_paid_by') }}</span>
+                            <span class="block text-sm font-semibold text-foreground truncate" x-text="txMember"></span>
+                        </span>
+                    </div>
+
+                    {{-- Items sold — the products behind a shop-sale income (read-only snapshot from
+                         the order; shows name, variant, qty and line total so the code isn't opaque). --}}
+                    <div x-show="txItems.length" x-cloak class="mt-3 rounded-2xl bg-emerald-50/60 border border-emerald-100 overflow-hidden">
+                        <div class="flex items-center gap-2 px-3.5 py-2.5 border-b border-emerald-100/70">
+                            <i class="bi bi-bag-check-fill text-emerald-600 text-sm"></i>
+                            <span class="text-[11px] font-bold uppercase tracking-wide text-emerald-700">{{ __('admin.fin_items_sold') }}</span>
+                            <span class="ms-auto text-[11px] font-semibold text-emerald-700/70" x-text="txItems.length + ' {{ __('admin.fin_items_count_suffix') }}'"></span>
+                        </div>
+                        <div class="divide-y divide-emerald-100/70">
+                            <template x-for="(it, i) in txItems" :key="i">
+                                <div class="flex items-center gap-2.5 px-3.5 py-2">
+                                    <span class="w-5 text-center text-xs font-bold text-emerald-700/80 flex-shrink-0" x-text="'×' + it.qty"></span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block text-sm font-semibold text-foreground truncate" x-text="it.name"></span>
+                                        <span class="block text-[11px] text-muted-foreground truncate" x-show="it.variant" x-text="it.variant"></span>
+                                    </span>
+                                    <span class="text-xs font-bold text-foreground tabular-nums flex-shrink-0" x-text="it.line_total"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
                     <div class="divide-y divide-gray-100">
 
                     {{-- Type (edit only) --}}
@@ -936,7 +1047,7 @@ function financialsHub() {
         close() { this.panel = null; window.scrollTo({ top: 0, behavior: 'smooth' }); },
 
         // ── transaction sheet (income / expense / edit) ──
-        txOpen: false, txMode: 'income', txId: null,
+        txOpen: false, txMode: 'income', txId: null, txMember: '', txItems: [],
         tx: { type: 'income', description: '', amount: '', transaction_date: '{{ $today }}', category: '', payment_method: 'cash', reference_number: '', recurring: false },
         incomeCats: [
             { v: 'subscription', l: @js(__('admin.fin_cat_subscription')) , i: 'bi-arrow-repeat' },
@@ -964,9 +1075,9 @@ function financialsHub() {
             return this.txMode === 'expense' ? '{{ route('admin.club.financials.expense', $club->slug) }}' : '{{ route('admin.club.financials.income', $club->slug) }}';
         },
         resetTx() { this.tx = { type: 'income', description: '', amount: '', transaction_date: '{{ $today }}', category: '', payment_method: 'cash', reference_number: '', recurring: false }; },
-        openIncome()  { this.txMode = 'income';  this.txId = null; this.resetTx(); this.tx.type = 'income';  this.txOpen = true; },
-        openExpense() { this.txMode = 'expense'; this.txId = null; this.resetTx(); this.tx.type = 'expense'; this.txOpen = true; },
-        openEdit(t)   { this.txMode = 'edit'; this.txId = t.id; this.tx = { type: t.type, description: t.description || '', amount: t.amount, transaction_date: t.transaction_date, category: t.category || '', payment_method: t.payment_method || 'cash', reference_number: t.reference_number || '', recurring: false }; this.txOpen = true; },
+        openIncome()  { this.txMode = 'income';  this.txId = null; this.txMember = ''; this.txItems = []; this.resetTx(); this.tx.type = 'income';  this.txOpen = true; },
+        openExpense() { this.txMode = 'expense'; this.txId = null; this.txMember = ''; this.txItems = []; this.resetTx(); this.tx.type = 'expense'; this.txOpen = true; },
+        openEdit(t)   { this.txMode = 'edit'; this.txId = t.id; this.txMember = t.member || ''; this.txItems = t.items || []; this.tx = { type: t.type, description: t.description || '', amount: t.amount, transaction_date: t.transaction_date, category: t.category || '', payment_method: t.payment_method || 'cash', reference_number: t.reference_number || '', recurring: false }; this.txOpen = true; },
         submitTx() {
             if (!this.tx.description.trim()) { window.showToast('warning', @js(__('admin.fin_err_desc'))); return; }
             if (!(parseFloat(this.tx.amount) >= 0) || this.tx.amount === '') { window.showToast('warning', @js(__('admin.fin_err_amount'))); return; }
@@ -1094,6 +1205,8 @@ function financialsHub() {
             return {
                 id: t.id, type: t.type, label: label, amount: amt,
                 amount_fmt: '{{ $cur }} ' + amt.toFixed(2),
+                month: (t.transaction_date || '').slice(0, 7) || this.currentMonth,
+                items: [], items_summary: '',
                 date_label: t.transaction_date || '', pm_label: pmKey ? (this.pmLabels[pmKey] || '') : '',
                 search: String(label + ' ' + (t.category || '') + ' ' + t.type + ' ' + amt.toFixed(2)).toLowerCase(),
                 description: t.description || '', transaction_date: null,
@@ -1110,19 +1223,54 @@ function financialsHub() {
             other: @js(__('admin.fin_pm_other')),
         },
 
+        // ── month scope (hero + ledger both read the selected month) ──
+        selectedMonth: @js($currentMonth),          // 'YYYY-MM'
+        currentMonth: @js($currentMonth),           // this calendar month — the cap for "next"
+        /** Rows dated within the selected month (pending rows carry their enrolment month). */
+        get monthLedger() { return this.ledger.filter(r => r.month === this.selectedMonth); },
+        /** Hero figures, recomputed live from the selected month's rows. */
+        get monthSum() {
+            let income = 0, expenses = 0, refunds = 0;
+            this.monthLedger.forEach(r => {
+                if (r.type === 'income')  income   += Number(r.amount) || 0;
+                else if (r.type === 'expense') expenses += Number(r.amount) || 0;
+                else if (r.type === 'refund')  refunds  += Number(r.amount) || 0;
+            });
+            const flow = income + expenses;
+            return {
+                income, expenses, refunds,
+                net: income - expenses - refunds,
+                incomeShare: flow > 0 ? Math.round(income / flow * 1000) / 10 : 0,
+            };
+        },
+        /** 'YYYY-MM' → localised 'Month YYYY' for the hero stepper. */
+        get monthLabel() {
+            const [y, m] = this.selectedMonth.split('-').map(Number);
+            return new Date(y, (m || 1) - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+        },
+        get canGoNextMonth() { return this.selectedMonth < this.currentMonth; },
+        shiftMonth(delta) {
+            const [y, m] = this.selectedMonth.split('-').map(Number);
+            const d = new Date(y, (m - 1) + delta, 1);
+            const next = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+            if (next > this.currentMonth) return;   // never step into the future
+            this.selectedMonth = next;
+            this.txFilter = 'all';                  // avoid landing on an empty filter for the new month
+        },
+
         // ── ledger filter / search ──
         txFilter: 'all',
         txSearch: '',
         ledger: @js($ledger),
         get pendingRows() { return this.ledger.filter(r => r.type === 'pending'); },
         get counts() {
-            const c = { all: this.ledger.length, pending: 0, income: 0, expense: 0, refund: 0 };
-            this.ledger.forEach(r => { if (c[r.type] !== undefined) c[r.type]++; });
+            const c = { all: this.monthLedger.length, pending: 0, income: 0, expense: 0, refund: 0 };
+            this.monthLedger.forEach(r => { if (c[r.type] !== undefined) c[r.type]++; });
             return c;
         },
         get filteredLedger() {
             const q = this.txSearch.trim().toLowerCase();
-            return this.ledger.filter(r =>
+            return this.monthLedger.filter(r =>
                 (this.txFilter === 'all' || this.txFilter === r.type) &&
                 (q === '' || r.search.includes(q))
             );

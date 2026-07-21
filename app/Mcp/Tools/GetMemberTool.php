@@ -73,6 +73,35 @@ class GetMemberTool extends BaseTool
             'medals' => $this->authenticMedals($member),
             // Only VERIFIED skills (provenance-backed): activity + club + since + proficiency.
             'skills' => $this->verifiedSkills($member),
+            // Self-managed certifications / qualifications the member holds.
+            'certifications' => $member->certifications()
+                ->orderByRaw('issue_date IS NULL, issue_date DESC')
+                ->get()
+                ->map(fn ($c) => [
+                    'id' => $c->id,
+                    'title' => $c->title,
+                    'issuer' => $c->issuer,
+                    'issue_date' => optional($c->issue_date)->toDateString(),
+                    'expiry_date' => optional($c->expiry_date)->toDateString(),
+                    'expired' => $c->isExpired(),
+                    'credential_id' => $c->credential_id,
+                    'credential_url' => $c->credential_url,
+                ])->values(),
+            // Self-managed work / coaching history (current roles first).
+            'work_history' => $member->workHistory()
+                ->orderByRaw('end_date IS NULL DESC')
+                ->orderBy('start_date', 'desc')
+                ->get()
+                ->map(fn ($w) => [
+                    'id' => $w->id,
+                    'title' => $w->title,
+                    'organization' => $w->organization,
+                    'employment_type' => $w->employment_type,
+                    'location' => $w->location,
+                    'start_date' => optional($w->start_date)->toDateString(),
+                    'end_date' => optional($w->end_date)->toDateString(),
+                    'current' => $w->isCurrent(),
+                ])->values(),
         ]);
     }
 

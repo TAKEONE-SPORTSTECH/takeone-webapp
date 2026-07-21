@@ -612,6 +612,22 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Get the self-managed certifications / qualifications for the user.
+     */
+    public function certifications(): HasMany
+    {
+        return $this->hasMany(MemberCertification::class);
+    }
+
+    /**
+     * Get the self-managed work / coaching history for the user.
+     */
+    public function workHistory(): HasMany
+    {
+        return $this->hasMany(MemberWorkHistory::class);
+    }
+
+    /**
      * Get the club affiliations for the user.
      */
     public function clubAffiliations(): HasMany

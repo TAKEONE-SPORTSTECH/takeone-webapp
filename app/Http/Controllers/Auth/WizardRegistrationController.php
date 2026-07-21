@@ -7,10 +7,12 @@ use App\Mail\WelcomeEmail;
 use App\Mail\WizardOtpMail;
 use App\Models\ClubMemberSubscription;
 use App\Models\ClubPackage;
+use App\Models\ClubTransaction;
 use App\Models\Membership;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\UserRelationship;
+use App\Support\ClubCache;
 use App\Traits\StoresBase64Images;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
@@ -507,10 +509,13 @@ class WizardRegistrationController extends Controller
      * Enrol one person: create their (pending) package subscriptions and fold the
      * first-time registration fee + chosen equipment into the bill.
      *
-     * Consistent with the wizard's pending model, money owed is tracked via
-     * amount_due (no premature income transactions); the registration fee is
-     * snapshotted on the subscription and equipment lines are stored as 'pending'
-     * (which still counts as "owned" so a later registration auto-skips them).
+     * Each package subscription posts an income ClubTransaction at enrolment
+     * (category 'subscription', amount = package price) — identical to
+     * SubscriptionService::createPending — so wizard registrations appear in the
+     * club ledger/financials just like every other join path. Money still owed is
+     * tracked separately via amount_due; the registration fee is snapshotted on the
+     * subscription and equipment lines are stored as 'pending' (which still counts
+     * as "owned" so a later registration auto-skips them).
      *
      * @param  array<int>  $packageIds
      * @param  array<int>  $equipmentIds
@@ -569,12 +574,31 @@ class WizardRegistrationController extends Controller
                 'proof_of_payment' => $proofPath,
                 'registration_group_id' => $groupId,
             ]);
+
+            // Post the income line for this package so wizard registrations show up
+            // in the club ledger/financials, consistent with every other join path
+            // (SubscriptionService::createPending). Payment state lives on the
+            // subscription; this row is the billed revenue for the package.
+            ClubTransaction::create([
+                'tenant_id' => $tenant->id,
+                'user_id' => $user->id,
+                'subscription_id' => $sub->id,
+                'type' => 'income',
+                'category' => 'subscription',
+                'amount' => $package->price,
+                'description' => 'Package: '.$package->name,
+                'transaction_date' => now(),
+            ]);
+
             $firstSub ??= $sub;
         }
 
         if (! $firstSub) {
             return;   // nothing enrolled (no valid/new packages) → no fee or gear
         }
+
+        ClubCache::flushStats($tenant->id);
+        ClubCache::flushFinancials($tenant->id);
 
         // Equipment — frozen lines + ownership memory (pending until approved).
         $equipTotal = $costSvc->snapshotEquipment(

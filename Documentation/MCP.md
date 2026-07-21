@@ -71,7 +71,7 @@ Or point a local client (Claude Desktop) at `php artisan mcp:start takeone`. If
 | `list_clubs` | read | scoped | Clubs the user can access (search + paginate) |
 | `get_club` | read | scoped | Full details + counts for one club (id or slug) |
 | `list_members` | read | scoped | Members of a club (search + paginate) |
-| `get_member` | read | gated | One member profile (uuid or id) — super-admin/self/guardian/club-admin only. Includes `medals` (club-awarded + club-**verified** tournament medals) and `skills` (provenance-backed, **verified** only — activity/club/since/proficiency); never self-reported/pending |
+| `get_member` | read | gated | One member profile (uuid or id) — super-admin/self/guardian/club-admin only. Includes `medals` (club-awarded + club-**verified** tournament medals), `skills` (provenance-backed, **verified** only — activity/club/since/proficiency; never self-reported/pending), `certifications` (self-managed) and `work_history` (self-managed, current roles first) |
 | `club_financials` | read | admin | Income, expenses, net, cash-to-collect for a club — scoped to the club's current Test/Live mode |
 | `club_staff` | read | admin | A club's staff (instructors, secretaries, operators, cleaners, ...) with staff type, compensation, and active status. Read-only — hiring/terminating staff is not exposed over MCP |
 | `search_people` | read | any | Club-scoped discoverable-member search (confirmed club-mates of the acting user only, never platform-wide) — **safe public fields only** |
@@ -80,6 +80,8 @@ Or point a local client (Claude Desktop) at `php artisan mcp:start takeone`. If
 | `enroll_members` | write | admin | Batch-enroll active members into a package, marked as already paid |
 | `list_activity_catalog` | read | any | The global activity directory — shared platform-wide catalog of activities (EN/AR) any club can reuse. Read-only, non-sensitive (search + paginate). Each entry includes its curated `videos` (validated YouTube `{id,title,source}`) |
 | `verify_achievement` | write | admin | Confirm/reject a member self-claimed record that names your club — a tournament medal (`type: achievement`) or an acquired skill (`type: skill`), bound by uuid. Only an admin/owner of the named club may act — mirrors the web verification queue (medals + skills) |
+| `add_certification` | write | self/guardian | Add a self-managed certification/qualification (name, issuer, dates, credential id/url) to a member — super-admin/self/guardian only (not club-admins) |
+| `add_work_history` | write | self/guardian | Add a self-managed work/coaching history entry (role, org, dates, type) to a member; null end date = current — super-admin/self/guardian only |
 
 - **Clubs** are addressed by numeric id **or** slug. **Members** by uuid (preferred) or id.
 - Amounts are in each club's own currency.

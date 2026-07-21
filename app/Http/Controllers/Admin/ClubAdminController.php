@@ -92,7 +92,7 @@ class ClubAdminController extends Controller
                 })(),
                 'activities' => ClubActivity::where('tenant_id', $clubId)->count(),
                 'packages' => ClubPackage::where('tenant_id', $clubId)->count(),
-                'instructors' => ClubInstructor::where('tenant_id', $clubId)->count(),
+                'instructors' => ClubInstructor::where('tenant_id', $clubId)->where('is_active', true)->count(),
                 'events' => \App\Models\ClubEvent::where('tenant_id', $clubId)->where('is_archived', false)->get()->filter(fn ($e) => ! $e->hasEnded())->count(),
                 'rating' => $club->reviews()->avg('rating') ?? 0,
                 'access' => $accessStat,
@@ -197,14 +197,14 @@ class ClubAdminController extends Controller
         $reviews = $club->reviews()->with('user')->latest()->get();
         $averageRating = $reviews->avg('rating') ?? 0;
 
-        $transactions = ClubTransaction::where('tenant_id', $clubId)->with(['subscription.user'])->latest('transaction_date')->get();
+        $transactions = ClubTransaction::where('tenant_id', $clubId)->with(['subscription.user', 'user'])->latest('transaction_date')->get();
         $monthlyData = $financials->getMonthlyData($transactions, $clubId);
         $pendingSubscriptions = $financials->getCashToCollect($clubId);
         $expiringSubscriptions = collect();
 
         // Dashboard card data
         $packages = ClubPackage::where('tenant_id', $clubId)->take(8)->get();
-        $instructors = ClubInstructor::where('tenant_id', $clubId)->with('user')->take(4)->get();
+        $instructors = ClubInstructor::where('tenant_id', $clubId)->where('is_active', true)->with('user')->take(4)->get();
         $activities = ClubActivity::where('tenant_id', $clubId)->take(5)->get();
         $hofMembers = $club->members()->with([
             'clubAffiliations' => fn ($q) => $q->latest()->take(1),

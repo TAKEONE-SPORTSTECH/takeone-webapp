@@ -15,3 +15,4 @@ Schedule::command('messages:prune-attachments')->hourly();
 
 Schedule::command('duels:expire-pending')->hourly();
 Schedule::command('goals:daily-encouragement')->dailyAt('09:00');
+Schedule::command('alerts:recheck-low-stock')->dailyAt('08:00');

@@ -32,17 +32,21 @@ class ProfilePageRendersTest extends TestCase
             ->assertSee('Personal Event Log');
     }
 
-    public function test_mobile_member_profile_renders_previous_clubs_link(): void
+    public function test_mobile_member_profile_renders_clubs_and_new_tabs(): void
     {
-        // The mobile Clubs tab now shows a single active card + a collapsible
-        // "Previous clubs" history link (was two stacked empty cards).
+        // The mobile Clubs tab shows a single "Active clubs" empty card when the
+        // member has no affiliations (the old "Previous clubs" toggle + its empty
+        // card were removed — it only renders when past clubs actually exist).
+        // The profile also exposes the new Certifications + Worked tabs.
         $user = $this->createUser();
 
         $this->actingAs($user)
             ->withHeader('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148')
             ->get("/member/{$user->uuid}")
             ->assertOk()
-            ->assertSee('Previous clubs')
+            ->assertSee('Not currently active in any club.')
+            ->assertSee('Certifications')
+            ->assertSee('Worked')
             ->assertDontSee('No club affiliations.');
     }
 

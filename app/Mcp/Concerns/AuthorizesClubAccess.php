@@ -123,4 +123,21 @@ trait AuthorizesClubAccess
 
         return false;
     }
+
+    /**
+     * May the user create/edit a member's OWN self-managed records
+     * (certifications, work history, goals, event log)? This is stricter than
+     * viewing — it mirrors MemberController::authorizeMemberWrite():
+     * super-admin → self → confirmed guardian only (NOT club-admins).
+     */
+    protected function canEditMemberSelfRecords(User $actor, User $member): bool
+    {
+        if ($actor->isSuperAdmin() || $actor->id === $member->id) {
+            return true;
+        }
+
+        return UserRelationship::where('guardian_user_id', $actor->id)
+            ->where('dependent_user_id', $member->id)
+            ->exists();
+    }
 }

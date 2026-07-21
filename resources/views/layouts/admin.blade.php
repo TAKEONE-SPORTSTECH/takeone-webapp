@@ -337,7 +337,7 @@
 @include('partials.admin-shell-nav')
 
 {{-- Copilot ("Coach") — AI assistant, mounted outside <main> so it persists across SPA nav --}}
-<x-copilot context="create_club" />
+<x-copilot context="create_club" :hide-on="['admin.ai.index']" />
 
 </div>{{-- x-data --}}
 

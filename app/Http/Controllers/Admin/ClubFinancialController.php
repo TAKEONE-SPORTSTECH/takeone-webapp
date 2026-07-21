@@ -27,14 +27,22 @@ class ClubFinancialController extends Controller
 
         $isTestMode = (bool) $club->is_test_mode;
 
-        $transactions = ClubTransaction::where('tenant_id', $club->id)->where('is_test', $isTestMode)->with(['subscription.user'])->latest('transaction_date')->get();
+        $transactions = ClubTransaction::where('tenant_id', $club->id)->where('is_test', $isTestMode)->with(['subscription.user', 'user'])->latest('transaction_date')->get();
         $summary = $financials->getSummary($club->id, $transactions, $isTestMode);
         $monthlyData = $financials->getMonthlyData($transactions, $club->id, $isTestMode);
         $pendingSubscriptions = $financials->getCashToCollect($club->id, $isTestMode);
         $expenseCategories = $financials->getExpenseBreakdown($transactions);
         $recurringExpenses = ClubRecurringExpense::where('tenant_id', $club->id)->orderBy('day_of_month')->get();
 
-        return view(\App\Support\ClubView::pick('financials'), compact('club', 'transactions', 'summary', 'monthlyData', 'pendingSubscriptions', 'expenseCategories', 'recurringExpenses', 'isTestMode'));
+        // Shop-sale transactions only carry the order code (e.g. TK-KOQNG4). Load the matching
+        // orders + their line-item snapshots so the ledger can show WHAT was sold, keyed by the
+        // order reference for O(1) lookup. Scoped to just the references on visible transactions.
+        $orderRefs = $transactions->pluck('reference_number')->filter()->unique()->values();
+        $shopOrders = $orderRefs->isEmpty()
+            ? collect()
+            : Order::where('tenant_id', $club->id)->whereIn('reference', $orderRefs)->with('items')->get()->keyBy('reference');
+
+        return view(\App\Support\ClubView::pick('financials'), compact('club', 'transactions', 'summary', 'monthlyData', 'pendingSubscriptions', 'expenseCategories', 'recurringExpenses', 'isTestMode', 'shopOrders'));
     }
 
     /**

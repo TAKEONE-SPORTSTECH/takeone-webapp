@@ -15,14 +15,14 @@
 
     // "Pending" = cash still to collect from members who enrolled/renewed but haven't paid yet
     // (App\Services\FinancialService::getCashToCollect() — same source as the "Cash to Collect"
-    // stat card and the mobile ledger's Pending filter). Some subscription flows (walk-in, admin
-    // enroll, explore self-registration) create a matching ClubTransaction alongside the
-    // subscription — those already surface as an "Unpaid"/"Pending" ledger row below too. But the
-    // QR self-registration wizard (WizardRegistrationController) creates the subscription with no
-    // transaction at all, so it would otherwise never appear in the desktop ledger. Mirrors the
-    // mobile ledger exactly (partials/../mobile.blade.php $pendingLedger): every pending
-    // subscription gets its own row here, even the rare one that also has a matching transaction
-    // row — keeps the "All"/"Pending" counts identical between mobile and desktop.
+    // stat card and the mobile ledger's Pending filter). Every enrollment flow — walk-in, admin
+    // enroll, explore self-registration, AND the QR self-registration wizard
+    // (WizardRegistrationController) — now creates a matching income ClubTransaction alongside the
+    // subscription, so a still-unpaid enrollment surfaces both here (this pending row = cash to
+    // collect) and as its income row below. Mirrors the mobile ledger exactly
+    // (partials/../mobile.blade.php $pendingLedger): every pending subscription gets its own row
+    // here, even one that also has a matching transaction row — keeps the "All"/"Pending" counts
+    // identical between mobile and desktop.
     $pendingLedgerRows = $pendingSubscriptions->map(function ($sub) use ($club) {
         $name = $sub->user->full_name ?? $sub->user->name ?? __('admin.fin_member');
         return [
@@ -527,6 +527,13 @@
                         $t = $row['data'];
                         $subPayStatus = $t->subscription?->payment_status ?? null;
                         $isClickable  = $t->type === 'income' && $t->subscription_id && $subPayStatus !== null;
+                        $txPayer = ($t->subscription && $t->subscription->user)
+                            ? ($t->subscription->user->full_name ?? $t->subscription->user->name)
+                            : ($t->user->full_name ?? $t->user->name ?? '');
+                        $txOrder = $t->reference_number ? ($shopOrders ?? collect())->get($t->reference_number) : null;
+                        $txItemsSummary = $txOrder
+                            ? $txOrder->items->map(fn ($it) => ($it->name ?: __('admin.fin_item')) . ' ×' . (int) $it->qty)->implode(' · ')
+                            : '';
                     @endphp
                     <tr class="group transition-colors hover:bg-gray-50/70 {{ $isClickable ? 'cursor-pointer' : '' }}"
                         data-sub-id="{{ $t->subscription_id ?? '' }}" data-txn-type="{{ $t->type }}"
@@ -548,6 +555,16 @@
                                 @endif
                                 <span class="text-gray-800 font-medium truncate max-w-[180px]">{{ $t->description ?? '—' }}</span>
                             </div>
+                            @if($txPayer)
+                            <p class="ms-4 mt-0.5 text-xs text-primary/90 flex items-center gap-1 truncate max-w-[200px]">
+                                <i class="bi bi-person-circle text-[11px]"></i>{{ $txPayer }}
+                            </p>
+                            @endif
+                            @if($txItemsSummary)
+                            <p class="ms-4 mt-0.5 text-xs text-emerald-600/90 flex items-center gap-1 truncate max-w-[240px]">
+                                <i class="bi bi-bag text-[11px]"></i>{{ $txItemsSummary }}
+                            </p>
+                            @endif
                             @if($t->reference_number)
                             <p class="ms-4 text-xs text-gray-400 font-mono mt-0.5">{{ $t->reference_number }}</p>
                             @endif

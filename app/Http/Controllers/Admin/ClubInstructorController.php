@@ -14,6 +14,7 @@ use App\Models\SkillAcquisition;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\RecurringExpenseService;
+use App\Support\ClubCache;
 use App\Traits\HandlesClubAuthorization;
 use App\Traits\PersistsTranslations;
 use App\Traits\StoresBase64Images;
@@ -145,6 +146,8 @@ class ClubInstructorController extends Controller
         $this->assignPackageSlots($instructor, $request, $clubId);
         $this->syncInstructorRecurringExpense($instructor);
 
+        ClubCache::flushStats($clubId);
+
         return back()->with('success', 'Instructor added successfully.');
     }
 
@@ -240,6 +243,8 @@ class ClubInstructorController extends Controller
             });
 
         $instructor->update(['is_active' => false]);
+
+        ClubCache::flushStats($club->id);
 
         $message = $settlement['amount'] > 0
             ? 'Staff member removed. Final settlement of '.$club->currency.' '.number_format($settlement['amount'], 2).' recorded.'

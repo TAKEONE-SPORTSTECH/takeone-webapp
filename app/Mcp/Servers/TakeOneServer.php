@@ -2,6 +2,8 @@
 
 namespace App\Mcp\Servers;
 
+use App\Mcp\Tools\AddCertificationTool;
+use App\Mcp\Tools\AddWorkHistoryTool;
 use App\Mcp\Tools\ClubFinancialsTool;
 use App\Mcp\Tools\ClubStaffTool;
 use App\Mcp\Tools\EnrollMembersTool;
@@ -41,6 +43,8 @@ Write tools (may be globally disabled via server config):
   • `record_transaction` — log manual income/expense for a club (admins only).
   • `notify_member` — send an in-app + live (MQTT) notification (admins/guardians).
   • `enroll_members` — batch-enroll active members into a package, marked as already paid (admins only).
+  • `add_certification` — add a self-managed certification to a member (super-admin/self/guardian).
+  • `add_work_history` — add a self-managed work/coaching history entry to a member (super-admin/self/guardian).
 
 Identifiers: clubs accept a numeric id OR a slug; members accept a uuid (preferred)
 or a numeric id. Amounts are in each club's own currency.
@@ -61,6 +65,8 @@ class TakeOneServer extends Server
         EnrollMembersTool::class,
         ListActivityCatalogTool::class,
         VerifyAchievementTool::class,
+        AddCertificationTool::class,
+        AddWorkHistoryTool::class,
     ];
 
     protected array $resources = [

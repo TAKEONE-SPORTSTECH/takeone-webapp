@@ -370,65 +370,6 @@
                 </div>
             </div>
 
-            <!-- Complete Payment & Revenue History -->
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-body p-4">
-                    <div class="flex items-center mb-2">
-                        <i class="bi bi-receipt text-primary me-2"></i>
-                        <h5 class="mb-0 font-bold">{{ __('member.family_show_payment_history_title') }}</h5>
-                    </div>
-                    <p class="text-muted small mb-4">{{ __('member.family_show_payment_history_sub') }}</p>
-
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="text-muted small font-semibold">{{ __('member.family_show_th_date') }}</th>
-                                    <th class="text-muted small font-semibold">{{ __('member.family_show_th_transaction_type') }}</th>
-                                    <th class="text-muted small font-semibold">{{ __('member.family_show_th_package_item') }}</th>
-                                    <th class="text-muted small font-semibold">{{ __('member.family_show_th_duration') }}</th>
-                                    <th class="text-muted small font-semibold">{{ __('member.family_show_th_sessions') }}</th>
-                                    <th class="text-muted small font-semibold">{{ __('member.family_show_th_amount') }}</th>
-                                    <th class="text-muted small font-semibold">{{ __('member.family_show_th_status') }}</th>
-                                    <th class="text-muted small font-semibold">{{ __('member.family_show_th_method') }}</th>
-                                    <th class="text-muted small font-semibold">{{ __('member.family_show_th_evidence') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($invoices as $invoice)
-                                <tr>
-                                    <td class="small">{{ $invoice->created_at->format('Y-m-d') }}</td>
-                                    <td class="small text-primary">{{ __('member.family_show_invoice') }}</td>
-                                    <td class="small">{{ $invoice->tenant->club_name ?? 'N/A' }}</td>
-                                    <td class="small text-muted">-</td>
-                                    <td class="small">-</td>
-                                    <td class="small font-semibold" style="color: {{ $invoice->status == 'paid' ? '#10b981' : '#f59e0b' }};">{{ $invoice->amount }} BHD</td>
-                                    <td>
-                                        @if($invoice->status == 'paid')
-                                            <span class="badge bg-success-subtle text-success small">✓ {{ __('member.family_show_status_paid') }}</span>
-                                        @elseif($invoice->status == 'due')
-                                            <span class="badge bg-warning-subtle text-warning small">○ {{ __('member.family_show_status_due') }}</span>
-                                        @else
-                                            <span class="badge bg-secondary-subtle text-secondary small">{{ ucfirst($invoice->status) }}</span>
-                                        @endif
-                                    </td>
-                                    <td class="small">-</td>
-                                    <td class="small">
-                                        <a href="{{ route('bills.receipt', $invoice->id) }}" target="_blank" title="{{ __('member.family_show_view_receipt') }}"><i class="bi bi-file-earmark-text text-primary"></i></a>
-                                        <a href="{{ route('bills.receipt', $invoice->id) }}?download=1" download title="{{ __('member.family_show_download_receipt') }}"><i class="bi bi-download text-secondary ms-1"></i></a>
-                                    </td>
-                                </tr>
-                                @empty
-                                <tr>
-                                    <td colspan="9" class="text-center text-muted small">{{ __('member.family_show_no_invoices') }}</td>
-                                </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
 
         </div>
 

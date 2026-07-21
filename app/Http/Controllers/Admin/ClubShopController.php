@@ -7,7 +7,9 @@ use App\Models\ClubProduct;
 use App\Models\ClubProductCategory;
 use App\Models\ClubProductVariant;
 use App\Models\Tenant;
+use App\Models\UserNotification;
 use App\Services\FinancialService;
+use App\Services\StockAlertService;
 use App\Support\ClubView;
 use App\Traits\HandlesClubAuthorization;
 use App\Traits\StoresBase64Images;
@@ -116,11 +118,33 @@ class ClubShopController extends Controller
 
         $product->load('variants');
 
+        // Restocked above threshold → clear any pending low-stock alert (and its live card).
+        app(StockAlertService::class)->syncAfterRestock($product);
+
         return response()->json([
             'success' => true,
             'message' => __('market.product_updated'),
             'product' => $product->toCardArray(),
         ]);
+    }
+
+    /**
+     * Mute low-stock alerts for one item indefinitely (owner said "stop nagging me
+     * about this"). Also acknowledges the alert that's currently on screen.
+     */
+    public function muteStockAlert(Request $request, Tenant $club, ClubProduct $product, StockAlertService $stockAlerts): JsonResponse
+    {
+        $this->authorizeClub($club);
+        abort_unless($product->tenant_id === $club->id, 404);
+
+        $stockAlerts->mute($product);
+
+        if ($id = $request->integer('notification_id')) {
+            UserNotification::where('user_id', auth()->id())->where('id', $id)
+                ->update(['is_read' => true, 'read_at' => now()]);
+        }
+
+        return response()->json(['success' => true, 'message' => __('market.low_stock_muted')]);
     }
 
     public function destroyProduct(Tenant $club, ClubProduct $product): JsonResponse

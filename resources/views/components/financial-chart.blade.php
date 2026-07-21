@@ -63,8 +63,8 @@
         transaction_date: @json($t->transaction_date ? $t->transaction_date->format('M d, Y') : ''),
         category: @json($t->category ?? ''),
         payment_method: @json($t->payment_method ?? ''),
-        member_name: @json($t->subscription?->user?->full_name ?? $t->subscription?->user?->name ?? ''),
-        member_avatar: @json($t->subscription?->user?->profile_picture ? asset('storage/' . $t->subscription->user->profile_picture) : ''),
+        member_name: @json($t->subscription?->user?->full_name ?? $t->subscription?->user?->name ?? $t->user?->full_name ?? $t->user?->name ?? ''),
+        member_avatar: @json(($t->subscription?->user?->profile_picture ?? $t->user?->profile_picture) ? asset('storage/' . ($t->subscription?->user?->profile_picture ?? $t->user->profile_picture)) : ''),
     };
     @endforeach
 

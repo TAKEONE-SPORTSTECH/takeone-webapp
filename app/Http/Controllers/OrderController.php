@@ -96,7 +96,7 @@ class OrderController extends Controller
         return response()->json(['success' => true, 'message' => __('market.received_confirmed'), 'status' => 'received']);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, \App\Services\StockAlertService $stockAlerts): JsonResponse
     {
         $data = $request->validate([
             'items' => ['required', 'array', 'min:1', 'max:50'],
@@ -160,7 +160,7 @@ class OrderController extends Controller
         }
 
         $summaries = [];
-        DB::transaction(function () use ($byTenant, $user, $data, $proofPath, &$summaries) {
+        DB::transaction(function () use ($byTenant, $user, $data, $proofPath, $stockAlerts, &$summaries) {
             foreach ($byTenant as $tenantId => $lines) {
                 $club = Tenant::find($tenantId);
                 $order = Order::create([
@@ -174,6 +174,7 @@ class OrderController extends Controller
 
                 $subtotal = 0.0;
                 $hasDrop = false;
+                $touchedProducts = [];   // stock-tracked products this order touched → low-stock re-check
                 foreach ($lines as $l) {
                     $variant = $l['variant'];
                     $unitPrice = (float) ($variant ? $variant->price : $l['p']->price);
@@ -200,13 +201,16 @@ class OrderController extends Controller
                     ]);
 
                     // Decrement stock for held inventory (never below zero). For a
-                    // variant product the stock lives on the variant.
+                    // variant product the stock lives on the variant. Any product whose
+                    // stock moved is re-checked for a low-stock alert after the loop.
                     if ($variant) {
                         if ($variant->quantity !== null) {
-                            $variant->decrement('quantity', min($l['qty'], $variant->quantity));
+                            $variant->decrement('quantity', min($l['qty'], (int) $variant->quantity));
+                            $touchedProducts[$l['p']->id] = $l['p'];
                         }
                     } elseif ($l['p']->fulfillment === 'stock' && $l['p']->quantity !== null) {
-                        $l['p']->decrement('quantity', min($l['qty'], $l['p']->quantity));
+                        $l['p']->decrement('quantity', min($l['qty'], (int) $l['p']->quantity));
+                        $touchedProducts[$l['p']->id] = $l['p'];
                     }
                 }
 
@@ -226,6 +230,14 @@ class OrderController extends Controller
                         ]);
                 }
 
+                // Low-stock alerts — one per still-low product, gated by StockAlertService
+                // (skips muted items and anything already alerted within 24h). A fresh
+                // crossing alerts immediately; the daily re-check keeps nagging every 24h
+                // until the item is restocked.
+                foreach ($touchedProducts as $p) {
+                    $stockAlerts->maybeAlert($p);
+                }
+
                 $summaries[] = [
                     'reference' => $order->reference,
                     'club' => $club?->club_name,
@@ -242,4 +254,5 @@ class OrderController extends Controller
             'redirect' => route('me.orders'),
         ]);
     }
+
 }

@@ -2,9 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Mcp\Tools\AddCertificationTool;
+use App\Mcp\Tools\AddWorkHistoryTool;
 use App\Mcp\Tools\ClubFinancialsTool;
 use App\Mcp\Tools\ClubStaffTool;
 use App\Mcp\Tools\EnrollMembersTool;
+use App\Mcp\Tools\GetMemberTool;
 use App\Mcp\Tools\ListActivityCatalogTool;
 use App\Mcp\Tools\ListClubsTool;
 use App\Mcp\Tools\RecordTransactionTool;
@@ -329,5 +332,97 @@ class McpServerTest extends TestCase
 
         $this->assertSame(0, $result['count']);
         $this->assertEmpty($result['people']);
+    }
+
+    public function test_member_can_add_own_certification_and_it_surfaces_in_get_member(): void
+    {
+        $me = $this->createUser();
+        $this->actingAs($me);
+
+        $result = $this->callTool(AddCertificationTool::class, [
+            'member' => $me->uuid,
+            'title' => 'First Aid Level 2',
+            'issuer' => 'Red Crescent',
+            'issue_date' => '2025-01-15',
+            'credential_url' => 'https://example.org/verify/abc',
+        ]);
+
+        $this->assertTrue($result['success']);
+        $this->assertDatabaseHas('member_certifications', ['user_id' => $me->id, 'title' => 'First Aid Level 2']);
+
+        $member = $this->callTool(GetMemberTool::class, ['member' => $me->uuid]);
+        $titles = collect($member['certifications'])->pluck('title');
+        $this->assertTrue($titles->contains('First Aid Level 2'));
+    }
+
+    public function test_add_certification_denies_unrelated_user(): void
+    {
+        $owner = $this->createUser();
+        $rando = $this->createUser();
+        $this->actingAs($rando);
+
+        $result = $this->callTool(AddCertificationTool::class, [
+            'member' => $owner->uuid,
+            'title' => 'Sneaky cert',
+        ]);
+
+        $this->assertArrayHasKey('error', $result);
+        $this->assertStringContainsString('not authorized', $result['error']);
+        $this->assertDatabaseCount('member_certifications', 0);
+    }
+
+    public function test_member_can_add_own_work_history_and_it_surfaces_in_get_member(): void
+    {
+        $me = $this->createUser();
+        $this->actingAs($me);
+
+        $result = $this->callTool(AddWorkHistoryTool::class, [
+            'member' => $me->uuid,
+            'title' => 'Head Coach',
+            'organization' => 'Manama TKD',
+            'employment_type' => 'Full-time',
+            'start_date' => '2022-03-01',
+        ]);
+
+        $this->assertTrue($result['success']);
+        $this->assertTrue($result['current']);
+        $this->assertDatabaseHas('member_work_history', ['user_id' => $me->id, 'title' => 'Head Coach', 'end_date' => null]);
+
+        $member = $this->callTool(GetMemberTool::class, ['member' => $me->uuid]);
+        $this->assertTrue(collect($member['work_history'])->pluck('title')->contains('Head Coach'));
+    }
+
+    public function test_add_work_history_denies_unrelated_user(): void
+    {
+        $owner = $this->createUser();
+        $rando = $this->createUser();
+        $this->actingAs($rando);
+
+        $result = $this->callTool(AddWorkHistoryTool::class, [
+            'member' => $owner->uuid,
+            'title' => 'Ghost role',
+            'organization' => 'Nowhere',
+            'start_date' => '2020-01-01',
+        ]);
+
+        $this->assertArrayHasKey('error', $result);
+        $this->assertStringContainsString('not authorized', $result['error']);
+        $this->assertDatabaseCount('member_work_history', 0);
+    }
+
+    public function test_add_certification_blocked_when_writes_disabled(): void
+    {
+        config(['takeone-mcp.allow_writes' => false]);
+        $me = $this->createUser();
+        $this->actingAs($me);
+
+        $result = $this->callTool(AddCertificationTool::class, [
+            'member' => $me->uuid,
+            'title' => 'Blocked cert',
+        ]);
+
+        $this->assertArrayHasKey('error', $result);
+        $this->assertStringContainsString('disabled', $result['error']);
+        $this->assertDatabaseCount('member_certifications', 0);
     }
 }

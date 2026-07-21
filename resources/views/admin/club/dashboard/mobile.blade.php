@@ -248,14 +248,14 @@
         @if($instructors->isEmpty())
             <p class="text-xs text-muted-foreground">{{ __('admin.no_instructors_yet') }}</p>
         @else
-            <div class="-mx-3.5 px-3.5 flex gap-3 overflow-x-auto scrollbar-hide">
+            <div class="-mx-3.5 px-3.5 py-1.5 flex gap-3 overflow-x-auto scrollbar-hide">
                 @foreach($instructors as $ins)
                     @php $isOwner = $club->owner_user_id && (int) $ins->user_id === (int) $club->owner_user_id; @endphp
                     <a href="{{ route('admin.club.instructors', $club->slug) }}" data-shell-link data-route="admin.club.instructors"
                        class="m-press flex-shrink-0 w-14 flex flex-col items-center gap-1 no-underline">
                         <span class="relative w-11 h-11 rounded-full bg-muted flex items-center justify-center overflow-hidden ring-2 {{ $isOwner ? 'ring-amber-300' : 'ring-accent' }}">
                             @if($ins->user && $ins->user->profile_picture)
-                                <img src="{{ asset('storage/'.$ins->user->profile_picture) }}" alt="" class="w-11 h-11 object-cover">
+                                <img src="{{ asset('storage/'.$ins->user->profile_picture) }}" alt="" class="absolute inset-0 w-full h-full object-cover">
                             @else
                                 <i class="bi bi-person text-muted-foreground"></i>
                             @endif
@@ -283,7 +283,12 @@
         @else
             <div class="divide-y divide-gray-50">
                 @foreach($recentTx as $t)
-                    @php $isIncome = $t->type === 'income'; @endphp
+                    @php
+                        $isIncome = $t->type === 'income';
+                        $payer = ($t->subscription && $t->subscription->user)
+                            ? ($t->subscription->user->full_name ?? $t->subscription->user->name)
+                            : ($t->user->full_name ?? $t->user->name ?? '');
+                    @endphp
                     <a href="{{ route('admin.club.financials', $club->slug) }}" data-shell-link data-route="admin.club.financials"
                        class="flex items-center gap-2.5 py-2 no-underline">
                         <span class="w-7 h-7 rounded-full grid place-items-center flex-shrink-0 {{ $isIncome ? 'bg-emerald-50 text-emerald-600' : 'bg-accent text-primary' }}">
@@ -291,7 +296,7 @@
                         </span>
                         <span class="min-w-0 flex-1">
                             <span class="block text-[13px] font-medium text-foreground truncate">{{ $t->description ?: ($t->category ?: $t->type) }}</span>
-                            <span class="block text-[10px] text-muted-foreground">{{ optional($t->transaction_date)->translatedFormat('d M') }}</span>
+                            <span class="block text-[10px] text-muted-foreground truncate">{{ $payer ? $payer . ' · ' : '' }}{{ optional($t->transaction_date)->translatedFormat('d M') }}</span>
                         </span>
                         <span class="text-[13px] font-bold tabular-nums flex-shrink-0 {{ $isIncome ? 'text-emerald-600' : 'text-foreground' }}">{{ $isIncome ? '+' : '−' }}{{ number_format((float) $t->amount, 0) }}</span>
                     </a>

@@ -10,6 +10,8 @@ use App\Support\ClubView;
 use App\Traits\HandlesClubAuthorization;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 /**
@@ -29,14 +31,28 @@ class ClubOrderController extends Controller
             ->latest()
             ->get();
 
+        // Unseen-orders badge: how many arrived since THIS admin last opened this club's
+        // orders page. Read their last-seen mark first (used to flag each order as "new"),
+        // then stamp it to now so the next visit only counts newer arrivals. Per (user, club).
+        $viewerId = (int) Auth::id();
+        $lastSeen = DB::table('club_order_views')
+            ->where('user_id', $viewerId)->where('tenant_id', $club->id)->value('seen_at');
+        DB::table('club_order_views')->updateOrInsert(
+            ['user_id' => $viewerId, 'tenant_id' => $club->id],
+            ['seen_at' => now(), 'updated_at' => now(), 'created_at' => now()],
+        );
+
+        // 'received' is the terminal delivered state (added after this page shipped): it counts
+        // as completed AND as paid revenue, mirroring syncIncome()'s paid-status set — otherwise
+        // a fully completed order shows 0s across the board.
         $stats = [
             'pending' => $orders->where('status', 'pending')->count(),
             'confirmed' => $orders->where('status', 'confirmed')->count(),
-            'fulfilled' => $orders->where('status', 'fulfilled')->count(),
-            'revenue' => $orders->whereIn('status', ['confirmed', 'fulfilled'])->sum('total'),
+            'fulfilled' => $orders->whereIn('status', ['fulfilled', 'received'])->count(),
+            'revenue' => $orders->whereIn('status', ['confirmed', 'fulfilled', 'received'])->sum('total'),
         ];
 
-        return view(ClubView::pick('orders'), compact('club', 'orders', 'stats'));
+        return view(ClubView::pick('orders'), compact('club', 'orders', 'stats', 'lastSeen'));
     }
 
     public function updateStatus(Request $request, Tenant $club, Order $order): JsonResponse

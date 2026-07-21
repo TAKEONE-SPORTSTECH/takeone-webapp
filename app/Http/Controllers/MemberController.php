@@ -9,10 +9,14 @@ use App\Http\Requests\TournamentRequest;
 use App\Http\Requests\UpdateGoalRequest;
 use App\Http\Requests\UpdateMemberRequest;
 use App\Http\Requests\UploadImageRequest;
+use App\Http\Requests\StoreCertificationRequest;
+use App\Http\Requests\StoreWorkHistoryRequest;
 use App\Models\Attendance;
 use App\Models\ClubEventRegistration;
 use App\Models\Goal;
 use App\Models\Invoice;
+use App\Models\MemberCertification;
+use App\Models\MemberWorkHistory;
 use App\Models\Membership;
 use App\Models\Person;
 use App\Models\SkillAcquisition;
@@ -410,6 +414,16 @@ class MemberController extends Controller
             ->orderBy('event_date', 'desc')
             ->get();
 
+        $certifications = $relationship->dependent->certifications()
+            ->orderByRaw('issue_date IS NULL, issue_date DESC')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $workHistory = $relationship->dependent->workHistory()
+            ->orderByRaw('end_date IS NULL DESC')   // current roles first
+            ->orderBy('start_date', 'desc')
+            ->get();
+
         $isMobile = (bool) request()->attributes->get('is_mobile');
         $memberView = $isMobile
             ? 'components-templates.member.mobile.show'
@@ -456,6 +470,8 @@ class MemberController extends Controller
             'user' => $relationship->dependent,
             'joinedEventRegistrations' => $joinedEventRegistrations,
             'memberEventLog' => $memberEventLog,
+            'certifications' => $certifications,
+            'workHistory' => $workHistory,
             'allClubs' => \App\Models\Tenant::orderBy('club_name')->get(['id', 'club_name', 'address', 'logo']),
             'canResetPassword' => $canResetPassword,
             'canRegeneratePassword' => $canRegeneratePassword,
@@ -1473,6 +1489,220 @@ class MemberController extends Controller
                 'month' => $event->event_date->format('M'),
             ],
         ]);
+    }
+
+    // ===================================================================
+    // Certifications — member-owned, self-managed (super-admin / self / guardian)
+    // ===================================================================
+
+    /**
+     * Store a new certification for the member.
+     */
+    public function storeCertification(StoreCertificationRequest $request, $id)
+    {
+        $this->authorizeMemberWrite(Auth::user(), (int) $id);
+        $member = User::findOrFail($id);
+
+        $validated = $request->validated();
+
+        $imagePath = null;
+        if (! empty($validated['image'])) {
+            $imagePath = $this->storeBase64Image(
+                $validated['image'],
+                'people/'.$member->uuid.'/certifications',
+                'cert_'.time()
+            );
+            if ($imagePath === null) {
+                return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
+            }
+        }
+
+        $cert = MemberCertification::create([
+            'user_id' => $member->id,
+            'title' => $validated['title'],
+            'issuer' => $validated['issuer'] ?? null,
+            'issue_date' => $validated['issue_date'] ?? null,
+            'expiry_date' => $validated['expiry_date'] ?? null,
+            'credential_id' => $validated['credential_id'] ?? null,
+            'credential_url' => $validated['credential_url'] ?? null,
+            'image_path' => $imagePath,
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Certification added',
+            'certification' => $this->certificationPayload($cert),
+        ]);
+    }
+
+    /**
+     * Update an existing certification.
+     */
+    public function updateCertification(StoreCertificationRequest $request, $certificationId)
+    {
+        $cert = MemberCertification::findOrFail($certificationId);
+        $this->authorizeMemberWrite(Auth::user(), (int) $cert->user_id);
+
+        $validated = $request->validated();
+
+        if (! empty($validated['image'])) {
+            $newPath = $this->storeBase64Image(
+                $validated['image'],
+                'people/'.$cert->user->uuid.'/certifications',
+                'cert_'.time()
+            );
+            if ($newPath === null) {
+                return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
+            }
+            // Replace: drop the old file only after a successful store.
+            if ($cert->image_path && $cert->image_path !== $newPath) {
+                Storage::disk('public')->delete($cert->image_path);
+            }
+            $cert->image_path = $newPath;
+        }
+
+        $cert->fill([
+            'title' => $validated['title'],
+            'issuer' => $validated['issuer'] ?? null,
+            'issue_date' => $validated['issue_date'] ?? null,
+            'expiry_date' => $validated['expiry_date'] ?? null,
+            'credential_id' => $validated['credential_id'] ?? null,
+            'credential_url' => $validated['credential_url'] ?? null,
+            'notes' => $validated['notes'] ?? null,
+        ])->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Certification updated',
+            'certification' => $this->certificationPayload($cert),
+        ]);
+    }
+
+    /**
+     * Delete a certification (its photo is purged first by the model trait).
+     */
+    public function destroyCertification($certificationId)
+    {
+        $cert = MemberCertification::findOrFail($certificationId);
+        $this->authorizeMemberWrite(Auth::user(), (int) $cert->user_id);
+
+        $cert->delete();
+
+        return response()->json(['success' => true, 'message' => 'Certification removed', 'id' => (int) $certificationId]);
+    }
+
+    // ===================================================================
+    // Work history — member-owned, self-managed
+    // ===================================================================
+
+    /**
+     * Store a new work-history entry for the member.
+     */
+    public function storeWorkHistory(StoreWorkHistoryRequest $request, $id)
+    {
+        $this->authorizeMemberWrite(Auth::user(), (int) $id);
+        $member = User::findOrFail($id);
+
+        $validated = $request->validated();
+
+        $work = MemberWorkHistory::create([
+            'user_id' => $member->id,
+            'title' => $validated['title'],
+            'organization' => $validated['organization'],
+            'employment_type' => $validated['employment_type'] ?? null,
+            'location' => $validated['location'] ?? null,
+            'start_date' => $validated['start_date'],
+            'end_date' => $validated['end_date'] ?? null,
+            'description' => $validated['description'] ?? null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Work experience added',
+            'work' => $this->workPayload($work),
+        ]);
+    }
+
+    /**
+     * Update an existing work-history entry.
+     */
+    public function updateWorkHistory(StoreWorkHistoryRequest $request, $workId)
+    {
+        $work = MemberWorkHistory::findOrFail($workId);
+        $this->authorizeMemberWrite(Auth::user(), (int) $work->user_id);
+
+        $validated = $request->validated();
+
+        $work->fill([
+            'title' => $validated['title'],
+            'organization' => $validated['organization'],
+            'employment_type' => $validated['employment_type'] ?? null,
+            'location' => $validated['location'] ?? null,
+            'start_date' => $validated['start_date'],
+            'end_date' => $validated['end_date'] ?? null,
+            'description' => $validated['description'] ?? null,
+        ])->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Work experience updated',
+            'work' => $this->workPayload($work),
+        ]);
+    }
+
+    /**
+     * Delete a work-history entry.
+     */
+    public function destroyWorkHistory($workId)
+    {
+        $work = MemberWorkHistory::findOrFail($workId);
+        $this->authorizeMemberWrite(Auth::user(), (int) $work->user_id);
+
+        $work->delete();
+
+        return response()->json(['success' => true, 'message' => 'Work experience removed', 'id' => (int) $workId]);
+    }
+
+    /**
+     * Serialisable certification block for in-place UI patching (No-Reload rule).
+     */
+    private function certificationPayload(MemberCertification $cert): array
+    {
+        return [
+            'id' => $cert->id,
+            'title' => $cert->title,
+            'issuer' => $cert->issuer,
+            'issue_date' => optional($cert->issue_date)->format('Y-m-d'),
+            'issue_label' => optional($cert->issue_date)->format('M Y'),
+            'expiry_date' => optional($cert->expiry_date)->format('Y-m-d'),
+            'expiry_label' => optional($cert->expiry_date)->format('M Y'),
+            'expired' => $cert->isExpired(),
+            'credential_id' => $cert->credential_id,
+            'credential_url' => $cert->credential_url,
+            'image' => $cert->image_path ? asset('storage/'.$cert->image_path) : null,
+            'notes' => $cert->notes,
+        ];
+    }
+
+    /**
+     * Serialisable work-history block for in-place UI patching (No-Reload rule).
+     */
+    private function workPayload(MemberWorkHistory $work): array
+    {
+        return [
+            'id' => $work->id,
+            'title' => $work->title,
+            'organization' => $work->organization,
+            'employment_type' => $work->employment_type,
+            'location' => $work->location,
+            'start_date' => optional($work->start_date)->format('Y-m-d'),
+            'end_date' => optional($work->end_date)->format('Y-m-d'),
+            'start_label' => optional($work->start_date)->format('M Y'),
+            'end_label' => $work->end_date ? $work->end_date->format('M Y') : null,
+            'current' => $work->isCurrent(),
+            'description' => $work->description,
+        ];
     }
 
     /**

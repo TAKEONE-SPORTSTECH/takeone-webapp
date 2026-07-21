@@ -10,6 +10,7 @@
   window.showToast, and the CSRF meta tag.
 --}}
 @php($copilotContext = $context ?? 'create_club')
+@php($copilotHideOn = $hideOn ?? [])
 @php($copilotI18n = [
     'greeting' => __('copilot.greeting'),
     'changed' => __('copilot.changed'),
@@ -27,11 +28,12 @@
      data-message-url="{{ route('admin.copilot.message') }}"
      data-apply-url="{{ route('admin.copilot.apply') }}"
      data-stt-url="{{ route('admin.copilot.stt') }}"
-     data-tts-url="{{ route('admin.copilot.tts') }}">
+     data-tts-url="{{ route('admin.copilot.tts') }}"
+     data-hide-on='@json($copilotHideOn)'>
 
     {{-- Floating action button --}}
     <button type="button" @click="toggle()"
-            x-show="!isOpen"
+            x-show="!isOpen && !hiddenHere"
             class="fixed bottom-6 end-6 z-[60] w-14 h-14 rounded-full bg-primary text-white shadow-lg
                    flex items-center justify-center hover:bg-primary/90 transition-all hover:scale-105"
             title="{{ __('copilot.fab_title') }}">
@@ -220,6 +222,8 @@
 window.copilotWidget = function (i18n) {
     return {
         isOpen: false,
+        hiddenHere: false,     // FAB suppressed on certain routes (e.g. the AI page itself)
+        _hideOn: [],
         greeted: false,
         loading: false,
         input: '',
@@ -251,6 +255,16 @@ window.copilotWidget = function (i18n) {
             // Let any page control open Coach (e.g. the club-modal header button).
             window.openCopilot = () => this.open();
             window.addEventListener('copilot:open', this._openHandler = () => this.open());
+            // Hide the FAB on specific routes (e.g. the AI page), reactively across SPA nav.
+            try { this._hideOn = JSON.parse(this.$root.dataset.hideOn || '[]'); } catch (e) { this._hideOn = []; }
+            this._syncHidden();
+            window.addEventListener('shell:navigated', this._navHandler = () => this._syncHidden());
+        },
+
+        _syncHidden() {
+            const route = document.querySelector('[data-shell-main]')?.dataset.route || '';
+            this.hiddenHere = Array.isArray(this._hideOn) && this._hideOn.includes(route);
+            if (this.hiddenHere && this.isOpen) this.close();
         },
 
         csrf() {

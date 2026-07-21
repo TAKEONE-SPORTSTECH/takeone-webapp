@@ -330,14 +330,6 @@
             @endforeach
         </div>
 
-        @if($isSelf)
-            {{-- Jumps to the Tournaments tab and opens the self-claim sheet (which lives in that tab's scope). --}}
-            <button type="button" @click="goTab('tournaments'); $dispatch('open-achievement-sheet')"
-                    class="m-press w-full mt-2.5 flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary/30 text-primary py-2.5 text-sm font-semibold hover:bg-primary/5 transition-colors">
-                <i class="bi bi-plus-lg"></i>{{ __('Add achievement') }}
-            </button>
-        @endif
-
         {{-- Filtered medal list — opens as a mobile bottom-sheet when a medal is tapped --}}
         <template x-teleport="body">
             <div x-show="sheetOpen" x-cloak class="fixed inset-0 z-[65] overflow-y-auto" @keydown.escape.window="sheetOpen=false">
@@ -397,18 +389,19 @@
     {{-- ===== Sticky tabs ===== --}}
     {{-- mt-1 (4px) + py-2 (8px) ≈ 12px, so the gap below the medal boxes matches the mt-3 above them. --}}
     <div id="mpTabs" class="sticky top-14 z-30 bg-background/95 backdrop-blur mt-1 py-2">
-        <div class="mp-tabbar flex gap-1.5 px-4">
+        <div class="mp-tabbar flex gap-1.5 px-4 overflow-x-auto">
             @php
+                // 'goals' is intentionally omitted from the tab bar — the overview
+                // "Goal success" stat card opens it via goTab('goals').
                 $mpTabs = [
-                    'overview'=>__('member.tab_overview'),'health'=>__('member.tab_health'),'goals'=>__('member.tab_goals'),
+                    'overview'=>__('member.tab_overview'),'health'=>__('member.tab_health'),
                     'tournaments'=>__('member.tab_tournaments'),'clubs'=>__('member.tab_clubs'),
+                    'certifications'=>__('member.tab_certifications'),'worked'=>__('member.tab_worked'),
                 ];
-                // Billing is sensitive — only for the member's own people / affiliated club staff.
-                if ($canViewSensitive ?? false) $mpTabs['billing'] = __('member.tab_billing');
             @endphp
             @foreach($mpTabs as $key=>$label)
                 <button @click="tab='{{ $key }}'"
-                        class="mp-tab flex-1 min-w-0 px-2 py-2 rounded-full text-[13px] font-semibold text-center text-muted-foreground bg-white border border-gray-100 transition-all truncate"
+                        class="mp-tab flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-[13px] font-semibold text-center text-muted-foreground bg-white border border-gray-100 transition-all"
                         :class="tab==='{{ $key }}' && 'is-on'">{{ $label }}</button>
             @endforeach
         </div>
@@ -831,20 +824,38 @@
                     goalUpdated: @js(__('member.goal_updated')),
                 }
              })">
-            <div class="grid grid-cols-3 gap-2">
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 text-center"><p class="text-xl font-black text-primary" x-text="activeCount"></p><p class="text-[10px] text-muted-foreground">{{ __('member.goals_active') }}</p></div>
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 text-center"><p class="text-xl font-black text-green-600" x-text="doneCount"></p><p class="text-[10px] text-muted-foreground">{{ __('member.goals_done') }}</p></div>
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 text-center"><p class="text-xl font-black text-amber-500" x-text="successRate + '%'"></p><p class="text-[10px] text-muted-foreground">{{ __('member.goals_success') }}</p></div>
+            {{-- Goals summary — ring (success rate) + counts, mirrors the attendance card. --}}
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-5" x-show="goals.length">
+                <div class="mp-ring" :style="'--p:'+successRate+'; width:84px; height:84px;'"><b style="font-size:18px" x-text="successRate+'%'"></b></div>
+                <div class="flex-1 space-y-2">
+                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('member.goals_done') }}</span><span class="font-bold text-green-600" x-text="doneCount"></span></div>
+                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('member.goals_active') }}</span><span class="font-bold text-amber-500" x-text="activeCount"></span></div>
+                    <div class="flex justify-between text-sm"><span class="text-muted-foreground">{{ __('member.goals_total') }}</span><span class="font-bold" x-text="activeCount + doneCount"></span></div>
+                </div>
             </div>
 
             @if($canEditBasic ?? false)
-                <button type="button" @click="openAdd()" class="m-press w-full flex items-center justify-center gap-2 bg-primary text-white rounded-2xl py-3 font-semibold text-sm shadow-sm">
-                    <i class="bi bi-plus-lg"></i>{{ __('member.add_goal') }}
-                </button>
+                {{-- Goals exist → a small circular "add more" tucked in the top corner. --}}
+                <div class="flex justify-end -mb-1" x-show="goals.length">
+                    <button type="button" @click="openAdd()" aria-label="{{ __('member.add_goal') }}"
+                            class="m-press w-9 h-9 rounded-full bg-primary text-white grid place-items-center shadow-md shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
             @endif
 
             <template x-if="!goals.length">
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center"><i class="bi bi-bullseye text-3xl text-gray-300"></i><p class="text-sm text-muted-foreground mt-2">{{ __('member.no_goals') }}</p></div>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-bullseye text-primary"></i> {{ __('member.tab_goals') }}</h3>
+                        @if($canEditBasic ?? false)
+                            <button type="button" @click="openAdd()" class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold active:bg-primary/90">
+                                <i class="bi bi-plus-lg"></i>{{ __('member.add_goal') }}
+                            </button>
+                        @endif
+                    </div>
+                    <p class="text-sm text-muted-foreground text-center py-4">{{ __('member.no_goals') }}</p>
+                </div>
             </template>
 
             <template x-for="g in goals" :key="g.id">
@@ -1090,10 +1101,15 @@
         <div x-show="tab==='tournaments'" x-transition.opacity x-cloak class="space-y-3"
              x-data="tournamentSheet({ storeUrl: '{{ $tvStoreUrl }}', csrf: '{{ csrf_token() }}', memberId: {{ (int) $relationship->dependent->id }}, canAdd: {{ $isSelf ? 'true' : 'false' }}, affiliations: @js($tvAffiliations) })"
              @open-achievement-sheet.window="openAdd()">
-            @if($isSelf)
-                <button type="button" @click="openAdd()" class="m-press w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary/30 text-primary py-3 text-sm font-semibold hover:bg-primary/5 transition-colors">
-                    <i class="bi bi-plus-lg"></i>{{ __('Add achievement') }}
-                </button>
+            @php $hasTournamentContent = ($awardedAchievements ?? collect())->isNotEmpty() || $tournamentEvents->isNotEmpty(); @endphp
+            @if($isSelf && $hasTournamentContent)
+                {{-- Records exist → a small circular "add more" tucked in the top corner. --}}
+                <div class="flex justify-end -mb-1">
+                    <button type="button" @click="openAdd()" aria-label="{{ __('Add achievement') }}"
+                            class="m-press w-9 h-9 rounded-full bg-primary text-white grid place-items-center shadow-md shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
             @endif
             @if(($awardedAchievements ?? collect())->isNotEmpty())
                 <div x-data="{ showAch:false, ach:null, idx:0,
@@ -1163,7 +1179,17 @@
                 </div>
             @empty
                 @if(($awardedAchievements ?? collect())->isEmpty())
-                <div id="mobileTournamentsEmpty" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center"><i class="bi bi-trophy text-3xl text-gray-300"></i><p class="text-sm text-muted-foreground mt-2">{{ __('member.no_tournaments') }}</p></div>
+                <div id="mobileTournamentsEmpty" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-trophy text-primary"></i> {{ __('member.tab_tournaments') }}</h3>
+                        @if($isSelf)
+                            <button type="button" @click="openAdd()" class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold active:bg-primary/90">
+                                <i class="bi bi-plus-lg"></i>{{ __('Add achievement') }}
+                            </button>
+                        @endif
+                    </div>
+                    <p class="text-sm text-muted-foreground text-center py-4">{{ __('member.no_tournaments') }}</p>
+                </div>
                 @endif
             @endforelse
             </div>
@@ -1283,10 +1309,6 @@
 
             {{-- Active --}}
             <div>
-                <div class="flex items-center justify-between mb-2">
-                    <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{{ __('member.active_clubs') }}</p>
-                    @if($activeAffil->count())<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">{{ $activeAffil->count() }}</span>@endif
-                </div>
                 @forelse($activeAffil as $a)
                     @php $clubUrl = ($a->tenant && $a->tenant->slug && $a->tenant->country) ? route('clubs.show', ['country' => strtolower($a->tenant->country), 'slug' => $a->tenant->slug]) : null; $tag = $clubUrl ? 'a' : 'div'; @endphp
                     <{{ $tag }} @if($clubUrl) href="{{ $clubUrl }}" @endif class="group relative block bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-2.5 overflow-hidden {{ $clubUrl ? 'm-press' : '' }}">
@@ -1320,28 +1342,28 @@
                         @endif
                     </{{ $tag }}>
                 @empty
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-                        <i class="bi bi-diagram-3 text-2xl text-gray-300"></i>
-                        <p class="text-sm text-muted-foreground mt-2">{{ __('member.not_active_in_club') }}</p>
-                    </div>
+                    @if($leftAffil->isEmpty())
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-diagram-3 text-primary"></i> {{ __('member.active_clubs') }}</h3>
+                            </div>
+                            <p class="text-sm text-muted-foreground text-center py-4">{{ __('member.not_active_in_club') }}</p>
+                        </div>
+                    @endif
                 @endforelse
             </div>
 
-            {{-- Previous clubs — collapsible history link (tap to reveal clubs left) --}}
-            <div x-data="{ showHistory: false }">
-                <button type="button" @click="showHistory = !showHistory"
-                        class="w-full flex items-center justify-between bg-white rounded-2xl shadow-sm border border-gray-100 p-4 m-press"
-                        :aria-expanded="showHistory">
-                    <span class="flex items-center gap-2.5 min-w-0">
-                        <span class="w-9 h-9 rounded-xl bg-muted grid place-items-center flex-shrink-0"><i class="bi bi-clock-history text-muted-foreground"></i></span>
-                        <span class="text-sm font-semibold text-foreground truncate">{{ __('member.previous_clubs') }}</span>
-                        @if($leftAffil->count())<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 flex-shrink-0">{{ $leftAffil->count() }}</span>@endif
-                    </span>
-                    <i class="bi bi-chevron-down text-muted-foreground transition-transform flex-shrink-0" :class="showHistory && 'rotate-180'"></i>
-                </button>
+            {{-- Previous clubs --}}
+            @if($leftAffil->isNotEmpty())
+            <div>
+                <div class="flex items-center gap-2.5 mb-2">
+                    <span class="w-9 h-9 rounded-xl bg-muted grid place-items-center flex-shrink-0"><i class="bi bi-clock-history text-muted-foreground"></i></span>
+                    <span class="text-sm font-semibold text-foreground truncate">{{ __('member.previous_clubs') }}</span>
+                    <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 flex-shrink-0">{{ $leftAffil->count() }}</span>
+                </div>
 
-                <div x-show="showHistory" x-collapse x-cloak class="mt-2.5 space-y-2.5">
-                    @forelse($leftAffil as $a)
+                <div class="space-y-2.5">
+                    @foreach($leftAffil as $a)
                         @php
                             $span = ($a->start_date && $a->end_date) ? $a->start_date->diffInMonths($a->end_date) : null;
                             $clubUrl = ($a->tenant && $a->tenant->slug && $a->tenant->country) ? route('clubs.show', ['country' => strtolower($a->tenant->country), 'slug' => $a->tenant->slug]) : null;
@@ -1368,14 +1390,334 @@
                                 </div>
                             </div>
                         </{{ $tag }}>
-                    @empty
-                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
-                            <i class="bi bi-diagram-3 text-2xl text-gray-300"></i>
-                            <p class="text-sm text-muted-foreground mt-2">{{ __('member.no_previous_clubs') }}</p>
-                        </div>
-                    @endforelse
+                    @endforeach
                 </div>
             </div>
+            @endif
+        </div>
+
+        {{-- ===== Certifications — member-owned, self-managed ===== --}}
+        @php
+            $certsJs = $certifications->map(fn ($c) => [
+                'id' => $c->id,
+                'title' => $c->title,
+                'issuer' => $c->issuer,
+                'issue_date' => optional($c->issue_date)->format('Y-m-d'),
+                'issue_label' => optional($c->issue_date)->format('M Y'),
+                'expiry_date' => optional($c->expiry_date)->format('Y-m-d'),
+                'expiry_label' => optional($c->expiry_date)->format('M Y'),
+                'expired' => $c->isExpired(),
+                'credential_id' => $c->credential_id,
+                'credential_url' => $c->credential_url,
+                'image' => $c->image_path ? asset('storage/'.$c->image_path) : null,
+                'notes' => $c->notes,
+            ])->values();
+        @endphp
+        <div x-show="tab==='certifications'" x-transition.opacity x-cloak class="space-y-3"
+             x-data="certManager({
+                storeUrl: '{{ route('member.store-certification', $user->id) }}',
+                updateBase: '{{ url('/member/certification') }}',
+                csrf: '{{ csrf_token() }}',
+                canEdit: @js((bool) ($canEditBasic ?? false)),
+                items: @js($certsJs),
+                i18n: {
+                    saved: @js(__('member.cert_name')),
+                    deleteConfirm: @js(__('member.cert_delete_confirm')),
+                    networkError: @js(__('Something went wrong. Please try again.')),
+                    invalidImage: @js(__('Please choose an image file.')),
+                }
+             })">
+
+            @if($canEditBasic ?? false)
+                <div class="flex justify-end -mb-1" x-show="items.length">
+                    <button type="button" @click="openAdd()" aria-label="{{ __('member.add_certification') }}"
+                            class="m-press w-9 h-9 rounded-full bg-primary text-white grid place-items-center shadow-md shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
+            @endif
+
+            {{-- Empty state --}}
+            <template x-if="!items.length">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-patch-check text-primary"></i> {{ __('member.certifications') }}</h3>
+                        @if($canEditBasic ?? false)
+                            <button type="button" @click="openAdd()" class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold active:bg-primary/90">
+                                <i class="bi bi-plus-lg"></i>{{ __('member.add_certification') }}
+                            </button>
+                        @endif
+                    </div>
+                    <p class="text-sm text-muted-foreground text-center py-4">{{ __('member.no_certifications') }}</p>
+                </div>
+            </template>
+
+            {{-- List --}}
+            <template x-for="c in items" :key="c.id">
+                <div class="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-4 overflow-hidden">
+                    <span class="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 w-1 bg-primary/70"></span>
+                    <div class="flex items-start gap-3">
+                        <span class="w-12 h-12 rounded-xl bg-accent grid place-items-center overflow-hidden flex-shrink-0 ring-1 ring-primary/10">
+                            <template x-if="c.image"><img :src="c.image" alt="" class="w-12 h-12 object-cover"></template>
+                            <template x-if="!c.image"><i class="bi bi-patch-check-fill text-lg text-primary"></i></template>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-start justify-between gap-2">
+                                <p class="font-bold text-foreground text-[15px] leading-snug" x-text="c.title"></p>
+                                <template x-if="c.expired">
+                                    <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-600">{{ __('member.cert_expired') }}</span>
+                                </template>
+                            </div>
+                            <p class="text-[12px] text-muted-foreground mt-0.5" x-show="c.issuer" x-text="c.issuer"></p>
+                            <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                                <span class="inline-flex items-center gap-1.5" x-show="c.issue_label"><i class="bi bi-calendar3 text-muted-foreground/70"></i><span x-text="c.issue_label"></span></span>
+                                <span class="inline-flex items-center gap-1.5" x-show="c.expiry_label"><i class="bi bi-hourglass-split text-muted-foreground/70"></i><span x-text="'{{ __('member.cert_expiry_date') }}: ' + c.expiry_label"></span></span>
+                                <span class="inline-flex items-center gap-1.5" x-show="c.credential_id"><i class="bi bi-hash text-muted-foreground/70"></i><span x-text="c.credential_id"></span></span>
+                            </div>
+                            <p class="text-[11px] text-foreground/70 mt-2" x-show="c.notes" x-text="c.notes"></p>
+                            <div class="mt-2 flex items-center gap-3">
+                                <template x-if="c.credential_url">
+                                    <a :href="c.credential_url" target="_blank" rel="noopener nofollow" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary"><i class="bi bi-box-arrow-up-right"></i>{{ __('member.verify_credential') }}</a>
+                                </template>
+                                <template x-if="canEdit">
+                                    <div class="flex items-center gap-3 ms-auto">
+                                        <button type="button" @click="openEdit(c)" class="text-[11px] font-medium text-muted-foreground hover:text-primary inline-flex items-center gap-1"><i class="bi bi-pencil"></i>{{ __('Edit') }}</button>
+                                        <button type="button" @click="remove(c)" class="text-[11px] font-medium text-muted-foreground hover:text-red-600 inline-flex items-center gap-1"><i class="bi bi-trash"></i>{{ __('Delete') }}</button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            {{-- Add / edit bottom sheet (teleported so nothing clips it) --}}
+            <template x-teleport="body">
+                <div x-show="open" x-cloak @keydown.escape.window="close()" class="fixed inset-0 z-[70]">
+                    <div x-show="open" x-transition.opacity class="absolute inset-0 bg-black/50" @click="close()"></div>
+                    <div x-show="open"
+                         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                         class="absolute inset-x-0 bottom-0 bg-background rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col">
+                        <div class="flex-shrink-0 px-5 pt-3 pb-2 border-b border-gray-100">
+                            <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
+                            <div class="flex items-center justify-between">
+                                <h3 class="font-bold text-foreground" x-text="editing ? '{{ __('member.edit_certification') }}' : '{{ __('member.add_certification') }}'"></h3>
+                                <button type="button" @click="close()" class="w-8 h-8 rounded-full grid place-items-center text-muted-foreground hover:bg-muted"><i class="bi bi-x-lg"></i></button>
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_name') }} <span class="text-red-500">*</span></label>
+                                <input type="text" x-model="form.title" maxlength="150" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('member.cert_name') }}">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_issuer') }}</label>
+                                <input type="text" x-model="form.issuer" maxlength="150" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('member.cert_issuer') }}">
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_issue_date') }}</label>
+                                    <x-date-picker model="form.issue_date" placeholder="{{ __('member.cert_issue_date') }}" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_expiry_date') }}</label>
+                                    <x-date-picker model="form.expiry_date" min-expr="form.issue_date || null" placeholder="{{ __('member.cert_no_expiry') }}" />
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 gap-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_credential_id') }}</label>
+                                    <input type="text" x-model="form.credential_id" maxlength="120" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('member.cert_credential_id') }}">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_credential_url') }}</label>
+                                    <input type="url" inputmode="url" x-model="form.credential_url" maxlength="300" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="https://">
+                                </div>
+                            </div>
+                            {{-- Certificate photo (optional) --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_photo') }}</label>
+                                <div class="flex items-center gap-3">
+                                    <span class="w-16 h-16 rounded-xl bg-muted grid place-items-center overflow-hidden flex-shrink-0 ring-1 ring-gray-100">
+                                        <template x-if="form.imagePreview"><img :src="form.imagePreview" alt="" class="w-16 h-16 object-cover"></template>
+                                        <template x-if="!form.imagePreview"><i class="bi bi-image text-muted-foreground"></i></template>
+                                    </span>
+                                    <label class="m-press inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-primary text-primary text-sm font-medium cursor-pointer hover:bg-primary/5">
+                                        <i class="bi bi-camera"></i><span x-text="form.imagePreview ? '{{ __('Change') }}' : '{{ __('Add photo') }}'"></span>
+                                        <input type="file" accept="image/*" class="hidden" @change="pickImage($event)">
+                                    </label>
+                                    <button type="button" x-show="form.imagePreview" @click="form.image=null; form.imagePreview=null" class="text-xs text-red-500 hover:underline">{{ __('Remove') }}</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_description') }}</label>
+                                <textarea x-model="form.notes" rows="3" maxlength="1000" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
+                            </div>
+                        </div>
+                        <div class="flex-shrink-0 border-t border-gray-100 px-5 pt-3 flex gap-2" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
+                            <button type="button" @click="submit()" :disabled="submitting || !form.title.trim()" class="m-press flex-1 py-3 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 disabled:opacity-60 flex items-center justify-center gap-2">
+                                <i class="bi bi-arrow-repeat animate-spin" x-show="submitting"></i>
+                                <span x-text="editing ? '{{ __('Save') }}' : '{{ __('member.add_certification') }}'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        {{-- ===== Worked — member-owned work / coaching history ===== --}}
+        @php
+            $workJs = $workHistory->map(fn ($w) => [
+                'id' => $w->id,
+                'title' => $w->title,
+                'organization' => $w->organization,
+                'employment_type' => $w->employment_type,
+                'location' => $w->location,
+                'start_date' => optional($w->start_date)->format('Y-m-d'),
+                'end_date' => optional($w->end_date)->format('Y-m-d'),
+                'start_label' => optional($w->start_date)->format('M Y'),
+                'end_label' => $w->end_date ? $w->end_date->format('M Y') : null,
+                'current' => $w->isCurrent(),
+                'description' => $w->description,
+            ])->values();
+            $employmentTypes = ['Full-time','Part-time','Contract','Freelance','Volunteer','Internship'];
+        @endphp
+        <div x-show="tab==='worked'" x-transition.opacity x-cloak class="space-y-3"
+             x-data="workManager({
+                storeUrl: '{{ route('member.store-work', $user->id) }}',
+                updateBase: '{{ url('/member/work-history') }}',
+                csrf: '{{ csrf_token() }}',
+                canEdit: @js((bool) ($canEditBasic ?? false)),
+                items: @js($workJs),
+                i18n: {
+                    deleteConfirm: @js(__('member.work_delete_confirm')),
+                    networkError: @js(__('Something went wrong. Please try again.')),
+                    present: @js(__('member.work_present')),
+                }
+             })">
+
+            @if($canEditBasic ?? false)
+                <div class="flex justify-end -mb-1" x-show="items.length">
+                    <button type="button" @click="openAdd()" aria-label="{{ __('member.add_work') }}"
+                            class="m-press w-9 h-9 rounded-full bg-primary text-white grid place-items-center shadow-md shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
+            @endif
+
+            {{-- Empty state --}}
+            <template x-if="!items.length">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-briefcase text-primary"></i> {{ __('member.work_history') }}</h3>
+                        @if($canEditBasic ?? false)
+                            <button type="button" @click="openAdd()" class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold active:bg-primary/90">
+                                <i class="bi bi-plus-lg"></i>{{ __('member.add_work') }}
+                            </button>
+                        @endif
+                    </div>
+                    <p class="text-sm text-muted-foreground text-center py-4">{{ __('member.no_work') }}</p>
+                </div>
+            </template>
+
+            {{-- Timeline list --}}
+            <template x-for="w in items" :key="w.id">
+                <div class="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-4 overflow-hidden">
+                    <span class="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 w-1" :class="w.current ? 'bg-green-400/80' : 'bg-gray-300'"></span>
+                    <div class="flex items-start gap-3">
+                        <span class="w-11 h-11 rounded-xl bg-accent grid place-items-center text-primary flex-shrink-0 ring-1 ring-primary/10"><i class="bi bi-briefcase-fill"></i></span>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-start justify-between gap-2">
+                                <p class="font-bold text-foreground text-[15px] leading-snug" x-text="w.title"></p>
+                                <template x-if="w.current">
+                                    <span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700"><span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>{{ __('member.work_current') }}</span>
+                                </template>
+                            </div>
+                            <p class="text-[12px] font-medium text-foreground/70 mt-0.5" x-text="w.organization"></p>
+                            <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                                <span class="inline-flex items-center gap-1.5"><i class="bi bi-calendar-range text-muted-foreground/70"></i><span x-text="w.start_label + ' – ' + (w.end_label || i18n.present)"></span></span>
+                                <span class="inline-flex items-center gap-1.5" x-show="w.employment_type"><i class="bi bi-person-badge text-muted-foreground/70"></i><span x-text="w.employment_type"></span></span>
+                                <span class="inline-flex items-center gap-1.5 min-w-0" x-show="w.location"><i class="bi bi-geo-alt text-muted-foreground/70 flex-shrink-0"></i><span class="truncate" x-text="w.location"></span></span>
+                            </div>
+                            <p class="text-[11px] text-foreground/70 mt-2 whitespace-pre-line" x-show="w.description" x-text="w.description"></p>
+                            <template x-if="canEdit">
+                                <div class="mt-2 flex items-center gap-3">
+                                    <button type="button" @click="openEdit(w)" class="text-[11px] font-medium text-muted-foreground hover:text-primary inline-flex items-center gap-1"><i class="bi bi-pencil"></i>{{ __('Edit') }}</button>
+                                    <button type="button" @click="remove(w)" class="text-[11px] font-medium text-muted-foreground hover:text-red-600 inline-flex items-center gap-1"><i class="bi bi-trash"></i>{{ __('Delete') }}</button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            {{-- Add / edit bottom sheet --}}
+            <template x-teleport="body">
+                <div x-show="open" x-cloak @keydown.escape.window="close()" class="fixed inset-0 z-[70]">
+                    <div x-show="open" x-transition.opacity class="absolute inset-0 bg-black/50" @click="close()"></div>
+                    <div x-show="open"
+                         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                         class="absolute inset-x-0 bottom-0 bg-background rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col">
+                        <div class="flex-shrink-0 px-5 pt-3 pb-2 border-b border-gray-100">
+                            <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
+                            <div class="flex items-center justify-between">
+                                <h3 class="font-bold text-foreground" x-text="editing ? '{{ __('member.edit_work') }}' : '{{ __('member.add_work') }}'"></h3>
+                                <button type="button" @click="close()" class="w-8 h-8 rounded-full grid place-items-center text-muted-foreground hover:bg-muted"><i class="bi bi-x-lg"></i></button>
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_role') }} <span class="text-red-500">*</span></label>
+                                <input type="text" x-model="form.title" maxlength="150" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('member.work_role') }}">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_organization') }} <span class="text-red-500">*</span></label>
+                                <input type="text" x-model="form.organization" maxlength="150" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('member.work_organization') }}">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.work_employment_type') }}</label>
+                                <div class="flex flex-wrap gap-1.5">
+                                    @foreach($employmentTypes as $et)
+                                        <button type="button" @click="form.employment_type = (form.employment_type === '{{ $et }}' ? '' : '{{ $et }}')"
+                                                class="m-press px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors"
+                                                :class="form.employment_type === '{{ $et }}' ? 'bg-primary text-white border-primary' : 'bg-white text-muted-foreground border-gray-200 hover:border-primary/40'">{{ $et }}</button>
+                                    @endforeach
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_start_date') }} <span class="text-red-500">*</span></label>
+                                    <x-date-picker model="form.start_date" max-expr="form.end_date || null" placeholder="{{ __('member.work_start_date') }}" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_end_date') }}</label>
+                                    <x-date-picker model="form.end_date" min-expr="form.start_date || null" placeholder="{{ __('member.work_present') }}" />
+                                </div>
+                            </div>
+                            <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                                <input type="checkbox" x-model="form.current" @change="if(form.current) form.end_date=''" class="w-[18px] h-[18px] rounded text-primary border-gray-300 focus:ring-primary">
+                                <span class="text-sm text-gray-700">{{ __('member.work_current') }}</span>
+                            </label>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_location') }}</label>
+                                <input type="text" x-model="form.location" maxlength="150" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('member.work_location') }}">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_description') }}</label>
+                                <textarea x-model="form.description" rows="3" maxlength="2000" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
+                            </div>
+                        </div>
+                        <div class="flex-shrink-0 border-t border-gray-100 px-5 pt-3 flex gap-2" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
+                            <button type="button" @click="submit()" :disabled="submitting || !form.title.trim() || !form.organization.trim() || !form.start_date" class="m-press flex-1 py-3 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 disabled:opacity-60 flex items-center justify-center gap-2">
+                                <i class="bi bi-arrow-repeat animate-spin" x-show="submitting"></i>
+                                <span x-text="editing ? '{{ __('Save') }}' : '{{ __('member.add_work') }}'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
         </div>
 
         {{-- ===== Attendance ===== --}}
@@ -1484,193 +1826,6 @@
             @endforelse
         </div>
 
-        {{-- ===== Billing — sensitive; only rendered for authorised viewers ===== --}}
-        @if($canViewSensitive ?? false)
-        <div x-show="tab==='billing'" x-transition.opacity x-cloak>
-            <div class="space-y-3"
-                 x-data="memberBilling({ settleBase: '{{ url('me/payments') }}', csrf: '{{ csrf_token() }}', canSettle: {{ ($canSettleBills ?? false) ? 'true' : 'false' }} })">
-            @forelse(($payments ?? collect()) as $payment)
-                @php
-                    $isLink   = $payment->type === 'invoice' && $payment->receipt_id;
-                    $badgeCls = $payment->status_key === 'paid' ? 'bg-green-100 text-green-700'
-                              : ($payment->status_key === 'pending' ? 'bg-blue-100 text-blue-700'
-                              : ($payment->status_key === 'due' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'));
-                    $isBill = $payment->type === 'subscription';
-                @endphp
-                @if($isBill)
-                    {{-- Subscription bill: tap to view details + settle --}}
-                    <div id="pay-card-{{ $payment->subscription_id }}"
-                         role="button"
-                         class="m-press cursor-pointer block bg-white rounded-2xl shadow-sm border border-gray-100 p-4"
-                         data-id="{{ $payment->subscription_id }}"
-                         data-club="{{ $payment->club }}"
-                         data-item="{{ $payment->item }}"
-                         data-amount="{{ $payment->amount }}"
-                         data-cur="{{ $payment->currency }}"
-                         data-period="{{ $payment->period }}"
-                         data-date="{{ optional($payment->date)->format('d M Y') }}"
-                         data-status="{{ $payment->status_key }}"
-                         data-label="{{ $payment->status_label }}"
-                         data-settleable="{{ $payment->settleable ? '1' : '0' }}"
-                         data-hasproof="{{ $payment->has_proof ? '1' : '0' }}"
-                         data-logo="{{ $payment->club_logo }}"
-                         @click="openBill($el)">
-                        <div class="flex items-center justify-between gap-2">
-                            <div class="flex items-center gap-2.5 min-w-0">
-                                @if($payment->club_logo)
-                                    <span class="w-9 h-9 flex-shrink-0"><img src="{{ $payment->club_logo }}" alt="" class="w-full h-full object-contain"></span>
-                                @else
-                                    <span class="w-9 h-9 flex-shrink-0 grid place-items-center text-muted-foreground"><i class="bi bi-buildings text-lg"></i></span>
-                                @endif
-                                <div class="min-w-0">
-                                    <p class="font-semibold text-foreground truncate">{{ $payment->club }}</p>
-                                    <p class="text-[11px] text-muted-foreground truncate">{{ $payment->item }} · {{ optional($payment->date)->format('d M Y') }}</p>
-                                </div>
-                            </div>
-                            <div class="text-right flex-shrink-0 flex items-center gap-2">
-                                <div>
-                                    <p data-role="amount" class="font-black text-foreground leading-none">{{ $payment->amount }}</p>
-                                    <span data-role="badge" class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $badgeCls }}">{{ $payment->status_label }}</span>
-                                </div>
-                                <i class="bi bi-chevron-right text-muted-foreground/40"></i>
-                            </div>
-                        </div>
-                    </div>
-                @else
-                    {{-- Invoice: links straight to the receipt page --}}
-                    <{{ $isLink ? 'a' : 'div' }} @if($isLink) href="{{ route('bills.receipt', $payment->receipt_id) }}" @endif
-                        class="block bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                        <div class="flex items-center justify-between gap-2">
-                            <div class="flex items-center gap-2.5 min-w-0">
-                                @if($payment->club_logo)
-                                    <span class="w-9 h-9 flex-shrink-0"><img src="{{ $payment->club_logo }}" alt="" class="w-full h-full object-contain"></span>
-                                @else
-                                    <span class="w-9 h-9 flex-shrink-0 grid place-items-center text-muted-foreground"><i class="bi bi-buildings text-lg"></i></span>
-                                @endif
-                                <div class="min-w-0">
-                                    <p class="font-semibold text-foreground truncate">{{ $payment->club }}</p>
-                                    <p class="text-[11px] text-muted-foreground truncate">{{ $payment->item }} · {{ optional($payment->date)->format('d M Y') }}</p>
-                                </div>
-                            </div>
-                            <div class="text-right flex-shrink-0">
-                                <p class="font-black text-foreground leading-none">{{ $payment->amount }}</p>
-                                <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $badgeCls }}">{{ $payment->status_label }}</span>
-                            </div>
-                        </div>
-                    </{{ $isLink ? 'a' : 'div' }}>
-                @endif
-            @empty
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center"><i class="bi bi-receipt text-3xl text-gray-300"></i><p class="text-sm text-muted-foreground mt-2">{{ __('member.no_invoices') }}</p></div>
-            @endforelse
-
-            {{-- ===== Bill details + settle bottom sheet (teleported so nothing clips it) ===== --}}
-            <template x-teleport="body">
-                <div x-show="open" x-cloak class="fixed inset-0 z-[60]" @keydown.escape.window="close()">
-                    <div x-show="open" x-transition.opacity class="absolute inset-0 bg-black/40" @click="close()"></div>
-
-                    <div x-show="open"
-                         x-transition:enter="transition ease-out duration-300"
-                         x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
-                         x-transition:leave="transition ease-in duration-200"
-                         x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
-                         class="absolute inset-x-0 bottom-0 max-h-[92vh] flex flex-col bg-white rounded-t-3xl shadow-2xl">
-
-                        {{-- Header --}}
-                        <div class="flex-shrink-0 px-5 pt-3 pb-4 border-b border-gray-100">
-                            <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
-                            <div class="flex items-center gap-3">
-                                <span class="w-11 h-11 flex-shrink-0 grid place-items-center">
-                                    <template x-if="current.logo"><img :src="current.logo" alt="" class="w-full h-full object-contain"></template>
-                                    <template x-if="!current.logo"><i class="bi bi-buildings text-2xl text-muted-foreground"></i></template>
-                                </span>
-                                <div class="min-w-0">
-                                    <h3 class="text-lg font-bold text-gray-900 truncate" x-text="current.item"></h3>
-                                    <p class="text-sm text-muted-foreground truncate" x-text="current.club"></p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Scrollable body --}}
-                        <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-                            {{-- Amount --}}
-                            <div class="rounded-2xl bg-muted/40 p-4 flex items-center justify-between gap-3">
-                                <div class="min-w-0">
-                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground" x-text="current.status === 'paid' ? '{{ __('personal.paid') }}' : '{{ __('personal.due') }}'"></p>
-                                    <p class="text-2xl font-extrabold text-primary mt-0.5 truncate">
-                                        <span x-text="current.cur"></span> <span x-text="current.amount"></span>
-                                    </p>
-                                </div>
-                                <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0"
-                                      :class="badgeClass" x-text="current.label"></span>
-                            </div>
-
-                            {{-- Details --}}
-                            <div class="rounded-2xl border border-gray-100 divide-y divide-gray-100">
-                                <div class="flex items-center justify-between gap-3 px-4 py-3">
-                                    <span class="text-[13px] text-muted-foreground">{{ __('Club') }}</span>
-                                    <span class="text-[13px] font-medium text-foreground text-right truncate" x-text="current.club"></span>
-                                </div>
-                                <div class="flex items-center justify-between gap-3 px-4 py-3">
-                                    <span class="text-[13px] text-muted-foreground">{{ __('Package') }}</span>
-                                    <span class="text-[13px] font-medium text-foreground text-right truncate" x-text="current.item"></span>
-                                </div>
-                                <div class="flex items-center justify-between gap-3 px-4 py-3" x-show="current.period">
-                                    <span class="text-[13px] text-muted-foreground">{{ __('Period') }}</span>
-                                    <span class="text-[13px] font-medium text-foreground text-right" x-text="current.period"></span>
-                                </div>
-                                <div class="flex items-center justify-between gap-3 px-4 py-3">
-                                    <span class="text-[13px] text-muted-foreground">{{ __('Date') }}</span>
-                                    <span class="text-[13px] font-medium text-foreground text-right" x-text="current.date"></span>
-                                </div>
-                            </div>
-
-                            {{-- Proof upload (only when settleable + viewer may settle) --}}
-                            <div x-show="canSettle && current.settleable">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Payment proof') }}</label>
-                                <label class="relative flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl p-6 cursor-pointer hover:border-primary/50 transition-colors overflow-hidden">
-                                    <template x-if="!preview">
-                                        <div class="text-center">
-                                            <i class="bi bi-camera text-3xl text-gray-300"></i>
-                                            <p class="text-sm text-muted-foreground mt-2">{{ __('Tap to add a photo of your receipt') }}</p>
-                                        </div>
-                                    </template>
-                                    <template x-if="preview">
-                                        <img :src="preview" class="max-h-56 rounded-xl object-contain" alt="">
-                                    </template>
-                                    <input type="file" accept="image/*" class="hidden" @change="pickFile($event)">
-                                </label>
-                                <p class="text-[11px] text-muted-foreground mt-2">
-                                    <i class="bi bi-info-circle mr-1"></i>
-                                    <span x-show="current.hasproof && current.status === 'pending'">{{ __('A proof was already sent — uploading a new one replaces it.') }}</span>
-                                    <span x-show="!(current.hasproof && current.status === 'pending')">{{ __('The club will review and approve the payment.') }}</span>
-                                </p>
-                            </div>
-
-                            {{-- Awaiting-approval note when the viewer cannot settle --}}
-                            <p x-show="!canSettle && current.status === 'pending'" class="text-[13px] text-amber-600 flex items-center gap-2">
-                                <i class="bi bi-hourglass-split"></i> {{ __('Awaiting club approval.') }}
-                            </p>
-                        </div>
-
-                        {{-- Sticky footer --}}
-                        <div class="flex-shrink-0 px-5 pt-3 border-t border-gray-100 flex gap-3"
-                             style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
-                            <button type="button" @click="close()"
-                                class="flex-1 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium active:scale-[.98] transition">
-                                {{ __('Close') }}
-                            </button>
-                            <button type="button" x-show="canSettle && current.settleable" @click="submit()" :disabled="submitting || !proof"
-                                class="flex-1 py-3 rounded-xl bg-primary text-white font-semibold active:scale-[.98] transition disabled:opacity-60 flex items-center justify-center gap-2">
-                                <span x-show="!submitting"><i class="bi bi-send mr-1"></i>{{ __('Send for review') }}</span>
-                                <span x-show="submitting" class="flex items-center gap-2"><i class="bi bi-arrow-repeat animate-spin"></i>{{ __('Sending…') }}</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </template>
-            </div>
-        </div>
-        @endif
 
     </div>
 </div>
@@ -2013,97 +2168,6 @@ window.__mpProfileUpdated = (e) => {
 };
 window.addEventListener('member-profile-updated', window.__mpProfileUpdated);
 
-// ===== Billing tab: view a bill's details + settle it (upload proof) =====
-window.memberBilling = function (cfg) {
-    return {
-        open: false,
-        submitting: false,
-        proof: null,
-        preview: null,
-        canSettle: !!cfg.canSettle,
-        current: { id: null, club: '', item: '', amount: '', cur: '', period: '', date: '', status: '', label: '', settleable: false, hasproof: false, logo: '' },
-
-        get badgeClass() {
-            const s = this.current.status;
-            if (s === 'paid')    return 'bg-green-100 text-green-700';
-            if (s === 'pending') return 'bg-blue-100 text-blue-700';
-            if (s === 'due')     return 'bg-amber-100 text-amber-700';
-            return 'bg-gray-100 text-gray-600';
-        },
-
-        openBill(el) {
-            const d = el.dataset;
-            this.current = {
-                id: d.id, club: d.club, item: d.item, amount: d.amount, cur: d.cur,
-                period: d.period, date: d.date, status: d.status, label: d.label,
-                settleable: d.settleable === '1', hasproof: d.hasproof === '1', logo: d.logo || '',
-            };
-            this.proof = null; this.preview = null; this.open = true;
-        },
-        close() { this.open = false; },
-
-        pickFile(e) {
-            const f = e.target.files && e.target.files[0];
-            if (!f) return;
-            if (!f.type.startsWith('image/')) { window.showToast && window.showToast('error', @js(__('Please choose an image.'))); return; }
-            const r = new FileReader();
-            r.onload = () => { this.proof = r.result; this.preview = r.result; };
-            r.readAsDataURL(f);
-        },
-
-        async submit() {
-            if (!this.proof) { window.showToast && window.showToast('error', @js(__('Add a payment proof image.'))); return; }
-            this.submitting = true;
-            try {
-                const res = await fetch(cfg.settleBase + '/' + this.current.id + '/settle', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest' },
-                    body: JSON.stringify({ payment_proof_base64: this.proof }),
-                });
-                const j = await res.json();
-                window.showToast && window.showToast(j.success ? 'success' : 'error', j.message || '');
-                if (j.success) { this.patchCard(this.current.id, 'pending'); this.close(); }
-            } catch (e) {
-                window.showToast && window.showToast('error', @js(__('Something went wrong.')));
-            } finally {
-                this.submitting = false;
-            }
-        },
-
-        // Patch a bill card in place — no reload.
-        patchCard(id, state, dateText) {
-            const card = document.getElementById('pay-card-' + id);
-            if (!card) return;
-            const badge = card.querySelector('[data-role=badge]');
-            if (state === 'pending') {
-                card.dataset.status = 'pending'; card.dataset.settleable = '0'; card.dataset.hasproof = '1';
-                card.dataset.label = @js(__('Pending review'));
-                if (badge) { badge.textContent = @js(__('Pending review')); badge.className = 'inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700'; }
-            } else if (state === 'paid') {
-                card.dataset.status = 'paid'; card.dataset.settleable = '0';
-                card.dataset.label = @js(__('Paid'));
-                if (badge) { badge.textContent = @js(__('Paid')); badge.className = 'inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700'; }
-            }
-        },
-    };
-};
-
-// Live-update a bill when the club approves it (MQTT 'payments' channel).
-// Deduped across shell swaps so the handler never stacks.
-window.__mpBillingRealtime && window.removeEventListener('realtime:payments', window.__mpBillingRealtime);
-window.__mpBillingRealtime = (e) => {
-    const d = (e && e.detail) || {};
-    if (d.action === 'settled' && d.subscription_id) {
-        const card = document.getElementById('pay-card-' + d.subscription_id);
-        if (!card) return;
-        const badge = card.querySelector('[data-role=badge]');
-        card.dataset.status = 'paid'; card.dataset.settleable = '0';
-        card.dataset.label = @js(__('Paid'));
-        if (badge) { badge.textContent = @js(__('Paid')); badge.className = 'inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700'; }
-    }
-};
-window.addEventListener('realtime:payments', window.__mpBillingRealtime);
-
 // Goals tab: reactive list + AJAX add/update (no page reload). Pure calendar
 // helpers take their args explicitly (no `this`) so they're safe to call bare
 // from the nested date-picker's own x-data scope.
@@ -2441,6 +2505,182 @@ window.goalsManager = function (cfg) {
                 window.showToast && window.showToast('error', this.i18n.networkError);
             } finally {
                 this.updateSubmitting = false;
+            }
+        },
+    };
+};
+
+// ===== Certifications tab: reactive list + AJAX add/edit/delete (no reload) =====
+window.certManager = function (cfg) {
+    const blank = () => ({ id: null, title: '', issuer: '', issue_date: '', expiry_date: '', credential_id: '', credential_url: '', notes: '', image: null, imagePreview: null });
+    return {
+        items: (cfg.items || []).map(c => ({ ...c })),
+        canEdit: !!cfg.canEdit,
+        i18n: cfg.i18n || {},
+        open: false,
+        editing: false,
+        submitting: false,
+        form: blank(),
+
+        openAdd() { if (!this.canEdit) return; this.form = blank(); this.editing = false; this.open = true; },
+        openEdit(c) {
+            if (!this.canEdit) return;
+            this.form = {
+                id: c.id, title: c.title || '', issuer: c.issuer || '',
+                issue_date: c.issue_date || '', expiry_date: c.expiry_date || '',
+                credential_id: c.credential_id || '', credential_url: c.credential_url || '',
+                notes: c.notes || '', image: null, imagePreview: c.image || null,
+            };
+            this.editing = true; this.open = true;
+        },
+        close() { this.open = false; },
+
+        pickImage(e) {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) { window.showToast && window.showToast('error', this.i18n.invalidImage); e.target.value = ''; return; }
+            const reader = new FileReader();
+            reader.onload = (ev) => { this.form.image = ev.target.result; this.form.imagePreview = ev.target.result; };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+        },
+
+        async submit() {
+            if (this.submitting || !this.form.title.trim()) return;
+            this.submitting = true;
+            const isEdit = this.editing && this.form.id;
+            const url = isEdit ? (cfg.updateBase + '/' + this.form.id) : cfg.storeUrl;
+            const payload = {
+                _token: cfg.csrf,
+                title: this.form.title, issuer: this.form.issuer,
+                issue_date: this.form.issue_date || null, expiry_date: this.form.expiry_date || null,
+                credential_id: this.form.credential_id, credential_url: this.form.credential_url || null,
+                notes: this.form.notes,
+            };
+            if (this.form.image) payload.image = this.form.image;
+            if (isEdit) payload._method = 'PUT';
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) { window.showToast && window.showToast('error', (data && data.message) || this.i18n.networkError); return; }
+                const c = data.certification;
+                if (isEdit) {
+                    const i = this.items.findIndex(x => x.id === c.id);
+                    if (i !== -1) this.items.splice(i, 1, c);
+                } else {
+                    this.items.unshift(c);
+                }
+                window.showToast && window.showToast('success', data.message);
+                this.close();
+            } catch (err) {
+                window.showToast && window.showToast('error', this.i18n.networkError);
+            } finally {
+                this.submitting = false;
+            }
+        },
+
+        async remove(c) {
+            if (!this.canEdit) return;
+            const ok = await window.confirmAction({ title: c.title, message: this.i18n.deleteConfirm, type: 'danger', confirmText: '{{ __('Delete') }}' });
+            if (!ok) return;
+            try {
+                const res = await fetch(cfg.updateBase + '/' + c.id, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) { window.showToast && window.showToast('error', (data && data.message) || this.i18n.networkError); return; }
+                this.items = this.items.filter(x => x.id !== c.id);
+                window.showToast && window.showToast('success', data.message);
+            } catch (err) {
+                window.showToast && window.showToast('error', this.i18n.networkError);
+            }
+        },
+    };
+};
+
+// ===== Worked (work history) tab: reactive list + AJAX add/edit/delete =====
+window.workManager = function (cfg) {
+    const blank = () => ({ id: null, title: '', organization: '', employment_type: '', location: '', start_date: '', end_date: '', current: false, description: '' });
+    return {
+        items: (cfg.items || []).map(w => ({ ...w })),
+        canEdit: !!cfg.canEdit,
+        i18n: cfg.i18n || {},
+        open: false,
+        editing: false,
+        submitting: false,
+        form: blank(),
+
+        openAdd() { if (!this.canEdit) return; this.form = blank(); this.editing = false; this.open = true; },
+        openEdit(w) {
+            if (!this.canEdit) return;
+            this.form = {
+                id: w.id, title: w.title || '', organization: w.organization || '',
+                employment_type: w.employment_type || '', location: w.location || '',
+                start_date: w.start_date || '', end_date: w.end_date || '',
+                current: !!w.current, description: w.description || '',
+            };
+            this.editing = true; this.open = true;
+        },
+        close() { this.open = false; },
+
+        async submit() {
+            if (this.submitting || !this.form.title.trim() || !this.form.organization.trim() || !this.form.start_date) return;
+            this.submitting = true;
+            const isEdit = this.editing && this.form.id;
+            const url = isEdit ? (cfg.updateBase + '/' + this.form.id) : cfg.storeUrl;
+            const payload = {
+                _token: cfg.csrf,
+                title: this.form.title, organization: this.form.organization,
+                employment_type: this.form.employment_type || null, location: this.form.location,
+                start_date: this.form.start_date,
+                end_date: this.form.current ? null : (this.form.end_date || null),
+                description: this.form.description,
+            };
+            if (isEdit) payload._method = 'PUT';
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) { window.showToast && window.showToast('error', (data && data.message) || this.i18n.networkError); return; }
+                const w = data.work;
+                if (isEdit) {
+                    const i = this.items.findIndex(x => x.id === w.id);
+                    if (i !== -1) this.items.splice(i, 1, w);
+                } else {
+                    this.items.unshift(w);
+                }
+                window.showToast && window.showToast('success', data.message);
+                this.close();
+            } catch (err) {
+                window.showToast && window.showToast('error', this.i18n.networkError);
+            } finally {
+                this.submitting = false;
+            }
+        },
+
+        async remove(w) {
+            if (!this.canEdit) return;
+            const ok = await window.confirmAction({ title: w.title, message: this.i18n.deleteConfirm, type: 'danger', confirmText: '{{ __('Delete') }}' });
+            if (!ok) return;
+            try {
+                const res = await fetch(cfg.updateBase + '/' + w.id, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) { window.showToast && window.showToast('error', (data && data.message) || this.i18n.networkError); return; }
+                this.items = this.items.filter(x => x.id !== w.id);
+                window.showToast && window.showToast('success', data.message);
+            } catch (err) {
+                window.showToast && window.showToast('error', this.i18n.networkError);
             }
         },
     };

@@ -6,6 +6,7 @@
         'id' => $o->id, 'reference' => $o->reference, 'status' => $o->status,
         'total' => (float) $o->total, 'currency' => $o->currency,
         'time' => $o->created_at->diffForHumans(), 'date' => $o->created_at->format('M j, Y · g:i A'),
+        'new' => ($lastSeen ?? null) ? $o->created_at->gt(\Illuminate\Support\Carbon::parse($lastSeen)) : true,
         'customer' => $o->user->full_name ?? __('admin.fin_member'),
         'hasDropship' => (bool) $o->has_dropship,
         'proof' => $o->paymentProofUrl(),
@@ -37,9 +38,12 @@
     <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-1 flex max-w-md">
         <template x-for="f in filters" :key="f">
             <button type="button" @click="setFilter(f)"
-                    class="flex-1 py-2 rounded-xl text-xs font-bold transition-colors"
-                    :class="filter === f ? 'bg-primary text-white' : 'text-muted-foreground hover:text-foreground'"
-                    x-text="label(f)"></button>
+                    class="relative flex-1 py-2 rounded-xl text-xs font-bold transition-colors"
+                    :class="filter === f ? 'bg-primary text-white' : 'text-muted-foreground hover:text-foreground'">
+                <span x-text="label(f)"></span>
+                <span x-show="unseenFor(f) > 0" x-cloak x-text="unseenFor(f)"
+                      class="absolute -top-1 -end-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black leading-none inline-flex items-center justify-center shadow-sm ring-2 ring-white"></span>
+            </button>
         </template>
     </div>
 
@@ -160,6 +164,12 @@ function clubOrders(orders) {
              received — receipt is a customer-side step, not a separate seller stage. --}}
         get shown() { return this.orders.filter(o => this.filter === 'fulfilled' ? (o.status === 'fulfilled' || o.status === 'received') : o.status === this.filter); },
         get visible() { return this.shown.slice(0, this.limit); },
+        {{-- Unseen count per tab = orders in that status that arrived since the owner last
+             opened this page (server-flagged o.new). Cleared on the next visit. --}}
+        unseenFor(f) {
+            return this.orders.filter(o => o.new
+                && (f === 'fulfilled' ? (o.status === 'fulfilled' || o.status === 'received') : o.status === f)).length;
+        },
         proofView: null,
         openProof(url) { this.proofView = url; },
         closeProof() { this.proofView = null; },

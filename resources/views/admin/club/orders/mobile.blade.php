@@ -7,11 +7,14 @@
     $ordersJs = $orders->map(fn ($o) => [
         'id' => $o->id, 'reference' => $o->reference, 'status' => $o->status,
         'total' => (float) $o->total, 'currency' => $o->currency, 'date' => $o->created_at->format('M j · g:i A'),
+        'month' => $o->created_at->format('Y-m'),
+        'new' => ($lastSeen ?? null) ? $o->created_at->gt(\Illuminate\Support\Carbon::parse($lastSeen)) : true,
         'customer' => $o->user->full_name ?? __('admin.fin_member'), 'hasDropship' => (bool) $o->has_dropship,
         'proof' => $o->paymentProofUrl(),
         'items' => $o->items->map(fn ($it) => ['name' => $it->name, 'qty' => $it->qty, 'image' => $it->image_path ? asset('storage/'.$it->image_path) : null])->values(),
     ])->values();
     $cur = $club->currency ?: 'BHD';
+    $currentMonth = date('Y-m');   // hero stats + list default to this month; the stepper changes it
 @endphp
 <div x-data="clubOrdersM({{ Illuminate\Support\Js::from($ordersJs) }})" class="-mx-4 -mt-4">
 
@@ -28,17 +31,34 @@
             </div>
         </div>
 
-        <div class="flex gap-2 mt-5 relative z-10">
+        {{-- Month scope — the stats + list read the selected month; step back to review past
+             months, capped at the current one (no future). --}}
+        <div class="flex items-center justify-between gap-2 mt-4 relative z-10">
+            <span class="text-[11px] uppercase tracking-wide text-white/70 flex items-center gap-1.5"><i class="bi bi-calendar3"></i>{{ __('admin.fin_reports') }}</span>
+            <div class="inline-flex items-center gap-0.5 rounded-full bg-white/12 border border-white/20 p-0.5">
+                <button type="button" @click="shiftMonth(-1)" aria-label="{{ __('admin.fin_prev_month') }}"
+                        class="m-press w-7 h-7 rounded-full grid place-items-center text-white/90 hover:bg-white/15 transition-colors">
+                    <i class="bi bi-chevron-left rtl:rotate-180 text-xs"></i>
+                </button>
+                <span class="min-w-[92px] text-center text-xs font-bold tracking-wide" x-text="monthLabel"></span>
+                <button type="button" @click="shiftMonth(1)" :disabled="! canGoNextMonth" aria-label="{{ __('admin.fin_next_month') }}"
+                        class="m-press w-7 h-7 rounded-full grid place-items-center text-white/90 hover:bg-white/15 transition-colors disabled:opacity-30 disabled:pointer-events-none">
+                    <i class="bi bi-chevron-right rtl:rotate-180 text-xs"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="flex gap-2 mt-3 relative z-10">
             <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
-                <p class="text-lg font-black leading-none">{{ $stats['pending'] }}</p>
+                <p class="text-lg font-black leading-none" x-text="monthStats.pending"></p>
                 <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('market.stat_pending') }}</p>
             </div>
             <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
-                <p class="text-lg font-black leading-none">{{ $stats['fulfilled'] }}</p>
+                <p class="text-lg font-black leading-none" x-text="monthStats.fulfilled"></p>
                 <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('market.stat_fulfilled') }}</p>
             </div>
             <div class="flex-1 rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-3 py-2.5">
-                <p class="text-lg font-black leading-none">{{ number_format($stats['revenue'], 0) }}<span class="text-[10px] font-bold ml-0.5">{{ $cur }}</span></p>
+                <p class="text-lg font-black leading-none"><span x-text="fmt0(monthStats.revenue)"></span><span class="text-[10px] font-bold ml-0.5">{{ $cur }}</span></p>
                 <p class="text-[10px] text-white/75 mt-1 uppercase tracking-wide">{{ __('market.stat_revenue') }}</p>
             </div>
         </div>
@@ -50,9 +70,12 @@
     <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-1 flex">
         <template x-for="f in filters" :key="f">
             <button type="button" @click="setFilter(f)"
-                    class="m-press flex-1 py-2.5 rounded-xl text-xs font-bold transition-colors"
-                    :class="filter === f ? 'bg-primary text-white' : 'text-muted-foreground'"
-                    x-text="label(f)"></button>
+                    class="m-press relative flex-1 py-2.5 rounded-xl text-xs font-bold transition-colors"
+                    :class="filter === f ? 'bg-primary text-white' : 'text-muted-foreground'">
+                <span x-text="label(f)"></span>
+                <span x-show="unseenFor(f) > 0" x-cloak x-text="unseenFor(f)"
+                      class="absolute -top-1 -end-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black leading-none inline-flex items-center justify-center shadow-sm ring-2 ring-white"></span>
+            </button>
         </template>
     </div>
 
@@ -131,12 +154,47 @@ function clubOrdersM(orders) {
         setFilter(f) { this.filter = f; this.limit = this.perPage; },
         statusBase: @js(url('/admin/club/'.$club->slug.'/orders')),
         csrf: document.querySelector('meta[name=csrf-token]')?.content || '',
+
+        // ── month scope (stats + list read the selected month) ──
+        selectedMonth: @js($currentMonth),
+        currentMonth: @js($currentMonth),
+        get monthOrders() { return this.orders.filter(o => o.month === this.selectedMonth); },
+        get monthStats() {
+            let pending = 0, fulfilled = 0, revenue = 0;
+            this.monthOrders.forEach(o => {
+                if (o.status === 'pending') pending++;
+                if (o.status === 'fulfilled' || o.status === 'received') fulfilled++;
+                if (o.status === 'confirmed' || o.status === 'fulfilled' || o.status === 'received') revenue += Number(o.total) || 0;
+            });
+            return { pending, fulfilled, revenue };
+        },
+        get monthLabel() {
+            const [y, m] = this.selectedMonth.split('-').map(Number);
+            return new Date(y, (m || 1) - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+        },
+        get canGoNextMonth() { return this.selectedMonth < this.currentMonth; },
+        shiftMonth(delta) {
+            const [y, m] = this.selectedMonth.split('-').map(Number);
+            const d = new Date(y, (m - 1) + delta, 1);
+            const next = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+            if (next > this.currentMonth) return;   // never step into the future
+            this.selectedMonth = next;
+            this.limit = this.perPage;
+        },
+        fmt0(n) { return Math.round(Number(n) || 0).toLocaleString(); },
+
         labels: { all: @js(__('admin.all')), pending: @js(__('market.status_pending')), confirmed: @js(__('market.status_confirmed')), fulfilled: @js(__('market.status_fulfilled')), received: @js(__('market.status_received')), cancelled: @js(__('market.status_cancelled')) },
         label(s) { return this.labels[s] || s; },
-        {{-- "Fulfilled" (sold) also covers orders the buyer has since confirmed
-             received — receipt is a customer-side step, not a separate seller stage. --}}
-        get shown() { return this.orders.filter(o => this.filter === 'fulfilled' ? (o.status === 'fulfilled' || o.status === 'received') : o.status === this.filter); },
+        {{-- Scoped to the selected month. "Fulfilled" (sold) also covers orders the buyer has
+             since confirmed received — receipt is a customer-side step, not a separate seller stage. --}}
+        get shown() { return this.monthOrders.filter(o => this.filter === 'fulfilled' ? (o.status === 'fulfilled' || o.status === 'received') : o.status === this.filter); },
         get visible() { return this.shown.slice(0, this.limit); },
+        {{-- Unseen count per tab = orders in that status this month that arrived since the
+             owner last opened this page (server-flagged o.new). Cleared on the next visit. --}}
+        unseenFor(f) {
+            return this.monthOrders.filter(o => o.new
+                && (f === 'fulfilled' ? (o.status === 'fulfilled' || o.status === 'received') : o.status === f)).length;
+        },
         proofView: null,
         openProof(url) { this.proofView = url; },
         closeProof() { this.proofView = null; },

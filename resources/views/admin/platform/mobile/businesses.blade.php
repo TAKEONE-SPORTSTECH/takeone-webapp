@@ -30,25 +30,24 @@
                    class="w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/40 focus:border-transparent text-sm">
         </div>
 
-        {{-- Status filters (scrollable) --}}
-        <div class="overflow-x-auto scrollbar-hide -mx-1 px-1">
-            <div class="flex gap-2 w-max" id="bizFilters">
-                @php
-                    $filterDefs = [
-                        'all'      => [__('platform.filter_all'), 'bg-gray-100 text-gray-700', $counts['all']],
-                        'pending'  => [__('platform.filter_pending'), 'bg-amber-100 text-amber-700', $counts['pending']],
-                        'approved' => [__('platform.filter_approved'), 'bg-green-100 text-green-700', $counts['approved']],
-                        'rejected' => [__('platform.filter_rejected'), 'bg-red-100 text-red-700', $counts['rejected']],
-                    ];
-                @endphp
-                @foreach($filterDefs as $key => $def)
-                    <button type="button" data-status="{{ $key }}"
-                            class="biz-filter-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors {{ $key === 'all' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200' }}">
-                        {{ $def[0] }}
-                        <span class="ml-1 inline-flex items-center justify-center min-w-[1.25rem] px-1 py-0.5 rounded-full text-[10px] {{ $key === 'all' ? 'bg-white/20' : $def[1] }} biz-filter-count" data-status-count="{{ $key }}">{{ $def[2] }}</span>
-                    </button>
-                @endforeach
-            </div>
+        {{-- Status filters — split the full width evenly so all four fit without scrolling --}}
+        <div class="flex gap-1.5" id="bizFilters">
+            @php
+                $filterDefs = [
+                    'all'      => [__('platform.filter_all'), 'bg-gray-100 text-gray-700', $counts['all']],
+                    'pending'  => [__('platform.filter_pending'), 'bg-amber-100 text-amber-700', $counts['pending']],
+                    'approved' => [__('platform.filter_approved'), 'bg-green-100 text-green-700', $counts['approved']],
+                    'rejected' => [__('platform.filter_rejected'), 'bg-red-100 text-red-700', $counts['rejected']],
+                ];
+            @endphp
+            @foreach($filterDefs as $key => $def)
+                <button type="button" data-status="{{ $key }}"
+                        class="biz-filter-btn relative flex-1 min-w-0 inline-flex items-center justify-center px-2 py-1.5 rounded-full text-[11px] font-medium border transition-colors {{ $key === 'all' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200' }}">
+                    <span class="truncate">{{ $def[0] }}</span>
+                    <span class="biz-filter-count absolute -top-1.5 -end-1 min-w-[1.15rem] h-[1.15rem] px-1 rounded-full bg-red-500 text-white text-[9px] font-black inline-flex items-center justify-center shadow-sm ring-2 ring-white"
+                          data-status-count="{{ $key }}">{{ $def[2] }}</span>
+                </button>
+            @endforeach
         </div>
 
         {{-- Empty / no-results --}}

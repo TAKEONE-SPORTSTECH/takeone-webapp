@@ -18,28 +18,36 @@ class AiProviderController extends Controller
 {
     private const DRIVERS = ['ollama', 'openai', 'anthropic', 'gemini', 'elevenlabs', 'automatic1111', 'whisper'];
 
-    public function index()
+    public function index(Request $request)
     {
         // API keys are $hidden on the model, so this never ships secrets.
         $providers = AiProvider::query()->orderBy('modality')->orderByDesc('is_default')->orderBy('name')->get()
-            ->map(fn ($p) => [
-                'id' => $p->id,
-                'name' => $p->name,
-                'modality' => $p->modality,
-                'driver' => $p->driver,
-                'base_url' => $p->base_url,
-                'model' => $p->model,
-                'options' => $p->options,
-                'is_default' => $p->is_default,
-                'enabled' => $p->enabled,
-                'has_key' => filled($p->getAttributes()['api_key'] ?? null),
-            ]);
+            ->map(fn ($p) => $this->providerPayload($p));
 
-        return view('admin.ai.index', [
+        $mobile = $request->attributes->get('is_mobile') && view()->exists('admin.ai.mobile');
+
+        return view($mobile ? 'admin.ai.mobile' : 'admin.ai.index', [
             'providers' => $providers,
             'modalities' => AiProvider::MODALITIES,
             'drivers' => self::DRIVERS,
         ]);
+    }
+
+    /** Browser-safe projection of a provider — never includes the encrypted key. */
+    private function providerPayload(AiProvider $p): array
+    {
+        return [
+            'id' => $p->id,
+            'name' => $p->name,
+            'modality' => $p->modality,
+            'driver' => $p->driver,
+            'base_url' => $p->base_url,
+            'model' => $p->model,
+            'options' => $p->options,
+            'is_default' => $p->is_default,
+            'enabled' => $p->enabled,
+            'has_key' => filled($p->getAttributes()['api_key'] ?? null),
+        ];
     }
 
     public function store(Request $request)
@@ -49,7 +57,7 @@ class AiProviderController extends Controller
         $provider->save();
         $this->syncDefault($provider);
 
-        return response()->json(['success' => true, 'message' => 'Provider added.']);
+        return response()->json(['success' => true, 'message' => 'Provider added.', 'provider' => $this->providerPayload($provider->fresh())]);
     }
 
     public function update(Request $request, AiProvider $provider)
@@ -65,7 +73,7 @@ class AiProviderController extends Controller
         $provider->fill($fill)->save();
         $this->syncDefault($provider);
 
-        return response()->json(['success' => true, 'message' => 'Provider updated.']);
+        return response()->json(['success' => true, 'message' => 'Provider updated.', 'provider' => $this->providerPayload($provider->fresh())]);
     }
 
     public function destroy(AiProvider $provider)

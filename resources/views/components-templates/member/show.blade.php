@@ -289,6 +289,16 @@
                     <i class="bi bi-calendar-event me-2"></i>{{ __('member.templates_member_show_tab_events') }}
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button @click="activeTab = 'certifications'" :class="{ 'active': activeTab === 'certifications' }" class="nav-link text-dark" id="certifications-tab" type="button" role="tab">
+                    <i class="bi bi-patch-check me-2"></i>{{ __('member.tab_certifications') }}
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button @click="activeTab = 'worked'" :class="{ 'active': activeTab === 'worked' }" class="nav-link text-dark" id="worked-tab" type="button" role="tab">
+                    <i class="bi bi-briefcase me-2"></i>{{ __('member.tab_worked') }}
+                </button>
+            </li>
         </ul>
         </div>{{-- end overflow-x-auto tab wrapper --}}
 
@@ -407,230 +417,6 @@
                 </div>
             </div>
 
-            {{-- Payment history is sensitive — only for the member's own circle or an active-package club. --}}
-            @if($canViewSensitive ?? false)
-            <!-- Complete Payment & Revenue History -->
-            <div class="bg-white rounded-xl shadow-sm mb-4"
-                 x-data="memberBilling({ settleBase: '{{ url('me/payments') }}', csrf: '{{ csrf_token() }}', canSettle: {{ ($canSettleBills ?? false) ? 'true' : 'false' }} })">
-                <div class="p-4">
-                    <div class="flex items-center mb-1">
-                        <i class="bi bi-receipt text-primary me-2"></i>
-                        <h5 class="mb-0 font-bold">{{ __('member.templates_member_show_payment_history') }}</h5>
-                    </div>
-                    <p class="text-gray-500 text-sm mb-4">{{ __('member.templates_member_show_payment_history_sub') }}</p>
-
-                    <div class="overflow-x-auto rounded-lg border border-gray-100">
-                        <table class="w-full text-sm">
-                            <thead>
-                                <tr class="bg-gray-50 border-b border-gray-200">
-                                    <th class="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{{ __('member.templates_member_show_th_date') }}</th>
-                                    <th class="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{{ __('member.templates_member_show_th_club_item') }}</th>
-                                    <th class="px-4 py-3 text-end text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{{ __('member.templates_member_show_th_amount') }}</th>
-                                    <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{{ __('member.templates_member_show_th_status') }}</th>
-                                    <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{{ __('member.templates_member_show_th_receipt') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100">
-                                @forelse(($payments ?? collect()) as $payment)
-                                @php $isBill = $payment->type === 'subscription'; @endphp
-                                <tr class="hover:bg-gray-50 transition-colors {{ $isBill ? 'cursor-pointer' : '' }}"
-                                    @if($isBill)
-                                        id="pay-card-{{ $payment->subscription_id }}"
-                                        role="button"
-                                        data-id="{{ $payment->subscription_id }}"
-                                        data-club="{{ $payment->club }}"
-                                        data-item="{{ $payment->item }}"
-                                        data-amount="{{ $payment->amount }}"
-                                        data-cur="{{ $payment->currency }}"
-                                        data-period="{{ $payment->period }}"
-                                        data-date="{{ optional($payment->date)->format('M j, Y') }}"
-                                        data-status="{{ $payment->status_key }}"
-                                        data-label="{{ $payment->status_label }}"
-                                        data-settleable="{{ $payment->settleable ? '1' : '0' }}"
-                                        data-hasproof="{{ $payment->has_proof ? '1' : '0' }}"
-                                        data-logo="{{ $payment->club_logo }}"
-                                        @click="openBill($event.currentTarget)"
-                                    @endif>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <span class="text-sm text-gray-700">{{ optional($payment->date)->format('M j, Y') }}</span>
-                                        <div class="text-xs text-gray-400">{{ optional($payment->date)->format('g:i A') }}</div>
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        <div class="flex items-center gap-2.5">
-                                            @if($payment->club_logo)
-                                                <span class="w-8 h-8 flex-shrink-0"><img src="{{ $payment->club_logo }}" alt="" class="w-full h-full object-contain"></span>
-                                            @else
-                                                <span class="w-8 h-8 flex-shrink-0 grid place-items-center text-gray-400"><i class="bi bi-buildings"></i></span>
-                                            @endif
-                                            <div class="min-w-0">
-                                                <span class="text-sm font-medium text-gray-800">{{ $payment->club }}</span>
-                                                <div class="text-xs text-primary">{{ $payment->item }}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-4 py-3 text-end whitespace-nowrap">
-                                        <span class="text-sm font-semibold {{ $payment->status_key === 'paid' ? 'text-green-600' : 'text-amber-600' }}">
-                                            {{ $payment->amount }} BHD
-                                        </span>
-                                    </td>
-                                    <td data-role="badge-cell" class="px-4 py-3 text-center">
-                                        @if($payment->status_key === 'paid')
-                                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                                                <i class="bi bi-check-circle-fill"></i> {{ __('member.templates_member_show_status_paid') }}
-                                            </span>
-                                        @elseif($payment->status_key === 'pending')
-                                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                                                <i class="bi bi-hourglass-split"></i> {{ $payment->status_label }}
-                                            </span>
-                                        @elseif($payment->status_key === 'due')
-                                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                                                <i class="bi bi-clock"></i> {{ __('member.templates_member_show_status_due') }}
-                                            </span>
-                                        @else
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                                                {{ $payment->status_label }}
-                                            </span>
-                                        @endif
-                                    </td>
-                                    <td class="px-4 py-3 text-center whitespace-nowrap">
-                                        @if($payment->type === 'invoice' && $payment->receipt_id)
-                                            <a href="{{ route('bills.receipt', $payment->receipt_id) }}" target="_blank"
-                                               class="inline-flex items-center justify-center w-7 h-7 rounded-lg text-primary hover:bg-primary/10 transition-colors" title="{{ __('member.templates_member_show_view_receipt') }}">
-                                                <i class="bi bi-file-earmark-text"></i>
-                                            </a>
-                                            <a href="{{ route('bills.receipt', $payment->receipt_id) }}?download=1" download
-                                               class="inline-flex items-center justify-center w-7 h-7 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors ms-1" title="{{ __('member.templates_member_show_download') }}">
-                                                <i class="bi bi-download"></i>
-                                            </a>
-                                        @elseif($isBill && $payment->settleable && ($canSettleBills ?? false))
-                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-primary/10 text-primary">
-                                                <i class="bi bi-cash-coin"></i> {{ __('Settle') }}
-                                            </span>
-                                        @elseif($isBill)
-                                            <span class="inline-flex items-center gap-1 text-xs text-gray-400">
-                                                <i class="bi bi-eye"></i> {{ __('View') }}
-                                            </span>
-                                        @elseif($payment->has_proof)
-                                            <span class="inline-flex items-center gap-1 text-xs text-gray-400" title="{{ __('member.templates_member_show_proof_submitted_title') }}">
-                                                <i class="bi bi-paperclip"></i> {{ __('member.templates_member_show_proof_sent') }}
-                                            </span>
-                                        @else
-                                            <span class="text-gray-300">—</span>
-                                        @endif
-                                    </td>
-                                </tr>
-                                @empty
-                                <tr>
-                                    <td colspan="5" class="px-4 py-10 text-center">
-                                        <i class="bi bi-receipt text-gray-200" style="font-size:2.5rem;"></i>
-                                        <p class="text-gray-400 text-sm mt-2 mb-0">{{ __('member.templates_member_show_no_payment_records') }}</p>
-                                    </td>
-                                </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                {{-- ===== Bill details + settle modal ===== --}}
-                <div x-show="open" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-4" @keydown.escape.window="close()">
-                    <div x-show="open" x-transition.opacity class="absolute inset-0 bg-black/50" @click="close()"></div>
-                    <div x-show="open"
-                         x-transition:enter="transition ease-out duration-200"
-                         x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
-                         class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
-
-                        {{-- Header --}}
-                        <div class="flex items-start justify-between gap-3 px-6 py-4 border-b border-gray-100">
-                            <div class="flex items-center gap-3 min-w-0">
-                                <span class="w-11 h-11 flex-shrink-0 grid place-items-center">
-                                    <template x-if="current.logo"><img :src="current.logo" alt="" class="w-full h-full object-contain"></template>
-                                    <template x-if="!current.logo"><i class="bi bi-buildings text-2xl text-gray-400"></i></template>
-                                </span>
-                                <div class="min-w-0">
-                                    <h3 class="text-lg font-bold text-gray-900 truncate" x-text="current.item"></h3>
-                                    <p class="text-sm text-gray-500 truncate" x-text="current.club"></p>
-                                </div>
-                            </div>
-                            <button type="button" @click="close()" class="w-9 h-9 -me-2 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 flex-shrink-0">
-                                <i class="bi bi-x-lg"></i>
-                            </button>
-                        </div>
-
-                        {{-- Body --}}
-                        <div class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-                            <div class="rounded-xl bg-gray-50 p-4 flex items-center justify-between gap-3">
-                                <div class="min-w-0">
-                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500" x-text="current.status === 'paid' ? '{{ __('personal.paid') }}' : '{{ __('personal.due') }}'"></p>
-                                    <p class="text-2xl font-extrabold text-primary mt-0.5 truncate">
-                                        <span x-text="current.cur"></span> <span x-text="current.amount"></span>
-                                    </p>
-                                </div>
-                                <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0" :class="badgeClass" x-text="current.label"></span>
-                            </div>
-
-                            <div class="rounded-xl border border-gray-100 divide-y divide-gray-100">
-                                <div class="flex items-center justify-between gap-3 px-4 py-3">
-                                    <span class="text-sm text-gray-500">{{ __('Club') }}</span>
-                                    <span class="text-sm font-medium text-gray-800 text-end truncate" x-text="current.club"></span>
-                                </div>
-                                <div class="flex items-center justify-between gap-3 px-4 py-3">
-                                    <span class="text-sm text-gray-500">{{ __('Package') }}</span>
-                                    <span class="text-sm font-medium text-gray-800 text-end truncate" x-text="current.item"></span>
-                                </div>
-                                <div class="flex items-center justify-between gap-3 px-4 py-3" x-show="current.period">
-                                    <span class="text-sm text-gray-500">{{ __('Period') }}</span>
-                                    <span class="text-sm font-medium text-gray-800 text-end" x-text="current.period"></span>
-                                </div>
-                                <div class="flex items-center justify-between gap-3 px-4 py-3">
-                                    <span class="text-sm text-gray-500">{{ __('Date') }}</span>
-                                    <span class="text-sm font-medium text-gray-800 text-end" x-text="current.date"></span>
-                                </div>
-                            </div>
-
-                            {{-- Proof upload (settleable + viewer may settle) --}}
-                            <div x-show="canSettle && current.settleable">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Payment proof') }}</label>
-                                <label class="relative flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl p-6 cursor-pointer hover:border-primary/50 transition-colors overflow-hidden">
-                                    <template x-if="!preview">
-                                        <div class="text-center">
-                                            <i class="bi bi-camera text-3xl text-gray-300"></i>
-                                            <p class="text-sm text-gray-500 mt-2">{{ __('Click to add a photo of the receipt') }}</p>
-                                        </div>
-                                    </template>
-                                    <template x-if="preview">
-                                        <img :src="preview" class="max-h-56 rounded-lg object-contain" alt="">
-                                    </template>
-                                    <input type="file" accept="image/*" class="hidden" @change="pickFile($event)">
-                                </label>
-                                <p class="text-[11px] text-gray-500 mt-2">
-                                    <i class="bi bi-info-circle me-1"></i>
-                                    <span x-show="current.hasproof && current.status === 'pending'">{{ __('A proof was already sent — uploading a new one replaces it.') }}</span>
-                                    <span x-show="!(current.hasproof && current.status === 'pending')">{{ __('The club will review and approve the payment.') }}</span>
-                                </p>
-                            </div>
-
-                            <p x-show="!canSettle && current.status === 'pending'" class="text-sm text-amber-600 flex items-center gap-2">
-                                <i class="bi bi-hourglass-split"></i> {{ __('Awaiting club approval.') }}
-                            </p>
-                        </div>
-
-                        {{-- Footer --}}
-                        <div class="flex-shrink-0 px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
-                            <button type="button" @click="close()"
-                                class="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-colors">
-                                {{ __('Close') }}
-                            </button>
-                            <button type="button" x-show="canSettle && current.settleable" @click="submit()" :disabled="submitting || !proof"
-                                class="px-4 py-2 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center gap-2">
-                                <span x-show="!submitting"><i class="bi bi-send me-1"></i>{{ __('Send for review') }}</span>
-                                <span x-show="submitting" class="flex items-center gap-2"><i class="bi bi-arrow-repeat animate-spin"></i>{{ __('Sending…') }}</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            @endif
 
             @if($canViewSensitive ?? false)
             <!-- Emergency Contacts & Documents row -->
@@ -1663,6 +1449,266 @@
                             @endforeach
                         </div>
                     @endif
+                </div>
+            </div>
+        </div>
+
+        {{-- ===== Certifications Tab ===== --}}
+        @php
+            $certsJsD = $certifications->map(fn ($c) => [
+                'id' => $c->id, 'title' => $c->title, 'issuer' => $c->issuer,
+                'issue_date' => optional($c->issue_date)->format('Y-m-d'),
+                'issue_label' => optional($c->issue_date)->format('M Y'),
+                'expiry_date' => optional($c->expiry_date)->format('Y-m-d'),
+                'expiry_label' => optional($c->expiry_date)->format('M Y'),
+                'expired' => $c->isExpired(),
+                'credential_id' => $c->credential_id, 'credential_url' => $c->credential_url,
+                'image' => $c->image_path ? asset('storage/'.$c->image_path) : null, 'notes' => $c->notes,
+            ])->values();
+        @endphp
+        <div x-show="activeTab === 'certifications'" x-transition id="certifications" role="tabpanel"
+             x-data="certManager({
+                storeUrl: '{{ route('member.store-certification', $relationship->dependent->id) }}',
+                updateBase: '{{ url('/member/certification') }}',
+                csrf: '{{ csrf_token() }}',
+                canEdit: @js((bool) ($canEditBasic ?? false)),
+                items: @js($certsJsD),
+                i18n: { deleteConfirm: @js(__('member.cert_delete_confirm')), networkError: @js(__('Something went wrong. Please try again.')), invalidImage: @js(__('Please choose an image file.')) }
+             })">
+            <div class="flex items-center justify-between mb-4">
+                <h5 class="font-bold text-gray-900 flex items-center gap-2"><i class="bi bi-patch-check text-primary"></i> {{ __('member.certifications') }}</h5>
+                @if($canEditBasic ?? false)
+                    <button type="button" @click="openAdd()" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm inline-flex items-center gap-1.5"><i class="bi bi-plus-lg"></i>{{ __('member.add_certification') }}</button>
+                @endif
+            </div>
+
+            <template x-if="!items.length">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-10 text-center">
+                    <i class="bi bi-patch-check text-3xl text-gray-300"></i>
+                    <p class="text-sm text-muted-foreground mt-2">{{ __('member.no_certifications') }}</p>
+                </div>
+            </template>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <template x-for="c in items" :key="c.id">
+                    <div class="relative bg-white rounded-xl shadow-sm border border-gray-100 p-4 overflow-hidden">
+                        <span class="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 w-1 bg-primary/70"></span>
+                        <div class="flex items-start gap-3">
+                            <span class="w-12 h-12 rounded-lg bg-accent grid place-items-center overflow-hidden flex-shrink-0 ring-1 ring-primary/10">
+                                <template x-if="c.image"><img :src="c.image" alt="" class="w-12 h-12 object-cover"></template>
+                                <template x-if="!c.image"><i class="bi bi-patch-check-fill text-lg text-primary"></i></template>
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-start justify-between gap-2">
+                                    <p class="font-bold text-gray-900 text-sm leading-snug" x-text="c.title"></p>
+                                    <template x-if="c.expired"><span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-600">{{ __('member.cert_expired') }}</span></template>
+                                </div>
+                                <p class="text-xs text-muted-foreground mt-0.5" x-show="c.issuer" x-text="c.issuer"></p>
+                                <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                                    <span class="inline-flex items-center gap-1.5" x-show="c.issue_label"><i class="bi bi-calendar3"></i><span x-text="c.issue_label"></span></span>
+                                    <span class="inline-flex items-center gap-1.5" x-show="c.expiry_label"><i class="bi bi-hourglass-split"></i><span x-text="c.expiry_label"></span></span>
+                                    <span class="inline-flex items-center gap-1.5" x-show="c.credential_id"><i class="bi bi-hash"></i><span x-text="c.credential_id"></span></span>
+                                </div>
+                                <p class="text-[11px] text-gray-600 mt-2" x-show="c.notes" x-text="c.notes"></p>
+                                <div class="mt-2 flex items-center gap-3">
+                                    <template x-if="c.credential_url"><a :href="c.credential_url" target="_blank" rel="noopener nofollow" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary"><i class="bi bi-box-arrow-up-right"></i>{{ __('member.verify_credential') }}</a></template>
+                                    <template x-if="canEdit">
+                                        <div class="flex items-center gap-3 ms-auto">
+                                            <button type="button" @click="openEdit(c)" class="text-[11px] font-medium text-gray-500 hover:text-primary inline-flex items-center gap-1"><i class="bi bi-pencil"></i>{{ __('Edit') }}</button>
+                                            <button type="button" @click="remove(c)" class="text-[11px] font-medium text-gray-500 hover:text-red-600 inline-flex items-center gap-1"><i class="bi bi-trash"></i>{{ __('Delete') }}</button>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            {{-- Add / edit modal --}}
+            <div x-show="open" x-cloak class="fixed inset-0 z-50 overflow-y-auto" @keydown.escape.window="close()">
+                <div x-show="open" x-transition.opacity class="fixed inset-0 bg-black/50" @click="close()"></div>
+                <div class="flex min-h-full items-center justify-center p-4">
+                    <div x-show="open" x-transition class="relative bg-white rounded-xl shadow-xl w-full max-w-2xl" @click.stop>
+                        <div class="flex items-center justify-between p-4 border-b border-gray-200">
+                            <h5 class="text-lg font-medium" x-text="editing ? '{{ __('member.edit_certification') }}' : '{{ __('member.add_certification') }}'"></h5>
+                            <button type="button" @click="close()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                        </div>
+                        <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div class="col-span-full">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_name') }} <span class="text-red-600">*</span></label>
+                                <input type="text" x-model="form.title" maxlength="150" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_issuer') }}</label>
+                                <input type="text" x-model="form.issuer" maxlength="150" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_credential_id') }}</label>
+                                <input type="text" x-model="form.credential_id" maxlength="120" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_issue_date') }}</label>
+                                <x-date-picker model="form.issue_date" placeholder="{{ __('member.cert_issue_date') }}" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_expiry_date') }}</label>
+                                <x-date-picker model="form.expiry_date" min-expr="form.issue_date || null" placeholder="{{ __('member.cert_no_expiry') }}" />
+                            </div>
+                            <div class="col-span-full">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_credential_url') }}</label>
+                                <input type="url" x-model="form.credential_url" maxlength="300" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary" placeholder="https://">
+                            </div>
+                            <div class="col-span-full">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.cert_photo') }}</label>
+                                <div class="flex items-center gap-3">
+                                    <span class="w-16 h-16 rounded-lg bg-gray-100 grid place-items-center overflow-hidden ring-1 ring-gray-200">
+                                        <template x-if="form.imagePreview"><img :src="form.imagePreview" alt="" class="w-16 h-16 object-cover"></template>
+                                        <template x-if="!form.imagePreview"><i class="bi bi-image text-gray-400"></i></template>
+                                    </span>
+                                    <label class="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-primary text-primary text-sm font-medium cursor-pointer hover:bg-primary/5">
+                                        <i class="bi bi-camera"></i><span x-text="form.imagePreview ? '{{ __('Change') }}' : '{{ __('Add photo') }}'"></span>
+                                        <input type="file" accept="image/*" class="hidden" @change="pickImage($event)">
+                                    </label>
+                                    <button type="button" x-show="form.imagePreview" @click="form.image=null; form.imagePreview=null" class="text-xs text-red-500 hover:underline">{{ __('Remove') }}</button>
+                                </div>
+                            </div>
+                            <div class="col-span-full">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_description') }}</label>
+                                <textarea x-model="form.notes" rows="2" maxlength="1000" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary"></textarea>
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-2 p-4 border-t border-gray-200 bg-gray-50">
+                            <button type="button" @click="close()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300">{{ __('shared.cancel') }}</button>
+                            <button type="button" @click="submit()" :disabled="submitting || !form.title.trim()" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-60"><span x-text="editing ? '{{ __('Save') }}' : '{{ __('member.add_certification') }}'"></span></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- ===== Worked (work history) Tab ===== --}}
+        @php
+            $workJsD = $workHistory->map(fn ($w) => [
+                'id' => $w->id, 'title' => $w->title, 'organization' => $w->organization,
+                'employment_type' => $w->employment_type, 'location' => $w->location,
+                'start_date' => optional($w->start_date)->format('Y-m-d'),
+                'end_date' => optional($w->end_date)->format('Y-m-d'),
+                'start_label' => optional($w->start_date)->format('M Y'),
+                'end_label' => $w->end_date ? $w->end_date->format('M Y') : null,
+                'current' => $w->isCurrent(), 'description' => $w->description,
+            ])->values();
+            $employmentTypesD = ['Full-time','Part-time','Contract','Freelance','Volunteer','Internship'];
+        @endphp
+        <div x-show="activeTab === 'worked'" x-transition id="worked" role="tabpanel"
+             x-data="workManager({
+                storeUrl: '{{ route('member.store-work', $relationship->dependent->id) }}',
+                updateBase: '{{ url('/member/work-history') }}',
+                csrf: '{{ csrf_token() }}',
+                canEdit: @js((bool) ($canEditBasic ?? false)),
+                items: @js($workJsD),
+                i18n: { deleteConfirm: @js(__('member.work_delete_confirm')), networkError: @js(__('Something went wrong. Please try again.')), present: @js(__('member.work_present')) }
+             })">
+            <div class="flex items-center justify-between mb-4">
+                <h5 class="font-bold text-gray-900 flex items-center gap-2"><i class="bi bi-briefcase text-primary"></i> {{ __('member.work_history') }}</h5>
+                @if($canEditBasic ?? false)
+                    <button type="button" @click="openAdd()" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm inline-flex items-center gap-1.5"><i class="bi bi-plus-lg"></i>{{ __('member.add_work') }}</button>
+                @endif
+            </div>
+
+            <template x-if="!items.length">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-10 text-center">
+                    <i class="bi bi-briefcase text-3xl text-gray-300"></i>
+                    <p class="text-sm text-muted-foreground mt-2">{{ __('member.no_work') }}</p>
+                </div>
+            </template>
+
+            <div class="space-y-3">
+                <template x-for="w in items" :key="w.id">
+                    <div class="relative bg-white rounded-xl shadow-sm border border-gray-100 p-4 overflow-hidden">
+                        <span class="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 w-1" :class="w.current ? 'bg-green-400/80' : 'bg-gray-300'"></span>
+                        <div class="flex items-start gap-3">
+                            <span class="w-11 h-11 rounded-lg bg-accent grid place-items-center text-primary flex-shrink-0 ring-1 ring-primary/10"><i class="bi bi-briefcase-fill"></i></span>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-start justify-between gap-2">
+                                    <p class="font-bold text-gray-900 text-sm leading-snug" x-text="w.title"></p>
+                                    <template x-if="w.current"><span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>{{ __('member.work_current') }}</span></template>
+                                </div>
+                                <p class="text-xs font-medium text-gray-600 mt-0.5" x-text="w.organization"></p>
+                                <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                                    <span class="inline-flex items-center gap-1.5"><i class="bi bi-calendar-range"></i><span x-text="w.start_label + ' – ' + (w.end_label || i18n.present)"></span></span>
+                                    <span class="inline-flex items-center gap-1.5" x-show="w.employment_type"><i class="bi bi-person-badge"></i><span x-text="w.employment_type"></span></span>
+                                    <span class="inline-flex items-center gap-1.5" x-show="w.location"><i class="bi bi-geo-alt"></i><span x-text="w.location"></span></span>
+                                </div>
+                                <p class="text-[11px] text-gray-600 mt-2 whitespace-pre-line" x-show="w.description" x-text="w.description"></p>
+                                <template x-if="canEdit">
+                                    <div class="mt-2 flex items-center gap-3">
+                                        <button type="button" @click="openEdit(w)" class="text-[11px] font-medium text-gray-500 hover:text-primary inline-flex items-center gap-1"><i class="bi bi-pencil"></i>{{ __('Edit') }}</button>
+                                        <button type="button" @click="remove(w)" class="text-[11px] font-medium text-gray-500 hover:text-red-600 inline-flex items-center gap-1"><i class="bi bi-trash"></i>{{ __('Delete') }}</button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            {{-- Add / edit modal --}}
+            <div x-show="open" x-cloak class="fixed inset-0 z-50 overflow-y-auto" @keydown.escape.window="close()">
+                <div x-show="open" x-transition.opacity class="fixed inset-0 bg-black/50" @click="close()"></div>
+                <div class="flex min-h-full items-center justify-center p-4">
+                    <div x-show="open" x-transition class="relative bg-white rounded-xl shadow-xl w-full max-w-2xl" @click.stop>
+                        <div class="flex items-center justify-between p-4 border-b border-gray-200">
+                            <h5 class="text-lg font-medium" x-text="editing ? '{{ __('member.edit_work') }}' : '{{ __('member.add_work') }}'"></h5>
+                            <button type="button" @click="close()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                        </div>
+                        <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_role') }} <span class="text-red-600">*</span></label>
+                                <input type="text" x-model="form.title" maxlength="150" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_organization') }} <span class="text-red-600">*</span></label>
+                                <input type="text" x-model="form.organization" maxlength="150" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary">
+                            </div>
+                            <div class="col-span-full">
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.work_employment_type') }}</label>
+                                <div class="flex flex-wrap gap-1.5">
+                                    @foreach($employmentTypesD as $et)
+                                        <button type="button" @click="form.employment_type = (form.employment_type === '{{ $et }}' ? '' : '{{ $et }}')"
+                                                class="px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors"
+                                                :class="form.employment_type === '{{ $et }}' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-500 border-gray-200 hover:border-primary/40'">{{ $et }}</button>
+                                    @endforeach
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_start_date') }} <span class="text-red-600">*</span></label>
+                                <x-date-picker model="form.start_date" max-expr="form.end_date || null" placeholder="{{ __('member.work_start_date') }}" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_end_date') }}</label>
+                                <x-date-picker model="form.end_date" min-expr="form.start_date || null" placeholder="{{ __('member.work_present') }}" />
+                            </div>
+                            <div class="col-span-full">
+                                <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                                    <input type="checkbox" x-model="form.current" @change="if(form.current) form.end_date=''" class="w-[18px] h-[18px] rounded text-primary border-gray-300 focus:ring-primary">
+                                    <span class="text-sm text-gray-700">{{ __('member.work_current') }}</span>
+                                </label>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_location') }}</label>
+                                <input type="text" x-model="form.location" maxlength="150" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary">
+                            </div>
+                            <div class="col-span-full">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.work_description') }}</label>
+                                <textarea x-model="form.description" rows="3" maxlength="2000" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary"></textarea>
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-2 p-4 border-t border-gray-200 bg-gray-50">
+                            <button type="button" @click="close()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300">{{ __('shared.cancel') }}</button>
+                            <button type="button" @click="submit()" :disabled="submitting || !form.title.trim() || !form.organization.trim() || !form.start_date" class="bg-primary text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-60"><span x-text="editing ? '{{ __('Save') }}' : '{{ __('member.add_work') }}'"></span></button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -4140,79 +4186,106 @@ window.addEventListener('member-profile-updated', function(e) {
     }
 });
 
-// ===== Billing: view a bill's details + settle it (upload proof) =====
-window.memberBilling = function (cfg) {
+// ===== Certifications: reactive list + AJAX add/edit/delete (no reload) =====
+window.certManager = function (cfg) {
+    const blank = () => ({ id: null, title: '', issuer: '', issue_date: '', expiry_date: '', credential_id: '', credential_url: '', notes: '', image: null, imagePreview: null });
     return {
-        open: false,
-        submitting: false,
-        proof: null,
-        preview: null,
-        canSettle: !!cfg.canSettle,
-        current: { id: null, club: '', item: '', amount: '', cur: '', period: '', date: '', status: '', label: '', settleable: false, hasproof: false, logo: '' },
-
-        get badgeClass() {
-            const s = this.current.status;
-            if (s === 'paid')    return 'bg-green-100 text-green-700';
-            if (s === 'pending') return 'bg-blue-100 text-blue-700';
-            if (s === 'due')     return 'bg-amber-100 text-amber-700';
-            return 'bg-gray-100 text-gray-600';
-        },
-
-        openBill(el) {
-            const d = el.dataset;
-            this.current = {
-                id: d.id, club: d.club, item: d.item, amount: d.amount, cur: d.cur,
-                period: d.period, date: d.date, status: d.status, label: d.label,
-                settleable: d.settleable === '1', hasproof: d.hasproof === '1', logo: d.logo || '',
-            };
-            this.proof = null; this.preview = null; this.open = true;
+        items: (cfg.items || []).map(c => ({ ...c })),
+        canEdit: !!cfg.canEdit, i18n: cfg.i18n || {},
+        open: false, editing: false, submitting: false, form: blank(),
+        openAdd() { if (!this.canEdit) return; this.form = blank(); this.editing = false; this.open = true; },
+        openEdit(c) {
+            if (!this.canEdit) return;
+            this.form = { id: c.id, title: c.title || '', issuer: c.issuer || '', issue_date: c.issue_date || '', expiry_date: c.expiry_date || '', credential_id: c.credential_id || '', credential_url: c.credential_url || '', notes: c.notes || '', image: null, imagePreview: c.image || null };
+            this.editing = true; this.open = true;
         },
         close() { this.open = false; },
-
-        pickFile(e) {
-            const f = e.target.files && e.target.files[0];
-            if (!f) return;
-            if (!f.type.startsWith('image/')) { window.showToast && window.showToast('error', @js(__('Please choose an image.'))); return; }
-            const r = new FileReader();
-            r.onload = () => { this.proof = r.result; this.preview = r.result; };
-            r.readAsDataURL(f);
+        pickImage(e) {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) { window.showToast && window.showToast('error', this.i18n.invalidImage); e.target.value = ''; return; }
+            const reader = new FileReader();
+            reader.onload = (ev) => { this.form.image = ev.target.result; this.form.imagePreview = ev.target.result; };
+            reader.readAsDataURL(file); e.target.value = '';
         },
-
         async submit() {
-            if (!this.proof) { window.showToast && window.showToast('error', @js(__('Add a payment proof image.'))); return; }
+            if (this.submitting || !this.form.title.trim()) return;
             this.submitting = true;
+            const isEdit = this.editing && this.form.id;
+            const url = isEdit ? (cfg.updateBase + '/' + this.form.id) : cfg.storeUrl;
+            const payload = { _token: cfg.csrf, title: this.form.title, issuer: this.form.issuer, issue_date: this.form.issue_date || null, expiry_date: this.form.expiry_date || null, credential_id: this.form.credential_id, credential_url: this.form.credential_url || null, notes: this.form.notes };
+            if (this.form.image) payload.image = this.form.image;
+            if (isEdit) payload._method = 'PUT';
             try {
-                const res = await fetch(cfg.settleBase + '/' + this.current.id + '/settle', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest' },
-                    body: JSON.stringify({ payment_proof_base64: this.proof }),
-                });
-                const j = await res.json();
-                window.showToast && window.showToast(j.success ? 'success' : 'error', j.message || '');
-                if (j.success) { this.patchRow(this.current.id, 'pending'); this.close(); }
-            } catch (e) {
-                window.showToast && window.showToast('error', @js(__('Something went wrong.')));
-            } finally {
-                this.submitting = false;
-            }
+                const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }, body: JSON.stringify(payload) });
+                const data = await res.json();
+                if (!res.ok || !data.success) { window.showToast && window.showToast('error', (data && data.message) || this.i18n.networkError); return; }
+                const c = data.certification;
+                if (isEdit) { const i = this.items.findIndex(x => x.id === c.id); if (i !== -1) this.items.splice(i, 1, c); } else { this.items.unshift(c); }
+                window.showToast && window.showToast('success', data.message); this.close();
+            } catch (err) { window.showToast && window.showToast('error', this.i18n.networkError); }
+            finally { this.submitting = false; }
         },
-
-        // Patch the table row in place — no reload.
-        patchRow(id, state) {
-            const row = document.getElementById('pay-card-' + id);
-            if (!row) return;
-            const cell = row.querySelector('[data-role=badge-cell]');
-            if (state === 'pending') {
-                row.dataset.status = 'pending'; row.dataset.settleable = '0'; row.dataset.hasproof = '1';
-                row.dataset.label = @js(__('Pending review'));
-                if (cell) cell.innerHTML = '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700"><i class="bi bi-hourglass-split"></i> ' + @js(__('Pending review')) + '</span>';
-            } else if (state === 'paid') {
-                row.dataset.status = 'paid'; row.dataset.settleable = '0';
-                row.dataset.label = @js(__('Paid'));
-                if (cell) cell.innerHTML = '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700"><i class="bi bi-check-circle-fill"></i> ' + @js(__('Paid')) + '</span>';
-            }
+        async remove(c) {
+            if (!this.canEdit) return;
+            const ok = await window.confirmAction({ title: c.title, message: this.i18n.deleteConfirm, type: 'danger', confirmText: '{{ __('Delete') }}' });
+            if (!ok) return;
+            try {
+                const res = await fetch(cfg.updateBase + '/' + c.id, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
+                const data = await res.json();
+                if (!res.ok || !data.success) { window.showToast && window.showToast('error', (data && data.message) || this.i18n.networkError); return; }
+                this.items = this.items.filter(x => x.id !== c.id);
+                window.showToast && window.showToast('success', data.message);
+            } catch (err) { window.showToast && window.showToast('error', this.i18n.networkError); }
         },
     };
 };
+
+// ===== Worked (work history): reactive list + AJAX add/edit/delete =====
+window.workManager = function (cfg) {
+    const blank = () => ({ id: null, title: '', organization: '', employment_type: '', location: '', start_date: '', end_date: '', current: false, description: '' });
+    return {
+        items: (cfg.items || []).map(w => ({ ...w })),
+        canEdit: !!cfg.canEdit, i18n: cfg.i18n || {},
+        open: false, editing: false, submitting: false, form: blank(),
+        openAdd() { if (!this.canEdit) return; this.form = blank(); this.editing = false; this.open = true; },
+        openEdit(w) {
+            if (!this.canEdit) return;
+            this.form = { id: w.id, title: w.title || '', organization: w.organization || '', employment_type: w.employment_type || '', location: w.location || '', start_date: w.start_date || '', end_date: w.end_date || '', current: !!w.current, description: w.description || '' };
+            this.editing = true; this.open = true;
+        },
+        close() { this.open = false; },
+        async submit() {
+            if (this.submitting || !this.form.title.trim() || !this.form.organization.trim() || !this.form.start_date) return;
+            this.submitting = true;
+            const isEdit = this.editing && this.form.id;
+            const url = isEdit ? (cfg.updateBase + '/' + this.form.id) : cfg.storeUrl;
+            const payload = { _token: cfg.csrf, title: this.form.title, organization: this.form.organization, employment_type: this.form.employment_type || null, location: this.form.location, start_date: this.form.start_date, end_date: this.form.current ? null : (this.form.end_date || null), description: this.form.description };
+            if (isEdit) payload._method = 'PUT';
+            try {
+                const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }, body: JSON.stringify(payload) });
+                const data = await res.json();
+                if (!res.ok || !data.success) { window.showToast && window.showToast('error', (data && data.message) || this.i18n.networkError); return; }
+                const w = data.work;
+                if (isEdit) { const i = this.items.findIndex(x => x.id === w.id); if (i !== -1) this.items.splice(i, 1, w); } else { this.items.unshift(w); }
+                window.showToast && window.showToast('success', data.message); this.close();
+            } catch (err) { window.showToast && window.showToast('error', this.i18n.networkError); }
+            finally { this.submitting = false; }
+        },
+        async remove(w) {
+            if (!this.canEdit) return;
+            const ok = await window.confirmAction({ title: w.title, message: this.i18n.deleteConfirm, type: 'danger', confirmText: '{{ __('Delete') }}' });
+            if (!ok) return;
+            try {
+                const res = await fetch(cfg.updateBase + '/' + w.id, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
+                const data = await res.json();
+                if (!res.ok || !data.success) { window.showToast && window.showToast('error', (data && data.message) || this.i18n.networkError); return; }
+                this.items = this.items.filter(x => x.id !== w.id);
+                window.showToast && window.showToast('success', data.message);
+            } catch (err) { window.showToast && window.showToast('error', this.i18n.networkError); }
+        },
+    };
+};
+
 </script>
 @endpush
