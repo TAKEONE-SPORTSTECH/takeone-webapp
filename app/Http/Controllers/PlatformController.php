@@ -793,6 +793,24 @@ class PlatformController extends Controller
             ->withProperties(['registrants' => count($request->registrants), 'pay_later' => $payLater])
             ->log('Club join registration submitted');
 
+        // Tell the club owner + staff a new registration came in (bell + MQTT + push
+        // + a persistent center-screen popup that stays until they act on it).
+        $count = count($request->registrants);
+        $primaryName = $request->registrants[0]['name'] ?? $user->name;
+        $who = $count === 1 ? $primaryName : $primaryName.' (+'.($count - 1).' more)';
+        foreach ($club->staffUserIds() as $staffId) {
+            \App\Models\UserNotification::notifyUser($staffId, 'new_member', 'New member registration', [
+                'actor_id'     => $user->id,
+                'tenant_id'    => $club->id,
+                'subject_type' => 'user',
+                'subject_id'   => (int) ($registrantIds[0] ?? $user->id),
+                'action_url'   => route('admin.club.members', $club->slug),
+                'icon'         => 'bi-person-plus-fill',
+                'context'      => $club->club_name,
+                'body'         => $who.' registered at '.$club->club_name.'. Review the pending payment to approve.',
+            ]);
+        }
+
         return response()->json(['success' => true, 'message' => 'Registration submitted successfully!']);
     }
 

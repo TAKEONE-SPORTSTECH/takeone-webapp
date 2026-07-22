@@ -488,6 +488,28 @@ class WizardRegistrationController extends Controller
 
             DB::commit();
 
+            // Tell the club owner + staff a new registration came in (bell + MQTT +
+            // push). Only when someone actually enrolled in a package.
+            $enrolledCount = ($request->self_packages ? 1 : 0)
+                + collect($request->input('existing_dependents', []))->filter(fn ($d) => ! empty($d['packages']))->count()
+                + collect($request->children ?? [])->filter(fn ($c) => ! empty($c['packages']))->count();
+
+            if ($enrolledCount > 0) {
+                $who = $enrolledCount === 1 ? $parentUser->name : $parentUser->name.' (+'.($enrolledCount - 1).' more)';
+                foreach ($tenant->staffUserIds() as $staffId) {
+                    \App\Models\UserNotification::notifyUser($staffId, 'new_member', 'New member registration', [
+                        'actor_id'     => $parentUser->id,
+                        'tenant_id'    => $tenant->id,
+                        'subject_type' => 'user',
+                        'subject_id'   => $parentUser->id,
+                        'action_url'   => route('admin.club.members', $tenant->slug),
+                        'icon'         => 'bi-person-plus-fill',
+                        'context'      => $tenant->club_name,
+                        'body'         => $who.' registered at '.$tenant->club_name.'. Review the pending payment to approve.',
+                    ]);
+                }
+            }
+
             Storage::disk('public')->deleteDirectory('temp/wizard/'.session()->getId());
             session()->forget('wizard.verified');   // one-time: consume the proof
 

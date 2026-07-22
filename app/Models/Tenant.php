@@ -247,6 +247,27 @@ class Tenant extends Model
     }
 
     /**
+     * User ids that manage this club and should be told about club-level events
+     * (new member registrations, payments, etc.): the owner plus anyone holding
+     * a staff/admin role scoped to this tenant. Tenant-scoped and de-duplicated.
+     */
+    public function staffUserIds(): array
+    {
+        $ids = \DB::table('user_roles')
+            ->join('roles', 'roles.id', '=', 'user_roles.role_id')
+            ->where('user_roles.tenant_id', $this->id)
+            ->whereIn('roles.slug', ['club-admin', 'moderator', 'staff'])
+            ->pluck('user_roles.user_id')
+            ->all();
+
+        if (! empty($this->owner_user_id)) {
+            $ids[] = (int) $this->owner_user_id;
+        }
+
+        return array_values(array_unique(array_map('intval', $ids)));
+    }
+
+    /**
      * Get the members for the tenant.
      */
     public function members(): BelongsToMany

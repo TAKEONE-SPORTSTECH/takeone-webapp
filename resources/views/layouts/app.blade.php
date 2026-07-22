@@ -995,6 +995,9 @@
     <!-- Persistent low-stock alerts (club owner) — survives navigation until acknowledged -->
     <x-low-stock-alerts />
 
+    <!-- Persistent new-member alerts (club owner/staff) — survives navigation until acknowledged -->
+    <x-new-member-alerts />
+
     <!-- Toast Container (Alpine.js) -->
     @php $toastsEnabled = \App\Models\PlatformSetting::getBool('toasts_enabled', true); @endphp
     <div x-data="toastManager()" class="fixed top-20 right-4 z-[200] space-y-2 pointer-events-none">
@@ -1412,6 +1415,59 @@
             } catch (e) { /* audio unavailable — fail silently */ }
         }
 
+        // Celebratory rising arpeggio for a NEW MEMBER joining — brighter and more
+        // joyful than the plain notification ding, plus a quick sparkle tail. Runs
+        // through the same shared, gesture-unlocked context (autoplay-safe: if the
+        // context is still suspended we surface the "enable sounds" pill instead of
+        // spamming a warning), so it never double-plays with the generic chime.
+        window.playNewMemberChime = function () {
+            try {
+                const ctx = getAudioCtx();
+                if (!ctx) return;
+                // Try to play regardless — no "enable sounds" pill for this chime.
+                // On the web the context auto-unlocks on the owner's first interaction
+                // (which is immediate in real use); in the Android app the native
+                // WebView is configured to allow autoplay outright
+                // (setMediaPlaybackRequiresUserGesture(false) in MainActivity), so it
+                // plays even before any tap. If still suspended this one time, resume
+                // for next time and skip silently — never a floating button, never a loop.
+                if (ctx.state !== 'running') { ctx.resume().catch(() => {}); return; }
+                const now = ctx.currentTime;
+                const master = ctx.createGain();
+                master.gain.value = 0.85;
+                master.connect(ctx.destination);
+                // Rising major arpeggio: E5 · G#5 · B5 · E6 (a bright, happy fanfare).
+                [659.25, 830.61, 987.77, 1318.51].forEach((freq, i) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = i === 3 ? 'sine' : 'triangle';
+                    osc.frequency.value = freq;
+                    const start = now + i * 0.1;
+                    const dur = i === 3 ? 0.9 : 0.45;
+                    gain.gain.setValueAtTime(0.0001, start);
+                    gain.gain.exponentialRampToValueAtTime(i === 3 ? 0.42 : 0.34, start + 0.012);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+                    osc.connect(gain).connect(master);
+                    osc.start(start);
+                    osc.stop(start + dur + 0.05);
+                });
+                // Sparkle tail — a couple of quick high shimmers over the final note.
+                [1760, 2093].forEach((freq, i) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    const start = now + 0.42 + i * 0.09;
+                    gain.gain.setValueAtTime(0.0001, start);
+                    gain.gain.exponentialRampToValueAtTime(0.16, start + 0.01);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.22);
+                    osc.connect(gain).connect(master);
+                    osc.start(start);
+                    osc.stop(start + 0.26);
+                });
+            } catch (e) { /* audio unavailable — fail silently */ }
+        };
+
         // Ring (sound + shake) once when a notification newer than the last one
         // the user saw shows up. Deduped via localStorage so navigating between
         // pages does not re-trigger it for the same notification.
@@ -1445,8 +1501,15 @@
         // ── Live notifications over MQTT (takeone/realtime) ──
         // realtime.js dispatches 'realtime:notification' with the new record;
         // we patch the bell badge + dropdown in place (no reload), then ring.
-        function rtRingBell() {
-            playNotificationChime();
+        function rtRingBell(n) {
+            // New-member joins get the celebratory fanfare; everything else the ding.
+            // The new-member popup component does NOT sound on live arrivals
+            // precisely because this handler already does — no overlap.
+            if (n && n.icon === 'bi-person-plus-fill') {
+                window.playNewMemberChime ? window.playNewMemberChime() : playNotificationChime();
+            } else {
+                playNotificationChime();
+            }
             const bell = document.getElementById('navNotifBell');
             if (bell) {
                 bell.classList.add('bell-ringing');
@@ -1551,7 +1614,7 @@
             if (n.action === 'remove') { rtRemoveNotifications((n.ids || []).map(Number)); return; }
             rtPrependNotification(n);
             rtBumpBadge();
-            rtRingBell();
+            rtRingBell(n);
             if (n.id) localStorage.setItem('takeone:lastSeenNotifId', String(n.id));
         });
 

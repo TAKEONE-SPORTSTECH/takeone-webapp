@@ -21,10 +21,24 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(MqttPushPlugin.class);
         super.onCreate(savedInstanceState);
+        allowMediaAutoplay();
         handleDeepLink(getIntent());
         // Start the notification service natively so it never depends on web JS.
         ensureNotificationPermission();
         startMqttService();
+    }
+
+    /**
+     * Let the WebView play sounds (notification chimes) without a prior user
+     * gesture. Regular browsers enforce the autoplay policy; inside our own app
+     * shell we opt out so notification tones ring the moment they arrive.
+     */
+    private void allowMediaAutoplay() {
+        try {
+            if (getBridge() != null && getBridge().getWebView() != null) {
+                getBridge().getWebView().getSettings().setMediaPlaybackRequiresUserGesture(false);
+            }
+        } catch (Throwable ignore) {}
     }
 
     private void ensureNotificationPermission() {
