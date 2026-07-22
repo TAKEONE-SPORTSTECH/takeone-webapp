@@ -146,6 +146,69 @@ class PlatformController extends Controller
             ->with('success', 'Settings updated.');
     }
 
+    /**
+     * DANGER ZONE — wipe the platform back to its clean baseline.
+     *
+     * Runs the `takeone:reset-baseline` command (SQLite backup → force-delete every
+     * club/member/user-data → re-seed the TAKEONE SportsTech baseline). Keeps only the
+     * activity catalog, roles/permissions and the super-admin user.
+     *
+     * Guardrails: super-admin group middleware + explicit re-check here, a tight
+     * `reset-baseline` rate limit, and a required typed confirmation phrase.
+     */
+    public function resetBaseline(Request $request)
+    {
+        // Defense in depth — the route group already enforces role:super-admin,
+        // but never rely on middleware alone for a catastrophic action.
+        $actor = Auth::user();
+        if (! $actor || ! $actor->hasRole('super-admin')) {
+            abort(403);
+        }
+
+        // Require the exact confirmation phrase so this can never fire accidentally.
+        $request->validate([
+            'confirmation' => ['required', 'string', 'in:RESET'],
+        ], [
+            'confirmation.in' => 'Type RESET exactly to confirm.',
+        ]);
+
+        \Illuminate\Support\Facades\Log::warning('Platform baseline reset triggered from settings.', [
+            'user_id' => $actor->id,
+            'email'   => $actor->email,
+            'ip'      => $request->ip(),
+        ]);
+
+        // The wipe + re-seed can take a while; don't let PHP time it out mid-way.
+        @set_time_limit(0);
+
+        try {
+            $exit = \Illuminate\Support\Facades\Artisan::call('takeone:reset-baseline', ['--force' => true]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Platform baseline reset failed.', [
+                'user_id' => $actor->id,
+                'error'   => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Reset failed: '.$e->getMessage(),
+            ], 500);
+        }
+
+        if ($exit !== 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Reset command exited with an error. Check the logs.',
+            ], 500);
+        }
+
+        return response()->json([
+            'success'  => true,
+            'message'  => 'Platform reset to the clean baseline.',
+            'redirect' => route('admin.platform.index'),
+        ]);
+    }
+
     public function updateWhatsAppSettings(Request $request, \App\Services\WhatsAppManager $whatsapp)
     {
         $data = $request->validate([

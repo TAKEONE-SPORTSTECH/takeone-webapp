@@ -263,10 +263,126 @@
 
         </div>
     </div>
+
+    {{-- ── Danger Zone — reset the platform to its clean baseline ──────────── --}}
+    <div class="mt-8" x-data="platformResetBaseline()">
+        <h3 class="text-sm font-semibold text-red-600 uppercase tracking-wide mb-4 flex items-center gap-2">
+            <i class="bi bi-exclamation-octagon-fill"></i>{{ __('platform.admin_platform_settings_danger_zone') }}
+        </h3>
+
+        <div class="bg-white rounded-xl shadow-sm border border-red-200 overflow-hidden max-w-2xl">
+            <div class="h-1 bg-gradient-to-r from-red-500 via-red-400 to-orange-400"></div>
+            <div class="p-6 flex flex-col sm:flex-row sm:items-start justify-between gap-5">
+                <div class="flex items-start gap-3">
+                    <span class="w-11 h-11 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                        <i class="bi bi-arrow-counterclockwise text-xl"></i>
+                    </span>
+                    <div>
+                        <p class="font-semibold text-gray-900">{{ __('platform.admin_platform_settings_reset_title') }}</p>
+                        <p class="text-sm text-muted-foreground mt-1 leading-relaxed">
+                            {{ __('platform.admin_platform_settings_reset_description') }}
+                        </p>
+                    </div>
+                </div>
+                <button type="button" @click="open = true"
+                        class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-red-300 text-red-600 font-medium text-sm hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors">
+                    <i class="bi bi-trash3"></i>{{ __('platform.admin_platform_settings_reset_button') }}
+                </button>
+            </div>
+        </div>
+
+        {{-- Confirmation modal — requires typing RESET to enable the action. --}}
+        <div x-show="open" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-4"
+             x-transition.opacity @keydown.escape.window="open && cancel()">
+            <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" @click="cancel()"></div>
+
+            <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+                 x-show="open"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100">
+                <div class="h-1.5 bg-gradient-to-r from-red-500 via-red-400 to-orange-400"></div>
+                <div class="p-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="w-11 h-11 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                            <i class="bi bi-exclamation-triangle-fill text-xl"></i>
+                        </span>
+                        <h4 class="text-lg font-bold text-gray-900">{{ __('platform.admin_platform_settings_reset_modal_title') }}</h4>
+                    </div>
+
+                    <p class="text-sm text-muted-foreground leading-relaxed mb-5">
+                        {{ __('platform.admin_platform_settings_reset_modal_warning') }}
+                    </p>
+
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('platform.admin_platform_settings_reset_modal_confirm_label') }}</label>
+                    <input type="text" x-model="phrase" x-ref="phrase" :disabled="working"
+                           autocomplete="off" spellcheck="false" placeholder="RESET"
+                           @keydown.enter="canSubmit && submit()"
+                           class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent font-mono tracking-widest uppercase">
+
+                    <div class="mt-6 flex justify-end gap-3">
+                        <button type="button" @click="cancel()" :disabled="working"
+                                class="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50">
+                            {{ __('platform.admin_platform_settings_reset_modal_cancel') }}
+                        </button>
+                        <button type="button" @click="submit()" :disabled="!canSubmit || working"
+                                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                            <template x-if="working"><i class="bi bi-arrow-repeat animate-spin"></i></template>
+                            <template x-if="!working"><i class="bi bi-trash3"></i></template>
+                            <span x-text="working ? '{{ __('platform.admin_platform_settings_reset_working') }}' : '{{ __('platform.admin_platform_settings_reset_modal_confirm') }}'"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @push('scripts')
 <script>
+function platformResetBaseline() {
+    return {
+        open: false,
+        phrase: '',
+        working: false,
+        get canSubmit() { return this.phrase.trim().toUpperCase() === 'RESET'; },
+
+        cancel() {
+            if (this.working) return;
+            this.open = false;
+            this.phrase = '';
+        },
+
+        async submit() {
+            if (!this.canSubmit || this.working) return;
+            this.working = true;
+            try {
+                const res = await fetch('{{ route('admin.platform.settings.reset-baseline') }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ confirmation: 'RESET' }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.success) {
+                    window.showToast('success', data.message || 'Platform reset.');
+                    // Everything was wiped — leave the (now stale) settings page.
+                    setTimeout(() => { window.location.href = data.redirect || '/admin'; }, 900);
+                } else {
+                    this.working = false;
+                    window.showToast('error', data.message || 'Reset failed.');
+                }
+            } catch (e) {
+                this.working = false;
+                window.showToast('error', 'Network error while resetting.');
+            }
+        },
+    };
+}
+
 function platformRealtimeIntegration() {
     return {
         saving: false,

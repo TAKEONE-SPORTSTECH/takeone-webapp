@@ -371,6 +371,18 @@ return [
     'admin_platform_settings_whatsapp_send_test_hint' => 'Sends a real WhatsApp text through the session above — digits only, with country code, no + or spaces.',
     'admin_platform_settings_whatsapp_send_test' => 'Send test message',
     'admin_platform_settings_whatsapp_sending_test' => 'Sending…',
+
+    // Danger zone — reset baseline
+    'admin_platform_settings_danger_zone' => 'Danger Zone',
+    'admin_platform_settings_reset_title' => 'Reset to clean baseline',
+    'admin_platform_settings_reset_description' => 'Permanently deletes every club, package, member and all member data, then re-seeds the TAKEONE SportsTech baseline. Keeps only the activity catalog, roles & permissions, and the super-admin account. A timestamped database backup is taken first.',
+    'admin_platform_settings_reset_button' => 'Reset platform',
+    'admin_platform_settings_reset_modal_title' => 'Reset the entire platform?',
+    'admin_platform_settings_reset_modal_warning' => 'This cannot be undone. All clubs, members and their data will be permanently deleted and the platform re-seeded to the clean baseline.',
+    'admin_platform_settings_reset_modal_confirm_label' => 'Type RESET to confirm',
+    'admin_platform_settings_reset_modal_cancel' => 'Cancel',
+    'admin_platform_settings_reset_modal_confirm' => 'Wipe & re-seed',
+    'admin_platform_settings_reset_working' => 'Resetting…',
     'members_results_age' => 'Age',
     'members_results_category' => 'Category',
     'members_results_clubs' => 'Clubs',
