@@ -798,13 +798,22 @@ class PlatformController extends Controller
         $count = count($request->registrants);
         $primaryName = $request->registrants[0]['name'] ?? $user->name;
         $who = $count === 1 ? $primaryName : $primaryName.' (+'.($count - 1).' more)';
+
+        // Land the admin ON the payment to verify, not on a generic list: financials
+        // focused on this registrant's outstanding row (the desktop ledger filters to
+        // pending; #collect opens the mobile panel).
+        $focusUserId = (int) ($registrantIds[0] ?? $user->id);
+        $focusUuid = \App\Models\User::whereKey($focusUserId)->value('uuid');
+        $reviewUrl = route('admin.club.financials', $club->slug)
+            .($focusUuid ? '?member='.$focusUuid : '').'#collect';
+
         foreach ($club->staffUserIds() as $staffId) {
             \App\Models\UserNotification::notifyUser($staffId, 'new_member', 'New member registration', [
                 'actor_id'     => $user->id,
                 'tenant_id'    => $club->id,
                 'subject_type' => 'user',
-                'subject_id'   => (int) ($registrantIds[0] ?? $user->id),
-                'action_url'   => route('admin.club.members', $club->slug),
+                'subject_id'   => $focusUserId,
+                'action_url'   => $reviewUrl,
                 'icon'         => 'bi-person-plus-fill',
                 'context'      => $club->club_name,
                 'body'         => $who.' registered at '.$club->club_name.'. Review the pending payment to approve.',

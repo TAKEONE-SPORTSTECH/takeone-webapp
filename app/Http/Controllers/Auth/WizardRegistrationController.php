@@ -502,7 +502,10 @@ class WizardRegistrationController extends Controller
                         'tenant_id'    => $tenant->id,
                         'subject_type' => 'user',
                         'subject_id'   => $parentUser->id,
-                        'action_url'   => route('admin.club.members', $tenant->slug),
+                        // Land the admin ON the payment to verify, not on a generic list:
+                        // financials focused on this member's outstanding row (desktop
+                        // ledger filters to pending; #collect opens the mobile panel).
+                        'action_url'   => route('admin.club.financials', $tenant->slug).'?member='.$parentUser->uuid.'#collect',
                         'icon'         => 'bi-person-plus-fill',
                         'context'      => $tenant->club_name,
                         'body'         => $who.' registered at '.$tenant->club_name.'. Review the pending payment to approve.',

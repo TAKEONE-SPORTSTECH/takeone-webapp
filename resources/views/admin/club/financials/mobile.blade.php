@@ -478,7 +478,11 @@
 
         <div class="space-y-2.5">
             <template x-for="r in pendingRows" :key="r.id">
-                <div class="m-card p-3.5">
+                {{-- :id + ring let the ?member={uuid} deep link from the new-member
+                     notification scroll to and highlight the row to verify. --}}
+                <div class="m-card p-3.5 transition-shadow"
+                     :id="'collect-' + r.id"
+                     :class="focusSubIds.includes(r.subscription_id) ? 'ring-2 ring-primary' : ''">
                     <div class="flex items-center gap-3">
                         <span class="w-10 h-10 rounded-full bg-amber-50 text-amber-600 grid place-items-center flex-shrink-0"><i class="bi bi-hourglass-split"></i></span>
                         <div class="min-w-0 flex-1">
@@ -1035,9 +1039,27 @@ function financialsHub() {
         fmt(n)  { return (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
         fmt0(n) { return Math.round(Number(n) || 0).toLocaleString(); },
 
+        // Outstanding subscription ids resolved server-side from ?member={uuid} —
+        // the deep link carried by the "new member registration" notification.
+        focusSubIds: @js($focusSubscriptionIds ?? []),
+        focusDone: false,
+
         init() {
             const hash = (window.location.hash || '').replace('#', '');
             if (hash && this.titles[hash]) this.open(hash);
+            this.focusPending();
+        },
+
+        /** Open Cash-to-collect on the row to verify. Idempotent: this component is
+         *  mounted with both x-data and x-init="init()", so init() runs twice. */
+        focusPending() {
+            if (this.focusDone || !this.focusSubIds.length) return;
+            this.focusDone = true;
+            this.open('collect');
+            this.$nextTick(() => {
+                document.getElementById('collect-pending-' + this.focusSubIds[0])
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
         },
         open(part) {
             this.panel = part;
