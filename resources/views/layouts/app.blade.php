@@ -1347,7 +1347,14 @@
         function unlockAudio() {
             const ctx = getAudioCtx();
             if (!ctx) return;
-            if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+            // resume() is async — chain the follow-ups so they run once the context is
+            // actually running, not while it is still suspended.
+            if (ctx.state === 'suspended') {
+                ctx.resume().then(() => {
+                    hideSoundPrompt();
+                    flushPendingNewMemberChime();
+                }).catch(() => {});
+            }
             if (!window.__audioUnlocked) {
                 try {
                     const src = ctx.createBufferSource();
@@ -1358,6 +1365,19 @@
                 } catch (e) { /* ignore */ }
             }
             if (ctx.state === 'running') hideSoundPrompt();
+            flushPendingNewMemberChime();
+        }
+
+        // A new-member fanfare that was blocked by the autoplay policy (popup shown on
+        // page load, before any gesture) is replayed once here. Clearing the flag BEFORE
+        // playing keeps this from recursing if the context is still not running.
+        window.__pendingNewMemberChime = false;
+        function flushPendingNewMemberChime() {
+            if (!window.__pendingNewMemberChime) return;
+            const ctx = getAudioCtx();
+            if (!ctx || ctx.state !== 'running') return;
+            window.__pendingNewMemberChime = false;
+            try { window.playNewMemberChime && window.playNewMemberChime(); } catch (e) { /* ignore */ }
         }
         ['pointerdown', 'touchend', 'click', 'keydown'].forEach((evt) =>
             window.addEventListener(evt, unlockAudio, { passive: true }));
@@ -1430,8 +1450,16 @@
                 // WebView is configured to allow autoplay outright
                 // (setMediaPlaybackRequiresUserGesture(false) in MainActivity), so it
                 // plays even before any tap. If still suspended this one time, resume
-                // for next time and skip silently — never a floating button, never a loop.
-                if (ctx.state !== 'running') { ctx.resume().catch(() => {}); return; }
+                // for next time — never a floating button, never a loop. It is HELD,
+                // not dropped: a popup rendered on page load has had no gesture yet, so
+                // dropping it meant the celebratory chime was simply never heard on a
+                // reload. flushPendingNewMemberChime() plays it once as soon as audio
+                // unlocks (the very next tap/keypress), then clears the flag.
+                if (ctx.state !== 'running') {
+                    window.__pendingNewMemberChime = true;
+                    ctx.resume().then(flushPendingNewMemberChime).catch(() => {});
+                    return;
+                }
                 const now = ctx.currentTime;
                 const master = ctx.createGain();
                 master.gain.value = 0.85;
