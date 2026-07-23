@@ -215,6 +215,20 @@ class SubscriptionService
             'proof_of_payment' => $proofPath ?? $subscription->proof_of_payment,
         ]);
 
+        // Approving the payment is what makes them a MEMBER. The wizard (club-page)
+        // registration path deliberately creates the membership 'inactive' — its own
+        // comment says "the club activates it on approval" — but nothing ever performed
+        // that activation, so a member who registered and paid through the club page
+        // never appeared in the members index. Every other join path already creates
+        // the membership 'active', where this is a harmless no-op.
+        $membership = Membership::firstOrCreate(
+            ['tenant_id' => $subscription->tenant_id, 'user_id' => $subscription->user_id],
+            ['status' => 'active']
+        );
+        if ($membership->status !== 'active') {
+            $membership->update(['status' => 'active']);
+        }
+
         activity('financial')
             ->causedBy($approvedBy)
             ->performedOn($subscription)
