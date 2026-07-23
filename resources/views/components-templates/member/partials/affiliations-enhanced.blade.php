@@ -828,9 +828,11 @@
 <div class="modal fade" id="addSkillModal" tabindex="-1" aria-hidden="true"
      x-data="addSkillModal()"
      @add-skill:open.window="openFor($event.detail)">
-    <div class="min-h-full flex items-center justify-center p-4">
-        <div class="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
-             @click.outside="close()">
+    {{-- @click.self (NOT @click.outside): the trigger button lives outside the card,
+         so an outside-handler fires on the very click that opens the modal and closes
+         it again immediately. .self only fires when the backdrop area itself is hit. --}}
+    <div class="min-h-full flex items-center justify-center p-4" @click.self="close()">
+        <div class="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
 
             {{-- Header: a soft accent band rather than the old pink gradient --}}
             <div class="relative px-6 pt-6 pb-5 bg-accent/60 border-b border-gray-100">
@@ -1090,7 +1092,10 @@ function addSkillModal() {
             this.acLoading = false;
         },
 
-        close() { window.bsModal?.hide(document.getElementById('addSkillModal')); },
+        close() {
+            const el = document.getElementById('addSkillModal');
+            if (el?.classList.contains('show')) window.bsModal?.hide(el);
+        },
     };
 }
 </script>
