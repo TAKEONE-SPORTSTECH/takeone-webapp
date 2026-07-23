@@ -1332,6 +1332,19 @@
         // One reused, gesture-unlocked context fixes both.
         window.__audioCtx = null;
         window.__audioUnlocked = false;
+
+        // ONE-TIME permission, remembered per device. The browser re-locks audio on
+        // every full page load (nothing a site can opt out of), but the user should
+        // only ever be ASKED once: after the first successful unlock we persist this
+        // flag, suppress the "Enable sounds" pill for good, and let the next
+        // incidental tap/keypress re-unlock silently — replaying any held sound.
+        const AUDIO_OK_KEY = 'takeone:audioUnlocked';
+        function audioEverUnlocked() {
+            try { return localStorage.getItem(AUDIO_OK_KEY) === '1'; } catch (e) { return false; }
+        }
+        function rememberAudioUnlocked() {
+            try { localStorage.setItem(AUDIO_OK_KEY, '1'); } catch (e) { /* private mode */ }
+        }
         function getAudioCtx() {
             const Ctx = window.AudioContext || window.webkitAudioContext;
             if (!Ctx) return null;
@@ -1351,8 +1364,9 @@
             // actually running, not while it is still suspended.
             if (ctx.state === 'suspended') {
                 ctx.resume().then(() => {
+                    rememberAudioUnlocked();
                     hideSoundPrompt();
-                    flushPendingNewMemberChime();
+                    flushPendingSound();
                 }).catch(() => {});
             }
             if (!window.__audioUnlocked) {
@@ -1362,31 +1376,66 @@
                     src.connect(ctx.destination);
                     src.start(0);
                     window.__audioUnlocked = true;
+                    rememberAudioUnlocked();
                 } catch (e) { /* ignore */ }
             }
-            if (ctx.state === 'running') hideSoundPrompt();
-            flushPendingNewMemberChime();
+            if (ctx.state === 'running') { rememberAudioUnlocked(); hideSoundPrompt(); }
+            flushPendingSound();
         }
 
-        // A new-member fanfare that was blocked by the autoplay policy (popup shown on
-        // page load, before any gesture) is replayed once here. Clearing the flag BEFORE
-        // playing keeps this from recursing if the context is still not running.
-        window.__pendingNewMemberChime = false;
-        function flushPendingNewMemberChime() {
-            if (!window.__pendingNewMemberChime) return;
+        // A sound blocked by the autoplay policy is HELD, not dropped, and replayed
+        // once as soon as audio unlocks. Only the most recent one is kept — arriving
+        // to a burst of backlogged chimes would be worse than hearing the latest.
+        // The flag is cleared BEFORE playing so this can never recurse or loop.
+        window.__pendingSound = null;   // 'newMember' | 'notification' | 'message'
+        function holdSound(kind) {
+            window.__pendingSound = kind;
+            const ctx = getAudioCtx();
+            if (ctx) ctx.resume().then(flushPendingSound).catch(() => {});
+        }
+        function flushPendingSound() {
+            const kind = window.__pendingSound;
+            if (!kind) return;
             const ctx = getAudioCtx();
             if (!ctx || ctx.state !== 'running') return;
-            window.__pendingNewMemberChime = false;
-            try { window.playNewMemberChime && window.playNewMemberChime(); } catch (e) { /* ignore */ }
+            window.__pendingSound = null;
+            try {
+                if (kind === 'newMember') { window.playNewMemberChime && window.playNewMemberChime(); }
+                else if (kind === 'message') { window.playMessageSound && window.playMessageSound(); }
+                else { playNotificationChime(); }
+            } catch (e) { /* ignore */ }
         }
         ['pointerdown', 'touchend', 'click', 'keydown'].forEach((evt) =>
             window.addEventListener(evt, unlockAudio, { passive: true }));
+
+        // Returning device: try to unlock immediately, without waiting for a tap. This
+        // succeeds once the browser trusts the site (Chrome's media-engagement score,
+        // or an explicit per-site "Allow sound"), and always in the Android WebView —
+        // so a sound triggered by the page itself (e.g. an unread new-member popup
+        // that is still showing after a refresh) is heard on the refresh rather than
+        // on the next click. If the browser still says no, nothing is lost: the sound
+        // stays held and the first incidental tap releases it. No prompt either way.
+        if (audioEverUnlocked()) {
+            const boot = () => {
+                const ctx = getAudioCtx();
+                if (!ctx) return;
+                if (ctx.state === 'running') { flushPendingSound(); return; }
+                ctx.resume().then(flushPendingSound).catch(() => {});
+            };
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', boot, { once: true });
+            } else {
+                boot();
+            }
+        }
 
         // One-time "Enable sounds" nudge — shown only when a sound was actually
         // blocked (a message/notification arrived before any user gesture). Tapping
         // it counts as the gesture that unlocks audio for the rest of the session.
         function showSoundPrompt() {
             if (window.__audioUnlocked || document.getElementById('sound-unlock-pill')) return;
+            // Asked once, never again — the held sound replays on the next tap instead.
+            if (audioEverUnlocked()) return;
             const pill = document.createElement('button');
             pill.id = 'sound-unlock-pill';
             pill.type = 'button';
@@ -1414,7 +1463,7 @@
                 if (!ctx) return;
                 // Not unlocked yet (no user gesture) — try to resume for next time,
                 // but stay silent now to avoid the browser autoplay warning.
-                if (ctx.state !== 'running') { ctx.resume().catch(() => {}); showSoundPrompt(); return; }
+                if (ctx.state !== 'running') { holdSound('notification'); showSoundPrompt(); return; }
                 const now = ctx.currentTime;
                 const master = ctx.createGain();
                 master.gain.value = 0.9;
@@ -1453,13 +1502,8 @@
                 // for next time — never a floating button, never a loop. It is HELD,
                 // not dropped: a popup rendered on page load has had no gesture yet, so
                 // dropping it meant the celebratory chime was simply never heard on a
-                // reload. flushPendingNewMemberChime() plays it once as soon as audio
-                // unlocks (the very next tap/keypress), then clears the flag.
-                if (ctx.state !== 'running') {
-                    window.__pendingNewMemberChime = true;
-                    ctx.resume().then(flushPendingNewMemberChime).catch(() => {});
-                    return;
-                }
+                // reload. holdSound() replays it as soon as audio unlocks.
+                if (ctx.state !== 'running') { holdSound('newMember'); return; }
                 const now = ctx.currentTime;
                 const master = ctx.createGain();
                 master.gain.value = 0.85;
@@ -1652,7 +1696,7 @@
                 const ctx = getAudioCtx();
                 if (!ctx) return;
                 // Stay silent until a user gesture has unlocked audio (no warning).
-                if (ctx.state !== 'running') { ctx.resume().catch(() => {}); showSoundPrompt(); return; }
+                if (ctx.state !== 'running') { holdSound('message'); showSoundPrompt(); return; }
                 const now = ctx.currentTime;
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
