@@ -134,7 +134,9 @@
     </div>
 </div>
 
-<template x-teleport="body">
-    <x-club-modal mode="create" context="business" />
-</template>
+<div x-data>
+    <template x-teleport="body">
+        <x-club-modal mode="create" context="business" />
+    </template>
+</div>
 @endsection
