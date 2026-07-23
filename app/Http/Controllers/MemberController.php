@@ -1907,23 +1907,40 @@ class MemberController extends Controller
         $member = User::findOrFail($id);
         $affiliation = $member->clubAffiliations()->findOrFail($affiliationId);
 
+        // The whole global directory, for the picker's "All activities" group. Only a
+        // real club activity can carry an activity_id (provenance is scoped to the
+        // affiliation's club by storeAffiliationSkill's validation), so catalog rows
+        // are name-only suggestions.
+        $catalog = \App\Models\ActivityCatalog::where('is_active', true)
+            ->orderByDesc('usage_count')->orderBy('name')
+            ->get(['id', 'name', 'translations'])
+            ->map(fn ($a) => ['id' => null, 'name' => $a->tr('name') ?? $a->name])
+            ->values();
+
         if ($affiliation->tenant_id) {
             $activities = \App\Models\ClubActivity::where('tenant_id', $affiliation->tenant_id)
                 ->get(['id', 'name', 'translations'])
                 ->map(fn ($a) => ['id' => $a->id, 'name' => $a->tr('name') ?? $a->name])
                 ->values();
 
-            return response()->json(['linked' => true, 'activities' => $activities]);
+            // Don't offer a catalog duplicate of something the club already runs —
+            // the club row is the one worth picking (it carries the id).
+            $clubNames = $activities->pluck('name')->map(fn ($n) => mb_strtolower($n))->all();
+            $suggestions = $catalog->reject(fn ($a) => in_array(mb_strtolower($a['name']), $clubNames, true))->values();
+
+            return response()->json([
+                'linked' => true,
+                'activities' => $activities,
+                'suggestions' => $suggestions,
+            ]);
         }
 
-        // Off-platform club → free-text, with global directory suggestions.
-        $suggestions = \App\Models\ActivityCatalog::where('is_active', true)
-            ->orderByDesc('usage_count')->limit(50)
-            ->get(['id', 'name', 'translations'])
-            ->map(fn ($a) => ['id' => null, 'name' => $a->tr('name') ?? $a->name])
-            ->values();
-
-        return response()->json(['linked' => false, 'activities' => $suggestions]);
+        // Off-platform club → free-text only, with the directory as suggestions.
+        return response()->json([
+            'linked' => false,
+            'activities' => collect(),
+            'suggestions' => $catalog,
+        ]);
     }
 
     public function storeAffiliationSkill(\Illuminate\Http\Request $request, $id, $affiliationId)

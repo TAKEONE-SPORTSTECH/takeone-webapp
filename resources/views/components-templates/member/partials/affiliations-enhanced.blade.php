@@ -811,62 +811,289 @@
 </div>
 
 <!-- ── Add Skill Modal ────────────────────────────────────────────────────── -->
-<div class="modal fade" id="addSkillModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" style="max-width: 500px;">
-        <div class="modal-content">
-            <div class="modal-header" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                <h5 class="modal-title text-white"><i class="bi bi-star-fill me-2"></i>{{ __('member.partials_affiliations_enhanced_add_skill') }}</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+{{--
+  Self-contained Alpine modal. The outer .modal + id stay so the existing
+  data-bs-toggle triggers and the app.blade.php bridge keep working untouched;
+  everything inside is design-system Tailwind (Design Rule #4: no native
+  <select>, no native date input, no OS-rendered popups).
+
+  Contract with the surrounding page script:
+    • opening  — the .btn-add-skill delegate dispatches `add-skill:open` with
+                 {affiliationId, memberId, activitiesUrl}; the component resets
+                 itself and loads the activity list.
+    • posting  — every value is mirrored into a named input inside #addSkillForm,
+                 so the existing formToObject(form) submit handler is unchanged.
+    • closing  — the submit handler calls bsModal.hide() exactly as before.
+--}}
+<div class="modal fade" id="addSkillModal" tabindex="-1" aria-hidden="true"
+     x-data="addSkillModal()"
+     @add-skill:open.window="openFor($event.detail)">
+    <div class="min-h-full flex items-center justify-center p-4">
+        <div class="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
+             @click.outside="close()">
+
+            {{-- Header: a soft accent band rather than the old pink gradient --}}
+            <div class="relative px-6 pt-6 pb-5 bg-accent/60 border-b border-gray-100">
+                <div class="absolute inset-0 pointer-events-none opacity-60"
+                     style="background:radial-gradient(120% 100% at 0% 0%, hsl(250 65% 65% / .18), transparent 60%);"></div>
+                <div class="relative flex items-start gap-3.5">
+                    <span class="w-11 h-11 rounded-xl bg-primary text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <i class="bi bi-stars text-xl"></i>
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <h5 class="text-lg font-bold text-gray-900 mb-0.5">{{ __('member.partials_affiliations_enhanced_add_skill') }}</h5>
+                        <p class="text-xs text-muted-foreground" x-text="clubLabel"></p>
+                    </div>
+                    <button type="button" @click="close()"
+                            class="w-9 h-9 -mt-1 -me-1 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-white/70 hover:text-foreground transition-colors flex-shrink-0"
+                            aria-label="{{ __('shared.cancel') }}">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
             </div>
-            <form id="addSkillForm">
+
+            <form id="addSkillForm" autocomplete="off">
                 @csrf
                 <input type="hidden" id="addSkillAffiliationId">
                 <input type="hidden" id="addSkillMemberId">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_skill_name') }} <span class="text-danger">*</span></label>
-                        <input type="text" name="skill_name" class="form-control" placeholder="{{ __('member.partials_affiliations_enhanced_skill_name_placeholder') }}" required>
+
+                <div class="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
+
+                    {{-- Skill name --}}
+                    <div>
+                        <label for="addSkillName" class="block text-sm font-medium text-gray-700 mb-1.5">
+                            {{ __('member.partials_affiliations_enhanced_skill_name') }} <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" id="addSkillName" name="skill_name" x-model="skillName" required
+                               placeholder="{{ __('member.partials_affiliations_enhanced_skill_name_placeholder') }}"
+                               class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow">
                     </div>
-                    {{-- Provenance: which activity/discipline produced this skill (suggestions from the club's activities). --}}
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">{{ __('Activity') }}</label>
-                        <input type="text" name="activity_name" id="addSkillActivity" list="skillActivityOptions" class="form-control" placeholder="{{ __('The discipline/class you trained') }}" autocomplete="off">
-                        <input type="hidden" name="activity_id" id="addSkillActivityId">
-                        <datalist id="skillActivityOptions"></datalist>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_proficiency_level') }} <span class="text-danger">*</span></label>
-                        <select name="proficiency_level" class="form-select" required>
-                            <option value="">{{ __('member.partials_affiliations_enhanced_select_level') }}</option>
-                            <option value="beginner">{{ __('member.partials_affiliations_enhanced_beginner') }}</option>
-                            <option value="intermediate">{{ __('member.partials_affiliations_enhanced_intermediate') }}</option>
-                            <option value="advanced">{{ __('member.partials_affiliations_enhanced_advanced') }}</option>
-                            <option value="expert">{{ __('member.partials_affiliations_enhanced_expert') }}</option>
-                        </select>
-                    </div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-6">
-                            <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_start_date') }}</label>
-                            <input type="date" name="start_date" class="form-control">
+
+                    {{-- Activity — searchable combobox over the club's activities + the
+                         global directory. Free text is still allowed (off-platform clubs
+                         have no activity rows), so this is a combobox, not a select. --}}
+                    <div x-data="{ get panelId() { return 'addSkillActivityPanel' } }">
+                        <label for="addSkillActivity" class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('Activity') }}</label>
+                        <div class="relative" @click.outside="acOpen = false" @keydown.escape.stop="acOpen = false">
+                            <div class="relative">
+                                <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+                                <input type="text" id="addSkillActivity" x-model="activityQuery" role="combobox"
+                                       :aria-expanded="acOpen" aria-controls="addSkillActivityPanel" aria-autocomplete="list"
+                                       @focus="acOpen = true" @input="acOpen = true; activityId = ''; acIndex = 0"
+                                       @keydown.arrow-down.prevent="acOpen = true; acIndex = Math.min(acIndex + 1, flatOptions.length - 1); scrollActive()"
+                                       @keydown.arrow-up.prevent="acIndex = Math.max(acIndex - 1, 0); scrollActive()"
+                                       @keydown.enter.prevent="chooseActive()"
+                                       placeholder="{{ __('The discipline/class you trained') }}"
+                                       class="w-full ps-9 pe-9 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow">
+                                <button type="button" @click="acOpen = !acOpen; if (acOpen) $refs.acInput?.focus?.()"
+                                        class="absolute end-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-foreground hover:bg-muted/60 transition-colors"
+                                        aria-label="{{ __('Activity') }}">
+                                    <i class="bi bi-chevron-down text-xs transition-transform duration-200" :class="acOpen && 'rotate-180'"></i>
+                                </button>
+                            </div>
+
+                            {{-- Selected-club-activity confirmation chip --}}
+                            <p x-show="activityId" x-cloak class="mt-1.5 text-[11px] text-primary font-medium flex items-center gap-1">
+                                <i class="bi bi-patch-check-fill"></i>{{ __('Linked to this club\'s activity') }}
+                            </p>
+
+                            <div x-show="acOpen" x-cloak id="addSkillActivityPanel" role="listbox" x-ref="acPanel"
+                                 x-transition:enter="transition ease-out duration-150"
+                                 x-transition:enter-start="opacity-0 -translate-y-1"
+                                 x-transition:enter-end="opacity-100 translate-y-0"
+                                 x-transition:leave="transition ease-in duration-100"
+                                 x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                                 class="absolute z-20 mt-1.5 w-full max-h-60 overflow-y-auto bg-white border border-gray-100 rounded-xl shadow-lg">
+
+                                <p x-show="acLoading" class="px-3 py-4 text-xs text-muted-foreground text-center">
+                                    <i class="bi bi-arrow-repeat animate-spin me-1"></i>{{ __('shared.loading') }}
+                                </p>
+
+                                <template x-for="(group, gi) in groupedOptions" :key="group.key">
+                                    <div x-show="group.items.length">
+                                        <p class="px-3 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+                                           x-text="group.label"></p>
+                                        <template x-for="opt in group.items" :key="group.key + ':' + opt.name">
+                                            <button type="button" role="option" :data-idx="opt.__i"
+                                                    :aria-selected="activityQuery === opt.name"
+                                                    @click="choose(opt)"
+                                                    @mousemove="acIndex = opt.__i"
+                                                    class="w-full text-start px-3 py-2 text-sm flex items-center gap-2.5 transition-colors"
+                                                    :class="acIndex === opt.__i ? 'bg-muted/70' : 'hover:bg-muted/50'">
+                                                <span class="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
+                                                      :class="opt.id ? 'bg-accent text-primary' : 'bg-muted text-muted-foreground'">
+                                                    <i class="bi text-[11px]" :class="opt.id ? 'bi-building' : 'bi-grid'"></i>
+                                                </span>
+                                                <span class="flex-1 truncate text-foreground" x-text="opt.name"></span>
+                                                <i class="bi bi-check2 text-primary" x-show="activityQuery === opt.name"></i>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </template>
+
+                                {{-- Free text: keep whatever was typed, unlinked. --}}
+                                <button type="button" x-show="!acLoading && flatOptions.length === 0 && activityQuery.trim()"
+                                        @click="acOpen = false"
+                                        class="w-full text-start px-3 py-3 text-sm flex items-center gap-2.5 hover:bg-muted/50 transition-colors">
+                                    <span class="w-6 h-6 rounded-md bg-muted text-muted-foreground flex items-center justify-center flex-shrink-0">
+                                        <i class="bi bi-pencil text-[11px]"></i>
+                                    </span>
+                                    <span class="text-muted-foreground">{{ __('Use') }} “<span class="text-foreground font-medium" x-text="activityQuery.trim()"></span>”</span>
+                                </button>
+
+                                <p x-show="!acLoading && flatOptions.length === 0 && !activityQuery.trim()"
+                                   class="px-3 py-4 text-xs text-muted-foreground text-center">{{ __('No matching activities') }}</p>
+                            </div>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_duration_months') }}</label>
-                            <input type="number" name="duration_months" class="form-control" min="1" placeholder="{{ __('member.partials_affiliations_enhanced_duration_months_placeholder') }}">
+                        {{-- What actually posts --}}
+                        <input type="hidden" name="activity_name" :value="activityQuery.trim()">
+                        <input type="hidden" name="activity_id" id="addSkillActivityId" :value="activityId">
+                    </div>
+
+                    {{-- Proficiency — four options, so a segmented picker beats a dropdown --}}
+                    <div>
+                        <span class="block text-sm font-medium text-gray-700 mb-1.5">
+                            {{ __('member.partials_affiliations_enhanced_proficiency_level') }} <span class="text-red-500">*</span>
+                        </span>
+                        <div class="grid grid-cols-4 gap-2" role="radiogroup">
+                            <template x-for="lvl in levels" :key="lvl.value">
+                                <button type="button" role="radio" :aria-checked="level === lvl.value"
+                                        @click="level = lvl.value"
+                                        class="group px-2 py-2.5 rounded-xl border text-center transition-all"
+                                        :class="level === lvl.value
+                                            ? 'border-primary bg-primary/5 shadow-sm'
+                                            : 'border-gray-200 hover:border-gray-300 hover:bg-muted/40'">
+                                    <span class="flex items-center justify-center gap-0.5 mb-1">
+                                        <template x-for="n in 4" :key="n">
+                                            <i class="bi text-[9px]"
+                                               :class="n <= lvl.pips
+                                                    ? (level === lvl.value ? 'bi-circle-fill text-primary' : 'bi-circle-fill text-gray-300')
+                                                    : 'bi-circle text-gray-200'"></i>
+                                        </template>
+                                    </span>
+                                    <span class="block text-[11px] font-semibold leading-tight"
+                                          :class="level === lvl.value ? 'text-primary' : 'text-gray-600'"
+                                          x-text="lvl.label"></span>
+                                </button>
+                            </template>
+                        </div>
+                        <input type="hidden" name="proficiency_level" :value="level">
+                    </div>
+
+                    {{-- Start date + duration --}}
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.partials_affiliations_enhanced_start_date') }}</label>
+                            <x-date-picker model="startDate" name="start_date" :max="now()->toDateString()" />
+                        </div>
+                        <div>
+                            <label for="addSkillDuration" class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.partials_affiliations_enhanced_duration_months') }}</label>
+                            <input type="number" id="addSkillDuration" name="duration_months" x-model="duration" min="1" max="600"
+                                   placeholder="{{ __('member.partials_affiliations_enhanced_duration_months_placeholder') }}"
+                                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow">
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_notes') }}</label>
-                        <textarea name="notes" class="form-control" rows="2" placeholder="{{ __('member.partials_affiliations_enhanced_notes_placeholder') }}"></textarea>
+
+                    {{-- Notes --}}
+                    <div>
+                        <label for="addSkillNotes" class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.partials_affiliations_enhanced_notes') }}</label>
+                        <textarea id="addSkillNotes" name="notes" x-model="notes" rows="2" maxlength="500"
+                                  placeholder="{{ __('member.partials_affiliations_enhanced_notes_placeholder') }}"
+                                  class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow resize-none"></textarea>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('shared.cancel') }}</button>
-                    <button type="submit" class="btn btn-warning text-white"><i class="bi bi-plus-circle me-1"></i>{{ __('member.partials_affiliations_enhanced_add_skill') }}</button>
+
+                <div class="px-6 py-4 bg-muted/40 border-t border-gray-100 flex items-center justify-end gap-2.5">
+                    <button type="button" @click="close()"
+                            class="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-white hover:text-foreground transition-colors">
+                        {{ __('shared.cancel') }}
+                    </button>
+                    <button type="submit" :disabled="!skillName.trim() || !level"
+                            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold shadow-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                        <i class="bi bi-plus-circle"></i>{{ __('member.partials_affiliations_enhanced_add_skill') }}
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<script>
+function addSkillModal() {
+    return {
+        skillName: '', activityQuery: '', activityId: '', level: '',
+        startDate: '', duration: '', notes: '',
+        clubLabel: '',
+        clubActivities: [], catalog: [],
+        acOpen: false, acLoading: false, acIndex: 0,
+
+        levels: [
+            { value: 'beginner',     label: @js(__('member.partials_affiliations_enhanced_beginner')),     pips: 1 },
+            { value: 'intermediate', label: @js(__('member.partials_affiliations_enhanced_intermediate')), pips: 2 },
+            { value: 'advanced',     label: @js(__('member.partials_affiliations_enhanced_advanced')),     pips: 3 },
+            { value: 'expert',       label: @js(__('member.partials_affiliations_enhanced_expert')),       pips: 4 },
+        ],
+
+        // Club activities first (they carry the id that links provenance), then the
+        // rest of the directory. Filtering is a plain substring match on both.
+        get groupedOptions() {
+            const q = this.activityQuery.trim().toLowerCase();
+            const match = (a) => !q || a.name.toLowerCase().includes(q);
+            const club = this.clubActivities.filter(match);
+            const all  = this.catalog.filter(match);
+            let i = 0;
+            const stamp = (arr) => arr.map(o => ({ ...o, __i: i++ }));
+            return [
+                { key: 'club', label: @js(__('This club')),      items: stamp(club) },
+                { key: 'all',  label: @js(__('All activities')), items: stamp(all) },
+            ];
+        },
+        get flatOptions() { return this.groupedOptions.flatMap(g => g.items); },
+
+        choose(opt) {
+            this.activityQuery = opt.name;
+            this.activityId = opt.id || '';
+            this.acOpen = false;
+        },
+        chooseActive() {
+            const opt = this.flatOptions[this.acIndex];
+            if (opt) this.choose(opt); else this.acOpen = false;
+        },
+        scrollActive() {
+            this.$nextTick(() => {
+                this.$refs.acPanel?.querySelector(`[data-idx="${this.acIndex}"]`)
+                    ?.scrollIntoView({ block: 'nearest' });
+            });
+        },
+
+        reset() {
+            this.skillName = ''; this.activityQuery = ''; this.activityId = '';
+            this.level = ''; this.startDate = ''; this.duration = ''; this.notes = '';
+            this.acOpen = false; this.acIndex = 0;
+            this.clubActivities = []; this.catalog = [];
+        },
+
+        async openFor(detail) {
+            this.reset();
+            this.clubLabel = detail.clubName || '';
+            document.getElementById('addSkillAffiliationId').value = detail.affiliationId || '';
+            document.getElementById('addSkillMemberId').value = detail.memberId || '';
+
+            this.acLoading = true;
+            try {
+                const res = await fetch(`/member/${detail.memberId}/affiliations/${detail.affiliationId}/activities`,
+                    { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                const data = await res.json();
+                this.clubActivities = data.activities || [];
+                this.catalog = data.suggestions || [];
+            } catch (_) { /* the field still accepts free text */ }
+            this.acLoading = false;
+        },
+
+        close() { window.bsModal?.hide(document.getElementById('addSkillModal')); },
+    };
+}
+</script>
 
 <!-- ── Add Media Modal ────────────────────────────────────────────────────── -->
 <div class="modal fade" id="addMediaModal" tabindex="-1" aria-hidden="true">
@@ -1320,13 +1547,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const mid = document.getElementById('addSkillMemberId').value;
         const btn = this.querySelector('[type=submit]');
         const form = this;
-        // If the typed activity matches one of the club's real activities, link its id.
-        const actInput = document.getElementById('addSkillActivity');
-        const actIdInput = document.getElementById('addSkillActivityId');
-        if (actInput && actIdInput) {
-            const match = (window.__skillActivityMap || {})[actInput.value.trim().toLowerCase()];
-            actIdInput.value = match || '';
-        }
+        // activity_name / activity_id are bound by the modal's Alpine state — picking a
+        // club activity sets the id, typing free text leaves it blank.
         btn.disabled = true;
         affFetch(`/member/${mid}/affiliations/${affiliationId}/skills`, 'POST', formToObject(this))
             .then(res => {
@@ -1392,26 +1614,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const addSkillBtn = e.target.closest('.btn-add-skill');
         if (addSkillBtn) {
-            const affId = addSkillBtn.dataset.affiliationId;
-            const mid = addSkillBtn.dataset.memberId;
-            document.getElementById('addSkillAffiliationId').value = affId;
-            document.getElementById('addSkillMemberId').value = mid;
-            // Load the affiliation club's activities as suggestions; map name → id on submit.
-            const dl = document.getElementById('skillActivityOptions');
-            const actInput = document.getElementById('addSkillActivity');
-            const actIdInput = document.getElementById('addSkillActivityId');
-            if (dl) dl.innerHTML = '';
-            if (actInput) actInput.value = '';
-            if (actIdInput) actIdInput.value = '';
-            window.__skillActivityMap = {};
-            try {
-                const res = await fetch(`/member/${mid}/affiliations/${affId}/activities`, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
-                const data = await res.json();
-                (data.activities || []).forEach(a => {
-                    if (dl) { const o = document.createElement('option'); o.value = a.name; dl.appendChild(o); }
-                    if (a.id) window.__skillActivityMap[a.name.toLowerCase()] = a.id;
-                });
-            } catch (_) {}
+            // The modal owns its own state + activity loading now — just tell it which
+            // affiliation it is opening for (see the add-skill:open contract above).
+            window.dispatchEvent(new CustomEvent('add-skill:open', { detail: {
+                affiliationId: addSkillBtn.dataset.affiliationId,
+                memberId: addSkillBtn.dataset.memberId,
+                clubName: document.getElementById('affiliation-name-' + addSkillBtn.dataset.affiliationId)?.textContent?.trim() || '',
+            }}));
             return;
         }
 
