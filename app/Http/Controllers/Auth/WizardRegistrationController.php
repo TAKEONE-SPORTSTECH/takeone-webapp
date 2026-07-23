@@ -12,6 +12,7 @@ use App\Models\Membership;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\UserRelationship;
+use App\Services\SubscriptionService;
 use App\Support\ClubCache;
 use App\Traits\StoresBase64Images;
 use Illuminate\Auth\Events\Registered;
@@ -558,6 +559,7 @@ class WizardRegistrationController extends Controller
         array $ownedEquipmentIds = []
     ): void {
         $costSvc = app(\App\Services\RegistrationCostService::class);
+        $subscriptions = app(SubscriptionService::class);
 
         // Capture first-time status BEFORE the membership row exists.
         $isFirstTime = ! $costSvc->isReturningMember($tenant->id, $user->id);
@@ -614,6 +616,12 @@ class WizardRegistrationController extends Controller
                 'description' => 'Package: '.$package->name,
                 'transaction_date' => now(),
             ]);
+
+            // Affiliation + skills, exactly as SubscriptionService does on every other
+            // join path. Without this a club-page registration created no
+            // ClubAffiliation at all, so the club never appeared on the member's
+            // profile and none of the package's activities became skills.
+            $subscriptions->syncAffiliation($tenant, $user->id, $sub, $package);
 
             $firstSub ??= $sub;
         }
