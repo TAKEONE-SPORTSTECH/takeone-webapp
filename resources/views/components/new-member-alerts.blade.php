@@ -6,8 +6,9 @@
   re-renders on every page load AND — mounted in layouts/app.blade.php OUTSIDE
   #shell-content — it survives SPA/shell navigation. A card only disappears when the
   owner acknowledges it ("Got it" / ✕ marks that notification read so it never
-  returns) or taps "Review" (which acknowledges then deep-links to the members page
-  to approve the pending payment). Never on its own, never on navigation. When
+  returns) or taps "Review" (which acknowledges then follows the notification's
+  action_url — financials focused on that member's pending payment, ready to
+  approve). Never on its own, never on navigation. When
   several registrations land, they queue one-at-a-time.
 
   Each card shows the new member's PHOTO (resolved live from the User via the
