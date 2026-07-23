@@ -114,4 +114,34 @@ class AffiliationActivityPickerTest extends TestCase
             ->getJson("/member/{$member->id}/affiliations/{$affiliation->id}/activities")
             ->assertNotFound();
     }
+
+    /**
+     * Regression: the Add Skill button opened the modal and it vanished instantly.
+     *
+     * The trigger button lives OUTSIDE the modal card, so an @click.outside handler on
+     * the card fires on the very click that opens the modal and closes it again in the
+     * same tick. The backdrop area must use @click.self instead, which only fires when
+     * that element is itself the click target.
+     */
+    public function test_the_add_skill_modal_does_not_close_itself_on_the_opening_click(): void
+    {
+        $member = $this->createUser();
+        $this->affiliationFor($member, $member, null);
+
+        $html = $this->actingAs($member)
+            ->get("/member/{$member->uuid}")
+            ->assertOk()
+            ->getContent();
+
+        $start = strpos($html, 'id="addSkillModal"');
+        $this->assertNotFalse($start, 'The Add Skill modal should render on the member profile.');
+        $modal = substr($html, $start, 4000);
+
+        $this->assertStringContainsString('@click.self="close()"', $modal);
+        $this->assertStringNotContainsString(
+            '@click.outside="close()"',
+            $modal,
+            'An @click.outside close handler fires on the opening click and makes the Add Skill button look dead.'
+        );
+    }
 }
