@@ -964,6 +964,52 @@ function exportCSV() {
     URL.revokeObjectURL(a.href);
 }
 
+/**
+ * Deep link from the "new member registration" notification:
+ *   /admin/club/{club}/financials?member={uuid}#collect
+ *
+ * The server resolved that uuid to this member's outstanding subscription ids.
+ * Filter the ledger to Pending, page to the row, highlight it, and open the same
+ * detail modal a click would — proof image + Confirm & Approve — so the admin
+ * verifies the payment without hunting for it.
+ *
+ * Bound on DOMContentLoaded (the admin shell re-fires it on every SPA nav) and
+ * guarded so a re-fire can't re-open the modal over the admin's work.
+ */
+function focusPendingFromDeepLink() {
+    const focusIds = @json($focusSubscriptionIds ?? []);
+    if (!focusIds.length || window.__finFocusDone) return;
+
+    const body = document.getElementById('ledgerBody');
+    if (!body || !window.Alpine) return;
+
+    const row = focusIds
+        .map(id => body.querySelector(`tr[data-txn-type="pending"][data-sub-id="${id}"]`))
+        .find(Boolean);
+    if (!row) return;
+
+    window.__finFocusDone = true;
+
+    const data = Alpine.$data(body);
+    if (!data) return;
+    data.ledgerFilter = 'pending';
+
+    // Rows are paginated — page to the one we're focusing before it can be shown.
+    const pending = Array.from(body.querySelectorAll('tr[data-txn-type="pending"]'));
+    const rank = pending.indexOf(row);
+    if (rank > -1 && data.ledgerPerPage) {
+        data.ledgerPage = Math.floor(rank / data.ledgerPerPage) + 1;
+    }
+
+    requestAnimationFrame(() => {
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        row.classList.add('ring-2', 'ring-primary', 'ring-inset', 'bg-accent/40');
+        setTimeout(() => row.classList.remove('ring-2', 'ring-primary', 'ring-inset', 'bg-accent/40'), 4000);
+        row.click();   // reuse the row's own openPendingDetail() — no duplicated logic
+    });
+}
+document.addEventListener('DOMContentLoaded', focusPendingFromDeepLink);
+
 </script>
 @endpush
 @endsection

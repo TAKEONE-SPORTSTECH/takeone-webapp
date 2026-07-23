@@ -21,7 +21,7 @@ class ClubFinancialController extends Controller
 {
     use HandlesClubAuthorization;
 
-    public function financials(Tenant $club, FinancialService $financials)
+    public function financials(Tenant $club, FinancialService $financials, Request $request)
     {
         $this->authorizeClub($club);
 
@@ -42,7 +42,23 @@ class ClubFinancialController extends Controller
             ? collect()
             : Order::where('tenant_id', $club->id)->whereIn('reference', $orderRefs)->with('items')->get()->keyBy('reference');
 
-        return view(\App\Support\ClubView::pick('financials'), compact('club', 'transactions', 'summary', 'monthlyData', 'pendingSubscriptions', 'expenseCategories', 'recurringExpenses', 'isTestMode', 'shopOrders'));
+        // Deep link from the "new member registration" notification (?member={uuid}):
+        // focus that member's outstanding rows so the admin lands on the payment to
+        // verify instead of an unfiltered ledger. Resolved by FILTERING the rows this
+        // club is already authorized to see — never by querying the uuid directly — so
+        // an unknown, unrelated or other-tenant uuid simply focuses nothing and leaks
+        // nothing about whether that user exists.
+        $focusSubscriptionIds = [];
+        if (is_string($memberUuid = $request->query('member')) && $memberUuid !== '') {
+            $focusSubscriptionIds = $pendingSubscriptions
+                ->filter(fn ($sub) => $sub->user?->uuid === $memberUuid)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all();
+        }
+
+        return view(\App\Support\ClubView::pick('financials'), compact('club', 'transactions', 'summary', 'monthlyData', 'pendingSubscriptions', 'expenseCategories', 'recurringExpenses', 'isTestMode', 'shopOrders', 'focusSubscriptionIds'));
     }
 
     /**
