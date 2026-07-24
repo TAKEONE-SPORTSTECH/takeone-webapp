@@ -1932,6 +1932,7 @@ class MemberController extends Controller
                 'linked' => true,
                 'activities' => $activities,
                 'suggestions' => $suggestions,
+                'affiliation' => $this->affiliationBounds($affiliation),
             ]);
         }
 
@@ -1940,6 +1941,7 @@ class MemberController extends Controller
             'linked' => false,
             'activities' => collect(),
             'suggestions' => $catalog,
+            'affiliation' => $this->affiliationBounds($affiliation),
         ]);
     }
 
@@ -1950,11 +1952,27 @@ class MemberController extends Controller
         $member = User::findOrFail($id);
         $affiliation = $member->clubAffiliations()->findOrFail($affiliationId);
 
+        // A skill cannot predate the affiliation it belongs to, and cannot run past its
+        // end. Enforced server-side — the modal mirrors these bounds only as affordances.
+        $affStart = $affiliation->start_date?->toDateString();
+        $affEnd = $affiliation->end_date?->toDateString();
+        $latest = $affEnd && $affEnd < now()->toDateString() ? $affEnd : now()->toDateString();
+
         $validated = $request->validate([
             'skill_name' => 'required|string|max:255',
             'proficiency_level' => 'required|in:beginner,intermediate,advanced,expert',
-            'start_date' => 'nullable|date',
-            'duration_months' => 'nullable|integer|min:1|max:600',
+            'start_date' => array_values(array_filter([
+                'nullable', 'date', 'required_with:end_date',
+                $affStart ? 'after_or_equal:'.$affStart : null,
+                'before_or_equal:'.$latest,
+            ])),
+            // Span is expressed EITHER as an end date OR as a number of months — one of
+            // the two is required so a skill always has a duration to show.
+            'end_date' => array_values(array_filter([
+                'nullable', 'date', 'required_without:duration_months', 'after:start_date',
+                $affEnd ? 'before_or_equal:'.$affEnd : null,
+            ])),
+            'duration_months' => 'nullable|integer|min:1|max:600|required_without:end_date',
             'notes' => 'nullable|string|max:500',
             // Provenance: the activity that produced the skill. A real club activity
             // (scoped to THIS affiliation's club) or a free-text name for off-platform.
@@ -1977,7 +1995,11 @@ class MemberController extends Controller
             'instructor_id' => $validated['instructor_id'] ?? null,
             'proficiency_level' => $validated['proficiency_level'],
             'start_date' => $validated['start_date'] ?? null,
-            'duration_months' => $validated['duration_months'] ?? 1,
+            'end_date' => $validated['end_date'] ?? null,
+            // formatted_duration reads duration_months, so derive it when the member
+            // expressed the span as an end date instead.
+            'duration_months' => $validated['duration_months']
+                ?? $this->monthsBetween($validated['start_date'] ?? null, $validated['end_date'] ?? null),
             'notes' => $validated['notes'] ?? null,
             'icon' => 'bi-star',
         ]);
@@ -1989,6 +2011,31 @@ class MemberController extends Controller
             'id' => $skill->id,
             'skill' => $this->skillPayload($skill->fresh(['activity'])),
         ]);
+    }
+
+    /** Date window a skill on this affiliation must fall inside (mirrored by the picker). */
+    private function affiliationBounds(\App\Models\ClubAffiliation $affiliation): array
+    {
+        $end = $affiliation->end_date?->toDateString();
+
+        return [
+            'start_date' => $affiliation->start_date?->toDateString(),
+            'end_date' => $end,
+            'club_name' => $affiliation->club_name,
+            // Latest day a skill may start: the affiliation's end if it already closed,
+            // otherwise today (a skill cannot start in the future).
+            'max_start' => $end && $end < now()->toDateString() ? $end : now()->toDateString(),
+        ];
+    }
+
+    /** Whole months between two ISO dates, floored at 1 (a span always reads as >= 1 month). */
+    private function monthsBetween(?string $start, ?string $end): int
+    {
+        if (! $start || ! $end) {
+            return 1;
+        }
+
+        return max(1, (int) round(\Carbon\Carbon::parse($start)->floatDiffInMonths(\Carbon\Carbon::parse($end))));
     }
 
     /** JSON shape for a skill row (provenance + verification), for in-place rendering. */
