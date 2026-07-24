@@ -861,21 +861,14 @@
 
                 <div class="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
 
-                    {{-- Skill name --}}
-                    <div>
-                        <label for="addSkillName" class="block text-sm font-medium text-gray-700 mb-1.5">
-                            {{ __('member.partials_affiliations_enhanced_skill_name') }} <span class="text-red-500">*</span>
-                        </label>
-                        <input type="text" id="addSkillName" name="skill_name" x-model="skillName" required
-                               placeholder="{{ __('member.partials_affiliations_enhanced_skill_name_placeholder') }}"
-                               class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow">
-                    </div>
-
                     {{-- Activity — searchable combobox over the club's activities + the
                          global directory. Free text is still allowed (off-platform clubs
                          have no activity rows), so this is a combobox, not a select. --}}
                     <div x-data="{ get panelId() { return 'addSkillActivityPanel' } }">
-                        <label for="addSkillActivity" class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('Activity') }}</label>
+                        <label for="addSkillActivity" class="block text-sm font-medium text-gray-700 mb-1.5">
+                            {{ __('member.partials_affiliations_enhanced_skill_name') }} <span class="text-red-500">*</span>
+                        </label>
+                        <p class="text-xs text-muted-foreground -mt-1 mb-1.5">{{ __('Pick one of the club\'s activities, or type your own.') }}</p>
                         <div class="relative" @click.outside="acOpen = false" @keydown.escape.stop="acOpen = false">
                             <div class="relative">
                                 <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
@@ -947,7 +940,10 @@
                                    class="px-3 py-4 text-xs text-muted-foreground text-center">{{ __('No matching activities') }}</p>
                             </div>
                         </div>
-                        {{-- What actually posts --}}
+                        {{-- What actually posts. The skill IS the activity, so one field
+                             feeds both: skill_name always, activity_name as provenance,
+                             activity_id only when it matched a real club activity. --}}
+                        <input type="hidden" name="skill_name" :value="activityQuery.trim()">
                         <input type="hidden" name="activity_name" :value="activityQuery.trim()">
                         <input type="hidden" name="activity_id" id="addSkillActivityId" :value="activityId">
                     </div>
@@ -982,17 +978,56 @@
                         <input type="hidden" name="proficiency_level" :value="level">
                     </div>
 
-                    {{-- Start date + duration --}}
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.partials_affiliations_enhanced_start_date') }}</label>
-                            <x-date-picker model="startDate" name="start_date" :max="now()->toDateString()" />
+                    {{-- Start date — never before the affiliation began, never in the future.
+                         Bounds come from the server (affiliationBounds) and are re-validated there. --}}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                            {{ __('member.partials_affiliations_enhanced_start_date') }}
+                            <span class="text-red-500" x-show="spanMode === 'end'">*</span>
+                        </label>
+                        <x-date-picker model="startDate" name="start_date" min-expr="bounds.start_date" max-expr="bounds.max_start" />
+                        <p x-show="bounds.start_date" x-cloak class="mt-1.5 text-[11px] text-muted-foreground flex items-center gap-1">
+                            <i class="bi bi-info-circle"></i>
+                            {{ __('Cannot start before you joined') }} <span class="font-medium text-foreground" x-text="fmtDate(bounds.start_date)"></span>
+                        </p>
+                    </div>
+
+                    {{-- Span: an end date OR a number of months — one of the two is required. --}}
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5 gap-3">
+                            <span class="block text-sm font-medium text-gray-700">
+                                {{ __('How long?') }} <span class="text-red-500">*</span>
+                            </span>
+                            <div class="inline-flex p-0.5 bg-muted rounded-lg" role="tablist">
+                                <button type="button" @click="setSpan('end')" role="tab" :aria-selected="spanMode === 'end'"
+                                        class="px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all"
+                                        :class="spanMode === 'end' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'">
+                                    {{ __('End date') }}
+                                </button>
+                                <button type="button" @click="setSpan('duration')" role="tab" :aria-selected="spanMode === 'duration'"
+                                        class="px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all"
+                                        :class="spanMode === 'duration' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'">
+                                    {{ __('member.partials_affiliations_enhanced_duration_months') }}
+                                </button>
+                            </div>
                         </div>
-                        <div>
-                            <label for="addSkillDuration" class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.partials_affiliations_enhanced_duration_months') }}</label>
-                            <input type="number" id="addSkillDuration" name="duration_months" x-model="duration" min="1" max="600"
-                                   placeholder="{{ __('member.partials_affiliations_enhanced_duration_months_placeholder') }}"
-                                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow">
+
+                        <div x-show="spanMode === 'end'" x-cloak>
+                            <x-date-picker model="endDate" name-expr="spanMode === 'end' ? 'end_date' : ''"
+                                           min-expr="startDate || bounds.start_date" max-expr="bounds.end_date" />
+                            <p x-show="!startDate" x-cloak class="mt-1.5 text-[11px] text-amber-600 flex items-center gap-1">
+                                <i class="bi bi-exclamation-circle"></i>{{ __('Pick a start date first.') }}
+                            </p>
+                        </div>
+
+                        <div x-show="spanMode === 'duration'" x-cloak>
+                            <div class="relative">
+                                <input type="number" id="addSkillDuration" x-model="duration" min="1" max="600"
+                                       :name="spanMode === 'duration' ? 'duration_months' : ''"
+                                       placeholder="{{ __('member.partials_affiliations_enhanced_duration_months_placeholder') }}"
+                                       class="w-full px-3 py-2.5 pe-20 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow">
+                                <span class="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">{{ __('months') }}</span>
+                            </div>
                         </div>
                     </div>
 
@@ -1010,7 +1045,7 @@
                             class="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-white hover:text-foreground transition-colors">
                         {{ __('shared.cancel') }}
                     </button>
-                    <button type="submit" :disabled="!skillName.trim() || !level"
+                    <button type="submit" :disabled="!canSubmit"
                             class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold shadow-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                         <i class="bi bi-plus-circle"></i>{{ __('member.partials_affiliations_enhanced_add_skill') }}
                     </button>
@@ -1023,8 +1058,10 @@
 <script>
 function addSkillModal() {
     return {
-        skillName: '', activityQuery: '', activityId: '', level: '',
-        startDate: '', duration: '', notes: '',
+        activityQuery: '', activityId: '', level: '',
+        startDate: '', endDate: '', duration: '', notes: '',
+        spanMode: 'duration',                 // 'end' (end date) | 'duration' (months)
+        bounds: { start_date: null, end_date: null, max_start: null },
         clubLabel: '',
         clubActivities: [], catalog: [],
         acOpen: false, acLoading: false, acIndex: 0,
@@ -1068,9 +1105,30 @@ function addSkillModal() {
             });
         },
 
+        // Only the ACTIVE span control carries a name attribute, so the inactive one
+        // never posts — that is what keeps the server's required_without pair honest.
+        setSpan(mode) {
+            this.spanMode = mode;
+            if (mode === 'end') this.duration = ''; else this.endDate = '';
+        },
+
+        fmtDate(iso) {
+            if (!iso) return '';
+            const d = new Date(iso + 'T00:00:00');
+            return isNaN(d) ? iso : d.toLocaleDateString(document.documentElement.lang || undefined,
+                { year: 'numeric', month: 'short', day: 'numeric' });
+        },
+
+        get canSubmit() {
+            if (!this.activityQuery.trim() || !this.level) return false;
+            return this.spanMode === 'end' ? !!(this.startDate && this.endDate) : !!this.duration;
+        },
+
         reset() {
-            this.skillName = ''; this.activityQuery = ''; this.activityId = '';
-            this.level = ''; this.startDate = ''; this.duration = ''; this.notes = '';
+            this.activityQuery = ''; this.activityId = '';
+            this.level = ''; this.startDate = ''; this.endDate = ''; this.duration = ''; this.notes = '';
+            this.spanMode = 'duration';
+            this.bounds = { start_date: null, end_date: null, max_start: null };
             this.acOpen = false; this.acIndex = 0;
             this.clubActivities = []; this.catalog = [];
         },
@@ -1088,6 +1146,8 @@ function addSkillModal() {
                 const data = await res.json();
                 this.clubActivities = data.activities || [];
                 this.catalog = data.suggestions || [];
+                this.bounds = data.affiliation || this.bounds;
+                if (!this.clubLabel) this.clubLabel = this.bounds.club_name || '';
             } catch (_) { /* the field still accepts free text */ }
             this.acLoading = false;
         },
