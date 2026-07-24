@@ -53,7 +53,10 @@ class SkillProvenanceTest extends TestCase
                 'skill_name' => 'Roundhouse kick',
                 'proficiency_level' => 'advanced',
                 'activity_id' => $act->id,
-                'start_date' => '2019-03-01',
+                // Must sit inside the affiliation (opened 3 years ago) and carry a
+                // span — see SkillSpanValidationTest for those rules.
+                'start_date' => now()->subYears(2)->toDateString(),
+                'duration_months' => 12,
             ])
             ->assertOk()
             ->assertJsonPath('skill.activity', 'Sparring')
