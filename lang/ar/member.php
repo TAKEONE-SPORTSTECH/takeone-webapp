@@ -76,6 +76,8 @@ return [
     'work_end_date' => 'تاريخ الانتهاء',
     'work_current' => 'حالي',
     'work_present' => 'حتى الآن',
+    'work_platform_role' => 'دور بالنادي',
+    'work_platform_role_note' => 'مُزامن من دورك في هذا النادي',
     'work_description' => 'الوصف',
     'work_delete_confirm' => 'إزالة هذه الخبرة؟',
 
@@ -177,6 +179,14 @@ return [
     // Clubs / affiliations
     'active_clubs' => 'الأندية النشطة',
     'active' => 'نشط',
+    'years_old' => 'سنة',
+    'present' => 'الحاضر',
+    'no_data' => 'لا يوجد شيء مسجل بعد.',
+    'period' => 'الفترة',
+    'time_spent' => 'قضاها',
+    'duration' => 'المدة',
+    'age' => 'العمر',
+    'location' => 'الموقع',
     'not_active_in_club' => 'غير نشط حالياً في أي نادٍ.',
     'clubs_you_left' => 'الأندية التي غادرتها',
     'left' => 'غادر',

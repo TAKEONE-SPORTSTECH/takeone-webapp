@@ -90,7 +90,17 @@
 @endpush
 
 @section($inShell ? 'personal-content' : 'content')
-<div class="{{ $inShell ? '-mx-4 -mt-4' : 'bg-background min-h-screen pb-10' }}" x-data="{ tab: ['#affiliations','#clubs'].includes(window.location.hash) ? 'clubs' : 'overview', goTab(t){ this.tab = t; this.$nextTick(() => document.getElementById('mpTabs')?.scrollIntoView({behavior:'smooth', block:'start'})); } }">
+<div class="{{ $inShell ? '-mx-4 -mt-4' : 'bg-background min-h-screen pb-10' }}"
+     x-data="{
+        tab: (function(){
+            const valid = ['overview','health','goals','tournaments','clubs','certifications','worked','attendance','challenges'];
+            let h = (window.location.hash || '').replace('#','');
+            if (h === 'affiliations') h = 'clubs';   // legacy deep-link alias
+            return valid.includes(h) ? h : 'overview';
+        })(),
+        goTab(t){ this.tab = t; this.$nextTick(() => document.getElementById('mpTabs')?.scrollIntoView({behavior:'smooth', block:'start'})); }
+     }"
+     x-init="$watch('tab', v => { try { history.replaceState(history.state, '', '#' + v); } catch(e) {} })">
 
     @unless($inShell)
     {{-- ===== Sticky glass top bar (standalone only; the shell provides its own) ===== --}}
@@ -519,10 +529,23 @@
                     @if($memberSince)<div><p class="text-[11px] text-muted-foreground">{{ __('member.member_since') }}</p><p class="font-semibold flex items-center gap-1.5"><i class="bi bi-calendar3 text-primary text-xs"></i>{{ Carbon::parse($memberSince)->format('M Y') }}</p></div>@endif
                     <div class="col-span-2">
                         <p class="text-[11px] text-muted-foreground">{{ __('member.skills_learned') }}</p>
-                        @if(($allSkills ?? collect())->count())
+                        @if(($skillSummary ?? collect())->count())
                             <div class="flex flex-wrap gap-1.5 mt-1">
-                                @foreach($allSkills as $skillName)
-                                    <span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-accent text-primary">{{ $skillName }}</span>
+                                @foreach($skillSummary as $sk)
+                                    @if($sk['uuid'])
+                                        <a href="{{ route('activity.show', $sk['uuid']) }}"
+                                           class="inline-flex items-center gap-1.5 ps-2.5 pe-2 py-1 rounded-full text-[11px] font-medium bg-accent text-primary no-underline m-press hover:bg-primary/15 transition-colors">
+                                            <i class="bi bi-book-half text-[10px]"></i>
+                                            <span>{{ $sk['name'] }}</span>
+                                            @if($sk['years'])<span class="inline-flex items-center gap-0.5 text-[10px] font-semibold text-primary/70"><i class="bi bi-hourglass-split"></i>{{ $sk['years'] }}</span>@endif
+                                            <i class="bi bi-chevron-right text-[9px] text-primary/50"></i>
+                                        </a>
+                                    @else
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-accent text-primary">
+                                            <span>{{ $sk['name'] }}</span>
+                                            @if($sk['years'])<span class="inline-flex items-center gap-0.5 text-[10px] font-semibold text-primary/70"><i class="bi bi-hourglass-split"></i>{{ $sk['years'] }}</span>@endif
+                                        </span>
+                                    @endif
                                 @endforeach
                             </div>
                         @else
@@ -1301,17 +1324,151 @@
         </div>
 
         {{-- ===== Clubs / affiliations ===== --}}
-        <div x-show="tab==='clubs'" x-transition.opacity x-cloak class="space-y-4">
+        @php
+            $activeAffil = $clubAffiliations->whereNull('end_date')->sortByDesc('start_date')->values();
+            $leftAffil   = $clubAffiliations->whereNotNull('end_date')->sortByDesc('end_date')->values();
+
+            // Detail payload for the tap-through sheet — one entry per affiliation.
+            $instrUserIds = $clubAffiliations->flatMap(fn ($a) => collect($a->instructorList())->pluck('user_id'))->filter()->unique();
+            $instrUsers = $instrUserIds->isNotEmpty()
+                ? \App\Models\User::whereIn('id', $instrUserIds)->get(['id','uuid','full_name','name','profile_picture','updated_at'])->keyBy('id')
+                : collect();
+
+            // Free-text instructors: try to match a system member by exact name so the
+            // badge can still link to their PUBLIC profile. Only a UNIQUE match links —
+            // an ambiguous name (shared by two members) is left as plain text.
+            $instrNames = $clubAffiliations
+                ->flatMap(fn ($a) => collect($a->instructorList())->filter(fn ($i) => empty($i['user_id']))->pluck('name'))
+                ->map(fn ($n) => mb_strtolower(trim((string) $n)))->filter()->unique()->values();
+            $instrByName = collect();
+            if ($instrNames->isNotEmpty()) {
+                $rows = \App\Models\User::where(function ($q) use ($instrNames) {
+                    $q->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(full_name)'), $instrNames->all())
+                      ->orWhereIn(\Illuminate\Support\Facades\DB::raw('LOWER(name)'), $instrNames->all());
+                })->get(['id','uuid','full_name','name','profile_picture','updated_at']);
+                $grouped = [];
+                foreach ($rows as $u) {
+                    foreach (array_unique(array_filter([mb_strtolower(trim((string) $u->full_name)), mb_strtolower(trim((string) $u->name))])) as $key) {
+                        $grouped[$key][] = $u;
+                    }
+                }
+                $instrByName = collect($grouped)->filter(fn ($l) => count($l) === 1)->map(fn ($l) => $l[0]);
+            }
+
+            // "X years Y months" from a whole-month count.
+            $fmtMonths = function (int $m) {
+                $m = max(0, $m);
+                if ($m < 1) {
+                    return '< 1 '.__('month');
+                }
+                $y = intdiv($m, 12);
+                $r = $m % 12;
+                $parts = [];
+                if ($y) {
+                    $parts[] = $y.' '.($y > 1 ? __('years') : __('year'));
+                }
+                if ($r) {
+                    $parts[] = $r.' '.($r > 1 ? __('months') : __('month'));
+                }
+                return implode(' ', $parts);
+            };
+
+            // Accumulated ENROLLED months in a club — sum of the (merged) subscription
+            // periods, so gaps between enrolments are not counted. Off-platform / manual
+            // records (no subscriptions) fall back to each skill's own recorded span.
+            $enrolledMonths = function ($a) {
+                $ivals = $a->subscriptions
+                    ->filter(fn ($s) => $s->start_date)
+                    ->map(fn ($s) => [$s->start_date->copy(), ($s->end_date ?? now())->copy()])
+                    ->sortBy(fn ($i) => $i[0]->timestamp)->values()->all();
+                $merged = [];
+                foreach ($ivals as [$s, $e]) {
+                    if ($e->lte($s)) {
+                        continue;
+                    }
+                    if ($merged && $s->lte($merged[count($merged) - 1][1])) {
+                        if ($e->gt($merged[count($merged) - 1][1])) {
+                            $merged[count($merged) - 1][1] = $e;
+                        }
+                    } else {
+                        $merged[] = [$s, $e];
+                    }
+                }
+                $total = 0;
+                foreach ($merged as [$s, $e]) {
+                    $total += (int) floor($s->floatDiffInMonths($e));
+                }
+                return $total;
+            };
+
+            $memberBirthdate = $user->birthdate ? \Illuminate\Support\Carbon::parse($user->birthdate) : null;
+            $ageAt = fn ($date) => ($memberBirthdate && $date) ? (int) $memberBirthdate->diffInYears(\Illuminate\Support\Carbon::parse($date)) : null;
+
+            $affiliationDetails = $clubAffiliations->mapWithKeys(function ($a) use ($skillEncyclopedia, $instrUsers, $instrByName, $fmtMonths, $enrolledMonths, $ageAt) {
+                // System-tracked club (has package subscriptions) → accumulated enrolled
+                // time; otherwise each skill keeps its own manually-recorded duration.
+                $hasSubs = $a->subscriptions->isNotEmpty();
+                $enrolledLabel = $hasSubs ? $fmtMonths($enrolledMonths($a)) : null;
+
+                // Age the member was over this affiliation (start → end, or → today if ongoing).
+                $ageStart = $ageAt($a->start_date);
+                $ageEnd = $ageAt($a->end_date ?? now());
+                $ageLabel = null;
+                if ($ageStart !== null && $ageEnd !== null) {
+                    $ageLabel = ($ageStart === $ageEnd)
+                        ? $ageStart.' '.__('member.years_old')
+                        : $ageStart.' - '.$ageEnd.' '.__('member.years_old');
+                }
+
+                return [$a->id => [
+                    'id' => $a->id,
+                    'club_name' => $a->club_name,
+                    'logo' => $a->logo ? asset('storage/'.$a->logo) : null,
+                    'ongoing' => ! $a->end_date,
+                    'dates' => (optional($a->start_date)->format('M Y') ?: '—').($a->end_date ? ' — '.$a->end_date->format('M Y') : ' — '.__('member.present')),
+                    'duration' => $a->formatted_duration ?? null,
+                    // Time actually SPENT: accumulated enrolled time for a system club
+                    // (gaps excluded); the full recorded span for a manual/pre-system record.
+                    'spent' => $enrolledLabel ?? ($a->formatted_duration ?? null),
+                    'age' => $ageLabel,
+                    'left_ago' => $a->end_date ? $a->end_date->diffForHumans() : null,
+                    'location' => $a->location,
+                    'note' => $a->description ?: null,
+                    'skills' => $a->skillAcquisitions->map(fn ($s) => [
+                        'name' => $s->skill_name,
+                        'level' => ucfirst($s->proficiency_level),
+                        // Enrolled-time for a real club; full recorded span for a manual record.
+                        'duration' => $enrolledLabel ?? $s->formatted_duration,
+                        'url' => ($skillEncyclopedia[$s->id] ?? null) ? route('activity.show', $skillEncyclopedia[$s->id]) : null,
+                    ])->values(),
+                    'instructors' => collect($a->instructorList())->map(function ($ins) use ($instrUsers, $instrByName) {
+                        // Linked member first, then a unique name match; else plain free text.
+                        $u = $ins['user_id']
+                            ? $instrUsers->get($ins['user_id'])
+                            : $instrByName->get(mb_strtolower(trim((string) $ins['name'])));
+                        return [
+                            'name' => $u ? ($u->full_name ?: $u->name) : $ins['name'],
+                            'avatar' => $u && $u->profile_picture ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
+                            // ?public=1 → always the minimal public profile, even for self.
+                            'url' => $u ? route('people.show', ['uuid' => $u->uuid, 'public' => 1]) : null,
+                        ];
+                    })->values(),
+                    'media' => $a->affiliationMedia->map(fn ($m) => [
+                        'title' => $m->title, 'url' => $m->full_url, 'icon' => $m->icon_class,
+                    ])->values(),
+                ]];
+            });
+        @endphp
+        <div x-show="tab==='clubs'" x-transition.opacity x-cloak class="space-y-4"
+             x-data="affiliationSheet(@js($affiliationDetails))">
             @php
-                $activeAffil = $clubAffiliations->whereNull('end_date')->sortByDesc('start_date')->values();
-                $leftAffil   = $clubAffiliations->whereNotNull('end_date')->sortByDesc('end_date')->values();
+                // (kept for the markup below)
             @endphp
 
             {{-- Active --}}
             <div>
                 @forelse($activeAffil as $a)
-                    @php $clubUrl = ($a->tenant && $a->tenant->slug && $a->tenant->country) ? route('clubs.show', ['country' => strtolower($a->tenant->country), 'slug' => $a->tenant->slug]) : null; $tag = $clubUrl ? 'a' : 'div'; @endphp
-                    <{{ $tag }} @if($clubUrl) href="{{ $clubUrl }}" @endif class="group relative block bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-2.5 overflow-hidden {{ $clubUrl ? 'm-press' : '' }}">
+                    <button type="button" @click="openSheet({{ $a->id }})" class="group relative block w-full text-start bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-2.5 overflow-hidden m-press">
                         {{-- subtle accent rail --}}
                         <span class="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 w-1 bg-green-400/80"></span>
                         <div class="flex items-start gap-3">
@@ -1340,7 +1497,7 @@
                                 @endforeach
                             </div>
                         @endif
-                    </{{ $tag }}>
+                    </button>
                 @empty
                     @if($leftAffil->isEmpty())
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
@@ -1364,12 +1521,8 @@
 
                 <div class="space-y-2.5">
                     @foreach($leftAffil as $a)
-                        @php
-                            $span = ($a->start_date && $a->end_date) ? $a->start_date->diffInMonths($a->end_date) : null;
-                            $clubUrl = ($a->tenant && $a->tenant->slug && $a->tenant->country) ? route('clubs.show', ['country' => strtolower($a->tenant->country), 'slug' => $a->tenant->slug]) : null;
-                            $tag = $clubUrl ? 'a' : 'div';
-                        @endphp
-                        <{{ $tag }} @if($clubUrl) href="{{ $clubUrl }}" @endif class="group relative block bg-white rounded-2xl shadow-sm border border-gray-100 p-4 overflow-hidden {{ $clubUrl ? 'm-press' : '' }}">
+                        @php $span = ($a->start_date && $a->end_date) ? $a->start_date->diffInMonths($a->end_date) : null; @endphp
+                        <button type="button" @click="openSheet({{ $a->id }})" class="group relative block w-full text-start bg-white rounded-2xl shadow-sm border border-gray-100 p-4 overflow-hidden m-press">
                             {{-- subtle muted rail --}}
                             <span class="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 w-1 bg-gray-300"></span>
                             <div class="flex items-start gap-3">
@@ -1389,11 +1542,180 @@
                                     </div>
                                 </div>
                             </div>
-                        </{{ $tag }}>
+                        </button>
                     @endforeach
                 </div>
             </div>
             @endif
+
+            {{-- Tap-through detail sheet (teleported to <body> so the shell transform
+                 can't clip it). Read-only view of the affiliation's data. --}}
+            <template x-teleport="body">
+                <div x-show="show" x-cloak class="fixed inset-0 z-[70]" style="display:none;" @keydown.escape.window="close()">
+                    <div x-show="show" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                         x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                         class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="close()"></div>
+
+                    <div x-show="show" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                         class="absolute inset-x-0 bottom-0 max-h-[92vh] flex flex-col bg-background rounded-t-3xl shadow-2xl overflow-hidden">
+
+                        {{-- Grab handle --}}
+                        <div class="flex-shrink-0 pt-2.5 pb-1 flex justify-center"><span class="w-10 h-1.5 rounded-full bg-gray-300"></span></div>
+
+                        {{-- Hero header — the club's own logo becomes a blurred identity wash --}}
+                        <div class="flex-shrink-0 relative overflow-hidden bg-primary/[0.04]">
+                            {{-- club-identity backdrop (real content → per-club colour + depth) --}}
+                            <template x-if="cur?.logo">
+                                <img :src="cur.logo" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-[1.6] blur-2xl opacity-30 pointer-events-none select-none"
+                                     :class="cur && !cur.ongoing && 'grayscale'">
+                            </template>
+                            {{-- legibility + blend into the body --}}
+                            <div class="absolute inset-0 bg-gradient-to-b from-white/55 via-background/80 to-background"></div>
+                            <div class="relative px-5 pt-3 pb-5 flex items-start gap-4">
+                                <span class="w-16 h-16 rounded-[1.15rem] bg-white grid place-items-center overflow-hidden flex-shrink-0 ring-1 ring-black/[0.06] shadow-[0_6px_20px_-6px_rgba(0,0,0,0.18)]"
+                                      :class="cur && !cur.ongoing && 'grayscale'">
+                                    <template x-if="cur && cur.logo"><img :src="cur.logo" alt="" class="w-16 h-16 object-cover"></template>
+                                    <template x-if="cur && !cur.logo"><i class="bi bi-buildings text-2xl text-primary/40"></i></template>
+                                </span>
+                                <div class="min-w-0 flex-1 pt-1">
+                                    <h3 class="font-extrabold text-foreground text-[18px] leading-tight tracking-tight line-clamp-2" x-text="cur?.club_name"></h3>
+                                    {{-- brand accent underline --}}
+                                    <div class="mt-1.5 h-[3px] w-10 rounded-full bg-gradient-to-r from-primary to-primary/20"></div>
+                                    <div class="mt-2 flex items-center gap-2 flex-wrap">
+                                        {{-- Status — "Left" folds its "how long ago" inside the same pill --}}
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-sm ring-1 ring-inset backdrop-blur"
+                                              :class="cur?.ongoing ? 'bg-green-100/90 text-green-700 ring-green-200' : 'bg-white/90 text-gray-500 ring-gray-200'">
+                                            <span x-show="cur?.ongoing" class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                                            <span x-show="!cur?.ongoing" class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                                            <span x-text="cur?.ongoing ? '{{ __('member.active') }}' : '{{ __('member.left') }}'"></span>
+                                            <span x-show="!cur?.ongoing && cur?.left_ago" x-cloak class="font-medium text-gray-400 border-s border-gray-200 ps-1.5" x-text="cur?.left_ago"></span>
+                                        </span>
+                                        {{-- Time actually spent training at this club --}}
+                                        <span x-show="cur?.spent" x-cloak class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-sm ring-1 ring-inset backdrop-blur bg-white/90 text-gray-500 ring-gray-200">
+                                            <i class="bi bi-hourglass-split text-primary/60"></i>
+                                            <span x-text="cur?.spent"></span>
+                                            <span class="font-medium text-gray-400">{{ __('member.time_spent') }}</span>
+                                        </span>
+                                    </div>
+                                </div>
+                                <button type="button" @click="close()" class="m-press w-9 h-9 -mt-1 -me-1 rounded-full grid place-items-center bg-white/80 backdrop-blur text-muted-foreground hover:bg-white hover:text-foreground shadow-sm ring-1 ring-black/5 flex-shrink-0"><i class="bi bi-x-lg text-[13px]"></i></button>
+                            </div>
+                        </div>
+
+                        {{-- Scrollable body --}}
+                        <div class="flex-1 overflow-y-auto px-5 pt-1 space-y-4" style="padding-bottom: calc(2.5rem + env(safe-area-inset-bottom));">
+                            {{-- Journey card — dates headline + a divided stat strip --}}
+                            <div class="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden">
+                                <div class="px-4 pt-3.5 pb-3 flex items-center gap-3">
+                                    <span class="w-9 h-9 rounded-xl bg-primary/10 text-primary grid place-items-center flex-shrink-0"><i class="bi bi-calendar3 text-[15px]"></i></span>
+                                    <div class="min-w-0">
+                                        <div class="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{{ __('member.period') }}</div>
+                                        <div class="text-[14px] font-bold text-foreground leading-snug" x-text="cur?.dates"></div>
+                                    </div>
+                                </div>
+                                {{-- stat strip (only the metrics that exist) --}}
+                                <div x-show="cur?.duration || cur?.age || cur?.location" class="grid border-t border-gray-100 divide-x divide-gray-100"
+                                     :class="{'grid-cols-3': [cur?.duration, cur?.age, cur?.location].filter(Boolean).length===3, 'grid-cols-2': [cur?.duration, cur?.age, cur?.location].filter(Boolean).length===2, 'grid-cols-1': [cur?.duration, cur?.age, cur?.location].filter(Boolean).length===1}">
+                                    <template x-if="cur?.duration">
+                                        <div class="px-3 py-2.5 min-w-0">
+                                            <div class="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5"><i class="bi bi-hourglass-split text-primary/60"></i>{{ __('member.duration') }}</div>
+                                            <div class="text-[12.5px] font-bold text-foreground truncate" x-text="cur.duration"></div>
+                                        </div>
+                                    </template>
+                                    <template x-if="cur?.age">
+                                        <div class="px-3 py-2.5 min-w-0">
+                                            <div class="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5"><i class="bi bi-person text-primary/60"></i>{{ __('member.age') }}</div>
+                                            <div class="text-[12.5px] font-bold text-foreground truncate" x-text="cur.age"></div>
+                                        </div>
+                                    </template>
+                                    <template x-if="cur?.location">
+                                        <div class="px-3 py-2.5 min-w-0">
+                                            <div class="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5"><i class="bi bi-geo-alt text-primary/60"></i>{{ __('member.location') }}</div>
+                                            <div class="text-[12.5px] font-bold text-foreground truncate" x-text="cur.location"></div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            {{-- Note --}}
+                            <div x-show="cur?.note" x-cloak class="relative overflow-hidden rounded-2xl bg-primary/[0.05] border border-primary/10 px-4 py-3.5">
+                                <span class="absolute inset-y-0 start-0 w-1 bg-primary/40"></span>
+                                <div class="flex items-start gap-2.5 ps-1.5">
+                                    <i class="bi bi-quote text-primary/60 text-[16px] leading-none mt-0.5 flex-shrink-0"></i>
+                                    <p class="text-[12.5px] leading-relaxed text-foreground whitespace-pre-line" x-text="cur?.note"></p>
+                                </div>
+                            </div>
+
+                            {{-- Skills --}}
+                            <div class="rounded-2xl bg-white border border-gray-100 shadow-sm p-3.5">
+                                <div class="flex items-center gap-2 mb-2.5">
+                                    <span class="w-7 h-7 rounded-xl bg-amber-100 text-amber-600 grid place-items-center shadow-sm"><i class="bi bi-star-fill text-[12px]"></i></span>
+                                    <span class="text-[12px] font-bold uppercase tracking-wide text-foreground">{{ __('member.partials_affiliations_enhanced_skills_acquired') }}</span>
+                                    <span class="ms-auto text-[11px] font-bold text-amber-600 bg-amber-100 min-w-[20px] text-center px-1.5 rounded-full" x-text="cur?.skills?.length || 0"></span>
+                                </div>
+                                <div x-show="cur?.skills?.length" class="flex flex-wrap gap-1.5">
+                                    <template x-for="(s,i) in (cur?.skills||[])" :key="i">
+                                        <a :href="s.url || null" :rel="s.url ? 'noopener' : null"
+                                           class="inline-flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-1.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200/70 no-underline transition-colors"
+                                           :class="s.url && 'm-press hover:bg-amber-100'">
+                                            <i class="bi text-[11px]" :class="s.url ? 'bi-book-half' : 'bi-star-fill'"></i><span x-text="s.name"></span>
+                                            <span class="text-[10px] font-bold bg-white/90 text-amber-800 px-1.5 py-px rounded-full" x-text="s.level"></span>
+                                            <span x-show="s.duration" class="inline-flex items-center gap-1 text-[10px] font-medium text-amber-600/90 ps-0.5"><i class="bi bi-hourglass-split"></i><span x-text="s.duration"></span></span>
+                                            <i x-show="s.url" class="bi bi-chevron-right text-[9px] text-amber-500/70"></i>
+                                        </a>
+                                    </template>
+                                </div>
+                                <p x-show="!cur?.skills?.length" class="text-[12px] text-muted-foreground">{{ __('member.no_data') }}</p>
+                            </div>
+
+                            {{-- Instructors --}}
+                            <div class="rounded-2xl bg-white border border-gray-100 shadow-sm p-3.5">
+                                <div class="flex items-center gap-2 mb-2.5">
+                                    <span class="w-7 h-7 rounded-xl bg-green-100 text-green-600 grid place-items-center shadow-sm"><i class="bi bi-people-fill text-[12px]"></i></span>
+                                    <span class="text-[12px] font-bold uppercase tracking-wide text-foreground">{{ __('member.partials_affiliations_enhanced_instructors') }}</span>
+                                    <span class="ms-auto text-[11px] font-bold text-green-600 bg-green-100 min-w-[20px] text-center px-1.5 rounded-full" x-text="cur?.instructors?.length || 0"></span>
+                                </div>
+                                <div x-show="cur?.instructors?.length" class="flex flex-wrap gap-1.5">
+                                    <template x-for="(ins,i) in (cur?.instructors||[])" :key="i">
+                                        <a :href="ins.url || null"
+                                           class="inline-flex items-center gap-1.5 text-[12px] font-semibold ps-1 pe-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200/70 no-underline transition-colors"
+                                           :class="ins.url && 'm-press hover:bg-green-100'">
+                                            <span class="rounded-full bg-white grid place-items-center overflow-hidden ring-1 ring-green-200/60" style="width:1.35rem;height:1.35rem;">
+                                                <template x-if="ins.avatar"><img :src="ins.avatar" alt="" class="w-full h-full object-cover"></template>
+                                                <template x-if="!ins.avatar"><i class="bi bi-person-fill text-[11px] text-gray-400"></i></template>
+                                            </span>
+                                            <span x-text="ins.name"></span>
+                                            <i x-show="ins.url" class="bi bi-chevron-right text-[9px] text-green-500/70"></i>
+                                        </a>
+                                    </template>
+                                </div>
+                                <p x-show="!cur?.instructors?.length" class="text-[12px] text-muted-foreground">{{ __('member.no_data') }}</p>
+                            </div>
+
+                            {{-- Media --}}
+                            <div class="rounded-2xl bg-white border border-gray-100 shadow-sm p-3.5">
+                                <div class="flex items-center gap-2 mb-2.5">
+                                    <span class="w-7 h-7 rounded-xl bg-sky-100 text-sky-600 grid place-items-center shadow-sm"><i class="bi bi-paperclip text-[12px]"></i></span>
+                                    <span class="text-[12px] font-bold uppercase tracking-wide text-foreground">{{ __('member.partials_affiliations_enhanced_media_certificates') }}</span>
+                                    <span class="ms-auto text-[11px] font-bold text-sky-600 bg-sky-100 min-w-[20px] text-center px-1.5 rounded-full" x-text="cur?.media?.length || 0"></span>
+                                </div>
+                                <div x-show="cur?.media?.length" class="flex flex-col gap-1.5">
+                                    <template x-for="(m,i) in (cur?.media||[])" :key="i">
+                                        <a :href="m.url" target="_blank" rel="noopener"
+                                           class="inline-flex items-center gap-2 text-[12.5px] font-medium text-foreground bg-muted/40 border border-gray-100 rounded-xl px-3 py-2.5 no-underline m-press hover:bg-muted/70 transition-colors">
+                                            <span class="w-7 h-7 rounded-lg bg-sky-100 text-sky-600 grid place-items-center flex-shrink-0"><i class="bi" :class="m.icon"></i></span>
+                                            <span class="truncate" x-text="m.title"></span>
+                                            <i class="bi bi-box-arrow-up-right text-muted-foreground text-[11px] ms-auto flex-shrink-0"></i>
+                                        </a>
+                                    </template>
+                                </div>
+                                <p x-show="!cur?.media?.length" class="text-[12px] text-muted-foreground">{{ __('member.no_data') }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
         </div>
 
         {{-- ===== Certifications — member-owned, self-managed ===== --}}
@@ -1428,14 +1750,16 @@
                 }
              })">
 
-            @if($canEditBasic ?? false)
-                <div class="flex justify-end -mb-1" x-show="items.length">
+            {{-- Section header (shown once there are entries) --}}
+            <div class="flex items-center justify-between gap-2" x-show="items.length" x-cloak>
+                <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-patch-check text-primary"></i>{{ __('member.certifications') }}</h3>
+                @if($canEditBasic ?? false)
                     <button type="button" @click="openAdd()" aria-label="{{ __('member.add_certification') }}"
-                            class="m-press w-9 h-9 rounded-full bg-primary text-white grid place-items-center shadow-md shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
-                        <i class="bi bi-plus-lg"></i>
+                            class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
+                        <i class="bi bi-plus-lg"></i>{{ __('member.add_certification') }}
                     </button>
-                </div>
-            @endif
+                @endif
+            </div>
 
             {{-- Empty state --}}
             <template x-if="!items.length">
@@ -1568,7 +1892,7 @@
 
         {{-- ===== Worked — member-owned work / coaching history ===== --}}
         @php
-            $workJs = $workHistory->map(fn ($w) => [
+            $realWork = $workHistory->map(fn ($w) => [
                 'id' => $w->id,
                 'title' => $w->title,
                 'organization' => $w->organization,
@@ -1580,7 +1904,60 @@
                 'end_label' => $w->end_date ? $w->end_date->format('M Y') : null,
                 'current' => $w->isCurrent(),
                 'description' => $w->description,
-            ])->values();
+                'derived' => false,
+                'logo' => null,
+                'skills' => [],
+                'club_url' => null,
+                '_sort' => optional($w->start_date)->timestamp ?? 0,
+            ]);
+
+            // Skill name → encyclopedia (activity directory) url, for deep-linking each taught skill.
+            $workCatalogByName = \App\Models\ActivityCatalog::where('is_active', true)
+                ->get(['uuid', 'name'])
+                ->keyBy(fn ($a) => mb_strtolower(trim($a->name)));
+
+            // Platform trainer/staff roles are real work history — surface them here,
+            // live and read-only (managed from the club, not this list).
+            $derivedWork = \App\Models\ClubInstructor::where('user_id', $user->id)
+                ->with(['tenant:id,club_name,logo,slug,country', 'activities:id,name'])
+                ->get()
+                ->map(function ($ci) use ($workCatalogByName) {
+                    $start = $ci->created_at;
+                    $active = (bool) $ci->is_active;
+                    $end = $active ? null : $ci->updated_at;
+                    $club = $ci->tenant;
+                    $clubUrl = ($club && $club->slug && $club->country)
+                        ? route('clubs.show', ['country' => strtolower($club->country), 'slug' => $club->slug])
+                        : null;
+
+                    return [
+                        'id' => 'trainer-'.$ci->id,
+                        'title' => $ci->role ?: ucfirst($ci->staff_type ?? 'instructor'),
+                        'organization' => optional($club)->club_name,
+                        'employment_type' => $ci->compensation_type ? ucfirst($ci->compensation_type) : null,
+                        'location' => null,
+                        'start_date' => optional($start)->format('Y-m-d'),
+                        'end_date' => optional($end)->format('Y-m-d'),
+                        'start_label' => optional($start)->format('M Y'),
+                        'end_label' => $end ? $end->format('M Y') : null,
+                        'current' => $active,
+                        'description' => null,
+                        'derived' => true,
+                        'logo' => optional($club)->logo ? asset('storage/'.$club->logo) : null,
+                        'skills' => $ci->activities->map(fn ($a) => [
+                            'name' => $a->name,
+                            'url' => ($u = optional($workCatalogByName->get(mb_strtolower(trim((string) $a->name))))->uuid)
+                                ? route('activity.show', $u) : null,
+                        ])->values()->all(),
+                        'club_url' => $clubUrl,
+                        '_sort' => optional($start)->timestamp ?? 0,
+                    ];
+                });
+
+            $workJs = $derivedWork->concat($realWork)
+                ->sortBy([['current', 'desc'], ['_sort', 'desc']])
+                ->map(fn ($w) => collect($w)->except('_sort')->all())
+                ->values();
             $employmentTypes = ['Full-time','Part-time','Contract','Freelance','Volunteer','Internship'];
         @endphp
         <div x-show="tab==='worked'" x-transition.opacity x-cloak class="space-y-3"
@@ -1597,14 +1974,16 @@
                 }
              })">
 
-            @if($canEditBasic ?? false)
-                <div class="flex justify-end -mb-1" x-show="items.length">
+            {{-- Section header (shown once there are entries) --}}
+            <div class="flex items-center justify-between gap-2" x-show="items.length" x-cloak>
+                <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-briefcase text-primary"></i>{{ __('member.work_history') }}</h3>
+                @if($canEditBasic ?? false)
                     <button type="button" @click="openAdd()" aria-label="{{ __('member.add_work') }}"
-                            class="m-press w-9 h-9 rounded-full bg-primary text-white grid place-items-center shadow-md shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
-                        <i class="bi bi-plus-lg"></i>
+                            class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
+                        <i class="bi bi-plus-lg"></i>{{ __('member.add_work') }}
                     </button>
-                </div>
-            @endif
+                @endif
+            </div>
 
             {{-- Empty state --}}
             <template x-if="!items.length">
@@ -1623,25 +2002,41 @@
 
             {{-- Timeline list --}}
             <template x-for="w in items" :key="w.id">
-                <div class="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-4 overflow-hidden">
+                <div class="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-4 overflow-hidden transition-shadow"
+                     :class="w.club_url && 'cursor-pointer hover:shadow-md m-press'"
+                     @click="w.club_url && (window.location.href = w.club_url)">
                     <span class="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 w-1" :class="w.current ? 'bg-green-400/80' : 'bg-gray-300'"></span>
                     <div class="flex items-start gap-3">
-                        <span class="w-11 h-11 rounded-xl bg-accent grid place-items-center text-primary flex-shrink-0 ring-1 ring-primary/10"><i class="bi bi-briefcase-fill"></i></span>
+                        <span class="w-12 h-12 rounded-xl bg-accent grid place-items-center text-primary flex-shrink-0 ring-1 ring-primary/10 overflow-hidden">
+                            <template x-if="w.logo"><img :src="w.logo" alt="" class="w-full h-full object-cover"></template>
+                            <template x-if="!w.logo"><i class="bi bi-briefcase-fill text-lg"></i></template>
+                        </span>
                         <div class="min-w-0 flex-1">
+                            {{-- Title + organization, status badge to the right --}}
                             <div class="flex items-start justify-between gap-2">
-                                <p class="font-bold text-foreground text-[15px] leading-snug" x-text="w.title"></p>
+                                <div class="min-w-0">
+                                    <p class="font-bold text-foreground text-[15px] leading-snug truncate" x-text="w.title"></p>
+                                    <p class="text-[12px] font-medium text-foreground/60 truncate mt-0.5" x-text="w.organization"></p>
+                                </div>
                                 <template x-if="w.current">
                                     <span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700"><span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>{{ __('member.work_current') }}</span>
                                 </template>
                             </div>
-                            <p class="text-[12px] font-medium text-foreground/70 mt-0.5" x-text="w.organization"></p>
-                            <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-                                <span class="inline-flex items-center gap-1.5"><i class="bi bi-calendar-range text-muted-foreground/70"></i><span x-text="w.start_label + ' – ' + (w.end_label || i18n.present)"></span></span>
-                                <span class="inline-flex items-center gap-1.5" x-show="w.employment_type"><i class="bi bi-person-badge text-muted-foreground/70"></i><span x-text="w.employment_type"></span></span>
-                                <span class="inline-flex items-center gap-1.5 min-w-0" x-show="w.location"><i class="bi bi-geo-alt text-muted-foreground/70 flex-shrink-0"></i><span class="truncate" x-text="w.location"></span></span>
+                            {{-- Compact inline facts — one line, icon + text (no pills, so the card stays short) --}}
+                            <div class="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-muted-foreground">
+                                <span class="inline-flex items-center gap-1"><i class="bi bi-calendar-range text-primary/50"></i><span x-text="w.start_label + ' – ' + (w.end_label || i18n.present)"></span></span>
+                                <span x-show="w.employment_type" class="inline-flex items-center gap-1"><i class="bi bi-cash-coin text-primary/50"></i><span x-text="w.employment_type"></span></span>
+                                <span x-show="w.location" class="inline-flex items-center gap-1 min-w-0"><i class="bi bi-geo-alt text-primary/50 flex-shrink-0"></i><span class="truncate" x-text="w.location"></span></span>
+                                <template x-for="(sk, si) in (w.skills || [])" :key="si">
+                                    <span class="inline-flex items-center gap-1 text-primary font-semibold" :class="sk.url && 'cursor-pointer hover:underline'"
+                                          @click.stop="sk.url && (window.location.href = sk.url)"><i class="bi bi-mortarboard-fill text-primary/60"></i><span x-text="sk.name"></span></span>
+                                </template>
+                                <template x-if="w.derived">
+                                    <i class="bi bi-shield-fill-check text-primary/70" title="{{ __('member.work_platform_role_note') }}"></i>
+                                </template>
                             </div>
                             <p class="text-[11px] text-foreground/70 mt-2 whitespace-pre-line" x-show="w.description" x-text="w.description"></p>
-                            <template x-if="canEdit">
+                            <template x-if="canEdit && !w.derived">
                                 <div class="mt-2 flex items-center gap-3">
                                     <button type="button" @click="openEdit(w)" class="text-[11px] font-medium text-muted-foreground hover:text-primary inline-flex items-center gap-1"><i class="bi bi-pencil"></i>{{ __('Edit') }}</button>
                                     <button type="button" @click="remove(w)" class="text-[11px] font-medium text-muted-foreground hover:text-red-600 inline-flex items-center gap-1"><i class="bi bi-trash"></i>{{ __('Delete') }}</button>
@@ -1847,6 +2242,50 @@
 {{-- Scripts live INSIDE the content section (not @push) so they ship with #shell-content --}}
 {{-- and re-run on the mobile shell's AJAX swaps — @push('scripts') would be dropped there. --}}
 <script>
+// Affiliation detail sheet — a tap on a club card opens its data in a bottom sheet.
+function affiliationSheet(items) {
+    return {
+        items: items || {},
+        show: false,
+        cur: null,
+        init() {
+            // Restore an open sheet from the URL (?aff=<id>) — e.g. after tapping a
+            // skill through to the encyclopedia and pressing back, the sheet reopens
+            // exactly as it was left.
+            try {
+                const id = new URL(window.location.href).searchParams.get('aff');
+                if (id && this.items[id]) {
+                    this.cur = this.items[id];
+                    this.show = true;
+                    document.body.style.overflow = 'hidden';
+                }
+            } catch (e) {}
+        },
+        openSheet(id) {
+            this.cur = this.items[id] || null;
+            if (!this.cur) return;
+            this.show = true;
+            document.body.style.overflow = 'hidden';
+            this.syncUrl(id);
+        },
+        close() {
+            this.show = false;
+            document.body.style.overflow = '';
+            this.syncUrl(null);
+        },
+        // Reflect the open sheet in the URL without adding a history entry, keeping
+        // the tab hash (#clubs) and everything else intact.
+        syncUrl(id) {
+            try {
+                const url = new URL(window.location.href);
+                if (id) url.searchParams.set('aff', id);
+                else url.searchParams.delete('aff');
+                history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+            } catch (e) {}
+        },
+    };
+}
+
 // Shared "X years/months/days ago" helper (calendar-accurate, i18n-aware).
 // Used by the weight history and the medal sheet (which passes the EVENT date).
 window.memberTimeAgo = (function () {

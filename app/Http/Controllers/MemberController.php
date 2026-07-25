@@ -388,6 +388,20 @@ class MemberController extends Controller
             });
         });
 
+        // Map each skill to the encyclopedia (activity directory) entry it matches by
+        // name, so its badge can deep-link to /activity/{uuid}. Built once (no N+1);
+        // skill_name IS the activity name, so a case-insensitive name match is exact.
+        $catalogByName = \App\Models\ActivityCatalog::where('is_active', true)
+            ->get(['uuid', 'name'])
+            ->keyBy(fn ($a) => mb_strtolower(trim($a->name)));
+        $skillEncyclopedia = [];
+        foreach ($clubAffiliations as $affiliation) {
+            foreach ($affiliation->skillAcquisitions as $skill) {
+                $name = $skill->activity?->name ?? $skill->activity_name ?? $skill->skill_name;
+                $skillEncyclopedia[$skill->id] = $catalogByName->get(mb_strtolower(trim((string) $name)))?->uuid;
+            }
+        }
+
         // Calculate summary stats
         $totalAffiliations = $clubAffiliations->count();
         $distinctSkills = $clubAffiliations->flatMap->skillAcquisitions->pluck('skill_name')->unique()->count();
@@ -397,6 +411,73 @@ class MemberController extends Controller
         $allSkills = $clubAffiliations->flatMap(function ($affiliation) {
             return $affiliation->skillAcquisitions->pluck('skill_name');
         })->unique()->sort()->values();
+
+        // Per-skill summary for the overview badges: accumulated experience across
+        // ALL clubs + the encyclopedia link. Mirrors the affiliation sheet exactly —
+        // enrolled (gap-excluded) time for system clubs, each skill's own recorded
+        // span for manual/pre-system records.
+        $enrolledMonthsFor = function ($affiliation) {
+            $ivals = $affiliation->subscriptions
+                ->filter(fn ($s) => $s->start_date)
+                ->map(fn ($s) => [$s->start_date->copy(), ($s->end_date ?? now())->copy()])
+                ->sortBy(fn ($i) => $i[0]->timestamp)->values()->all();
+            $merged = [];
+            foreach ($ivals as [$s, $e]) {
+                if ($e->lte($s)) {
+                    continue;
+                }
+                if ($merged && $s->lte($merged[count($merged) - 1][1])) {
+                    if ($e->gt($merged[count($merged) - 1][1])) {
+                        $merged[count($merged) - 1][1] = $e;
+                    }
+                } else {
+                    $merged[] = [$s, $e];
+                }
+            }
+
+            return collect($merged)->sum(fn ($iv) => (int) floor($iv[0]->floatDiffInMonths($iv[1])));
+        };
+        $fmtSkillMonths = function (int $m) {
+            $m = max(0, $m);
+            if ($m < 1) {
+                return null;
+            }
+            $y = intdiv($m, 12);
+            $r = $m % 12;
+            $parts = [];
+            if ($y) {
+                $parts[] = $y.' '.($y > 1 ? __('years') : __('year'));
+            }
+            if ($r) {
+                $parts[] = $r.' '.($r > 1 ? __('months') : __('month'));
+            }
+
+            return implode(' ', $parts);
+        };
+        $skillMonths = [];   // lower(name) => accumulated months
+        $skillUuid = [];     // lower(name) => encyclopedia activity uuid
+        $skillLabel = [];    // lower(name) => display name (first seen)
+        foreach ($clubAffiliations as $affiliation) {
+            $hasSubs = $affiliation->subscriptions->isNotEmpty();
+            $affMonths = $hasSubs ? $enrolledMonthsFor($affiliation) : null;
+            foreach ($affiliation->skillAcquisitions as $skill) {
+                $key = mb_strtolower(trim((string) $skill->skill_name));
+                if ($key === '') {
+                    continue;
+                }
+                $skillLabel[$key] ??= $skill->skill_name;
+                $months = $hasSubs ? $affMonths : (int) ($skill->duration_months ?? 0);
+                $skillMonths[$key] = ($skillMonths[$key] ?? 0) + max(0, (int) $months);
+                if (empty($skillUuid[$key]) && ! empty($skillEncyclopedia[$skill->id])) {
+                    $skillUuid[$key] = $skillEncyclopedia[$skill->id];
+                }
+            }
+        }
+        $skillSummary = collect($skillLabel)->map(fn ($name, $key) => [
+            'name' => $name,
+            'years' => $fmtSkillMonths($skillMonths[$key] ?? 0),
+            'uuid' => $skillUuid[$key] ?? null,
+        ])->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->values();
 
         // Count total instructors
         $totalInstructors = $clubAffiliations->flatMap(function ($affiliation) {
@@ -462,10 +543,12 @@ class MemberController extends Controller
             'challengeWins' => $challengeWins,
             'memberChallenges' => $memberChallenges,
             'clubAffiliations' => $clubAffiliations,
+            'skillEncyclopedia' => $skillEncyclopedia,
             'totalAffiliations' => $totalAffiliations,
             'distinctSkills' => $distinctSkills,
             'totalMembershipDuration' => $totalMembershipDuration,
             'allSkills' => $allSkills,
+            'skillSummary' => $skillSummary,
             'totalInstructors' => $totalInstructors,
             'user' => $relationship->dependent,
             'joinedEventRegistrations' => $joinedEventRegistrations,
@@ -1779,18 +1862,12 @@ class MemberController extends Controller
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'location' => 'nullable|string|max:255',
             'description' => 'nullable|string|max:1000',
-            'coaches' => 'nullable|string|max:1000',
         ]);
 
         // If a platform club is selected, pull its data
         $tenant = null;
         if (! empty($validated['tenant_id'])) {
             $tenant = \App\Models\Tenant::findOrFail($validated['tenant_id']);
-        }
-
-        $coaches = null;
-        if (! empty($validated['coaches'])) {
-            $coaches = array_values(array_filter(array_map('trim', explode(',', $validated['coaches']))));
         }
 
         $member = User::findOrFail($id);
@@ -1802,7 +1879,7 @@ class MemberController extends Controller
             'end_date' => $validated['end_date'] ?? null,
             'location' => $tenant ? ($tenant->address ?? $validated['location']) : ($validated['location'] ?? null),
             'description' => $validated['description'] ?? null,
-            'coaches' => $coaches,
+            // Instructors are managed via the dedicated picker (coaches JSON), not here.
         ]);
 
         $logoUrl = null;
@@ -1824,7 +1901,7 @@ class MemberController extends Controller
                 'logo_url' => $logoUrl,
                 'location' => $affiliation->location,
                 'description' => $affiliation->description,
-                'coaches' => is_array($affiliation->coaches) ? implode(', ', $affiliation->coaches) : '',
+                'instructors' => collect($affiliation->instructorList())->pluck('name')->values()->all(),
                 'start_date' => $affiliation->start_date?->format('Y-m-d'),
                 'end_date' => $affiliation->end_date?->format('Y-m-d'),
                 'start_label' => $affiliation->start_date?->format('M Y'),
@@ -1845,23 +1922,18 @@ class MemberController extends Controller
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'location' => 'nullable|string|max:255',
             'description' => 'nullable|string|max:1000',
-            'coaches' => 'nullable|string|max:1000',
         ]);
-
-        $coaches = null;
-        if (! empty($validated['coaches'])) {
-            $coaches = array_values(array_filter(array_map('trim', explode(',', $validated['coaches']))));
-        }
 
         $member = User::findOrFail($id);
         $affiliation = $member->clubAffiliations()->findOrFail($affiliationId);
+        // NB: coaches (instructors) are intentionally NOT touched here — they are
+        // managed via the dedicated instructor picker and must survive an edit.
         $affiliation->update([
             'club_name' => $validated['club_name'],
             'start_date' => $validated['start_date'],
             'end_date' => $validated['end_date'] ?? null,
             'location' => $validated['location'] ?? null,
             'description' => $validated['description'] ?? null,
-            'coaches' => $coaches,
         ]);
 
         return response()->json([
@@ -1872,7 +1944,7 @@ class MemberController extends Controller
                 'club_name' => $affiliation->club_name,
                 'location' => $affiliation->location,
                 'description' => $affiliation->description,
-                'coaches' => is_array($affiliation->coaches) ? implode(', ', $affiliation->coaches) : '',
+                'instructors' => collect($affiliation->instructorList())->pluck('name')->values()->all(),
                 'start_date' => $affiliation->start_date?->format('Y-m-d'),
                 'end_date' => $affiliation->end_date?->format('Y-m-d'),
                 'start_label' => $affiliation->start_date?->format('M Y'),
@@ -1928,19 +2000,31 @@ class MemberController extends Controller
             $clubNames = $activities->pluck('name')->map(fn ($n) => mb_strtolower($n))->all();
             $suggestions = $catalog->reject(fn ($a) => in_array(mb_strtolower($a['name']), $clubNames, true))->values();
 
+            // The club's instructors, so the member can attribute who taught the skill.
+            // instructor_id is validated against THIS club in storeAffiliationSkill.
+            $instructors = \App\Models\ClubInstructor::where('tenant_id', $affiliation->tenant_id)
+                ->with('user:id,full_name,name')
+                ->get()
+                ->map(fn ($i) => ['id' => $i->id, 'name' => $i->user?->full_name ?? $i->user?->name])
+                ->filter(fn ($i) => $i['name'])
+                ->sortBy('name')
+                ->values();
+
             return response()->json([
                 'linked' => true,
                 'activities' => $activities,
                 'suggestions' => $suggestions,
+                'instructors' => $instructors,
                 'affiliation' => $this->affiliationBounds($affiliation),
             ]);
         }
 
-        // Off-platform club → free-text only, with the directory as suggestions.
+        // Off-platform club → free-text only, no instructors to attribute.
         return response()->json([
             'linked' => false,
             'activities' => collect(),
             'suggestions' => $catalog,
+            'instructors' => collect(),
             'affiliation' => $this->affiliationBounds($affiliation),
         ]);
     }
@@ -1961,18 +2045,20 @@ class MemberController extends Controller
         $validated = $request->validate([
             'skill_name' => 'required|string|max:255',
             'proficiency_level' => 'required|in:beginner,intermediate,advanced,expert',
+            // The whole span is OPTIONAL. Only a skill name + proficiency are required.
             'start_date' => array_values(array_filter([
                 'nullable', 'date', 'required_with:end_date',
                 $affStart ? 'after_or_equal:'.$affStart : null,
                 'before_or_equal:'.$latest,
             ])),
-            // Span is expressed EITHER as an end date OR as a number of months — one of
-            // the two is required so a skill always has a duration to show.
+            // No end date = ongoing ("still practicing"). When given it must sit inside
+            // the affiliation and after the start. Never required.
             'end_date' => array_values(array_filter([
-                'nullable', 'date', 'required_without:duration_months', 'after:start_date',
+                'nullable', 'date', 'after:start_date',
                 $affEnd ? 'before_or_equal:'.$affEnd : null,
             ])),
-            'duration_months' => 'nullable|integer|min:1|max:600|required_without:end_date',
+            'duration_months' => 'nullable|integer|min:1|max:600',
+            'is_present' => 'nullable|boolean',
             'notes' => 'nullable|string|max:500',
             // Provenance: the activity that produced the skill. A real club activity
             // (scoped to THIS affiliation's club) or a free-text name for off-platform.
@@ -1987,6 +2073,18 @@ class MemberController extends Controller
             ],
         ]);
 
+        // "Still practicing" is an ongoing skill — no end date, whatever was posted.
+        $present = $request->boolean('is_present');
+        $startDate = $validated['start_date'] ?? null;
+        $endDate = $present ? null : ($validated['end_date'] ?? null);
+
+        // formatted_duration reads duration_months, so derive it from the span:
+        // start -> end when ended, start -> today when ongoing, else the given value or 1.
+        $durationMonths = $validated['duration_months']
+            ?? ($startDate
+                ? $this->monthsBetween($startDate, $endDate ?? now()->toDateString())
+                : 1);
+
         $skill = $affiliation->skillAcquisitions()->create([
             'user_id' => $member->id,
             'skill_name' => $validated['skill_name'],
@@ -1994,12 +2092,9 @@ class MemberController extends Controller
             'activity_name' => $validated['activity_name'] ?? null,
             'instructor_id' => $validated['instructor_id'] ?? null,
             'proficiency_level' => $validated['proficiency_level'],
-            'start_date' => $validated['start_date'] ?? null,
-            'end_date' => $validated['end_date'] ?? null,
-            // formatted_duration reads duration_months, so derive it when the member
-            // expressed the span as an end date instead.
-            'duration_months' => $validated['duration_months']
-                ?? $this->monthsBetween($validated['start_date'] ?? null, $validated['end_date'] ?? null),
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'duration_months' => $durationMonths,
             'notes' => $validated['notes'] ?? null,
             'icon' => 'bi-star',
         ]);
@@ -2014,6 +2109,133 @@ class MemberController extends Controller
     }
 
     /** Date window a skill on this affiliation must fall inside (mirrored by the picker). */
+    /**
+     * JSON shape for an affiliation's instructors, resolving member links to a safe
+     * avatar + public profile URL. Never exposes anything beyond name/photo/profile.
+     */
+    private function instructorPayload(\App\Models\ClubAffiliation $affiliation): array
+    {
+        $list = $affiliation->instructorList();
+        $userIds = collect($list)->pluck('user_id')->filter()->unique()->all();
+        $users = $userIds
+            ? User::whereIn('id', $userIds)->get(['id', 'uuid', 'full_name', 'name', 'profile_picture', 'updated_at'])->keyBy('id')
+            : collect();
+
+        return collect($list)->map(function ($ins, $i) use ($users) {
+            $u = $ins['user_id'] ? $users->get($ins['user_id']) : null;
+
+            return [
+                'index' => $i,
+                'name' => $u ? ($u->full_name ?: $u->name) : $ins['name'],
+                'linked' => (bool) $u,
+                'avatar' => $u && $u->profile_picture
+                    ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp
+                    : null,
+                'profile_url' => $u ? route('people.show', $u->uuid) : null,
+            ];
+        })->values()->all();
+    }
+
+    /**
+     * Minimal member typeahead for attributing an affiliation instructor. Name-only
+     * (no email/phone enumeration), short-query-gated, capped, and gated behind
+     * authorizeForMember — a stranger can't reach it. Returns only safe fields.
+     */
+    public function instructorSearch(\Illuminate\Http\Request $request, $id)
+    {
+        $this->authorizeForMember((int) $id);
+
+        $q = trim((string) $request->query('q', ''));
+        if (mb_strlen($q) < 2) {
+            return response()->json(['results' => []]);
+        }
+
+        $results = User::query()
+            ->where(fn ($w) => $w->where('full_name', 'like', "%{$q}%")->orWhere('name', 'like', "%{$q}%"))
+            ->orderBy('full_name')
+            ->limit(10)
+            ->get(['id', 'uuid', 'full_name', 'name', 'profile_picture', 'updated_at'])
+            ->map(fn ($u) => [
+                'uuid' => $u->uuid,
+                'name' => $u->full_name ?: $u->name,
+                'avatar' => $u->profile_picture ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
+            ])->values();
+
+        return response()->json(['results' => $results]);
+    }
+
+    /** Add an instructor to an affiliation — a linked member (by uuid) or free-text name. */
+    public function storeAffiliationInstructor(\Illuminate\Http\Request $request, $id, $affiliationId)
+    {
+        $this->authorizeForMember((int) $id);
+
+        $member = User::findOrFail($id);
+        $affiliation = $member->clubAffiliations()->findOrFail($affiliationId);
+
+        $validated = $request->validate([
+            'name' => 'nullable|string|max:120',
+            'user_uuid' => 'nullable|uuid',
+        ]);
+
+        // A linked member wins: resolve their real name so the display can't be spoofed.
+        $userId = null;
+        $name = trim((string) ($validated['name'] ?? ''));
+        if (! empty($validated['user_uuid'])) {
+            $user = User::where('uuid', $validated['user_uuid'])->first();
+            if (! $user) {
+                return response()->json(['success' => false, 'message' => 'Member not found.'], 422);
+            }
+            $userId = $user->id;
+            $name = $user->full_name ?: $user->name;
+        }
+
+        if ($name === '') {
+            return response()->json(['success' => false, 'message' => 'An instructor name is required.'], 422);
+        }
+
+        $coaches = $affiliation->instructorList();
+
+        // No duplicates — same linked member, or same free-text name.
+        $dup = collect($coaches)->contains(fn ($c) => $userId
+            ? ($c['user_id'] ?? null) === $userId
+            : mb_strtolower($c['name']) === mb_strtolower($name) && empty($c['user_id']));
+        if (! $dup) {
+            $coaches[] = ['name' => $name, 'user_id' => $userId];
+            $affiliation->update(['coaches' => $coaches]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Instructor added.',
+            'instructors' => $this->instructorPayload($affiliation->fresh()),
+        ]);
+    }
+
+    /** Remove an instructor from an affiliation by its index in the list. */
+    public function destroyAffiliationInstructor(\Illuminate\Http\Request $request, $id, $affiliationId)
+    {
+        $this->authorizeForMember((int) $id);
+
+        $member = User::findOrFail($id);
+        $affiliation = $member->clubAffiliations()->findOrFail($affiliationId);
+
+        $validated = $request->validate(['index' => 'required|integer|min:0']);
+        $coaches = $affiliation->instructorList();
+
+        if (! array_key_exists($validated['index'], $coaches)) {
+            return response()->json(['success' => false, 'message' => 'Instructor not found.'], 404);
+        }
+
+        unset($coaches[$validated['index']]);
+        $affiliation->update(['coaches' => array_values($coaches)]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Instructor removed.',
+            'instructors' => $this->instructorPayload($affiliation->fresh()),
+        ]);
+    }
+
     private function affiliationBounds(\App\Models\ClubAffiliation $affiliation): array
     {
         $end = $affiliation->end_date?->toDateString();
@@ -2046,6 +2268,14 @@ class MemberController extends Controller
             'uuid' => $skill->uuid,
             'skill_name' => $skill->skill_name,
             'activity' => $skill->activity?->tr('name') ?? $skill->activity_name,
+            // Deep-link to the encyclopedia entry this skill matches by name, if any.
+            'encyclopedia_url' => (function () use ($skill) {
+                $name = $skill->activity?->name ?? $skill->activity_name ?? $skill->skill_name;
+                $entry = \App\Models\ActivityCatalog::where('is_active', true)
+                    ->whereRaw('LOWER(name) = ?', [mb_strtolower(trim((string) $name))])->first();
+
+                return $entry ? route('activity.show', $entry->uuid) : null;
+            })(),
             'proficiency_level' => $skill->proficiency_level,
             'formatted_duration' => $skill->formatted_duration,
             'start_label' => $skill->start_date ? $skill->start_date->format('M Y') : null,
@@ -2102,9 +2332,46 @@ class MemberController extends Controller
         return response()->json(['success' => true, 'message' => 'Skill removed successfully.']);
     }
 
+    /** Folder an affiliation's uploaded media images live in (app-generated path). */
+    private function affiliationMediaFolder(User $member, \App\Models\ClubAffiliation $affiliation): string
+    {
+        return 'people/'.$member->uuid.'/affiliations/'.$affiliation->id.'/media';
+    }
+
+    /**
+     * Crop-upload target for affiliation media images. Re-encodes to an optimized
+     * WebP (max quality / minimal disk) and returns the stored path. Image types only.
+     */
+    public function uploadAffiliationMediaImage(\Illuminate\Http\Request $request, $id, $affiliationId)
+    {
+        $this->authorizeForMember($id);
+
+        $member = User::findOrFail($id);
+        $affiliation = $member->clubAffiliations()->findOrFail($affiliationId);
+
+        $request->validate([
+            'image' => 'required|string|starts_with:data:image/',
+        ]);
+
+        $folder = $this->affiliationMediaFolder($member, $affiliation);
+        $path = $this->storeOptimizedBase64Image($request->input('image'), $folder, 'media_'.uniqid());
+        if ($path === null) {
+            return response()->json(['success' => false, 'message' => 'Invalid or unsupported image.'], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'path' => $path,
+            'url' => asset('storage/'.$path),
+        ]);
+    }
+
     public function storeAffiliationMedia(\Illuminate\Http\Request $request, $id, $affiliationId)
     {
         $this->authorizeForMember($id);
+
+        $member = User::findOrFail($id);
+        $affiliation = $member->clubAffiliations()->findOrFail($affiliationId);
 
         $validated = $request->validate([
             'media_type' => 'required|in:certificate,photo,video,document',
@@ -2113,8 +2380,22 @@ class MemberController extends Controller
             'description' => 'nullable|string|max:500',
         ]);
 
-        $member = User::findOrFail($id);
-        $affiliation = $member->clubAffiliations()->findOrFail($affiliationId);
+        // For image types, media_url must be a path WE stored for THIS affiliation —
+        // never an arbitrary string or a pointer at someone else's file.
+        if (in_array($validated['media_type'], ['certificate', 'photo'], true)) {
+            $folder = $this->affiliationMediaFolder($member, $affiliation);
+            if (! str_starts_with($validated['media_url'], $folder.'/')
+                || ! \Illuminate\Support\Facades\Storage::disk('public')->exists($validated['media_url'])) {
+                return response()->json(['success' => false, 'message' => 'Please upload an image first.'], 422);
+            }
+        } else {
+            // Video / document are external links — must be a valid http(s) URL.
+            if (! filter_var($validated['media_url'], FILTER_VALIDATE_URL)
+                || ! in_array(parse_url($validated['media_url'], PHP_URL_SCHEME), ['http', 'https'], true)) {
+                return response()->json(['success' => false, 'message' => 'Please enter a valid link (http/https).'], 422);
+            }
+        }
+
         $media = $affiliation->affiliationMedia()->create($validated);
 
         return response()->json([
@@ -2124,8 +2405,10 @@ class MemberController extends Controller
             'media' => [
                 'id' => $media->id,
                 'title' => $media->title,
+                'media_type' => $media->media_type,
                 'full_url' => $media->full_url,
                 'icon_class' => $media->icon_class,
+                'is_image' => in_array($media->media_type, ['certificate', 'photo'], true),
             ],
         ]);
     }

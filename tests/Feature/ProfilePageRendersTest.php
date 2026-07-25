@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ClubAffiliation;
 use App\Models\Goal;
 use App\Models\MemberEvent;
 use Tests\TestCase;
@@ -30,6 +31,30 @@ class ProfilePageRendersTest extends TestCase
             ->assertOk()
             ->assertSee('Goal Tracking')
             ->assertSee('Personal Event Log');
+    }
+
+    /**
+     * Regression: an affiliation whose `coaches` holds structured {name, user_id}
+     * instructor objects (added via the instructor picker) must still render — the
+     * old `implode(', ', $coaches)` threw "Array to string conversion" on objects.
+     */
+    public function test_profile_renders_with_structured_instructor_coaches(): void
+    {
+        $user = $this->createUser();
+        ClubAffiliation::create([
+            'member_id' => $user->id, 'tenant_id' => null, 'club_name' => 'Old Dojang',
+            'start_date' => now()->subYears(2)->toDateString(),
+            'coaches' => [
+                ['name' => 'Master A', 'user_id' => null],
+                ['name' => 'Master B', 'user_id' => null],
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->get("/member/{$user->uuid}")
+            ->assertOk()
+            ->assertSee('Master A')
+            ->assertSee('Master B');
     }
 
     public function test_mobile_member_profile_renders_clubs_and_new_tabs(): void

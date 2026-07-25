@@ -2,17 +2,26 @@
 
 namespace App\Models;
 
+use App\Traits\DeletesUploadedFiles;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AffiliationMedia extends Model
 {
+    use DeletesUploadedFiles;
+
     protected $fillable = [
         'club_affiliation_id',
         'media_type',
         'media_url',
         'title',
         'description',
+    ];
+
+    // Purge the uploaded image before the row is deleted. External URLs (video /
+    // document links) simply aren't files on disk, so the delete is a safe no-op.
+    protected array $fileUploads = [
+        'media_url' => 'public',
     ];
 
     /**

@@ -50,8 +50,8 @@
 @endphp
 <div x-data="{ tab: window.location.hash === '#packages' ? 'packages' : 'about' }" class="min-h-screen bg-background pb-24">
 
-    {{-- ===== Hero ===== --}}
-    <div class="relative h-56">
+    {{-- ===== Hero (16:9) ===== --}}
+    <div class="relative aspect-video">
         @if($cover)
             <img src="{{ $cover }}" alt="" class="absolute inset-0 w-full h-full object-cover">
         @else

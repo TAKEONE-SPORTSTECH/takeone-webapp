@@ -37,7 +37,7 @@
     $clubs = $user->clubInstructors->filter(fn($i) => $i->tenant);
     $statCards = [
         ['bi-people-fill', $stats['clients'], __('trainer.clients')],
-        ['bi-lightning-charge-fill', $stats['sessions'], __('trainer.sessions_per_month')],
+        ['bi-lightning-charge-fill', $stats['sessions'], __('trainer.sessions_per_week')],
         ['bi-star-fill', number_format($stats['rating'], 1), __('trainer.rating')],
         ['bi-award-fill', $stats['certifications'], __('trainer.skills')],
     ];
@@ -84,9 +84,11 @@
                 <i class="bi bi-star-fill text-amber-300"></i> {{ number_format($stats['rating'], 1) }}
                 <span class="text-white/60">({{ $reviews->count() }})</span>
             </span>
-            @if($user->experience_years)
+            {{-- Live, accumulating trainer experience (prior coaching + platform tenure). --}}
+            @php $experienceLabel = \App\Support\TrainerExperience::label($user); @endphp
+            @if($experienceLabel)
                 <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/15 backdrop-blur border border-white/25 text-xs font-semibold">
-                    <i class="bi bi-fire text-amber-300"></i> {{ $user->experience_years }} {{ $user->experience_years == 1 ? __('trainer.yr') : __('trainer.yrs') }}
+                    <i class="bi bi-fire text-amber-300"></i> {{ $experienceLabel }}
                 </span>
             @endif
         </div>
@@ -124,12 +126,38 @@
                 <p class="text-[13px] text-foreground/90 whitespace-pre-line">{{ $user->bio ?: __('trainer.no_bio') }}</p>
             </div>
 
-            @if(($skills ?? collect())->count())
+            @if(($skillCards ?? collect())->count())
                 <div>
                     <p class="px-1 mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground/80">{{ __('trainer.specialities') }}</p>
-                    <div class="flex flex-wrap gap-2">
-                        @foreach($skills as $skill)
-                            <span class="tr-chip px-3 py-1.5 rounded-full text-[12px] font-semibold text-primary"><i class="bi bi-patch-check mr-1"></i>{{ $skill }}</span>
+                    <div class="space-y-2.5">
+                        @foreach($skillCards as $sk)
+                            @if($sk['uuid'])
+                                <a href="{{ route('activity.show', $sk['uuid']) }}"
+                                   class="m-press flex items-center gap-3 bg-white rounded-2xl shadow-sm border border-gray-100 p-3">
+                                    <span class="w-12 h-12 rounded-xl bg-primary/10 overflow-hidden flex items-center justify-center flex-shrink-0">
+                                        @if($sk['image'])<img src="{{ $sk['image'] }}" alt="" class="w-full h-full object-cover">@else<i class="bi bi-patch-check text-primary text-lg"></i>@endif
+                                    </span>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="font-semibold text-foreground truncate">{{ $sk['name'] }}</p>
+                                        <p class="text-[12px] text-muted-foreground truncate">
+                                            @if($sk['years'])<i class="bi bi-hourglass-split"></i> {{ $sk['years'] }} {{ __('trainer.trainer_show_experience_word') }}@else{{ __('trainer.trainer_show_specialty') }}@endif
+                                        </p>
+                                    </div>
+                                    <i class="bi bi-chevron-right text-muted-foreground/60"></i>
+                                </a>
+                            @else
+                                <div class="flex items-center gap-3 bg-white rounded-2xl shadow-sm border border-gray-100 p-3">
+                                    <span class="w-12 h-12 rounded-xl bg-primary/10 overflow-hidden flex items-center justify-center flex-shrink-0">
+                                        @if($sk['image'])<img src="{{ $sk['image'] }}" alt="" class="w-full h-full object-cover">@else<i class="bi bi-patch-check text-primary text-lg"></i>@endif
+                                    </span>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="font-semibold text-foreground truncate">{{ $sk['name'] }}</p>
+                                        <p class="text-[12px] text-muted-foreground truncate">
+                                            @if($sk['years'])<i class="bi bi-hourglass-split"></i> {{ $sk['years'] }} {{ __('trainer.trainer_show_experience_word') }}@else{{ __('trainer.trainer_show_specialty') }}@endif
+                                        </p>
+                                    </div>
+                                </div>
+                            @endif
                         @endforeach
                     </div>
                 </div>
@@ -190,17 +218,6 @@
 
         {{-- ===== Reviews ===== --}}
         <div x-show="tab==='reviews'" x-cloak x-transition.opacity class="space-y-3">
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-center gap-4">
-                <div class="text-center">
-                    <p class="text-3xl font-extrabold text-foreground leading-none">{{ number_format($stats['rating'], 1) }}</p>
-                    <div class="flex gap-0.5 mt-1 text-amber-400 text-[12px]">@for($i=1;$i<=5;$i++)<i class="bi {{ $i <= round($stats['rating']) ? 'bi-star-fill' : 'bi-star' }}"></i>@endfor</div>
-                </div>
-                <div class="flex-1 border-l border-gray-100 pl-4">
-                    <p class="text-sm font-semibold text-foreground">{{ $reviews->count() }} {{ __('trainer.reviews_count') }}</p>
-                    <p class="text-[12px] text-muted-foreground">{{ __('trainer.from_athletes') }}</p>
-                </div>
-            </div>
-
             {{-- Class reactions (emojis athletes left) --}}
             @if(!empty($reactionTotal) && $reactionTotal > 0)
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">

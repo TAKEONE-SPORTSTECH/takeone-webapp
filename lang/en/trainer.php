@@ -9,6 +9,7 @@ return [
     // Stat strip
     'clients'               => 'Clients',
     'sessions_per_month'    => 'Sessions/mo',
+    'sessions_per_week'     => 'Classes/week',
     'rating'                => 'Rating',
     'skills'                => 'Skills',
 
@@ -59,6 +60,7 @@ return [
     'trainer_show_specialty' => 'Specialty',
     'trainer_show_trainer_fallback' => 'Trainer',
     'trainer_show_experience' => 'Experience',
+    'exp_new' => 'New',
     'trainer_show_classes_taught' => 'Classes Taught',
     'trainer_show_achievements_title' => 'Achievements & Milestones',
     'trainer_show_achievements_subtitle' => 'Recognition for excellence and dedication',

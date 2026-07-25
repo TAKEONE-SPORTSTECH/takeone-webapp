@@ -251,7 +251,8 @@
     </div>
 
     <!-- Navigation Tabs -->
-    <div x-data="{ activeTab: (window.location.hash ? window.location.hash.substring(1) : 'overview') }">
+    <div x-data="{ activeTab: (window.location.hash ? window.location.hash.substring(1) : 'overview') }"
+         x-init="$watch('activeTab', v => { try { history.replaceState(history.state, '', '#' + v); } catch(e) {} })">
         <div class="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
         <ul class="nav nav-tabs nav-fill mb-4 flex-nowrap min-w-max md:min-w-0 md:flex-wrap" id="profileTabs" role="tablist">
             <li class="nav-item" role="presentation">
@@ -1589,7 +1590,7 @@
 
         {{-- ===== Worked (work history) Tab ===== --}}
         @php
-            $workJsD = $workHistory->map(fn ($w) => [
+            $realWorkD = $workHistory->map(fn ($w) => [
                 'id' => $w->id, 'title' => $w->title, 'organization' => $w->organization,
                 'employment_type' => $w->employment_type, 'location' => $w->location,
                 'start_date' => optional($w->start_date)->format('Y-m-d'),
@@ -1597,7 +1598,53 @@
                 'start_label' => optional($w->start_date)->format('M Y'),
                 'end_label' => $w->end_date ? $w->end_date->format('M Y') : null,
                 'current' => $w->isCurrent(), 'description' => $w->description,
-            ])->values();
+                'derived' => false, 'logo' => null, 'skills' => [], 'club_url' => null, '_sort' => optional($w->start_date)->timestamp ?? 0,
+            ]);
+
+            $workCatalogByNameD = \App\Models\ActivityCatalog::where('is_active', true)
+                ->get(['uuid', 'name'])
+                ->keyBy(fn ($a) => mb_strtolower(trim($a->name)));
+
+            // Platform trainer/staff roles are real work history — surfaced here live + read-only.
+            $derivedWorkD = \App\Models\ClubInstructor::where('user_id', $user->id)
+                ->with(['tenant:id,club_name,logo,slug,country', 'activities:id,name'])
+                ->get()
+                ->map(function ($ci) use ($workCatalogByNameD) {
+                    $start = $ci->created_at;
+                    $active = (bool) $ci->is_active;
+                    $end = $active ? null : $ci->updated_at;
+                    $club = $ci->tenant;
+                    $clubUrl = ($club && $club->slug && $club->country)
+                        ? route('clubs.show', ['country' => strtolower($club->country), 'slug' => $club->slug])
+                        : null;
+
+                    return [
+                        'id' => 'trainer-'.$ci->id,
+                        'title' => $ci->role ?: ucfirst($ci->staff_type ?? 'instructor'),
+                        'organization' => optional($club)->club_name,
+                        'employment_type' => $ci->compensation_type ? ucfirst($ci->compensation_type) : null,
+                        'location' => null,
+                        'start_date' => optional($start)->format('Y-m-d'),
+                        'end_date' => optional($end)->format('Y-m-d'),
+                        'start_label' => optional($start)->format('M Y'),
+                        'end_label' => $end ? $end->format('M Y') : null,
+                        'current' => $active, 'description' => null,
+                        'derived' => true,
+                        'logo' => optional($club)->logo ? asset('storage/'.$club->logo) : null,
+                        'skills' => $ci->activities->map(fn ($a) => [
+                            'name' => $a->name,
+                            'url' => ($u = optional($workCatalogByNameD->get(mb_strtolower(trim((string) $a->name))))->uuid)
+                                ? route('activity.show', $u) : null,
+                        ])->values()->all(),
+                        'club_url' => $clubUrl,
+                        '_sort' => optional($start)->timestamp ?? 0,
+                    ];
+                });
+
+            $workJsD = $derivedWorkD->concat($realWorkD)
+                ->sortBy([['current', 'desc'], ['_sort', 'desc']])
+                ->map(fn ($w) => collect($w)->except('_sort')->all())
+                ->values();
             $employmentTypesD = ['Full-time','Part-time','Contract','Freelance','Volunteer','Internship'];
         @endphp
         <div x-show="activeTab === 'worked'" x-transition id="worked" role="tabpanel"
@@ -1625,23 +1672,39 @@
 
             <div class="space-y-3">
                 <template x-for="w in items" :key="w.id">
-                    <div class="relative bg-white rounded-xl shadow-sm border border-gray-100 p-4 overflow-hidden">
+                    <div class="relative bg-white rounded-xl shadow-sm border border-gray-100 p-4 overflow-hidden transition-shadow"
+                         :class="w.club_url && 'cursor-pointer hover:shadow-md'"
+                         @click="w.club_url && (window.location.href = w.club_url)">
                         <span class="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 w-1" :class="w.current ? 'bg-green-400/80' : 'bg-gray-300'"></span>
                         <div class="flex items-start gap-3">
-                            <span class="w-11 h-11 rounded-lg bg-accent grid place-items-center text-primary flex-shrink-0 ring-1 ring-primary/10"><i class="bi bi-briefcase-fill"></i></span>
+                            <span class="w-12 h-12 rounded-lg bg-accent grid place-items-center text-primary flex-shrink-0 ring-1 ring-primary/10 overflow-hidden">
+                                <template x-if="w.logo"><img :src="w.logo" alt="" class="w-full h-full object-cover"></template>
+                                <template x-if="!w.logo"><i class="bi bi-briefcase-fill text-lg"></i></template>
+                            </span>
                             <div class="min-w-0 flex-1">
+                                {{-- Title + organization, status badge to the right --}}
                                 <div class="flex items-start justify-between gap-2">
-                                    <p class="font-bold text-gray-900 text-sm leading-snug" x-text="w.title"></p>
+                                    <div class="min-w-0">
+                                        <p class="font-bold text-gray-900 text-sm leading-snug truncate" x-text="w.title"></p>
+                                        <p class="text-xs font-medium text-gray-500 truncate mt-0.5" x-text="w.organization"></p>
+                                    </div>
                                     <template x-if="w.current"><span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>{{ __('member.work_current') }}</span></template>
                                 </div>
-                                <p class="text-xs font-medium text-gray-600 mt-0.5" x-text="w.organization"></p>
-                                <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-                                    <span class="inline-flex items-center gap-1.5"><i class="bi bi-calendar-range"></i><span x-text="w.start_label + ' – ' + (w.end_label || i18n.present)"></span></span>
-                                    <span class="inline-flex items-center gap-1.5" x-show="w.employment_type"><i class="bi bi-person-badge"></i><span x-text="w.employment_type"></span></span>
-                                    <span class="inline-flex items-center gap-1.5" x-show="w.location"><i class="bi bi-geo-alt"></i><span x-text="w.location"></span></span>
+                                {{-- Compact inline facts — one line, icon + text (no pills, so the card stays short) --}}
+                                <div class="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-muted-foreground">
+                                    <span class="inline-flex items-center gap-1"><i class="bi bi-calendar-range text-primary/50"></i><span x-text="w.start_label + ' – ' + (w.end_label || i18n.present)"></span></span>
+                                    <span x-show="w.employment_type" class="inline-flex items-center gap-1"><i class="bi bi-cash-coin text-primary/50"></i><span x-text="w.employment_type"></span></span>
+                                    <span x-show="w.location" class="inline-flex items-center gap-1 min-w-0"><i class="bi bi-geo-alt text-primary/50 flex-shrink-0"></i><span class="truncate" x-text="w.location"></span></span>
+                                    <template x-for="(sk, si) in (w.skills || [])" :key="si">
+                                        <span class="inline-flex items-center gap-1 text-primary font-semibold" :class="sk.url && 'cursor-pointer hover:underline'"
+                                              @click.stop="sk.url && (window.location.href = sk.url)"><i class="bi bi-mortarboard-fill text-primary/60"></i><span x-text="sk.name"></span></span>
+                                    </template>
+                                    <template x-if="w.derived">
+                                        <i class="bi bi-shield-fill-check text-primary/70" title="{{ __('member.work_platform_role_note') }}"></i>
+                                    </template>
                                 </div>
                                 <p class="text-[11px] text-gray-600 mt-2 whitespace-pre-line" x-show="w.description" x-text="w.description"></p>
-                                <template x-if="canEdit">
+                                <template x-if="canEdit && !w.derived">
                                     <div class="mt-2 flex items-center gap-3">
                                         <button type="button" @click="openEdit(w)" class="text-[11px] font-medium text-gray-500 hover:text-primary inline-flex items-center gap-1"><i class="bi bi-pencil"></i>{{ __('Edit') }}</button>
                                         <button type="button" @click="remove(w)" class="text-[11px] font-medium text-gray-500 hover:text-red-600 inline-flex items-center gap-1"><i class="bi bi-trash"></i>{{ __('Delete') }}</button>

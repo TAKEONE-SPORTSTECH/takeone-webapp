@@ -51,7 +51,7 @@
 
     $statCards = [
         ['label' => __('trainer.trainer_show_clients'),        'value' => $stats['clients'],        'icon' => 'bi-people-fill'],
-        ['label' => __('trainer.trainer_show_sessions'),       'value' => $stats['sessions'],       'icon' => 'bi-activity'],
+        ['label' => __('trainer.sessions_per_week'),       'value' => $stats['sessions'],       'icon' => 'bi-activity'],
         ['label' => __('trainer.trainer_show_rating'),         'value' => $stats['rating'] > 0 ? $stats['rating'] : '—', 'icon' => 'bi-star-fill'],
         ['label' => __('trainer.trainer_show_certifications'), 'value' => $stats['certifications'], 'icon' => 'bi-patch-check-fill'],
     ];
@@ -106,10 +106,12 @@
                             <span class="font-bold text-white">{{ $stats['rating'] > 0 ? $stats['rating'] : 'N/A' }}</span>
                             <span class="text-white/70">({{ $reviews->count() }} {{ __('trainer.trainer_show_tab_reviews') }})</span>
                         </span>
-                        @if($user->experience_years)
+                        {{-- Live, accumulating trainer experience (prior coaching + platform tenure). --}}
+                        @php $experienceLabel = \App\Support\TrainerExperience::label($user); @endphp
+                        @if($experienceLabel)
                             <span class="inline-flex items-center gap-1.5">
                                 <i class="bi bi-graph-up-arrow"></i>
-                                {{ $user->experience_years }} {{ $user->experience_years == 1 ? __('trainer.trainer_show_year') : __('trainer.trainer_show_years') }} {{ __('trainer.trainer_show_experience_word') }}
+                                {{ $experienceLabel }} {{ __('trainer.trainer_show_experience_word') }}
                             </span>
                         @endif
                         @if($club)
@@ -164,12 +166,21 @@
                 {{-- Certifications / skills --}}
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
                     <p class="tp-section-kicker mb-3">{{ __('trainer.trainer_show_certifications') }}</p>
-                    @if(count($skills) > 0)
+                    @if(($skillCards ?? collect())->count() > 0)
                         <div class="flex flex-wrap gap-2">
-                            @foreach($skills as $skill)
-                                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-accent text-primary">
-                                    <i class="bi bi-patch-check-fill"></i>{{ $skill }}
-                                </span>
+                            @foreach($skillCards as $sk)
+                                @if($sk['uuid'])
+                                    <a href="{{ route('activity.show', $sk['uuid']) }}"
+                                       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-accent text-primary no-underline hover:bg-primary/15 transition-colors">
+                                        <i class="bi bi-patch-check-fill"></i>{{ $sk['name'] }}
+                                        @if($sk['years'])<span class="inline-flex items-center gap-0.5 text-[10px] font-semibold text-primary/70"><i class="bi bi-hourglass-split"></i>{{ $sk['years'] }}</span>@endif
+                                    </a>
+                                @else
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-accent text-primary">
+                                        <i class="bi bi-patch-check-fill"></i>{{ $sk['name'] }}
+                                        @if($sk['years'])<span class="inline-flex items-center gap-0.5 text-[10px] font-semibold text-primary/70"><i class="bi bi-hourglass-split"></i>{{ $sk['years'] }}</span>@endif
+                                    </span>
+                                @endif
                             @endforeach
                         </div>
                     @else
@@ -275,7 +286,7 @@
                         @php
                             $highlights = [
                                 ['label'=>__('trainer.trainer_show_specialty'),   'value'=>$role ?? __('trainer.trainer_show_trainer_fallback'), 'icon'=>'bi-award-fill'],
-                                ['label'=>__('trainer.trainer_show_experience'),  'value'=>($user->experience_years ?? 0).' '.(($user->experience_years ?? 0) == 1 ? __('trainer.trainer_show_year') : __('trainer.trainer_show_years')), 'icon'=>'bi-graph-up-arrow'],
+                                ['label'=>__('trainer.trainer_show_experience'),  'value'=>($experienceLabel ?? __('trainer.exp_new')), 'icon'=>'bi-graph-up-arrow'],
                                 ['label'=>__('trainer.trainer_show_rating'),      'value'=>($stats['rating'] > 0 ? $stats['rating'] : '—'), 'icon'=>'bi-star-fill'],
                             ];
                         @endphp

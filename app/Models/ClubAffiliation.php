@@ -27,6 +27,33 @@ class ClubAffiliation extends Model
     ];
 
     /**
+     * Normalize the `coaches` JSON into structured instructor entries.
+     *
+     * `coaches` historically held a flat array of name strings; instructors added
+     * through the UI store `{name, user_id}` objects (user_id links a real member).
+     * Both shapes are accepted on read so old rows keep working.
+     *
+     * @return array<int, array{name:string, user_id:int|null}>
+     */
+    public function instructorList(): array
+    {
+        return collect($this->coaches ?? [])
+            ->map(function ($c) {
+                if (is_array($c)) {
+                    $name = trim((string) ($c['name'] ?? ''));
+
+                    return $name === '' ? null : ['name' => $name, 'user_id' => $c['user_id'] ?? null];
+                }
+                $name = trim((string) $c);
+
+                return $name === '' ? null : ['name' => $name, 'user_id' => null];
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
      * Get the member that owns the affiliation.
      */
     public function member(): BelongsTo

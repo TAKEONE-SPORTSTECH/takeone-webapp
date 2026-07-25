@@ -87,13 +87,10 @@
             <!-- Timeline -->
             <div class="grid grid-cols-12 gap-4">
                 <div class="col-span-12">
-                    <div class="card shadow-sm border-0">
-                        <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
-                            <h6 class="card-title mb-0 text-white">
-                                <i class="bi bi-clock-history me-2"></i>{{ __('member.partials_affiliations_enhanced_membership_timeline') }}
-                            </h6>
-                        </div>
-                        <div class="card-body p-4" style="max-height: 800px; overflow-y: auto;">
+                    {{-- Membership Timeline card removed — the timeline now sits flush,
+                         no gradient header / bordered card / forced inner scroll. --}}
+                    <div>
+                        <div>
                             <div class="timeline-enhanced" id="affiliationsTimeline">
                                 @foreach($clubAffiliations as $index => $affiliation)
                                     @php
@@ -106,7 +103,7 @@
                                         $skillNames = $affiliationSkills->pluck('skill_name')->unique()->implode(',');
                                     @endphp
 
-                                    <div class="timeline-item-enhanced mb-4" id="affiliation-{{ $affiliation->id }}" data-affiliation-id="{{ $affiliation->id }}" data-skills="{{ $skillNames }}">
+                                    <div class="timeline-item-enhanced mb-4" id="affiliation-{{ $affiliation->id }}" data-affiliation-id="{{ $affiliation->id }}" data-start-date="{{ $affiliation->start_date?->format('Y-m-d') }}" data-skills="{{ $skillNames }}">
                                         <!-- Timeline Marker -->
                                         <div class="timeline-marker-enhanced {{ $isOngoing ? 'pulse' : '' }}"></div>
 
@@ -167,7 +164,6 @@
                                                                 data-end-date="{{ $affiliation->end_date ? $affiliation->end_date->format('Y-m-d') : '' }}"
                                                                 data-location="{{ $affiliation->location }}"
                                                                 data-description="{{ $affiliation->description }}"
-                                                                data-coaches="{{ is_array($affiliation->coaches) ? implode(', ', $affiliation->coaches) : '' }}"
                                                                 data-member-id="{{ $user->id }}"
                                                                 data-bs-toggle="modal"
                                                                 data-bs-target="#editAffiliationModal"
@@ -213,19 +209,25 @@
                                                     </div>
                                                     <div class="flex gap-2 flex-wrap" id="skills-list-{{ $affiliation->id }}" style="{{ $affiliationSkills->count() > 0 ? '' : 'display:none;' }}">
                                                             @foreach($affiliationSkills as $skill)
+                                                                @php
+                                                                    $skillBadgeColor = $skill->proficiency_level == 'expert' ? 'danger' : ($skill->proficiency_level == 'advanced' ? 'warning' : ($skill->proficiency_level == 'intermediate' ? 'info' : 'secondary'));
+                                                                    $encyclopediaUuid = $skillEncyclopedia[$skill->id] ?? null;
+                                                                    $skillBadgeTitle = '<strong>'.e($skill->skill_name).'</strong><br>'
+                                                                        .__('member.partials_affiliations_enhanced_tooltip_proficiency').' '.ucfirst($skill->proficiency_level).'<br>'
+                                                                        .__('member.partials_affiliations_enhanced_tooltip_duration').' '.$skill->formatted_duration.'<br>'
+                                                                        .($skill->instructor ? __('member.partials_affiliations_enhanced_tooltip_instructor').' '.e($skill->instructor->user->full_name ?? __('member.partials_affiliations_enhanced_unknown')).'<br>' : '')
+                                                                        .($skill->start_date ? __('member.partials_affiliations_enhanced_tooltip_started').' '.$skill->start_date->format('M Y') : '')
+                                                                        .($encyclopediaUuid ? '<br>'.__('Open in encyclopedia') : '');
+                                                                @endphp
                                                                 <div class="d-inline-flex align-items-center gap-1" id="skill-{{ $skill->id }}">
-                                                                    <span class="badge skill-badge bg-{{ $skill->proficiency_level == 'expert' ? 'danger' : ($skill->proficiency_level == 'advanced' ? 'warning' : ($skill->proficiency_level == 'intermediate' ? 'info' : 'secondary')) }}"
-                                                                          data-bs-toggle="tooltip"
-                                                                          data-bs-placement="top"
-                                                                          data-bs-html="true"
-                                                                          title="<strong>{{ $skill->skill_name }}</strong><br>
-                                                                                 {{ __('member.partials_affiliations_enhanced_tooltip_proficiency') }} {{ ucfirst($skill->proficiency_level) }}<br>
-                                                                                 {{ __('member.partials_affiliations_enhanced_tooltip_duration') }} {{ $skill->formatted_duration }}<br>
-                                                                                 @if($skill->instructor){{ __('member.partials_affiliations_enhanced_tooltip_instructor') }} {{ $skill->instructor->user->full_name ?? __('member.partials_affiliations_enhanced_unknown') }}<br>@endif
-                                                                                 @if($skill->start_date){{ __('member.partials_affiliations_enhanced_tooltip_started') }} {{ $skill->start_date->format('M Y') }}@endif">
-                                                                        <i class="bi bi-star-fill me-1"></i>{{ $skill->skill_name }}
+                                                                    {{-- Links to the encyclopedia (activity directory) when the skill matches a catalog entry. --}}
+                                                                    <{{ $encyclopediaUuid ? 'a' : 'span' }} class="badge skill-badge bg-{{ $skillBadgeColor }}{{ $encyclopediaUuid ? ' text-decoration-none' : '' }}"
+                                                                          @if($encyclopediaUuid) href="{{ route('activity.show', $encyclopediaUuid) }}" @endif
+                                                                          data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                                                          title="{{ $skillBadgeTitle }}">
+                                                                        <i class="bi {{ $encyclopediaUuid ? 'bi-book-half' : 'bi-star-fill' }} me-1"></i>{{ $skill->skill_name }}
                                                                         <span class="badge bg-white text-dark ms-1" style="font-size: 0.65rem;">{{ ucfirst($skill->proficiency_level) }}</span>
-                                                                    </span>
+                                                                    </{{ $encyclopediaUuid ? 'a' : 'span' }}>
                                                                     <button type="button"
                                                                             class="btn-delete-skill"
                                                                             style="background: none; border: none; color: #dc3545; padding: 0 2px; font-size: 0.8rem; line-height: 1;"
@@ -260,34 +262,57 @@
                                                     </div>
                                                 @endif
 
-                                                <!-- Instructors -->
-                                                @php
-                                                    $instructors = $affiliationSkills->pluck('instructor')->filter()->unique('id');
-                                                @endphp
-                                                @if($instructors->count() > 0)
-                                                    <div class="mb-3">
-                                                        <h6 class="font-bold mb-2">
-                                                            <i class="bi bi-people-fill me-2 text-success"></i>{{ __('member.partials_affiliations_enhanced_instructors') }} ({{ $instructors->count() }})
+                                                {{-- Instructors — member-managed: add a platform member or a free-text name. --}}
+                                                @php $affInstructors = $affiliation->instructorList(); @endphp
+                                                <div class="mb-3">
+                                                    <div class="flex justify-between items-center mb-2">
+                                                        <h6 class="font-bold mb-0">
+                                                            <i class="bi bi-people-fill me-2 text-success"></i>{{ __('member.partials_affiliations_enhanced_instructors') }} (<span id="instructors-count-{{ $affiliation->id }}">{{ count($affInstructors) }}</span>)
                                                         </h6>
-                                                        <div class="flex gap-2 flex-wrap">
-                                                            @foreach($instructors as $instructor)
-                                                                <div class="instructor-badge" role="button"
-                                                                     data-bs-toggle="modal"
-                                                                     data-bs-target="#instructorModal_{{ $instructor->id }}">
-                                                                    <div class="flex items-center gap-2 p-2 bg-muted rounded">
-                                                                        <div class="rounded-full bg-success text-white flex items-center justify-center" style="width: 32px; height: 32px; font-size: 0.8rem;">
-                                                                            {{ mb_strtoupper(mb_substr($instructor->user->full_name ?? 'I', 0, 1, 'UTF-8'), 'UTF-8') }}
-                                                                        </div>
-                                                                        <div>
-                                                                            <div class="font-semibold text-sm">{{ $instructor->user->full_name ?? __('member.partials_affiliations_enhanced_unknown') }}</div>
-                                                                            <div class="text-muted-foreground" style="font-size: 0.7rem;">{{ $instructor->role ?? __('member.partials_affiliations_enhanced_instructor') }}</div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            @endforeach
-                                                        </div>
+                                                        <button type="button"
+                                                                class="btn btn-sm btn-outline-success btn-add-instructor"
+                                                                data-affiliation-id="{{ $affiliation->id }}"
+                                                                data-member-id="{{ $user->id }}"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#addInstructorModal">
+                                                            <i class="bi bi-plus-circle me-1"></i> {{ __('Add Instructor') }}
+                                                        </button>
                                                     </div>
-                                                @endif
+                                                    <div class="flex gap-2 flex-wrap" id="instructors-list-{{ $affiliation->id }}" style="{{ count($affInstructors) ? '' : 'display:none;' }}">
+                                                        @foreach($affInstructors as $i => $ins)
+                                                            @php
+                                                                $linkedUser = $ins['user_id'] ? \App\Models\User::find($ins['user_id']) : null;
+                                                                $insName = $linkedUser ? ($linkedUser->full_name ?? $linkedUser->name) : $ins['name'];
+                                                                $insAvatar = $linkedUser && $linkedUser->profile_picture ? asset('storage/'.$linkedUser->profile_picture) : null;
+                                                                // Round avatar frame: real photo when we have one, else the classic
+                                                                // "unknown user" placeholder (grey silhouette on white).
+                                                                $insAvatarHtml = '<span class="inst-badge-avatar">'
+                                                                    .($insAvatar
+                                                                        ? '<img src="'.e($insAvatar).'" alt="">'
+                                                                        : '<i class="bi bi-person-fill"></i>')
+                                                                    .'</span>';
+                                                            @endphp
+                                                            <div class="d-inline-flex align-items-center gap-1" id="instructor-{{ $affiliation->id }}-{{ $i }}" data-index="{{ $i }}">
+                                                                @if($linkedUser)
+                                                                    <a href="{{ route('people.show', $linkedUser->uuid) }}"
+                                                                       class="badge skill-badge bg-success text-decoration-none inst-badge"
+                                                                       data-bs-toggle="tooltip" data-bs-placement="top" title="{{ __('Member') }}">
+                                                                        {!! $insAvatarHtml !!}{{ $insName }}
+                                                                    </a>
+                                                                @else
+                                                                    <span class="badge skill-badge bg-success inst-badge"
+                                                                          data-bs-toggle="tooltip" data-bs-placement="top" title="{{ __('member.partials_affiliations_enhanced_instructor') }}">
+                                                                        {!! $insAvatarHtml !!}{{ $insName }}
+                                                                    </span>
+                                                                @endif
+                                                                <button type="button" class="btn-delete-instructor" style="background:none;border:none;color:#dc3545;padding:0 2px;font-size:0.8rem;line-height:1;"
+                                                                        data-affiliation-id="{{ $affiliation->id }}" data-member-id="{{ $user->id }}" data-index="{{ $i }}" title="{{ __('Remove') }}">
+                                                                    <i class="bi bi-x-circle"></i>
+                                                                </button>
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+                                                </div>
 
                                                 <!-- Media & Certificates -->
                                                 <div class="pt-2 border-top">
@@ -701,7 +726,11 @@
                 <h5 class="modal-title text-white"><i class="bi bi-plus-circle me-2"></i>{{ __('member.partials_affiliations_enhanced_add_club_affiliation') }}</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="addAffiliationForm">
+            {{-- Dates live in Alpine so the date-picker component can bind them (Design Rule #4:
+                 no native date input). Reset on open, since form.reset() cannot clear
+                 Alpine state. --}}
+            <form id="addAffiliationForm" x-data="{ startDate: '', endDate: '' }"
+                  @add-affiliation:reset.window="startDate = ''; endDate = ''">
                 @csrf
                 <div class="modal-body">
                     <!-- Club source toggle -->
@@ -732,20 +761,16 @@
                     <div class="row g-3 mb-3">
                         <div class="col-6">
                             <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_start_date') }} <span class="text-danger">*</span></label>
-                            <input type="date" name="start_date" class="form-control" required>
+                            <x-date-picker variant="dropdown" model="startDate" name="start_date" :max="now()->toDateString()" />
                         </div>
                         <div class="col-6">
                             <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_end_date') }} <small class="text-muted">{{ __('member.partials_affiliations_enhanced_leave_blank_ongoing') }}</small></label>
-                            <input type="date" name="end_date" class="form-control">
+                            <x-date-picker variant="dropdown" model="endDate" name="end_date" min-expr="startDate" />
                         </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_location') }}</label>
                         <input type="text" name="location" id="addLocationInput" class="form-control" placeholder="{{ __('member.partials_affiliations_enhanced_location_placeholder') }}">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_coaches') }} <small class="text-muted">{{ __('member.partials_affiliations_enhanced_comma_separated') }}</small></label>
-                        <input type="text" name="coaches" class="form-control" placeholder="{{ __('member.partials_affiliations_enhanced_coaches_placeholder') }}">
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_description') }}</label>
@@ -769,7 +794,9 @@
                 <h5 class="modal-title text-white"><i class="bi bi-pencil me-2"></i>{{ __('member.partials_affiliations_enhanced_edit_club_affiliation') }}</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="editAffiliationForm">
+            {{-- Same as the add form: dates are Alpine state so the date-picker can bind
+                 them. populateEditModal() writes into this scope. --}}
+            <form id="editAffiliationForm" x-data="{ startDate: '', endDate: '' }">
                 @csrf
                 <input type="hidden" id="editAffiliationId">
                 <input type="hidden" id="editAffiliationMemberId">
@@ -781,20 +808,16 @@
                     <div class="row g-3 mb-3">
                         <div class="col-6">
                             <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_start_date') }} <span class="text-danger">*</span></label>
-                            <input type="date" id="editStartDate" name="start_date" class="form-control" required>
+                            <x-date-picker variant="dropdown" model="startDate" name="start_date" :max="now()->toDateString()" />
                         </div>
                         <div class="col-6">
                             <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_end_date') }} <small class="text-muted">{{ __('member.partials_affiliations_enhanced_leave_blank_ongoing') }}</small></label>
-                            <input type="date" id="editEndDate" name="end_date" class="form-control">
+                            <x-date-picker variant="dropdown" model="endDate" name="end_date" min-expr="startDate" />
                         </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_location') }}</label>
                         <input type="text" id="editLocation" name="location" class="form-control">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_coaches') }} <small class="text-muted">{{ __('member.partials_affiliations_enhanced_comma_separated') }}</small></label>
-                        <input type="text" id="editCoaches" name="coaches" class="form-control">
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_description') }}</label>
@@ -809,6 +832,148 @@
         </div>
     </div>
 </div>
+
+<!-- ── Add Instructor Modal ───────────────────────────────────────────────── -->
+{{-- Two modes: search a platform member (links to their profile) or type a name.
+     Self-contained Alpine; opens on `add-instructor:open`, patches the list in place. --}}
+<div class="modal fade" id="addInstructorModal" tabindex="-1" aria-hidden="true"
+     x-data="addInstructorModal()"
+     @add-instructor:open.window="openFor($event.detail)">
+    <div class="min-h-full flex items-center justify-center p-4" @click.self="close()">
+        <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
+            <div class="relative px-6 pt-6 pb-5 bg-accent/60 border-b border-gray-100">
+                <div class="relative flex items-start gap-3.5">
+                    <span class="w-11 h-11 rounded-xl bg-green-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <i class="bi bi-person-plus text-xl"></i>
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <h5 class="text-lg font-bold text-gray-900 mb-0.5">{{ __('Add Instructor') }}</h5>
+                        <p class="text-xs text-muted-foreground" x-text="clubLabel"></p>
+                    </div>
+                    <button type="button" @click="close()" class="w-9 h-9 -mt-1 -me-1 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-white/70 hover:text-foreground transition-colors flex-shrink-0" aria-label="{{ __('shared.cancel') }}">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="px-6 py-5 space-y-4">
+                {{-- Mode toggle --}}
+                <div class="inline-flex w-full p-0.5 bg-muted rounded-lg" role="tablist">
+                    <button type="button" @click="mode = 'member'; $nextTick(() => $refs.memberInput?.focus())"
+                            class="flex-1 px-3 py-1.5 rounded-md text-xs font-semibold transition-all"
+                            :class="mode === 'member' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'">
+                        <i class="bi bi-search me-1"></i>{{ __('Search member') }}
+                    </button>
+                    <button type="button" @click="mode = 'name'; $nextTick(() => $refs.nameInput?.focus())"
+                            class="flex-1 px-3 py-1.5 rounded-md text-xs font-semibold transition-all"
+                            :class="mode === 'name' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'">
+                        <i class="bi bi-pencil me-1"></i>{{ __('Enter name') }}
+                    </button>
+                </div>
+
+                {{-- Member search --}}
+                <div x-show="mode === 'member'" x-cloak>
+                    <div class="relative">
+                        <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+                        <input type="text" x-ref="memberInput" x-model="query" @input.debounce.300ms="searchMembers()"
+                               placeholder="{{ __('Search by name…') }}"
+                               class="w-full ps-9 pe-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow">
+                    </div>
+                    <div class="mt-2 max-h-56 overflow-y-auto rounded-xl border border-gray-100 divide-y divide-gray-50" x-show="query.length >= 2" x-cloak>
+                        <p x-show="searching" class="px-3 py-4 text-xs text-muted-foreground text-center"><i class="bi bi-arrow-repeat animate-spin me-1"></i>{{ __('shared.loading') }}</p>
+                        <template x-for="r in results" :key="r.uuid">
+                            <button type="button" @click="addMember(r)" :disabled="busy"
+                                    class="w-full text-start px-3 py-2 flex items-center gap-2.5 hover:bg-muted/50 transition-colors disabled:opacity-50">
+                                <span class="w-8 h-8 rounded-full bg-success text-white flex items-center justify-center overflow-hidden flex-shrink-0 text-xs font-bold">
+                                    <template x-if="r.avatar"><img :src="r.avatar" alt="" class="w-full h-full object-cover"></template>
+                                    <template x-if="!r.avatar"><span x-text="r.name.charAt(0).toUpperCase()"></span></template>
+                                </span>
+                                <span class="flex-1 truncate text-sm text-foreground" x-text="r.name"></span>
+                                <i class="bi bi-plus-circle text-success"></i>
+                            </button>
+                        </template>
+                        <p x-show="!searching && !results.length" class="px-3 py-4 text-xs text-muted-foreground text-center">{{ __('No matching members') }}</p>
+                    </div>
+                </div>
+
+                {{-- Free-text name --}}
+                <div x-show="mode === 'name'" x-cloak>
+                    <form @submit.prevent="addName()">
+                        <div class="flex gap-2">
+                            <input type="text" x-ref="nameInput" x-model="name" maxlength="120"
+                                   placeholder="{{ __('Instructor name') }}"
+                                   class="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow">
+                            <button type="submit" :disabled="!name.trim() || busy"
+                                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold shadow-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                                <i class="bi bi-plus-lg"></i>{{ __('Add') }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function addInstructorModal() {
+    return {
+        affId: '', memberId: '', clubLabel: '',
+        mode: 'member', query: '', name: '',
+        results: [], searching: false, busy: false,
+
+        openFor(d) {
+            this.affId = d.affiliationId || ''; this.memberId = d.memberId || '';
+            this.clubLabel = d.clubName || '';
+            this.mode = 'member'; this.query = ''; this.name = '';
+            this.results = []; this.searching = false; this.busy = false;
+        },
+        close() {
+            const el = document.getElementById('addInstructorModal');
+            if (el?.classList.contains('show')) window.bsModal?.hide(el);
+        },
+
+        async searchMembers() {
+            const q = this.query.trim();
+            if (q.length < 2) { this.results = []; return; }
+            this.searching = true;
+            try {
+                const res = await fetch(`/member/${this.memberId}/instructor-search?q=${encodeURIComponent(q)}`,
+                    { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                const data = await res.json();
+                this.results = data.results || [];
+            } catch (_) { this.results = []; }
+            this.searching = false;
+        },
+        addMember(r) { this.post({ user_uuid: r.uuid }); },
+        addName() { if (this.name.trim()) this.post({ name: this.name.trim() }); },
+
+        // Self-contained fetch — the page's affFetch/showAlert live inside a
+        // DOMContentLoaded closure and aren't in this component's scope. renderInstructors
+        // IS exposed on window; showToast is the global notifier.
+        async post(payload) {
+            if (this.busy) return;
+            this.busy = true;
+            try {
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const res = await fetch(`/member/${this.memberId}/affiliations/${this.affId}/instructors`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token },
+                    body: JSON.stringify(payload),
+                }).then(r => r.json());
+                if (res.success) {
+                    window.renderInstructors?.(this.affId, res.instructors);
+                    window.showToast?.('success', res.message);
+                    this.close();
+                } else {
+                    window.showToast?.('error', res.message || @js(__('Could not add instructor.')));
+                }
+            } catch (_) { window.showToast?.('error', @js(__('member.partials_affiliations_enhanced_js_error_generic'))); }
+            this.busy = false;
+        },
+    };
+}
+</script>
 
 <!-- ── Add Skill Modal ────────────────────────────────────────────────────── -->
 {{--
@@ -926,18 +1091,23 @@
                                     </div>
                                 </template>
 
-                                {{-- Free text: keep whatever was typed, unlinked. --}}
-                                <button type="button" x-show="!acLoading && flatOptions.length === 0 && activityQuery.trim()"
-                                        @click="acOpen = false"
-                                        class="w-full text-start px-3 py-3 text-sm flex items-center gap-2.5 hover:bg-muted/50 transition-colors">
-                                    <span class="w-6 h-6 rounded-md bg-muted text-muted-foreground flex items-center justify-center flex-shrink-0">
-                                        <i class="bi bi-pencil text-[11px]"></i>
+                                {{-- Free text. Offered whenever what was typed is not already
+                                     an option — NOT only when the list is empty, or a partial
+                                     match like "box" would hide the way to add something new. --}}
+                                <button type="button" x-show="!acLoading && activityQuery.trim() && !exactMatch"
+                                        @click="useTyped()"
+                                        class="w-full text-start px-3 py-2.5 text-sm flex items-center gap-2.5 border-t border-gray-100 bg-accent/20 hover:bg-accent/40 transition-colors">
+                                    <span class="w-6 h-6 rounded-md bg-primary text-white flex items-center justify-center flex-shrink-0">
+                                        <i class="bi bi-plus-lg text-[11px]"></i>
                                     </span>
-                                    <span class="text-muted-foreground">{{ __('Use') }} “<span class="text-foreground font-medium" x-text="activityQuery.trim()"></span>”</span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block truncate text-foreground font-medium" x-text="activityQuery.trim()"></span>
+                                        <span class="block text-[10px] text-muted-foreground">{{ __('Add as a custom activity') }}</span>
+                                    </span>
                                 </button>
 
-                                <p x-show="!acLoading && flatOptions.length === 0 && !activityQuery.trim()"
-                                   class="px-3 py-4 text-xs text-muted-foreground text-center">{{ __('No matching activities') }}</p>
+                                <p x-show="!acLoading && !flatOptions.length && !activityQuery.trim()"
+                                   class="px-3 py-4 text-xs text-muted-foreground text-center">{{ __('Start typing to search, or add your own') }}</p>
                             </div>
                         </div>
                         {{-- What actually posts. The skill IS the activity, so one field
@@ -978,57 +1148,89 @@
                         <input type="hidden" name="proficiency_level" :value="level">
                     </div>
 
-                    {{-- Start date — never before the affiliation began, never in the future.
-                         Bounds come from the server (affiliationBounds) and are re-validated there. --}}
+                    {{-- Instructor — who taught it. Optional, and only when the club has any.
+                         A styled dropdown (Design Rule #4), posts instructor_id. --}}
+                    <div x-show="instructors.length" x-cloak>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                            {{ __('Instructor') }}
+                            <span class="text-xs font-normal text-muted-foreground">({{ __('optional') }})</span>
+                        </label>
+                        <div class="relative" @click.outside="instOpen = false" @keydown.escape.stop="instOpen = false">
+                            <button type="button" @click="instOpen = !instOpen"
+                                    class="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-white border rounded-xl text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent border-gray-200"
+                                    :class="instOpen ? 'ring-2 ring-primary border-transparent' : ''">
+                                <span class="flex items-center gap-2 truncate">
+                                    <i class="bi bi-person-badge" :class="instructorId ? 'text-primary' : 'text-gray-400'"></i>
+                                    <span :class="instructorId ? 'text-foreground font-medium' : 'text-muted-foreground'"
+                                          x-text="instructorLabel || '{{ __('Select instructor') }}'"></span>
+                                </span>
+                                <i class="bi bi-chevron-down text-xs text-gray-400 transition-transform" :class="instOpen && 'rotate-180'"></i>
+                            </button>
+                            <div x-show="instOpen" x-cloak x-transition.opacity
+                                 class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto bg-white border border-gray-100 rounded-xl shadow-lg p-1">
+                                {{-- Clear / none --}}
+                                <button type="button" @click="instructorId = ''; instOpen = false"
+                                        class="w-full text-start px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted/60 transition-colors flex items-center gap-2">
+                                    <i class="bi bi-slash-circle text-xs"></i>{{ __('No instructor') }}
+                                </button>
+                                <template x-for="ins in instructors" :key="ins.id">
+                                    <button type="button" @click="instructorId = ins.id; instOpen = false"
+                                            class="w-full text-start px-3 py-2 rounded-lg text-sm flex items-center gap-2.5 transition-colors"
+                                            :class="instructorId === ins.id ? 'bg-primary/5 font-semibold text-primary' : 'text-foreground hover:bg-muted/60'">
+                                        <span class="w-6 h-6 rounded-full bg-accent text-primary flex items-center justify-center flex-shrink-0 text-[11px] font-bold"
+                                              x-text="ins.name.charAt(0).toUpperCase()"></span>
+                                        <span class="flex-1 truncate" x-text="ins.name"></span>
+                                        <i class="bi bi-check2 text-primary" x-show="instructorId === ins.id"></i>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+                        <input type="hidden" name="instructor_id" :value="instructorId">
+                    </div>
+
+                    {{-- When — all optional. Start date (bounded to the affiliation), then
+                         EITHER "still practicing" (ongoing, no end) OR an end date. Duration is
+                         not asked for; the server derives it from the dates. --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1.5">
                             {{ __('member.partials_affiliations_enhanced_start_date') }}
-                            <span class="text-red-500" x-show="spanMode === 'end'">*</span>
+                            <span class="text-xs font-normal text-muted-foreground">({{ __('optional') }})</span>
                         </label>
-                        <x-date-picker model="startDate" name="start_date" min-expr="bounds.start_date" max-expr="bounds.max_start" />
+                        <x-date-picker variant="dropdown" model="startDate" name="start_date" min-expr="bounds.start_date" max-expr="bounds.max_start" />
                         <p x-show="bounds.start_date" x-cloak class="mt-1.5 text-[11px] text-muted-foreground flex items-center gap-1">
                             <i class="bi bi-info-circle"></i>
                             {{ __('Cannot start before you joined') }} <span class="font-medium text-foreground" x-text="fmtDate(bounds.start_date)"></span>
                         </p>
                     </div>
 
-                    {{-- Span: an end date OR a number of months — one of the two is required. --}}
-                    <div>
-                        <div class="flex items-center justify-between mb-1.5 gap-3">
-                            <span class="block text-sm font-medium text-gray-700">
-                                {{ __('How long?') }} <span class="text-red-500">*</span>
-                            </span>
-                            <div class="inline-flex p-0.5 bg-muted rounded-lg" role="tablist">
-                                <button type="button" @click="setSpan('end')" role="tab" :aria-selected="spanMode === 'end'"
-                                        class="px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all"
-                                        :class="spanMode === 'end' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'">
-                                    {{ __('End date') }}
-                                </button>
-                                <button type="button" @click="setSpan('duration')" role="tab" :aria-selected="spanMode === 'duration'"
-                                        class="px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all"
-                                        :class="spanMode === 'duration' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'">
-                                    {{ __('member.partials_affiliations_enhanced_duration_months') }}
-                                </button>
-                            </div>
-                        </div>
+                    {{-- "Still practicing" — ongoing skill, no end date. --}}
+                    <label class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border cursor-pointer transition-colors select-none"
+                           :class="present ? 'border-primary bg-primary/5' : 'border-gray-200 hover:bg-muted/40'">
+                        <input type="checkbox" x-model="present" @change="if (present) endDate = ''" class="sr-only">
+                        <span class="w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 transition-colors"
+                              :class="present ? 'bg-primary border-primary text-white' : 'border-gray-300 bg-white'">
+                            <i class="bi bi-check-lg text-xs" x-show="present" x-cloak></i>
+                        </span>
+                        <span class="min-w-0">
+                            <span class="block text-sm font-medium text-foreground">{{ __('I still practice this skill') }}</span>
+                            <span class="block text-[11px] text-muted-foreground">{{ __('Ongoing — no end date') }}</span>
+                        </span>
+                    </label>
+                    <input type="hidden" name="is_present" :value="present ? '1' : '0'">
 
-                        <div x-show="spanMode === 'end'" x-cloak>
-                            <x-date-picker model="endDate" name-expr="spanMode === 'end' ? 'end_date' : ''"
-                                           min-expr="startDate || bounds.start_date" max-expr="bounds.end_date" />
-                            <p x-show="!startDate" x-cloak class="mt-1.5 text-[11px] text-amber-600 flex items-center gap-1">
-                                <i class="bi bi-exclamation-circle"></i>{{ __('Pick a start date first.') }}
-                            </p>
-                        </div>
-
-                        <div x-show="spanMode === 'duration'" x-cloak>
-                            <div class="relative">
-                                <input type="number" id="addSkillDuration" x-model="duration" min="1" max="600"
-                                       :name="spanMode === 'duration' ? 'duration_months' : ''"
-                                       placeholder="{{ __('member.partials_affiliations_enhanced_duration_months_placeholder') }}"
-                                       class="w-full px-3 py-2.5 pe-20 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow">
-                                <span class="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">{{ __('months') }}</span>
-                            </div>
-                        </div>
+                    {{-- End date — only when NOT ongoing, and always optional. --}}
+                    <div x-show="!present" x-cloak>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                            {{ __('member.partials_affiliations_enhanced_end_date') }}
+                            <span class="text-xs font-normal text-muted-foreground">({{ __('optional') }})</span>
+                        </label>
+                        <x-date-picker variant="dropdown" model="endDate" name-expr="present ? '' : 'end_date'"
+                                       min-expr="startDate || bounds.start_date" max-expr="bounds.end_date" />
+                        {{-- Duration is auto-calculated from the two dates — shown, never asked for. --}}
+                        <p x-show="startDate && endDate" x-cloak class="mt-1.5 text-[11px] text-primary flex items-center gap-1">
+                            <i class="bi bi-check-circle-fill"></i>
+                            <span x-text="'{{ __('Duration') }}: ' + spanLabel + ' ({{ __('auto-calculated') }})'"></span>
+                        </p>
                     </div>
 
                     {{-- Notes --}}
@@ -1040,15 +1242,23 @@
                     </div>
                 </div>
 
-                <div class="px-6 py-4 bg-muted/40 border-t border-gray-100 flex items-center justify-end gap-2.5">
-                    <button type="button" @click="close()"
-                            class="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-white hover:text-foreground transition-colors">
-                        {{ __('shared.cancel') }}
-                    </button>
-                    <button type="submit" :disabled="!canSubmit"
-                            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold shadow-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                        <i class="bi bi-plus-circle"></i>{{ __('member.partials_affiliations_enhanced_add_skill') }}
-                    </button>
+                <div class="px-6 py-4 bg-muted/40 border-t border-gray-100 flex items-center justify-between gap-3">
+                    {{-- Why the submit is disabled — the span (duration / end date) is easy to miss. --}}
+                    <p x-show="missing" x-cloak class="text-[11px] text-amber-600 flex items-center gap-1 min-w-0">
+                        <i class="bi bi-info-circle flex-shrink-0"></i>
+                        <span class="truncate" x-text="'{{ __('Add') }} ' + missing"></span>
+                    </p>
+                    <span x-show="!missing" x-cloak></span>
+                    <div class="flex items-center gap-2.5 flex-shrink-0">
+                        <button type="button" @click="close()"
+                                class="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-white hover:text-foreground transition-colors">
+                            {{ __('shared.cancel') }}
+                        </button>
+                        <button type="submit" :disabled="!canSubmit"
+                                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold shadow-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                            <i class="bi bi-plus-circle"></i>{{ __('member.partials_affiliations_enhanced_add_skill') }}
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -1059,8 +1269,9 @@
 function addSkillModal() {
     return {
         activityQuery: '', activityId: '', level: '',
-        startDate: '', endDate: '', duration: '', notes: '',
-        spanMode: 'duration',                 // 'end' (end date) | 'duration' (months)
+        startDate: '', endDate: '', notes: '',
+        present: false,                       // "still practicing" — ongoing, no end date
+        instructors: [], instructorId: '', instOpen: false,   // who taught the skill (optional)
         bounds: { start_date: null, end_date: null, max_start: null },
         clubLabel: '',
         clubActivities: [], catalog: [],
@@ -1089,6 +1300,19 @@ function addSkillModal() {
         },
         get flatOptions() { return this.groupedOptions.flatMap(g => g.items); },
 
+        /** Is what they typed already one of the offered options? */
+        get exactMatch() {
+            const q = this.activityQuery.trim().toLowerCase();
+            return !!q && [...this.clubActivities, ...this.catalog].some(a => a.name.toLowerCase() === q);
+        },
+
+        /** Keep the typed text as a custom, unlinked activity. */
+        useTyped() {
+            this.activityQuery = this.activityQuery.trim();
+            this.activityId = '';
+            this.acOpen = false;
+        },
+
         choose(opt) {
             this.activityQuery = opt.name;
             this.activityId = opt.id || '';
@@ -1105,13 +1329,6 @@ function addSkillModal() {
             });
         },
 
-        // Only the ACTIVE span control carries a name attribute, so the inactive one
-        // never posts — that is what keeps the server's required_without pair honest.
-        setSpan(mode) {
-            this.spanMode = mode;
-            if (mode === 'end') this.duration = ''; else this.endDate = '';
-        },
-
         fmtDate(iso) {
             if (!iso) return '';
             const d = new Date(iso + 'T00:00:00');
@@ -1119,15 +1336,46 @@ function addSkillModal() {
                 { year: 'numeric', month: 'short', day: 'numeric' });
         },
 
+        get instructorLabel() {
+            return this.instructors.find(i => i.id === this.instructorId)?.name || '';
+        },
+
+        // Only a skill name + proficiency are required — the whole span (start / end /
+        // "still practicing") is optional. Duration is never asked for.
         get canSubmit() {
-            if (!this.activityQuery.trim() || !this.level) return false;
-            return this.spanMode === 'end' ? !!(this.startDate && this.endDate) : !!this.duration;
+            return !!(this.activityQuery.trim() && this.level);
+        },
+
+        // Whole months between the chosen start/end — the value the server derives and
+        // stores as duration_months. Shown as a human label so the user sees it is handled.
+        get computedMonths() {
+            if (!this.startDate || !this.endDate) return 0;
+            const s = new Date(this.startDate + 'T00:00:00'), e = new Date(this.endDate + 'T00:00:00');
+            if (isNaN(s) || isNaN(e) || e < s) return 0;
+            let mo = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth());
+            if (e.getDate() < s.getDate()) mo--;
+            return Math.max(1, mo);
+        },
+        get spanLabel() {
+            const mo = this.computedMonths;
+            const y = Math.floor(mo / 12), r = mo % 12;
+            const yr = y ? y + ' ' + (y > 1 ? @js(__('years')) : @js(__('year'))) : '';
+            const mr = r ? r + ' ' + (r > 1 ? @js(__('months')) : @js(__('month'))) : '';
+            return [yr, mr].filter(Boolean).join(' ') || ('1 ' + @js(__('month')));
+        },
+
+        // First unmet requirement, shown next to the disabled submit so it's obvious
+        // WHY it won't press (the span is the easy one to miss).
+        get missing() {
+            if (!this.activityQuery.trim()) return @js(__('a skill name'));
+            if (!this.level) return @js(__('a proficiency level'));
+            return '';
         },
 
         reset() {
             this.activityQuery = ''; this.activityId = '';
-            this.level = ''; this.startDate = ''; this.endDate = ''; this.duration = ''; this.notes = '';
-            this.spanMode = 'duration';
+            this.level = ''; this.startDate = ''; this.endDate = ''; this.present = false; this.notes = '';
+            this.instructors = []; this.instructorId = ''; this.instOpen = false;
             this.bounds = { start_date: null, end_date: null, max_start: null };
             this.acOpen = false; this.acIndex = 0;
             this.clubActivities = []; this.catalog = [];
@@ -1146,6 +1394,7 @@ function addSkillModal() {
                 const data = await res.json();
                 this.clubActivities = data.activities || [];
                 this.catalog = data.suggestions || [];
+                this.instructors = data.instructors || [];
                 this.bounds = data.affiliation || this.bounds;
                 if (!this.clubLabel) this.clubLabel = this.bounds.club_name || '';
             } catch (_) { /* the field still accepts free text */ }
@@ -1160,50 +1409,238 @@ function addSkillModal() {
 }
 </script>
 
-<!-- ── Add Media Modal ────────────────────────────────────────────────────── -->
-<div class="modal fade" id="addMediaModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" style="max-width: 500px;">
-        <div class="modal-content">
-            <div class="modal-header" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                <h5 class="modal-title text-white"><i class="bi bi-paperclip me-2"></i>{{ __('member.partials_affiliations_enhanced_add_media_certificate') }}</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+<!-- ── Add Media Modal (redesigned) ───────────────────────────────────────── -->
+{{-- Design-system modal. Image types (certificate/photo) upload + crop via the
+     shared cropper (form mode → base64) and this component uploads to the dynamic
+     per-affiliation endpoint, which re-encodes to an optimized WebP. Video/document
+     are external links. Self-contained Alpine; patches the media list in place. --}}
+<div class="modal fade" id="addMediaModal" tabindex="-1" aria-hidden="true"
+     x-data="addMediaModal()"
+     @add-media:open.window="openFor($event.detail)">
+    <div class="min-h-full flex items-center justify-center p-4" @click.self="close()">
+        <div class="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
+            <div class="relative px-6 pt-6 pb-5 bg-accent/60 border-b border-gray-100">
+                <div class="relative flex items-start gap-3.5">
+                    <span class="w-11 h-11 rounded-xl bg-info text-white flex items-center justify-center flex-shrink-0 shadow-sm" style="background:#0ea5e9;">
+                        <i class="bi bi-paperclip text-xl"></i>
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <h5 class="text-lg font-bold text-gray-900 mb-0.5">{{ __('member.partials_affiliations_enhanced_add_media_certificate') }}</h5>
+                        <p class="text-xs text-muted-foreground" x-text="clubLabel"></p>
+                    </div>
+                    <button type="button" @click="close()" class="w-9 h-9 -mt-1 -me-1 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-white/70 hover:text-foreground transition-colors flex-shrink-0" aria-label="{{ __('shared.cancel') }}">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
             </div>
-            <form id="addMediaForm">
-                @csrf
-                <input type="hidden" id="addMediaAffiliationId">
-                <input type="hidden" id="addMediaMemberId">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_type') }} <span class="text-danger">*</span></label>
-                        <select name="media_type" class="form-select" required>
-                            <option value="">{{ __('member.partials_affiliations_enhanced_select_type') }}</option>
-                            <option value="certificate">{{ __('member.partials_affiliations_enhanced_certificate') }}</option>
-                            <option value="photo">{{ __('member.partials_affiliations_enhanced_photo') }}</option>
-                            <option value="video">{{ __('member.partials_affiliations_enhanced_video') }}</option>
-                            <option value="document">{{ __('member.partials_affiliations_enhanced_document') }}</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_title') }} <span class="text-danger">*</span></label>
-                        <input type="text" name="title" class="form-control" placeholder="{{ __('member.partials_affiliations_enhanced_title_placeholder') }}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_url_link') }} <span class="text-danger">*</span></label>
-                        <input type="text" name="media_url" class="form-control" placeholder="{{ __('member.partials_affiliations_enhanced_url_placeholder') }}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">{{ __('member.partials_affiliations_enhanced_description') }}</label>
-                        <textarea name="description" class="form-control" rows="2" placeholder="{{ __('member.partials_affiliations_enhanced_description_placeholder2') }}"></textarea>
+
+            <div class="px-6 py-5 space-y-5 max-h-[74vh] overflow-y-auto">
+                {{-- Type — selection cards (Design Rule #4, no native select) --}}
+                <div>
+                    <span class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.partials_affiliations_enhanced_type') }} <span class="text-red-500">*</span></span>
+                    <div class="grid grid-cols-4 gap-2" role="radiogroup">
+                        <template x-for="t in types" :key="t.value">
+                            <button type="button" role="radio" :aria-checked="type === t.value" @click="setType(t.value)"
+                                    class="group px-2 py-2.5 rounded-xl border text-center transition-all"
+                                    :class="type === t.value ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-200 hover:border-gray-300 hover:bg-muted/40'">
+                                <i class="bi text-lg block mb-0.5" :class="[t.icon, type === t.value ? 'text-primary' : 'text-gray-400']"></i>
+                                <span class="block text-[11px] font-semibold leading-tight" :class="type === t.value ? 'text-primary' : 'text-gray-600'" x-text="t.label"></span>
+                            </button>
+                        </template>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('shared.cancel') }}</button>
-                    <button type="submit" class="btn btn-info text-white"><i class="bi bi-plus-circle me-1"></i>{{ __('member.partials_affiliations_enhanced_add_media') }}</button>
+
+                {{-- Title --}}
+                <div>
+                    <label for="mediaTitle" class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.partials_affiliations_enhanced_title') }} <span class="text-red-500">*</span></label>
+                    <input type="text" id="mediaTitle" x-model="title" maxlength="255"
+                           placeholder="{{ __('member.partials_affiliations_enhanced_title_placeholder') }}"
+                           class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow">
                 </div>
-            </form>
+
+                {{-- Image types → upload + crop --}}
+                <div x-show="isImage" x-cloak>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('Image') }} <span class="text-red-500">*</span></label>
+
+                    {{-- Empty state — a clean, inviting dropzone. Clicking it triggers the
+                         shared cropper's file input; the crop editor (teleported sheet)
+                         handles the actual crop. --}}
+                    <button type="button" x-show="!hasImage" @click="pickImage()"
+                            class="group w-full rounded-2xl border-2 border-dashed border-gray-200 hover:border-primary hover:bg-primary/5 transition-all px-4 py-8 flex flex-col items-center justify-center gap-2 text-center">
+                        <span class="w-14 h-14 rounded-full bg-accent/70 group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+                            <i class="bi bi-cloud-arrow-up text-2xl text-primary"></i>
+                        </span>
+                        <span class="text-sm font-semibold text-foreground">{{ __('Click to upload & crop') }}</span>
+                        <span class="text-[11px] text-muted-foreground">{{ __('JPG, PNG, GIF or WebP — auto-optimized on save') }}</span>
+                    </button>
+
+                    {{-- Filled state — the cropped result with hover actions. --}}
+                    <div x-show="hasImage" x-cloak class="relative rounded-2xl overflow-hidden border border-gray-100 bg-muted/40 group">
+                        <img :src="imgSrc" alt="" class="w-full h-44 object-cover">
+                        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                            <button type="button" @click="pickImage()" class="px-3 py-1.5 rounded-lg bg-white/95 text-foreground text-xs font-semibold shadow-sm hover:bg-white flex items-center gap-1.5">
+                                <i class="bi bi-crop"></i>{{ __('Change') }}
+                            </button>
+                            <button type="button" @click="removeImage()" class="px-3 py-1.5 rounded-lg bg-white/95 text-red-600 text-xs font-semibold shadow-sm hover:bg-white flex items-center gap-1.5">
+                                <i class="bi bi-trash"></i>{{ __('Remove') }}
+                            </button>
+                        </div>
+                        <span class="absolute top-2 end-2 px-2 py-0.5 rounded-full bg-black/55 text-white text-[10px] font-medium flex items-center gap-1 pointer-events-none">
+                            <i class="bi bi-check-circle-fill text-green-400"></i>{{ __('Ready') }}
+                        </span>
+                    </div>
+                    <p class="mt-1.5 text-[11px] text-muted-foreground flex items-center gap-1">
+                        <i class="bi bi-magic"></i>{{ __('Cropped and optimized automatically — sharp, but small on disk.') }}
+                    </p>
+
+                    {{-- The shared cropper — its own UI is hidden; we drive its file input
+                         and read its cropped output. (One-cropper rule honored.) --}}
+                    <div class="tk-media-cropper-host">
+                        <x-takeone-cropper
+                            id="mediaCropper" mode="form" :inline="true"
+                            inputName="cropped_media"
+                            :width="1400" :height="1000" shape="rectangle" :canvasHeight="360"
+                            folder="media" filename="media"
+                            :showControls="false" :showCancel="false"
+                            saveText="{{ __('Crop') }}"
+                            sheetMaxWidth="100%"
+                            sheetClass="rounded-t-3xl shadow-2xl bg-background" />
+                    </div>
+                    <style>
+                        /* Hide the widget's built-in wrapper (preview box + pick buttons).
+                           Its file input + teleported crop editor still work when triggered. */
+                        .tk-media-cropper-host #cropperInline_mediaCropper { display: none !important; }
+                    </style>
+                </div>
+
+                {{-- Video / document → external link --}}
+                <div x-show="!isImage" x-cloak>
+                    <label for="mediaUrl" class="block text-sm font-medium text-gray-700 mb-1.5" x-text="type === 'video' ? '{{ __('Video link') }}' : '{{ __('Document link') }}'"></label>
+                    <div class="relative">
+                        <i class="bi bi-link-45deg absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                        <input type="url" id="mediaUrl" x-model="url" maxlength="500"
+                               placeholder="https://…"
+                               class="w-full ps-9 pe-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow">
+                    </div>
+                </div>
+
+                {{-- Description --}}
+                <div>
+                    <label for="mediaDesc" class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.partials_affiliations_enhanced_description') }}</label>
+                    <textarea id="mediaDesc" x-model="description" rows="2" maxlength="500"
+                              placeholder="{{ __('member.partials_affiliations_enhanced_description_placeholder2') }}"
+                              class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow resize-none"></textarea>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 bg-muted/40 border-t border-gray-100 flex items-center justify-end gap-2.5">
+                <button type="button" @click="close()" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-white hover:text-foreground transition-colors">{{ __('shared.cancel') }}</button>
+                <button type="button" @click="submit()" :disabled="!title.trim() || busy"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold shadow-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-plus-circle'"></i>{{ __('member.partials_affiliations_enhanced_add_media') }}
+                </button>
+            </div>
         </div>
     </div>
 </div>
+
+<script>
+function addMediaModal() {
+    return {
+        affId: '', memberId: '', clubLabel: '',
+        type: 'certificate', title: '', url: '', description: '', busy: false,
+        hasImage: false, imgSrc: '', _observer: null,
+        types: [
+            { value: 'certificate', label: @js(__('member.partials_affiliations_enhanced_certificate')), icon: 'bi-patch-check' },
+            { value: 'photo',       label: @js(__('member.partials_affiliations_enhanced_photo')),       icon: 'bi-image' },
+            { value: 'video',       label: @js(__('member.partials_affiliations_enhanced_video')),       icon: 'bi-play-circle' },
+            { value: 'document',    label: @js(__('member.partials_affiliations_enhanced_document')),    icon: 'bi-file-text' },
+        ],
+
+        get isImage() { return this.type === 'certificate' || this.type === 'photo'; },
+        get croppedBase64() { return document.getElementById('hiddenInput_mediaCropper')?.value || ''; },
+
+        setType(v) { this.type = v; },
+
+        // Open the shared cropper's file picker; its crop editor (teleported sheet)
+        // handles the crop. We detect completion via an observer on its preview box.
+        pickImage() {
+            this.watchCrop();
+            document.getElementById('input_mediaCropper')?.click();
+        },
+        removeImage() {
+            this.hasImage = false; this.imgSrc = '';
+            const h = document.getElementById('hiddenInput_mediaCropper'); if (h) h.value = '';
+            try { window['removeImage_mediaCropper']?.(); } catch (_) {}
+        },
+        // The widget rebuilds #previewContainer_mediaCropper (and sets the hidden input)
+        // when a crop is applied — observe it and mirror the result into our own preview.
+        watchCrop() {
+            if (this._observer) return;
+            const box = document.getElementById('previewContainer_mediaCropper');
+            if (!box) return;
+            this._observer = new MutationObserver(() => {
+                const b64 = document.getElementById('hiddenInput_mediaCropper')?.value || '';
+                if (b64) { this.imgSrc = b64; this.hasImage = true; }
+            });
+            this._observer.observe(box, { childList: true, subtree: true, attributes: true });
+        },
+
+        openFor(d) {
+            this.affId = d.affiliationId || ''; this.memberId = d.memberId || '';
+            this.clubLabel = d.clubName || '';
+            this.type = 'certificate'; this.title = ''; this.url = ''; this.description = ''; this.busy = false;
+            this.hasImage = false; this.imgSrc = '';
+            const h = document.getElementById('hiddenInput_mediaCropper'); if (h) h.value = '';
+        },
+        close() {
+            const el = document.getElementById('addMediaModal');
+            if (el?.classList.contains('show')) window.bsModal?.hide(el);
+        },
+
+        async post(url, method, body) {
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            return fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token },
+                body: body ? JSON.stringify(body) : undefined,
+            }).then(r => r.json());
+        },
+
+        async submit() {
+            if (this.busy || !this.title.trim()) return;
+            let mediaUrl = '';
+
+            if (this.isImage) {
+                const b64 = this.croppedBase64;
+                if (!b64) { window.showToast?.('error', @js(__('Please choose and crop an image first.'))); return; }
+                this.busy = true;
+                const up = await this.post(`/member/${this.memberId}/affiliations/${this.affId}/media/upload-image`, 'POST', { image: b64 })
+                    .catch(() => null);
+                if (!up || !up.success) { this.busy = false; window.showToast?.('error', up?.message || @js(__('Image upload failed.'))); return; }
+                mediaUrl = up.path;
+            } else {
+                if (!/^https?:\/\/.+/i.test(this.url.trim())) { window.showToast?.('error', @js(__('Please enter a valid link (http/https).'))); return; }
+                mediaUrl = this.url.trim();
+                this.busy = true;
+            }
+
+            const res = await this.post(`/member/${this.memberId}/affiliations/${this.affId}/media`, 'POST', {
+                media_type: this.type, title: this.title.trim(), media_url: mediaUrl, description: this.description.trim(),
+            }).catch(() => null);
+            this.busy = false;
+
+            if (res && res.success && res.media) {
+                window.appendMediaNode?.(this.affId, res.media);
+                window.showToast?.('success', res.message);
+                this.close();
+            } else {
+                window.showToast?.('error', res?.message || @js(__('member.partials_affiliations_enhanced_js_error_adding_media')));
+            }
+        },
+    };
+}
+</script>
 
 <style>
 /* Enhanced Timeline Styles */
@@ -1286,6 +1723,23 @@ function addSkillModal() {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
+
+/* Round avatar chip inside an instructor badge (photo, or unknown-user fallback). */
+.inst-badge { display: inline-flex; align-items: center; gap: 0.35rem; }
+.inst-badge-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.15rem;
+    height: 1.15rem;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #fff;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.6);
+}
+.inst-badge-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.inst-badge-avatar i { color: #9ca3af; font-size: 0.7rem; line-height: 1; }
 
 .package-card-btn {
     transition: all 0.2s ease;
@@ -1431,6 +1885,30 @@ document.addEventListener('DOMContentLoaded', function() {
     function escapeHtml(s) {
         return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
     }
+
+    // Regenerate an affiliation's instructor list from the endpoint's JSON (No-Reload rule).
+    window.renderInstructors = function (affId, list) {
+        const wrap = document.getElementById('instructors-list-' + affId);
+        const countEl = document.getElementById('instructors-count-' + affId);
+        if (!wrap) return;
+        list = list || [];
+        if (countEl) countEl.textContent = list.length;
+        wrap.style.display = list.length ? '' : 'none';
+        const memberId = document.querySelector(`.btn-add-instructor[data-affiliation-id="${affId}"]`)?.dataset.memberId || '';
+        wrap.innerHTML = list.map(ins => {
+            const role = ins.linked ? '{{ __('Member') }}' : '{{ __('member.partials_affiliations_enhanced_instructor') }}';
+            const avatar = `<span class="inst-badge-avatar">${ins.avatar
+                ? `<img src="${escapeHtml(ins.avatar)}" alt="">`
+                : '<i class="bi bi-person-fill"></i>'}</span>`;
+            const badge = ins.profile_url
+                ? `<a href="${escapeHtml(ins.profile_url)}" class="badge skill-badge bg-success text-decoration-none inst-badge" data-bs-toggle="tooltip" data-bs-placement="top" title="${role}">${avatar}${escapeHtml(ins.name)}</a>`
+                : `<span class="badge skill-badge bg-success inst-badge" data-bs-toggle="tooltip" data-bs-placement="top" title="${role}">${avatar}${escapeHtml(ins.name)}</span>`;
+            return `<div class="d-inline-flex align-items-center gap-1" id="instructor-${affId}-${ins.index}" data-index="${ins.index}">
+                ${badge}
+                <button type="button" class="btn-delete-instructor" style="background:none;border:none;color:#dc3545;padding:0 2px;font-size:0.8rem;line-height:1;" data-affiliation-id="${affId}" data-member-id="${memberId}" data-index="${ins.index}" title="{{ __('Remove') }}"><i class="bi bi-x-circle"></i></button>
+            </div>`;
+        }).join('');
+    };
     const GRADIENTS = ['#667eea 0%, #764ba2', '#f093fb 0%, #f5576c', '#4facfe 0%, #00f2fe', '#fa709a 0%, #fee140'];
 
     function buildAffiliationCard(aff, index) {
@@ -1453,7 +1931,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const wrapper = document.createElement('div');
         wrapper.innerHTML = `
-            <div class="timeline-item-enhanced mb-4" id="affiliation-${aff.id}" data-affiliation-id="${aff.id}" data-skills="">
+            <div class="timeline-item-enhanced mb-4" id="affiliation-${aff.id}" data-affiliation-id="${aff.id}" data-start-date="${escapeHtml(aff.start_date || '')}" data-skills="">
                 <div class="timeline-marker-enhanced ${aff.is_ongoing ? 'pulse' : ''}"></div>
                 <div class="affiliation-card-enhanced card border-0 shadow-sm">
                     <div class="card-header border-0 p-3" style="background: linear-gradient(135deg, ${gradient} 100%);">
@@ -1465,7 +1943,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                             ${activeBadge}
                             <div class="flex gap-1 ms-2">
-                                <button type="button" class="btn btn-sm btn-edit-affiliation" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 2px 8px;" data-affiliation-id="${aff.id}" data-club-name="${escapeHtml(aff.club_name)}" data-start-date="${escapeHtml(aff.start_date)}" data-end-date="${escapeHtml(aff.end_date || '')}" data-location="${escapeHtml(aff.location || '')}" data-description="${escapeHtml(aff.description || '')}" data-coaches="${escapeHtml(aff.coaches || '')}" data-member-id="${memberId}" data-bs-toggle="modal" data-bs-target="#editAffiliationModal" title="{{ __('shared.edit') }}"><i class="bi bi-pencil"></i></button>
+                                <button type="button" class="btn btn-sm btn-edit-affiliation" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 2px 8px;" data-affiliation-id="${aff.id}" data-club-name="${escapeHtml(aff.club_name)}" data-start-date="${escapeHtml(aff.start_date)}" data-end-date="${escapeHtml(aff.end_date || '')}" data-location="${escapeHtml(aff.location || '')}" data-description="${escapeHtml(aff.description || '')}" data-member-id="${memberId}" data-bs-toggle="modal" data-bs-target="#editAffiliationModal" title="{{ __('shared.edit') }}"><i class="bi bi-pencil"></i></button>
                                 <button type="button" class="btn btn-sm btn-delete-affiliation" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 2px 8px;" data-affiliation-id="${aff.id}" data-club-name="${escapeHtml(aff.club_name)}" data-member-id="${memberId}" title="{{ __('shared.delete') }}"><i class="bi bi-trash"></i></button>
                             </div>
                         </div>
@@ -1478,6 +1956,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <button type="button" class="btn btn-sm btn-outline-warning btn-add-skill" data-affiliation-id="${aff.id}" data-member-id="${memberId}" data-bs-toggle="modal" data-bs-target="#addSkillModal"><i class="bi bi-plus-circle me-1"></i> {{ __('member.partials_affiliations_enhanced_add_skill') }}</button>
                             </div>
                             <div class="flex gap-2 flex-wrap" id="skills-list-${aff.id}" style="display:none;"></div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="flex justify-between items-center mb-2">
+                                <h6 class="font-bold mb-0"><i class="bi bi-people-fill me-2 text-success"></i>{{ __('member.partials_affiliations_enhanced_instructors') }} (<span id="instructors-count-${aff.id}">0</span>)</h6>
+                                <button type="button" class="btn btn-sm btn-outline-success btn-add-instructor" data-affiliation-id="${aff.id}" data-member-id="${memberId}" data-bs-toggle="modal" data-bs-target="#addInstructorModal"><i class="bi bi-plus-circle me-1"></i> {{ __('Add Instructor') }}</button>
+                            </div>
+                            <div class="flex gap-2 flex-wrap" id="instructors-list-${aff.id}" style="display:none;"></div>
                         </div>
                         <div class="pt-2 border-top">
                             <div class="flex justify-between items-center mb-2">
@@ -1511,9 +1996,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     const index = timeline.querySelectorAll('.timeline-item-enhanced').length;
                     const card = buildAffiliationCard(res.affiliation, index);
-                    timeline.appendChild(card);
+                    insertAffiliationInOrder(timeline, card, res.affiliation.start_date);
                     wireAffiliationCard(card);
                     form.reset();
+                    // form.reset() cannot clear Alpine state — clear the date pickers too.
+                    window.dispatchEvent(new CustomEvent('add-affiliation:reset'));
                     bsModal.hide(document.getElementById('addAffiliationModal'));
                     showAlert(res.message, 'success');
                     btn.disabled = false;
@@ -1528,21 +2015,30 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('editAffiliationId').value = btn.dataset.affiliationId;
         document.getElementById('editAffiliationMemberId').value = btn.dataset.memberId;
         document.getElementById('editClubName').value = btn.dataset.clubName;
-        document.getElementById('editStartDate').value = btn.dataset.startDate;
-        document.getElementById('editEndDate').value = btn.dataset.endDate;
+        // The dates are date-picker components now, so write Alpine state rather than
+        // an input value — setting .value on the hidden input would not update the
+        // display. (Never write a literal component tag in JS: Blade parses it.)
+        const dates = window.Alpine?.$data(document.getElementById('editAffiliationForm'));
+        if (dates) {
+            dates.startDate = btn.dataset.startDate || '';
+            dates.endDate = btn.dataset.endDate || '';
+        }
         document.getElementById('editLocation').value = btn.dataset.location;
         document.getElementById('editDescription').value = btn.dataset.description;
-        document.getElementById('editCoaches').value = btn.dataset.coaches;
     }
 
     function buildSkillNode(skill, affiliationId) {
         const wrapper = document.createElement('div');
+        const prof = escapeHtml(skill.proficiency_level.charAt(0).toUpperCase() + skill.proficiency_level.slice(1));
+        const enc = skill.encyclopedia_url;
+        const title = `<strong>${escapeHtml(skill.skill_name)}</strong><br>${skill.activity ? '{{ __('Activity') }}: ' + escapeHtml(skill.activity) + '<br>' : ''}{{ __('member.partials_affiliations_enhanced_tooltip_proficiency') }} ${prof}<br>{{ __('member.partials_affiliations_enhanced_tooltip_duration') }} ${escapeHtml(skill.formatted_duration)}<br>${skill.start_label ? '{{ __("member.partials_affiliations_enhanced_tooltip_started") }} ' + escapeHtml(skill.start_label) : ''}${skill.verification && skill.verification.status ? '<br>{{ __('Status') }}: ' + escapeHtml(skill.verification.status.replace('_',' ')) : ''}${enc ? '<br>{{ __('Open in encyclopedia') }}' : ''}`;
+        const inner = `<i class="bi ${enc ? 'bi-book-half' : 'bi-star-fill'} me-1"></i>${escapeHtml(skill.skill_name)}<span class="badge bg-white text-dark ms-1" style="font-size: 0.65rem;">${prof}</span>`;
+        const badge = enc
+            ? `<a href="${escapeHtml(enc)}" class="badge skill-badge bg-${skill.badge_color} text-decoration-none" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true" title="${title}">${inner}</a>`
+            : `<span class="badge skill-badge bg-${skill.badge_color}" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true" title="${title}">${inner}</span>`;
         wrapper.innerHTML = `
             <div class="d-inline-flex align-items-center gap-1" id="skill-${skill.id}">
-                <span class="badge skill-badge bg-${skill.badge_color}" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true" title="<strong>${escapeHtml(skill.skill_name)}</strong><br>${skill.activity ? '{{ __('Activity') }}: ' + escapeHtml(skill.activity) + '<br>' : ''}{{ __('member.partials_affiliations_enhanced_tooltip_proficiency') }} ${escapeHtml(skill.proficiency_level.charAt(0).toUpperCase() + skill.proficiency_level.slice(1))}<br>{{ __('member.partials_affiliations_enhanced_tooltip_duration') }} ${escapeHtml(skill.formatted_duration)}<br>${skill.start_label ? '{{ __("member.partials_affiliations_enhanced_tooltip_started") }} ' + escapeHtml(skill.start_label) : ''}${skill.verification && skill.verification.status ? '<br>{{ __('Status') }}: ' + escapeHtml(skill.verification.status.replace('_',' ')) : ''}">
-                    <i class="bi bi-star-fill me-1"></i>${escapeHtml(skill.skill_name)}
-                    <span class="badge bg-white text-dark ms-1" style="font-size: 0.65rem;">${escapeHtml(skill.proficiency_level.charAt(0).toUpperCase() + skill.proficiency_level.slice(1))}</span>
-                </span>
+                ${badge}
                 <button type="button" class="btn-delete-skill" style="background: none; border: none; color: #dc3545; padding: 0 2px; font-size: 0.8rem; line-height: 1;" data-skill-id="${skill.id}" data-member-id="${memberId}" data-affiliation-id="${affiliationId}" title="{{ __('member.partials_affiliations_enhanced_remove_skill') }}"><i class="bi bi-x-circle"></i></button>
             </div>`;
         return wrapper.firstElementChild;
@@ -1569,6 +2065,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // Placeholder kept for symmetry with the add flow (delegation handles wiring)
     function wireAffiliationCard(card) { /* events are delegated on document */ }
 
+    // Keep the timeline sorted most-recent-first by start date: insert the new card
+    // before the first existing item whose start date is older, else append.
+    function insertAffiliationInOrder(timeline, card, startDate) {
+        const newTs = Date.parse(startDate || '') || 0;
+        const items = timeline.querySelectorAll('.timeline-item-enhanced');
+        for (const item of items) {
+            const ts = Date.parse(item.dataset.startDate || '') || 0;
+            if (newTs > ts) { timeline.insertBefore(card, item); return; }
+        }
+        timeline.appendChild(card);
+    }
+
     // ── Edit Affiliation — submit ─────────────────────────────────────────────
     document.getElementById('editAffiliationForm')?.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -1594,7 +2102,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         editBtn.dataset.endDate = a.end_date || '';
                         editBtn.dataset.location = a.location || '';
                         editBtn.dataset.description = a.description || '';
-                        editBtn.dataset.coaches = a.coaches || '';
                     }
                     bsModal.hide(document.getElementById('editAffiliationModal'));
                     showAlert(res.message, 'success');
@@ -1643,34 +2150,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // ── Add Media — submit ────────────────────────────────────────────────────
-    document.getElementById('addMediaForm')?.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const affiliationId = document.getElementById('addMediaAffiliationId').value;
-        const mid = document.getElementById('addMediaMemberId').value;
-        const btn = this.querySelector('[type=submit]');
-        const form = this;
-        btn.disabled = true;
-        affFetch(`/member/${mid}/affiliations/${affiliationId}/media`, 'POST', formToObject(this))
-            .then(res => {
-                if (res.success && res.media) {
-                    const list = document.getElementById(`media-list-${affiliationId}`);
-                    if (list) {
-                        list.appendChild(buildMediaNode(res.media, affiliationId));
-                        list.style.display = '';
-                        const countEl = document.getElementById(`media-count-${affiliationId}`);
-                        const countWrap = document.getElementById(`media-count-wrap-${affiliationId}`);
-                        if (countEl) countEl.textContent = list.querySelectorAll('[id^="media-"]').length;
-                        if (countWrap) countWrap.style.display = '';
-                        form.reset();
-                        bsModal.hide(document.getElementById('addMediaModal'));
-                        showAlert(res.message, 'success');
-                        btn.disabled = false;
-                    } else { showAlert(res.message, 'success'); setTimeout(() => location.reload(), 800); }
-                } else if (res.success) {
-                    showAlert(res.message, 'success'); setTimeout(() => location.reload(), 800);
-                } else { showAlert(res.message || '{{ __("member.partials_affiliations_enhanced_js_error_adding_media") }}', 'danger'); btn.disabled = false; }
-            }).catch(() => { showAlert('{{ __("member.partials_affiliations_enhanced_js_error_generic") }}', 'danger'); btn.disabled = false; });
-    });
+    // Media add/patch is owned by the redesigned addMediaModal() Alpine component,
+    // which uploads the cropped image then patches the list via window.appendMediaNode.
+    window.appendMediaNode = function (affId, media) {
+        const list = document.getElementById('media-list-' + affId);
+        if (!list) return;
+        list.appendChild(buildMediaNode(media, affId));
+        list.style.display = '';
+        const countEl = document.getElementById('media-count-' + affId);
+        const countWrap = document.getElementById('media-count-wrap-' + affId);
+        if (countEl) countEl.textContent = list.querySelectorAll('[id^="media-"]').length;
+        if (countWrap) countWrap.style.display = '';
+    };
 
     // ── Delegated click handling for dynamic + existing cards ─────────────────
     document.addEventListener('click', async function(e) {
@@ -1689,10 +2180,36 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        const addInstructorBtn = e.target.closest('.btn-add-instructor');
+        if (addInstructorBtn) {
+            window.dispatchEvent(new CustomEvent('add-instructor:open', { detail: {
+                affiliationId: addInstructorBtn.dataset.affiliationId,
+                memberId: addInstructorBtn.dataset.memberId,
+                clubName: document.getElementById('affiliation-name-' + addInstructorBtn.dataset.affiliationId)?.textContent?.trim() || '',
+            }}));
+            return;
+        }
+
+        const delInstructorBtn = e.target.closest('.btn-delete-instructor');
+        if (delInstructorBtn) {
+            const affId = delInstructorBtn.dataset.affiliationId;
+            const mid = delInstructorBtn.dataset.memberId;
+            const index = delInstructorBtn.dataset.index;
+            affFetch(`/member/${mid}/affiliations/${affId}/instructors`, 'DELETE', { index })
+                .then(res => {
+                    if (res.success) { renderInstructors(affId, res.instructors); showAlert(res.message, 'success'); }
+                    else showAlert(res.message || '{{ __("member.partials_affiliations_enhanced_js_error_generic") }}', 'danger');
+                }).catch(() => showAlert('{{ __("member.partials_affiliations_enhanced_js_error_generic") }}', 'danger'));
+            return;
+        }
+
         const addMediaBtn = e.target.closest('.btn-add-media');
         if (addMediaBtn) {
-            document.getElementById('addMediaAffiliationId').value = addMediaBtn.dataset.affiliationId;
-            document.getElementById('addMediaMemberId').value = addMediaBtn.dataset.memberId;
+            window.dispatchEvent(new CustomEvent('add-media:open', { detail: {
+                affiliationId: addMediaBtn.dataset.affiliationId,
+                memberId: addMediaBtn.dataset.memberId,
+                clubName: document.getElementById('affiliation-name-' + addMediaBtn.dataset.affiliationId)?.textContent?.trim() || '',
+            }}));
             return;
         }
 

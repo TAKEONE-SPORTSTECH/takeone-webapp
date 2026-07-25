@@ -516,6 +516,7 @@ Route::middleware(['auth', 'verified', 'two-factor', 'tenant', 'throttle:admin-w
     Route::put('/instructors/{instructor}', [App\Http\Controllers\Admin\ClubInstructorController::class, 'updateInstructor'])->name('instructors.update');
     Route::delete('/instructors/{instructor}', [App\Http\Controllers\Admin\ClubInstructorController::class, 'destroyInstructor'])->name('instructors.destroy');
     Route::get('/instructors/{instructor}/termination-preview', [App\Http\Controllers\Admin\ClubInstructorController::class, 'terminationPreview'])->name('instructors.termination-preview');
+    Route::get('/instructors-prefill/{user}', [App\Http\Controllers\Admin\ClubInstructorController::class, 'instructorPrefill'])->name('instructors.prefill')->middleware('throttle:60,1');
 
     // Activities
     Route::get('/activities', [App\Http\Controllers\Admin\ClubActivityController::class, 'activities'])->name('activities');
@@ -712,9 +713,13 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     Route::put('/member/{id}/affiliations/{affiliationId}', [MemberController::class, 'updateAffiliation'])->name('member.update-affiliation')->middleware('throttle:member-write');
     Route::delete('/member/{id}/affiliations/{affiliationId}', [MemberController::class, 'destroyAffiliation'])->name('member.destroy-affiliation')->middleware('throttle:member-write');
     Route::get('/member/{id}/affiliations/{affiliationId}/activities', [MemberController::class, 'affiliationActivities'])->name('member.affiliation-activities')->middleware('throttle:60,1');
+    Route::get('/member/{id}/instructor-search', [MemberController::class, 'instructorSearch'])->name('member.instructor-search')->middleware('throttle:60,1');
+    Route::post('/member/{id}/affiliations/{affiliationId}/instructors', [MemberController::class, 'storeAffiliationInstructor'])->name('member.store-affiliation-instructor')->middleware('throttle:member-write');
+    Route::delete('/member/{id}/affiliations/{affiliationId}/instructors', [MemberController::class, 'destroyAffiliationInstructor'])->name('member.destroy-affiliation-instructor')->middleware('throttle:member-write');
     Route::post('/member/{id}/affiliations/{affiliationId}/skills', [MemberController::class, 'storeAffiliationSkill'])->name('member.store-affiliation-skill')->middleware('throttle:member-write');
     Route::post('/member/{id}/affiliations/{affiliationId}/skills/{uuid}/request-verification', [MemberController::class, 'requestSkillVerification'])->name('member.skill.request-verification')->middleware('throttle:member-write');
     Route::delete('/member/{id}/affiliations/{affiliationId}/skills/{skillId}', [MemberController::class, 'destroyAffiliationSkill'])->name('member.destroy-affiliation-skill')->middleware('throttle:member-write');
+    Route::post('/member/{id}/affiliations/{affiliationId}/media/upload-image', [MemberController::class, 'uploadAffiliationMediaImage'])->name('member.affiliation-media.upload-image')->middleware('throttle:uploads');
     Route::post('/member/{id}/affiliations/{affiliationId}/media', [MemberController::class, 'storeAffiliationMedia'])->name('member.store-affiliation-media')->middleware('throttle:uploads');
     Route::delete('/member/{id}/affiliations/{affiliationId}/media/{mediaId}', [MemberController::class, 'destroyAffiliationMedia'])->name('member.destroy-affiliation-media')->middleware('throttle:member-write');
 

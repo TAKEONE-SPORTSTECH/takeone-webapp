@@ -9,6 +9,7 @@ return [
     // Stat strip
     'clients'               => 'العملاء',
     'sessions_per_month'    => 'حصة/شهر',
+    'sessions_per_week'     => 'حصة/أسبوع',
     'rating'                => 'التقييم',
     'skills'                => 'المهارات',
 
@@ -59,6 +60,7 @@ return [
     'trainer_show_specialty' => 'التخصص',
     'trainer_show_trainer_fallback' => 'مدرب',
     'trainer_show_experience' => 'الخبرة',
+    'exp_new' => 'جديد',
     'trainer_show_classes_taught' => 'الحصص التي يدرّسها',
     'trainer_show_achievements_title' => 'الإنجازات والمحطات',
     'trainer_show_achievements_subtitle' => 'تقدير للتميز والتفاني',

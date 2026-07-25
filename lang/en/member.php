@@ -76,6 +76,8 @@ return [
     'work_end_date' => 'End date',
     'work_current' => 'Current',
     'work_present' => 'Present',
+    'work_platform_role' => 'Club role',
+    'work_platform_role_note' => 'Synced from your role at this club',
     'work_description' => 'Description',
     'work_delete_confirm' => 'Remove this experience?',
 
@@ -177,6 +179,14 @@ return [
     // Clubs / affiliations
     'active_clubs' => 'Active clubs',
     'active' => 'Active',
+    'years_old' => 'years old',
+    'present' => 'Present',
+    'no_data' => 'Nothing recorded yet.',
+    'period' => 'Period',
+    'time_spent' => 'spent',
+    'duration' => 'Duration',
+    'age' => 'Age',
+    'location' => 'Location',
     'not_active_in_club' => 'Not currently active in any club.',
     'clubs_you_left' => 'Clubs you left',
     'left' => 'Left',

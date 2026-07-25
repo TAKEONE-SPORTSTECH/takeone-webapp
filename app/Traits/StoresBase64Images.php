@@ -63,4 +63,96 @@ trait StoresBase64Images
 
         return $fullPath;
     }
+
+    /**
+     * Like storeBase64Image(), but re-encodes to a size-optimized image before
+     * storing: caps the longest edge and encodes WebP (falling back to JPEG when
+     * the GD build lacks WebP). Best "max quality / minimal disk" tradeoff for
+     * user-uploaded photos and certificate scans.
+     *
+     * Keeps the same security guarantees — the real MIME is sniffed from the bytes
+     * and non-image / SVG payloads are rejected before GD ever touches them.
+     *
+     * Returns the stored path, or null on any failure (treat as a no-op).
+     */
+    private function storeOptimizedBase64Image(
+        string $base64,
+        string $folder,
+        string $filenameBase,
+        int $maxEdge = 1600,
+        int $quality = 82,
+        string $disk = 'public'
+    ): ?string {
+        if (! str_starts_with($base64, 'data:image')) {
+            return null;
+        }
+        $parts = explode(';base64,', $base64, 2);
+        if (count($parts) !== 2) {
+            return null;
+        }
+        $binary = base64_decode($parts[1], strict: true);
+        if ($binary === false || $binary === '') {
+            return null;
+        }
+
+        // Sniff real bytes — reject anything not a whitelisted raster image.
+        $mimeType = (new \finfo(FILEINFO_MIME_TYPE))->buffer($binary);
+        if (! array_key_exists($mimeType, self::ALLOWED_IMAGE_TYPES)) {
+            return null;
+        }
+
+        // GD must be present to re-encode; without it, store the bytes unchanged.
+        if (! function_exists('imagecreatefromstring')) {
+            $ext = self::ALLOWED_IMAGE_TYPES[$mimeType];
+            $path = trim($folder, '/').'/'.$filenameBase.'.'.$ext;
+            Storage::disk($disk)->put($path, $binary);
+
+            return $path;
+        }
+
+        $src = @imagecreatefromstring($binary);
+        if ($src === false) {
+            return null;
+        }
+
+        $w = imagesx($src);
+        $h = imagesy($src);
+        $scale = min(1.0, $maxEdge / max($w, $h));   // never upscale
+        $nw = max(1, (int) round($w * $scale));
+        $nh = max(1, (int) round($h * $scale));
+
+        $dst = imagecreatetruecolor($nw, $nh);
+        // Preserve transparency (png/gif/webp source → webp output).
+        imagealphablending($dst, false);
+        imagesavealpha($dst, true);
+        imagefill($dst, 0, 0, imagecolorallocatealpha($dst, 0, 0, 0, 127));
+        imagecopyresampled($dst, $src, 0, 0, 0, 0, $nw, $nh, $w, $h);
+        imagedestroy($src);
+
+        $webp = function_exists('imagewebp');
+        $ext = $webp ? 'webp' : 'jpg';
+        $path = trim($folder, '/').'/'.$filenameBase.'.'.$ext;
+
+        ob_start();
+        if ($webp) {
+            imagewebp($dst, null, $quality);
+        } else {
+            // JPEG has no alpha — flatten onto white first.
+            $flat = imagecreatetruecolor($nw, $nh);
+            imagefill($flat, 0, 0, imagecolorallocate($flat, 255, 255, 255));
+            imagecopy($flat, $dst, 0, 0, 0, 0, $nw, $nh);
+            imagejpeg($flat, null, $quality);
+            imagedestroy($flat);
+        }
+        $out = ob_get_clean();
+        imagedestroy($dst);
+
+        if ($out === false || $out === '') {
+            return null;
+        }
+
+        Storage::disk($disk)->put($path, $out);
+
+        return $path;
+    }
 }

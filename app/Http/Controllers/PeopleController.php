@@ -93,8 +93,10 @@ class PeopleController extends Controller
         $me = Auth::user();
         $person = User::where('uuid', $uuid)->firstOrFail();
 
-        // Your own public profile → go to your full private profile instead.
-        if ($person->id === $me->id) {
+        // Your own public profile → go to your full private profile instead, UNLESS the
+        // caller explicitly asked for the public view (?public=1) — e.g. an instructor
+        // badge that should always land on the safe, minimal profile, never the private one.
+        if ($person->id === $me->id && ! $request->boolean('public')) {
             return redirect()->route('member.show', $person->uuid);
         }
 

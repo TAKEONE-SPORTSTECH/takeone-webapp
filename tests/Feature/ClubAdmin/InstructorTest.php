@@ -106,17 +106,25 @@ class InstructorTest extends TestCase
         $club = $this->createClub($owner);
         $existingMember = $this->createUser();
 
+        // A prior coaching role → a 2-year snapshot; a submitted experience number is
+        // IGNORED now (experience is calculated, not entered by hand).
+        \App\Models\MemberWorkHistory::create([
+            'user_id' => $existingMember->id, 'title' => 'Head Coach', 'organization' => 'Old Club',
+            'start_date' => now()->subYears(2)->toDateString(), 'end_date' => now()->toDateString(),
+        ]);
+
         $this->actingAs($owner)
             ->post("/admin/club/{$club->slug}/instructors", [
                 'creation_type' => 'existing',
                 'selected_member_id' => $existingMember->id,
                 'specialty_existing' => 'Boxing',
-                'experience_existing' => 7,
+                'experience_existing' => 99,   // ignored — experience is derived
                 'bio_existing' => 'Champion boxer with 7 years coaching.',
             ]);
 
         $existingMember->refresh();
-        $this->assertEquals(7, $existingMember->experience_years);
+        // Snapshot comes from prior coaching history (2 years), NOT the submitted 99.
+        $this->assertEquals(2, $existingMember->experience_years);
         $this->assertEquals('Champion boxer with 7 years coaching.', $existingMember->bio);
     }
 

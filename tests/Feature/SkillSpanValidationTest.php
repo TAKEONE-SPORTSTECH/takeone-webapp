@@ -40,7 +40,7 @@ class SkillSpanValidationTest extends TestCase
                 'skill_name' => 'Boxing',
                 'activity_name' => 'Boxing',
                 'proficiency_level' => 'intermediate',
-                'duration_months' => 6,
+                // No span by default — it is entirely optional now.
             ], $overrides)
         );
     }
@@ -65,17 +65,39 @@ class SkillSpanValidationTest extends TestCase
             ->assertJsonValidationErrors('start_date');
     }
 
-    public function test_a_skill_needs_either_an_end_date_or_a_duration(): void
+    public function test_a_skill_saves_with_no_span_at_all(): void
     {
-        $this->submit(['duration_months' => null])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['duration_months', 'end_date']);
+        // Only skill name + proficiency are required now — no start/end/duration.
+        $this->submit()->assertOk()->assertJsonPath('success', true);
+        $this->assertDatabaseHas('skill_acquisitions', ['skill_name' => 'Boxing']);
+
+        $skill = SkillAcquisition::where('skill_name', 'Boxing')->firstOrFail();
+        $this->assertNull($skill->start_date);
+        $this->assertNull($skill->end_date);
+        $this->assertSame(1, $skill->duration_months);   // sensible default
+    }
+
+    public function test_still_practicing_saves_as_ongoing_with_no_end_date(): void
+    {
+        // "I still practice this skill" -> is_present=1: end date is dropped and the
+        // duration is measured from the start up to today.
+        // Affiliation opened 2026-01-15 (setUp); start on it and keep practicing.
+        $this->submit([
+            'start_date' => '2026-01-15',
+            'end_date' => '2026-03-15',   // even if one is posted, present wins
+            'is_present' => '1',
+        ])->assertOk();
+
+        $skill = SkillAcquisition::where('skill_name', 'Boxing')->firstOrFail();
+        $this->assertSame('2026-01-15', $skill->start_date->toDateString());
+        $this->assertNull($skill->end_date, 'An ongoing skill must have no end date.');
+        // Duration is measured start -> today, not start -> the (ignored) end date.
+        $this->assertGreaterThanOrEqual(1, $skill->duration_months);
     }
 
     public function test_an_end_date_alone_is_enough(): void
     {
         $this->submit([
-            'duration_months' => null,
             'start_date' => '2026-01-15',
             'end_date' => '2026-07-15',
         ])->assertOk();
@@ -84,6 +106,21 @@ class SkillSpanValidationTest extends TestCase
         $skill = SkillAcquisition::where('skill_name', 'Boxing')->firstOrFail();
         $this->assertSame('2026-07-15', $skill->end_date->toDateString());
         $this->assertSame(6, $skill->duration_months);
+    }
+
+    public function test_start_plus_end_with_no_duration_saves_and_derives_the_month_count(): void
+    {
+        // The user's ask: set start + end, leave duration blank, and still be able to save.
+        $this->submit([
+            'duration_months' => null,
+            'start_date' => '2026-01-15',
+            'end_date' => '2026-10-15',   // 9 months
+        ])->assertOk()->assertJsonPath('success', true);
+
+        $skill = SkillAcquisition::where('skill_name', 'Boxing')->firstOrFail();
+        $this->assertSame('2026-01-15', $skill->start_date->toDateString());
+        $this->assertSame('2026-10-15', $skill->end_date->toDateString());
+        $this->assertSame(9, $skill->duration_months, 'duration_months must be derived from the two dates.');
     }
 
     public function test_an_end_date_requires_a_start_date(): void
@@ -134,9 +171,10 @@ class SkillSpanValidationTest extends TestCase
         $this->ctx['affiliation']->update(['start_date' => null]);
     }
 
-    public function test_the_span_is_omitted_from_the_error_when_one_of_the_two_is_given(): void
+    public function test_a_duration_may_still_be_supplied_on_its_own(): void
     {
-        // Supplying a duration must not also demand an end date, and vice versa.
+        // Optional, but honoured when given (e.g. an imported record).
         $this->submit(['duration_months' => 3])->assertOk();
+        $this->assertSame(3, SkillAcquisition::where('skill_name', 'Boxing')->firstOrFail()->duration_months);
     }
 }

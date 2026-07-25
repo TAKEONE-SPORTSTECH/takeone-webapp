@@ -120,6 +120,11 @@ class ClubInstructorController extends Controller
             $bio = $request->bio_existing;
         }
 
+        // Experience is no longer entered by hand — the trainer profile calculates it
+        // live (prior coaching + platform tenure). Store a prior-coaching snapshot so
+        // lists/cards that still read the column show a sensible number.
+        $experienceYears = \App\Support\TrainerExperience::priorCoachingYears(User::find($userId));
+
         User::where('id', $userId)->update([
             'bio' => $bio ?: null,
             'skills' => ! empty($skills) ? $skills : null,
@@ -149,6 +154,41 @@ class ClubInstructorController extends Controller
         ClubCache::flushStats($clubId);
 
         return back()->with('success', 'Instructor added successfully.');
+    }
+
+    /**
+     * Prefill data for the "Add Instructor → existing member" flow: the member's
+     * accumulated skill set + their prior-coaching experience in years, so the admin
+     * starts from what the platform already knows instead of a blank form. Admin-only
+     * (authorizeClub); returns only the aggregate integer, never raw work-history rows.
+     */
+    public function instructorPrefill(Tenant $club, User $user)
+    {
+        $this->authorizeClub($club);
+
+        // Accumulated skill set — distinct skill names across all the member's affiliations.
+        $skills = SkillAcquisition::where('user_id', $user->id)
+            ->whereNotNull('skill_name')
+            ->pluck('skill_name')
+            ->map(fn ($s) => trim((string) $s))
+            ->filter()
+            ->unique(fn ($s) => mb_strtolower($s))
+            ->values();
+
+        // Accumulated years practised per skill (keyed by lower-cased name), so each
+        // skill tag can show "how long they've done it".
+        $skillYears = [];
+        foreach (\App\Support\SkillExperience::monthsPerSkill($user) as $key => $months) {
+            if ($label = \App\Support\SkillExperience::format($months)) {
+                $skillYears[$key] = $label;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'skills' => $skills,
+            'skill_years' => $skillYears,
+        ]);
     }
 
     public function updateInstructor(UpdateInstructorRequest $request, Tenant $club, ClubInstructor $instructor)
@@ -401,9 +441,11 @@ class ClubInstructorController extends Controller
         $parts = [];
         foreach ($entries as $e) {
             $day = ucfirst((string) ($e['day'] ?? ''));
-            $start = substr((string) ($e['start_time'] ?? ''), 0, 5);
+            // Canonical: start_time/end_time. Legacy/seeded: a single {day,time}.
+            $start = substr((string) ($e['start_time'] ?? $e['time'] ?? ''), 0, 5);
             $end = substr((string) ($e['end_time'] ?? ''), 0, 5);
-            $label = trim($day.' '.(($start && $end) ? "{$start}–{$end}" : ''));
+            $time = $start ? ($end ? "{$start}–{$end}" : $start) : '';
+            $label = trim($day.' '.$time);
             if ($label !== '') {
                 $parts[$label] = true;
             }
