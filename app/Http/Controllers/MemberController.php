@@ -1254,6 +1254,42 @@ class MemberController extends Controller
         ]);
     }
 
+    /** Member asks the named platform club to confirm a club affiliation. */
+    public function requestAffiliationVerification(Request $request, $id, string $uuid, \App\Services\AchievementVerificationService $service)
+    {
+        $this->authorizeMemberWrite(Auth::user(), (int) $id);
+
+        $affiliation = \App\Models\ClubAffiliation::where('uuid', $uuid)
+            ->where('member_id', $id)->with('tenant')->firstOrFail();
+
+        if (! $affiliation->tenant_id) {
+            return response()->json(['success' => false,
+                'message' => __('This club isn\'t on the platform — ask teammates to vouch instead.')], 422);
+        }
+
+        $service->requestVerification($affiliation, Auth::user());
+
+        return response()->json(['success' => true, 'message' => __('Verification requested from the club.')]);
+    }
+
+    /** Member asks the employer (a platform club matched by name) to confirm a job. */
+    public function requestWorkVerification(Request $request, $id, string $uuid, \App\Services\AchievementVerificationService $service)
+    {
+        $this->authorizeMemberWrite(Auth::user(), (int) $id);
+
+        $work = \App\Models\MemberWorkHistory::where('uuid', $uuid)
+            ->where('user_id', $id)->firstOrFail();
+
+        if (! $work->attestingTenant()) {
+            return response()->json(['success' => false,
+                'message' => __('This organization isn\'t a club on the platform — ask colleagues to vouch instead.')], 422);
+        }
+
+        $service->requestVerification($work, Auth::user());
+
+        return response()->json(['success' => true, 'message' => __('Verification requested from the club.')]);
+    }
+
     /**
      * Stream a claim's private evidence image to an authorized viewer:
      * the member / their guardian / super-admin, or an admin of the named club.

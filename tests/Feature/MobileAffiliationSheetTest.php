@@ -69,8 +69,8 @@ class MobileAffiliationSheetTest extends TestCase
     /** Pull the JSON handed to affiliationSheet(JSON.parse('…')). */
     private function sheetData(string $html): array
     {
-        $this->assertMatchesRegularExpression("/affiliationSheet\\(JSON\\.parse\\('.*'\\)\\)/", $html);
-        preg_match("/affiliationSheet\\(JSON\\.parse\\('((?:[^'\\\\]|\\\\.)*)'\\)\\)/", $html, $m);
+        $this->assertMatchesRegularExpression("/affiliationSheet\\(JSON\\.parse\\('.*'\\)/", $html);
+        preg_match("/affiliationSheet\\(JSON\\.parse\\('((?:[^'\\\\]|\\\\.)*)'\\)/", $html, $m);
         $json = json_decode(json_decode('"'.$m[1].'"'), true);   // unescape the JS string, then the JSON
         return $json;
     }

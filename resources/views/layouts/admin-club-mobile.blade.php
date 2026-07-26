@@ -10,6 +10,12 @@
     $currentRoute = request()->route()?->getName();
     $clubPublicUrl = \App\Http\Controllers\QrController::clubPageUrl($club);
 
+    // Pending member-claimed records (medals + skills) naming this club, awaiting a decision.
+    $pendingVerifications = \App\Models\TournamentEvent::whereHas('clubAffiliation', fn ($q) => $q->where('tenant_id', $club->id))
+            ->where('verification_status', 'pending')->count()
+        + \App\Models\SkillAcquisition::whereHas('clubAffiliation', fn ($q) => $q->where('tenant_id', $club->id))
+            ->where('verification_status', 'pending')->count();
+
     // Grouped navigation for the drawer (matches the liked mockup structure).
     $navGroups = [
         __('admin.nav_group_overview') => [
@@ -20,6 +26,7 @@
             ['route'=>'admin.club.members',     'icon'=>'bi-people',        'label'=>__('admin.nav_members')],
             ['route'=>'admin.club.instructors', 'icon'=>'bi-person-badge',  'label'=>__('admin.nav_instructors')],
             ['route'=>'admin.club.roles',       'icon'=>'bi-person-lock',   'label'=>__('admin.nav_roles')],
+            ['route'=>'admin.club.achievements.verifications', 'icon'=>'bi-patch-check', 'label'=>__('nav.layouts_admin_club_nav_verifications'), 'badge'=>$pendingVerifications],
             ['route'=>'admin.club.messages',    'icon'=>'bi-chat-dots',     'label'=>__('admin.nav_messages')],
             ['route'=>'admin.club.notifications','icon'=>'bi-bell',         'label'=>__('admin.nav_notifications')],
         ],
@@ -108,6 +115,9 @@
                             <a href="{{ route($item['route'], $clubId) }}" data-shell-link data-route="{{ $item['route'] }}"
                                class="shell-nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors {{ $active ? 'is-active' : '' }}">
                                 <i class="bi {{ $item['icon'] }} text-lg w-5 text-center"></i>{{ $item['label'] }}
+                                @if(!empty($item['badge']))
+                                    <span class="ms-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-white text-[11px] font-bold">{{ $item['badge'] > 99 ? '99+' : $item['badge'] }}</span>
+                                @endif
                             </a>
                         @endif
                     @endforeach

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\VouchRequest;
 use App\Models\AchievementVouch;
+use App\Models\ClubAffiliation;
+use App\Models\MemberWorkHistory;
 use App\Models\SkillAcquisition;
 use App\Models\TournamentEvent;
 use App\Services\AchievementVerificationService;
@@ -16,6 +18,8 @@ class AchievementVouchController extends Controller
     private const TYPES = [
         'achievement' => TournamentEvent::class,
         'skill' => SkillAcquisition::class,
+        'affiliation' => ClubAffiliation::class,
+        'work' => MemberWorkHistory::class,
     ];
 
     /**

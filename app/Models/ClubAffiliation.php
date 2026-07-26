@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\HasVerificationState;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ClubAffiliation extends Model
 {
+    use HasVerificationState;
+
     protected $fillable = [
         'member_id',
         'tenant_id',
@@ -67,6 +70,27 @@ class ClubAffiliation extends Model
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class, 'tenant_id');
+    }
+
+    /** The club that may confirm this affiliation (the platform club itself), or null. */
+    public function attestingTenant(): ?Tenant
+    {
+        return $this->tenant;
+    }
+
+    /** Affiliations are owned via member_id (not user_id). */
+    public function attestationOwnerId(): ?int
+    {
+        return $this->member_id ? (int) $this->member_id : null;
+    }
+
+    /** Short human label for notifications/audit — club + period. */
+    public function attestationLabel(): string
+    {
+        $span = trim((optional($this->start_date)->format('M Y') ?: '').
+            ($this->end_date ? ' – '.$this->end_date->format('M Y') : ''));
+
+        return trim(($this->club_name ?? '').($span ? ' · '.$span : ''), ' ·');
     }
 
     /**

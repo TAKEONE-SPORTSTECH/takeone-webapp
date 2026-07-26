@@ -153,6 +153,7 @@ return [
     'layouts_admin_club_nav_financials' => 'Financials',
     'layouts_admin_club_nav_gallery' => 'Gallery',
     'layouts_admin_club_nav_instructors' => 'Instructors',
+    'layouts_admin_club_nav_verifications' => 'Verifications',
     'layouts_admin_club_nav_members' => 'Members',
     'layouts_admin_club_nav_messages' => 'Messages',
     'layouts_admin_club_nav_notifications' => 'Notifications',

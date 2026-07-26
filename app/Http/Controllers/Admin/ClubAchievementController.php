@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AchievementRequest;
 use App\Models\ClubAchievement;
+use App\Models\ClubAffiliation;
+use App\Models\MemberWorkHistory;
 use App\Models\SkillAcquisition;
 use App\Models\Tenant;
 use App\Models\TournamentEvent;
@@ -50,7 +52,21 @@ class ClubAchievementController extends Controller
             ->orderByDesc('updated_at')->get()
             ->map(fn ($s) => $this->normalizeClaim($club, 'skill', $s));
 
-        $claims = $medals->concat($skills)->values();
+        // Club affiliations naming this club (tenant_id).
+        $affiliations = ClubAffiliation::where('tenant_id', $club->id)
+            ->where('verification_status', ClubAffiliation::STATUS_PENDING)
+            ->with(['member:id,uuid,name,full_name,gender,profile_picture,updated_at'])
+            ->orderByDesc('updated_at')->get()
+            ->map(fn ($a) => $this->normalizeClaim($club, 'affiliation', $a));
+
+        // Work history whose (free-text) organization matches this club's name.
+        $work = MemberWorkHistory::where('verification_status', MemberWorkHistory::STATUS_PENDING)
+            ->whereRaw('LOWER(organization) = ?', [mb_strtolower($club->club_name)])
+            ->with(['user:id,uuid,name,full_name,gender,profile_picture,updated_at'])
+            ->orderByDesc('updated_at')->get()
+            ->map(fn ($w) => $this->normalizeClaim($club, 'work', $w));
+
+        $claims = $medals->concat($skills)->concat($affiliations)->concat($work)->values();
 
         return view(\App\Support\ClubView::pick('achievements.verifications'), compact('club', 'claims'));
     }
@@ -85,36 +101,65 @@ class ClubAchievementController extends Controller
     }
 
     /** Verifiable record types actionable from the queue, keyed by route `{type}`. */
-    private const CLAIM_TYPES = ['achievement' => TournamentEvent::class, 'skill' => SkillAcquisition::class];
+    private const CLAIM_TYPES = [
+        'achievement' => TournamentEvent::class,
+        'skill' => SkillAcquisition::class,
+        'affiliation' => ClubAffiliation::class,
+        'work' => MemberWorkHistory::class,
+    ];
 
     /** Resolve a pending record of the given type that names THIS club, or 404. */
     private function resolveClubClaim(Tenant $club, string $type, string $uuid): \Illuminate\Database\Eloquent\Model
     {
         $class = self::CLAIM_TYPES[$type] ?? abort(404);
 
-        return $class::where('uuid', $uuid)
-            ->whereHas('clubAffiliation', fn ($q) => $q->where('tenant_id', $club->id))
-            ->with('clubAffiliation.tenant')
-            ->firstOrFail();
+        // Each type names a club differently: medals/skills via their affiliation,
+        // affiliations via tenant_id, work via a name match on the organization.
+        $query = $class::where('uuid', $uuid);
+        if (in_array($type, ['achievement', 'skill'], true)) {
+            $query->whereHas('clubAffiliation', fn ($q) => $q->where('tenant_id', $club->id))->with('clubAffiliation.tenant');
+        } elseif ($type === 'affiliation') {
+            $query->where('tenant_id', $club->id);
+        } else { // work
+            $query->whereRaw('LOWER(organization) = ?', [mb_strtolower($club->club_name)]);
+        }
+
+        return $query->firstOrFail();
     }
 
-    /** Flatten a medal/skill into the uniform shape the verification queue view renders. */
+    /** Flatten a claim of any type into the uniform shape the queue view renders. */
     private function normalizeClaim(Tenant $club, string $type, \Illuminate\Database\Eloquent\Model $r): array
     {
-        $u = $r->user;
-        $isMedal = $type === 'achievement';
+        $u = $type === 'affiliation' ? $r->member : $r->user;
+        $title = match ($type) {
+            'achievement' => $r->title,
+            'skill' => $r->skill_name,
+            'affiliation' => $r->club_name,
+            'work' => $r->title,
+        };
+        $subtitle = match ($type) {
+            'achievement' => $r->sport,
+            'skill' => $r->activity?->tr('name') ?? $r->activity_name,
+            'affiliation' => $r->location,
+            'work' => $r->organization,
+        };
+        $date = match ($type) {
+            'achievement' => optional($r->date)->format('M j, Y'),
+            'skill', 'affiliation', 'work' => optional($r->start_date)->format('M Y')
+                .($r->end_date ?? null ? ' – '.$r->end_date->format('M Y') : ''),
+        };
 
         return [
             'type' => $type,
             'uuid' => $r->uuid,
             'user' => ['name' => $u?->full_name ?: $u?->name, 'uuid' => $u?->uuid, 'gender' => $u?->gender, 'profile_picture' => $u?->profile_picture],
-            'title' => $isMedal ? $r->title : $r->skill_name,
-            'sport' => $isMedal ? $r->sport : ($r->activity?->tr('name') ?? $r->activity_name),
-            'date' => $isMedal ? optional($r->date)->format('M j, Y') : ($r->start_date ? $r->start_date->format('M Y') : null),
-            'meta' => $isMedal ? null : ucfirst($r->proficiency_level ?? ''),
-            'club_name' => $r->clubAffiliation?->club_name,
-            'medals' => $isMedal ? $r->performanceResults->pluck('medal_type')->all() : [],
-            'evidence_url' => ($isMedal && $r->evidence_path) ? route('member.tournament.evidence', [$r->user_id, $r->uuid]) : null,
+            'title' => $title,
+            'sport' => $subtitle,
+            'date' => $date ?: null,
+            'meta' => $type === 'skill' ? ucfirst((string) $r->proficiency_level) : ($type === 'work' ? $r->employment_type : null),
+            'club_name' => $type === 'affiliation' ? $r->club_name : ($r->clubAffiliation?->club_name ?? ($type === 'work' ? $r->organization : null)),
+            'medals' => $type === 'achievement' ? $r->performanceResults->pluck('medal_type')->all() : [],
+            'evidence_url' => ($type === 'achievement' && $r->evidence_path) ? route('member.tournament.evidence', [$r->user_id, $r->uuid]) : null,
             'confirm_url' => route('admin.club.achievements.verifications.confirm', [$club->slug ?? $club->id, $type, $r->uuid]),
             'reject_url' => route('admin.club.achievements.verifications.reject', [$club->slug ?? $club->id, $type, $r->uuid]),
         ];

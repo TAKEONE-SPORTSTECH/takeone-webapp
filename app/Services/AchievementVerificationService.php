@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AchievementVouch;
 use App\Models\User;
 use App\Models\UserNotification;
+use App\Models\UserPost;
 use App\Models\UserRelationship;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
@@ -96,6 +97,7 @@ class AchievementVerificationService
             __('Your submission was verified by :club', ['club' => $tenant->tr('club_name') ?? $tenant->club_name]),
             'bi-patch-check-fill');
         $this->pushStatus($model);
+        $this->announceVerified($model);
 
         return $model;
     }
@@ -196,6 +198,10 @@ class AchievementVerificationService
             $this->pushStatus($model);
         }
 
+        if ($status === $model::STATUS_VERIFIED) {
+            $this->announceVerified($model);
+        }
+
         return $model;
     }
 
@@ -287,6 +293,70 @@ class AchievementVerificationService
             ->with('vouchable')
             ->get()
             ->contains(fn ($v) => $v->vouchable && (int) ($v->vouchable->attestationOwnerId() ?? 0) === $voucherId);
+    }
+
+    /**
+     * Publicise a record's *verified* milestone once: auto-post it to the owner's feed
+     * (fanned out to followers + club-mates over MQTT). Only verified records are ever
+     * broadcast; self-reported/pending never are. Guarded by verification_announced_at
+     * so recompute()/re-confirm can't re-post. Best-effort — never blocks verification.
+     */
+    private function announceVerified(Model $model): void
+    {
+        try {
+            if ($model->verification_status !== $model::STATUS_VERIFIED) {
+                return;
+            }
+            // Once only.
+            if (! empty($model->verification_announced_at)) {
+                return;
+            }
+            $owner = $this->owner($model);
+            if (! $owner) {
+                return;
+            }
+            // Note: no discoverability gate — that governs search/DMs, not the feed.
+            // Fan-out already scopes to followers + club-mates and honours blocks.
+            $body = $this->announcementBody($model);
+            $post = UserPost::create(['user_id' => $owner->id, 'type' => 'text', 'body' => $body]);
+            $post->setRelation('user', $owner);
+            $card = $post->toFeedArray($owner);
+
+            app(\App\Services\FeedPublisher::class)->fanOut(
+                $owner, $post, $card, \Illuminate\Support\Str::limit($body, 60),
+                'achievement', __(':name earned a verified achievement', ['name' => $owner->full_name]),
+                'bi-patch-check-fill'
+            );
+
+            $model->forceFill(['verification_announced_at' => now()])->save();
+        } catch (\Throwable $e) {
+            // Publicity is best-effort; verification itself already succeeded.
+        }
+    }
+
+    /** Human, celebratory feed copy for a newly-verified record, per type. */
+    private function announcementBody(Model $model): string
+    {
+        if ($model instanceof \App\Models\TournamentEvent) {
+            $medal = $model->performanceResults->first()?->medal_type;
+            $m = ['1st' => '🥇 '.__('Gold'), '2nd' => '🥈 '.__('Silver'), '3rd' => '🥉 '.__('Bronze')][$medal] ?? '🏅';
+
+            return '🏆 '.__(':medal — verified at :title', ['medal' => $m, 'title' => $model->title]);
+        }
+        if ($model instanceof \App\Models\SkillAcquisition) {
+            return '🎓 '.__(':level :skill — now verified', [
+                'level' => ucfirst((string) $model->proficiency_level),
+                'skill' => $model->skill_name,
+            ]);
+        }
+        if ($model instanceof \App\Models\ClubAffiliation) {
+            return '🏛 '.__('Verified membership at :club', ['club' => $model->club_name]);
+        }
+        if ($model instanceof \App\Models\MemberWorkHistory) {
+            return '💼 '.__(':role at :org — verified', ['role' => $model->title, 'org' => $model->organization]);
+        }
+
+        return '✅ '.__('Verified: :label', ['label' => $model->attestationLabel()]);
     }
 
     private function notifyMember(Model $model, ?User $actor, string $type, string $title, string $icon): void

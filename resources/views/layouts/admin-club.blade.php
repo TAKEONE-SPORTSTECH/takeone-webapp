@@ -239,6 +239,13 @@ html, body { overflow: hidden !important; height: 100% !important; }
         ->map(fn ($p) => mb_strtoupper(mb_substr($p, 0, 1)))
         ->implode('') ?: 'U';
     $sbRole = $sbUser?->isSuperAdmin() ? __('nav.layouts_admin_club_role_super_admin') : __('nav.layouts_admin_club_role_club_admin');
+
+    // Pending member-claimed records (medals + skills) naming this club, awaiting a decision.
+    $pendingVerifications = \App\Models\TournamentEvent::whereHas('clubAffiliation', fn ($q) => $q->where('tenant_id', $club->id))
+            ->where('verification_status', 'pending')->count()
+        + \App\Models\SkillAcquisition::whereHas('clubAffiliation', fn ($q) => $q->where('tenant_id', $club->id))
+            ->where('verification_status', 'pending')->count();
+
     $navGroups = [
         ['label'=>__('nav.layouts_admin_club_group_overview'), 'items'=>[
             ['route'=>'admin.club.dashboard',    'icon'=>'bi-speedometer2',   'label'=>__('nav.layouts_admin_club_nav_dashboard')],
@@ -249,6 +256,7 @@ html, body { overflow: hidden !important; height: 100% !important; }
             ['route'=>'admin.club.members',      'icon'=>'bi-person-plus',    'label'=>__('nav.layouts_admin_club_nav_members')],
             ['route'=>'admin.club.instructors',  'icon'=>'bi-people',         'label'=>__('nav.layouts_admin_club_nav_instructors')],
             ['route'=>'admin.club.roles',        'icon'=>'bi-person-lock',    'label'=>__('nav.layouts_admin_club_nav_roles')],
+            ['route'=>'admin.club.achievements.verifications', 'icon'=>'bi-patch-check', 'label'=>__('nav.layouts_admin_club_nav_verifications'), 'badge'=>$pendingVerifications],
         ]],
         ['label'=>__('nav.layouts_admin_club_group_programs'), 'items'=>[
             ['route'=>'admin.club.activities',   'icon'=>'bi-activity',       'label'=>__('nav.layouts_admin_club_nav_activities')],
@@ -343,7 +351,11 @@ html, body { overflow: hidden !important; height: 100% !important; }
                             <a href="{{ route($item['route'], $clubId) }}" data-shell-link data-route="{{ $item['route'] }}" class="nav-item {{ $active ? 'active' : '' }}">
                                 <span class="ni"><i class="bi {{ $item['icon'] }}"></i></span>
                                 <span>{{ $item['label'] }}</span>
-                                <span class="nav-dot"></span>
+                                @if(!empty($item['badge']))
+                                    <span class="ms-auto emp-collapse-hide inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-white text-[11px] font-bold">{{ $item['badge'] > 99 ? '99+' : $item['badge'] }}</span>
+                                @else
+                                    <span class="nav-dot"></span>
+                                @endif
                             </a>
                         @endif
                     @endforeach
