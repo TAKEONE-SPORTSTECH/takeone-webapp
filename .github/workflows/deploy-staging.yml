@@ -70,7 +70,7 @@ jobs:
         # provisioned identically on the staging box.
         working-directory: ${{ env.DEPLOY_PATH }}
         run: |
-          sudo chown -R actionsrunner:actionsrunner storage bootstrap/cache database
+          sudo chown -R actionsrunner:actionsrunner "$DEPLOY_PATH/storage" "$DEPLOY_PATH/bootstrap/cache" "$DEPLOY_PATH/database"
           chmod -R ug+rwX storage bootstrap/cache
           chmod g+w database
           chmod g+w database/database.sqlite
