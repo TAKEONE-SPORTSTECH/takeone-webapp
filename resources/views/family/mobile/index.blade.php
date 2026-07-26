@@ -4,6 +4,19 @@
 
 @section('title', __('family.title'))
 
+{{-- Hoisted into the shared shell header (#shell-actions) instead of the page's own hero. --}}
+@push('header-actions')
+    {{-- Dispatched on window so the listener doesn't depend on this button's Alpine scope. --}}
+    <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-member-create-modal'))"
+            class="m-press w-9 h-9 rounded-xl bg-black/5 dark:bg-white/10 grid place-items-center active:scale-95 transition-transform" aria-label="{{ __('family.add_member') }}">
+        <i class="bi bi-person-plus text-lg"></i>
+    </button>
+    <a href="{{ route('me.family') }}"
+       class="m-press w-9 h-9 rounded-xl bg-black/5 dark:bg-white/10 grid place-items-center active:scale-95 transition-transform" aria-label="{{ __('nav.family_tree') }}">
+        <i class="bi bi-diagram-3 text-lg"></i>
+    </a>
+@endpush
+
 @section('personal-content')
 <div x-data="{ addOpen: false }" class="-mx-4 -mt-4">
 
@@ -19,17 +32,6 @@
             <div>
                 <p class="text-[11px] font-semibold uppercase tracking-wider text-white/70">{{ __('family.title') }}</p>
                 <h1 class="text-2xl font-black mt-0.5">{{ __('family.my_family') }}</h1>
-            </div>
-            <div class="flex items-center gap-2">
-                {{-- Dispatched on window so the listener doesn't depend on this button's Alpine scope. --}}
-                <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-member-create-modal'))"
-                        class="m-press w-12 h-12 rounded-2xl bg-white/20 border border-white/30 backdrop-blur grid place-items-center active:scale-95 transition-transform" aria-label="{{ __('family.add_member') }}">
-                    <i class="bi bi-person-plus text-xl"></i>
-                </button>
-                <a href="{{ route('me.family') }}"
-                   class="m-press w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center active:scale-95 transition-transform" aria-label="{{ __('nav.family_tree') }}">
-                    <i class="bi bi-diagram-3 text-xl m-float"></i>
-                </a>
             </div>
         </div>
 
