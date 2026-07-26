@@ -1,14 +1,96 @@
-name: Deploy to Production
+name: Deploy
 
+# Fires only after the CI workflow finishes running on main, and only
+# proceeds if that run passed — so a broken build on main can never deploy.
+#
+# Runs on a self-hosted runner living on the same private network as the
+# app's Proxmox container (192.168.0.37), since GitHub's own cloud runners
+# have no route there.
+#
+# The runner's own checkout dir is only used as a disposable build area —
+# composer/npm run there, then the built tree is rsynced into the dedicated
+# deploy path (/var/www/takeone) that Apache actually serves from. .env,
+# the sqlite database, and storage/ live only at the deploy path and are
+# never touched by the sync.
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: ['CI']
+    branches: [main]
+    types: [completed]
+  # Lets this run on demand from the Actions tab / gh CLI — also needed
+  # because a workflow triggered only by workflow_run (no push/dispatch
+  # trigger of its own) can get stuck resolving against a stale cached
+  # copy of this file until the `on:` block itself changes.
+  workflow_dispatch: {}
+
+env:
+  DEPLOY_PATH: /var/www/takeone
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    # Both self-hosted runners carry the default "self-hosted" label, so
+    # scoping to just that would let GitHub route production deploys onto
+    # the staging runner — pin to the production label.
+    runs-on: [self-hosted, production]
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
-      - name: Run deploy script
-        run: bash /var/www/takeone/deploy.sh
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+
+      - name: Build frontend assets
+        run: |
+          npm ci
+          npm run build
+
+      - name: Sync build to deploy path
+        # --delete keeps the deploy path in sync with what's actually in
+        # main (removes files deleted from the repo), but every excluded
+        # path is protected from deletion too, so persistent state never
+        # gets touched by a deploy.
+        run: |
+          rsync -a --delete \
+            --exclude='.env' \
+            --exclude='database/database.sqlite' \
+            --exclude='storage/' \
+            ./ "$DEPLOY_PATH/"
+
+      - name: Migrate & cache
+        working-directory: ${{ env.DEPLOY_PATH }}
+        run: |
+          php artisan migrate --force
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+
+      - name: Fix storage/cache/database permissions for Apache
+        # Apache (mod_php) runs as www-data and writes into storage/ (logs,
+        # cache, sessions) and database/database.sqlite on every request
+        # between deploys — those writes land owned by www-data, and chmod
+        # on a file you don't own fails even with group-write access.
+        # Reclaiming ownership back to the runner user first (a narrowly
+        # scoped NOPASSWD sudo rule) makes this step idempotent regardless
+        # of what www-data wrote in between.
+        working-directory: ${{ env.DEPLOY_PATH }}
+        run: |
+          sudo chown -R actionsrunner:actionsrunner storage bootstrap/cache database
+          chmod -R ug+rwX storage bootstrap/cache
+          chmod g+w database
+          chmod g+w database/database.sqlite
+
+      - name: Restart queue workers
+        # Queue workers keep running the old code in memory until they pick
+        # up a fresh job — queue:restart signals them to exit after their
+        # current job, and Supervisor (managing them as laravel-worker.service
+        # via takeone-worker.conf) automatically brings them back up running
+        # the newly deployed code.
+        working-directory: ${{ env.DEPLOY_PATH }}
+        run: php artisan queue:restart
+
+      - name: Reload Apache
+        run: sudo systemctl reload apache2
