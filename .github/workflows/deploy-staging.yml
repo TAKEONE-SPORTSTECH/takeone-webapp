@@ -1,0 +1,85 @@
+name: Deploy Staging
+
+# Mirrors deploy.yml, but for the development branch and the staging
+# container (192.168.0.49) instead of main/production (192.168.0.37).
+#
+# Fires only after the CI workflow finishes running on development, and only
+# proceeds if that run passed. Runs on the staging box's own self-hosted
+# runner (labels: [self-hosted, staging]) — a separate registration from
+# production's runner, so the two never fight over the same job queue.
+#
+# Same disposable-checkout-dir-then-rsync-to-/var/www/takeone pattern as
+# production: .env, the sqlite database, and storage/ live only at the
+# deploy path and are never touched by the sync.
+on:
+  workflow_run:
+    workflows: ['CI']
+    branches: [development]
+    types: [completed]
+  # Lets this run on demand from the Actions tab / gh CLI — same reasoning
+  # as deploy.yml's workflow_dispatch trigger.
+  workflow_dispatch: {}
+
+env:
+  DEPLOY_PATH: /var/www/takeone
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, staging]
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout development
+        uses: actions/checkout@v4
+        with:
+          ref: development
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+
+      - name: Build frontend assets
+        run: |
+          npm ci
+          npm run build
+
+      - name: Sync build to deploy path
+        # --delete keeps the deploy path in sync with what's actually in
+        # development (removes files deleted from the repo), but every
+        # excluded path is protected from deletion too, so persistent state
+        # never gets touched by a deploy.
+        run: |
+          rsync -a --delete \
+            --exclude='.env' \
+            --exclude='database/database.sqlite' \
+            --exclude='storage/' \
+            ./ "$DEPLOY_PATH/"
+
+      - name: Migrate & cache
+        working-directory: ${{ env.DEPLOY_PATH }}
+        run: |
+          php artisan migrate --force
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+
+      - name: Fix storage/cache/database permissions for Apache
+        # Same reasoning as deploy.yml — Apache (mod_php) runs as www-data
+        # and writes into storage/ and database/database.sqlite between
+        # deploys, so ownership has to be reclaimed back to the runner user
+        # before chmod, via the same narrowly-scoped NOPASSWD sudo rules,
+        # provisioned identically on the staging box.
+        working-directory: ${{ env.DEPLOY_PATH }}
+        run: |
+          sudo chown -R actionsrunner:actionsrunner storage bootstrap/cache database
+          chmod -R ug+rwX storage bootstrap/cache
+          chmod g+w database
+          chmod g+w database/database.sqlite
+
+      - name: Restart queue workers
+        # Same reasoning as deploy.yml — Supervisor (takeone-worker.conf)
+        # automatically restarts the worker once queue:restart signals it.
+        working-directory: ${{ env.DEPLOY_PATH }}
+        run: php artisan queue:restart
+
+      - name: Reload Apache
+        run: sudo systemctl reload apache2

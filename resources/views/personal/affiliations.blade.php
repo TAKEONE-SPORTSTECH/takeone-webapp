@@ -4,6 +4,13 @@
 
 @section('title', __('nav.affiliations'))
 
+{{-- Hoisted into the shared shell header (#shell-actions) instead of the page's own hero. --}}
+@push('header-actions')
+    <a href="{{ route('clubs.explore') }}" class="m-press w-9 h-9 rounded-xl bg-black/5 dark:bg-white/10 grid place-items-center active:scale-95 transition-transform" aria-label="{{ __('nav.explore_clubs') }}">
+        <i class="bi bi-plus-lg text-lg"></i>
+    </a>
+@endpush
+
 @section('personal-content')
 <div class="-mx-4 -mt-4">
 
@@ -16,9 +23,6 @@
                 <h1 class="text-2xl font-black mt-0.5">{{ $active->count() === 1 ? __('personal.active_club') : __('personal.active_clubs') }}</h1>
             </div>
             <div class="flex items-center gap-2">
-                <a href="{{ route('clubs.explore') }}" class="m-press w-12 h-12 rounded-2xl bg-white/20 border border-white/30 backdrop-blur grid place-items-center active:scale-95 transition-transform" aria-label="{{ __('nav.explore_clubs') }}">
-                    <i class="bi bi-plus-lg text-xl"></i>
-                </a>
                 <div class="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center">
                     <i class="bi bi-diagram-3 text-xl m-float"></i>
                 </div>
