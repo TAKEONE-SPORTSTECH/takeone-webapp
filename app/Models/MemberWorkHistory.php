@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\HasVerificationState;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MemberWorkHistory extends Model
 {
+    use HasVerificationState;
+
     protected $table = 'member_work_history';
 
     protected $fillable = [
@@ -34,5 +37,26 @@ class MemberWorkHistory extends Model
     public function isCurrent(): bool
     {
         return $this->end_date === null;
+    }
+
+    /**
+     * The club that may confirm this role — matched from the free-text organization
+     * to an active platform club by name. Null (→ peer/colleague vouch) otherwise.
+     */
+    public function attestingTenant(): ?\App\Models\Tenant
+    {
+        $org = trim((string) $this->organization);
+        if ($org === '') {
+            return null;
+        }
+
+        return \App\Models\Tenant::whereRaw('LOWER(club_name) = ?', [mb_strtolower($org)])
+            ->where('status', 'active')->first();
+    }
+
+    /** Short human label for notifications/audit. */
+    public function attestationLabel(): string
+    {
+        return trim(($this->title ?? '').($this->organization ? ' · '.$this->organization : ''), ' ·');
     }
 }

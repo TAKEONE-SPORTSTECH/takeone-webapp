@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\ActivityCatalog;
 use App\Models\ClubActivity;
+use App\Models\ClubInstructor;
 use App\Models\ClubAffiliation;
 use App\Models\User;
 use Tests\TestCase;
@@ -103,6 +104,38 @@ class AffiliationActivityPickerTest extends TestCase
      * authorizeForMember() denies with a 404 rather than a 403 on purpose — a stranger
      * learns nothing about whether that member or affiliation exists.
      */
+    public function test_a_linked_affiliation_returns_the_clubs_instructors(): void
+    {
+        $owner = $this->createUser();
+        $club = $this->createClub($owner);
+        $this->makeClubAdmin($owner, $club);
+
+        $coach = $this->createUser(['full_name' => 'Coach Carter']);
+        $instructor = ClubInstructor::create(['tenant_id' => $club->id, 'user_id' => $coach->id, 'role' => 'Head Coach']);
+
+        $member = $this->createUser();
+        $affiliation = $this->affiliationFor($owner, $member, $club->id);
+
+        $data = $this->actingAs($member)
+            ->getJson("/member/{$member->id}/affiliations/{$affiliation->id}/activities")
+            ->assertOk()->json();
+
+        $this->assertSame([['id' => $instructor->id, 'name' => 'Coach Carter']], $data['instructors']);
+    }
+
+    public function test_an_off_platform_affiliation_returns_no_instructors(): void
+    {
+        $owner = $this->createUser();
+        $member = $this->createUser();
+        $affiliation = $this->affiliationFor($owner, $member, null);
+
+        $data = $this->actingAs($member)
+            ->getJson("/member/{$member->id}/affiliations/{$affiliation->id}/activities")
+            ->assertOk()->json();
+
+        $this->assertSame([], $data['instructors']);
+    }
+
     public function test_an_unrelated_user_cannot_read_another_members_activities(): void
     {
         $owner = $this->createUser();

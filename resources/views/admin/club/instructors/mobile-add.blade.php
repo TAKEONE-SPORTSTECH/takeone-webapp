@@ -8,6 +8,9 @@ window.instructorAddSheet = function () {
         lang: 'en',
         skills: [],
         skillDraft: '',
+        matchSkills: [],             // lower-cased accumulated skills → highlight matching classes
+        skillYears: {},              // lower-cased skill name → accumulated years label
+        prefilling: false,
         photoPreview: '',
         staffType: 'instructor',
         compType: 'volunteer',       // 'volunteer' | 'paid'
@@ -23,12 +26,12 @@ window.instructorAddSheet = function () {
         _t: null,
 
         roleName()  { return this.mode === 'new' ? 'specialty'   : 'specialty_existing'; },
-        expName()   { return this.mode === 'new' ? 'experience'  : 'experience_existing'; },
         skillsName(){ return this.mode === 'new' ? 'skills'      : 'skills_existing'; },
         bioName()   { return this.mode === 'new' ? 'bio'         : 'bio_existing'; },
 
         reset() {
             this.mode = 'new'; this.skills = []; this.skillDraft = ''; this.photoPreview = '';
+            this.matchSkills = []; this.skillYears = {}; this.prefilling = false;
             this.search = ''; this.results = []; this.selectedId = ''; this.selectedName = '';
             this.staffType = 'instructor'; this.compType = 'volunteer'; this.wageAmount = ''; this.wagePeriod = 'monthly'; this.slotIds = [];
             const f = this.$refs.form; if (f) f.reset();
@@ -69,10 +72,30 @@ window.instructorAddSheet = function () {
                 this.searching = false;
             }, 300);
         },
-        pick(m) {
+        async pick(m) {
             this.selectedId = m.id;
             this.selectedName = m.name || m.full_name || '';
             this.results = []; this.search = '';
+            // Prefill from what the platform already knows: accumulated skills + prior
+            // coaching experience. Best-effort — a failure just leaves the fields blank.
+            this.prefilling = true;
+            try {
+                const base = `{{ route('admin.club.instructors.prefill', ['club' => $club->slug, 'user' => '__UID__']) }}`;
+                const res = await fetch(base.replace('__UID__', m.id), { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                const data = await res.json();
+                if (data && data.success) {
+                    this.skills = Array.isArray(data.skills) ? data.skills : [];
+                    this.matchSkills = this.skills.map(s => String(s).toLowerCase());
+                    this.skillYears = data.skill_years || {};
+                }
+            } catch (e) { /* keep the form usable even if prefill fails */ }
+            this.prefilling = false;
+        },
+
+        // A package class matches the member's accumulated skill set (used to highlight
+        // the disciplines they've actually trained in).
+        isTrained(name) {
+            return this.matchSkills.includes(String(name || '').trim().toLowerCase());
         },
 
         submit(e) {
@@ -227,34 +250,48 @@ window.instructorAddSheet = function () {
                         <div class="flex-1 h-px bg-gray-100"></div>
                     </div>
                     <x-lang-toggle class="mb-4" />
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="form-label">{{ __('admin.ins_role') }}</label>
-                            <input type="text" :name="roleName()" x-show="lang==='en'" placeholder="{{ __('admin.ins_role_ph') }}" class="form-control">
-                            <input type="text" name="translations[role][ar]" dir="rtl" x-show="lang==='ar'" x-cloak placeholder="المسمى بالعربية" class="form-control">
-                        </div>
-                        <div>
-                            <label class="form-label">{{ __('admin.ins_experience') }}</label>
-                            <input type="number" min="0" :name="expName()" placeholder="5" class="form-control">
-                        </div>
+
+                    {{-- Existing-member prefill hint --}}
+                    <div x-show="mode === 'existing' && selectedId" x-cloak class="flex items-start gap-2.5 rounded-xl bg-primary/[0.06] border border-primary/10 px-3.5 py-2.5 -mt-1">
+                        <i class="bi bi-magic text-primary/70 text-[13px] mt-0.5 flex-shrink-0" :class="prefilling && 'animate-pulse'"></i>
+                        <p class="text-[11.5px] leading-relaxed text-muted-foreground">
+                            <span x-show="prefilling">{{ __('admin.ins_prefill_loading') }}</span>
+                            <span x-show="!prefilling">{{ __('admin.ins_prefill_hint') }}</span>
+                        </p>
+                    </div>
+
+                    {{-- Experience is no longer entered here — it's calculated live on the
+                         trainer profile (prior coaching + platform tenure). Role only. --}}
+                    <div>
+                        <label class="form-label">{{ __('admin.ins_role') }}</label>
+                        <input type="text" :name="roleName()" x-show="lang==='en'" placeholder="{{ __('admin.ins_role_ph') }}" class="form-control">
+                        <input type="text" name="translations[role][ar]" dir="rtl" x-show="lang==='ar'" x-cloak placeholder="المسمى بالعربية" class="form-control">
                     </div>
                     <div>
                         <label class="form-label">{{ __('admin.ins_skills') }}</label>
-                        <div class="flex gap-2">
+                        {{-- New member: type skills manually. Existing member: pre-listed from
+                             their accumulated skill set — no manual entry, only removal. --}}
+                        <div class="flex gap-2" x-show="mode === 'new'">
                             <input type="text" x-model="skillDraft" @keydown.enter.prevent="addSkill()" placeholder="{{ __('admin.ins_skill_ph') }}" class="form-control flex-1">
                             <button type="button" @click="addSkill()" class="m-press px-4 rounded-xl bg-primary text-white"><i class="bi bi-plus-lg"></i></button>
                         </div>
-                        <div class="flex flex-wrap gap-1.5 mt-2" x-show="skills.length">
+                        <div class="flex flex-wrap gap-1.5 mt-2" x-show="skills.length" x-cloak>
                             <template x-for="(s, i) in skills" :key="i">
                                 <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-accent text-primary">
                                     <span x-text="s"></span>
+                                    <span x-show="skillYears[String(s).toLowerCase()]" x-cloak class="inline-flex items-center gap-0.5 text-[10px] font-semibold text-primary/70">
+                                        <i class="bi bi-hourglass-split"></i><span x-text="skillYears[String(s).toLowerCase()]"></span>
+                                    </span>
                                     <button type="button" @click="removeSkill(i)" class="hover:text-red-500"><i class="bi bi-x"></i></button>
                                 </span>
                             </template>
                         </div>
+                        {{-- Existing member with no recorded skills --}}
+                        <p x-show="mode === 'existing' && !skills.length && !prefilling" x-cloak class="text-[12px] text-muted-foreground mt-1">{{ __('admin.ins_no_skills_on_record') }}</p>
                         <input type="hidden" :name="skillsName()" :value="JSON.stringify(skills)">
                     </div>
-                    <div>
+                    {{-- Bio is redundant for an existing member (already on their profile) --}}
+                    <div x-show="mode === 'new'">
                         <label class="form-label">{{ __('admin.ins_bio') }}</label>
                         <textarea :name="bioName()" rows="3" placeholder="{{ __('admin.ins_bio_ph') }}" class="form-control resize-none"></textarea>
                     </div>

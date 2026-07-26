@@ -90,7 +90,17 @@
 @endpush
 
 @section($inShell ? 'personal-content' : 'content')
-<div class="{{ $inShell ? '-mx-4 -mt-4' : 'bg-background min-h-screen pb-10' }}" x-data="{ tab: ['#affiliations','#clubs'].includes(window.location.hash) ? 'clubs' : 'overview', goTab(t){ this.tab = t; this.$nextTick(() => document.getElementById('mpTabs')?.scrollIntoView({behavior:'smooth', block:'start'})); } }">
+<div class="{{ $inShell ? '-mx-4 -mt-4' : 'bg-background min-h-screen pb-10' }}"
+     x-data="{
+        tab: (function(){
+            const valid = ['overview','health','goals','tournaments','clubs','certifications','worked','attendance','challenges'];
+            let h = (window.location.hash || '').replace('#','');
+            if (h === 'affiliations') h = 'clubs';   // legacy deep-link alias
+            return valid.includes(h) ? h : 'overview';
+        })(),
+        goTab(t){ this.tab = t; this.$nextTick(() => document.getElementById('mpTabs')?.scrollIntoView({behavior:'smooth', block:'start'})); }
+     }"
+     x-init="$watch('tab', v => { try { history.replaceState(history.state, '', '#' + v); } catch(e) {} })">
 
     @unless($inShell)
     {{-- ===== Sticky glass top bar (standalone only; the shell provides its own) ===== --}}
@@ -519,10 +529,23 @@
                     @if($memberSince)<div><p class="text-[11px] text-muted-foreground">{{ __('member.member_since') }}</p><p class="font-semibold flex items-center gap-1.5"><i class="bi bi-calendar3 text-primary text-xs"></i>{{ Carbon::parse($memberSince)->format('M Y') }}</p></div>@endif
                     <div class="col-span-2">
                         <p class="text-[11px] text-muted-foreground">{{ __('member.skills_learned') }}</p>
-                        @if(($allSkills ?? collect())->count())
+                        @if(($skillSummary ?? collect())->count())
                             <div class="flex flex-wrap gap-1.5 mt-1">
-                                @foreach($allSkills as $skillName)
-                                    <span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-accent text-primary">{{ $skillName }}</span>
+                                @foreach($skillSummary as $sk)
+                                    @if($sk['uuid'])
+                                        <a href="{{ route('activity.show', $sk['uuid']) }}"
+                                           class="inline-flex items-center gap-1.5 ps-2.5 pe-2 py-1 rounded-full text-[11px] font-medium bg-accent text-primary no-underline m-press hover:bg-primary/15 transition-colors">
+                                            <i class="bi bi-book-half text-[10px]"></i>
+                                            <span>{{ $sk['name'] }}</span>
+                                            @if($sk['years'])<span class="inline-flex items-center gap-0.5 text-[10px] font-semibold text-primary/70"><i class="bi bi-hourglass-split"></i>{{ $sk['years'] }}</span>@endif
+                                            <i class="bi bi-chevron-right text-[9px] text-primary/50"></i>
+                                        </a>
+                                    @else
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-accent text-primary">
+                                            <span>{{ $sk['name'] }}</span>
+                                            @if($sk['years'])<span class="inline-flex items-center gap-0.5 text-[10px] font-semibold text-primary/70"><i class="bi bi-hourglass-split"></i>{{ $sk['years'] }}</span>@endif
+                                        </span>
+                                    @endif
                                 @endforeach
                             </div>
                         @else
@@ -670,77 +693,89 @@
                 <p class="text-[11px] text-muted-foreground text-center">{{ __('member.last_recorded') }} <span x-text="latest.label || @js(optional($latest->recorded_at)->format('d M Y'))">{{ optional($latest->recorded_at)->format('d M Y') }}</span><span x-show="ago()" class="text-muted-foreground/70"> · <span x-text="ago()"></span></span></p>
             @endif
 
-            {{-- ===== Weight tracking ===== --}}
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                <div class="flex items-center justify-between mb-3">
-                    <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-graph-up-arrow text-primary"></i> {{ __('member.weight_history') }}</h3>
-                    @if($canEditBasic)
-                        <button type="button" @click="openAdd()" class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold active:bg-primary/90">
-                            <i class="bi bi-plus-lg"></i>{{ __('member.add_weight') }}
-                        </button>
-                    @endif
-                </div>
-
-                {{-- Taekwondo weight-class card — reflects the latest weight, updates live --}}
-                <template x-if="classify(latest.weight)">
-                    <div class="mb-3 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-accent/40 p-3.5 overflow-hidden relative">
-                        <span class="absolute -top-5 -right-5 rtl:right-auto rtl:-left-5 w-20 h-20 rounded-full bg-primary/10 pointer-events-none"></span>
-                        <div class="relative flex items-center gap-3">
-                            <span class="w-11 h-11 rounded-xl bg-primary/15 text-primary grid place-items-center flex-shrink-0"><i class="bi bi-trophy-fill text-lg"></i></span>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-[10px] font-bold uppercase tracking-wider text-primary/70">{{ __('member.weight_class_title') }}</p>
-                                <p class="font-black text-foreground text-lg leading-tight flex items-center gap-1.5">
-                                    <span x-text="classify(latest.weight).name || (classify(latest.weight).label + ' kg')"></span>
-                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary" x-text="classify(latest.weight).age_group"></span>
-                                </p>
-                                <p class="text-[11px] text-muted-foreground mt-0.5">
-                                    <span x-show="classify(latest.weight).name" class="font-semibold text-foreground/70"><span x-text="classify(latest.weight).label + ' kg'"></span> · </span><span x-text="classRange(classify(latest.weight))"></span><span x-show="gender"> · </span><span class="capitalize" x-text="gender"></span>
-                                </p>
-                            </div>
-                        </div>
-                        <template x-if="classHeadroom(latest.weight, classify(latest.weight)) !== null && classHeadroom(latest.weight, classify(latest.weight)) >= 0">
-                            <p class="relative mt-2.5 pt-2.5 border-t border-primary/10 text-[11px] text-foreground/80 flex items-center gap-1.5">
-                                <i class="bi bi-rulers text-primary/60"></i>
-                                <span x-text="i18n.headroom.replace(':kg', classHeadroom(latest.weight, classify(latest.weight)).toFixed(1)).replace(':label', classify(latest.weight).label)"></span>
-                            </p>
-                        </template>
-                    </div>
-                </template>
-
-                <template x-if="rows.length">
-                    <div class="space-y-1.5">
-                        <template x-for="(row,i) in rows" :key="row.date + '-' + i">
-                            <div class="flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-3 py-2.5">
-                                <span class="w-10 h-10 rounded-xl bg-accent grid place-items-center text-primary flex-shrink-0"><i class="bi bi-speedometer2"></i></span>
-                                <div class="min-w-0 flex-1">
-                                    <p class="flex items-center gap-1.5 flex-wrap leading-none">
-                                        <span class="text-base font-black text-foreground tabular-nums" x-text="Number(row.weight).toFixed(1)"></span>
-                                        <span class="text-[10px] font-semibold text-muted-foreground">kg</span>
-                                        {{-- Taekwondo division at that weight --}}
-                                        <template x-if="classify(row.weight)">
-                                            <span class="inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary" x-text="classify(row.weight).label"></span>
-                                        </template>
-                                    </p>
-                                    <p class="text-[10px] text-muted-foreground mt-1"><span x-text="row.label"></span><span x-show="ago(row.date)" class="text-muted-foreground/70"> · <span x-text="ago(row.date)"></span></span></p>
-                                </div>
-                                {{-- Δ vs the previous (older) reading --}}
-                                <template x-if="delta(i) !== null">
-                                    <span class="inline-flex items-center gap-0.5 text-[11px] font-bold px-2 py-0.5 rounded-full"
-                                          :class="delta(i) === 0 ? 'bg-gray-100 text-gray-500' : (delta(i) < 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500')">
-                                        <i class="bi" :class="delta(i) === 0 ? 'bi-dash' : (delta(i) < 0 ? 'bi-arrow-down-short' : 'bi-arrow-up-short')"></i><span x-text="Math.abs(delta(i)).toFixed(1) + ' kg'"></span>
-                                    </span>
-                                </template>
-                                <template x-if="delta(i) === null">
-                                    <span class="text-[9px] font-semibold text-muted-foreground/70 px-2">{{ __('member.first_reading') }}</span>
-                                </template>
-                            </div>
-                        </template>
-                    </div>
-                </template>
-                <template x-if="!rows.length">
-                    <p class="text-sm text-muted-foreground text-center py-4">{{ __('member.no_weight_records') }}</p>
-                </template>
+            {{-- ===== Weight tracking (Work-History-style layout: bare header + standalone cards) ===== --}}
+            {{-- Section header (shown once there are readings) --}}
+            <div class="flex items-center justify-between gap-2" x-show="rows.length" x-cloak>
+                <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-graph-up-arrow text-primary"></i>{{ __('member.weight_history') }}</h3>
+                @if($canEditBasic)
+                    <button type="button" @click="openAdd()" class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
+                        <i class="bi bi-plus-lg"></i>{{ __('member.add_weight') }}
+                    </button>
+                @endif
             </div>
+
+            {{-- Taekwondo weight-class card — reflects the latest weight, updates live --}}
+            <template x-if="classify(latest.weight)">
+                <div class="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-accent/40 p-3.5 overflow-hidden relative">
+                    <span class="absolute -top-5 -right-5 rtl:right-auto rtl:-left-5 w-20 h-20 rounded-full bg-primary/10 pointer-events-none"></span>
+                    <div class="relative flex items-center gap-3">
+                        <span class="w-11 h-11 rounded-xl bg-primary/15 text-primary grid place-items-center flex-shrink-0"><i class="bi bi-trophy-fill text-lg"></i></span>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-primary/70">{{ __('member.weight_class_title') }}</p>
+                            <p class="font-black text-foreground text-lg leading-tight flex items-center gap-1.5">
+                                <span x-text="classify(latest.weight).name || (classify(latest.weight).label + ' kg')"></span>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary" x-text="classify(latest.weight).age_group"></span>
+                            </p>
+                            <p class="text-[11px] text-muted-foreground mt-0.5">
+                                <span x-show="classify(latest.weight).name" class="font-semibold text-foreground/70"><span x-text="classify(latest.weight).label + ' kg'"></span> · </span><span x-text="classRange(classify(latest.weight))"></span><span x-show="gender"> · </span><span class="capitalize" x-text="gender"></span>
+                            </p>
+                        </div>
+                    </div>
+                    <template x-if="classHeadroom(latest.weight, classify(latest.weight)) !== null && classHeadroom(latest.weight, classify(latest.weight)) >= 0">
+                        <p class="relative mt-2.5 pt-2.5 border-t border-primary/10 text-[11px] text-foreground/80 flex items-center gap-1.5">
+                            <i class="bi bi-rulers text-primary/60"></i>
+                            <span x-text="i18n.headroom.replace(':kg', classHeadroom(latest.weight, classify(latest.weight)).toFixed(1)).replace(':label', classify(latest.weight).label)"></span>
+                        </p>
+                    </template>
+                </div>
+            </template>
+
+            {{-- Each reading as its own card (matches Work History) --}}
+            <template x-for="(row,i) in rows" :key="row.date + '-' + i">
+                <div class="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-4 overflow-hidden">
+                    <span class="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 w-1"
+                          :class="delta(i) === null ? 'bg-primary/40' : (delta(i) < 0 ? 'bg-green-400/80' : (delta(i) > 0 ? 'bg-red-300' : 'bg-gray-300'))"></span>
+                    <div class="flex items-center gap-3">
+                        <span class="w-12 h-12 rounded-xl bg-accent grid place-items-center text-primary flex-shrink-0 ring-1 ring-primary/10"><i class="bi bi-speedometer2 text-lg"></i></span>
+                        <div class="min-w-0 flex-1">
+                            <p class="flex items-center gap-1.5 flex-wrap leading-none">
+                                <span class="text-lg font-black text-foreground tabular-nums" x-text="Number(row.weight).toFixed(1)"></span>
+                                <span class="text-[11px] font-semibold text-muted-foreground">kg</span>
+                                {{-- Taekwondo division at that weight --}}
+                                <template x-if="classify(row.weight)">
+                                    <span class="inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary" x-text="classify(row.weight).label"></span>
+                                </template>
+                            </p>
+                            <p class="text-[11px] text-muted-foreground mt-1"><span x-text="row.label"></span><span x-show="ago(row.date)" class="text-muted-foreground/70"> · <span x-text="ago(row.date)"></span></span></p>
+                        </div>
+                        {{-- Δ vs the previous (older) reading --}}
+                        <template x-if="delta(i) !== null">
+                            <span class="inline-flex items-center gap-0.5 text-[11px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                                  :class="delta(i) === 0 ? 'bg-gray-100 text-gray-500' : (delta(i) < 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500')">
+                                <i class="bi" :class="delta(i) === 0 ? 'bi-dash' : (delta(i) < 0 ? 'bi-arrow-down-short' : 'bi-arrow-up-short')"></i><span x-text="Math.abs(delta(i)).toFixed(1) + ' kg'"></span>
+                            </span>
+                        </template>
+                        <template x-if="delta(i) === null">
+                            <span class="text-[9px] font-semibold text-muted-foreground/70 px-2 flex-shrink-0">{{ __('member.first_reading') }}</span>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            {{-- Empty state --}}
+            <template x-if="!rows.length">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-graph-up-arrow text-primary"></i> {{ __('member.weight_history') }}</h3>
+                        @if($canEditBasic)
+                            <button type="button" @click="openAdd()" class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold active:bg-primary/90">
+                                <i class="bi bi-plus-lg"></i>{{ __('member.add_weight') }}
+                            </button>
+                        @endif
+                    </div>
+                    <p class="text-sm text-muted-foreground text-center py-4">{{ __('member.no_weight_records') }}</p>
+                </div>
+            </template>
 
             {{-- Add-weight bottom sheet (teleported to body) --}}
             <template x-teleport="body">
@@ -1103,11 +1138,12 @@
              @open-achievement-sheet.window="openAdd()">
             @php $hasTournamentContent = ($awardedAchievements ?? collect())->isNotEmpty() || $tournamentEvents->isNotEmpty(); @endphp
             @if($isSelf && $hasTournamentContent)
-                {{-- Records exist → a small circular "add more" tucked in the top corner. --}}
-                <div class="flex justify-end -mb-1">
+                {{-- Bare section header + labeled add button (matches Work History) --}}
+                <div class="flex items-center justify-between gap-2">
+                    <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-trophy text-primary"></i>{{ __('member.tab_tournaments') }}</h3>
                     <button type="button" @click="openAdd()" aria-label="{{ __('Add achievement') }}"
-                            class="m-press w-9 h-9 rounded-full bg-primary text-white grid place-items-center shadow-md shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
-                        <i class="bi bi-plus-lg"></i>
+                            class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
+                        <i class="bi bi-plus-lg"></i>{{ __('Add achievement') }}
                     </button>
                 </div>
             @endif
@@ -1147,32 +1183,33 @@
 
             <div id="mobileTournamentsList" class="space-y-3">
             @forelse($tournamentEvents as $t)
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                <div class="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-4 overflow-hidden">
+                    <span class="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 w-1 bg-amber-400/80"></span>
                     <div class="flex items-start gap-3">
-                        <div class="flex flex-col items-center justify-center w-12 flex-shrink-0">
-                            <span class="text-lg font-black text-primary leading-none">{{ optional($t->date)->format('d') }}</span>
-                            <span class="text-[10px] uppercase text-muted-foreground">{{ optional($t->date)->format('M') }}</span>
-                        </div>
+                        <span class="w-12 h-12 rounded-xl bg-amber-50 grid place-items-center text-amber-600 flex-shrink-0 ring-1 ring-amber-100"><i class="bi bi-trophy-fill text-lg"></i></span>
                         <div class="min-w-0 flex-1">
-                            <p class="font-semibold text-foreground truncate">{{ $t->title }}</p>
-                            <p class="text-xs text-muted-foreground truncate">{{ $t->sport }}@if($t->location) · {{ $t->location }}@endif</p>
-                            @if($t->performanceResults->count())
-                                <div class="flex flex-wrap gap-1 mt-2">
-                                    @foreach($t->performanceResults as $r)
-                                        @php $mc = ['1st'=>'bg-amber-100 text-amber-700','2nd'=>'bg-slate-100 text-slate-600','3rd'=>'bg-orange-100 text-orange-700','special'=>'bg-accent text-primary']; @endphp
-                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $mc[$r->medal_type] ?? 'bg-gray-100 text-gray-600' }}"><i class="bi bi-award-fill mr-0.5"></i>{{ ucfirst($r->medal_type) }}</span>
-                                    @endforeach
-                                </div>
-                            @endif
-                            {{-- Provenance: honest state + evidence + request action --}}
-                            <div class="mt-2 flex items-center gap-2 flex-wrap" data-verify-row="{{ $t->uuid }}">
-                                <x-verification-badge data-verify-badge :status="$t->verification_status" :club="$t->verifiedByTenant?->tr('club_name') ?? $t->verifiedByTenant?->club_name" />
-                                @if($t->evidence_path)
-                                    <a href="{{ route('member.tournament.evidence', [$t->user_id, $t->uuid]) }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary"><i class="bi bi-paperclip"></i>{{ __('Evidence') }}</a>
-                                @endif
-                                @if($isSelf && $t->clubAffiliation?->tenant_id && ! in_array($t->verification_status, ['verified','pending']))
-                                    <button type="button" data-verify-btn @click="requestVerify($el, '{{ route('member.tournament.request-verification', [$t->user_id, $t->uuid]) }}')" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary"><i class="bi bi-patch-check"></i>{{ __('Request verification') }}</button>
-                                @endif
+                            <p class="font-bold text-foreground text-[15px] leading-snug truncate">{{ $t->title }}</p>
+                            <p class="text-[12px] font-medium text-foreground/60 truncate mt-0.5">{{ $t->sport }}@if($t->location) · {{ $t->location }}@endif</p>
+                            {{-- Inline meta: date + medals + verification (all one row, matches Work history) --}}
+                            @php $mc = ['1st'=>'bg-amber-100 text-amber-700','2nd'=>'bg-slate-100 text-slate-600','3rd'=>'bg-orange-100 text-orange-700','special'=>'bg-accent text-primary']; @endphp
+                            <div class="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-muted-foreground">
+                                <span class="inline-flex items-center gap-1"><i class="bi bi-calendar-range text-primary/50"></i>{{ optional($t->date)->format('d M Y') }}</span>
+                                @foreach($t->performanceResults as $r)
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $mc[$r->medal_type] ?? 'bg-gray-100 text-gray-600' }}"><i class="bi bi-award-fill"></i>{{ ucfirst($r->medal_type) }}</span>
+                                @endforeach
+                                {{-- Provenance: honest state + evidence + request action, inline --}}
+                                <span class="inline-flex items-center gap-2 flex-wrap" data-verify-row="{{ $t->uuid }}">
+                                    <x-verification-badge data-verify-badge :status="$t->verification_status" :club="$t->verifiedByTenant?->tr('club_name') ?? $t->verifiedByTenant?->club_name" />
+                                    @if($t->evidence_path)
+                                        <a href="{{ route('member.tournament.evidence', [$t->user_id, $t->uuid]) }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary"><i class="bi bi-paperclip"></i>{{ __('Evidence') }}</a>
+                                    @endif
+                                    @if($isSelf && $t->clubAffiliation?->tenant_id && ! in_array($t->verification_status, ['verified','pending']))
+                                        <button type="button" data-verify-btn @click="requestVerify($el, '{{ route('member.tournament.request-verification', [$t->user_id, $t->uuid]) }}')" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary"><i class="bi bi-patch-check"></i>{{ __('Request verification') }}</button>
+                                    @elseif($isSelf && ! $t->clubAffiliation?->tenant_id && $t->verification_status !== 'verified')
+                                        {{-- No platform club to confirm → peers/coaches vouch on the public profile. --}}
+                                        <button type="button" @click="shareForVouch('{{ route('people.show', $user->uuid) }}')" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary" title="{{ __('member.get_vouched_hint') }}"><i class="bi bi-people"></i>{{ __('member.get_vouched') }}</button>
+                                    @endif
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -1301,17 +1338,172 @@
         </div>
 
         {{-- ===== Clubs / affiliations ===== --}}
-        <div x-show="tab==='clubs'" x-transition.opacity x-cloak class="space-y-4">
+        @php
+            $activeAffil = $clubAffiliations->whereNull('end_date')->sortByDesc('start_date')->values();
+            $leftAffil   = $clubAffiliations->whereNotNull('end_date')->sortByDesc('end_date')->values();
+
+            // Detail payload for the tap-through sheet — one entry per affiliation.
+            $instrUserIds = $clubAffiliations->flatMap(fn ($a) => collect($a->instructorList())->pluck('user_id'))->filter()->unique();
+            $instrUsers = $instrUserIds->isNotEmpty()
+                ? \App\Models\User::whereIn('id', $instrUserIds)->get(['id','uuid','full_name','name','profile_picture','updated_at'])->keyBy('id')
+                : collect();
+
+            // Free-text instructors: try to match a system member by exact name so the
+            // badge can still link to their PUBLIC profile. Only a UNIQUE match links —
+            // an ambiguous name (shared by two members) is left as plain text.
+            $instrNames = $clubAffiliations
+                ->flatMap(fn ($a) => collect($a->instructorList())->filter(fn ($i) => empty($i['user_id']))->pluck('name'))
+                ->map(fn ($n) => mb_strtolower(trim((string) $n)))->filter()->unique()->values();
+            $instrByName = collect();
+            if ($instrNames->isNotEmpty()) {
+                $rows = \App\Models\User::where(function ($q) use ($instrNames) {
+                    $q->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(full_name)'), $instrNames->all())
+                      ->orWhereIn(\Illuminate\Support\Facades\DB::raw('LOWER(name)'), $instrNames->all());
+                })->get(['id','uuid','full_name','name','profile_picture','updated_at']);
+                $grouped = [];
+                foreach ($rows as $u) {
+                    foreach (array_unique(array_filter([mb_strtolower(trim((string) $u->full_name)), mb_strtolower(trim((string) $u->name))])) as $key) {
+                        $grouped[$key][] = $u;
+                    }
+                }
+                $instrByName = collect($grouped)->filter(fn ($l) => count($l) === 1)->map(fn ($l) => $l[0]);
+            }
+
+            // "X years Y months" from a whole-month count.
+            $fmtMonths = function (int $m) {
+                $m = max(0, $m);
+                if ($m < 1) {
+                    return '< 1 '.__('month');
+                }
+                $y = intdiv($m, 12);
+                $r = $m % 12;
+                $parts = [];
+                if ($y) {
+                    $parts[] = $y.' '.($y > 1 ? __('years') : __('year'));
+                }
+                if ($r) {
+                    $parts[] = $r.' '.($r > 1 ? __('months') : __('month'));
+                }
+                return implode(' ', $parts);
+            };
+
+            // Accumulated ENROLLED months in a club — sum of the (merged) subscription
+            // periods, so gaps between enrolments are not counted. Off-platform / manual
+            // records (no subscriptions) fall back to each skill's own recorded span.
+            $enrolledMonths = function ($a) {
+                $ivals = $a->subscriptions
+                    ->filter(fn ($s) => $s->start_date)
+                    ->map(fn ($s) => [$s->start_date->copy(), ($s->end_date ?? now())->copy()])
+                    ->sortBy(fn ($i) => $i[0]->timestamp)->values()->all();
+                $merged = [];
+                foreach ($ivals as [$s, $e]) {
+                    if ($e->lte($s)) {
+                        continue;
+                    }
+                    if ($merged && $s->lte($merged[count($merged) - 1][1])) {
+                        if ($e->gt($merged[count($merged) - 1][1])) {
+                            $merged[count($merged) - 1][1] = $e;
+                        }
+                    } else {
+                        $merged[] = [$s, $e];
+                    }
+                }
+                $total = 0;
+                foreach ($merged as [$s, $e]) {
+                    $total += (int) floor($s->floatDiffInMonths($e));
+                }
+                return $total;
+            };
+
+            $memberBirthdate = $user->birthdate ? \Illuminate\Support\Carbon::parse($user->birthdate) : null;
+            $ageAt = fn ($date) => ($memberBirthdate && $date) ? (int) $memberBirthdate->diffInYears(\Illuminate\Support\Carbon::parse($date)) : null;
+
+            $affiliationDetails = $clubAffiliations->mapWithKeys(function ($a) use ($skillEncyclopedia, $instrUsers, $instrByName, $fmtMonths, $enrolledMonths, $ageAt) {
+                // System-tracked club (has package subscriptions) → accumulated enrolled
+                // time; otherwise each skill keeps its own manually-recorded duration.
+                $hasSubs = $a->subscriptions->isNotEmpty();
+                $enrolledLabel = $hasSubs ? $fmtMonths($enrolledMonths($a)) : null;
+
+                // Age the member was over this affiliation (start → end, or → today if ongoing).
+                $ageStart = $ageAt($a->start_date);
+                $ageEnd = $ageAt($a->end_date ?? now());
+                $ageLabel = null;
+                if ($ageStart !== null && $ageEnd !== null) {
+                    $ageLabel = ($ageStart === $ageEnd)
+                        ? $ageStart.' '.__('member.years_old')
+                        : $ageStart.' - '.$ageEnd.' '.__('member.years_old');
+                }
+
+                return [$a->id => [
+                    'id' => $a->id,
+                    'club_name' => $a->club_name,
+                    'logo' => $a->logo ? asset('storage/'.$a->logo) : null,
+                    'ongoing' => ! $a->end_date,
+                    // Verification (club-confirm if on-platform; else peer vouch).
+                    'verification' => $a->verification_status,
+                    'can_request' => (bool) $a->tenant_id,
+                    'request_url' => route('member.affiliation.request-verification', [$a->member_id, $a->uuid]),
+                    'dates' => (optional($a->start_date)->format('M Y') ?: '—').($a->end_date ? ' — '.$a->end_date->format('M Y') : ' — '.__('member.present')),
+                    'duration' => $a->formatted_duration ?? null,
+                    // Time actually SPENT: accumulated enrolled time for a system club
+                    // (gaps excluded); the full recorded span for a manual/pre-system record.
+                    'spent' => $enrolledLabel ?? ($a->formatted_duration ?? null),
+                    'age' => $ageLabel,
+                    'left_ago' => $a->end_date ? $a->end_date->diffForHumans() : null,
+                    'location' => $a->location,
+                    'note' => $a->description ?: null,
+                    'skills' => $a->skillAcquisitions->map(fn ($s) => [
+                        'name' => $s->skill_name,
+                        'level' => ucfirst($s->proficiency_level),
+                        // Enrolled-time for a real club; full recorded span for a manual record.
+                        'duration' => $enrolledLabel ?? $s->formatted_duration,
+                        'url' => ($skillEncyclopedia[$s->id] ?? null) ? route('activity.show', $skillEncyclopedia[$s->id]) : null,
+                    ])->values(),
+                    'instructors' => collect($a->instructorList())->map(function ($ins) use ($instrUsers, $instrByName) {
+                        // Linked member first, then a unique name match; else plain free text.
+                        $u = $ins['user_id']
+                            ? $instrUsers->get($ins['user_id'])
+                            : $instrByName->get(mb_strtolower(trim((string) $ins['name'])));
+                        return [
+                            'name' => $u ? ($u->full_name ?: $u->name) : $ins['name'],
+                            'avatar' => $u && $u->profile_picture ? asset('storage/'.$u->profile_picture).'?v='.optional($u->updated_at)->timestamp : null,
+                            // ?public=1 → always the minimal public profile, even for self.
+                            'url' => $u ? route('people.show', ['uuid' => $u->uuid, 'public' => 1]) : null,
+                        ];
+                    })->values(),
+                    'media' => $a->affiliationMedia->map(fn ($m) => [
+                        'title' => $m->title, 'url' => $m->full_url, 'icon' => $m->icon_class,
+                    ])->values(),
+                ]];
+            });
+        @endphp
+        <div x-show="tab==='clubs'" x-transition.opacity x-cloak class="space-y-4"
+             x-data="affiliationSheet(@js($affiliationDetails), { storeUrl: '{{ route('member.store-affiliation', $user->id) }}', csrf: '{{ csrf_token() }}', memberId: {{ (int) $user->id }}, canManage: {{ ($isSelf ?? false) ? 'true' : 'false' }} })">
             @php
-                $activeAffil = $clubAffiliations->whereNull('end_date')->sortByDesc('start_date')->values();
-                $leftAffil   = $clubAffiliations->whereNotNull('end_date')->sortByDesc('end_date')->values();
+                // (kept for the markup below)
             @endphp
 
             {{-- Active --}}
             <div>
+                @if($activeAffil->isNotEmpty() || $leftAffil->isEmpty())
+                    {{-- Header always outside the card (matches Work history) --}}
+                    <div class="flex items-center justify-between gap-2 mb-2">
+                        <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-diagram-3 text-primary"></i>{{ __('member.active_clubs') }}</h3>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            @if($activeAffil->isNotEmpty())
+                                <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">{{ $activeAffil->count() }}</span>
+                            @endif
+                            @if($canEditBasic ?? false)
+                                <button type="button" @click="openAdd()" aria-label="{{ __('member.add_club') }}"
+                                        class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm shadow-primary/25 hover:bg-primary/90 transition-colors">
+                                    <i class="bi bi-plus-lg"></i>{{ __('member.add_club') }}
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+                @endif
                 @forelse($activeAffil as $a)
-                    @php $clubUrl = ($a->tenant && $a->tenant->slug && $a->tenant->country) ? route('clubs.show', ['country' => strtolower($a->tenant->country), 'slug' => $a->tenant->slug]) : null; $tag = $clubUrl ? 'a' : 'div'; @endphp
-                    <{{ $tag }} @if($clubUrl) href="{{ $clubUrl }}" @endif class="group relative block bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-2.5 overflow-hidden {{ $clubUrl ? 'm-press' : '' }}">
+                    <button type="button" @click="openSheet({{ $a->id }})" class="group relative block w-full text-start bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-2.5 overflow-hidden m-press">
                         {{-- subtle accent rail --}}
                         <span class="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 w-1 bg-green-400/80"></span>
                         <div class="flex items-start gap-3">
@@ -1325,28 +1517,21 @@
                                         <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>{{ __('member.active') }}
                                     </span>
                                 </div>
-                                <div class="mt-1.5 flex flex-col gap-1 text-[11px] text-muted-foreground">
-                                    <span class="inline-flex items-center gap-1.5"><i class="bi bi-calendar3 text-muted-foreground/70"></i>{{ __('member.since') }} {{ optional($a->start_date)->format('M Y') ?: '—' }}</span>
+                                <div class="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-muted-foreground">
+                                    <span class="inline-flex items-center gap-1"><i class="bi bi-calendar3 text-primary/50"></i>{{ __('member.since') }} {{ optional($a->start_date)->format('M Y') ?: '—' }}</span>
                                     @if($a->location)
-                                        <span class="inline-flex items-center gap-1.5 min-w-0"><i class="bi bi-geo-alt text-muted-foreground/70 flex-shrink-0"></i><span class="truncate">{{ $a->location }}</span></span>
+                                        <span class="inline-flex items-center gap-1 min-w-0"><i class="bi bi-geo-alt text-primary/50 flex-shrink-0"></i><span class="truncate">{{ $a->location }}</span></span>
                                     @endif
+                                    @foreach($a->skillAcquisitions->take(6) as $s)
+                                        <span class="inline-flex items-center gap-1 text-primary font-semibold"><i class="bi bi-mortarboard-fill text-primary/60"></i>{{ $s->skill_name }}</span>
+                                    @endforeach
                                 </div>
                             </div>
                         </div>
-                        @if($a->skillAcquisitions->count())
-                            <div class="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-gray-50">
-                                @foreach($a->skillAcquisitions->take(6) as $s)
-                                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-accent text-primary">{{ $s->skill_name }}</span>
-                                @endforeach
-                            </div>
-                        @endif
-                    </{{ $tag }}>
+                    </button>
                 @empty
                     @if($leftAffil->isEmpty())
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                            <div class="flex items-center justify-between mb-3">
-                                <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-diagram-3 text-primary"></i> {{ __('member.active_clubs') }}</h3>
-                            </div>
                             <p class="text-sm text-muted-foreground text-center py-4">{{ __('member.not_active_in_club') }}</p>
                         </div>
                     @endif
@@ -1356,20 +1541,15 @@
             {{-- Previous clubs --}}
             @if($leftAffil->isNotEmpty())
             <div>
-                <div class="flex items-center gap-2.5 mb-2">
-                    <span class="w-9 h-9 rounded-xl bg-muted grid place-items-center flex-shrink-0"><i class="bi bi-clock-history text-muted-foreground"></i></span>
-                    <span class="text-sm font-semibold text-foreground truncate">{{ __('member.previous_clubs') }}</span>
+                <div class="flex items-center justify-between gap-2 mb-2">
+                    <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-clock-history text-primary"></i>{{ __('member.previous_clubs') }}</h3>
                     <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 flex-shrink-0">{{ $leftAffil->count() }}</span>
                 </div>
 
                 <div class="space-y-2.5">
                     @foreach($leftAffil as $a)
-                        @php
-                            $span = ($a->start_date && $a->end_date) ? $a->start_date->diffInMonths($a->end_date) : null;
-                            $clubUrl = ($a->tenant && $a->tenant->slug && $a->tenant->country) ? route('clubs.show', ['country' => strtolower($a->tenant->country), 'slug' => $a->tenant->slug]) : null;
-                            $tag = $clubUrl ? 'a' : 'div';
-                        @endphp
-                        <{{ $tag }} @if($clubUrl) href="{{ $clubUrl }}" @endif class="group relative block bg-white rounded-2xl shadow-sm border border-gray-100 p-4 overflow-hidden {{ $clubUrl ? 'm-press' : '' }}">
+                        @php $span = ($a->start_date && $a->end_date) ? (int) $a->start_date->diffInMonths($a->end_date) : null; @endphp
+                        <button type="button" @click="openSheet({{ $a->id }})" class="group relative block w-full text-start bg-white rounded-2xl shadow-sm border border-gray-100 p-4 overflow-hidden m-press">
                             {{-- subtle muted rail --}}
                             <span class="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 w-1 bg-gray-300"></span>
                             <div class="flex items-start gap-3">
@@ -1381,18 +1561,541 @@
                                         <p class="font-bold text-foreground/80 text-[15px] leading-snug truncate">{{ $a->club_name }}</p>
                                         <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-500">{{ __('member.left') }}</span>
                                     </div>
-                                    <div class="mt-1.5 flex flex-col gap-1 text-[11px] text-muted-foreground">
-                                        <span class="inline-flex items-center gap-1.5"><i class="bi bi-calendar-range text-muted-foreground/70"></i>{{ optional($a->start_date)->format('M Y') ?: '—' }} – {{ optional($a->end_date)->format('M Y') }}</span>
+                                    <div class="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-muted-foreground">
+                                        <span class="inline-flex items-center gap-1"><i class="bi bi-calendar-range text-primary/50"></i>{{ optional($a->start_date)->format('M Y') ?: '—' }} – {{ optional($a->end_date)->format('M Y') }}</span>
                                         @if($span !== null)
-                                            <span class="inline-flex items-center gap-1.5"><i class="bi bi-hourglass-split text-muted-foreground/70"></i>{{ $span }} {{ \Illuminate\Support\Str::plural('month', max(1,$span)) }}</span>
+                                            <span class="inline-flex items-center gap-1"><i class="bi bi-hourglass-split text-primary/50"></i>{{ $span }} {{ \Illuminate\Support\Str::plural('month', max(1,$span)) }}</span>
                                         @endif
+                                        @foreach($a->skillAcquisitions->take(6) as $s)
+                                            <span class="inline-flex items-center gap-1 text-primary font-semibold"><i class="bi bi-mortarboard-fill text-primary/60"></i>{{ $s->skill_name }}</span>
+                                        @endforeach
                                     </div>
                                 </div>
                             </div>
-                        </{{ $tag }}>
+                        </button>
                     @endforeach
                 </div>
             </div>
+            @endif
+
+            {{-- Add-affiliation bottom sheet (teleported to body) --}}
+            @if($canEditBasic ?? false)
+            <template x-teleport="body">
+                <div x-show="addOpen" x-cloak @keydown.escape.window="addOpen=false" class="fixed inset-0 z-[70]">
+                    <div x-show="addOpen" x-transition.opacity class="absolute inset-0 bg-black/50" @click="addOpen=false"></div>
+                    <div x-show="addOpen"
+                         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                         class="absolute inset-x-0 bottom-0 bg-background rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col">
+                        <div class="flex-shrink-0 px-5 pt-3 pb-2 border-b border-gray-100">
+                            <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
+                            <div class="flex items-center justify-between">
+                                <h3 class="font-bold text-foreground">{{ __('member.add_club') }}</h3>
+                                <button type="button" @click="addOpen=false" class="w-8 h-8 rounded-full grid place-items-center text-muted-foreground hover:bg-muted"><i class="bi bi-x-lg"></i></button>
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                            {{-- Source toggle: platform club vs manual entry --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.club_source') }}</label>
+                                <div class="grid grid-cols-2 gap-1 p-1 bg-muted rounded-2xl text-sm font-semibold">
+                                    <button type="button" @click="form.source='platform'" :class="form.source==='platform' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground'" class="m-press rounded-xl py-2 transition-colors">
+                                        <i class="bi bi-building mr-1"></i>{{ __('member.from_platform') }}
+                                    </button>
+                                    <button type="button" @click="form.source='manual'" :class="form.source==='manual' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground'" class="m-press rounded-xl py-2 transition-colors">
+                                        <i class="bi bi-pencil mr-1"></i>{{ __('member.enter_manually') }}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- Platform club picker --}}
+                            <div x-show="form.source==='platform'" x-cloak>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.club_name') }} <span class="text-red-500">*</span></label>
+                                <x-select-menu model="form.tenant_id"
+                                    :options="($allClubs ?? collect())->map(fn ($c) => ['value' => (string) $c->id, 'label' => $c->club_name])->values()->all()"
+                                    placeholder="{{ __('member.select_platform_club') }}" />
+                            </div>
+
+                            {{-- Manual club name --}}
+                            <div x-show="form.source==='manual'" x-cloak>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.club_name') }} <span class="text-red-500">*</span></label>
+                                <input type="text" x-model="form.club_name" maxlength="255" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('member.club_name_manual_ph') }}">
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.start_date') }} <span class="text-red-500">*</span></label>
+                                    <x-date-picker model="form.start_date" maxExpr="form.end_date || null" placeholder="{{ __('member.start_date') }}" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.end_date') }}</label>
+                                    <x-date-picker model="form.end_date" minExpr="form.start_date || null" placeholder="{{ __('member.present') }}" />
+                                </div>
+                            </div>
+                            <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                                <input type="checkbox" x-model="form.current" @change="if(form.current) form.end_date=''" class="w-[18px] h-[18px] rounded text-primary border-gray-300 focus:ring-primary">
+                                <span class="text-sm text-gray-700">{{ __('member.work_current') }}</span>
+                            </label>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.location') }}</label>
+                                <input type="text" x-model="form.location" maxlength="255" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('member.location') }}">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.note') ?? 'Note' }}</label>
+                                <textarea x-model="form.description" rows="3" maxlength="1000" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"></textarea>
+                            </div>
+                        </div>
+                        <div class="flex-shrink-0 border-t border-gray-100 px-5 pt-3 flex gap-2" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
+                            <button type="button" @click="submitAdd()" :disabled="saving || !form.club_name.trim() || !form.start_date" class="m-press flex-1 py-3 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 disabled:opacity-60 flex items-center justify-center gap-2">
+                                <i class="bi bi-arrow-repeat animate-spin" x-show="saving"></i>
+                                <span>{{ __('member.add_club') }}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+            @endif
+
+            {{-- Tap-through detail sheet (teleported to <body> so the shell transform
+                 can't clip it). Read-only view of the affiliation's data. --}}
+            <template x-teleport="body">
+                <div x-show="show" x-cloak class="fixed inset-0 z-[70]" style="display:none;" @keydown.escape.window="close()">
+                    <div x-show="show" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                         x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                         class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="close()"></div>
+
+                    <div x-show="show" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                         class="absolute inset-x-0 bottom-0 max-h-[92vh] flex flex-col bg-background rounded-t-3xl shadow-2xl overflow-hidden">
+
+                        {{-- Grab handle --}}
+                        <div class="flex-shrink-0 pt-2.5 pb-1 flex justify-center"><span class="w-10 h-1.5 rounded-full bg-gray-300"></span></div>
+
+                        {{-- Hero header — the club's own logo becomes a blurred identity wash --}}
+                        <div class="flex-shrink-0 relative overflow-hidden bg-primary/[0.04]">
+                            {{-- club-identity backdrop (real content → per-club colour + depth) --}}
+                            <template x-if="cur?.logo">
+                                <img :src="cur.logo" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-[1.6] blur-2xl opacity-30 pointer-events-none select-none"
+                                     :class="cur && !cur.ongoing && 'grayscale'">
+                            </template>
+                            {{-- legibility + blend into the body --}}
+                            <div class="absolute inset-0 bg-gradient-to-b from-white/55 via-background/80 to-background"></div>
+                            <div class="relative px-5 pt-3 pb-5 flex items-start gap-4">
+                                <span class="w-16 h-16 rounded-[1.15rem] bg-white grid place-items-center overflow-hidden flex-shrink-0 ring-1 ring-black/[0.06] shadow-[0_6px_20px_-6px_rgba(0,0,0,0.18)]"
+                                      :class="cur && !cur.ongoing && 'grayscale'">
+                                    <template x-if="cur && cur.logo"><img :src="cur.logo" alt="" class="w-16 h-16 object-cover"></template>
+                                    <template x-if="cur && !cur.logo"><i class="bi bi-buildings text-2xl text-primary/40"></i></template>
+                                </span>
+                                <div class="min-w-0 flex-1 pt-1">
+                                    <h3 class="font-extrabold text-foreground text-[18px] leading-tight tracking-tight line-clamp-2" x-text="cur?.club_name"></h3>
+                                    {{-- brand accent underline --}}
+                                    <div class="mt-1.5 h-[3px] w-10 rounded-full bg-gradient-to-r from-primary to-primary/20"></div>
+                                    <div class="mt-2 flex items-center gap-2 flex-wrap">
+                                        {{-- Status — "Left" folds its "how long ago" inside the same pill --}}
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-sm ring-1 ring-inset backdrop-blur"
+                                              :class="cur?.ongoing ? 'bg-green-100/90 text-green-700 ring-green-200' : 'bg-white/90 text-gray-500 ring-gray-200'">
+                                            <span x-show="cur?.ongoing" class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                                            <span x-show="!cur?.ongoing" class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                                            <span x-text="cur?.ongoing ? '{{ __('member.active') }}' : '{{ __('member.left') }}'"></span>
+                                            <span x-show="!cur?.ongoing && cur?.left_ago" x-cloak class="font-medium text-gray-400 border-s border-gray-200 ps-1.5" x-text="cur?.left_ago"></span>
+                                        </span>
+                                        {{-- Time actually spent training at this club --}}
+                                        <span x-show="cur?.spent" x-cloak class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-sm ring-1 ring-inset backdrop-blur bg-white/90 text-gray-500 ring-gray-200">
+                                            <i class="bi bi-hourglass-split text-primary/60"></i>
+                                            <span x-text="cur?.spent"></span>
+                                            <span class="font-medium text-gray-400">{{ __('member.time_spent') }}</span>
+                                        </span>
+                                        {{-- Verification badge / action --}}
+                                        <span x-show="cur?.verification === 'verified'" x-cloak class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-sm ring-1 ring-inset bg-green-100/90 text-green-700 ring-green-200"><i class="bi bi-patch-check-fill"></i>{{ __('member.verified') }}</span>
+                                        <span x-show="cur?.verification === 'pending'" x-cloak class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-sm ring-1 ring-inset bg-white/90 text-gray-500 ring-gray-200"><i class="bi bi-hourglass-split text-primary/60"></i>{{ __('member.pending') }}</span>
+                                        @if($isSelf ?? false)
+                                            <button type="button" x-show="(cur?.verification === 'self_reported' || cur?.verification === 'rejected') && cur?.can_request" x-cloak @click="requestVerify()" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-sm ring-1 ring-inset bg-primary/10 text-primary ring-primary/15"><i class="bi bi-patch-check"></i>{{ __('Request verification') }}</button>
+                                            <button type="button" x-show="(cur?.verification === 'self_reported' || cur?.verification === 'rejected') && !cur?.can_request" x-cloak @click="shareForVouch('{{ route('people.show', $user->uuid) }}')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-sm ring-1 ring-inset bg-primary/10 text-primary ring-primary/15"><i class="bi bi-people"></i>{{ __('member.get_vouched') }}</button>
+                                        @endif
+                                    </div>
+                                </div>
+                                <button type="button" @click="close()" class="m-press w-9 h-9 -mt-1 -me-1 rounded-full grid place-items-center bg-white/80 backdrop-blur text-muted-foreground hover:bg-white hover:text-foreground shadow-sm ring-1 ring-black/5 flex-shrink-0"><i class="bi bi-x-lg text-[13px]"></i></button>
+                            </div>
+                        </div>
+
+                        {{-- Scrollable body --}}
+                        <div class="flex-1 overflow-y-auto px-5 pt-1 space-y-4" style="padding-bottom: calc(2.5rem + env(safe-area-inset-bottom));">
+                            {{-- Journey card — dates headline + a divided stat strip --}}
+                            <div class="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden">
+                                <div class="px-4 pt-3.5 pb-3 flex items-center gap-3">
+                                    <span class="w-9 h-9 rounded-xl bg-primary/10 text-primary grid place-items-center flex-shrink-0"><i class="bi bi-calendar3 text-[15px]"></i></span>
+                                    <div class="min-w-0">
+                                        <div class="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{{ __('member.period') }}</div>
+                                        <div class="text-[14px] font-bold text-foreground leading-snug" x-text="cur?.dates"></div>
+                                    </div>
+                                </div>
+                                {{-- stat strip (only the metrics that exist) --}}
+                                <div x-show="cur?.duration || cur?.age || cur?.location" class="grid border-t border-gray-100 divide-x divide-gray-100"
+                                     :class="{'grid-cols-3': [cur?.duration, cur?.age, cur?.location].filter(Boolean).length===3, 'grid-cols-2': [cur?.duration, cur?.age, cur?.location].filter(Boolean).length===2, 'grid-cols-1': [cur?.duration, cur?.age, cur?.location].filter(Boolean).length===1}">
+                                    <template x-if="cur?.duration">
+                                        <div class="px-3 py-2.5 min-w-0">
+                                            <div class="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5"><i class="bi bi-hourglass-split text-primary/60"></i>{{ __('member.duration') }}</div>
+                                            <div class="text-[12.5px] font-bold text-foreground truncate" x-text="cur.duration"></div>
+                                        </div>
+                                    </template>
+                                    <template x-if="cur?.age">
+                                        <div class="px-3 py-2.5 min-w-0">
+                                            <div class="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5"><i class="bi bi-person text-primary/60"></i>{{ __('member.age') }}</div>
+                                            <div class="text-[12.5px] font-bold text-foreground truncate" x-text="cur.age"></div>
+                                        </div>
+                                    </template>
+                                    <template x-if="cur?.location">
+                                        <div class="px-3 py-2.5 min-w-0">
+                                            <div class="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5"><i class="bi bi-geo-alt text-primary/60"></i>{{ __('member.location') }}</div>
+                                            <div class="text-[12.5px] font-bold text-foreground truncate" x-text="cur.location"></div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            {{-- Note --}}
+                            <div x-show="cur?.note" x-cloak class="relative overflow-hidden rounded-2xl bg-primary/[0.05] border border-primary/10 px-4 py-3.5">
+                                <span class="absolute inset-y-0 start-0 w-1 bg-primary/40"></span>
+                                <div class="flex items-start gap-2.5 ps-1.5">
+                                    <i class="bi bi-quote text-primary/60 text-[16px] leading-none mt-0.5 flex-shrink-0"></i>
+                                    <p class="text-[12.5px] leading-relaxed text-foreground whitespace-pre-line" x-text="cur?.note"></p>
+                                </div>
+                            </div>
+
+                            {{-- Skills --}}
+                            <div class="rounded-2xl bg-white border border-gray-100 shadow-sm p-3.5">
+                                <div class="flex items-center gap-2 mb-2.5">
+                                    <span class="w-7 h-7 rounded-xl bg-amber-100 text-amber-600 grid place-items-center shadow-sm"><i class="bi bi-star-fill text-[12px]"></i></span>
+                                    <span class="text-[12px] font-bold uppercase tracking-wide text-foreground">{{ __('member.partials_affiliations_enhanced_skills_acquired') }}</span>
+                                    <span class="ms-auto text-[11px] font-bold text-amber-600 bg-amber-100 min-w-[20px] text-center px-1.5 rounded-full" x-text="cur?.skills?.length || 0"></span>
+                                    @if($isSelf ?? false)
+                                        <button type="button" @click="openAddSkill()" class="m-press inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-full ps-1.5 pe-2 py-1 transition-colors"><i class="bi bi-plus-lg"></i>{{ __('Add') }}</button>
+                                    @endif
+                                </div>
+                                <div x-show="cur?.skills?.length" class="flex flex-wrap gap-1.5">
+                                    <template x-for="(s,i) in (cur?.skills||[])" :key="i">
+                                        <a :href="s.url || null" :rel="s.url ? 'noopener' : null"
+                                           class="inline-flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-1.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200/70 no-underline transition-colors"
+                                           :class="s.url && 'm-press hover:bg-amber-100'">
+                                            <i class="bi text-[11px]" :class="s.url ? 'bi-book-half' : 'bi-star-fill'"></i><span x-text="s.name"></span>
+                                            <span class="text-[10px] font-bold bg-white/90 text-amber-800 px-1.5 py-px rounded-full" x-text="s.level"></span>
+                                            <span x-show="s.duration" class="inline-flex items-center gap-1 text-[10px] font-medium text-amber-600/90 ps-0.5"><i class="bi bi-hourglass-split"></i><span x-text="s.duration"></span></span>
+                                            <i x-show="s.url" class="bi bi-chevron-right text-[9px] text-amber-500/70"></i>
+                                        </a>
+                                    </template>
+                                </div>
+                                <p x-show="!cur?.skills?.length" class="text-[12px] text-muted-foreground">{{ __('member.no_data') }}</p>
+                            </div>
+
+                            {{-- Instructors --}}
+                            <div class="rounded-2xl bg-white border border-gray-100 shadow-sm p-3.5">
+                                <div class="flex items-center gap-2 mb-2.5">
+                                    <span class="w-7 h-7 rounded-xl bg-green-100 text-green-600 grid place-items-center shadow-sm"><i class="bi bi-people-fill text-[12px]"></i></span>
+                                    <span class="text-[12px] font-bold uppercase tracking-wide text-foreground">{{ __('member.partials_affiliations_enhanced_instructors') }}</span>
+                                    <span class="ms-auto text-[11px] font-bold text-green-600 bg-green-100 min-w-[20px] text-center px-1.5 rounded-full" x-text="cur?.instructors?.length || 0"></span>
+                                    @if($isSelf ?? false)
+                                        <button type="button" @click="openAddInstructor()" class="m-press inline-flex items-center gap-1 text-[11px] font-bold text-green-700 bg-green-100 hover:bg-green-200 rounded-full ps-1.5 pe-2 py-1 transition-colors"><i class="bi bi-plus-lg"></i>{{ __('Add') }}</button>
+                                    @endif
+                                </div>
+                                <div x-show="cur?.instructors?.length" class="flex flex-wrap gap-1.5">
+                                    <template x-for="(ins,i) in (cur?.instructors||[])" :key="i">
+                                        <a :href="ins.url || null"
+                                           class="inline-flex items-center gap-1.5 text-[12px] font-semibold ps-1 pe-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200/70 no-underline transition-colors"
+                                           :class="ins.url && 'm-press hover:bg-green-100'">
+                                            <span class="rounded-full bg-white grid place-items-center overflow-hidden ring-1 ring-green-200/60" style="width:1.35rem;height:1.35rem;">
+                                                <template x-if="ins.avatar"><img :src="ins.avatar" alt="" class="w-full h-full object-cover"></template>
+                                                <template x-if="!ins.avatar"><i class="bi bi-person-fill text-[11px] text-gray-400"></i></template>
+                                            </span>
+                                            <span x-text="ins.name"></span>
+                                            <i x-show="ins.url" class="bi bi-chevron-right text-[9px] text-green-500/70"></i>
+                                        </a>
+                                    </template>
+                                </div>
+                                <p x-show="!cur?.instructors?.length" class="text-[12px] text-muted-foreground">{{ __('member.no_data') }}</p>
+                            </div>
+
+                            {{-- Media --}}
+                            <div class="rounded-2xl bg-white border border-gray-100 shadow-sm p-3.5">
+                                <div class="flex items-center gap-2 mb-2.5">
+                                    <span class="w-7 h-7 rounded-xl bg-sky-100 text-sky-600 grid place-items-center shadow-sm"><i class="bi bi-paperclip text-[12px]"></i></span>
+                                    <span class="text-[12px] font-bold uppercase tracking-wide text-foreground">{{ __('member.partials_affiliations_enhanced_media_certificates') }}</span>
+                                    <span class="ms-auto text-[11px] font-bold text-sky-600 bg-sky-100 min-w-[20px] text-center px-1.5 rounded-full" x-text="cur?.media?.length || 0"></span>
+                                    @if($isSelf ?? false)
+                                        <button type="button" @click="openAddMedia()" class="m-press inline-flex items-center gap-1 text-[11px] font-bold text-sky-700 bg-sky-100 hover:bg-sky-200 rounded-full ps-1.5 pe-2 py-1 transition-colors"><i class="bi bi-plus-lg"></i>{{ __('Add') }}</button>
+                                    @endif
+                                </div>
+                                <div x-show="cur?.media?.length" class="flex flex-col gap-1.5">
+                                    <template x-for="(m,i) in (cur?.media||[])" :key="i">
+                                        <a :href="m.url" target="_blank" rel="noopener"
+                                           class="inline-flex items-center gap-2 text-[12.5px] font-medium text-foreground bg-muted/40 border border-gray-100 rounded-xl px-3 py-2.5 no-underline m-press hover:bg-muted/70 transition-colors">
+                                            <span class="w-7 h-7 rounded-lg bg-sky-100 text-sky-600 grid place-items-center flex-shrink-0"><i class="bi" :class="m.icon"></i></span>
+                                            <span class="truncate" x-text="m.title"></span>
+                                            <i class="bi bi-box-arrow-up-right text-muted-foreground text-[11px] ms-auto flex-shrink-0"></i>
+                                        </a>
+                                    </template>
+                                </div>
+                                <p x-show="!cur?.media?.length" class="text-[12px] text-muted-foreground">{{ __('member.no_data') }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            @if($isSelf ?? false)
+            {{-- ══ Add Skill sheet (mirrors the desktop Add Skill modal) ══ --}}
+            <template x-teleport="body">
+                <div x-show="skillOpen" x-cloak class="fixed inset-0 z-[80]" style="display:none;" @keydown.escape.window="skillOpen=false">
+                    <div x-show="skillOpen" x-transition.opacity class="absolute inset-0 bg-black/50" @click="skillOpen=false"></div>
+                    <div x-show="skillOpen"
+                         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                         class="absolute inset-x-0 bottom-0 bg-background rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col">
+                        <div class="flex-shrink-0 px-5 pt-3 pb-2 border-b border-gray-100">
+                            <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
+                            <div class="flex items-center gap-3">
+                                <span class="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 grid place-items-center flex-shrink-0"><i class="bi bi-star-fill"></i></span>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="font-bold text-foreground leading-tight">{{ __('member.partials_affiliations_enhanced_add_skill') }}</h3>
+                                    <p class="text-[11px] text-muted-foreground truncate" x-text="cur?.club_name"></p>
+                                </div>
+                                <button type="button" @click="skillOpen=false" class="w-8 h-8 rounded-full grid place-items-center text-muted-foreground hover:bg-muted flex-shrink-0"><i class="bi bi-x-lg"></i></button>
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                            {{-- Activity combobox: club activities + directory + free text --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.partials_affiliations_enhanced_skill_name') }} <span class="text-red-500">*</span></label>
+                                <div class="relative" @click.outside="acOpen=false" @keydown.escape.stop="acOpen=false">
+                                    <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+                                    <input type="text" x-model="skillForm.activityQuery" @focus="acOpen=true" @input="acOpen=true; skillForm.activityId=''"
+                                           placeholder="{{ __('The discipline/class you trained') }}"
+                                           class="w-full ps-9 pe-9 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent">
+                                    <button type="button" @click="acOpen=!acOpen" class="absolute end-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-md grid place-items-center text-gray-400"><i class="bi bi-chevron-down text-xs transition-transform" :class="acOpen && 'rotate-180'"></i></button>
+                                    <p x-show="skillForm.activityId" x-cloak class="mt-1.5 text-[11px] text-primary font-medium flex items-center gap-1"><i class="bi bi-patch-check-fill"></i>{{ __('Linked to this club\'s activity') }}</p>
+                                    <div x-show="acOpen" x-cloak x-transition.opacity class="mt-1.5 max-h-56 overflow-y-auto bg-white border border-gray-100 rounded-xl shadow-sm divide-y divide-gray-50">
+                                        <template x-for="grp in skillGroupedOptions" :key="grp.key">
+                                            <div x-show="grp.items.length">
+                                                <p class="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" x-text="grp.label"></p>
+                                                <template x-for="opt in grp.items" :key="grp.key+':'+opt.name">
+                                                    <button type="button" @click="chooseActivity(opt)" class="w-full text-start px-3 py-2 text-sm flex items-center gap-2.5 hover:bg-muted/50 transition-colors">
+                                                        <span class="w-6 h-6 rounded-md grid place-items-center flex-shrink-0" :class="opt.id ? 'bg-accent text-primary' : 'bg-muted text-muted-foreground'"><i class="bi text-[11px]" :class="opt.id ? 'bi-building' : 'bi-grid'"></i></span>
+                                                        <span class="flex-1 truncate text-foreground" x-text="opt.name"></span>
+                                                        <i class="bi bi-check2 text-primary" x-show="skillForm.activityQuery===opt.name"></i>
+                                                    </button>
+                                                </template>
+                                            </div>
+                                        </template>
+                                        <button type="button" x-show="skillForm.activityQuery.trim() && !skillExactMatch" @click="useTypedActivity()" class="w-full text-start px-3 py-2.5 text-sm flex items-center gap-2.5 bg-accent/20 hover:bg-accent/40 transition-colors">
+                                            <span class="w-6 h-6 rounded-md bg-primary text-white grid place-items-center flex-shrink-0"><i class="bi bi-plus-lg text-[11px]"></i></span>
+                                            <span class="min-w-0 flex-1"><span class="block truncate text-foreground font-medium" x-text="skillForm.activityQuery.trim()"></span><span class="block text-[10px] text-muted-foreground">{{ __('Add as a custom activity') }}</span></span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            {{-- Proficiency --}}
+                            <div>
+                                <span class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.partials_affiliations_enhanced_proficiency_level') }} <span class="text-red-500">*</span></span>
+                                <div class="grid grid-cols-4 gap-2">
+                                    <template x-for="lvl in skillLevels" :key="lvl.value">
+                                        <button type="button" @click="skillForm.level=lvl.value" class="px-1 py-2.5 rounded-xl border text-center transition-all" :class="skillForm.level===lvl.value ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-200 hover:bg-muted/40'">
+                                            <span class="flex items-center justify-center gap-0.5 mb-1"><template x-for="n in 4" :key="n"><i class="bi text-[8px]" :class="n<=lvl.pips ? (skillForm.level===lvl.value ? 'bi-circle-fill text-primary' : 'bi-circle-fill text-gray-300') : 'bi-circle text-gray-200'"></i></template></span>
+                                            <span class="block text-[10.5px] font-semibold leading-tight" :class="skillForm.level===lvl.value ? 'text-primary' : 'text-gray-600'" x-text="lvl.label"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                            {{-- Instructor — selection cards (only when the club has any) --}}
+                            <div x-show="skillInstructors.length" x-cloak>
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('Instructor') }} <span class="text-xs font-normal text-muted-foreground">({{ __('optional') }})</span></label>
+                                <div class="space-y-1.5 max-h-44 overflow-y-auto">
+                                    <button type="button" @click="skillForm.instructorId=''" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border text-sm transition-colors" :class="!skillForm.instructorId ? 'border-primary bg-primary/5' : 'border-gray-200 hover:bg-muted/40'">
+                                        <span class="w-6 h-6 rounded-full bg-muted grid place-items-center flex-shrink-0"><i class="bi bi-slash-circle text-xs text-muted-foreground"></i></span>
+                                        <span class="flex-1 text-start text-muted-foreground">{{ __('No instructor') }}</span>
+                                        <span class="w-4 h-4 rounded-full border flex-shrink-0 grid place-items-center" :class="!skillForm.instructorId ? 'border-primary bg-primary' : 'border-gray-300'"><i class="bi bi-check text-[10px] text-white" x-show="!skillForm.instructorId"></i></span>
+                                    </button>
+                                    <template x-for="ins in skillInstructors" :key="ins.id">
+                                        <button type="button" @click="skillForm.instructorId=ins.id" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border text-sm transition-colors" :class="skillForm.instructorId===ins.id ? 'border-primary bg-primary/5' : 'border-gray-200 hover:bg-muted/40'">
+                                            <span class="w-6 h-6 rounded-full bg-accent text-primary grid place-items-center flex-shrink-0 text-[11px] font-bold" x-text="ins.name.charAt(0).toUpperCase()"></span>
+                                            <span class="flex-1 text-start truncate text-foreground" x-text="ins.name"></span>
+                                            <span class="w-4 h-4 rounded-full border flex-shrink-0 grid place-items-center" :class="skillForm.instructorId===ins.id ? 'border-primary bg-primary' : 'border-gray-300'"><i class="bi bi-check text-[10px] text-white" x-show="skillForm.instructorId===ins.id"></i></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                            {{-- When --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.partials_affiliations_enhanced_start_date') }} <span class="text-xs font-normal text-muted-foreground">({{ __('optional') }})</span></label>
+                                <x-date-picker model="skillForm.startDate" min-expr="skillBounds.start_date || null" max-expr="skillBounds.max_start || null" placeholder="{{ __('member.partials_affiliations_enhanced_start_date') }}" />
+                            </div>
+                            <label class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border cursor-pointer select-none transition-colors" :class="skillForm.present ? 'border-primary bg-primary/5' : 'border-gray-200'">
+                                <input type="checkbox" x-model="skillForm.present" @change="if(skillForm.present) skillForm.endDate=''" class="w-[18px] h-[18px] rounded text-primary border-gray-300 focus:ring-primary">
+                                <span class="min-w-0"><span class="block text-sm font-medium text-foreground">{{ __('I still practice this skill') }}</span><span class="block text-[11px] text-muted-foreground">{{ __('Ongoing — no end date') }}</span></span>
+                            </label>
+                            <div x-show="!skillForm.present" x-cloak>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.partials_affiliations_enhanced_end_date') }} <span class="text-xs font-normal text-muted-foreground">({{ __('optional') }})</span></label>
+                                <x-date-picker model="skillForm.endDate" name-expr="skillForm.present ? '' : 'end_date'" min-expr="skillForm.startDate || skillBounds.start_date || null" max-expr="skillBounds.end_date || null" placeholder="{{ __('member.partials_affiliations_enhanced_end_date') }}" />
+                            </div>
+                            {{-- Notes --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.partials_affiliations_enhanced_notes') }}</label>
+                                <textarea x-model="skillForm.notes" rows="2" maxlength="500" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent resize-none" placeholder="{{ __('member.partials_affiliations_enhanced_notes_placeholder') }}"></textarea>
+                            </div>
+                        </div>
+                        <div class="flex-shrink-0 border-t border-gray-100 px-5 pt-3 flex gap-2" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
+                            <button type="button" @click="submitSkill()" :disabled="skillSaving || !skillForm.activityQuery.trim() || !skillForm.level" class="m-press flex-1 py-3 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 disabled:opacity-60 flex items-center justify-center gap-2">
+                                <i class="bi bi-arrow-repeat animate-spin" x-show="skillSaving"></i><span>{{ __('member.partials_affiliations_enhanced_add_skill') }}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            {{-- ══ Add Instructor sheet ══ --}}
+            <template x-teleport="body">
+                <div x-show="insOpen" x-cloak class="fixed inset-0 z-[80]" style="display:none;" @keydown.escape.window="insOpen=false">
+                    <div x-show="insOpen" x-transition.opacity class="absolute inset-0 bg-black/50" @click="insOpen=false"></div>
+                    <div x-show="insOpen"
+                         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                         class="absolute inset-x-0 bottom-0 bg-background rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col">
+                        <div class="flex-shrink-0 px-5 pt-3 pb-2 border-b border-gray-100">
+                            <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
+                            <div class="flex items-center gap-3">
+                                <span class="w-9 h-9 rounded-xl bg-green-100 text-green-600 grid place-items-center flex-shrink-0"><i class="bi bi-person-plus"></i></span>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="font-bold text-foreground leading-tight">{{ __('Add Instructor') }}</h3>
+                                    <p class="text-[11px] text-muted-foreground truncate" x-text="cur?.club_name"></p>
+                                </div>
+                                <button type="button" @click="insOpen=false" class="w-8 h-8 rounded-full grid place-items-center text-muted-foreground hover:bg-muted flex-shrink-0"><i class="bi bi-x-lg"></i></button>
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                            <div class="grid grid-cols-2 gap-1 p-1 bg-muted rounded-2xl text-sm font-semibold">
+                                <button type="button" @click="insMode='member'" :class="insMode==='member' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground'" class="m-press rounded-xl py-2 transition-colors"><i class="bi bi-search mr-1"></i>{{ __('Search member') }}</button>
+                                <button type="button" @click="insMode='name'" :class="insMode==='name' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground'" class="m-press rounded-xl py-2 transition-colors"><i class="bi bi-pencil mr-1"></i>{{ __('Enter name') }}</button>
+                            </div>
+                            {{-- Member search --}}
+                            <div x-show="insMode==='member'" x-cloak>
+                                <div class="relative">
+                                    <i class="bi bi-search absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+                                    <input type="text" x-model="insQuery" @input.debounce.300ms="searchInstructors()" placeholder="{{ __('Search by name…') }}" class="w-full ps-9 pe-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent">
+                                </div>
+                                <div class="mt-2 space-y-1.5" x-show="insQuery.length>=2" x-cloak>
+                                    <p x-show="insSearching" class="px-3 py-4 text-xs text-muted-foreground text-center"><i class="bi bi-arrow-repeat animate-spin me-1"></i>{{ __('shared.loading') }}</p>
+                                    <template x-for="r in insResults" :key="r.uuid">
+                                        <button type="button" @click="addInstructorMember(r)" :disabled="insSaving" class="w-full text-start px-3 py-2 flex items-center gap-2.5 rounded-xl border border-gray-100 hover:bg-muted/50 transition-colors disabled:opacity-50">
+                                            <span class="w-8 h-8 rounded-full bg-green-600 text-white grid place-items-center overflow-hidden flex-shrink-0 text-xs font-bold">
+                                                <template x-if="r.avatar"><img :src="r.avatar" alt="" class="w-full h-full object-cover"></template>
+                                                <template x-if="!r.avatar"><span x-text="r.name.charAt(0).toUpperCase()"></span></template>
+                                            </span>
+                                            <span class="flex-1 truncate text-sm text-foreground" x-text="r.name"></span>
+                                            <i class="bi bi-plus-circle text-green-600"></i>
+                                        </button>
+                                    </template>
+                                    <p x-show="!insSearching && !insResults.length" class="px-3 py-4 text-xs text-muted-foreground text-center">{{ __('No matching members') }}</p>
+                                </div>
+                            </div>
+                            {{-- Free-text name --}}
+                            <div x-show="insMode==='name'" x-cloak>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Instructor name') }}</label>
+                                <input type="text" x-model="insName" maxlength="120" @keydown.enter.prevent="addInstructorName()" placeholder="{{ __('Instructor name') }}" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent">
+                            </div>
+                        </div>
+                        <div class="flex-shrink-0 border-t border-gray-100 px-5 pt-3 flex gap-2" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));" x-show="insMode==='name'">
+                            <button type="button" @click="addInstructorName()" :disabled="insSaving || !insName.trim()" class="m-press flex-1 py-3 rounded-xl bg-green-600 text-white text-sm font-semibold active:bg-green-700 disabled:opacity-60 flex items-center justify-center gap-2">
+                                <i class="bi bi-arrow-repeat animate-spin" x-show="insSaving"></i><span>{{ __('Add') }}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            {{-- ══ Add Media / Certificate sheet ══ --}}
+            <template x-teleport="body">
+                <div x-show="mediaOpen" x-cloak class="fixed inset-0 z-[80]" style="display:none;" @keydown.escape.window="mediaOpen=false">
+                    <div x-show="mediaOpen" x-transition.opacity class="absolute inset-0 bg-black/50" @click="mediaOpen=false"></div>
+                    <div x-show="mediaOpen"
+                         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                         x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                         class="absolute inset-x-0 bottom-0 bg-background rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col">
+                        <div class="flex-shrink-0 px-5 pt-3 pb-2 border-b border-gray-100">
+                            <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
+                            <div class="flex items-center gap-3">
+                                <span class="w-9 h-9 rounded-xl bg-sky-100 text-sky-600 grid place-items-center flex-shrink-0"><i class="bi bi-paperclip"></i></span>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="font-bold text-foreground leading-tight">{{ __('member.partials_affiliations_enhanced_add_media_certificate') }}</h3>
+                                    <p class="text-[11px] text-muted-foreground truncate" x-text="cur?.club_name"></p>
+                                </div>
+                                <button type="button" @click="mediaOpen=false" class="w-8 h-8 rounded-full grid place-items-center text-muted-foreground hover:bg-muted flex-shrink-0"><i class="bi bi-x-lg"></i></button>
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                            {{-- Type --}}
+                            <div>
+                                <span class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.partials_affiliations_enhanced_type') }} <span class="text-red-500">*</span></span>
+                                <div class="grid grid-cols-4 gap-2">
+                                    <template x-for="t in mediaTypes" :key="t.value">
+                                        <button type="button" @click="mediaType=t.value" class="px-1 py-2.5 rounded-xl border text-center transition-all" :class="mediaType===t.value ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-200 hover:bg-muted/40'">
+                                            <i class="bi text-lg block mb-0.5" :class="[t.icon, mediaType===t.value ? 'text-primary' : 'text-gray-400']"></i>
+                                            <span class="block text-[10.5px] font-semibold leading-tight" :class="mediaType===t.value ? 'text-primary' : 'text-gray-600'" x-text="t.label"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                            {{-- Title --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.partials_affiliations_enhanced_title') }} <span class="text-red-500">*</span></label>
+                                <input type="text" x-model="mediaTitle" maxlength="255" placeholder="{{ __('member.partials_affiliations_enhanced_title_placeholder') }}" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent">
+                            </div>
+                            {{-- Image types → upload + crop --}}
+                            <div x-show="mediaIsImage" x-cloak>
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('Image') }} <span class="text-red-500">*</span></label>
+                                <button type="button" x-show="!mediaHasImage" @click="pickMediaImage()" class="group w-full rounded-2xl border-2 border-dashed border-gray-200 hover:border-primary hover:bg-primary/5 transition-all px-4 py-7 flex flex-col items-center justify-center gap-2 text-center">
+                                    <span class="w-12 h-12 rounded-full bg-accent/70 grid place-items-center"><i class="bi bi-cloud-arrow-up text-2xl text-primary"></i></span>
+                                    <span class="text-sm font-semibold text-foreground">{{ __('Click to upload & crop') }}</span>
+                                    <span class="text-[11px] text-muted-foreground">{{ __('JPG, PNG, GIF or WebP — auto-optimized on save') }}</span>
+                                </button>
+                                <div x-show="mediaHasImage" x-cloak class="relative rounded-2xl overflow-hidden border border-gray-100 bg-muted/40">
+                                    <img :src="mediaImgSrc" alt="" class="w-full h-40 object-cover">
+                                    <div class="absolute inset-x-0 bottom-0 p-2 flex items-center justify-center gap-2 bg-gradient-to-t from-black/50 to-transparent">
+                                        <button type="button" @click="pickMediaImage()" class="px-3 py-1.5 rounded-lg bg-white/95 text-foreground text-xs font-semibold shadow-sm flex items-center gap-1.5"><i class="bi bi-crop"></i>{{ __('Change') }}</button>
+                                        <button type="button" @click="removeMediaImage()" class="px-3 py-1.5 rounded-lg bg-white/95 text-red-600 text-xs font-semibold shadow-sm flex items-center gap-1.5"><i class="bi bi-trash"></i>{{ __('Remove') }}</button>
+                                    </div>
+                                </div>
+                                <div class="tk-affmedia-cropper-host">
+                                    <x-takeone-cropper
+                                        id="affMediaCropperM" mode="form" :inline="true"
+                                        inputName="cropped_media"
+                                        :width="1400" :height="1000" shape="rectangle" :canvasHeight="300"
+                                        folder="media" filename="media"
+                                        :showControls="false" :showCancel="false"
+                                        saveText="{{ __('Crop') }}"
+                                        sheetMaxWidth="100%"
+                                        sheetClass="rounded-t-3xl shadow-2xl bg-background" />
+                                </div>
+                                <style>.tk-affmedia-cropper-host #cropperInline_affMediaCropperM { display: none !important; }</style>
+                            </div>
+                            {{-- Video / document → external link --}}
+                            <div x-show="!mediaIsImage" x-cloak>
+                                <label class="block text-sm font-medium text-gray-700 mb-1" x-text="mediaType==='video' ? '{{ __('Video link') }}' : '{{ __('Document link') }}'"></label>
+                                <div class="relative">
+                                    <i class="bi bi-link-45deg absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                                    <input type="url" x-model="mediaUrl" maxlength="500" placeholder="https://…" class="w-full ps-9 pe-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent">
+                                </div>
+                            </div>
+                            {{-- Description --}}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('member.partials_affiliations_enhanced_description') }}</label>
+                                <textarea x-model="mediaDesc" rows="2" maxlength="500" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent resize-none" placeholder="{{ __('member.partials_affiliations_enhanced_description_placeholder2') }}"></textarea>
+                            </div>
+                        </div>
+                        <div class="flex-shrink-0 border-t border-gray-100 px-5 pt-3 flex gap-2" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
+                            <button type="button" @click="submitMedia()" :disabled="mediaSaving || !mediaTitle.trim()" class="m-press flex-1 py-3 rounded-xl bg-primary text-white text-sm font-semibold active:bg-primary/90 disabled:opacity-60 flex items-center justify-center gap-2">
+                                <i class="bi bi-arrow-repeat animate-spin" x-show="mediaSaving"></i><span>{{ __('member.partials_affiliations_enhanced_add_media') }}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
             @endif
         </div>
 
@@ -1428,26 +2131,20 @@
                 }
              })">
 
-            @if($canEditBasic ?? false)
-                <div class="flex justify-end -mb-1" x-show="items.length">
+            {{-- Section header — always outside the card (matches Work history) --}}
+            <div class="flex items-center justify-between gap-2">
+                <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-patch-check text-primary"></i>{{ __('member.certifications') }}</h3>
+                @if($canEditBasic ?? false)
                     <button type="button" @click="openAdd()" aria-label="{{ __('member.add_certification') }}"
-                            class="m-press w-9 h-9 rounded-full bg-primary text-white grid place-items-center shadow-md shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
-                        <i class="bi bi-plus-lg"></i>
+                            class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
+                        <i class="bi bi-plus-lg"></i>{{ __('member.add_certification') }}
                     </button>
-                </div>
-            @endif
+                @endif
+            </div>
 
             {{-- Empty state --}}
             <template x-if="!items.length">
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-patch-check text-primary"></i> {{ __('member.certifications') }}</h3>
-                        @if($canEditBasic ?? false)
-                            <button type="button" @click="openAdd()" class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold active:bg-primary/90">
-                                <i class="bi bi-plus-lg"></i>{{ __('member.add_certification') }}
-                            </button>
-                        @endif
-                    </div>
                     <p class="text-sm text-muted-foreground text-center py-4">{{ __('member.no_certifications') }}</p>
                 </div>
             </template>
@@ -1568,7 +2265,7 @@
 
         {{-- ===== Worked — member-owned work / coaching history ===== --}}
         @php
-            $workJs = $workHistory->map(fn ($w) => [
+            $realWork = $workHistory->map(fn ($w) => [
                 'id' => $w->id,
                 'title' => $w->title,
                 'organization' => $w->organization,
@@ -1580,7 +2277,67 @@
                 'end_label' => $w->end_date ? $w->end_date->format('M Y') : null,
                 'current' => $w->isCurrent(),
                 'description' => $w->description,
-            ])->values();
+                'derived' => false,
+                'logo' => null,
+                'skills' => [],
+                'club_url' => null,
+                // Verification (self-entered rows only; derived platform roles are inherently real)
+                'verification' => $w->verification_status,
+                'can_request' => (bool) $w->attestingTenant(),
+                'request_url' => route('member.work.request-verification', [$user->id, $w->uuid]),
+                '_sort' => optional($w->start_date)->timestamp ?? 0,
+            ]);
+
+            // Skill name → encyclopedia (activity directory) url, for deep-linking each taught skill.
+            $workCatalogByName = \App\Models\ActivityCatalog::where('is_active', true)
+                ->get(['uuid', 'name'])
+                ->keyBy(fn ($a) => mb_strtolower(trim($a->name)));
+
+            // Platform trainer/staff roles are real work history — surface them here,
+            // live and read-only (managed from the club, not this list).
+            $derivedWork = \App\Models\ClubInstructor::where('user_id', $user->id)
+                ->with(['tenant:id,club_name,logo,slug,country', 'activities:id,name'])
+                ->get()
+                ->map(function ($ci) use ($workCatalogByName) {
+                    $start = $ci->created_at;
+                    $active = (bool) $ci->is_active;
+                    $end = $active ? null : $ci->updated_at;
+                    $club = $ci->tenant;
+                    $clubUrl = ($club && $club->slug && $club->country)
+                        ? route('clubs.show', ['country' => strtolower($club->country), 'slug' => $club->slug])
+                        : null;
+
+                    return [
+                        'id' => 'trainer-'.$ci->id,
+                        'title' => $ci->role ?: ucfirst($ci->staff_type ?? 'instructor'),
+                        'organization' => optional($club)->club_name,
+                        'employment_type' => $ci->compensation_type ? ucfirst($ci->compensation_type) : null,
+                        'location' => null,
+                        'start_date' => optional($start)->format('Y-m-d'),
+                        'end_date' => optional($end)->format('Y-m-d'),
+                        'start_label' => optional($start)->format('M Y'),
+                        'end_label' => $end ? $end->format('M Y') : null,
+                        'current' => $active,
+                        'description' => null,
+                        'derived' => true,
+                        'logo' => optional($club)->logo ? asset('storage/'.$club->logo) : null,
+                        'skills' => $ci->activities->map(fn ($a) => [
+                            'name' => $a->name,
+                            'url' => ($u = optional($workCatalogByName->get(mb_strtolower(trim((string) $a->name))))->uuid)
+                                ? route('activity.show', $u) : null,
+                        ])->values()->all(),
+                        'club_url' => $clubUrl,
+                        'verification' => 'verified',   // platform roles are inherently real
+                        'can_request' => false,
+                        'request_url' => null,
+                        '_sort' => optional($start)->timestamp ?? 0,
+                    ];
+                });
+
+            $workJs = $derivedWork->concat($realWork)
+                ->sortBy([['current', 'desc'], ['_sort', 'desc']])
+                ->map(fn ($w) => collect($w)->except('_sort')->all())
+                ->values();
             $employmentTypes = ['Full-time','Part-time','Contract','Freelance','Volunteer','Internship'];
         @endphp
         <div x-show="tab==='worked'" x-transition.opacity x-cloak class="space-y-3"
@@ -1597,14 +2354,16 @@
                 }
              })">
 
-            @if($canEditBasic ?? false)
-                <div class="flex justify-end -mb-1" x-show="items.length">
+            {{-- Section header (shown once there are entries) --}}
+            <div class="flex items-center justify-between gap-2" x-show="items.length" x-cloak>
+                <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-briefcase text-primary"></i>{{ __('member.work_history') }}</h3>
+                @if($canEditBasic ?? false)
                     <button type="button" @click="openAdd()" aria-label="{{ __('member.add_work') }}"
-                            class="m-press w-9 h-9 rounded-full bg-primary text-white grid place-items-center shadow-md shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
-                        <i class="bi bi-plus-lg"></i>
+                            class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
+                        <i class="bi bi-plus-lg"></i>{{ __('member.add_work') }}
                     </button>
-                </div>
-            @endif
+                @endif
+            </div>
 
             {{-- Empty state --}}
             <template x-if="!items.length">
@@ -1623,25 +2382,54 @@
 
             {{-- Timeline list --}}
             <template x-for="w in items" :key="w.id">
-                <div class="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-4 overflow-hidden">
+                <div class="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-4 overflow-hidden transition-shadow"
+                     :class="w.club_url && 'cursor-pointer hover:shadow-md m-press'"
+                     @click="w.club_url && (window.location.href = w.club_url)">
                     <span class="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 w-1" :class="w.current ? 'bg-green-400/80' : 'bg-gray-300'"></span>
                     <div class="flex items-start gap-3">
-                        <span class="w-11 h-11 rounded-xl bg-accent grid place-items-center text-primary flex-shrink-0 ring-1 ring-primary/10"><i class="bi bi-briefcase-fill"></i></span>
+                        <span class="w-12 h-12 rounded-xl bg-accent grid place-items-center text-primary flex-shrink-0 ring-1 ring-primary/10 overflow-hidden">
+                            <template x-if="w.logo"><img :src="w.logo" alt="" class="w-full h-full object-cover"></template>
+                            <template x-if="!w.logo"><i class="bi bi-briefcase-fill text-lg"></i></template>
+                        </span>
                         <div class="min-w-0 flex-1">
+                            {{-- Title + organization, status badge to the right --}}
                             <div class="flex items-start justify-between gap-2">
-                                <p class="font-bold text-foreground text-[15px] leading-snug" x-text="w.title"></p>
+                                <div class="min-w-0">
+                                    <p class="font-bold text-foreground text-[15px] leading-snug truncate" x-text="w.title"></p>
+                                    <p class="text-[12px] font-medium text-foreground/60 truncate mt-0.5" x-text="w.organization"></p>
+                                </div>
                                 <template x-if="w.current">
                                     <span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700"><span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>{{ __('member.work_current') }}</span>
                                 </template>
                             </div>
-                            <p class="text-[12px] font-medium text-foreground/70 mt-0.5" x-text="w.organization"></p>
-                            <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-                                <span class="inline-flex items-center gap-1.5"><i class="bi bi-calendar-range text-muted-foreground/70"></i><span x-text="w.start_label + ' – ' + (w.end_label || i18n.present)"></span></span>
-                                <span class="inline-flex items-center gap-1.5" x-show="w.employment_type"><i class="bi bi-person-badge text-muted-foreground/70"></i><span x-text="w.employment_type"></span></span>
-                                <span class="inline-flex items-center gap-1.5 min-w-0" x-show="w.location"><i class="bi bi-geo-alt text-muted-foreground/70 flex-shrink-0"></i><span class="truncate" x-text="w.location"></span></span>
+                            {{-- Compact inline facts — one line, icon + text (no pills, so the card stays short) --}}
+                            <div class="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-muted-foreground">
+                                <span class="inline-flex items-center gap-1"><i class="bi bi-calendar-range text-primary/50"></i><span x-text="w.start_label + ' – ' + (w.end_label || i18n.present)"></span></span>
+                                <span x-show="w.employment_type" class="inline-flex items-center gap-1"><i class="bi bi-cash-coin text-primary/50"></i><span x-text="w.employment_type"></span></span>
+                                <span x-show="w.location" class="inline-flex items-center gap-1 min-w-0"><i class="bi bi-geo-alt text-primary/50 flex-shrink-0"></i><span class="truncate" x-text="w.location"></span></span>
+                                <template x-for="(sk, si) in (w.skills || [])" :key="si">
+                                    <span class="inline-flex items-center gap-1 text-primary font-semibold" :class="sk.url && 'cursor-pointer hover:underline'"
+                                          @click.stop="sk.url && (window.location.href = sk.url)"><i class="bi bi-mortarboard-fill text-primary/60"></i><span x-text="sk.name"></span></span>
+                                </template>
+                                <template x-if="w.derived">
+                                    <i class="bi bi-shield-fill-check text-primary/70" title="{{ __('member.work_platform_role_note') }}"></i>
+                                </template>
+                                {{-- Verification state / action for self-entered rows --}}
+                                <template x-if="!w.derived && w.verification === 'verified'">
+                                    <span class="inline-flex items-center gap-1 font-semibold text-green-600"><i class="bi bi-patch-check-fill"></i>{{ __('member.verified') }}</span>
+                                </template>
+                                <template x-if="!w.derived && w.verification === 'pending'">
+                                    <span class="inline-flex items-center gap-1 font-medium"><i class="bi bi-hourglass-split text-primary/60"></i>{{ __('member.pending') }}</span>
+                                </template>
+                                <template x-if="!w.derived && (w.verification === 'self_reported' || w.verification === 'rejected') && w.can_request">
+                                    <button type="button" @click="requestVerify(w)" class="inline-flex items-center gap-1 font-bold text-primary"><i class="bi bi-patch-check"></i>{{ __('Request verification') }}</button>
+                                </template>
+                                <template x-if="!w.derived && (w.verification === 'self_reported' || w.verification === 'rejected') && !w.can_request">
+                                    <button type="button" @click="shareForVouch('{{ route('people.show', $user->uuid) }}')" class="inline-flex items-center gap-1 font-bold text-primary" title="{{ __('member.get_vouched_hint') }}"><i class="bi bi-people"></i>{{ __('member.get_vouched') }}</button>
+                                </template>
                             </div>
                             <p class="text-[11px] text-foreground/70 mt-2 whitespace-pre-line" x-show="w.description" x-text="w.description"></p>
-                            <template x-if="canEdit">
+                            <template x-if="canEdit && !w.derived">
                                 <div class="mt-2 flex items-center gap-3">
                                     <button type="button" @click="openEdit(w)" class="text-[11px] font-medium text-muted-foreground hover:text-primary inline-flex items-center gap-1"><i class="bi bi-pencil"></i>{{ __('Edit') }}</button>
                                     <button type="button" @click="remove(w)" class="text-[11px] font-medium text-muted-foreground hover:text-red-600 inline-flex items-center gap-1"><i class="bi bi-trash"></i>{{ __('Delete') }}</button>
@@ -1847,6 +2635,308 @@
 {{-- Scripts live INSIDE the content section (not @push) so they ship with #shell-content --}}
 {{-- and re-run on the mobile shell's AJAX swaps — @push('scripts') would be dropped there. --}}
 <script>
+// Affiliation detail sheet — a tap on a club card opens its data in a bottom sheet.
+function affiliationSheet(items, cfg) {
+    return {
+        items: items || {},
+        cfg: cfg || {},
+        show: false,
+        cur: null,
+        // Add-affiliation bottom sheet
+        addOpen: false,
+        saving: false,
+        blankAffForm() {
+            return { source: 'platform', tenant_id: '', club_name: '', start_date: '', end_date: '', current: false, location: '', description: '' };
+        },
+        form: { source: 'platform', tenant_id: '', club_name: '', start_date: '', end_date: '', current: false, location: '', description: '' },
+        openAdd() {
+            this.form = this.blankAffForm();
+            this.addOpen = true;
+        },
+        async submitAdd() {
+            if (this.saving) return;
+            const usePlatform = this.form.source === 'platform';
+            if (usePlatform ? ! this.form.tenant_id : ! this.form.club_name.trim()) {
+                window.showToast('warning', @js(__('member.club_name_start_required')));
+                return;
+            }
+            if (! this.form.start_date) {
+                window.showToast('warning', @js(__('member.club_name_start_required')));
+                return;
+            }
+            this.saving = true;
+            try {
+                const res = await fetch(this.cfg.storeUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.cfg.csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                    body: JSON.stringify({
+                        tenant_id: usePlatform ? this.form.tenant_id : null,
+                        club_name: usePlatform ? null : this.form.club_name,
+                        start_date: this.form.start_date,
+                        end_date: this.form.current ? null : (this.form.end_date || null),
+                        location: this.form.location || null,
+                        description: this.form.description || null,
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) throw new Error(data.message || 'error');
+                window.showToast('success', data.message || 'Added.');
+                // Server-rendered list → reload (the #clubs hash returns to this tab).
+                window.location.reload();
+            } catch (e) {
+                window.showToast('error', @js(__('Something went wrong. Please try again.')));
+                this.saving = false;
+            }
+        },
+        // Ask the platform club to confirm this affiliation (from the detail sheet).
+        async requestVerify() {
+            if (! this.cur || ! this.cur.request_url) return;
+            try {
+                const res = await fetch(this.cur.request_url, { method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': this.cfg.csrf, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                const data = await res.json();
+                if (data.success) { this.cur.verification = 'pending'; window.showToast && window.showToast('success', data.message); }
+                else { window.showToast && window.showToast('error', data.message || @js(__('Something went wrong. Please try again.'))); }
+            } catch (e) { window.showToast && window.showToast('error', @js(__('Something went wrong. Please try again.'))); }
+        },
+        async shareForVouch(url) {
+            const abs = new URL(url, window.location.origin).href;
+            const text = @js(__('member.vouch_share_text'));
+            if (navigator.share) { try { await navigator.share({ url: abs, text }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+            try { await navigator.clipboard.writeText(abs); window.showToast && window.showToast('success', @js(__('member.link_copied'))); }
+            catch (e) { window.showToast && window.showToast('info', abs); }
+        },
+
+        // ═══ Add Skill / Instructor / Media — self-managed, mirrors the desktop modals.
+        //     Each hits the same MemberController endpoint and patches `cur` in place. ═══
+        // The affiliation these sheets act on is always the open detail sheet's `cur`.
+        get affBase() { return `/member/${this.cfg.memberId}/affiliations/${this.cur?.id}`; },
+        jsonHeaders() {
+            return { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': this.cfg.csrf, 'X-Requested-With': 'XMLHttpRequest' };
+        },
+
+        // ── Add Skill ───────────────────────────────────────────────────────
+        skillOpen: false, skillSaving: false, acOpen: false,
+        skillForm: { activityQuery: '', activityId: '', level: '', startDate: '', endDate: '', present: false, notes: '', instructorId: '' },
+        skillActivities: [], skillCatalog: [], skillInstructors: [],
+        skillBounds: { start_date: null, end_date: null, max_start: null },
+        skillLevels: [
+            { value: 'beginner',     label: @js(__('member.partials_affiliations_enhanced_beginner')),     pips: 1 },
+            { value: 'intermediate', label: @js(__('member.partials_affiliations_enhanced_intermediate')), pips: 2 },
+            { value: 'advanced',     label: @js(__('member.partials_affiliations_enhanced_advanced')),     pips: 3 },
+            { value: 'expert',       label: @js(__('member.partials_affiliations_enhanced_expert')),       pips: 4 },
+        ],
+        get skillGroupedOptions() {
+            const q = this.skillForm.activityQuery.trim().toLowerCase();
+            const match = (a) => !q || a.name.toLowerCase().includes(q);
+            return [
+                { key: 'club', label: @js(__('This club')),      items: this.skillActivities.filter(match) },
+                { key: 'all',  label: @js(__('All activities')), items: this.skillCatalog.filter(match) },
+            ];
+        },
+        get skillExactMatch() {
+            const q = this.skillForm.activityQuery.trim().toLowerCase();
+            return !!q && [...this.skillActivities, ...this.skillCatalog].some(a => a.name.toLowerCase() === q);
+        },
+        chooseActivity(opt) { this.skillForm.activityQuery = opt.name; this.skillForm.activityId = opt.id || ''; this.acOpen = false; },
+        useTypedActivity() { this.skillForm.activityQuery = this.skillForm.activityQuery.trim(); this.skillForm.activityId = ''; this.acOpen = false; },
+        async openAddSkill() {
+            if (!this.cur) return;
+            this.skillForm = { activityQuery: '', activityId: '', level: '', startDate: '', endDate: '', present: false, notes: '', instructorId: '' };
+            this.skillActivities = []; this.skillCatalog = []; this.skillInstructors = [];
+            this.skillBounds = { start_date: null, end_date: null, max_start: null };
+            this.acOpen = false; this.skillOpen = true;
+            try {
+                const res = await fetch(`${this.affBase}/activities`, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                const data = await res.json();
+                this.skillActivities = data.activities || [];
+                this.skillCatalog = data.suggestions || [];
+                this.skillInstructors = data.instructors || [];
+                this.skillBounds = data.affiliation || this.skillBounds;
+            } catch (e) { /* free text still works */ }
+        },
+        async submitSkill() {
+            if (this.skillSaving) return;
+            const f = this.skillForm;
+            if (!f.activityQuery.trim() || !f.level) { window.showToast('warning', @js(__('member.partials_affiliations_enhanced_add_skill'))); return; }
+            this.skillSaving = true;
+            try {
+                const res = await fetch(`${this.affBase}/skills`, {
+                    method: 'POST', headers: this.jsonHeaders(),
+                    body: JSON.stringify({
+                        skill_name: f.activityQuery.trim(),
+                        activity_name: f.activityQuery.trim(),
+                        activity_id: f.activityId || null,
+                        proficiency_level: f.level,
+                        instructor_id: f.instructorId || null,
+                        start_date: f.startDate || null,
+                        is_present: f.present ? 1 : 0,
+                        end_date: f.present ? null : (f.endDate || null),
+                        notes: f.notes || null,
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) throw new Error(data.message || 'error');
+                const s = data.skill || {};
+                const lvl = (s.proficiency_level || f.level);
+                this.cur.skills.push({
+                    name: s.skill_name || f.activityQuery.trim(),
+                    level: lvl ? lvl.charAt(0).toUpperCase() + lvl.slice(1) : '',
+                    duration: s.formatted_duration || null,
+                    url: s.encyclopedia_url || null,
+                });
+                window.showToast('success', data.message || @js(__('member.partials_affiliations_enhanced_add_skill')));
+                this.skillOpen = false;
+            } catch (e) {
+                window.showToast('error', @js(__('Something went wrong. Please try again.')));
+            }
+            this.skillSaving = false;
+        },
+
+        // ── Add Instructor ──────────────────────────────────────────────────
+        insOpen: false, insSaving: false, insMode: 'member',
+        insQuery: '', insName: '', insResults: [], insSearching: false,
+        openAddInstructor() {
+            if (!this.cur) return;
+            this.insMode = 'member'; this.insQuery = ''; this.insName = '';
+            this.insResults = []; this.insSearching = false; this.insOpen = true;
+        },
+        async searchInstructors() {
+            const q = this.insQuery.trim();
+            if (q.length < 2) { this.insResults = []; return; }
+            this.insSearching = true;
+            try {
+                const res = await fetch(`/member/${this.cfg.memberId}/instructor-search?q=${encodeURIComponent(q)}`, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                const data = await res.json();
+                this.insResults = data.results || [];
+            } catch (e) { this.insResults = []; }
+            this.insSearching = false;
+        },
+        addInstructorMember(r) { this.postInstructor({ user_uuid: r.uuid }); },
+        addInstructorName() { if (this.insName.trim()) this.postInstructor({ name: this.insName.trim() }); },
+        async postInstructor(payload) {
+            if (this.insSaving) return;
+            this.insSaving = true;
+            try {
+                const res = await fetch(`${this.affBase}/instructors`, { method: 'POST', headers: this.jsonHeaders(), body: JSON.stringify(payload) });
+                const data = await res.json();
+                if (!res.ok || !data.success) throw new Error(data.message || 'error');
+                // The endpoint returns the FULL instructor list — remap to the sheet's shape.
+                this.cur.instructors = (data.instructors || []).map(i => ({ name: i.name, avatar: i.avatar, url: i.profile_url || null }));
+                window.showToast('success', data.message || @js(__('Add')));
+                this.insOpen = false;
+            } catch (e) {
+                window.showToast('error', @js(__('Something went wrong. Please try again.')));
+            }
+            this.insSaving = false;
+        },
+
+        // ── Add Media / Certificate ─────────────────────────────────────────
+        mediaOpen: false, mediaSaving: false, mediaType: 'certificate',
+        mediaTitle: '', mediaUrl: '', mediaDesc: '', mediaHasImage: false, mediaImgSrc: '', _mediaObserver: null,
+        mediaTypes: [
+            { value: 'certificate', label: @js(__('member.partials_affiliations_enhanced_certificate')), icon: 'bi-patch-check' },
+            { value: 'photo',       label: @js(__('member.partials_affiliations_enhanced_photo')),       icon: 'bi-image' },
+            { value: 'video',       label: @js(__('member.partials_affiliations_enhanced_video')),       icon: 'bi-play-circle' },
+            { value: 'document',    label: @js(__('member.partials_affiliations_enhanced_document')),    icon: 'bi-file-text' },
+        ],
+        get mediaIsImage() { return this.mediaType === 'certificate' || this.mediaType === 'photo'; },
+        openAddMedia() {
+            if (!this.cur) return;
+            this.mediaType = 'certificate'; this.mediaTitle = ''; this.mediaUrl = ''; this.mediaDesc = '';
+            this.mediaHasImage = false; this.mediaImgSrc = ''; this.mediaSaving = false;
+            const h = document.getElementById('hiddenInput_affMediaCropperM'); if (h) h.value = '';
+            this.mediaOpen = true;
+        },
+        pickMediaImage() {
+            // Watch the shared cropper's preview for a completed crop, then trigger its picker.
+            if (!this._mediaObserver) {
+                const box = document.getElementById('previewContainer_affMediaCropperM');
+                if (box) {
+                    this._mediaObserver = new MutationObserver(() => {
+                        const b64 = document.getElementById('hiddenInput_affMediaCropperM')?.value || '';
+                        if (b64) { this.mediaImgSrc = b64; this.mediaHasImage = true; }
+                    });
+                    this._mediaObserver.observe(box, { childList: true, subtree: true, attributes: true });
+                }
+            }
+            document.getElementById('input_affMediaCropperM')?.click();
+        },
+        removeMediaImage() {
+            this.mediaHasImage = false; this.mediaImgSrc = '';
+            const h = document.getElementById('hiddenInput_affMediaCropperM'); if (h) h.value = '';
+            try { window['removeImage_affMediaCropperM']?.(); } catch (e) {}
+        },
+        async submitMedia() {
+            if (this.mediaSaving || !this.mediaTitle.trim()) return;
+            let mediaUrl = '';
+            if (this.mediaIsImage) {
+                const b64 = document.getElementById('hiddenInput_affMediaCropperM')?.value || '';
+                if (!b64) { window.showToast('error', @js(__('Please choose and crop an image first.'))); return; }
+                this.mediaSaving = true;
+                let up;
+                try {
+                    up = await fetch(`${this.affBase}/media/upload-image`, { method: 'POST', headers: this.jsonHeaders(), body: JSON.stringify({ image: b64 }) }).then(r => r.json());
+                } catch (e) { up = null; }
+                if (!up || !up.success) { this.mediaSaving = false; window.showToast('error', (up && up.message) || @js(__('Image upload failed.'))); return; }
+                mediaUrl = up.path;
+            } else {
+                if (!/^https?:\/\/.+/i.test(this.mediaUrl.trim())) { window.showToast('error', @js(__('Please enter a valid link (http/https).'))); return; }
+                mediaUrl = this.mediaUrl.trim();
+                this.mediaSaving = true;
+            }
+            try {
+                const res = await fetch(`${this.affBase}/media`, { method: 'POST', headers: this.jsonHeaders(), body: JSON.stringify({ media_type: this.mediaType, title: this.mediaTitle.trim(), media_url: mediaUrl, description: this.mediaDesc.trim() }) });
+                const data = await res.json();
+                if (!res.ok || !data.success || !data.media) throw new Error(data.message || 'error');
+                const m = data.media;
+                this.cur.media.push({ title: m.title, url: m.full_url, icon: m.icon_class });
+                window.showToast('success', data.message || @js(__('member.partials_affiliations_enhanced_add_media')));
+                this.mediaOpen = false;
+            } catch (e) {
+                window.showToast('error', @js(__('member.partials_affiliations_enhanced_js_error_adding_media')));
+            }
+            this.mediaSaving = false;
+        },
+
+        init() {
+            // Restore an open sheet from the URL (?aff=<id>) — e.g. after tapping a
+            // skill through to the encyclopedia and pressing back, the sheet reopens
+            // exactly as it was left.
+            try {
+                const id = new URL(window.location.href).searchParams.get('aff');
+                if (id && this.items[id]) {
+                    this.cur = this.items[id];
+                    this.show = true;
+                    document.body.style.overflow = 'hidden';
+                }
+            } catch (e) {}
+        },
+        openSheet(id) {
+            this.cur = this.items[id] || null;
+            if (!this.cur) return;
+            this.show = true;
+            document.body.style.overflow = 'hidden';
+            this.syncUrl(id);
+        },
+        close() {
+            this.show = false;
+            document.body.style.overflow = '';
+            this.syncUrl(null);
+        },
+        // Reflect the open sheet in the URL without adding a history entry, keeping
+        // the tab hash (#clubs) and everything else intact.
+        syncUrl(id) {
+            try {
+                const url = new URL(window.location.href);
+                if (id) url.searchParams.set('aff', id);
+                else url.searchParams.delete('aff');
+                history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+            } catch (e) {}
+        },
+    };
+}
+
 // Shared "X years/months/days ago" helper (calendar-accurate, i18n-aware).
 // Used by the weight history and the medal sheet (which passes the EVENT date).
 window.memberTimeAgo = (function () {
@@ -2290,6 +3380,17 @@ window.tournamentSheet = function (cfg) {
             r.onload = e => { this.evidence = e.target.result; this.evidencePreview = e.target.result; this.evidenceName = file.name; };
             r.readAsDataURL(file);
         },
+        // Unlisted club → share the public profile so teammates/coaches can vouch.
+        async shareForVouch(url) {
+            var abs = new URL(url, window.location.origin).href;
+            var text = @js(__('member.vouch_share_text'));
+            if (navigator.share) {
+                try { await navigator.share({ url: abs, text: text }); return; }
+                catch (e) { if (e && e.name === 'AbortError') return; }
+            }
+            try { await navigator.clipboard.writeText(abs); window.showToast && window.showToast('success', @js(__('member.link_copied'))); }
+            catch (e) { window.showToast && window.showToast('info', abs); }
+        },
         async submit() {
             if (!this.form.title || !this.form.sport || !this.form.date) {
                 window.showToast && window.showToast('error', @js(__('Please fill in the title, sport and date.'))); return;
@@ -2308,9 +3409,14 @@ window.tournamentSheet = function (cfg) {
                 var res = await fetch(cfg.storeUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': cfg.csrf, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: fd });
                 var data = await res.json();
                 if (data.success) {
-                    this.prependCard(data.tournament);
                     this.addOpen = false;
                     window.showToast && window.showToast('success', @js(__('Achievement added.')));
+                    // Reload so the server-computed medal tiles + "awaiting verification"
+                    // note reflect the new record (self-reported medals stay uncounted in
+                    // the verified tiles by design). The #tournaments hash returns here.
+                    if (! window.location.hash) { try { history.replaceState(history.state, '', '#tournaments'); } catch (e) {} }
+                    window.location.reload();
+                    return;
                 } else {
                     window.showToast && window.showToast('error', data.message || @js(__('Could not save.')));
                 }
@@ -2336,22 +3442,26 @@ window.tournamentSheet = function (cfg) {
             if (empty) empty.remove();
             var mc = { '1st': 'bg-amber-100 text-amber-700', '2nd': 'bg-slate-100 text-slate-600', '3rd': 'bg-orange-100 text-orange-700', special: 'bg-accent text-primary' };
             var medals = (t.performance_results || []).map(function (r) {
-                return '<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ' + (mc[r.medal_type] || 'bg-gray-100 text-gray-600') + '"><i class="bi bi-award-fill mr-0.5"></i>' + esc(r.medal_type ? r.medal_type.charAt(0).toUpperCase() + r.medal_type.slice(1) : '') + '</span>';
+                return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ' + (mc[r.medal_type] || 'bg-gray-100 text-gray-600') + '"><i class="bi bi-award-fill"></i>' + esc(r.medal_type ? r.medal_type.charAt(0).toUpperCase() + r.medal_type.slice(1) : '') + '</span>';
             }).join('');
             var v = t.verification || {};
             var verifyExtra = '';
             if (v.evidence_url) verifyExtra += '<a href="' + esc(v.evidence_url) + '" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary"><i class="bi bi-paperclip"></i>' + @js(__('Evidence')) + '</a>';
             if (v.can_request && v.request_url) verifyExtra += '<button type="button" data-verify-btn onclick="window.requestAchievementVerification(this)" data-verify-url="' + esc(v.request_url) + '" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary"><i class="bi bi-patch-check"></i>' + @js(__('Request verification')) + '</button>';
             var d = t.date ? new Date(t.date) : null;
-            var day = d ? String(d.getDate()).padStart(2, '0') : '—';
-            var mon = d ? d.toLocaleString('en', { month: 'short' }) : '';
+            var dateLabel = d ? (String(d.getDate()).padStart(2, '0') + ' ' + d.toLocaleString('en', { month: 'short' }) + ' ' + d.getFullYear()) : '—';
             var html =
-                '<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4"><div class="flex items-start gap-3">' +
-                '<div class="flex flex-col items-center justify-center w-12 flex-shrink-0"><span class="text-lg font-black text-primary leading-none">' + day + '</span><span class="text-[10px] uppercase text-muted-foreground">' + mon + '</span></div>' +
-                '<div class="min-w-0 flex-1"><p class="font-semibold text-foreground truncate">' + esc(t.title) + '</p>' +
-                '<p class="text-xs text-muted-foreground truncate">' + esc(t.sport) + (t.location ? ' · ' + esc(t.location) : '') + '</p>' +
-                (medals ? '<div class="flex flex-wrap gap-1 mt-2">' + medals + '</div>' : '') +
-                '<div class="mt-2 flex items-center gap-2 flex-wrap" data-verify-row="' + esc(t.uuid || '') + '">' + window.verifyBadgeHtml(v.status || 'self_reported', v.verified_club) + verifyExtra + '</div>' +
+                '<div class="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-4 overflow-hidden">' +
+                '<span class="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 w-1 bg-amber-400/80"></span>' +
+                '<div class="flex items-start gap-3">' +
+                '<span class="w-12 h-12 rounded-xl bg-amber-50 grid place-items-center text-amber-600 flex-shrink-0 ring-1 ring-amber-100"><i class="bi bi-trophy-fill text-lg"></i></span>' +
+                '<div class="min-w-0 flex-1">' +
+                '<p class="font-bold text-foreground text-[15px] leading-snug truncate">' + esc(t.title) + '</p>' +
+                '<p class="text-[12px] font-medium text-foreground/60 truncate mt-0.5">' + esc(t.sport) + (t.location ? ' · ' + esc(t.location) : '') + '</p>' +
+                '<div class="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-muted-foreground">' +
+                '<span class="inline-flex items-center gap-1"><i class="bi bi-calendar-range text-primary/50"></i>' + dateLabel + '</span>' + medals +
+                '<span class="inline-flex items-center gap-2 flex-wrap" data-verify-row="' + esc(t.uuid || '') + '">' + window.verifyBadgeHtml(v.status || 'self_reported', v.verified_club) + verifyExtra + '</span>' +
+                '</div>' +
                 '</div></div></div>';
             var wrap = document.createElement('div');
             wrap.innerHTML = html;
@@ -2616,6 +3726,25 @@ window.workManager = function (cfg) {
         form: blank(),
 
         openAdd() { if (!this.canEdit) return; this.form = blank(); this.editing = false; this.open = true; },
+
+        // Ask the matched platform club to confirm this role.
+        async requestVerify(w) {
+            try {
+                const res = await fetch(w.request_url, { method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': this.i18n.csrf || '{{ csrf_token() }}', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                const data = await res.json();
+                if (data.success) { w.verification = 'pending'; window.showToast && window.showToast('success', data.message); }
+                else { window.showToast && window.showToast('error', data.message || @js(__('Something went wrong. Please try again.'))); }
+            } catch (e) { window.showToast && window.showToast('error', @js(__('Something went wrong. Please try again.'))); }
+        },
+        // No platform club → share the public profile so colleagues can vouch.
+        async shareForVouch(url) {
+            const abs = new URL(url, window.location.origin).href;
+            const text = @js(__('member.vouch_share_text'));
+            if (navigator.share) { try { await navigator.share({ url: abs, text }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+            try { await navigator.clipboard.writeText(abs); window.showToast && window.showToast('success', @js(__('member.link_copied'))); }
+            catch (e) { window.showToast && window.showToast('info', abs); }
+        },
         openEdit(w) {
             if (!this.canEdit) return;
             this.form = {

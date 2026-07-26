@@ -143,45 +143,12 @@ class UserPostController extends Controller
      */
     private function fanOutNewPost($user, UserPost $post, array $card, string $snippet): JsonResponse
     {
-        // Who should see this post live, and in which feed:
-        //  • followers   → their "Following" AND "All" tabs
-        //  • club-mates  → their "All" tab (the All feed surfaces club-mates)
-        // minus anyone blocked either way, and never the author themselves.
-        $followerIds = $this->followerIds($user->id);
-        $clubIds = $user->memberClubs()->pluck('tenants.id');
-        $clubMateIds = $clubIds->isEmpty()
-            ? collect()
-            : \Illuminate\Support\Facades\DB::table('memberships')
-                ->whereIn('tenant_id', $clubIds)
-                ->where('user_id', '!=', $user->id)
-                ->distinct()->pluck('user_id');
-        $blockedIds = \App\Models\UserBlock::where('blocker_id', $user->id)->pluck('blocked_id')
-            ->merge(\App\Models\UserBlock::where('blocked_id', $user->id)->pluck('blocker_id'))
-            ->map(fn ($id) => (int) $id);
-
-        $allowed = fn ($id) => (int) $id !== (int) $user->id && ! $blockedIds->contains((int) $id);
-        $followers = $followerIds->filter($allowed)->unique()->values();
-        $clubOnly = $clubMateIds->filter(fn ($id) => $allowed($id) && ! $followerIds->contains($id))
-            ->unique()->values();
-
-        // Live feed push (MQTT) — tag the feeds each recipient should patch.
-        $followerCard = $card;
-        $followerCard['author']['isMe'] = false;
-        $this->broadcastPost($followers, ['action' => 'new', 'feeds' => ['following', 'all'], 'post' => $followerCard]);
-        $this->broadcastPost($clubOnly, ['action' => 'new', 'feeds' => ['all'], 'post' => $followerCard]);
-
-        foreach ($followers->merge($clubOnly)->unique() as $recipientId) {
-            UserNotification::notifyUser((int) $recipientId, 'post', $user->full_name.' shared a new post', [
-                'actor_id' => $user->id,
-                // Deep-link straight to the post's own page (not the author's
-                // whole wall) so tapping the bell opens exactly this post.
-                'action_url' => $post->permalink(),
-                'icon' => 'bi-postcard-heart',
-                'body' => $snippet,
-                'subject_type' => 'post',
-                'subject_id' => $post->id,
-            ]);
-        }
+        // Fan-out (MQTT feed push + "shared a new post" notifications) is shared with
+        // system announcements via FeedPublisher.
+        app(\App\Services\FeedPublisher::class)->fanOut(
+            $user, $post, $card, $snippet,
+            'post', $user->full_name.' shared a new post', 'bi-postcard-heart'
+        );
 
         return response()->json([
             'success' => true,

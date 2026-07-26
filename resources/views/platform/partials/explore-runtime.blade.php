@@ -751,26 +751,33 @@ function exploreApp() {
                     const trainerCard = document.createElement('div');
                     trainerCard.innerHTML = `
                         <div class="card border border-gray-100 shadow-sm overflow-hidden club-card cursor-pointer rounded-2xl h-full flex flex-col" onclick="window.location.href='${trainer.url}'">
-                            <!-- Cover Image -->
+                            <!-- Cover Image with overlaid identity -->
                             <div class="relative overflow-hidden bg-gray-50" style="aspect-ratio: 16 / 9;">
                                 ${coverHtml}
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent pointer-events-none"></div>
                                 <!-- Personal Trainer Badge -->
                                 <div class="absolute top-2 start-2">
                                     <span class="badge text-white px-3 py-1 bg-destructive rounded-full text-xs font-semibold"><i class="bi bi-person-fill me-1"></i>{{ __('explore.personal_trainer_badge') }}</span>
+                                </div>
+                                <!-- Name + role + club overlaid at the bottom -->
+                                <div class="absolute inset-x-0 bottom-0 p-3">
+                                    <h3 class="font-bold club-title text-[15px] text-white leading-tight drop-shadow-sm" style="display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;">${trainer.name}</h3>
+                                    <div class="flex items-center mt-1 text-xs text-white/90">
+                                        <i class="bi bi-patch-check-fill me-1"></i>
+                                        <span class="font-medium truncate">${trainer.role}</span>
+                                    </div>
+                                    ${trainer.club_name ? `<div class="flex items-center text-white/70 text-xs mt-0.5">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1 shrink-0">
+                                            <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path>
+                                            <circle cx="12" cy="10" r="3"></circle>
+                                        </svg>
+                                        <span class="truncate">${trainer.club_name}</span>
+                                    </div>` : ''}
                                 </div>
                             </div>
 
                             <!-- Card Body -->
                             <div class="p-4 bg-white flex-1 flex flex-col">
-                                <div class="mb-3" style="min-height:6.25rem;">
-                                    <h3 class="font-semibold mb-2 club-title text-lg text-foreground" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:3.5rem;">${trainer.name}</h3>
-                                    <div class="flex items-center mb-1 text-sm text-primary">
-                                        <i class="bi bi-patch-check-fill me-1"></i>
-                                        <span class="font-semibold">${trainer.role}</span>
-                                    </div>
-                                    ${clubLine}
-                                </div>
-
                                 <div class="grid grid-cols-3 gap-2 text-center mb-3 text-xs">
                                     <div class="p-2 rounded bg-primary/5">
                                         <i class="bi bi-calendar3 mb-1 text-muted-foreground text-base"></i>
@@ -838,48 +845,47 @@ function exploreApp() {
 
                 card.innerHTML = `
                     <div class="card border border-gray-100 shadow-sm overflow-hidden club-card cursor-pointer rounded-2xl h-full flex flex-col" onclick="window.location.href='${club.url}'">
-                        <!-- Cover Image -->
+                        <!-- Cover Image with overlaid identity -->
                         <div class="relative overflow-hidden bg-gray-50" style="aspect-ratio: 16 / 9;">
                             ${coverImageHtml}
-
-                            <!-- Club Logo - Bottom Left -->
-                            <div class="absolute bottom-2 start-2">
-                                <div class="bg-white border border-gray-200 p-0.5 w-20 h-20 rounded-full">
-                                    ${logoHtml}
-                                </div>
-                            </div>
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent pointer-events-none"></div>
 
                             <!-- Sports Club Badge - Top Left -->
                             <div class="absolute top-2 start-2">
                                 <span class="badge text-white px-3 py-1 bg-red-600 rounded-full text-xs font-semibold"><i class="bi bi-building me-1"></i>{{ __('explore.sports_club_badge') }}</span>
                             </div>
+
+                            <!-- Logo + title + meta overlaid at the bottom -->
+                            <div class="absolute inset-x-0 bottom-0 p-3 flex items-center gap-2.5">
+                                <div class="bg-white border border-gray-200 p-0.5 w-16 h-16 rounded-full shrink-0 shadow-md">
+                                    ${logoHtml}
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="font-bold club-title text-lg text-white leading-tight drop-shadow-sm" style="display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;">${club.club_name}</h3>
+                                    <div class="flex items-center gap-2.5 mt-1 text-[13px]">
+                                        <span class="flex items-center min-w-0 text-white/90">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1 shrink-0">
+                                                <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path>
+                                                <circle cx="12" cy="10" r="3"></circle>
+                                            </svg>
+                                            <span class="font-medium truncate">${club.distance ? club.distance + ' {{ __("explore.km_away") }}' : '{{ __("explore.location_available") }}'}</span>
+                                        </span>
+                                        <span class="flex items-center min-w-0 text-white/70">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1 shrink-0">
+                                                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                                                <circle cx="12" cy="7" r="4"></circle>
+                                            </svg>
+                                            <span class="truncate">${club.owner_name || '{{ __("explore.na") }}'}</span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Card Body -->
                         <div class="p-4 bg-white flex-1 flex flex-col">
-                            <div class="mb-3" style="min-height:6.25rem;">
-                                <h3 class="font-semibold mb-2 club-title text-lg text-foreground" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:3.5rem;">${club.club_name}</h3>
-                                <div class="flex items-center justify-between gap-2 mb-1 text-sm">
-                                    <div class="flex items-center min-w-0 text-primary">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1 shrink-0">
-                                            <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path>
-                                            <circle cx="12" cy="10" r="3"></circle>
-                                        </svg>
-                                        <span class="font-semibold truncate">${club.distance ? club.distance + ' {{ __("explore.km_away") }}' : '{{ __("explore.location_available") }}'}</span>
-                                    </div>
-                                    ${this.renderStars(club.rating, club.reviews_count)}
-                                </div>
-                                <div class="flex items-center text-muted-foreground text-sm">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1 shrink-0">
-                                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
-                                        <circle cx="12" cy="7" r="4"></circle>
-                                    </svg>
-                                    <span class="truncate">${club.owner_name || '{{ __("explore.na") }}'}</span>
-                                </div>
-                            </div>
-
                             <!-- Stats Grid -->
-                            <div class="grid grid-cols-3 gap-2 text-center mb-3 text-xs">
+                            <div class="grid grid-cols-4 gap-2 text-center mb-3 text-xs">
                                 <div class="p-2 rounded bg-primary/5">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-1 text-primary">
                                         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
@@ -903,10 +909,19 @@ function exploreApp() {
                                 </div>
                                 <div class="p-2 rounded bg-primary/5">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-1 text-primary">
-                                        <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path>
+                                        <path d="M12.409 13.017A5 5 0 0 1 22 15c0 3.866-4 7-9 7-4.077 0-8.153-.82-10.371-2.462-.426-.316-.631-.832-.62-1.362C2.118 12.723 2.627 2 10 2a3 3 0 0 1 3 3 2 2 0 0 1-2 2c-1.105 0-1.64-.444-2-1"></path>
+                                        <path d="M15 14a5 5 0 0 0-7.584 2"></path>
+                                        <path d="M9.964 6.825C8.019 7.977 9.5 13 8 15"></path>
                                     </svg>
                                     <p class="font-semibold mb-0 text-foreground">${club.instructors_count ?? 0}</p>
                                     <p class="text-muted-foreground mb-0">{{ __('explore.trainers') }}</p>
+                                </div>
+                                <div class="p-2 rounded bg-primary/5">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-1 text-primary">
+                                        <path d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345z"></path>
+                                    </svg>
+                                    <p class="font-semibold mb-0 text-foreground">${club.rating ? Number(club.rating).toFixed(1) : '{{ __("explore.na") }}'}</p>
+                                    <p class="text-muted-foreground mb-0">{{ __('explore.rating') }}</p>
                                 </div>
                             </div>
 

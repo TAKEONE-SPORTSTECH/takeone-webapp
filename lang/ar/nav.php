@@ -153,6 +153,7 @@ return [
     'layouts_admin_club_nav_financials' => 'الماليات',
     'layouts_admin_club_nav_gallery' => 'المعرض',
     'layouts_admin_club_nav_instructors' => 'المدربون',
+    'layouts_admin_club_nav_verifications' => 'طلبات التوثيق',
     'layouts_admin_club_nav_members' => 'الأعضاء',
     'layouts_admin_club_nav_messages' => 'الرسائل',
     'layouts_admin_club_nav_notifications' => 'الإشعارات',

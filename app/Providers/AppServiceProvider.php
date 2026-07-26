@@ -135,5 +135,10 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('backup', function (Request $request) {
             return Limit::perHour(3)->by($request->user()?->id ?: $request->ip());
         });
+
+        // Catastrophic, rarely-used platform wipe — keep this very tight.
+        RateLimiter::for('reset-baseline', function (Request $request) {
+            return Limit::perHour(2)->by($request->user()?->id ?: $request->ip());
+        });
     }
 }

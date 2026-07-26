@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\ActivityCatalog;
 use App\Models\ClubActivity;
+use App\Models\ClubInstructor;
 use App\Models\ClubAffiliation;
 use App\Models\SkillAcquisition;
 use App\Models\Tenant;
@@ -81,6 +83,69 @@ class SkillProvenanceTest extends TestCase
                 'skill_name' => 'Jab', 'proficiency_level' => 'beginner', 'activity_id' => $foreignActivity->id,
             ])
             ->assertStatus(422);
+    }
+
+    public function test_a_skill_matching_the_encyclopedia_links_to_the_activity_page(): void
+    {
+        $catalog = ActivityCatalog::create(['name' => 'Capoeira', 'is_active' => true]);
+        $member = $this->createUser();
+        $aff = $this->affiliation($member, null);
+        $aff->skillAcquisitions()->create([
+            'user_id' => $member->id, 'skill_name' => 'Capoeira',
+            'proficiency_level' => 'advanced', 'duration_months' => 12,
+        ]);
+        // A skill with no catalog match stays plain.
+        $aff->skillAcquisitions()->create([
+            'user_id' => $member->id, 'skill_name' => 'Underwater Hockey',
+            'proficiency_level' => 'beginner', 'duration_months' => 3,
+        ]);
+
+        $html = $this->actingAs($member)->get("/member/{$member->uuid}")->assertOk()->getContent();
+
+        // The matching skill badge is a link to the encyclopedia; the icon is the book.
+        $this->assertStringContainsString('/activity/'.$catalog->uuid, $html);
+        $this->assertMatchesRegularExpression(
+            '/<a class="badge skill-badge[^"]*"[^>]*href="[^"]*\/activity\/'.preg_quote($catalog->uuid, '/').'"/',
+            $html
+        );
+        // The unmatched skill is not linked to any activity page.
+        $this->assertStringNotContainsString('>Underwater Hockey<\/a>', $html);
+    }
+
+    public function test_a_skill_records_the_clubs_instructor(): void
+    {
+        $owner = $this->createUser();
+        $club = $this->createClub($owner);
+        $coach = $this->createUser(['full_name' => 'Master Kim']);
+        $instructor = ClubInstructor::create(['tenant_id' => $club->id, 'user_id' => $coach->id, 'role' => 'Coach']);
+        $member = $this->createUser();
+        $aff = $this->affiliation($member, $club);
+
+        $this->actingAs($member)
+            ->postJson("/member/{$member->id}/affiliations/{$aff->id}/skills", [
+                'skill_name' => 'Sparring', 'proficiency_level' => 'advanced',
+                'instructor_id' => $instructor->id,
+            ])->assertOk();
+
+        $this->assertDatabaseHas('skill_acquisitions', [
+            'skill_name' => 'Sparring', 'instructor_id' => $instructor->id,
+        ]);
+    }
+
+    public function test_instructor_id_must_belong_to_the_affiliation_club(): void
+    {
+        $clubA = $this->createClub($this->createUser());
+        $clubB = $this->createClub($this->createUser());
+        $foreignCoach = $this->createUser();
+        $foreignInstructor = ClubInstructor::create(['tenant_id' => $clubB->id, 'user_id' => $foreignCoach->id, 'role' => 'Coach']);
+        $member = $this->createUser();
+        $aff = $this->affiliation($member, $clubA);
+
+        $this->actingAs($member)
+            ->postJson("/member/{$member->id}/affiliations/{$aff->id}/skills", [
+                'skill_name' => 'Kicks', 'proficiency_level' => 'beginner',
+                'instructor_id' => $foreignInstructor->id,
+            ])->assertStatus(422)->assertJsonValidationErrors('instructor_id');
     }
 
     public function test_skill_verification_request_and_club_confirm(): void

@@ -149,6 +149,76 @@ class AchievementVerificationTest extends TestCase
         $this->assertDatabaseHas('user_notifications', ['user_id' => $member->id, 'type' => 'verification:approved']);
     }
 
+    public function test_verifying_auto_posts_to_the_feed_once(): void
+    {
+        $club = $this->createClub($this->createUser());
+        $admin = $this->createUser();
+        $this->makeClubAdmin($admin, $club);
+        $member = $this->createUser();
+        $claim = $this->seedClaim($member, $club, '1st');
+
+        // Before verification: no feed post.
+        $this->assertDatabaseMissing('user_posts', ['user_id' => $member->id]);
+
+        $this->actingAs($admin)
+            ->postJson("/admin/club/{$club->slug}/achievements/verifications/achievement/{$claim->uuid}/confirm")
+            ->assertOk()->assertJsonPath('status', 'verified');
+
+        // A celebratory feed post now exists for the member, and the guard is stamped.
+        $this->assertDatabaseHas('user_posts', ['user_id' => $member->id, 'type' => 'text']);
+        $this->assertNotNull($claim->fresh()->verification_announced_at);
+        $this->assertSame(1, \App\Models\UserPost::where('user_id', $member->id)->count());
+
+        // Re-running verification must NOT create a second post.
+        $this->service()->clubConfirm($claim->fresh(), $admin);
+        $this->assertSame(1, \App\Models\UserPost::where('user_id', $member->id)->count());
+    }
+
+    public function test_club_can_confirm_a_club_affiliation(): void
+    {
+        $club = $this->createClub($this->createUser());
+        $admin = $this->createUser();
+        $this->makeClubAdmin($admin, $club);
+        $member = $this->createUser();
+        $aff = ClubAffiliation::create([
+            'member_id' => $member->id, 'tenant_id' => $club->id,
+            'club_name' => $club->club_name, 'start_date' => now()->subYears(2),
+            'verification_status' => 'pending',
+        ]);
+
+        $this->actingAs($admin)
+            ->postJson("/admin/club/{$club->slug}/achievements/verifications/affiliation/{$aff->uuid}/confirm")
+            ->assertOk()->assertJsonPath('status', 'verified');
+
+        $this->assertDatabaseHas('club_affiliations', ['id' => $aff->id, 'verification_status' => 'verified']);
+        $this->assertDatabaseHas('user_posts', ['user_id' => $member->id]); // auto-posted
+    }
+
+    public function test_club_can_confirm_work_history_matched_by_name(): void
+    {
+        $club = $this->createClub($this->createUser());
+        $admin = $this->createUser();
+        $this->makeClubAdmin($admin, $club);
+        $member = $this->createUser();
+        $work = \App\Models\MemberWorkHistory::create([
+            'user_id' => $member->id, 'title' => 'Coach', 'organization' => $club->club_name,
+            'start_date' => now()->subYear(), 'verification_status' => 'pending',
+        ]);
+
+        $this->actingAs($admin)
+            ->postJson("/admin/club/{$club->slug}/achievements/verifications/work/{$work->uuid}/confirm")
+            ->assertOk()->assertJsonPath('status', 'verified');
+
+        $this->assertDatabaseHas('member_work_history', ['id' => $work->id, 'verification_status' => 'verified']);
+    }
+
+    public function test_self_reported_claim_is_never_auto_posted(): void
+    {
+        $member = $this->createUser();
+        $this->seedClaim($member, $this->createClub($this->createUser())); // stays self_reported
+        $this->assertDatabaseMissing('user_posts', ['user_id' => $member->id]);
+    }
+
     public function test_club_reject_records_reason(): void
     {
         $club = $this->createClub($this->createUser());

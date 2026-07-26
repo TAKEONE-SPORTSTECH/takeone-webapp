@@ -41,7 +41,7 @@ class TakeOneSportsTechSeeder extends Seeder
                 'description'            => 'The flagship TAKEONE academy — martial arts, racquet sports and team training under one roof, powered by TAKEONE SportsTech.',
                 'email'                  => 'hello@takeone.bh',
                 'phone'                  => ['code' => '+973', 'number' => '17000000'],
-                'country'                => 'Bahrain',
+                'country'                => 'BH',   // ISO-2 code — public club URL is /{country}/clubs/{slug} with country constrained to [a-z]{2,3}
                 'currency'               => 'BHD',
                 'timezone'               => 'Asia/Bahrain',
                 'address'                => 'Seef District, Manama, Bahrain',

@@ -50,10 +50,16 @@ class TrainerController extends Controller
             $timeGroups = [];
             foreach ($scheduleData as $s) {
                 $day = strtolower($s['day'] ?? '');
-                $start = $s['start_time'] ?? '';
-                $end = $s['end_time'] ?? '';
-                if (! $day || ! $start || ! $end) {
+                // Canonical slots use start_time/end_time; legacy/seeded slots record a
+                // single {day,time}. Accept both so the schedule isn't silently empty.
+                $start = substr((string) ($s['start_time'] ?? $s['time'] ?? ''), 0, 5);
+                $end = substr((string) ($s['end_time'] ?? ''), 0, 5);
+                if (! $day || ! $start) {
                     continue;
+                }
+                if (! $end) {
+                    // Only a start recorded → assume a 1-hour class.
+                    $end = \Carbon\Carbon::parse($start)->addHour()->format('H:i');
                 }
                 $key = $start.'-'.$end;
                 if (! isset($timeGroups[$key])) {
@@ -117,9 +123,29 @@ class TrainerController extends Controller
             ->pluck('skill_name')
             ->filter()->unique()->values();
 
+        // Rich skill cards: accumulated years practising each skill + a deep-link to the
+        // activity encyclopedia when the discipline is in the directory.
+        $skillMonths = \App\Support\SkillExperience::monthsPerSkill($user);
+        $catalogByName = \App\Models\ActivityCatalog::where('is_active', true)
+            ->get(['uuid', 'name', 'picture_url'])
+            ->keyBy(fn ($a) => mb_strtolower(trim($a->name)));
+        $skillCards = $skills->map(function ($name) use ($skillMonths, $catalogByName) {
+            $key = mb_strtolower(trim((string) $name));
+            $cat = $catalogByName->get($key);
+
+            return [
+                'name' => $name,
+                'years' => \App\Support\SkillExperience::format($skillMonths[$key] ?? 0),
+                'uuid' => optional($cat)->uuid,
+                'image' => optional($cat)->picture_url ? asset('storage/'.$cat->picture_url) : null,
+            ];
+        })->values();
+
         $stats = [
             'clients' => $user->clubInstructors->sum(fn ($i) => optional($i->tenant)->memberships()->count() ?? 0),
-            'sessions' => $activities->sum('frequency_per_week') * 4,
+            // Actual weekly classes = every scheduled slot-day across their assigned
+            // package classes (not a frequency estimate off deduped activities).
+            'sessions' => array_sum(array_map(fn ($s) => count($s['days']), $scheduleSlots)),
             'rating' => round($reviews->avg('rating') ?? 0, 1),
             'certifications' => $skills->count(),
         ];
@@ -127,6 +153,6 @@ class TrainerController extends Controller
         $isMobile = request()->attributes->get('is_mobile', false);
         $view = $isMobile && view()->exists('trainer.mobile.show') ? 'trainer.mobile.show' : 'trainer.show';
 
-        return view($view, compact('user', 'activities', 'scheduleSlots', 'stats', 'reviews', 'reactions', 'reactionTotal', 'skills'));
+        return view($view, compact('user', 'activities', 'scheduleSlots', 'stats', 'reviews', 'reactions', 'reactionTotal', 'skills', 'skillCards'));
     }
 }

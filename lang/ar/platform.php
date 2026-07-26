@@ -363,6 +363,18 @@ return [
     'admin_platform_settings_whatsapp_send_test' => 'إرسال رسالة تجريبية',
     'admin_platform_settings_whatsapp_sending_test' => 'جارٍ الإرسال…',
 
+    // Danger zone — reset baseline
+    'admin_platform_settings_danger_zone' => 'منطقة الخطر',
+    'admin_platform_settings_reset_title' => 'إعادة التعيين إلى الوضع الأساسي',
+    'admin_platform_settings_reset_description' => 'يحذف نهائيًا كل نادٍ وباقة وعضو وجميع بيانات الأعضاء، ثم يعيد إنشاء الوضع الأساسي لـ TAKEONE SportsTech. يُبقي فقط على دليل الأنشطة والأدوار والصلاحيات وحساب المشرف العام. يتم أخذ نسخة احتياطية من قاعدة البيانات أولًا.',
+    'admin_platform_settings_reset_button' => 'إعادة تعيين المنصة',
+    'admin_platform_settings_reset_modal_title' => 'إعادة تعيين المنصة بالكامل؟',
+    'admin_platform_settings_reset_modal_warning' => 'لا يمكن التراجع عن هذا الإجراء. سيتم حذف جميع الأندية والأعضاء وبياناتهم نهائيًا وإعادة إنشاء الوضع الأساسي.',
+    'admin_platform_settings_reset_modal_confirm_label' => 'اكتب RESET للتأكيد',
+    'admin_platform_settings_reset_modal_cancel' => 'إلغاء',
+    'admin_platform_settings_reset_modal_confirm' => 'مسح وإعادة الإنشاء',
+    'admin_platform_settings_reset_working' => 'جارٍ إعادة التعيين…',
+
     // --- AR translations added (auto-filled) ---
     'admin_platform_index_add_new_club' => 'إضافة نادٍ جديد',
     'admin_platform_index_admin_badge' => 'مسؤول',

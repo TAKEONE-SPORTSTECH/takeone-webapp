@@ -438,6 +438,9 @@ Route::middleware(['auth', 'verified', 'two-factor', 'role:super-admin'])->prefi
     Route::post('/settings/whatsapp/test', [App\Http\Controllers\Admin\PlatformController::class, 'testWhatsAppConnection'])->name('platform.settings.whatsapp.test')->middleware('throttle:admin-write');
     Route::post('/settings/whatsapp/send-test', [App\Http\Controllers\Admin\PlatformController::class, 'sendTestWhatsAppMessage'])->name('platform.settings.whatsapp.send-test')->middleware('throttle:admin-write');
 
+    // DANGER ZONE — wipe the platform back to its clean baseline (super-admin only, very tightly throttled).
+    Route::post('/settings/reset-baseline', [App\Http\Controllers\Admin\PlatformController::class, 'resetBaseline'])->name('platform.settings.reset-baseline')->middleware('throttle:reset-baseline');
+
     Route::get('/backup', [App\Http\Controllers\Admin\PlatformController::class, 'backup'])->name('platform.backup');
     Route::get('/backup/download', [App\Http\Controllers\Admin\PlatformController::class, 'downloadBackup'])->name('platform.backup.download');
     Route::post('/backup/restore', [App\Http\Controllers\Admin\PlatformController::class, 'restoreBackup'])->name('platform.backup.restore')->middleware('throttle:backup');
@@ -513,6 +516,7 @@ Route::middleware(['auth', 'verified', 'two-factor', 'tenant', 'throttle:admin-w
     Route::put('/instructors/{instructor}', [App\Http\Controllers\Admin\ClubInstructorController::class, 'updateInstructor'])->name('instructors.update');
     Route::delete('/instructors/{instructor}', [App\Http\Controllers\Admin\ClubInstructorController::class, 'destroyInstructor'])->name('instructors.destroy');
     Route::get('/instructors/{instructor}/termination-preview', [App\Http\Controllers\Admin\ClubInstructorController::class, 'terminationPreview'])->name('instructors.termination-preview');
+    Route::get('/instructors-prefill/{user}', [App\Http\Controllers\Admin\ClubInstructorController::class, 'instructorPrefill'])->name('instructors.prefill')->middleware('throttle:60,1');
 
     // Activities
     Route::get('/activities', [App\Http\Controllers\Admin\ClubActivityController::class, 'activities'])->name('activities');
@@ -557,8 +561,8 @@ Route::middleware(['auth', 'verified', 'two-factor', 'tenant', 'throttle:admin-w
     Route::delete('/achievements/{achievement}', [App\Http\Controllers\Admin\ClubAchievementController::class, 'destroyAchievement'])->name('achievements.destroy');
     // Member self-claimed achievement verification queue (club attests claims naming this club).
     Route::get('/achievements/verifications', [App\Http\Controllers\Admin\ClubAchievementController::class, 'verifications'])->name('achievements.verifications');
-    Route::post('/achievements/verifications/{type}/{uuid}/confirm', [App\Http\Controllers\Admin\ClubAchievementController::class, 'confirmVerification'])->whereIn('type', ['achievement', 'skill'])->name('achievements.verifications.confirm')->middleware('throttle:admin-write');
-    Route::post('/achievements/verifications/{type}/{uuid}/reject', [App\Http\Controllers\Admin\ClubAchievementController::class, 'rejectVerification'])->whereIn('type', ['achievement', 'skill'])->name('achievements.verifications.reject')->middleware('throttle:admin-write');
+    Route::post('/achievements/verifications/{type}/{uuid}/confirm', [App\Http\Controllers\Admin\ClubAchievementController::class, 'confirmVerification'])->whereIn('type', ['achievement', 'skill', 'affiliation', 'work'])->name('achievements.verifications.confirm')->middleware('throttle:admin-write');
+    Route::post('/achievements/verifications/{type}/{uuid}/reject', [App\Http\Controllers\Admin\ClubAchievementController::class, 'rejectVerification'])->whereIn('type', ['achievement', 'skill', 'affiliation', 'work'])->name('achievements.verifications.reject')->middleware('throttle:admin-write');
 
     // Packages
     Route::get('/packages', [App\Http\Controllers\Admin\ClubPackageController::class, 'packages'])->name('packages');
@@ -709,11 +713,17 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     Route::put('/member/{id}/affiliations/{affiliationId}', [MemberController::class, 'updateAffiliation'])->name('member.update-affiliation')->middleware('throttle:member-write');
     Route::delete('/member/{id}/affiliations/{affiliationId}', [MemberController::class, 'destroyAffiliation'])->name('member.destroy-affiliation')->middleware('throttle:member-write');
     Route::get('/member/{id}/affiliations/{affiliationId}/activities', [MemberController::class, 'affiliationActivities'])->name('member.affiliation-activities')->middleware('throttle:60,1');
+    Route::get('/member/{id}/instructor-search', [MemberController::class, 'instructorSearch'])->name('member.instructor-search')->middleware('throttle:60,1');
+    Route::post('/member/{id}/affiliations/{affiliationId}/instructors', [MemberController::class, 'storeAffiliationInstructor'])->name('member.store-affiliation-instructor')->middleware('throttle:member-write');
+    Route::delete('/member/{id}/affiliations/{affiliationId}/instructors', [MemberController::class, 'destroyAffiliationInstructor'])->name('member.destroy-affiliation-instructor')->middleware('throttle:member-write');
     Route::post('/member/{id}/affiliations/{affiliationId}/skills', [MemberController::class, 'storeAffiliationSkill'])->name('member.store-affiliation-skill')->middleware('throttle:member-write');
     Route::post('/member/{id}/affiliations/{affiliationId}/skills/{uuid}/request-verification', [MemberController::class, 'requestSkillVerification'])->name('member.skill.request-verification')->middleware('throttle:member-write');
     Route::delete('/member/{id}/affiliations/{affiliationId}/skills/{skillId}', [MemberController::class, 'destroyAffiliationSkill'])->name('member.destroy-affiliation-skill')->middleware('throttle:member-write');
+    Route::post('/member/{id}/affiliations/{affiliationId}/media/upload-image', [MemberController::class, 'uploadAffiliationMediaImage'])->name('member.affiliation-media.upload-image')->middleware('throttle:uploads');
     Route::post('/member/{id}/affiliations/{affiliationId}/media', [MemberController::class, 'storeAffiliationMedia'])->name('member.store-affiliation-media')->middleware('throttle:uploads');
     Route::delete('/member/{id}/affiliations/{affiliationId}/media/{mediaId}', [MemberController::class, 'destroyAffiliationMedia'])->name('member.destroy-affiliation-media')->middleware('throttle:member-write');
+    Route::post('/member/{id}/affiliations/{uuid}/request-verification', [MemberController::class, 'requestAffiliationVerification'])->name('member.affiliation.request-verification')->middleware('throttle:member-write');
+    Route::post('/member/{id}/work-history/{uuid}/request-verification', [MemberController::class, 'requestWorkVerification'])->name('member.work.request-verification')->middleware('throttle:member-write');
 
     // Keep old family routes for backward compatibility (redirect to new routes)
     Route::get('/family/create', function () {
@@ -744,7 +754,7 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     Route::post('/family/{id}/tournament/{uuid}/request-verification', [MemberController::class, 'requestTournamentVerification'])->name('family.tournament.request-verification')->middleware('throttle:member-write');
 
     // Peer/coach attestation for a member's self-claimed record (achievement | skill), bound by uuid.
-    Route::post('/attestations/{type}/{uuid}/vouch', [App\Http\Controllers\AchievementVouchController::class, 'vouch'])->whereIn('type', ['achievement', 'skill'])->name('attestations.vouch')->middleware('throttle:member-write');
+    Route::post('/attestations/{type}/{uuid}/vouch', [App\Http\Controllers\AchievementVouchController::class, 'vouch'])->whereIn('type', ['achievement', 'skill', 'affiliation', 'work'])->name('attestations.vouch')->middleware('throttle:member-write');
     Route::post('/family/{id}/upload-picture', [MemberController::class, 'uploadPicture'])->name('family.upload-picture')->middleware('throttle:uploads');
     Route::delete('/family/{id}', [MemberController::class, 'destroy'])->name('family.destroy')->middleware('throttle:member-write');
     Route::get('/family/dashboard', function () {
