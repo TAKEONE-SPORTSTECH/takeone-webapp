@@ -28,6 +28,7 @@ class SendPushNotification implements ShouldQueue
         public string $title,
         public string $body,
         public array $data = [],
+        public array $options = [],
     ) {}
 
     public function handle(FcmService $fcm): void
@@ -36,6 +37,6 @@ class SendPushNotification implements ShouldQueue
             return;
         }
 
-        $fcm->sendToUser($this->userId, $this->title, $this->body, $this->data);
+        $fcm->sendToUser($this->userId, $this->title, $this->body, $this->data, $this->options);
     }
 }

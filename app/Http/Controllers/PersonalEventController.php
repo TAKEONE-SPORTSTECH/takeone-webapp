@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\Contracts\EventType;
+use App\Events\EventTypeRegistry;
+use App\Events\Support\EntryService;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
@@ -20,11 +23,81 @@ class PersonalEventController extends Controller
 {
     use \App\Traits\StoresBase64Images;
 
-    public function __construct(
-        private \App\Sports\Combat\Engine\DrawEngine $draws,
-        private \App\Sports\Combat\Engine\Scheduler $scheduler,
-        private \App\Sports\Combat\Engine\Results $results,
-    ) {}
+    public function __construct(private EventTypeRegistry $registry) {}
+
+    /**
+     * The package that owns this event. All type-specific behaviour — schema,
+     * enrolment gate, lifecycle, engine, results, financials, screens — is
+     * asked of it. This controller must never branch on sport or event_type
+     * itself (CLAUDE.md → "Events Are Self-Contained Packages").
+     */
+    private function typeFor(ClubEvent $event): EventType
+    {
+        return $this->registry->for($event);
+    }
+
+    /**
+     * The package's own screen for a slot, falling back to the shared screen.
+     *
+     * A declared view is only used when it actually exists, so a package can
+     * take over one screen (or one device) at a time during migration and can
+     * never point the app at a view it hasn't shipped.
+     */
+    private function packageView(EventType $type, string $slot, string $device, string $fallback): string
+    {
+        $declared = $type->views()[$slot][$device] ?? null;
+
+        return ($declared && view()->exists($declared)) ? $declared : $fallback;
+    }
+
+    /**
+     * Clubs this member may create an event for: the ones they belong to, PLUS
+     * the ones they own or administer.
+     *
+     * A club owner is not automatically a MEMBER of their own club — owning it
+     * and training in it are different things — so a memberships-only list left
+     * owners unable to create an event for the club they run.
+     *
+     * @return array<int, array{id: int, name: string, currency: string}>
+     */
+    private function clubsICanCreateFor(User $me): array
+    {
+        $ids = $me->memberClubs()->pluck('tenants.id')
+            ->merge(app(EntryService::class)->administeredClubIds($me))
+            ->unique();
+
+        return \App\Models\Tenant::whereIn('id', $ids)
+            ->orderBy('club_name')
+            ->get(['id', 'club_name', 'currency'])
+            ->map(fn ($c) => ['id' => $c->id, 'name' => $c->club_name, 'currency' => $c->currency ?: 'BHD'])
+            ->values()->all();
+    }
+
+    /**
+     * A scope wider than the host club addresses people who never opted into
+     * this club — potentially a whole country. Only the club's owner or an admin
+     * of it (or a super-admin) may do that; an ordinary member is limited to
+     * `internal`, so no member can turn event creation into a mass-mail button.
+     */
+    private function assertMayBroadcast(User $me, int $tenantId, ?string $scope): void
+    {
+        if (! in_array($scope, config('event_notifications.broadcast_scopes', []), true)) {
+            return;
+        }
+
+        $owns = \App\Models\Tenant::whereKey($tenantId)->where('owner_user_id', $me->id)->exists();
+
+        abort_unless($owns || $me->isClubAdmin($tenantId) || $me->isSuperAdmin(), 403);
+    }
+
+    /** Resolve the package for an event that doesn't exist yet, from its input. */
+    private function typeForInput(array $data, ?ClubEvent $event = null): EventType
+    {
+        return $this->registry->for(new ClubEvent([
+            'event_type' => $data['event_type'] ?? $event?->event_type,
+            'sport' => $data['sport'] ?? $event?->sport,
+        ]));
+    }
 
     /* ---- Schema (config-driven: types + sports) ---- */
     private function types(): array
@@ -116,31 +189,31 @@ class PersonalEventController extends Controller
         $me = Auth::user();
         $this->assertVisible($event, $me);
 
+        $type = $this->typeFor($event);
+
         $event->loadCount(['participantRegistrations']);
         $myReg = $this->myRegistrations($me->id, collect([$event->id]));
         $e = $this->eventView($event, $me->id, $myReg, full: true);
         $e['cancelled'] = $event->status === 'cancelled';
 
-        // Taekwondo join captures a self-declared weight — prefill from the member's
-        // existing registration weight, else their latest health record.
-        $myWeight = $myReg->get($event->id)?->weight ?: optional($me->latestHealthRecord)->weight;
-
         $canManage = $this->canManage($event, $me);
         $banned = $this->isBanned($event, $me->id);
-        $elig = $this->competeEligibility($event, $me, $myReg->get($event->id));
+        $gate = $type->enrolmentGate($event, $me, $myReg->get($event->id));
 
         $isMobile = (bool) $request->attributes->get('is_mobile');
+        $device = $isMobile ? 'mobile' : 'desktop';
 
-        return view($isMobile ? 'personal.mobile.event-show' : 'personal.desktop.event-show', [
+        $view = $this->packageView($type, 'show', $device, $isMobile ? 'personal.mobile.event-show' : 'personal.desktop.event-show');
+
+        return view($view, [
             'e' => $e,
             'canManage' => $canManage,
-            'isTkd' => $event->sport === 'taekwondo',
-            'myWeight' => $myWeight,
             'banned' => $banned,
-            'canCompete' => $banned ? false : $elig['can'],
-            'eligReason' => $banned ? 'You’ve been removed from this event by the organiser.' : $elig['reason'],
-            'finance' => $canManage ? $this->computeFinance($event) : null,
-        ]);
+            'canCompete' => $banned ? false : $gate->allowed,
+            'eligReason' => $banned ? __('events.banned_by_organiser') : $gate->message,
+            'actions' => $canManage ? $type->availableActions($event) : [],
+            'finance' => $canManage ? $type->finance($event) : null,
+        ] + $type->viewData($event, $me));
     }
 
     /** True if the member is barred from this event (event block OR club-wide blacklist). */
@@ -153,56 +226,33 @@ class PersonalEventController extends Controller
             })->exists();
     }
 
-    /**
-     * Can the current member register as a COMPETITOR? Mirrors register(): for
-     * taekwondo they must classify (gender+age+weight) into one of the event's
-     * weight divisions. Anyone already a participant stays "eligible" so their
-     * confirmed state renders. Non-combat events have no weight gate.
-     *
-     * @return array{can: bool, reason: ?string}
-     */
-    private function competeEligibility(ClubEvent $event, User $me, $reg): array
-    {
-        if ($reg && $reg->role === 'participant') {
-            return ['can' => true, 'reason' => null];
-        }
-        if ($event->sport !== 'taekwondo') {
-            return ['can' => true, 'reason' => null];
-        }
-        if (! $me->gender || ! $me->birthdate) {
-            return ['can' => false, 'reason' => 'Add your gender and date of birth to your profile to enter a weight category.'];
-        }
-        $weight = optional($me->latestHealthRecord)->weight ? (float) $me->latestHealthRecord->weight : null;
-        if (! $weight) {
-            return ['can' => false, 'reason' => 'Add your current weight to your health profile to register as a competitor.'];
-        }
-        if (! $this->routeToTaekwondoDivision($event, $me, $weight)) {
-            return ['can' => false, 'reason' => 'This championship’s divisions don’t include your age/weight category, so you can’t compete in it.'];
-        }
-
-        return ['can' => true, 'reason' => null];
-    }
-
     public function bracket(ClubEvent $event): View
     {
         $me = Auth::user();
         $this->assertVisible($event, $me);
 
-        // Auto-draw: generate/refresh provisional draws before start, and lock a
-        // paid-only draw once the event has started.
-        $this->draws->ensure($event);
+        $type = $this->typeFor($event);
 
-        $categories = $this->categoryViews($event, $me->id);
+        // Let the package bring its own derived state up to date (for a
+        // championship: refresh the provisional draw, or lock the final one).
+        $type->onEntrantsChanged($event);
+
+        $categories = $type->runData($event, $me)['categories'] ?? [];
         $e = $this->eventView($event, $me->id, $this->myRegistrations($me->id, collect([$event->id])), full: true);
+        $canManage = $this->canManage($event, $me);
 
-        return view('personal.event-bracket', ['e' => $e, 'categories' => $categories, 'canManage' => $this->canManage($event, $me)]);
+        return view('personal.event-bracket', [
+            'e' => $e,
+            'categories' => $categories,
+            'canManage' => $canManage,
+            'actions' => $canManage ? $type->availableActions($event) : [],
+        ] + $type->viewData($event, $me));
     }
 
     public function create(): View
     {
         $me = Auth::user();
-        $clubs = $me->memberClubs()->get(['tenants.id', 'club_name', 'currency'])
-            ->map(fn ($c) => ['id' => $c->id, 'name' => $c->club_name, 'currency' => $c->currency ?: 'BHD'])->values()->all();
+        $clubs = $this->clubsICanCreateFor($me);
 
         return view('personal.event-create', ['clubs' => $clubs] + $this->schemaPayload());
     }
@@ -222,14 +272,13 @@ class PersonalEventController extends Controller
         return [
             'schema' => config('event_schema'),
             'divisions' => $divisions,
-            'tkdDivisions' => config('taekwondo_divisions'),
+            // Each package contributes its own reference data (weight tables,
+            // belt ladders …) keyed by package. The controller never names a
+            // type to fetch a catalogue.
+            'catalogs' => collect($this->registry->all())
+                ->map(fn (EventType $t) => $t->formCatalog())
+                ->filter()->all(),
         ];
-    }
-
-    /** Is this a combat sport (bracket + weight-class engine)? */
-    private function isCombatSport(?string $sport): bool
-    {
-        return $sport && (($this->sports()[$sport]['family'] ?? null) === 'Combat');
     }
 
     /* ===================== Write actions ===================== */
@@ -259,15 +308,22 @@ class PersonalEventController extends Controller
             'spectator_fee' => ['nullable', 'string', 'max:40'],
             'max_capacity' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'prize' => ['nullable', 'string', 'max:120'],
-        ] + $this->detailRules());
+            'sport' => ['nullable', Rule::in(array_keys($this->sports()))],
+        ]);
 
-        // Must belong to the club you're creating the event for.
-        abort_unless($me->memberClubs()->whereKey($data['tenant_id'])->exists(), 403);
+        // Must belong to — or run — the club you're creating the event for.
+        abort_unless(
+            collect($this->clubsICanCreateFor($me))->contains('id', (int) $data['tenant_id']),
+            403,
+        );
 
-        // Combat events: no event-wide level/capacity/prize (those live per division).
-        $combat = $this->isCombatSport($data['sport'] ?? null);
+        $this->assertMayBroadcast($me, (int) $data['tenant_id'], $data['scope'] ?? 'internal');
 
-        $event = ClubEvent::create([
+        // The owning package validates and normalises its own half of the payload.
+        $type = $this->typeForInput($data);
+        $data += $request->validate($type->validationRules());
+
+        $event = ClubEvent::create($type->columnsFromInput($data) + [
             'tenant_id' => $data['tenant_id'],
             'created_by' => $me->id,
             'title' => $data['title'],
@@ -287,19 +343,23 @@ class PersonalEventController extends Controller
             'location_url' => $data['location_url'] ?? null,
             'break_start' => $data['break_start'] ?? null,
             'break_end' => $data['break_end'] ?? null,
-            'level' => $combat ? null : ($data['level'] ?? null),
+            'level' => $data['level'] ?? null,
             'description' => $data['description'] ?? null,
             'participant_fee' => $data['participant_free'] ? null : ($data['participant_fee'] ?: 'Free'),
             'spectator_enabled' => (bool) $data['spectator_enabled'],
             'spectator_fee' => $data['spectator_enabled'] ? ($data['spectator_fee'] ?: 'Free') : null,
-            'prize' => $combat ? null : ($data['prize'] ?? null),
-            'max_capacity' => $combat ? null : ($data['max_capacity'] ?? null),
+            'prize' => $data['prize'] ?? null,
+            'max_capacity' => $data['max_capacity'] ?? null,
             'color' => $this->typeColor($data['event_type']),
             'status' => 'active',
             'is_archived' => false,
-        ] + $this->extractDetails($data));
+        ]);
 
-        $this->syncDivisions($event, $data['divisions'] ?? []);
+        $type->saveRelatedData($event, $data);
+
+        // Announce it to everyone the event's scope reaches. Queued and capped —
+        // a nationwide announcement never runs inline in this request.
+        app(\App\Events\Support\EventNotifier::class)->fireOnce($event->fresh(), 'created');
 
         return response()->json([
             'success' => true,
@@ -313,8 +373,7 @@ class PersonalEventController extends Controller
         $me = Auth::user();
         $this->assertCanManage($event, $me);
 
-        $clubs = $me->memberClubs()->get(['tenants.id', 'club_name', 'currency'])
-            ->map(fn ($c) => ['id' => $c->id, 'name' => $c->club_name, 'currency' => $c->currency ?: 'BHD'])->values()->all();
+        $clubs = $this->clubsICanCreateFor($me);
 
         return view('personal.event-create', ['clubs' => $clubs, 'mode' => 'edit', 'event' => $event] + $this->schemaPayload($event));
     }
@@ -344,11 +403,17 @@ class PersonalEventController extends Controller
             'spectator_fee' => ['nullable', 'string', 'max:40'],
             'max_capacity' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'prize' => ['nullable', 'string', 'max:120'],
-        ] + $this->detailRules());
+            'sport' => ['nullable', Rule::in(array_keys($this->sports()))],
+        ]);
 
-        $combat = $this->isCombatSport($data['sport'] ?? $event->sport);
+        // Widening the scope on an EDIT is the same broadcast power as setting
+        // it at creation — guard it identically.
+        $this->assertMayBroadcast($me, (int) $event->tenant_id, $data['scope'] ?? $event->scope);
 
-        $event->update([
+        $type = $this->typeForInput($data, $event);
+        $data += $request->validate($type->validationRules($event));
+
+        $event->update($type->columnsFromInput($data, $event) + [
             'title' => $data['title'],
             'event_type' => $data['event_type'],
             'scope' => $data['scope'] ?? $event->scope ?? 'internal',
@@ -366,22 +431,18 @@ class PersonalEventController extends Controller
             'location_url' => $data['location_url'] ?? null,
             'break_start' => $data['break_start'] ?? null,
             'break_end' => $data['break_end'] ?? null,
-            'level' => $combat ? null : ($data['level'] ?? null),
+            'level' => $data['level'] ?? null,
             'description' => $data['description'] ?? null,
             'participant_fee' => $data['participant_free'] ? null : ($data['participant_fee'] ?: 'Free'),
             'spectator_enabled' => (bool) $data['spectator_enabled'],
             'spectator_fee' => $data['spectator_enabled'] ? ($data['spectator_fee'] ?: 'Free') : null,
-            'prize' => $combat ? null : ($data['prize'] ?? null),
-            'max_capacity' => $combat ? null : ($data['max_capacity'] ?? null),
-        ] + $this->extractDetails($data));
+            'prize' => $data['prize'] ?? null,
+            'max_capacity' => $data['max_capacity'] ?? null,
+        ]);
 
-        $this->syncDivisions($event, $data['divisions'] ?? []);
-
-        // If a draw already exists and the event hasn't started, re-apply the schedule
-        // (court suggestion + per-mat numbers) so day edits take effect immediately.
-        if (! $event->hasStarted()) {
-            $this->scheduler->scheduleAndNumber($event->fresh());
-        }
+        // Divisions, fixtures, re-scheduling — whatever this type keeps outside
+        // the event row.
+        $type->saveRelatedData($event, $data);
 
         return response()->json([
             'success' => true,
@@ -395,6 +456,15 @@ class PersonalEventController extends Controller
     {
         $me = Auth::user();
         $this->assertCanManage($event, $me);
+
+        // Types that derive their podium from their own engine refuse hand-entry
+        // outright — a typed-in result must never contradict the recorded play.
+        if (! $this->typeFor($event)->allowsManualResults()) {
+            return response()->json([
+                'success' => false,
+                'message' => __('events.results_derived_from_engine'),
+            ], 422);
+        }
 
         $data = $request->validate([
             'results' => ['present', 'array', 'max:20'],
@@ -467,7 +537,7 @@ class PersonalEventController extends Controller
             return response()->json(['success' => false, 'code' => 'banned', 'message' => 'You can’t register for this event.'], 403);
         }
 
-        $isTkd = $event->sport === 'taekwondo';
+        $type = $this->typeFor($event);
 
         $data = $request->validate([
             'category_id' => ['nullable', 'integer', Rule::exists('event_categories', 'id')->where('event_id', $event->id)],
@@ -496,48 +566,24 @@ class PersonalEventController extends Controller
             return response()->json(['success' => false, 'message' => 'This event is full.'], 422);
         }
 
-        // Taekwondo: a competitor must fall into one of the weight categories the
-        // creator set up. We classify them by gender/age/weight (last weigh reading
-        // from the DB; official weight is confirmed at weigh-in). If they don't fit
-        // an offered division they CAN'T compete — they're steered to a spectator
-        // ticket instead.
-        $categoryId = $data['category_id'] ?? null;
-        $weight = null;
-        $division = null;
-        if ($isTkd) {
-            if (! $me->gender || ! $me->birthdate) {
-                return response()->json([
-                    'success' => false,
-                    'code' => 'no_profile',
-                    'message' => 'Add your gender and date of birth to your profile so we can place you in a weight category.',
-                ], 422);
-            }
+        // The owning package decides whether this member may compete and, when
+        // the type is divisioned, which division they belong in. It classifies
+        // them from their own profile — a member never picks their own class.
+        $existing = ClubEventRegistration::where('event_id', $event->id)->where('user_id', $me->id)->first();
+        $decision = $type->enrolmentGate($event, $me, $existing);
 
-            $weight = optional($me->latestHealthRecord)->weight ? (float) $me->latestHealthRecord->weight : null;
-            if (! $weight) {
-                return response()->json([
-                    'success' => false,
-                    'code' => 'no_weight',
-                    'message' => 'Add your current weight to your health profile so we can place you in a weight category.',
-                ], 422);
-            }
-
-            $cat = $this->routeToTaekwondoDivision($event, $me, $weight);
-            if (! $cat) {
-                // Their weight category isn't being run here → not eligible to compete.
-                return response()->json([
-                    'success' => false,
-                    'code' => 'no_division',
-                    'spectator' => (bool) $event->spectator_enabled,
-                    'message' => $event->spectator_enabled
-                        ? 'Your weight category isn’t one of this championship’s divisions, so you can’t compete — but you’re welcome to attend as a spectator.'
-                        : 'Your weight category isn’t one of this championship’s divisions, so you’re not eligible to compete in this event.',
-                ], 422);
-            }
-
-            $categoryId = $cat->id;
-            $division = $cat->name;
+        if (! $decision->allowed) {
+            return response()->json([
+                'success' => false,
+                'code' => $decision->code,
+                'spectator' => $decision->offerSpectator,
+                'message' => $decision->message,
+            ], 422);
         }
+
+        $categoryId = $decision->category?->id ?? ($data['category_id'] ?? null);
+        $division = $decision->category?->name;
+        $weight = $decision->weight;
 
         $paidFee = $event->participant_fee && ! str_contains(strtolower($event->participant_fee), 'free');
 
@@ -545,7 +591,6 @@ class PersonalEventController extends Controller
         // we record the member's proof on the PRIVATE disk and leave paid=false so
         // the club admin still has to approve it. Registration succeeds either way
         // (the member may pay at the venue instead).
-        $existing = ClubEventRegistration::where('event_id', $event->id)->where('user_id', $me->id)->first();
         $proofPath = $existing?->payment_proof;
         $storedNewProof = false;
         if ($paidFee && ! empty($data['payment_proof'])) {
@@ -579,17 +624,19 @@ class PersonalEventController extends Controller
             ]
         );
 
-        $note = $division
-            ? ' · '.$division
-            : ($isTkd ? ' · you’ll be weighed in at the event to set your division' : '');
+        // The entrant set changed — let the package re-derive whatever depends
+        // on it (a provisional bracket, a fixture list).
+        $type->onEntrantsChanged($event, $decision->category);
+
+        $note = $division ? ' · '.$division : '';
 
         return response()->json([
             'success' => true,
             'message' => ($storedNewProof
-                ? 'Spot reserved · payment sent for review'
+                ? __('events.reg_proof_sent')
                 : ($paidFee
-                    ? 'Spot reserved · '.$event->participant_fee.' — confirm payment at the club'
-                    : "You're in! See you there 🎉")).$note,
+                    ? __('events.reg_pay_at_club', ['fee' => $event->participant_fee])
+                    : __('events.reg_confirmed'))).$note,
             'role' => 'participant',
             'division' => $division,
             'pending_payment' => $paidFee && (bool) $proofPath,   // proof recorded, awaiting approval
@@ -598,60 +645,50 @@ class PersonalEventController extends Controller
     }
 
     /**
-     * Classify the member by gender/age/weight and return the matching division
-     * — but ONLY one the creator actually defined for this event. Never invents a
-     * division. Returns null if the member can't be classified (missing
-     * gender/birthdate, weight outside any class) or their weight category isn't
-     * one this championship is running.
+     * Run a manager action the owning package defines (generating a draw,
+     * closing weigh-in, publishing a table). The controller neither knows nor
+     * validates what the action does — the package owns it.
      */
-    private function routeToTaekwondoDivision(ClubEvent $event, User $me, float $weight): ?EventCategory
-    {
-        if (! $me->gender || ! $me->birthdate) {
-            return null;
-        }
-
-        $age = Carbon::parse($me->birthdate)->age;
-        $cls = classifyTaekwondo($me->gender, $age, $weight);
-        if (! $cls) {
-            return null;
-        }
-
-        $genderWord = strtolower($me->gender) === 'female' ? 'Women' : 'Men';
-        $name = $cls['age_group'].' '.$genderWord.' '.$cls['category'].' kg'; // "Senior Men -58 kg"
-
-        // Competitors can only enter a weight category the creator set up.
-        return EventCategory::where('event_id', $event->id)->where('name', $name)->first();
-    }
-
-    /** Manager: (re)generate the draw for every division + renumber. */
-    public function generateDraw(ClubEvent $event): JsonResponse
+    public function performAction(Request $request, ClubEvent $event, string $action): JsonResponse
     {
         $me = Auth::user();
         $this->assertCanManage($event, $me);
 
-        // Once the event has started the draw is final — no regeneration.
-        if ($event->hasStarted()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'The event has started — the draw is final and can’t be regenerated.',
-            ], 422);
+        $type = $this->typeFor($event);
+
+        // Deny by default: only an action the package currently offers may run.
+        $offered = collect($type->availableActions($event))->pluck('action')->all();
+        if (! in_array($action, $offered, true)) {
+            return response()->json(['success' => false, 'message' => __('events.action_unavailable')], 422);
         }
 
-        $paidOnly = false; // pre-start only → provisional (imaginary) draw
-        foreach ($event->categories()->get() as $cat) {
-            if ((clone $cat->registrations()->where('role', 'participant'))->count() >= 1) {
-                $this->draws->build($event, $cat, paidOnly: $paidOnly);
-            }
-        }
-        $plan = $this->scheduler->scheduleAndNumber($event);
+        $result = $type->performAction($event, $action, $request->all());
 
-        $courtsLine = collect($plan)->map(fn ($p, $day) => 'Day '.$day.': '.$p['courts'].' '.\Illuminate\Support\Str::plural('mat', $p['courts']))->implode(' · ');
-
-        return response()->json([
-            'success' => true,
-            'message' => ($paidOnly ? 'Final draw generated 🥋' : 'Provisional draw generated').($courtsLine ? ' · '.$courtsLine : ''),
+        return response()->json($result + [
             'redirect' => route('me.events.bracket', $event->uuid),
+        ], $result['success'] ? 200 : 422);
+    }
+
+    /**
+     * Record the outcome of one unit of competition — a bout, a fixture, a test.
+     * The package propagates it (advancing a winner, updating a table) and
+     * returns what changed so the UI patches in place.
+     */
+    public function recordOutcome(Request $request, ClubEvent $event, int $unit): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+
+        $payload = $request->validate([
+            'winner' => ['nullable', Rule::in(['a', 'b', ''])],
+            'a_score' => ['nullable', 'string', 'max:16'],
+            'b_score' => ['nullable', 'string', 'max:16'],
+            'status' => ['nullable', Rule::in(['upcoming', 'live', 'done'])],
         ]);
+
+        $changed = $this->typeFor($event)->recordOutcome($event, $unit, $payload);
+
+        return response()->json(['success' => true, 'message' => __('events.outcome_saved')] + $changed);
     }
 
     public function ticket(ClubEvent $event): JsonResponse
@@ -708,6 +745,127 @@ class PersonalEventController extends Controller
         return response()->json(['success' => true, 'message' => 'Nothing to cancel', 'role' => null]);
     }
 
+    /* ===================== Run day — my next bout ===================== */
+
+    /**
+     * The athlete's countdown screen: which mat, which bout, how many bouts
+     * still ahead, roughly how long. The bout count leads — a mat that runs slow
+     * makes any fixed clock time a lie within the first hour.
+     */
+    public function nextUp(ClubEvent $event, Request $request, EntryService $entries): View|JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        $type = $this->typeFor($event);
+        $mine = $type->nextUp($event, $me);
+
+        // A coach sees the same data for their whole squad, soonest first.
+        $squad = [];
+        if (method_exists($type, 'squadNextUp') && ($clubIds = $entries->administeredClubIds($me))) {
+            $squad = $type->squadNextUp($event, $this->athletesOfClubs($clubIds));
+        }
+
+        $payload = [
+            'e' => ['key' => $event->uuid, 'title' => $event->title, 'color' => $event->color ?: '#7c3aed'],
+            'mine' => $mine,
+            'squad' => $squad,
+        ];
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true] + $payload);
+        }
+
+        $isMobile = (bool) $request->attributes->get('is_mobile');
+
+        return view($isMobile ? 'personal.mobile.event-next-up' : 'personal.desktop.event-next-up', $payload);
+    }
+
+    /** @return array<int, int> */
+    private function athletesOfClubs(array $clubIds): array
+    {
+        return \App\Models\User::whereHas('memberClubs', fn ($q) => $q
+            ->whereIn('tenants.id', $clubIds)->where('memberships.status', 'active'))
+            ->pluck('id')->map('intval')->all();
+    }
+
+    /**
+     * The venue board — a hall screen, not a personal page.
+     *
+     * Deliberately impersonal: mats, bout numbers and the two names on each
+     * bout, nothing tied to a viewer. It refreshes itself on the realtime
+     * channel AND polls on a slow timer, because arena wifi drops and a board
+     * that silently freezes is worse than one that is a few seconds stale.
+     */
+    public function board(ClubEvent $event, Request $request): View|JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        $type = $this->typeFor($event);
+        $mats = method_exists($type, 'board')
+            ? $type->board($event, $request->query('mat'))
+            : [];
+
+        $payload = [
+            'e' => ['key' => $event->uuid, 'title' => $event->title],
+            'mats' => $mats,
+        ];
+
+        return $request->expectsJson()
+            ? response()->json(['success' => true] + $payload)
+            : view('personal.event-board', $payload);
+    }
+
+    /* ===================== Club / coach entry ===================== */
+
+    /**
+     * The athletes this coach may enter, each with its verdict already worked
+     * out — who is enterable, who is already in, and why anyone is not.
+     */
+    public function entryRoster(ClubEvent $event, EntryService $entries): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        abort_if($entries->administeredClubIds($me) === [] && ! $me->isSuperAdmin(), 403);
+
+        return response()->json([
+            'success' => true,
+            'athletes' => $entries->roster($event, $me),
+        ]);
+    }
+
+    /**
+     * Enter a squad in one go.
+     *
+     * Every athlete is checked exactly as self-entry checks them — this is a
+     * convenience for coaches, never a way around the rules. Partial success is
+     * normal, so the response reports each athlete individually.
+     */
+    public function storeEntries(Request $request, ClubEvent $event, EntryService $entries): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        $data = $request->validate([
+            'user_ids' => ['required', 'array', 'min:1', 'max:200'],
+            'user_ids.*' => ['integer'],
+        ]);
+
+        abort_if($entries->administeredClubIds($me) === [] && ! $me->isSuperAdmin(), 403);
+
+        $result = $entries->enterMany($event, $me, $data['user_ids']);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('events.entry_result', [
+                'entered' => count($result['entered']),
+                'rejected' => count($result['rejected']),
+            ]),
+        ] + $result);
+    }
+
     /* ===================== Owner moderation ===================== */
 
     /**
@@ -746,16 +904,9 @@ class PersonalEventController extends Controller
             );
         }
 
-        // Pre-start: rebuild the affected division's provisional draw so the bracket reflects the removal.
-        if ($catId && ! $event->hasStarted() && $cat = EventCategory::find($catId)) {
-            if ($cat->registrations()->where('role', 'participant')->count() >= 2) {
-                $this->draws->build($event, $cat, paidOnly: false);
-            } else {
-                $cat->matches()->delete();
-                $cat->update(['draw_state' => null, 'draw_count' => 0]);
-            }
-            $this->scheduler->scheduleAndNumber($event->fresh());
-        }
+        // The entrant set changed — the owning package re-derives whatever
+        // depended on it (for a championship, the affected division's draw).
+        $this->typeFor($event)->onEntrantsChanged($event, $catId ? EventCategory::find($catId) : null);
 
         // Best-effort realtime nudge to the affected member (DB stays source of truth).
         rescue(fn () => \Realtime()->publishToUser($user->id, 'events', [
@@ -806,19 +957,6 @@ class PersonalEventController extends Controller
 
     /* ===================== Mappers ===================== */
 
-    private function upcomingEventsQuery(User $me)
-    {
-        $clubIds = $me->memberClubs()->pluck('tenants.id');
-
-        return ClubEvent::query()
-            ->whereIn('tenant_id', $clubIds)
-            ->where('is_archived', false)
-            ->where('status', '!=', 'cancelled')
-            ->withCount(['participantRegistrations'])
-            ->with('tenant:id,club_name,country')
-            ->orderBy('date');
-    }
-
     private function myRegistrations(int $meId, $eventIds)
     {
         return ClubEventRegistration::where('user_id', $meId)
@@ -828,6 +966,7 @@ class PersonalEventController extends Controller
 
     private function eventView(ClubEvent $e, int $meId, $myReg, bool $full = false): array
     {
+        $type = $this->typeFor($e);
         $date = $e->date ? Carbon::parse($e->date) : now();
         $start = $e->start_time ? Carbon::parse($e->start_time) : null;
         $end = $e->end_time ? Carbon::parse($e->end_time) : null;
@@ -840,7 +979,7 @@ class PersonalEventController extends Controller
         $spectatorRows = [];
         $spectatorsTotal = $spectators;
         if ($full) {
-            $prows = $this->participantRows($e);
+            $prows = $type->rosterRows($e);
             $participants = array_slice($prows, 0, 12);
             $participantsTotal = count($prows);
             if ($e->spectator_enabled) {
@@ -882,7 +1021,7 @@ class PersonalEventController extends Controller
             'sport_label' => $e->sport ? ($this->sports()[$e->sport]['label'] ?? null) : null,
             'sport_icon' => $e->sport ? ($this->sports()[$e->sport]['icon'] ?? null) : null,
             'division_label' => $e->sport ? ($this->sports()[$e->sport]['division_label'] ?? 'Category') : 'Category',
-            'league' => $this->leagueView($e->league),
+
             'icon' => $e->icon ?: $this->typeIcon($e->event_type),
             'color' => $e->color ?: $this->typeColor($e->event_type),
             'going' => $going,
@@ -894,13 +1033,12 @@ class PersonalEventController extends Controller
             'about' => $e->description ?? '',
             'tags' => $e->tags ?: [],
             'requirements' => $e->requirements ?: [],
-            // Combat events derive their timeline from the real schedule; manual agenda is dropped.
-            'phases' => ($full && $this->isCombatSport($e->sport) && $e->categories()->exists())
-                ? $this->results->timeline($e)
-                : ($e->phases ?: []),
-            'agenda' => $this->isCombatSport($e->sport) ? [] : ($e->agenda ?: []),
-            // Combat: medalists computed from the brackets (gold/silver/2×bronze per class).
-            'bracket_results' => ($full && $this->isCombatSport($e->sport)) ? $this->results->podium($e) : [],
+            // Timeline, run-of-show and final standings all come from the owning
+            // package — a bracketed championship derives them from its draw, a
+            // simple event just replays what the organiser typed.
+            'phases' => $type->timeline($e),
+            'agenda' => $e->agenda ?: [],
+            'bracket_results' => ($full && ! $type->allowsManualResults()) ? $type->results($e) : [],
             'divisions' => $e->categories()->orderBy('sort_order')->pluck('name')->all(),
             'participants' => $participants,
             'participants_total' => $participantsTotal,
@@ -917,63 +1055,6 @@ class PersonalEventController extends Controller
         ];
 
         return $view;
-    }
-
-    private function participantRows(ClubEvent $e): array
-    {
-        $isTkd = $e->sport === 'taekwondo';
-
-        $rows = $e->participantRegistrations()
-            ->with([
-                'user:id,full_name,name,gender,birthdate',
-                'user.latestHealthRecord',
-                'category:id,name,weight_class',
-            ])
-            ->latest('registered_at')->get()
-            ->map(function ($r) use ($isTkd) {
-                $u = $r->user;
-                $gender = $u?->gender ?: null;
-                $kg = $r->weight ?: $u?->latestHealthRecord?->weight;   // declared/official weight wins
-
-                if ($isTkd) {
-                    // Show the member's REGISTERED weight division. Registration guarantees it's
-                    // one the creator actually set up AND that it matches the member's own
-                    // gender/age/weight — so nobody appears under a category this championship
-                    // isn't running, and a male can never show under a women's class. Tokens are
-                    // read from the division name ("<Age> <Men|Women> <label> kg"), never from a
-                    // live re-classify.
-                    $category = null;
-                    $weight = null;
-                    if ($cat = $r->category) {
-                        $parts = preg_split('/\s+(?:Men|Women)\s+/', $cat->name, 2);
-                        $category = $parts[0] ?? $cat->name;                  // age group, e.g. "Senior"
-                        $weight = $parts[1] ?? ($cat->weight_class ?: null); // weight label, e.g. "-58 kg"
-                    }
-                    $meta = $gender ?: ($category ? 'Registered' : 'Unclassified');
-                } else {
-                    $category = $r->category?->name ?: null;
-                    $weight = $r->category?->weight_class ?: null;
-                    $meta = $r->meta ?: ($r->category?->name ?? ($r->paid ? 'Registered' : 'Pending payment'));
-                }
-
-                return [
-                    'id' => $u?->id,
-                    'name' => $u?->full_name ?? $u?->name ?? 'Member',
-                    'gender' => $gender,
-                    'category' => $category,
-                    'weight_class' => $weight,
-                    'meta' => $meta,
-                    'paid' => (bool) $r->paid,
-                    'has_weight' => $kg !== null,
-                ];
-            });
-
-        // Taekwondo: show only entrants who have weight info (more likely to compete).
-        if ($isTkd) {
-            $rows = $rows->filter(fn ($x) => $x['has_weight']);
-        }
-
-        return $rows->values()->all();
     }
 
     /** Active bans affecting this event (event blocks + club-wide blacklist), for the manager tab. */
@@ -1006,43 +1087,6 @@ class PersonalEventController extends Controller
             ])->values()->all();
     }
 
-    /** First numeric value in a fee string ("BHD 10" → 10.0). */
-    private function feeAmount(?string $fee): float
-    {
-        return ($fee && preg_match('/[\d.]+/', $fee, $m)) ? (float) $m[0] : 0.0;
-    }
-
-    /** Event P&L for the owner: revenue from paid registrations − expenses. */
-    private function computeFinance(ClubEvent $event): array
-    {
-        $pFee = $this->feeAmount($event->participant_fee);
-        $sFee = $event->spectator_enabled ? $this->feeAmount($event->spectator_fee) : 0.0;
-        $paidP = $event->registrations()->where('role', 'participant')->where('paid', true)->count();
-        $paidS = $event->registrations()->where('role', 'spectator')->where('paid', true)->count();
-        $pRev = $paidP * $pFee;
-        $sRev = $paidS * $sFee;
-        $revenue = $pRev + $sRev;
-
-        $expenses = $event->expenses()->latest('id')->get(['id', 'label', 'amount'])
-            ->map(fn ($x) => ['id' => $x->id, 'label' => $x->label, 'amount' => (float) $x->amount])->all();
-        $expTotal = array_sum(array_column($expenses, 'amount'));
-
-        return [
-            'currency' => $event->tenant?->currency ?: 'BHD',
-            'participant_fee' => $pFee,
-            'paid_participants' => $paidP,
-            'participant_revenue' => $pRev,
-            'spectator_enabled' => (bool) $event->spectator_enabled,
-            'spectator_fee' => $sFee,
-            'paid_spectators' => $paidS,
-            'spectator_revenue' => $sRev,
-            'revenue' => $revenue,
-            'expenses' => $expenses,
-            'expenses_total' => $expTotal,
-            'profit' => $revenue - $expTotal,
-        ];
-    }
-
     public function addExpense(Request $request, ClubEvent $event): JsonResponse
     {
         $this->assertCanManage($event, Auth::user());
@@ -1064,68 +1108,6 @@ class PersonalEventController extends Controller
         $expense->delete();
 
         return response()->json(['success' => true]);
-    }
-
-    /** Build the per-category bracket view-models for the brackets page. */
-    private function categoryViews(ClubEvent $e, int $meId): array
-    {
-        $cats = $e->categories()->with(['matches', 'registrations.user:id,full_name,name'])->get();
-
-        $out = [];
-        foreach ($cats as $c) {
-            $joined = $c->registrations->count();
-
-            // Group matches into rounds, preserving slot order; + a flat list for the editor.
-            $rounds = [];
-            $flat = [];
-            foreach ($c->matches as $m) {
-                $mday = $this->scheduler->phaseDay($c, $m->phase ?: 'preliminary');
-                $mdate = $e->date ? $e->date->copy()->addDays(max(0, $mday - 1))->format('D, M j') : '';
-                // Match code = court no. + bout no. (e.g. Mat 1, bout 4 → "1-04"). Unique per day.
-                $courtNo = ($m->court && preg_match('/(\d+)/', $m->court, $cm)) ? (int) $cm[1] : null;
-                $mcode = ($courtNo && $m->match_no) ? ($courtNo.'-'.str_pad((string) $m->match_no, 2, '0', STR_PAD_LEFT)) : null;
-                $rounds[$m->round] ??= ['name' => $m->round, 'matches' => []];
-                $rounds[$m->round]['matches'][] = [
-                    'no' => $m->match_no, 'phase' => $m->phase, 'date' => $mdate, 'code' => $mcode,
-                    'court' => $m->court ?? '', 'time' => $m->scheduled_time ?? '', 'status' => $m->status, 'winner' => $m->winner,
-                    'a' => ['name' => $m->a_name, 'country' => $m->a_country, 'seed' => $m->a_seed, 'score' => $m->a_score ?? '–', 'provisional' => (bool) $m->a_provisional],
-                    'b' => ['name' => $m->b_name, 'country' => $m->b_country, 'seed' => $m->b_seed, 'score' => $m->b_score ?? '–', 'provisional' => (bool) $m->b_provisional],
-                ];
-                $flat[] = [
-                    'round' => $m->round, 'court' => $m->court ?? '', 'time' => $m->scheduled_time ?? '', 'status' => $m->status, 'winner' => $m->winner ?? '',
-                    'a_name' => $m->a_name ?? '', 'a_seed' => $m->a_seed, 'a_score' => $m->a_score ?? '',
-                    'b_name' => $m->b_name ?? '', 'b_seed' => $m->b_seed, 'b_score' => $m->b_score ?? '',
-                ];
-            }
-
-            $out[$c->id] = [
-                'key' => 'c'.$c->id,
-                'id' => $c->id,
-                'name' => $c->name,
-                'class' => $c->weight_class ?? '',
-                'cap' => $c->capacity,                                  // null = no cap
-                'joined' => $joined,
-                'open' => $c->capacity ? max(0, $c->capacity - $joined) : null,
-                'status' => $c->status,
-                'draw_state' => $c->draw_state,
-                'provisional' => $c->draw_state === 'provisional',
-                // At risk of removal at start: unpaid OR not weighed in (no recorded weight).
-                'unpaid_count' => $c->registrations->where('role', 'participant')
-                    ->filter(fn ($r) => ! $r->paid || $r->weight === null)->count(),
-                'note' => $c->note ?? '',
-                'rounds' => array_values($rounds),
-                'matches_flat' => $flat,
-                'podium' => $c->podium ?? [],
-                'roster' => $c->registrations->map(fn ($r) => [
-                    'name' => $r->user?->full_name ?? $r->user?->name ?? 'Athlete',
-                    'country' => $r->meta ?: '',
-                ])->all(),
-                'roster_names' => $c->registrations->map(fn ($r) => $r->user?->full_name ?? $r->user?->name ?? 'Athlete')->values()->all(),
-                'mine' => $c->registrations->contains('user_id', $meId),
-            ];
-        }
-
-        return $out;
     }
 
     /**
@@ -1180,6 +1162,11 @@ class PersonalEventController extends Controller
             'podium' => $podium ?: null,
         ]);
 
+        // The editor sends names only, so re-link each corner to the entry it
+        // belongs to. An unmatched name is kept as free text — that is how an
+        // invited athlete with no platform account still appears on the board.
+        $entrants = $this->entrantsByName($category);
+
         // Bulk-replace the matches.
         $category->matches()->delete();
         $slot = 0;
@@ -1192,9 +1179,11 @@ class PersonalEventController extends Controller
                 'round' => trim((string) ($m['round'] ?? '')) ?: 'Round',
                 'slot' => $slot++,
                 'a_name' => trim((string) ($m['a_name'] ?? '')) ?: null,
+                'a_competitor_id' => $entrants[mb_strtolower(trim((string) ($m['a_name'] ?? '')))] ?? null,
                 'a_seed' => $m['a_seed'] ?? null,
                 'a_score' => trim((string) ($m['a_score'] ?? '')) ?: null,
                 'b_name' => trim((string) ($m['b_name'] ?? '')) ?: null,
+                'b_competitor_id' => $entrants[mb_strtolower(trim((string) ($m['b_name'] ?? '')))] ?? null,
                 'b_seed' => $m['b_seed'] ?? null,
                 'b_score' => trim((string) ($m['b_score'] ?? '')) ?: null,
                 'winner' => in_array($m['winner'] ?? '', ['a', 'b'], true) ? $m['winner'] : null,
@@ -1205,6 +1194,33 @@ class PersonalEventController extends Controller
         }
 
         return response()->json(['success' => true, 'message' => 'Draw saved 🥋', 'redirect' => route('me.events.bracket', $event->uuid)]);
+    }
+
+    /**
+     * This division's entrants, keyed by lower-cased display name.
+     *
+     * A name shared by two entrants maps to null — an ambiguous link is worse
+     * than none, because it would put a result on the wrong athlete.
+     *
+     * @return array<string, int|null>
+     */
+    private function entrantsByName(EventCategory $category): array
+    {
+        $map = [];
+
+        foreach ($category->registrations()->with('user:id,full_name,name')->get() as $reg) {
+            // One entrant may answer to the same string twice (full_name and
+            // name are often identical) — dedupe per entrant first, so nobody is
+            // mistaken for a duplicate of themselves.
+            $labels = collect([$reg->user?->full_name, $reg->user?->name])
+                ->filter()->map(fn ($l) => mb_strtolower(trim($l)))->unique();
+
+            foreach ($labels as $key) {
+                $map[$key] = array_key_exists($key, $map) ? null : $reg->id;
+            }
+        }
+
+        return $map;
     }
 
     /* ===================== Helpers ===================== */
@@ -1254,191 +1270,6 @@ class PersonalEventController extends Controller
     private function assertEligible(ClubEvent $event, User $me): void
     {
         abort_unless($this->isEligible($event, $me) || $this->canManage($event, $me), 403);
-    }
-
-    /** Validation rules for the repeatable detail sections (schedule, etc.). */
-    private function detailRules(): array
-    {
-        return [
-            'gps_lat' => ['nullable', 'numeric', 'between:-90,90'],
-            'gps_long' => ['nullable', 'numeric', 'between:-180,180'],
-            'location_url' => ['nullable', 'url:http,https', 'max:500'],
-            'break_start' => ['nullable', 'date_format:H:i', 'after_or_equal:start_time'],
-            'break_end' => ['nullable', 'date_format:H:i', 'after:break_start', 'before_or_equal:end_time'],
-            'courts' => ['nullable', 'integer', 'min:1', 'max:50'],
-
-            'agenda' => ['nullable', 'array', 'max:40'],
-            'agenda.*.t' => ['nullable', 'date'],   // date+time picker
-            'agenda.*.d' => ['nullable', 'string', 'max:200'],
-            'requirements' => ['nullable', 'array', 'max:30'],
-            'requirements.*' => ['nullable', 'string', 'max:200'],
-            'tags' => ['nullable', 'array', 'max:20'],
-            'tags.*' => ['nullable', 'string', 'max:40'],
-            'phases' => ['nullable', 'array', 'max:20'],
-            'phases.*.label' => ['nullable', 'string', 'max:60'],
-            'phases.*.date' => ['nullable', 'date'],   // real date; status is derived, not stored
-            'phases.*.note' => ['nullable', 'string', 'max:160'],
-
-            // sport-aware sections
-            'sport' => ['nullable', Rule::in(array_keys($this->sports()))],
-            'divisions' => ['nullable', 'array', 'max:64'],
-            'divisions.*.name' => ['nullable', 'string', 'max:80'],
-            'divisions.*.capacity' => ['nullable', 'integer', 'min:2', 'max:512'],
-            'divisions.*.schedule' => ['nullable', 'array'],
-            'divisions.*.schedule.preliminary' => ['nullable', 'integer', 'min:1', 'max:60'],
-            'divisions.*.schedule.quarterfinals' => ['nullable', 'integer', 'min:1', 'max:60'],
-            'divisions.*.schedule.finals' => ['nullable', 'integer', 'min:1', 'max:60'],
-            'league' => ['nullable', 'array'],
-            'league.teams' => ['nullable', 'array', 'max:64'],
-            'league.teams.*' => ['nullable', 'string', 'max:80'],
-            'league.fixtures' => ['nullable', 'array', 'max:300'],
-            'league.fixtures.*.home' => ['nullable', 'string', 'max:80'],
-            'league.fixtures.*.away' => ['nullable', 'string', 'max:80'],
-            'league.fixtures.*.date' => ['nullable', 'string', 'max:40'],
-            'league.fixtures.*.home_score' => ['nullable', 'integer', 'min:0', 'max:1000'],
-            'league.fixtures.*.away_score' => ['nullable', 'integer', 'min:0', 'max:1000'],
-        ];
-    }
-
-    /** Normalise the detail sections into the columns ClubEvent stores. */
-    private function extractDetails(array $data): array
-    {
-        $agenda = collect($data['agenda'] ?? [])
-            ->map(fn ($r) => [
-                't' => ! empty($r['t']) ? Carbon::parse($r['t'])->format('Y-m-d H:i') : '',
-                'd' => trim((string) ($r['d'] ?? '')),
-            ])
-            ->filter(fn ($r) => $r['t'] !== '' || $r['d'] !== '')
-            ->sortBy('t')->values()->all();   // keep the run-of-show in chronological order
-
-        $requirements = collect($data['requirements'] ?? [])
-            ->map(fn ($r) => trim((string) $r))->filter()->values()->all();
-
-        $tags = collect($data['tags'] ?? [])
-            ->map(fn ($t) => ltrim(trim((string) $t), '#'))->filter()->values()->all();
-
-        // Status is NOT stored — it's derived from the date at display time.
-        $phases = collect($data['phases'] ?? [])
-            ->map(fn ($p) => [
-                'label' => trim((string) ($p['label'] ?? '')),
-                'date' => ! empty($p['date']) ? Carbon::parse($p['date'])->toDateString() : null,
-                'note' => trim((string) ($p['note'] ?? '')),
-                'icon' => 'bi-flag',
-            ])
-            ->filter(fn ($p) => $p['label'] !== '')->values()->all();
-
-        // League: teams + fixtures (with optional scores).
-        $teams = collect($data['league']['teams'] ?? [])
-            ->map(fn ($t) => trim((string) $t))->filter()->values()->all();
-        $fixtures = collect($data['league']['fixtures'] ?? [])
-            ->map(fn ($f) => [
-                'home' => trim((string) ($f['home'] ?? '')),
-                'away' => trim((string) ($f['away'] ?? '')),
-                'date' => trim((string) ($f['date'] ?? '')),
-                'home_score' => isset($f['home_score']) && $f['home_score'] !== '' ? (int) $f['home_score'] : null,
-                'away_score' => isset($f['away_score']) && $f['away_score'] !== '' ? (int) $f['away_score'] : null,
-            ])
-            ->filter(fn ($f) => $f['home'] !== '' && $f['away'] !== '')->values()->all();
-        $league = ($teams || $fixtures) ? ['teams' => $teams, 'fixtures' => $fixtures] : null;
-
-        return [
-            'agenda' => $agenda ?: null,
-            'requirements' => $requirements ?: null,
-            'tags' => $tags ?: null,
-            'phases' => $phases ?: null,
-            'sport' => $data['sport'] ?? null,
-            'league' => $league,
-            'courts' => isset($data['courts']) && $data['courts'] !== '' ? (int) $data['courts'] : null,
-        ];
-    }
-
-    /** Build the league view-model: teams, fixtures, and a computed standings table. */
-    private function leagueView(?array $league): ?array
-    {
-        if (! $league || (empty($league['teams']) && empty($league['fixtures']))) {
-            return null;
-        }
-
-        $teams = $league['teams'] ?? [];
-        $fixtures = $league['fixtures'] ?? [];
-
-        // Seed the table with every named team.
-        $tbl = [];
-        $row = fn ($n) => ['team' => $n, 'p' => 0, 'w' => 0, 'd' => 0, 'l' => 0, 'gf' => 0, 'ga' => 0, 'gd' => 0, 'pts' => 0];
-        foreach ($teams as $t) {
-            $tbl[$t] = $row($t);
-        }
-
-        foreach ($fixtures as $f) {
-            $h = $f['home'];
-            $a = $f['away'];
-            $tbl[$h] ??= $row($h);
-            $tbl[$a] ??= $row($a);
-            if ($f['home_score'] === null || $f['away_score'] === null) {
-                continue; // unplayed fixture
-            }
-            $hs = (int) $f['home_score'];
-            $as = (int) $f['away_score'];
-            $tbl[$h]['p']++;
-            $tbl[$a]['p']++;
-            $tbl[$h]['gf'] += $hs;
-            $tbl[$h]['ga'] += $as;
-            $tbl[$a]['gf'] += $as;
-            $tbl[$a]['ga'] += $hs;
-            if ($hs > $as) {
-                $tbl[$h]['w']++;
-                $tbl[$h]['pts'] += 3;
-                $tbl[$a]['l']++;
-            } elseif ($hs < $as) {
-                $tbl[$a]['w']++;
-                $tbl[$a]['pts'] += 3;
-                $tbl[$h]['l']++;
-            } else {
-                $tbl[$h]['d']++;
-                $tbl[$a]['d']++;
-                $tbl[$h]['pts']++;
-                $tbl[$a]['pts']++;
-            }
-        }
-
-        $standings = collect($tbl)->map(function ($r) {
-            $r['gd'] = $r['gf'] - $r['ga'];
-
-            return $r;
-        })->sortBy([['pts', 'desc'], ['gd', 'desc'], ['gf', 'desc']])->values()->all();
-
-        return ['teams' => $teams, 'fixtures' => $fixtures, 'standings' => $standings];
-    }
-
-    /** Create/keep the event's divisions as event_categories (non-destructive). */
-    private function syncDivisions(ClubEvent $event, array $divisions): void
-    {
-        $names = [];
-        foreach ($divisions as $i => $d) {
-            $name = trim((string) ($d['name'] ?? ''));
-            if ($name === '') {
-                continue;
-            }
-            $names[] = $name;
-            $cat = EventCategory::firstOrNew(['event_id' => $event->id, 'name' => $name]);
-            $cap = $d['capacity'] ?? null;                       // optional — null = no cap
-            $cat->capacity = ($cap === null || $cap === '') ? null : (int) $cap;
-            $cat->sort_order = $i + 1;
-            if (! $cat->exists) {
-                $cat->status = 'enrolling';
-            }
-            // Owner-set day per phase (later phase can't precede an earlier one).
-            if (! empty($d['schedule']) && is_array($d['schedule'])) {
-                $pre = max(1, (int) ($d['schedule']['preliminary'] ?? 1));
-                $qf = max($pre, (int) ($d['schedule']['quarterfinals'] ?? $pre));
-                $fin = max($qf, (int) ($d['schedule']['finals'] ?? $qf));
-                $cat->schedule = ['preliminary' => $pre, 'quarterfinals' => $qf, 'finals' => $fin];
-            }
-            $cat->save();
-        }
-        // Remove divisions the manager deleted — but only EMPTY ones (no entrants/matches).
-        $event->categories()->whereNotIn('name', $names ?: [''])
-            ->whereDoesntHave('registrations')->whereDoesntHave('matches')->delete();
     }
 
     /** Only the event's creator may manage it (super-admin kept as a platform override). */

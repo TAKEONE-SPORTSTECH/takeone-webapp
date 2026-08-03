@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Sports\Taekwondo;
+namespace App\Events\Sports\Taekwondo;
 
 use App\Sports\Combat\AbstractCombatSport;
 
@@ -18,7 +18,7 @@ class Taekwondo extends AbstractCombatSport
 
     public function label(): string
     {
-        return 'Taekwondo';
+        return __('sport-taekwondo::messages.sport_label');
     }
 
     public function weightDivisions(): array

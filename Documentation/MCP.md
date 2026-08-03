@@ -78,6 +78,7 @@ Or point a local client (Claude Desktop) at `php artisan mcp:start takeone`. If
 | `record_transaction` | write | admin | Log a manual income/expense for a club |
 | `notify_member` | write | admin/guardian | Send an in-app + live (MQTT) notification |
 | `enroll_members` | write | admin | Batch-enroll active members into a package, marked as already paid |
+| `enter_event_athletes` | write | admin | Enter your club's athletes into an event (omit ids to preview the roster + eligibility). Same gate as self-entry: scope, bans, window, capacity, weight division |
 | `list_activity_catalog` | read | any | The global activity directory — shared platform-wide catalog of activities (EN/AR) any club can reuse. Read-only, non-sensitive (search + paginate). Each entry includes its curated `videos` (validated YouTube `{id,title,source}`) |
 | `verify_achievement` | write | admin | Confirm/reject a member self-claimed record that names your club — a tournament medal (`type: achievement`) or an acquired skill (`type: skill`), bound by uuid. Only an admin/owner of the named club may act — mirrors the web verification queue (medals + skills) |
 | `add_certification` | write | self/guardian | Add a self-managed certification/qualification (name, issuer, dates, credential id/url) to a member — super-admin/self/guardian only (not club-admins) |

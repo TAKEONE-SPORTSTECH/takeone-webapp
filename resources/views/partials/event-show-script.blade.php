@@ -1,4 +1,5 @@
-{{-- Shared event-show Alpine data — powers both mobile and desktop pages identically. Expects $e, $canManage, $isTkd, $finance, $banned, $eligReason in scope. --}}
+{{-- Shared event-show Alpine data — powers both mobile and desktop pages identically. Expects $e, $canManage, $finance, $banned, $eligReason in scope, plus the
+    owning event-type package's viewData() keys ($manual_results, $stage, …). --}}
 x-data="{
         going: {{ ($e['joined'] ?? false) ? 'true' : 'false' }},
         watching: {{ ($e['watching'] ?? false) ? 'true' : 'false' }},

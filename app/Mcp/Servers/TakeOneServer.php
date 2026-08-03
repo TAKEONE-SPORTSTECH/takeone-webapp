@@ -7,9 +7,10 @@ use App\Mcp\Tools\AddWorkHistoryTool;
 use App\Mcp\Tools\ClubFinancialsTool;
 use App\Mcp\Tools\ClubStaffTool;
 use App\Mcp\Tools\EnrollMembersTool;
-use App\Mcp\Tools\ListActivityCatalogTool;
+use App\Mcp\Tools\EnterEventAthletesTool;
 use App\Mcp\Tools\GetClubTool;
 use App\Mcp\Tools\GetMemberTool;
+use App\Mcp\Tools\ListActivityCatalogTool;
 use App\Mcp\Tools\ListClubsTool;
 use App\Mcp\Tools\ListMembersTool;
 use App\Mcp\Tools\NotifyMemberTool;
@@ -63,6 +64,7 @@ class TakeOneServer extends Server
         RecordTransactionTool::class,
         NotifyMemberTool::class,
         EnrollMembersTool::class,
+        EnterEventAthletesTool::class,
         ListActivityCatalogTool::class,
         VerifyAchievementTool::class,
         AddCertificationTool::class,

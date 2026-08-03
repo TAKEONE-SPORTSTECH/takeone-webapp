@@ -52,7 +52,10 @@
         weigh_in_at: @js($ev?->weigh_in_at ? \Carbon\Carbon::parse($ev->weigh_in_at)->format('Y-m-d\TH:i') : ''),
         enrollment_starts: @js($ev?->enrollment_starts_at?->format('Y-m-d') ?? ($isEdit ? '' : now()->format('Y-m-d'))),
         enrollment_ends: @js($ev?->enrollment_ends_at?->format('Y-m-d') ?? ''),
-        tkdConfig: @js($tkdDivisions ?? []),
+        {{-- Weight tables come from the Taekwondo package's own catalogue. This
+             division picker is the last type-specific block left in the shared
+             create form; Phase 2 moves it into the package's own screen. --}}
+        tkdConfig: @js($catalogs['taekwondo_tournament']['weight_divisions'] ?? []),
         tkdAge: 'Senior',
         tkdGender: 'male',
         tkdChecked: {},

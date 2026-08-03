@@ -146,6 +146,9 @@ class UserNotification extends Model
                     'notification_id' => (string) $n->id,
                     'action_url' => $opts['action_url'] ?? '',
                 ],
+                // Time-critical calls (an athlete summoned to the mat) get the
+                // urgent lane; everything else stays in the standard one.
+                ['urgent' => (bool) ($opts['urgent'] ?? false)],
             );
         } catch (\Throwable $e) {
             // Best-effort.

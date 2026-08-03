@@ -147,6 +147,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'experience_years',
         'is_personal_trainer',
         'is_discoverable',
+        'notify_event_announcements',
+        'notify_event_reminders',
         'two_factor_secret',
         'two_factor_recovery_codes',
         'two_factor_confirmed_at',
@@ -184,6 +186,8 @@ class User extends Authenticatable implements MustVerifyEmail
             'experience_years' => 'integer',
             'is_personal_trainer' => 'boolean',
             'is_discoverable' => 'boolean',
+            'notify_event_announcements' => 'boolean',
+            'notify_event_reminders' => 'boolean',
             'two_factor_confirmed_at' => 'datetime',
         ];
     }

@@ -30,3 +30,6 @@ Thumbs.db
 
 # Design draft images (local only)
 /draft/
+
+# Claude Code agent worktrees (local tooling scratch)
+.claude/worktrees/

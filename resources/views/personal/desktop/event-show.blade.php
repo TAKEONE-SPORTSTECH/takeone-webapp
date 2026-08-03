@@ -51,7 +51,7 @@
                                     class="w-full text-start flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted transition-colors">
                                 <i class="bi bi-pencil"></i> {{ __('personal.event_show_edit_event') }}
                             </button>
-                            @if(!($isTkd ?? false))
+                            @if(($manual_results ?? true))
                                 <button type="button" @click="openResults()"
                                         class="w-full text-start flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted transition-colors">
                                     <i class="bi bi-trophy"></i> {{ __('personal.event_show_set_winners') }}
@@ -127,7 +127,7 @@
                 </div>
             </div>
 
-            @if(($canManage ?? false) && !($isTkd ?? false))
+            @if(($canManage ?? false) && ($manual_results ?? true))
                 <div x-show="results.length === 0">
                     <button type="button" @click="openResults()"
                             class="w-full py-3 rounded-2xl border-2 border-dashed border-gray-200 text-sm font-bold text-foreground flex items-center justify-center gap-2 hover:border-gray-300 transition-colors">
@@ -189,8 +189,8 @@
             @endif
 
             {{-- League --}}
-            @if(!empty($e['league']))
-                @php $lg = $e['league']; @endphp
+            @if(!empty($league))
+                @php $lg = $league; @endphp
                 @if(!empty($lg['standings']))
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
                         <h2 class="text-sm font-bold text-foreground flex items-center gap-2 mb-3"><i class="bi bi-table text-primary"></i> {{ __('personal.event_show_standings') }}</h2>

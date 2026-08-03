@@ -425,4 +425,64 @@ class McpServerTest extends TestCase
         $this->assertStringContainsString('disabled', $result['error']);
         $this->assertDatabaseCount('member_certifications', 0);
     }
+
+    /* ---------------- Event entry ---------------- */
+
+    public function test_enter_event_athletes_lists_the_roster_then_enters_them(): void
+    {
+        $coach = $this->createUser();
+        $club = $this->createClub($coach, ['country' => 'BH']);
+        $coach->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
+
+        $event = \App\Models\ClubEvent::create([
+            'tenant_id' => $club->id, 'created_by' => $coach->id, 'title' => 'Spring Open',
+            'event_type' => 'championship', 'sport' => 'taekwondo', 'scope' => 'internal',
+            'date' => now()->addWeeks(2)->toDateString(), 'start_time' => '09:00',
+            'status' => 'active', 'is_archived' => false,
+        ]);
+        \App\Models\EventCategory::create(['event_id' => $event->id, 'name' => 'Senior Men -58 kg', 'sort_order' => 1]);
+
+        $athlete = $this->createUser(['full_name' => 'Ali', 'gender' => 'Male', 'birthdate' => now()->subYears(25)->toDateString()]);
+        $athlete->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
+        \App\Models\HealthRecord::create(['user_id' => $athlete->id, 'weight' => 57, 'recorded_at' => now()]);
+
+        $this->actingAs($coach->fresh());
+
+        // No ids → preview only, nothing written.
+        $preview = $this->callTool(\App\Mcp\Tools\EnterEventAthletesTool::class, ['event' => $event->uuid]);
+        $this->assertNotEmpty($preview['roster']);
+        $this->assertDatabaseMissing('club_event_registrations', ['event_id' => $event->id]);
+
+        $result = $this->callTool(\App\Mcp\Tools\EnterEventAthletesTool::class, [
+            'event' => $event->uuid,
+            'athlete_ids' => [$athlete->id],
+        ]);
+
+        $this->assertCount(1, $result['entered']);
+        $this->assertSame('Senior Men -58 kg', $result['entered'][0]['division']);
+    }
+
+    public function test_enter_event_athletes_denies_someone_who_runs_no_club(): void
+    {
+        $owner = $this->createUser();
+        $club = $this->createClub($owner, ['country' => 'BH']);
+
+        $event = \App\Models\ClubEvent::create([
+            'tenant_id' => $club->id, 'created_by' => $owner->id, 'title' => 'Spring Open',
+            'event_type' => 'championship', 'sport' => 'taekwondo', 'scope' => 'internal',
+            'date' => now()->addWeeks(2)->toDateString(), 'start_time' => '09:00',
+            'status' => 'active', 'is_archived' => false,
+        ]);
+
+        $member = $this->createUser();
+        $member->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
+        $this->actingAs($member->fresh());
+
+        $result = $this->callTool(\App\Mcp\Tools\EnterEventAthletesTool::class, [
+            'event' => $event->uuid,
+            'athlete_ids' => [$member->id],
+        ]);
+
+        $this->assertStringContainsString('club owner or club admin', $result['error']);
+    }
 }

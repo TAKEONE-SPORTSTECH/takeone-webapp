@@ -86,7 +86,7 @@
             if (!ok) return;
             this.busy = true;
             try {
-                const res = await fetch('{{ route('me.events.generate-draw', $e['key']) }}', {
+                const res = await fetch('{{ route('me.events.action', [$e['key'], 'generate_draw']) }}', {
                     method: 'POST',
                     headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
                     credentials: 'same-origin',
