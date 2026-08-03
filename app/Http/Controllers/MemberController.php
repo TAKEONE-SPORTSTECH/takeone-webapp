@@ -26,7 +26,9 @@ use App\Models\UserRelationship;
 use App\Services\KinshipService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 
 class MemberController extends Controller
@@ -1225,9 +1227,140 @@ class MemberController extends Controller
     }
 
     /**
+     * Update a tournament record the member owns.
+     *
+     * Editing the facts voids any attestation made about the OLD facts — see
+     * AchievementVerificationService::resetAfterEdit(). Verification columns are
+     * never fillable, so a client can't smuggle a status in through the form.
+     */
+    public function updateTournament(TournamentRequest $request, $id, string $uuid, \App\Services\AchievementVerificationService $service)
+    {
+        $this->authorizeMemberWrite(Auth::user(), (int) $id);
+
+        $validated = $request->validated();
+
+        $tournament = TournamentEvent::where('uuid', $uuid)
+            ->where('user_id', $id)
+            ->with(['clubAffiliation', 'performanceResults', 'notesMedia'])
+            ->firstOrFail();
+
+        $before = $this->attestedFacts($tournament);
+
+        DB::transaction(function () use ($tournament, $validated) {
+            $tournament->update([
+                'club_affiliation_id' => $validated['club_affiliation_id'] ?? null,
+                'title' => $validated['title'],
+                'type' => $validated['type'],
+                'sport' => $validated['sport'],
+                'date' => $validated['date'],
+                'time' => $validated['time'] ?? null,
+                'location' => $validated['location'] ?? null,
+                'participants_count' => $validated['participants_count'] ?? null,
+            ]);
+
+            // Children are replaced wholesale — the form always posts the full set.
+            $tournament->performanceResults()->delete();
+            foreach ($validated['performance_results'] ?? [] as $resultData) {
+                if (! empty($resultData['medal_type'])) {
+                    $tournament->performanceResults()->create($resultData);
+                }
+            }
+
+            $tournament->notesMedia()->delete();
+            foreach ($validated['notes_media'] ?? [] as $noteData) {
+                if (! empty($noteData['note_text']) || ! empty($noteData['media_link'])) {
+                    $tournament->notesMedia()->create($noteData);
+                }
+            }
+        });
+
+        // Replacing evidence: store the new bytes first, drop the old file only on success.
+        if (! empty($validated['evidence'])) {
+            $owner = User::find($id);
+            $folder = 'people/'.($owner?->uuid ?? $id).'/achievements/'.$tournament->uuid;
+            $previous = $tournament->evidence_path;
+            $path = $this->storeBase64Image($validated['evidence'], $folder, 'evidence', 'local');
+
+            if ($path === null) {
+                return response()->json(['success' => false, 'message' => __('Invalid or unsupported evidence image.')], 422);
+            }
+
+            $tournament->forceFill(['evidence_path' => $path])->save();
+
+            if ($previous && $previous !== $path) {
+                rescue(fn () => Storage::disk('local')->delete($previous), null, false);
+            }
+        }
+
+        $tournament->load(['clubAffiliation.tenant', 'performanceResults', 'notesMedia']);
+
+        if ($this->attestedFacts($tournament) !== $before) {
+            $service->resetAfterEdit($tournament, Auth::user());
+            $tournament->refresh()->load(['clubAffiliation.tenant', 'performanceResults', 'notesMedia', 'verifiedByTenant']);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('member.tournament_updated'),
+            'tournament' => $this->tournamentPayload($tournament),
+        ]);
+    }
+
+    /**
+     * Delete a tournament record the member owns, its results, notes and vouches.
+     * The evidence file is purged by the DeletesUploadedFiles trait on the model's
+     * `deleting` event — i.e. files go before the row (Delete Files Before Records).
+     */
+    public function destroyTournament($id, string $uuid)
+    {
+        $this->authorizeMemberWrite(Auth::user(), (int) $id);
+
+        $tournament = TournamentEvent::where('uuid', $uuid)
+            ->where('user_id', $id)
+            ->firstOrFail();
+
+        DB::transaction(function () use ($tournament) {
+            $tournament->performanceResults()->delete();
+            $tournament->notesMedia()->delete();
+            $tournament->vouches()->delete();
+            $tournament->delete();
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => __('member.tournament_deleted'),
+            'uuid' => $uuid,
+        ]);
+    }
+
+    /**
+     * The facts a club would be attesting to. Changing any of these invalidates an
+     * existing verification; cosmetic edits (notes, media links) do not.
+     */
+    private function attestedFacts(TournamentEvent $tournament): string
+    {
+        return json_encode([
+            'title' => $tournament->title,
+            'type' => $tournament->type,
+            'sport' => $tournament->sport,
+            'date' => optional($tournament->date)->toDateString(),
+            'location' => $tournament->location,
+            'participants_count' => $tournament->participants_count,
+            'club_affiliation_id' => $tournament->club_affiliation_id,
+            'medals' => $tournament->performanceResults
+                ->map(fn ($r) => $r->medal_type.':'.$r->points)
+                ->sort()->values()->all(),
+        ]);
+    }
+
+    /**
      * Member (or guardian/super-admin) asks the named club to verify a self-claimed
      * tournament. Status transitions live in AchievementVerificationService — this
      * controller only authorizes and delegates.
+     *
+     * A repeat call is a deliberate "remind the club" nudge, so it is rate-limited
+     * per record: one notification a day, otherwise a member could storm every club
+     * admin's notifications by clicking the button.
      */
     public function requestTournamentVerification(Request $request, $id, string $uuid, \App\Services\AchievementVerificationService $service)
     {
@@ -1245,11 +1378,32 @@ class MemberController extends Controller
             ], 422);
         }
 
+        if ($tournament->verification_method === 'club_confirm'
+            && in_array($tournament->verification_status, [TournamentEvent::STATUS_VERIFIED, TournamentEvent::STATUS_REJECTED], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => __('member.tournament_verify_decided'),
+            ], 422);
+        }
+
+        $key = 'verify-request:tournament:'.$tournament->uuid;
+        if (RateLimiter::tooManyAttempts($key, 1)) {
+            return response()->json([
+                'success' => false,
+                'message' => __('member.tournament_verify_cooldown', [
+                    'hours' => max(1, (int) ceil(RateLimiter::availableIn($key) / 3600)),
+                ]),
+            ], 429);
+        }
+        RateLimiter::hit($key, 86400);
+
+        $wasPending = $tournament->verification_status === TournamentEvent::STATUS_PENDING;
+
         $service->requestVerification($tournament, Auth::user());
 
         return response()->json([
             'success' => true,
-            'message' => __('Verification requested from the club.'),
+            'message' => $wasPending ? __('member.tournament_verify_reminded') : __('Verification requested from the club.'),
             'verification' => $this->verificationPayload($tournament->fresh('verifiedByTenant')),
         ]);
     }
@@ -1335,12 +1489,22 @@ class MemberController extends Controller
      */
     private function verificationPayload(TournamentEvent $tournament): array
     {
+        $status = $tournament->verification_status;
+
+        // A club's decision is final — the service refuses to reopen it, so the UI
+        // must not offer a button that would silently do nothing.
+        $clubDecided = $tournament->verification_method === 'club_confirm'
+            && in_array($status, [TournamentEvent::STATUS_VERIFIED, TournamentEvent::STATUS_REJECTED], true);
+
         return [
-            'status' => $tournament->verification_status,
+            'status' => $status,
             'method' => $tournament->verification_method,
             'verified_club' => $tournament->verifiedByTenant?->tr('club_name') ?? $tournament->verifiedByTenant?->club_name,
+            // Pending stays requestable: a repeat call is a rate-limited reminder.
             'can_request' => (bool) $tournament->clubAffiliation?->tenant_id
-                && ! in_array($tournament->verification_status, [TournamentEvent::STATUS_VERIFIED, TournamentEvent::STATUS_PENDING], true),
+                && ! $clubDecided
+                && $status !== TournamentEvent::STATUS_VERIFIED,
+            'is_pending' => $status === TournamentEvent::STATUS_PENDING,
             'request_url' => route('member.tournament.request-verification', [$tournament->user_id, $tournament->uuid]),
             'evidence_url' => $tournament->evidence_path
                 ? route('member.tournament.evidence', [$tournament->user_id, $tournament->uuid])
@@ -1364,6 +1528,19 @@ class MemberController extends Controller
             'time' => optional($tournament->time)->format('H:i'),
             'location' => $tournament->location,
             'participants_count' => $tournament->participants_count,
+            // Raw values for the edit form (the display copies above are formatted).
+            'edit' => [
+                'title' => $tournament->title,
+                'type' => $tournament->type,
+                'sport' => $tournament->sport,
+                'date' => optional($tournament->date)->toDateString(),
+                'time' => optional($tournament->time)->format('H:i'),
+                'location' => $tournament->location,
+                'participants_count' => $tournament->participants_count,
+                'club_affiliation_id' => $tournament->club_affiliation_id,
+            ],
+            'update_url' => route('member.tournament.update', [$tournament->user_id, $tournament->uuid]),
+            'delete_url' => route('member.tournament.destroy', [$tournament->user_id, $tournament->uuid]),
             'verification' => $this->verificationPayload($tournament),
             'club_affiliation' => $tournament->clubAffiliation ? [
                 'club_name' => $tournament->clubAffiliation->club_name,

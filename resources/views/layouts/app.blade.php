@@ -594,10 +594,11 @@
                                  x-transition:leave-start="opacity-100 scale-100"
                                  x-transition:leave-end="opacity-0 scale-95"
                                  class="absolute end-0 mt-2 w-56 bg-white rounded-xl shadow-xl ring-1 ring-black/5 border border-border/60 z-50">
-                                <div class="px-4 py-3 border-b border-border bg-gradient-to-br from-accent/50 to-transparent rounded-t-xl">
+                                <a href="{{ route('member.show', Auth::user()->uuid) }}"
+                                   class="block px-4 py-3 border-b border-border bg-gradient-to-br from-accent/50 to-transparent rounded-t-xl hover:from-accent/70 transition-colors">
                                     <p class="text-sm font-semibold text-foreground">{{ Auth::user()->full_name }}</p>
                                     <p class="text-xs text-muted-foreground">{{ Auth::user()->email }}</p>
-                                </div>
+                                </a>
                                 @php
                                     $ownedBusiness = Auth::user()->ownedBusiness;
                                     $businessApprovedDesktop = $ownedBusiness && $ownedBusiness->isApproved();
@@ -825,7 +826,8 @@
         <div class="flex-1 overflow-y-auto p-4 flex flex-col">
             @auth
                 <!-- User Info -->
-                <div class="flex items-center gap-3 p-3 mb-4 bg-white rounded-lg">
+                <a href="{{ route('member.show', Auth::user()->uuid) }}"
+                   class="flex items-center gap-3 p-3 mb-4 bg-white rounded-lg hover:bg-accent/40 transition-colors">
                     <div class="avatar-container">
                         @if(Auth::user()->profile_picture)
                             <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}?v={{ Auth::user()->updated_at->timestamp }}"
@@ -846,7 +848,7 @@
                         <p class="text-sm font-semibold truncate">{{ Auth::user()->full_name }}</p>
                         <p class="text-xs text-muted-foreground truncate">{{ Auth::user()->email }}</p>
                     </div>
-                </div>
+                </a>
 
                 <!-- Personal / Business View Switcher (mobile) -->
                 @if(Auth::user()->hasApprovedBusiness())
