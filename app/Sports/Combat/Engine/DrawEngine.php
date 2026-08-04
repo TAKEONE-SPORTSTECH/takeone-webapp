@@ -34,6 +34,15 @@ class DrawEngine
                 continue; // hand-built bracket
             }
 
+            // A draw an organiser arranged by hand is theirs. It is never
+            // re-cut — not when an entrant joins, and not when the event starts
+            // — because re-cutting would silently throw away the matchups they
+            // deliberately set. Keeping it in step with the entrant list is the
+            // owning package's job (see Tournament::onEntrantsChanged).
+            if ($cat->draw_state === 'manual') {
+                continue;
+            }
+
             if ($started) {
                 if ($cat->draw_state === 'final') {
                     continue; // locked

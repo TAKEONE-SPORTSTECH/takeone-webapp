@@ -36,6 +36,23 @@
             </a>
         </div>
 
+        {{-- Export users --}}
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 text-center">
+            <span class="w-14 h-14 mx-auto rounded-2xl bg-green-100 text-green-600 flex items-center justify-center"><i class="bi bi-people text-2xl"></i></span>
+            <h2 class="font-bold text-foreground mt-3">{{ __('platform.export_auth_users') }}</h2>
+            <p class="text-[12px] text-muted-foreground mt-1">{{ __('platform.export_auth_users_desc') }}</p>
+            <a href="{{ route('admin.platform.backup.export-users') }}"
+               class="m-press mt-4 w-full inline-flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-xl font-semibold">
+                <i class="bi bi-download"></i> {{ __('platform.export_users') }}
+            </a>
+        </div>
+
+        {{-- Destructive actions are grouped and labelled, so a wipe is never
+             one tap away from a download. --}}
+        <p class="text-[11px] font-bold uppercase tracking-wide text-red-600 flex items-center gap-1.5 pt-2">
+            <i class="bi bi-exclamation-octagon-fill"></i>{{ __('platform.admin_platform_settings_danger_zone') }}
+        </p>
+
         {{-- Restore --}}
         <div class="bg-white rounded-2xl p-5 shadow-sm border border-red-200 text-center">
             <span class="w-14 h-14 mx-auto rounded-2xl bg-red-100 text-red-600 flex items-center justify-center"><i class="bi bi-arrow-clockwise text-2xl"></i></span>
@@ -47,15 +64,66 @@
             </button>
         </div>
 
-        {{-- Export users --}}
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 text-center">
-            <span class="w-14 h-14 mx-auto rounded-2xl bg-green-100 text-green-600 flex items-center justify-center"><i class="bi bi-people text-2xl"></i></span>
-            <h2 class="font-bold text-foreground mt-3">{{ __('platform.export_auth_users') }}</h2>
-            <p class="text-[12px] text-muted-foreground mt-1">{{ __('platform.export_auth_users_desc') }}</p>
-            <a href="{{ route('admin.platform.backup.export-users') }}"
-               class="m-press mt-4 w-full inline-flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-xl font-semibold">
-                <i class="bi bi-download"></i> {{ __('platform.export_users') }}
-            </a>
+        {{-- Reset to clean baseline — with the other restore operations, since
+             it takes a database backup before it wipes. --}}
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-red-200 text-center" x-data="platformResetBaseline()">
+            <span class="w-14 h-14 mx-auto rounded-2xl bg-red-50 text-red-600 flex items-center justify-center">
+                <i class="bi bi-arrow-counterclockwise text-2xl"></i>
+            </span>
+            <h2 class="font-bold text-red-600 mt-3">{{ __('platform.admin_platform_settings_reset_title') }}</h2>
+            <p class="text-[12px] text-muted-foreground mt-1 leading-relaxed">{{ __('platform.admin_platform_settings_reset_description') }}</p>
+            <button type="button" @click="open = true"
+                    class="m-press mt-4 w-full inline-flex items-center justify-center gap-2 border border-red-300 text-red-600 py-3 rounded-xl font-semibold">
+                <i class="bi bi-trash3"></i> {{ __('platform.admin_platform_settings_reset_button') }}
+            </button>
+
+            {{-- Confirmation sheet — requires typing RESET. Teleported to <body>
+                 so the mobile shell's transform cannot clip a fixed overlay. --}}
+            <template x-teleport="body">
+                <div x-show="open" x-cloak class="fixed inset-0 z-[70] flex items-end sm:items-center justify-center"
+                     x-transition.opacity @keydown.escape.window="open && cancel()">
+                    <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" @click="cancel()"></div>
+
+                    <div class="relative bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
+                         x-show="open"
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="translate-y-full sm:translate-y-0 sm:scale-95 opacity-0"
+                         x-transition:enter-end="translate-y-0 sm:scale-100 opacity-100">
+
+                        <div class="flex-shrink-0 px-5 py-4 border-b border-gray-100 flex items-center gap-3">
+                            <span class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                                <i class="bi bi-exclamation-octagon-fill"></i>
+                            </span>
+                            <p class="font-bold text-gray-900">{{ __('platform.admin_platform_settings_reset_modal_title') }}</p>
+                        </div>
+
+                        <div class="flex-1 overflow-y-auto px-5 py-4">
+                            <p class="text-sm text-muted-foreground leading-relaxed">
+                                {{ __('platform.admin_platform_settings_reset_modal_body') }}
+                            </p>
+                            <label class="block text-xs font-medium text-gray-700 mt-4 mb-1">
+                                {{ __('platform.admin_platform_settings_reset_modal_prompt') }}
+                            </label>
+                            <input type="text" x-model="phrase" :disabled="working" autocomplete="off"
+                                   class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent uppercase tracking-widest font-mono">
+                        </div>
+
+                        <div class="flex-shrink-0 px-5 py-4 border-t border-gray-100 flex gap-2"
+                             style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
+                            <button type="button" @click="cancel()" :disabled="working"
+                                    class="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-foreground">
+                                {{ __('shared.cancel') }}
+                            </button>
+                            <button type="button" @click="submit()" :disabled="!canSubmit || working"
+                                    class="flex-1 py-3 rounded-xl bg-red-600 text-white text-sm font-semibold disabled:opacity-50 inline-flex items-center justify-center gap-2">
+                                <template x-if="working"><i class="bi bi-arrow-repeat animate-spin"></i></template>
+                                <template x-if="!working"><i class="bi bi-trash3"></i></template>
+                                <span x-text="working ? '{{ __('platform.admin_platform_settings_reset_working') }}' : '{{ __('platform.admin_platform_settings_reset_modal_confirm') }}'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
         </div>
 
         {{-- Best practices --}}
@@ -107,6 +175,49 @@
 
 @push('scripts')
 <script>
+function platformResetBaseline() {
+    return {
+        open: false,
+        phrase: '',
+        working: false,
+        get canSubmit() { return this.phrase.trim().toUpperCase() === 'RESET'; },
+
+        cancel() {
+            if (this.working) return;
+            this.open = false;
+            this.phrase = '';
+        },
+
+        async submit() {
+            if (!this.canSubmit || this.working) return;
+            this.working = true;
+            try {
+                const res = await fetch('{{ route('admin.platform.settings.reset-baseline') }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ confirmation: 'RESET' }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.success) {
+                    window.showToast('success', data.message || 'Platform reset.');
+                    // Everything was wiped — leave the (now stale) settings page.
+                    setTimeout(() => { window.location.href = data.redirect || '/admin'; }, 900);
+                } else {
+                    this.working = false;
+                    window.showToast('error', data.message || 'Reset failed.');
+                }
+            } catch (e) {
+                this.working = false;
+                window.showToast('error', 'Network error while resetting.');
+            }
+        },
+    };
+}
+
 async function confirmRestore(form) {
     const ok = await window.confirmAction({ title: @js(__('platform.confirm_restore_title')), message: @js(__('platform.confirm_restore_message')), type: 'danger', confirmText: @js(__('platform.confirm_restore_btn')) });
     if (ok) form.submit();

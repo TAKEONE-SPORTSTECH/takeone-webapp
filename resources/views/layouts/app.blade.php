@@ -1070,7 +1070,15 @@
                     });
                 },
                 addToast(type, message, duration = 3000) {
-                    @if(! $toastsEnabled) return; @endif
+                    {{-- Turning toasts off silences CHATTER, never failures. The
+                         platform-wide toggle used to drop every toast, including
+                         the only channel a form has for telling someone why a
+                         save was refused — so a rejected create looked exactly
+                         like a button that does nothing. Errors and warnings
+                         always get through. --}}
+                    @if(! $toastsEnabled)
+                        if (type !== 'error' && type !== 'warning') return;
+                    @endif
                     const id = Date.now();
                     this.toasts.push({ id, type, message, visible: true });
                     if (duration > 0) {

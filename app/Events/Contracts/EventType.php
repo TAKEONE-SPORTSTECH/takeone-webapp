@@ -254,4 +254,17 @@ interface EventType
      * @return array<string, mixed>
      */
     public function runData(ClubEvent $event, User $viewer): array;
+
+    /**
+     * The type's divisions as BRACKETS, for the zoomable bracket screen.
+     *
+     * A knockout draw is not one sport's idea — a taekwondo weight class, a
+     * karate kumite pool and a padel cup are the same picture in different
+     * words — so the SHAPE is shared (App\Events\Support\BracketView) while
+     * each package decides what fills it. A type that runs no brackets (a belt
+     * test, a league) returns an empty array and the screen never offers one.
+     *
+     * @return array<int, array<string, mixed>> one entry per division
+     */
+    public function bracketView(ClubEvent $event, User $viewer): array;
 }

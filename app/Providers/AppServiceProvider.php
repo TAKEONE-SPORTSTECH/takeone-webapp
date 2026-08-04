@@ -120,6 +120,14 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());
         });
 
+        // Arranging a tournament draw: one save per drop, and an organiser
+        // laying out a 32-competitor bracket makes many in a row — so it gets
+        // its own bucket rather than exhausting member-write. Still bounded:
+        // this is a cheap write, but not a free one.
+        RateLimiter::for('bracket-arrange', function (Request $request) {
+            return Limit::perMinute(90)->by($request->user()?->id ?: $request->ip());
+        });
+
         // Sensitive admin operations (messaging, notifications, ownership transfer):
         // 60 per minute per user — generous for normal admin use, blocks abuse.
         RateLimiter::for('admin-write', function (Request $request) {

@@ -25,6 +25,10 @@ return [
     'action_generate_draw' => 'إنشاء القرعة',
     'draw_generated' => 'تم إنشاء القرعة المبدئية',
     'draw_final' => 'انطلقت البطولة — القرعة نهائية ولا يمكن إعادة إنشائها.',
+    'action_arrange_draw' => 'ترتيب القرعة',
+    'action_clear_draw' => 'إفراغ القرعة',
+    'draw_arranged' => 'تم تحديث القرعة 🥋',
+    'draw_cleared' => 'أُفرغت القرعة — عاد جميع المشاركين إلى القائمة',
     'day_mats' => 'اليوم :day: :count بساط',
     'ended_locked' => 'انتهت هذه البطولة — نتائجها نهائية.',
 

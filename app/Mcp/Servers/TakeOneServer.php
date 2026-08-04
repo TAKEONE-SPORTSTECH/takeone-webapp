@@ -4,11 +4,13 @@ namespace App\Mcp\Servers;
 
 use App\Mcp\Tools\AddCertificationTool;
 use App\Mcp\Tools\AddWorkHistoryTool;
+use App\Mcp\Tools\ArrangeEventBracketTool;
 use App\Mcp\Tools\ClubFinancialsTool;
 use App\Mcp\Tools\ClubStaffTool;
 use App\Mcp\Tools\EnrollMembersTool;
 use App\Mcp\Tools\EnterEventAthletesTool;
 use App\Mcp\Tools\GetClubTool;
+use App\Mcp\Tools\GetEventBracketTool;
 use App\Mcp\Tools\GetMemberTool;
 use App\Mcp\Tools\ListActivityCatalogTool;
 use App\Mcp\Tools\ListClubsTool;
@@ -38,7 +40,8 @@ Getting started:
   2. Use `list_clubs` / `get_club` to browse clubs the user can access.
   3. Use `list_members` / `get_member` for member data (private profiles are gated).
   4. Use `club_financials` for a club's money (admins only); `club_staff` lists instructors/staff and their compensation (admins only, read-only).
-  5. `search_people` finds discoverable members who share a confirmed club membership with the acting user (never platform-wide; safe public fields only).
+  5. `get_event_bracket` reads an event's knockout draw — divisions, rounds, bouts, scores, podium.
+  6. `search_people` finds discoverable members who share a confirmed club membership with the acting user (never platform-wide; safe public fields only).
 
 Write tools (may be globally disabled via server config):
   • `record_transaction` — log manual income/expense for a club (admins only).
@@ -46,6 +49,7 @@ Write tools (may be globally disabled via server config):
   • `enroll_members` — batch-enroll active members into a package, marked as already paid (admins only).
   • `add_certification` — add a self-managed certification to a member (super-admin/self/guardian).
   • `add_work_history` — add a self-managed work/coaching history entry to a member (super-admin/self/guardian).
+  • `arrange_event_bracket` — move a competitor within a division's first round, or in/out of the draw (organiser only, before the event starts).
 
 Identifiers: clubs accept a numeric id OR a slug; members accept a uuid (preferred)
 or a numeric id. Amounts are in each club's own currency.
@@ -65,6 +69,8 @@ class TakeOneServer extends Server
         NotifyMemberTool::class,
         EnrollMembersTool::class,
         EnterEventAthletesTool::class,
+        GetEventBracketTool::class,
+        ArrangeEventBracketTool::class,
         ListActivityCatalogTool::class,
         VerifyAchievementTool::class,
         AddCertificationTool::class,

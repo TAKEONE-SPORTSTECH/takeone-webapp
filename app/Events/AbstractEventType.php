@@ -3,6 +3,7 @@
 namespace App\Events;
 
 use App\Events\Contracts\EventType;
+use App\Events\Support\BracketView;
 use App\Events\Support\EnrolmentDecision;
 use App\Events\Support\Milestone;
 use App\Models\ClubEvent;
@@ -397,6 +398,21 @@ abstract class AbstractEventType implements EventType
         }
 
         return ['categories' => $divisions];
+    }
+
+    /**
+     * Default bracket view: any type whose divisions hold knockout bouts gets a
+     * bracket for free, in the one shared shape. A type with no bouts at all
+     * (a belt test, a league table) yields nothing and the screen offers no
+     * bracket rather than an empty one.
+     */
+    public function bracketView(ClubEvent $event, User $viewer): array
+    {
+        if (! $event->categories()->whereHas('matches')->exists()) {
+            return [];
+        }
+
+        return (new BracketView)->divisions($event);
     }
 
     /** One division's run-screen view model. Types extend this via matchView(). */

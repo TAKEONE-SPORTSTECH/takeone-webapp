@@ -124,7 +124,7 @@
         <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-2">
             <div class="flex gap-2 overflow-x-auto scrollbar-hide">
                 @foreach($categories as $c)
-                    <button type="button" @click="cat='{{ $c['key'] }}'"
+                    <button type="button" @click="cat='{{ $c['key'] }}'; window.BracketBoard && window.BracketBoard.show({{ $c['id'] }})"
                             class="m-press flex-shrink-0 px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
                             :class="cat==='{{ $c['key'] }}' ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'">
                         {{ $c['name'] }}
@@ -134,6 +134,23 @@
                 @endforeach
             </div>
         </div>
+    </div>
+
+    {{-- ===== The draw itself — pan/zoom board, and drag-to-arrange for organisers =====
+         Same gestures as the family tree: drag to pan, pinch to zoom. The board
+         owns its own data, saves and realtime refresh; the stacked round cards
+         below stay as the readable, scrollable detail of the same bouts. --}}
+    <div class="px-4 mt-4">
+        <x-tournament-bracket
+            id="event-bracket"
+            :data-url="route('me.events.bracket.data', $e['key'])"
+            :arrange-url="route('me.events.bracket.arrange', $e['key'])"
+            :clear-url="route('me.events.bracket.clear', $e['key'])"
+            :event-uuid="$e['key']"
+            :can-arrange="$canArrange ?? false"
+            :my-competitor-ids="$myCompetitorIds ?? []"
+            :show-divisions="false"   {{-- the page's own category chips drive the board --}}
+            height="62vh" />
     </div>
 
     {{-- ===== Manager: generate draw (pre-start only; nothing once the event is over) ===== --}}

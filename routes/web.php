@@ -133,6 +133,12 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     Route::put('/events/{event:uuid}/results', [App\Http\Controllers\PersonalEventController::class, 'setResults'])->name('events.results')->middleware('throttle:member-write');
     Route::delete('/events/{event:uuid}', [App\Http\Controllers\PersonalEventController::class, 'destroy'])->name('events.destroy')->middleware('throttle:member-write');
     Route::get('/events/{event:uuid}/brackets', [App\Http\Controllers\PersonalEventController::class, 'bracket'])->name('events.bracket');
+    // Bracket screen data + hand-arranging the draw. Generic to every bracketed
+    // type (the package decides what a legal arrangement is), so this is one
+    // surface rather than a route per sport.
+    Route::get('/events/{event:uuid}/brackets/data', [App\Http\Controllers\PersonalEventController::class, 'bracketData'])->name('events.bracket.data')->middleware('throttle:120,1');
+    Route::put('/events/{event:uuid}/brackets/arrange', [App\Http\Controllers\PersonalEventController::class, 'arrangeBracket'])->name('events.bracket.arrange')->middleware('throttle:bracket-arrange');
+    Route::put('/events/{event:uuid}/brackets/clear', [App\Http\Controllers\PersonalEventController::class, 'clearBracket'])->name('events.bracket.clear')->middleware('throttle:member-write');
     // Manager actions + outcome recording are owned by the event's TYPE PACKAGE
     // (CLAUDE.md → "Events Are Self-Contained Packages"): one route each, the
     // package decides which actions exist and what they do. Adding an event type

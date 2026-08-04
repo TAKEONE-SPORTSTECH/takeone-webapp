@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Events\Contracts\EventType;
 use App\Events\EventTypeRegistry;
 use App\Events\Support\EntryService;
+use App\Events\Support\EventAccess;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
@@ -226,7 +227,7 @@ class PersonalEventController extends Controller
             })->exists();
     }
 
-    public function bracket(ClubEvent $event): View
+    public function bracket(Request $request, ClubEvent $event): View
     {
         $me = Auth::user();
         $this->assertVisible($event, $me);
@@ -241,12 +242,130 @@ class PersonalEventController extends Controller
         $e = $this->eventView($event, $me->id, $this->myRegistrations($me->id, collect([$event->id])), full: true);
         $canManage = $this->canManage($event, $me);
 
-        return view('personal.event-bracket', [
-            'e' => $e,
-            'categories' => $categories,
-            'canManage' => $canManage,
-            'actions' => $canManage ? $type->availableActions($event) : [],
-        ] + $type->viewData($event, $me));
+        $isMobile = (bool) $request->attributes->get('is_mobile');
+        $device = $isMobile ? 'mobile' : 'desktop';
+
+        return view(
+            $this->packageView($type, 'bracket', $device, 'personal.'.$device.'.event-bracket'),
+            [
+                'e' => $e,
+                'categories' => $categories,
+                'canManage' => $canManage,
+                'canArrange' => $this->canArrangeDraw($event, $type, $canManage),
+                // The viewer's own entries, so the board can mark their bouts.
+                'myCompetitorIds' => ClubEventRegistration::where('event_id', $event->id)
+                    ->where('user_id', $me->id)->pluck('id')->all(),
+                'actions' => $canManage ? $type->availableActions($event) : [],
+            ] + $type->viewData($event, $me)
+        );
+    }
+
+    /**
+     * The bracket screen's own data feed. The renderer re-fetches this on every
+     * realtime nudge, so a draw someone else arranges — or a bout that just
+     * landed — appears without anyone reloading.
+     */
+    public function bracketData(ClubEvent $event): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        $type = $this->typeFor($event);
+        $canManage = $this->canManage($event, $me);
+
+        return response()->json([
+            'divisions' => $type->bracketView($event, $me),
+            // The bench is an organiser's working area, not part of the public
+            // draw — and only the client that may arrange is told it can.
+            'can_arrange' => $this->canArrangeDraw($event, $type, $canManage),
+            'locked' => $event->hasStarted() || $event->hasEnded(),
+        ]);
+    }
+
+    /**
+     * Move one competitor within a division's first round — the drag-and-drop
+     * save. Thin by design: authorization and rate limiting here, every rule
+     * about what a legal arrangement IS inside the owning package.
+     */
+    public function arrangeBracket(Request $request, ClubEvent $event): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+
+        $data = $request->validate([
+            'category_id' => ['required', 'integer'],
+            'from.type' => ['required', Rule::in(['slot', 'bench'])],
+            'from.match_id' => ['nullable', 'integer'],
+            'from.side' => ['nullable', Rule::in(['a', 'b'])],
+            'from.competitor_id' => ['nullable', 'integer'],
+            'to.type' => ['required', Rule::in(['slot', 'bench'])],
+            'to.match_id' => ['nullable', 'integer'],
+            'to.side' => ['nullable', Rule::in(['a', 'b'])],
+        ]);
+
+        return $this->dispatchAction($event, 'arrange_draw', $data);
+    }
+
+    /** Empty a division's draw onto the bench, to rebuild it by hand. */
+    public function clearBracket(Request $request, ClubEvent $event): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+
+        $data = $request->validate(['category_id' => ['required', 'integer']]);
+
+        return $this->dispatchAction($event, 'clear_draw', $data);
+    }
+
+    /**
+     * Run a package action, refusing anything the package is not currently
+     * offering. Same deny-by-default gate performAction() uses, so a bracket
+     * route can never reach an action the type has withdrawn (a draw that has
+     * locked, a type with no brackets at all).
+     */
+    private function dispatchAction(ClubEvent $event, string $action, array $payload): JsonResponse
+    {
+        $type = $this->typeFor($event);
+
+        $offered = collect($type->availableActions($event))->pluck('action')->all();
+        if (! in_array($action, $offered, true)) {
+            return response()->json(['success' => false, 'message' => __('events.action_unavailable')], 422);
+        }
+
+        $result = $type->performAction($event, $action, $payload);
+
+        return response()->json($result, ($result['success'] ?? false) ? 200 : 422);
+    }
+
+    /**
+     * Plain-language reasons for the date/time rules people actually trip over.
+     *
+     * The form shows the FIRST error it gets back, so these are the sentences a
+     * user reads when a save is refused. Laravel's defaults ("The enrollment
+     * ends at field must be a date before or equal to date.") name columns and
+     * describe a rule; these name the thing on screen and say what to change.
+     *
+     * @return array<string, string>
+     */
+    private function eventMessages(): array
+    {
+        return [
+            'enrollment_ends_at.before_or_equal' => __('events.validate_enrolment_ends_after_event'),
+            'enrollment_ends_at.after_or_equal' => __('events.validate_enrolment_ends_before_start'),
+            'end_date.after_or_equal' => __('events.validate_end_date_before_start'),
+            'start_time.date_format' => __('events.validate_start_time_format'),
+            'end_time.date_format' => __('events.validate_end_time_format'),
+            'break_start.after_or_equal' => __('events.validate_break_before_start'),
+            'break_end.after' => __('events.validate_break_end_before_break_start'),
+            'break_end.before_or_equal' => __('events.validate_break_after_end'),
+        ];
+    }
+
+    /** May this viewer rearrange the draw right now? */
+    private function canArrangeDraw(ClubEvent $event, EventType $type, bool $canManage): bool
+    {
+        return $canManage
+            && collect($type->availableActions($event))->pluck('action')->contains('arrange_draw');
     }
 
     public function create(): View
@@ -309,7 +428,7 @@ class PersonalEventController extends Controller
             'max_capacity' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'prize' => ['nullable', 'string', 'max:120'],
             'sport' => ['nullable', Rule::in(array_keys($this->sports()))],
-        ]);
+        ], $this->eventMessages());
 
         // Must belong to — or run — the club you're creating the event for.
         abort_unless(
@@ -321,7 +440,7 @@ class PersonalEventController extends Controller
 
         // The owning package validates and normalises its own half of the payload.
         $type = $this->typeForInput($data);
-        $data += $request->validate($type->validationRules());
+        $data += $request->validate($type->validationRules(), $this->eventMessages());
 
         $event = ClubEvent::create($type->columnsFromInput($data) + [
             'tenant_id' => $data['tenant_id'],
@@ -1244,27 +1363,14 @@ class PersonalEventController extends Controller
      * Can this member see / self-register for the event, given its scope?
      * Host-club members always qualify; wider scopes admit other clubs' members.
      */
+    /*
+     * Who may see an event and who may run it lives in App\Events\Support\EventAccess
+     * — the MCP server enforces the same rule, and an authorization rule kept in
+     * two places eventually disagrees with itself.
+     */
     private function isEligible(ClubEvent $event, User $me): bool
     {
-        if ($me->memberClubs()->whereKey($event->tenant_id)->exists()) {
-            return true;
-        }
-
-        return match ($event->scope ?? 'internal') {
-            'inter_club', 'worldwide' => true,
-            // regional currently mirrors nationwide until a region taxonomy exists.
-            'nationwide', 'regional' => $this->shareCountry($event, $me),
-            default => false, // internal
-        };
-    }
-
-    /** True when the member belongs to a club in the host club's country. */
-    private function shareCountry(ClubEvent $event, User $me): bool
-    {
-        $hostCountry = $event->tenant?->country ?? $event->tenant()->value('country');
-
-        return $hostCountry
-            && $me->memberClubs()->where('tenants.country', $hostCountry)->exists();
+        return app(EventAccess::class)->eligible($event, $me);
     }
 
     private function assertEligible(ClubEvent $event, User $me): void
@@ -1272,11 +1378,9 @@ class PersonalEventController extends Controller
         abort_unless($this->isEligible($event, $me) || $this->canManage($event, $me), 403);
     }
 
-    /** Only the event's creator may manage it (super-admin kept as a platform override). */
     private function canManage(ClubEvent $event, User $me): bool
     {
-        return $event->created_by === $me->id
-            || $me->isSuperAdmin();
+        return app(EventAccess::class)->canManage($event, $me);
     }
 
     private function assertCanManage(ClubEvent $event, User $me): void
@@ -1284,7 +1388,6 @@ class PersonalEventController extends Controller
         abort_unless($this->canManage($event, $me), 403);
     }
 
-    /** Visible to anyone the event's scope reaches (host-club members + wider). */
     private function assertVisible(ClubEvent $event, User $me): void
     {
         abort_if($event->is_archived, 404);

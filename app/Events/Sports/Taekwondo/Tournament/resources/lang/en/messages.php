@@ -26,6 +26,10 @@ return [
     'action_generate_draw' => 'Generate draw',
     'draw_generated' => 'Provisional draw generated',
     'draw_final' => 'The championship has started — the draw is final and can’t be regenerated.',
+    'action_arrange_draw' => 'Arrange draw',
+    'action_clear_draw' => 'Empty draw',
+    'draw_arranged' => 'Draw updated 🥋',
+    'draw_cleared' => 'Draw emptied — every entrant is back on the list',
     'day_mats' => 'Day :day: :count mats',
     'ended_locked' => 'This championship has ended — its results are final.',
 

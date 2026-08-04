@@ -76,7 +76,9 @@ Each combat sport's *implementation* of that contract lives in its own sport fol
 | Engine | `recordOutcome()` `performAction()` `availableActions()` | record a bout/fixture/test and propagate it; expose the type's own manager actions |
 | Outputs | `results()` `allowsManualResults()` `timeline()` `rosterRows()` | final standings, run-of-show, entrant list |
 | Financials | `finance()` | how this type earns, including any per-division breakdown |
-| Display | `views()` `viewData()` | its own screens and the data they need |
+| Display | `views()` `viewData()` `bracketView()` | its own screens and the data they need |
+
+**`bracketView()`** returns the type's divisions as brackets, in the one shared shape (`App\Events\Support\BracketView`), for the zoomable bracket screen (`<x-tournament-bracket>`). A knockout draw is not one sport's idea — a taekwondo weight class, a karate pool and a padel cup are the same picture in different words — so the *shape* is shared while each package decides what fills it. `AbstractEventType` implements it for any type whose divisions hold bouts; a type with no bouts (a belt test, a league) returns `[]` and the screen offers no bracket. Hand-arranging the draw is exposed as ordinary package actions (`arrange_draw`, `clear_draw`), so the "may this run right now?" question stays in `availableActions()` and a locked draw simply withdraws them.
 
 **`allowsManualResults()`** is the guard that stops a hand-typed podium contradicting recorded play. Types that derive results from an engine return `false`, and the write path refuses hand-entry with a 422.
 

@@ -3,6 +3,7 @@
 namespace App\Events\Sports\Taekwondo\Tournament;
 
 use App\Events\AbstractEventType;
+use App\Events\Support\BracketView;
 use App\Events\Support\EnrolmentDecision;
 use App\Events\Support\Milestone;
 use App\Events\Support\SyncsDivisions;
@@ -156,6 +157,17 @@ class Tournament extends AbstractEventType
             return;
         }
 
+        // A hand-arranged draw is never re-cut: the newcomer waits on the bench
+        // for the organiser to place, and anyone who withdrew is lifted out of
+        // their slot.
+        if ($category->draw_state === 'manual') {
+            $this->arrangement()->syncEntrants($category);
+            $this->scheduler->scheduleAndNumber($event->fresh());
+            $this->broadcast($event, ['action' => 'entrants', 'division' => $category->id]);
+
+            return;
+        }
+
         if ($category->registrations()->where('role', 'participant')->count() >= 2) {
             $this->draws->build($event, $category, paidOnly: false);
         } else {
@@ -265,6 +277,8 @@ class Tournament extends AbstractEventType
     {
         return match ($action) {
             'generate_draw' => $this->generateDraw($event),
+            'arrange_draw' => $this->arrangeDraw($event, $payload),
+            'clear_draw' => $this->clearDraw($event, $payload),
             default => ['success' => false, 'message' => __('events.action_unsupported')],
         };
     }
@@ -279,10 +293,82 @@ class Tournament extends AbstractEventType
                 'label' => __('event-taekwondo_tournament::messages.action_generate_draw'),
                 'icon' => 'bi-diagram-3',
             ];
+
+            // Arranging is offered as an action rather than a route of its own,
+            // so the "may this run?" check stays in one place: an action the
+            // package does not currently offer can never be performed.
+            $actions[] = [
+                'action' => 'arrange_draw',
+                'label' => __('event-taekwondo_tournament::messages.action_arrange_draw'),
+                'icon' => 'bi-arrows-move',
+            ];
+
+            $actions[] = [
+                'action' => 'clear_draw',
+                'label' => __('event-taekwondo_tournament::messages.action_clear_draw'),
+                'icon' => 'bi-eraser',
+            ];
         }
 
         return $actions;
     }
+
+    /**
+     * Move one competitor within a division's first round, or in and out of it.
+     * Returns the division's fresh bracket so the screen patches in place.
+     */
+    private function arrangeDraw(ClubEvent $event, array $payload): array
+    {
+        $result = $this->arrangement()->move($event, $payload);
+
+        if (! $result['ok']) {
+            return ['success' => false, 'message' => $result['message']];
+        }
+
+        $this->scheduler->scheduleAndNumber($event->fresh());
+
+        return $this->arrangedResponse($event, $result['category'], __('event-taekwondo_tournament::messages.draw_arranged'));
+    }
+
+    /** Empty a division's draw onto the bench so it can be built by hand. */
+    private function clearDraw(ClubEvent $event, array $payload): array
+    {
+        $category = $event->categories()->find($payload['category_id'] ?? null);
+
+        if (! $category) {
+            return ['success' => false, 'message' => __('events.division_not_found')];
+        }
+
+        $result = $this->arrangement()->clear($event, $category);
+
+        if (! $result['ok']) {
+            return ['success' => false, 'message' => $result['message']];
+        }
+
+        $this->scheduler->scheduleAndNumber($event->fresh());
+
+        return $this->arrangedResponse($event, $result['category'], __('event-taekwondo_tournament::messages.draw_cleared'));
+    }
+
+    /**
+     * One arranged division, pushed to everyone watching. The bracket renders
+     * differently per viewer (their own bouts are marked, only organisers see
+     * the bench), so the broadcast is a refresh signal — the division's data
+     * comes back only to the operator who moved it, for their in-place patch.
+     */
+    private function arrangedResponse(ClubEvent $event, EventCategory $category, string $message): array
+    {
+        $this->broadcast($event, ['action' => 'draw', 'division' => $category->id]);
+
+        return [
+            'success' => true,
+            'message' => $message,
+            'data' => ['division' => (new BracketView)->division(
+                $category->load(['matches', 'registrations.user:id,full_name,name,profile_picture,profile_picture_is_public,updated_at'])
+            )],
+        ];
+    }
+
 
     /**
      * (Re)cut every division's provisional bracket and re-flow the running
@@ -526,6 +612,11 @@ class Tournament extends AbstractEventType
     private function advancement(): Advancement
     {
         return new Advancement($this->sport());
+    }
+
+    private function arrangement(): Arrangement
+    {
+        return new Arrangement($this->advancement());
     }
 
     private function sport(): \App\Sports\Combat\CombatSport

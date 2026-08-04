@@ -114,6 +114,30 @@ class EventPagesRenderTest extends TestCase
             ->assertSee('Senior Men -58 kg');
     }
 
+    /**
+     * Both bracket screens mount the shared zoomable board. Device-split per
+     * CLAUDE.md, but one renderer — so a draw looks and behaves the same on a
+     * phone (and therefore inside the Android app) as on a desktop.
+     */
+    public function test_both_bracket_screens_mount_the_zoomable_board(): void
+    {
+        $owner = $this->createUser();
+        $club = $this->club($owner);
+        $event = $this->event($owner, $club);
+        EventCategory::create(['event_id' => $event->id, 'name' => 'Senior Men -58 kg', 'sort_order' => 1]);
+        $member = $this->member($club);
+
+        $desktop = $this->actingAs($member)->get("/me/events/{$event->uuid}/brackets")->assertOk();
+        $desktop->assertSee('BracketBoard.mount', false);
+        $desktop->assertSee('event-bracket-viewport', false);
+
+        $mobile = $this->actingAs($member)
+            ->withHeaders(['User-Agent' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'])
+            ->get("/me/events/{$event->uuid}/brackets")->assertOk();
+        $mobile->assertSee('BracketBoard.mount', false);
+        $mobile->assertSee('event-bracket-viewport', false);
+    }
+
     public function test_create_and_edit_forms_render(): void
     {
         $owner = $this->createUser();
