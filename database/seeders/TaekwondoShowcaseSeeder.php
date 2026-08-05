@@ -115,9 +115,21 @@ class TaekwondoShowcaseSeeder extends Seeder
         // (the board renders `fi fi-{code}`). Alpha-3 would mis-flag: UAE -> "ua"
         // is Ukraine, KSA -> "ks" is nothing.
         $countries = ['BH', 'SA', 'AE', 'KW', 'QA', 'OM', 'JO', 'EG'];
-        $male = ['Ali', 'Omar', 'Yusuf', 'Hamad', 'Khalid', 'Salman', 'Rashid', 'Faisal', 'Tariq', 'Nasser', 'Jassim', 'Mahmood'];
-        $female = ['Noor', 'Layla', 'Fatima', 'Mariam', 'Sara', 'Hessa', 'Aisha', 'Zahra', 'Reem', 'Dana', 'Huda', 'Amal'];
-        $family = ['Al Khalifa', 'Al Dosari', 'Al Mannai', 'Hassan', 'Al Sayed', 'Janahi', 'Al Ansari', 'Bucheeri', 'Al Awadhi', 'Radhi'];
+        // 18 x 20 = 360 combinations per gender, walked so that the first name
+        // only repeats after every surname has been used. 240 athletes therefore
+        // all get distinct names — with a 12 x 10 pool the repeats were
+        // unavoidable, and a people-picker full of identical rows is unusable.
+        $male = ['Ali', 'Omar', 'Yusuf', 'Hamad', 'Khalid', 'Salman', 'Rashid', 'Faisal', 'Tariq',
+            'Nasser', 'Jassim', 'Mahmood', 'Ahmed', 'Ibrahim', 'Saeed', 'Younis', 'Bader', 'Fahad'];
+        $female = ['Noor', 'Layla', 'Fatima', 'Mariam', 'Sara', 'Hessa', 'Aisha', 'Zahra', 'Reem',
+            'Dana', 'Huda', 'Amal', 'Shaikha', 'Munira', 'Latifa', 'Wadha', 'Ghada', 'Rawan'];
+        $family = ['Al Khalifa', 'Al Dosari', 'Al Mannai', 'Hassan', 'Al Sayed', 'Janahi',
+            'Al Ansari', 'Bucheeri', 'Al Awadhi', 'Radhi', 'Al Zayani', 'Kanoo', 'Fakhro',
+            'Al Binali', 'Shamlan', 'Al Rumaihi', 'Buheji', 'Al Qassab', 'Almoayed', 'Sharif'];
+
+        // One running index per gender across every age group, so a name is never
+        // reused between Kids and Senior.
+        $nameSeq = ['male' => 0, 'female' => 0];
 
         // Repair athletes seeded by an earlier version of this file, which wrote
         // ISO alpha-3. The pool loop below is skipped once the pool is full, so
@@ -145,11 +157,19 @@ class TaekwondoShowcaseSeeder extends Seeder
         foreach ($need as $group => $perGender) {
             foreach (['male', 'female'] as $gender) {
                 $key = $group.'|'.$gender;
-                $have = count($this->buckets[$key] ?? []);
 
-                for ($i = $have; $i < $perGender; $i++) {
-                    $first = $gender === 'male' ? $male[$i % count($male)] : $female[$i % count($female)];
-                    $last = $family[($i * 3) % count($family)];
+                // Always walk the full range rather than starting where the pool
+                // already reaches: updateOrCreate then repairs athletes this
+                // seeder created earlier (names, country codes) instead of
+                // silently skipping them. Non-seeded members keep their bucket
+                // place either way.
+                for ($i = 0; $i < $perGender; $i++) {
+                    $pool  = $gender === 'male' ? $male : $female;
+                    $seq   = $nameSeq[$gender]++;
+                    // Surname advances every step, first name only after a full
+                    // lap of surnames — so the pair is unique for 360 athletes.
+                    $first = $pool[intdiv($seq, count($family)) % count($pool)];
+                    $last  = $family[$seq % count($family)];
                     $email = sprintf('tkd.%s.%s.%d@takeone.test', strtolower($group), $gender, $i);
 
                     // updateOrCreate, not firstOrCreate: re-running must be able to
@@ -164,6 +184,10 @@ class TaekwondoShowcaseSeeder extends Seeder
                             'gender' => $gender,
                             'birthdate' => $this->birthdateFor($group),
                             'nationality' => $countries[$i % count($countries)],
+                            // Real-shaped Bahraini mobile, unique per athlete: the
+                            // column carries a unique index, and a people-picker
+                            // needs a second identifier to tell two members apart.
+                            'mobile' => ['code' => '+973', 'number' => (string) (33000000 + ($gender === 'male' ? 0 : 400000) + $seq)],
                             'email_verified_at' => now(),
                         ]
                     );
@@ -177,7 +201,9 @@ class TaekwondoShowcaseSeeder extends Seeder
                         ['status' => 'active', 'created_at' => now(), 'updated_at' => now()],
                     );
 
-                    $this->buckets[$key][] = $user->id;
+                    if (! in_array($user->id, $this->buckets[$key] ?? [], true)) {
+                        $this->buckets[$key][] = $user->id;
+                    }
                     $this->spectatorPool[] = $user->id;
                 }
             }

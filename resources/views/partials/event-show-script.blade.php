@@ -14,6 +14,13 @@ x-data="{
         joinedDivision: '',
         // ----- Payment proof (paid participant events, manual proof-of-payment) -----
         paymentPending: {{ ($e['payment_pending'] ?? false) ? 'true' : 'false' }},
+        // Registered, fee not settled. Drives the fee-due wording so a place held
+        // on pay-later never claims to be paid for.
+        // NB: this whole file is the VALUE of the x-data attribute, so a double
+        // quote anywhere in it — even inside a comment — closes that attribute
+        // early and dumps the rest of the file onto the page as visible text.
+        // Use single quotes here, always.
+        feeDue: {{ ($e['fee_due'] ?? false) ? 'true' : 'false' }},
         proofOpen: false,
         proofData: null,
         proofPreview: null,
@@ -78,6 +85,13 @@ x-data="{
         joinOpen: false,
         joinRole: 'participant',
         joinFee: '',
+        // 'join'   — deciding whether to take a place
+        // 'settle' — place already held, coming back to pay
+        joinMode: 'join',
+        // null until they pick: 'online' (transfer, then upload a receipt) or
+        // 'cash' (hand it over at the club). There is no gateway — online means
+        // a transfer the club verifies, not a card charge.
+        payMethod: null,
 
         /**
          * Entry point for both Participate and Spectate.
@@ -88,7 +102,16 @@ x-data="{
          * cannot carry.
          */
         startJoin(role) {
-            if (this.registered || this.busy) return;
+            if (this.busy) return;
+
+            // Already holding this place with the fee outstanding — reopen the
+            // sheet to settle it. A place you have not paid for should never be
+            // a dead button; that is the one moment someone wants to pay.
+            if (this.registered && this.feeDue) {
+                return this.openSheet(this.going ? 'participant' : 'spectator', 'settle');
+            }
+            if (this.registered) return;
+
             if (role === 'participant' && this.byQual) {
                 window.showToast('info', '{{ __("personal.event_show_entry_by_qualification") }}');
                 return;
@@ -99,7 +122,13 @@ x-data="{
                 return role === 'spectator' ? this.toggleWatch() : this.toggleGoing();
             }
 
+            this.openSheet(role, 'join');
+        },
+
+        openSheet(role, mode) {
             this.joinRole = role;
+            this.joinMode = mode;
+            this.payMethod = null;
             this.joinFee = role === 'spectator'
                 ? @js($hasTicket ? $e['spectator']['fee'] : '')
                 : @js($e['participant_fee']);
@@ -118,15 +147,25 @@ x-data="{
         async finishJoin(payNow) {
             if (this.busy) return;
 
-            // skipConfirm: the sheet WAS the confirmation.
-            if (this.joinRole === 'spectator') {
-                await this.toggleWatch(true);
-            } else {
-                await this.toggleGoing(true);
+            // Settling an existing place: no second registration, just the
+            // receipt step (or nothing at all, for cash at the club).
+            if (this.joinMode !== 'settle') {
+                // skipConfirm: the sheet WAS the confirmation.
+                if (this.joinRole === 'spectator') {
+                    await this.toggleWatch(true);
+                } else {
+                    await this.toggleGoing(true);
+                }
+                if (! this.registered) return;   // join failed — keep the sheet open
             }
 
             this.joinOpen = false;
-            if (payNow && this.registered) this.openProof();
+
+            if (payNow) {
+                this.openProof();
+            } else if (this.payMethod === 'cash') {
+                window.showToast('info', '{{ __("personal.event_show_join_cash_noted") }}');
+            }
         },
 
         /** Copy a bank detail — a hand-retyped IBAN is an IBAN typed wrong. */
@@ -201,6 +240,8 @@ x-data="{
             }
 
             this.going = true;
+            // register() settles a FREE entry instantly and leaves a paid one owing.
+            this.feeDue = {{ $pPaid ? 'true' : 'false' }};
             this.goingCount = d.going ?? this.goingCount + 1;
             this.joinedDivision = d.division || '';
             window.showToast('success', d.message);
@@ -218,6 +259,7 @@ x-data="{
             const d = await this.req('{{ route('me.events.ticket', $e['key']) }}', 'POST');
             if (!d) return;
             this.watching = true;
+            this.feeDue = {{ $ticketPaid ? 'true' : 'false' }};
             this.spectators = d.spectators ?? this.spectators + 1;
             window.showToast('success', d.message);
         },

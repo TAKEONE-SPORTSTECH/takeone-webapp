@@ -142,7 +142,7 @@
             </div>
 
             {{-- capacity --}}
-            <div class="mt-4">
+            <div class="mt-5">
                 <div class="flex items-center justify-between text-[11px] mb-1.5">
                     <span class="font-semibold text-foreground"><span x-text="goingCount">{{ $e['going'] }}</span> {{ __('personal.event_show_going') }}</span>
                     <span class="text-muted-foreground"><span x-text="cap - goingCount">{{ $e['cap'] - $e['going'] }}</span> {{ __('personal.event_show_spots_left') }}</span>
@@ -151,26 +151,6 @@
                     <div class="m-bar-fill h-full rounded-full" :style="`width:${pct}%; background:{{ $e['color'] }}`" style="width: {{ round($e['going'] / $e['cap'] * 100) }}%"></div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    {{-- ===== Like / interest row ===== --}}
-    <div class="px-4 mt-3">
-        <div class="flex items-center gap-2">
-            <button type="button" @click="toggleLike()"
-                    class="m-press flex-1 py-2.5 rounded-2xl border text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
-                    :class="liked ? 'bg-red-50 border-red-200 text-red-600' : 'bg-white border-gray-100 text-muted-foreground'">
-                <i class="bi" :class="liked ? 'bi-heart-fill' : 'bi-heart'"></i>
-                <span x-text="likes">36</span>
-            </button>
-            <button type="button" @click="window.showToast('info','{{ __("personal.event_show_reminder_set") }}')"
-                    class="m-press flex-1 py-2.5 rounded-2xl border border-gray-100 bg-white text-muted-foreground text-sm font-semibold flex items-center justify-center gap-2">
-                <i class="bi bi-bell"></i> {{ __('personal.event_show_remind') }}
-            </button>
-            <button type="button" @click="$dispatch('share-event')"
-                    class="m-press flex-1 py-2.5 rounded-2xl border border-gray-100 bg-white text-muted-foreground text-sm font-semibold flex items-center justify-center gap-2">
-                <i class="bi bi-share"></i> {{ __('personal.event_show_share') }}
-            </button>
         </div>
     </div>
 
@@ -231,43 +211,340 @@
         </div>
     @endif
 
-    {{-- ===== About ===== --}}
-    <div class="px-4 mt-4">
-        <div class="m-card rounded-2xl p-4">
-            <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-info-circle text-primary"></i> {{ __('personal.event_show_about') }}</h2>
-            <p class="text-sm text-muted-foreground leading-relaxed mt-2">{{ $e['about'] }}</p>
-            <div class="flex flex-wrap gap-2 mt-3">
-                @foreach($e['tags'] as $t)
-                    <span class="px-2.5 py-1 rounded-full text-[11px] font-medium bg-muted text-muted-foreground">#{{ $t }}</span>
-                @endforeach
-            </div>
-        </div>
-    </div>
+    {{-- ===== The event, in one card =====
+         Five sections, five different voices — not five copies of
+         icon + eyebrow + text, which is what made the first attempt read flat.
 
-    {{-- ===== Prize & divisions (tournaments / championships) ===== --}}
-    @if(!empty($e['prize']) || !empty($e['divisions']))
-        <div class="px-4 mt-4">
-            <div class="m-card rounded-2xl p-4">
-                <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-trophy text-primary"></i> {{ __('personal.event_show_prize_divisions') }}</h2>
-                @if(!empty($e['prize']))
-                    <div class="mt-3 rounded-xl p-3 flex items-center gap-3" style="background: {{ $e['color'] }}0d; border: 1px solid {{ $e['color'] }}26;">
-                        <div class="w-10 h-10 rounded-xl grid place-items-center text-white flex-shrink-0" style="background: {{ $e['color'] }};"><i class="bi bi-award-fill text-lg"></i></div>
-                        <div>
-                            <p class="text-[10px] text-muted-foreground uppercase tracking-wide">{{ __('personal.event_show_prize_pool') }}</p>
-                            <p class="text-sm font-black text-foreground">{{ $e['prize'] }}</p>
-                        </div>
-                    </div>
+         The timeline is the spine: it carries the only facts a competitor has to
+         act on (when entries close, when to make weight, when to be there), so it
+         gets the date column, the rail and the full type scale. Everything else
+         is quieter so that peak is legible. --}}
+    @php
+        // Only ever allow http(s) URLs into an href (defence-in-depth vs javascript: URIs).
+        $locUrl = (is_string($e['location_url'] ?? null) && preg_match('#^https?://#i', $e['location_url'])) ? $e['location_url'] : null;
+        // Turn-by-turn directions: coords > pasted link > place name.
+        $dirHref = (!empty($e['lat']) && !empty($e['lng']))
+            ? 'https://www.google.com/maps/dir/?api=1&destination=' . $e['lat'] . ',' . $e['lng']
+            : ($locUrl ?: ($e['location'] && $e['location'] !== 'TBA'
+                ? 'https://www.google.com/maps/dir/?api=1&destination=' . urlencode($e['location'])
+                : null));
+        $hasMap = !empty($e['lat']) && !empty($e['lng']);
+        // Gradients do not mirror in RTL; flip the rule by hand.
+        $ruleDir = config('locales.'.app()->getLocale().'.dir', 'ltr') === 'rtl' ? '270deg' : '90deg';
+    @endphp
+    <div class="px-4 mt-4">
+        <div class="m-card rounded-2xl overflow-hidden">
+
+            {{-- About. Titled like every other section so the card has one
+                 grammar. Tags are pills tinted with the event colour, matching the
+                 division chips further down. --}}
+            <div class="p-5">
+                <div>
+                    <h3 class="text-[19px] font-black tracking-[-0.02em] leading-none text-foreground">{{ __('personal.event_show_about') }}</h3>
+                    <span class="block h-[3px] w-24 rounded-full mt-2.5"
+                          style="background: linear-gradient({{ $ruleDir }}, {{ $e['color'] }} 0%, {{ $e['color'] }}80 40%, {{ $e['color'] }}00 100%);"></span>
+                </div>
+
+                @if(trim((string) ($e['about'] ?? '')) !== '')
+                    <p class="text-[15px] leading-relaxed text-foreground mt-4">{{ $e['about'] }}</p>
                 @endif
-                @if(!empty($e['divisions']))
-                    <div class="flex flex-wrap gap-2 mt-3">
-                        @foreach($e['divisions'] as $d)
-                            <span class="px-2.5 py-1 rounded-full text-[11px] font-medium bg-muted text-foreground">{{ $d }}</span>
+
+                @if(!empty($e['tags']))
+                    <div class="flex flex-wrap gap-1.5 mt-4">
+                        @foreach($e['tags'] as $t)
+                            <span class="px-2.5 py-1 rounded-full text-[11px] font-bold"
+                                  style="background: {{ $e['color'] }}14; color: {{ $e['color'] }};">#{{ $t }}</span>
                         @endforeach
                     </div>
                 @endif
             </div>
+
+            {{-- Prize — a full-bleed band, the loudest thing on the card because
+                 it is the only thing here anyone brags about. --}}
+            @if(!empty($e['prize']))
+                <div class="px-5 py-4 text-white relative overflow-hidden"
+                     style="background: linear-gradient(135deg, {{ $e['color'] }}, #1f2937);">
+                    <div class="absolute -right-8 -top-8 w-28 h-28 rounded-full bg-white/10"></div>
+                    <div class="relative flex items-center gap-3">
+                        <i class="bi bi-award-fill text-2xl text-white/90"></i>
+                        <div class="min-w-0">
+                            <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-white/70">{{ __('personal.event_show_prize_pool') }}</p>
+                            <p class="text-base font-black leading-tight mt-0.5">{{ $e['prize'] }}</p>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            {{-- ===== The spine ===== --}}
+            @if(!empty($e['phases']))
+                <div class="p-5">
+                    <div>
+                        <h3 class="text-[19px] font-black tracking-[-0.02em] leading-none text-foreground">{{ __('personal.event_show_how_it_runs') }}</h3>
+                        {{-- The card's signature: a rule that starts solid in the
+                             event colour and tapers out, echoing the gradients the
+                             hero, prize band and join buttons already use. Repeated
+                             under every heading so the card has a spine of its own.
+                             $ruleDir flips it in RTL — a CSS gradient does not
+                             mirror itself. --}}
+                        <span class="block h-[3px] w-24 rounded-full mt-2.5"
+                              style="background: linear-gradient({{ $ruleDir }}, {{ $e['color'] }} 0%, {{ $e['color'] }}80 40%, {{ $e['color'] }}00 100%);"></span>
+                    </div>
+
+                    <div class="mt-4">
+                        @foreach($e['phases'] as $ph)
+                            @php
+                                // Status is derived from the date — past = done, today = now, future = upcoming.
+                                $pdate  = !empty($ph['date']) ? rescue(fn () => \Carbon\Carbon::parse($ph['date']), null, false) : null;
+                                $today  = \Carbon\Carbon::today();
+                                $done   = $pdate && $pdate->lt($today);
+                                $active = $pdate && $pdate->isSameDay($today);
+                            @endphp
+                            <div class="flex gap-3.5 {{ $done ? 'opacity-45' : '' }}">
+
+                                {{-- The date column: a calendar leaf, so the eye can
+                                     run down the dates without reading a word. --}}
+                                <div class="w-11 shrink-0 text-center pt-0.5">
+                                    <span class="block text-[10px] font-black uppercase tracking-wider text-muted-foreground">{{ $pdate ? $pdate->format('M') : '' }}</span>
+                                    <span class="block text-[22px] font-black leading-none mt-0.5 {{ $active ? '' : 'text-foreground' }}"
+                                          style="{{ $active ? 'color:'.$e['color'].';' : '' }}">{{ $pdate ? $pdate->format('j') : '—' }}</span>
+                                    <span class="block text-[10px] font-semibold text-muted-foreground mt-0.5">{{ $pdate ? $pdate->format('D') : '' }}</span>
+                                </div>
+
+                                {{-- The rail --}}
+                                <div class="flex flex-col items-center pt-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-full flex-shrink-0 {{ $active ? 'ring-4' : '' }}"
+                                          style="background: {{ $done ? '#10b981' : ($active ? $e['color'] : '#d1d5db') }};{{ $active ? ' box-shadow: 0 0 0 4px '.$e['color'].'26;' : '' }}"></span>
+                                    @if(!$loop->last)
+                                        <span class="w-px flex-1 my-1.5" style="background: {{ $done ? '#10b98159' : '#e5e7eb' }};"></span>
+                                    @endif
+                                </div>
+
+                                {{-- No trailing padding on the last step: it stacked
+                                     with the section's own p-5 and left a gap under
+                                     the timeline. --}}
+                                <div class="min-w-0 flex-1 {{ $loop->last ? '' : 'pb-6' }}">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <p class="text-[15px] font-bold leading-tight {{ $active ? '' : 'text-foreground' }}"
+                                           style="{{ $active ? 'color:'.$e['color'].';' : '' }}">{{ $ph['label'] }}</p>
+                                        @if($active)
+                                            <span class="px-1.5 py-0.5 rounded-full text-[9px] font-black text-white tracking-wide" style="background: {{ $e['color'] }};">{{ __('personal.event_show_now') }}</span>
+                                        @endif
+                                    </div>
+
+                                    {{-- Time reads as a fact you act on, so it is set
+                                         in the foreground next to a clock, not greyed
+                                         out beside the date. --}}
+                                    @if(!empty($ph['time']))
+                                        <p class="inline-flex items-center gap-1.5 mt-1.5 text-[12px] font-bold text-foreground">
+                                            <i class="bi bi-clock text-[11px]" style="color: {{ $e['color'] }};"></i>{{ $ph['time'] }}
+                                        </p>
+                                    @endif
+
+                                    {{-- A competition day runs play → break → play.
+                                         Three lines, because that is three different
+                                         things to be somewhere for. --}}
+                                    @if(!empty($ph['segments']))
+                                        <div class="mt-2 space-y-1">
+                                            @foreach($ph['segments'] as $seg)
+                                                @php $isBreak = ($seg['kind'] ?? '') === 'break'; @endphp
+                                                <p class="flex items-center gap-1.5 text-[12px] font-bold {{ $isBreak ? 'text-muted-foreground' : 'text-foreground' }}">
+                                                    <i class="bi {{ $isBreak ? 'bi-cup-hot-fill' : 'bi-clock' }} text-[11px]"
+                                                       style="color: {{ $isBreak ? '#9ca3af' : $e['color'] }};"></i>
+                                                    <span class="w-10 flex-shrink-0 font-semibold {{ $isBreak ? '' : 'text-muted-foreground' }}">{{ $seg['label'] }}</span>
+                                                    <span>{{ $seg['time'] }}</span>
+                                                </p>
+                                            @endforeach
+                                        </div>
+                                    @endif
+
+                                    <p class="text-[12px] text-muted-foreground leading-snug mt-1">{{ $ph['note'] }}</p>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            {{-- Divisions — grouped by AGE GROUP and gender, not gender alone.
+                 A championship running Cadet and Senior would otherwise show two
+                 identical "Men" lists, and the age group — the first thing a
+                 competitor checks — never appeared at all. --}}
+            @if(!empty($e['divisions']))
+                @php
+                    // Division names are generated as "{Age} {Men|Women} {label} kg"
+                    // by AbstractCombatSport::divisionName(), so they parse back
+                    // reliably. Anything that does not match is kept whole rather
+                    // than mangled.
+                    $divGroups = [];
+                    foreach ($e['divisions'] as $d) {
+                        if (preg_match('/^(.*?)\s*\b(Men|Women)\b\s*(.*)$/i', $d, $m)) {
+                            $age    = trim($m[1]);
+                            $female = strcasecmp($m[2], 'Women') === 0;
+                            $weight = trim($m[3]) !== '' ? trim($m[3]) : $d;
+                            $label  = trim($age.' '.($female ? __('personal.event_show_women') : __('personal.event_show_men')));
+                        } else {
+                            $female = false;
+                            $weight = $d;
+                            $label  = __('personal.event_show_divisions');
+                        }
+                        $key = ($female ? 'f' : 'm').'|'.$label;
+                        $divGroups[$key]['label']  = $label;
+                        $divGroups[$key]['female'] = $female;
+                        $divGroups[$key]['items'][] = $weight;
+                    }
+                    // No sort: PHP keeps insertion order, which is the divisions'
+                    // own sort_order — the sequence the organiser arranged them in.
+                    // Imposing an alphabetical order here would quietly override it.
+                @endphp
+                <div class="px-5 pb-5 border-t border-gray-100 pt-6">
+                    <div>
+                        <h3 class="text-[19px] font-black tracking-[-0.02em] leading-none text-foreground">{{ __('personal.event_show_divisions') }}</h3>
+                        {{-- The card's signature: a rule that starts solid in the
+                             event colour and tapers out, echoing the gradients the
+                             hero, prize band and join buttons already use. Repeated
+                             under every heading so the card has a spine of its own.
+                             $ruleDir flips it in RTL — a CSS gradient does not
+                             mirror itself. --}}
+                        <span class="block h-[3px] w-24 rounded-full mt-2.5"
+                              style="background: linear-gradient({{ $ruleDir }}, {{ $e['color'] }} 0%, {{ $e['color'] }}80 40%, {{ $e['color'] }}00 100%);"></span>
+                    </div>
+                    <div class="mt-4 space-y-3.5">
+                        @foreach($divGroups as $g)
+                            @php $tint = $g['female'] ? '#ec4899' : '#3b82f6'; @endphp
+                            <div>
+                                <p class="flex items-center gap-1.5 text-[12px] font-black mb-2" style="color: {{ $tint }};">
+                                    <i class="bi {{ $g['female'] ? 'bi-gender-female' : 'bi-gender-male' }}"></i>{{ $g['label'] }}
+                                </p>
+                                <div class="flex flex-wrap gap-1.5">
+                                    @foreach($g['items'] as $w)
+                                        <span class="px-2.5 py-1 rounded-lg text-[12px] font-bold text-foreground"
+                                              style="background: {{ $tint }}14;">{{ $w }}</span>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            {{-- Requirements — a short contract, set as one. --}}
+            @if(!empty($e['requirements']))
+                <div class="px-5 pb-5 border-t border-gray-100 pt-6">
+                    <div>
+                        <h3 class="text-[19px] font-black tracking-[-0.02em] leading-none text-foreground">{{ __('personal.event_show_requirements') }}</h3>
+                        {{-- The card's signature: a rule that starts solid in the
+                             event colour and tapers out, echoing the gradients the
+                             hero, prize band and join buttons already use. Repeated
+                             under every heading so the card has a spine of its own.
+                             $ruleDir flips it in RTL — a CSS gradient does not
+                             mirror itself. --}}
+                        <span class="block h-[3px] w-24 rounded-full mt-2.5"
+                              style="background: linear-gradient({{ $ruleDir }}, {{ $e['color'] }} 0%, {{ $e['color'] }}80 40%, {{ $e['color'] }}00 100%);"></span>
+                    </div>
+                    <ul class="mt-3 space-y-2">
+                        @foreach($e['requirements'] as $req)
+                            <li class="flex items-start gap-2.5 text-[13px] text-foreground/85 leading-snug">
+                                <i class="bi bi-check-circle-fill text-[13px] mt-0.5 flex-shrink-0" style="color: {{ $e['color'] }};"></i>
+                                <span>{{ $req }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            {{-- Venue — the map IS the section. The address sits on it under a
+                 scrim rather than in a row above it, so the card closes on one
+                 object instead of two stacked. --}}
+            @if($hasMap)
+                {{-- The map component is built for forms, so its root is space-y-4
+                     and its inner wrapper space-y-2 — which put a 1rem margin above
+                     the map and stopped it meeting the card's bottom edge. Zero it
+                     for this instance only; the card's overflow-hidden then clips
+                     the map into the rounded corners. --}}
+                <style>
+                    #evtmap{{ $e['id'] }}Container,
+                    #evtmap{{ $e['id'] }}Container > div { margin: 0 !important; }
+                    #evtmap{{ $e['id'] }}Container > * + *,
+                    #evtmap{{ $e['id'] }}Container > div > * + * { margin-top: 0 !important; }
+                    #evtmap{{ $e['id'] }}Map { display: block; }
+                </style>
+                {{-- Named like every other section, so the map is announced
+                     rather than just appearing at the foot of the card. --}}
+                <div class="px-5 pt-6 pb-4 border-t border-gray-100">
+                    <div>
+                        <h3 class="text-[19px] font-black tracking-[-0.02em] leading-none text-foreground">{{ __('personal.event_show_location') }}</h3>
+                        {{-- The card's signature: a rule that starts solid in the
+                             event colour and tapers out, echoing the gradients the
+                             hero, prize band and join buttons already use. Repeated
+                             under every heading so the card has a spine of its own.
+                             $ruleDir flips it in RTL — a CSS gradient does not
+                             mirror itself. --}}
+                        <span class="block h-[3px] w-24 rounded-full mt-2.5"
+                              style="background: linear-gradient({{ $ruleDir }}, {{ $e['color'] }} 0%, {{ $e['color'] }}80 40%, {{ $e['color'] }}00 100%);"></span>
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <x-location-map
+                        :id="'evtmap'.$e['id']"
+                        :lat="$e['lat']" :lng="$e['lng']"
+                        :draggable="false" :readonly="true" :show-address="false" :show-coords="false" :show-labels="false"
+                        height="11rem" :zoom="15" map-class="bg-muted/30" />
+
+                    {{-- pointer-events-none so the scrim never eats a map drag;
+                         the link re-enables them for itself. --}}
+                    <div class="absolute inset-x-0 bottom-0 z-[400] p-4 pt-10 pointer-events-none"
+                         style="background: linear-gradient(to top, rgba(17,24,39,.88), rgba(17,24,39,0));">
+                        <div class="flex items-end justify-between gap-3">
+                            {{-- No eyebrow here: the section heading above the map
+                                 already says what this is. --}}
+                            <div class="min-w-0">
+                                <p class="text-[15px] font-black text-white leading-tight truncate">{{ $e['location'] }}</p>
+                                @if(!empty($e['address']) && $e['address'] !== $e['location'])
+                                    <p class="text-[11px] text-white/70 truncate mt-0.5">{{ $e['address'] }}</p>
+                                @endif
+                            </div>
+                            @if($dirHref)
+                                <a href="{{ $dirHref }}" target="_blank" rel="noopener"
+                                   class="m-press pointer-events-auto flex-shrink-0 px-3 py-2 rounded-xl bg-white text-[12px] font-black
+                                          flex items-center gap-1.5 shadow-lg"
+                                   style="color: {{ $e['color'] }};">
+                                    <i class="bi bi-cursor-fill"></i> {{ __('personal.event_show_directions') }}
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                <script>
+                    (function () {
+                        var id = 'evtmap{{ $e['id'] }}', lat = {{ $e['lat'] }}, lng = {{ $e['lng'] }}, tries = 0;
+                        (function go() {
+                            if (window.LocationMap) {
+                                window.LocationMap.create({ id: id, defaultLat: lat, defaultLng: lng, zoom: 15, draggable: false, readonly: true });
+                            } else if (tries++ < 60) {
+                                setTimeout(go, 100);
+                            }
+                        })();
+                    })();
+                </script>
+            @else
+                {{-- No coordinates: the venue still has to be findable. --}}
+                <div class="px-5 py-4 border-t border-gray-100 flex items-center justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{{ __('personal.event_show_venue') }}</p>
+                        <p class="text-sm font-black text-foreground leading-tight mt-0.5">{{ $e['location'] }}</p>
+                    </div>
+                    @if($dirHref)
+                        <a href="{{ $dirHref }}" target="_blank" rel="noopener"
+                           class="m-press flex-shrink-0 px-3 py-2 rounded-xl text-white text-[12px] font-black flex items-center gap-1.5"
+                           style="background: {{ $e['color'] }};">
+                            <i class="bi bi-cursor-fill"></i> {{ __('personal.event_show_directions') }}
+                        </a>
+                    @endif
+                </div>
+            @endif
         </div>
-    @endif
+    </div>
 
     {{-- ===== League: standings + fixtures ===== --}}
     @if(!empty($league))
@@ -331,148 +608,6 @@
                 </div>
             </div>
         @endif
-    @endif
-
-    {{-- ===== Requirements (belt tests / gradings) ===== --}}
-    @if(!empty($e['requirements']))
-        <div class="px-4 mt-4">
-            <div class="m-card rounded-2xl p-4">
-                <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-clipboard-check text-primary"></i> {{ __('personal.event_show_requirements') }}</h2>
-                <ul class="mt-3 space-y-2.5">
-                    @foreach($e['requirements'] as $req)
-                        <li class="flex items-start gap-2.5 text-sm text-muted-foreground">
-                            <span class="w-5 h-5 rounded-full grid place-items-center flex-shrink-0 mt-0.5 text-white text-[10px]" style="background: {{ $e['color'] }};"><i class="bi bi-check-lg"></i></span>
-                            <span>{{ $req }}</span>
-                        </li>
-                    @endforeach
-                </ul>
-            </div>
-        </div>
-    @endif
-
-    {{-- ===== Pricing & tickets ===== --}}
-    <div class="px-4 mt-4">
-        <div class="m-card rounded-2xl p-4">
-            <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-tag text-primary"></i> {{ __('personal.event_show_entry_tickets') }}</h2>
-
-            {{-- Each row IS the way in: the row already names the thing, its
-                 price and who it is for, so a separate CTA underneath only
-                 repeated it. Rows that cannot be taken (ineligible, already
-                 registered, blocked, event over) stay on screen but disabled, so
-                 the price list still reads as a price list.
-
-                 A row shows a tick and turns green once you hold that place. --}}
-            @php
-                $locked = ($banned ?? false) || ($e['ended'] ?? false);
-                // $whyNot is set at the top of this view — the script partial needs it.
-                $canJoin = ! $locked && ($canCompete ?? true) && ! $byQual;
-            @endphp
-
-            {{-- ===== Join / spectate =====
-                 Same shape as the "Brackets & draws" card further down the page:
-                 a dark gradient, a soft circle bleeding off the corner, a
-                 translucent icon tile and a chevron. Those already read as
-                 pressable here, so the two ways INTO the event use the same
-                 language rather than inventing a second one.
-
-                 Green once you hold that place. The ineligible variant keeps the
-                 shape but goes slate, so it still invites a tap ("Why not?")
-                 without pretending to be the main action. --}}
-
-            {{-- Participant --}}
-            <button type="button"
-                    @click="{{ $canJoin ? "startJoin('participant')" : 'explainIneligible()' }}"
-                    :disabled="registered"
-                    class="m-press mt-3 w-full block rounded-2xl p-4 text-white text-start relative overflow-hidden
-                           shadow-lg transition-all active:scale-[.98] disabled:cursor-not-allowed"
-                    :style="going
-                        ? 'background: linear-gradient(135deg, #16a34a, #1f2937)'
-                        : 'background: linear-gradient(135deg, {{ $canJoin ? $e['color'] : '#64748b' }}, #1f2937)'">
-                <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
-                <div class="relative flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
-                        <i class="bi text-2xl" :class="going ? 'bi-check2-circle' : '{{ $canJoin ? 'bi-person-check' : 'bi-info-circle' }}'"></i>
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <h3 class="font-black text-base leading-tight"
-                            x-text="going ? '{{ __('personal.event_show_youre_participant') }}' : '{{ $byQual ? __('personal.event_show_take_part') : __('personal.event_show_join_participant') }}'">{{ $byQual ? __('personal.event_show_take_part') : __('personal.event_show_join_participant') }}</h3>
-                        <p class="text-xs text-white/85 mt-0.5">
-                            @if(!($canCompete ?? true)) {{ __('personal.event_show_not_eligible_spectators') }}
-                            @elseif($byQual) {{ __('personal.event_show_reserved_finalists') }}
-                            @elseif($pPaid) {{ __('personal.event_show_fee_paid_club') }}
-                            @else {{ __('personal.event_show_free_members') }} @endif
-                        </p>
-                    </div>
-                    <span class="text-sm font-black flex-shrink-0"
-                          x-text="going ? '{{ __('personal.event_show_cta_joined') }}' : '{{ $canJoin ? $e['participant_fee'] : __('personal.event_show_cta_why') }}'">{{ $canJoin ? $e['participant_fee'] : __('personal.event_show_cta_why') }}</span>
-                    <i class="bi bi-chevron-right text-white/80 flex-shrink-0"></i>
-                </div>
-            </button>
-
-            {{-- Spectator ticket --}}
-            @if($hasTicket)
-                <button type="button" @click="startJoin('spectator')"
-                        :disabled="registered || {{ $locked ? 'true' : 'false' }}"
-                        class="m-press mt-2.5 w-full block rounded-2xl p-4 text-white text-start relative overflow-hidden
-                               shadow-lg transition-all active:scale-[.98]
-                               disabled:cursor-not-allowed disabled:opacity-60"
-                        :style="watching
-                            ? 'background: linear-gradient(135deg, #16a34a, #1f2937)'
-                            : 'background: linear-gradient(135deg, {{ $ticketPaid ? '#7c3aed' : '#0284c7' }}, #1f2937)'">
-                    <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
-                    <div class="relative flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
-                            <i class="bi text-2xl" :class="watching ? 'bi-check2-circle' : 'bi-ticket-perforated'"></i>
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <h3 class="font-black text-base leading-tight"
-                                x-text="watching ? '{{ __('personal.event_show_ticket_booked') }}' : '{{ __('personal.event_show_spectator_ticket') }}'">{{ __('personal.event_show_spectator_ticket') }}</h3>
-                            <p class="text-xs text-white/85 mt-0.5"><span x-text="spectators">{{ $e['spectator']['count'] }}</span> {{ __('personal.event_show_watching') }}{{ $ticketPaid ? ' · '.__('personal.event_show_entry_watch_matches') : ' · '.__('personal.event_show_free_to_watch') }}</p>
-                        </div>
-                        <span class="text-sm font-black flex-shrink-0"
-                              x-text="watching ? '{{ __('personal.event_show_cta_booked') }}' : '{{ $e['spectator']['fee'] }}'">{{ $e['spectator']['fee'] }}</span>
-                        <i class="bi bi-chevron-right text-white/80 flex-shrink-0"></i>
-                    </div>
-                </button>
-            @endif
-        </div>
-    </div>
-
-    {{-- ===== Tournament lifecycle timeline (phases) ===== --}}
-    @if(!empty($e['phases']))
-        <div class="px-4 mt-4">
-            <div class="m-card rounded-2xl p-4">
-                <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-signpost-split text-primary"></i> Tournament timeline</h2>
-                <div class="mt-3">
-                    @foreach($e['phases'] as $i => $ph)
-                        @php
-                            // Status is derived from the date — past = done, today = now, future = upcoming.
-                            $pdate  = !empty($ph['date']) ? rescue(fn () => \Carbon\Carbon::parse($ph['date']), null, false) : null;
-                            $today  = \Carbon\Carbon::today();
-                            $done   = $pdate && $pdate->lt($today);
-                            $active = $pdate && $pdate->isSameDay($today);
-                            $dot = $done ? '#10b981' : ($active ? $e['color'] : '#d1d5db');
-                        @endphp
-                        <div class="flex gap-3">
-                            <div class="flex flex-col items-center">
-                                <span class="w-7 h-7 rounded-full grid place-items-center text-white text-[11px] flex-shrink-0" style="background: {{ $dot }};">
-                                    <i class="bi {{ $done ? 'bi-check-lg' : $ph['icon'] }}"></i>
-                                </span>
-                                @if(!$loop->last)<span class="w-0.5 flex-1 my-1" style="background: {{ $done ? '#10b981' : '#e5e7eb' }};"></span>@endif
-                            </div>
-                            <div class="pb-4 -mt-0.5 min-w-0 flex-1">
-                                <div class="flex items-center justify-between gap-2">
-                                    <p class="text-sm font-bold {{ $active ? '' : 'text-foreground' }}" style="{{ $active ? 'color:'.$e['color'] : '' }}">{{ $ph['label'] }}</p>
-                                    <span class="text-[11px] font-semibold text-muted-foreground flex-shrink-0">{{ $pdate ? $pdate->format('M j') : '' }}</span>
-                                </div>
-                                <p class="text-[11px] text-muted-foreground">{{ $ph['note'] }}</p>
-                                @if($active)<span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[9px] font-bold text-white" style="background: {{ $e['color'] }};">NOW</span>@endif
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-        </div>
     @endif
 
     {{-- ===== Brackets & draws entry ===== --}}
@@ -555,65 +690,29 @@
         </a>
     </div>
 
-    {{-- ===== Location ===== --}}
-    @php
-        // Only ever allow http(s) URLs into an href (defense-in-depth vs javascript: URIs).
-        $locUrl = (is_string($e['location_url'] ?? null) && preg_match('#^https?://#i', $e['location_url'])) ? $e['location_url'] : null;
-    @endphp
-    <div class="px-4 mt-4">
-        <div class="m-card rounded-2xl overflow-hidden">
-            @if(!empty($e['lat']) && !empty($e['lng']))
-                {{-- Live location map (our shared map component, read-only display) --}}
-                <x-location-map
-                    :id="'evtmap'.$e['id']"
-                    :lat="$e['lat']" :lng="$e['lng']"
-                    :draggable="false" :readonly="true" :show-address="false" :show-coords="false" :show-labels="false"
-                    height="7rem" :zoom="15" map-class="bg-muted/30" />
-                <script>
-                    (function () {
-                        var id = 'evtmap{{ $e['id'] }}', lat = {{ $e['lat'] }}, lng = {{ $e['lng'] }}, tries = 0;
-                        (function go() {
-                            if (window.LocationMap) {
-                                window.LocationMap.create({ id: id, defaultLat: lat, defaultLng: lng, zoom: 15, draggable: false, readonly: true });
-                            } else if (tries++ < 60) {
-                                setTimeout(go, 100);
-                            }
-                        })();
-                    })();
-                </script>
-            @elseif($locUrl)
-                <a href="{{ $locUrl }}" target="_blank" rel="noopener"
-                   class="h-28 flex flex-col items-center justify-center gap-1" style="background: linear-gradient(135deg, {{ $e['color'] }}22, {{ $e['color'] }}11);">
-                    <i class="bi bi-geo-alt-fill text-3xl m-float" style="color: {{ $e['color'] }};"></i>
-                    <span class="text-xs font-bold text-primary">{{ __('personal.event_show_open_google_maps') }}</span>
-                </a>
-            @else
-                <div class="h-28 relative grid place-items-center"
-                     style="background: linear-gradient(135deg, {{ $e['color'] }}22, {{ $e['color'] }}11);">
-                    <i class="bi bi-geo-alt-fill text-3xl m-float" style="color: {{ $e['color'] }};"></i>
+    {{-- ===== Verification desk — officials only =====
+         Deliberately a separate door from the roster: the roster answers "who is
+         coming", this answers "who is cleared to fight", and only the people
+         appointed to sign that off ever see it. --}}
+    @if($canOfficiate ?? false)
+    <div class="px-4 mt-3">
+        <a href="{{ route('me.events.verify', $e['key']) }}" data-shell-link data-route="me.events"
+           class="block m-press rounded-2xl p-4 border-2 border-dashed"
+           style="border-color: {{ $e['color'] }}55;">
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 text-white"
+                     style="background: {{ $e['color'] }};">
+                    <i class="bi bi-clipboard2-check text-xl"></i>
                 </div>
-            @endif
-            <div class="p-4 flex items-start justify-between gap-3">
-                <div class="min-w-0">
-                    <p class="text-sm font-bold text-foreground">{{ $e['location'] }}</p>
-                    <p class="text-xs text-muted-foreground mt-0.5">{{ $e['address'] }}</p>
+                <div class="min-w-0 flex-1">
+                    <h3 class="font-black text-[15px] leading-tight text-foreground">{{ __('personal.event_verify_open') }}</h3>
+                    <p class="text-[11px] text-muted-foreground mt-0.5">{{ __('personal.event_verify_open_sub') }}</p>
                 </div>
-                @php
-                    // Google Maps turn-by-turn directions to the venue (coords > pasted link > place name).
-                    $dirHref = (!empty($e['lat']) && !empty($e['lng']))
-                        ? 'https://www.google.com/maps/dir/?api=1&destination=' . $e['lat'] . ',' . $e['lng']
-                        : ($locUrl
-                            ?: ($e['location'] && $e['location'] !== 'TBA' ? 'https://www.google.com/maps/dir/?api=1&destination=' . urlencode($e['location']) : null));
-                @endphp
-                @if($dirHref)
-                    <a href="{{ $dirHref }}" target="_blank" rel="noopener"
-                       class="m-press flex-shrink-0 px-3 py-1.5 rounded-lg bg-accent text-primary text-xs font-bold flex items-center gap-1.5">
-                        <i class="bi bi-cursor"></i> {{ __('personal.event_show_directions') }}
-                    </a>
-                @endif
+                <i class="bi bi-chevron-right text-muted-foreground rtl:rotate-180"></i>
             </div>
-        </div>
+        </a>
     </div>
+    @endif
 
     {{-- ===== Proof of payment =====
          The join / spectate CTAs that used to sit here are gone: the two pricing
@@ -640,6 +739,102 @@
             if (navigator.share) { navigator.share({ title: '{{ addslashes($e['title']) }}', text: '{{ addslashes(__('personal.event_show_share_text', ['title' => $e['title']])) }}' }).catch(()=>{}); }
             else { window.showToast('success', '{{ __('personal.event_show_link_copied') }}'); }
          "></div>
+
+    {{-- The join/spectate buttons sit LAST on purpose: someone scrolls the
+         event to decide, and the decision belongs at the end of that read
+         rather than interrupting it halfway down. --}}
+    {{-- ===== Join / spectate =====
+         Deliberately NOT in a card. Each button is already a self-contained
+         object with its own surface and shadow; wrapping them in a card put a
+         frame around a frame, and its "Entry & tickets" heading only said what
+         the two buttons say more clearly themselves. --}}
+    <div class="px-4 mt-4">
+
+        {{-- Each row IS the way in: the row already names the thing, its
+             price and who it is for, so a separate CTA underneath only
+             repeated it. Rows that cannot be taken (ineligible, already
+             registered, blocked, event over) stay on screen but disabled, so
+             the price list still reads as a price list.
+
+             A row shows a tick and turns green once you hold that place. --}}
+        @php
+            $locked = ($banned ?? false) || ($e['ended'] ?? false);
+            // $whyNot is set at the top of this view — the script partial needs it.
+            $canJoin = ! $locked && ($canCompete ?? true) && ! $byQual;
+        @endphp
+
+        {{-- ===== Join / spectate =====
+             Same shape as the "Brackets & draws" card further down the page:
+             a dark gradient, a soft circle bleeding off the corner, a
+             translucent icon tile and a chevron. Those already read as
+             pressable here, so the two ways INTO the event use the same
+             language rather than inventing a second one.
+
+             Green once you hold that place. The ineligible variant keeps the
+             shape but goes slate, so it still invites a tap ("Why not?")
+             without pretending to be the main action. --}}
+
+        {{-- Participant --}}
+        <button type="button"
+                @click="{{ $canJoin ? "startJoin('participant')" : 'explainIneligible()' }}"
+                :disabled="registered && !feeDue"
+                class="m-press mt-3 w-full block rounded-2xl p-4 text-white text-start relative overflow-hidden
+                       shadow-lg transition-all active:scale-[.98] disabled:cursor-not-allowed"
+                :style="(going && !feeDue)
+                    ? 'background: linear-gradient(135deg, #16a34a, #1f2937)'
+                    : going
+                    ? 'background: linear-gradient(135deg, #d97706, #1f2937)'
+                    : 'background: linear-gradient(135deg, {{ $canJoin ? $e['color'] : '#64748b' }}, #1f2937)'">
+            <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
+            <div class="relative flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
+                    <i class="bi text-2xl" :class="going ? 'bi-check2-circle' : '{{ $canJoin ? 'bi-person-check' : 'bi-info-circle' }}'"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <h3 class="font-black text-base leading-tight"
+                        x-text="!going ? '{{ $byQual ? __('personal.event_show_take_part') : __('personal.event_show_join_participant') }}' : (feeDue ? '{{ __('personal.event_show_place_held_fee_due') }}' : '{{ __('personal.event_show_youre_participant') }}')">{{ $byQual ? __('personal.event_show_take_part') : __('personal.event_show_join_participant') }}</h3>
+                    <p class="text-xs text-white/85 mt-0.5">
+                        @if(!($canCompete ?? true)) {{ __('personal.event_show_not_eligible_spectators') }}
+                        @elseif($byQual) {{ __('personal.event_show_reserved_finalists') }}
+                        @elseif($pPaid) {{ __('personal.event_show_fee_paid_club') }}
+                        @else {{ __('personal.event_show_free_members') }} @endif
+                    </p>
+                </div>
+                <span class="text-sm font-black flex-shrink-0"
+                      x-text="!going ? '{{ $canJoin ? $e['participant_fee'] : __('personal.event_show_cta_why') }}' : (feeDue ? '{{ __('personal.event_show_cta_fee_due') }}' : '{{ __('personal.event_show_cta_joined') }}')">{{ $canJoin ? $e['participant_fee'] : __('personal.event_show_cta_why') }}</span>
+                <i class="bi bi-chevron-right text-white/80 flex-shrink-0"></i>
+            </div>
+        </button>
+
+        {{-- Spectator ticket --}}
+        @if($hasTicket)
+            <button type="button" @click="startJoin('spectator')"
+                    :disabled="(registered && !feeDue) || {{ $locked ? 'true' : 'false' }}"
+                    class="m-press mt-2.5 w-full block rounded-2xl p-4 text-white text-start relative overflow-hidden
+                           shadow-lg transition-all active:scale-[.98]
+                           disabled:cursor-not-allowed disabled:opacity-60"
+                    :style="(watching && !feeDue)
+                        ? 'background: linear-gradient(135deg, #16a34a, #1f2937)'
+                        : watching
+                        ? 'background: linear-gradient(135deg, #d97706, #1f2937)'
+                        : 'background: linear-gradient(135deg, {{ $ticketPaid ? '#7c3aed' : '#0284c7' }}, #1f2937)'">
+                <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
+                <div class="relative flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
+                        <i class="bi text-2xl" :class="watching ? 'bi-check2-circle' : 'bi-ticket-perforated'"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <h3 class="font-black text-base leading-tight"
+                            x-text="!watching ? '{{ __('personal.event_show_spectator_ticket') }}' : (feeDue ? '{{ __('personal.event_show_place_held_fee_due') }}' : '{{ __('personal.event_show_ticket_booked') }}')">{{ __('personal.event_show_spectator_ticket') }}</h3>
+                        <p class="text-xs text-white/85 mt-0.5"><span x-text="spectators">{{ $e['spectator']['count'] }}</span> {{ __('personal.event_show_watching') }}{{ $ticketPaid ? ' · '.__('personal.event_show_entry_watch_matches') : ' · '.__('personal.event_show_free_to_watch') }}</p>
+                    </div>
+                    <span class="text-sm font-black flex-shrink-0"
+                          x-text="!watching ? '{{ $e['spectator']['fee'] }}' : (feeDue ? '{{ __('personal.event_show_cta_fee_due') }}' : '{{ __('personal.event_show_cta_booked') }}')">{{ $e['spectator']['fee'] }}</span>
+                    <i class="bi bi-chevron-right text-white/80 flex-shrink-0"></i>
+                </div>
+            </button>
+        @endif
+    </div>
 
     {{-- ===== Set-winners modal (managers) — teleported to body so the fixed
              overlay anchors to the viewport, not the transformed shell content. --}}

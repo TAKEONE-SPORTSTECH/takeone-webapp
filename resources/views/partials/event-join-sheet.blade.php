@@ -29,9 +29,11 @@
             <div class="flex-shrink-0 px-5 pt-3 pb-4 border-b border-gray-100">
                 <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
                 <h3 class="text-lg font-bold text-gray-900"
-                    x-text="joinRole === 'spectator'
-                        ? '{{ __('personal.event_show_spectator_ticket') }}'
-                        : '{{ __('personal.event_show_join_participant') }}'"></h3>
+                    x-text="joinMode === 'settle'
+                        ? '{{ __('personal.event_show_join_settle_title') }}'
+                        : (joinRole === 'spectator'
+                            ? '{{ __('personal.event_show_spectator_ticket') }}'
+                            : '{{ __('personal.event_show_join_participant') }}')"></h3>
                 <p class="text-sm text-muted-foreground truncate">{{ $e['title'] }}</p>
             </div>
 
@@ -50,9 +52,38 @@
                     </div>
                 </div>
 
-                {{-- How to pay --}}
+                {{-- Choose a method. No gateway exists, so 'online' means a
+                     transfer the club verifies — not a card charge. --}}
                 <div>
                     <p class="text-sm font-bold text-foreground mb-2">{{ __('personal.event_show_join_how_to_pay') }}</p>
+
+                    <div class="grid grid-cols-2 gap-2 mb-3">
+                        <button type="button" @click="payMethod = 'online'"
+                                :class="payMethod === 'online' ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 text-foreground'"
+                                class="rounded-xl border-2 p-3 text-start transition-colors">
+                            <i class="bi bi-bank text-lg"></i>
+                            <p class="text-[13px] font-bold mt-1">{{ __('personal.event_show_pay_online') }}</p>
+                            <p class="text-[10px] text-muted-foreground leading-snug">{{ __('personal.event_show_pay_online_hint') }}</p>
+                        </button>
+                        <button type="button" @click="payMethod = 'cash'"
+                                :class="payMethod === 'cash' ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 text-foreground'"
+                                class="rounded-xl border-2 p-3 text-start transition-colors">
+                            <i class="bi bi-cash-stack text-lg"></i>
+                            <p class="text-[13px] font-bold mt-1">{{ __('personal.event_show_pay_cash') }}</p>
+                            <p class="text-[10px] text-muted-foreground leading-snug">{{ __('personal.event_show_pay_cash_hint') }}</p>
+                        </button>
+                    </div>
+
+                    {{-- Cash: nothing to copy, just where to hand it over. --}}
+                    <div x-show="payMethod === 'cash'" x-cloak
+                         class="rounded-xl border border-gray-200 p-3 flex items-start gap-2.5">
+                        <i class="bi bi-geo-alt text-primary mt-0.5"></i>
+                        <p class="text-[13px] text-muted-foreground leading-snug">
+                            {{ __('personal.event_show_join_pay_at_club', ['club' => $payment['club'] ?? '']) }}
+                        </p>
+                    </div>
+
+                    <div x-show="payMethod === 'online'" x-cloak>
 
                     @if(!empty($payment['bank']))
                         <ol class="space-y-3">
@@ -94,6 +125,7 @@
                             </p>
                         </div>
                     @endif
+                    </div>
                 </div>
 
                 <p class="text-[11px] text-muted-foreground flex items-start gap-1.5">
@@ -102,20 +134,39 @@
                 </p>
             </div>
 
-            {{-- Both paths register you. Only the next screen differs. --}}
+            {{-- The action depends on the method chosen. Nothing is committed until
+                 one of these is pressed. --}}
             <div class="flex-shrink-0 px-5 pt-3 border-t border-gray-100 space-y-2"
                  style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
-                <button type="button" @click="finishJoin(true)" :disabled="busy"
+
+                {{-- Online: they say they have transferred it, and upload a receipt. --}}
+                <button type="button" x-show="payMethod === 'online'" x-cloak
+                        @click="finishJoin(true)" :disabled="busy"
                         class="m-press w-full py-3 rounded-xl bg-primary text-white font-bold text-sm
                                flex items-center justify-center gap-2 active:scale-[.98] transition disabled:opacity-60">
                     <i class="bi bi-upload"></i>
                     <span x-text="busy ? '{{ __('personal.event_show_join_working') }}' : '{{ __('personal.event_show_join_paid_upload') }}'"></span>
                 </button>
-                <button type="button" @click="finishJoin(false)" :disabled="busy"
+
+                {{-- Cash: nothing to upload; the fee stays due until the club takes it. --}}
+                <button type="button" x-show="payMethod === 'cash'" x-cloak
+                        @click="finishJoin(false)" :disabled="busy"
+                        class="m-press w-full py-3 rounded-xl bg-primary text-white font-bold text-sm
+                               flex items-center justify-center gap-2 active:scale-[.98] transition disabled:opacity-60">
+                    <i class="bi bi-check2"></i>
+                    <span x-text="busy ? '{{ __('personal.event_show_join_working') }}' : '{{ __('personal.event_show_join_cash_confirm') }}'"></span>
+                </button>
+
+                {{-- Taking a place without deciding how to pay. Not offered when
+                     settling: they already have the place, so this would be a
+                     button that does nothing. --}}
+                <button type="button" x-show="joinMode !== 'settle'"
+                        @click="finishJoin(false)" :disabled="busy"
                         class="m-press w-full py-3 rounded-xl border border-gray-200 text-foreground font-semibold text-sm
                                active:scale-[.98] transition disabled:opacity-60">
                     {{ __('personal.event_show_join_pay_later') }}
                 </button>
+
                 <button type="button" @click="closeJoin()" :disabled="busy"
                         class="w-full py-2 text-[12px] font-semibold text-muted-foreground">
                     {{ __('shared.cancel') }}
