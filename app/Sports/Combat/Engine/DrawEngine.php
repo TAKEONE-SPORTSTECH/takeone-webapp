@@ -34,6 +34,15 @@ class DrawEngine
                 continue; // hand-built bracket
             }
 
+            // A draw an organiser arranged by hand is theirs. It is never
+            // re-cut — not when an entrant joins, and not when the event starts
+            // — because re-cutting would silently throw away the matchups they
+            // deliberately set. Keeping it in step with the entrant list is the
+            // owning package's job (see Tournament::onEntrantsChanged).
+            if ($cat->draw_state === 'manual') {
+                continue;
+            }
+
             if ($started) {
                 if ($cat->draw_state === 'final') {
                     continue; // locked
@@ -73,7 +82,10 @@ class DrawEngine
             ->get();
 
         // Stable pseudo-random spread; provisional = at risk of removal at start (unpaid OR not weighed in).
+        // Each slot carries the ENTRY it came from, so a bout knows who is
+        // actually fighting it — not just what to print on the board.
         $competitors = $regs->map(fn ($r) => [
+            'id' => $r->id,
             'name' => $r->user?->full_name ?? $r->user?->name ?? 'Athlete',
             'provisional' => ! $paidOnly && (! $r->paid || $r->weight === null),
             'key' => md5($cat->id.':'.$r->user_id),
@@ -114,8 +126,10 @@ class DrawEngine
                 'phase' => $this->phaseForRound($rounds[0]),
                 'slot' => $slot++,
                 'a_name' => $a['name'] ?? null,
+                'a_competitor_id' => $a['id'] ?? null,
                 'a_provisional' => $a['provisional'] ?? false,
                 'b_name' => $b['name'] ?? null,
+                'b_competitor_id' => $b['id'] ?? null,
                 'b_provisional' => $b['provisional'] ?? false,
                 'winner' => $bye ? ($a ? 'a' : 'b') : null,
                 'status' => $bye ? 'done' : 'upcoming',

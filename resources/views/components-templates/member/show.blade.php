@@ -37,7 +37,9 @@
     <div class="bg-white rounded-xl shadow-sm mb-4">
         <div class="flex flex-col sm:flex-row">
             <!-- Profile Picture -->
-            <div class="relative w-full sm:w-[180px] aspect-[3/4] overflow-hidden rounded-t-xl sm:rounded-t-none sm:rounded-s-xl flex-shrink-0">
+            {{-- Per-corner logical radii: rounded-t-* and rounded-s-* both write border-top-left-radius,
+                 so the shorthand pair silently squared off the top-start corner. --}}
+            <div class="relative w-full sm:w-[180px] aspect-[3/4] overflow-hidden rounded-ss-xl rounded-se-xl sm:rounded-se-none sm:rounded-es-xl flex-shrink-0">
                 @if($relationship->dependent->profile_picture)
                     <img id="member-profile-pic" src="{{ asset('storage/' . $relationship->dependent->profile_picture) }}?v={{ $relationship->dependent->updated_at->timestamp }}" alt="{{ $relationship->dependent->full_name }}" class="w-full h-full" style="object-fit: cover;">
                 @endif
@@ -1235,111 +1237,201 @@
                 <div class="p-4">
                     <h6 class="font-bold mb-3"><i class="bi bi-list-ul me-2"></i>{{ __('member.templates_member_show_tournament_history') }}</h6>
 
-                    <div class="overflow-x-auto" id="tournamentsTableWrapper" style="{{ $tournamentEvents->count() > 0 ? '' : 'display:none;' }}">
-                            <table class="w-full text-sm" id="tournamentsTable">
-                                <thead class="bg-gray-50 border-b border-gray-200">
-                                    <tr>
-                                        <th class="text-gray-500 text-sm font-semibold">{{ __('member.templates_member_show_th_tournament_details') }}</th>
-                                        <th class="text-gray-500 text-sm font-semibold">{{ __('member.templates_member_show_th_club_affiliation') }}</th>
-                                        <th class="text-gray-500 text-sm font-semibold">{{ __('member.templates_member_show_th_performance_result') }}</th>
-                                        <th class="text-gray-500 text-sm font-semibold">{{ __('member.templates_member_show_th_notes_media') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tournamentsTableBody">
-                                    @foreach($tournamentEvents as $event)
-                                        <tr data-sport="{{ $event->sport }}">
-                                            <td>
-                                                <div class="font-bold">{{ $event->title }}</div>
-                                                <div class="flex gap-2 mt-1 flex-wrap">
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $event->type == 'championship' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-800' }}">{{ ucfirst($event->type) }}</span>
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{{ $event->sport }}</span>
+                    {{-- Medal theme drives each card's rail + medallion. Ranked so the best result on an
+                         event sets the accent (gold › special › silver › bronze › none). --}}
+                    @php
+                        // Same ladder the server enforces: own profile → guardian → super-admin view.
+                        $canManageRecords = $relationship->relationship_type == 'self'
+                            || Auth::id() == $relationship->guardian_user_id
+                            || $relationship->relationship_type == 'admin_view';
+                        $medalRank = ['1st' => 4, 'special' => 3, '2nd' => 2, '3rd' => 1];
+                        $medalTheme = [
+                            '1st'     => ['rail' => 'bg-amber-400',  'tile' => 'bg-amber-50 text-amber-600 ring-amber-100',    'chip' => 'bg-amber-100 text-amber-800',   'icon' => 'bi-award-fill', 'label' => __('member.templates_member_show_first_place')],
+                            '2nd'     => ['rail' => 'bg-slate-300',  'tile' => 'bg-slate-50 text-slate-500 ring-slate-200',    'chip' => 'bg-slate-100 text-slate-700',   'icon' => 'bi-award-fill', 'label' => __('member.templates_member_show_second_place')],
+                            '3rd'     => ['rail' => 'bg-orange-400', 'tile' => 'bg-orange-50 text-orange-600 ring-orange-100', 'chip' => 'bg-orange-100 text-orange-800', 'icon' => 'bi-award-fill', 'label' => __('member.templates_member_show_third_place')],
+                            'special' => ['rail' => 'bg-primary',    'tile' => 'bg-accent text-primary ring-primary/15',       'chip' => 'bg-accent text-primary',        'icon' => 'bi-trophy-fill','label' => __('member.templates_member_show_special_award')],
+                        ];
+                        $medalNone = ['rail' => 'bg-gray-200', 'tile' => 'bg-gray-50 text-gray-400 ring-gray-100', 'icon' => 'bi-flag'];
+                    @endphp
+
+                    <div id="tournamentsListWrapper" class="space-y-3" style="{{ $tournamentEvents->count() > 0 ? '' : 'display:none;' }}">
+                        <div id="tournamentsList" class="space-y-3">
+                            @foreach($tournamentEvents as $event)
+                                @php
+                                    $medals = $event->performanceResults->pluck('medal_type')->filter()->values();
+                                    $best   = $medals->sortByDesc(fn ($m) => $medalRank[$m] ?? 0)->first();
+                                    $theme  = $medalTheme[$best] ?? $medalNone;
+
+                                    // A club's decision is final — never offer a button that would no-op.
+                                    $clubDecided = $event->verification_method === 'club_confirm'
+                                        && in_array($event->verification_status, ['verified', 'rejected'], true);
+                                    $canRequestVerify = $event->clubAffiliation?->tenant_id
+                                        && ! $clubDecided
+                                        && $event->verification_status !== 'verified';
+
+                                    // Raw values for the edit form — display copies above are formatted.
+                                    $editPayload = [
+                                        'uuid' => $event->uuid,
+                                        'title' => $event->title,
+                                        'type' => $event->type,
+                                        'sport' => $event->sport,
+                                        'date' => optional($event->date)->toDateString(),
+                                        'time' => optional($event->time)->format('H:i'),
+                                        'location' => $event->location,
+                                        'participants_count' => $event->participants_count,
+                                        'club_affiliation_id' => $event->club_affiliation_id,
+                                        'verified' => $event->verification_status === 'verified',
+                                        'performance_results' => $event->performanceResults
+                                            ->map(fn ($r) => ['medal_type' => $r->medal_type, 'points' => $r->points, 'description' => $r->description])
+                                            ->values()->all(),
+                                        'notes_media' => $event->notesMedia
+                                            ->map(fn ($n) => ['note_text' => $n->note_text, 'media_link' => $n->media_link])
+                                            ->values()->all(),
+                                    ];
+                                @endphp
+                                <article data-tournament-row
+                                         data-uuid="{{ $event->uuid }}"
+                                         data-sport="{{ $event->sport }}"
+                                         data-medals="{{ $medals->unique()->implode(' ') }}"
+                                         @if($canManageRecords)
+                                             data-edit="{{ json_encode($editPayload) }}"
+                                             data-update-url="{{ route('member.tournament.update', [$event->user_id, $event->uuid]) }}"
+                                             data-delete-url="{{ route('member.tournament.destroy', [$event->user_id, $event->uuid]) }}"
+                                         @endif
+                                         class="group relative bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 transition-all overflow-hidden">
+                                    <span class="absolute inset-y-0 start-0 w-1 {{ $theme['rail'] }}"></span>
+
+                                    <div class="p-4 ps-5 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_18rem] gap-4">
+
+                                        {{-- Identity: medallion, title, classification, when & where, provenance --}}
+                                        <div class="flex items-start gap-3 min-w-0">
+                                            <span class="w-12 h-12 rounded-xl grid place-items-center ring-1 flex-shrink-0 {{ $theme['tile'] }} group-hover:scale-105 transition-transform">
+                                                <i class="bi {{ $theme['icon'] }} text-lg"></i>
+                                            </span>
+                                            <div class="min-w-0 flex-1">
+                                                <div class="flex items-start gap-2">
+                                                    <h6 class="font-bold text-[15px] text-gray-900 leading-snug break-words flex-1">{{ $event->title }}</h6>
+                                                    @if($canManageRecords)
+                                                        {{-- Record actions: edit / delete. Server re-checks the same ladder. --}}
+                                                        <div x-data="{ open: false }" class="relative flex-shrink-0 -mt-1">
+                                                            <button type="button" @click="open = !open" @click.outside="open = false"
+                                                                    class="w-8 h-8 rounded-lg grid place-items-center text-gray-400 hover:text-gray-700 hover:bg-gray-50 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                                                                    aria-label="{{ __('shared.actions') }}">
+                                                                <i class="bi bi-three-dots-vertical"></i>
+                                                            </button>
+                                                            <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-100"
+                                                                 x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                                                                 class="absolute end-0 mt-1 w-44 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20 overflow-hidden">
+                                                                <button type="button" @click="open = false; editTournament($el)"
+                                                                        class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-muted/60 transition-colors">
+                                                                    <i class="bi bi-pencil text-primary"></i>{{ __('shared.edit') }}
+                                                                </button>
+                                                                <button type="button" @click="open = false; deleteTournament($el)"
+                                                                        class="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                                                    <i class="bi bi-trash"></i>{{ __('shared.delete') }}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    @endif
                                                 </div>
-                                                <div class="text-gray-500 text-sm mt-1">
-                                                    <i class="bi bi-calendar-event me-1"></i>{{ $event->date->format('M j, Y') }}
+
+                                                <div class="flex gap-1.5 mt-1.5 flex-wrap">
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold {{ $event->type == 'championship' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-700' }}">{{ ucfirst($event->type) }}</span>
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700">{{ $event->sport }}</span>
+                                                </div>
+
+                                                <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                                                    <span class="inline-flex items-center gap-1"><i class="bi bi-calendar-event text-primary/50"></i>{{ $event->date->format('M j, Y') }}</span>
                                                     @if($event->time)
-                                                        <i class="bi bi-clock me-1 ms-2"></i>{{ $event->time->format('H:i') }}
+                                                        <span class="inline-flex items-center gap-1"><i class="bi bi-clock text-primary/50"></i>{{ $event->time->format('H:i') }}</span>
                                                     @endif
                                                     @if($event->location)
-                                                        <i class="bi bi-geo-alt me-1 ms-2"></i>{{ $event->location }}
+                                                        <span class="inline-flex items-center gap-1 min-w-0"><i class="bi bi-geo-alt text-primary/50"></i><span class="truncate">{{ $event->location }}</span></span>
                                                     @endif
                                                     @if($event->participants_count)
-                                                        <i class="bi bi-people me-1 ms-2"></i>{{ $event->participants_count }} {{ __('member.templates_member_show_participants') }}
+                                                        <span class="inline-flex items-center gap-1"><i class="bi bi-people text-primary/50"></i>{{ $event->participants_count }} {{ __('member.templates_member_show_participants') }}</span>
                                                     @endif
                                                 </div>
+
                                                 {{-- Provenance: honest verification state + evidence + request action --}}
-                                                <div class="mt-2 flex items-center gap-2 flex-wrap" data-verify-row="{{ $event->uuid }}">
+                                                <div class="mt-2.5 flex items-center gap-2 flex-wrap" data-verify-row="{{ $event->uuid }}">
                                                     <x-verification-badge data-verify-badge :status="$event->verification_status" :club="$event->verifiedByTenant?->tr('club_name') ?? $event->verifiedByTenant?->club_name" />
                                                     @if($event->evidence_path)
                                                         <a href="{{ route('member.tournament.evidence', [$event->user_id, $event->uuid]) }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-[11px] text-gray-500 hover:text-primary"><i class="bi bi-paperclip"></i>{{ __('Evidence') }}</a>
                                                     @endif
-                                                    @if($event->clubAffiliation?->tenant_id && ! in_array($event->verification_status, ['verified','pending']))
-                                                        <button type="button" data-verify-btn onclick="requestAchievementVerification(this)" data-verify-url="{{ route('member.tournament.request-verification', [$event->user_id, $event->uuid]) }}" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"><i class="bi bi-patch-check"></i>{{ __('Request verification') }}</button>
+                                                    @if($canManageRecords && $canRequestVerify)
+                                                        {{-- While pending this is a rate-limited nudge, not a new request. --}}
+                                                        <button type="button" data-verify-btn onclick="requestAchievementVerification(this)" data-verify-url="{{ route('member.tournament.request-verification', [$event->user_id, $event->uuid]) }}" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"><i class="bi bi-patch-check"></i>{{ $event->verification_status === 'pending' ? __('member.tournament_verify_resend') : __('Request verification') }}</button>
+                                                    @elseif($canManageRecords && ! $event->clubAffiliation?->tenant_id && $event->verification_status !== 'verified')
+                                                        {{-- No platform club to confirm → peers/coaches vouch on the public profile. --}}
+                                                        <button type="button" onclick="shareTournamentForVouch('{{ route('people.show', $relationship->dependent->uuid) }}')" title="{{ __('member.get_vouched_hint') }}" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"><i class="bi bi-people"></i>{{ __('member.get_vouched') }}</button>
                                                     @endif
                                                     @if($event->verification_status === 'rejected' && $event->verification_note)
                                                         <span class="text-[11px] text-red-500 italic">{{ $event->verification_note }}</span>
                                                     @endif
                                                 </div>
-                                            </td>
-                                            <td>
-                                                @if($event->clubAffiliation)
-                                                    <div>
-                                                        <div class="small font-semibold">{{ $event->clubAffiliation->club_name }}</div>
-                                                        <div class="text-gray-500 text-sm">{{ $event->clubAffiliation->location }}</div>
+                                            </div>
+                                        </div>
+
+                                        {{-- Outcome column: result, who they competed for, notes --}}
+                                        <div class="flex flex-col gap-3 lg:border-s lg:border-gray-100 lg:ps-4">
+                                            <div>
+                                                <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">{{ __('member.templates_member_show_th_performance_result') }}</p>
+                                                @if($event->performanceResults->count() > 0)
+                                                    <div class="flex flex-col gap-1.5">
+                                                        @foreach($event->performanceResults as $result)
+                                                            @php $rt = $medalTheme[$result->medal_type] ?? null; @endphp
+                                                            <div class="flex items-center gap-2 flex-wrap">
+                                                                @if($rt)
+                                                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold {{ $rt['chip'] }}"><i class="bi {{ $rt['icon'] }}"></i>{{ $rt['label'] }}</span>
+                                                                @endif
+                                                                @if($result->points)
+                                                                    <span class="text-[11px] font-medium text-gray-500 tabular-nums">{{ $result->points }} {{ __('member.templates_member_show_pts') }}</span>
+                                                                @endif
+                                                            </div>
+                                                            @if($result->description)
+                                                                <p class="text-[11px] text-gray-400 leading-snug">{{ $result->description }}</p>
+                                                            @endif
+                                                        @endforeach
                                                     </div>
                                                 @else
-                                                    <span class="text-gray-500 text-sm">{{ __('member.templates_member_show_individual') }}</span>
+                                                    <p class="text-xs text-gray-400 italic">{{ __('member.templates_member_show_no_results_recorded') }}</p>
                                                 @endif
-                                            </td>
-                                            <td>
-                                                @if($event->performanceResults->count() > 0)
-                                                    @foreach($event->performanceResults as $result)
-                                                        <div class="flex items-center gap-2 mb-1">
-                                                            @if($result->medal_type == '1st')
-                                                                <i class="bi bi-award-fill text-warning"></i>
-                                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">{{ __('member.templates_member_show_first_place') }}</span>
-                                                            @elseif($result->medal_type == '2nd')
-                                                                <i class="bi bi-award-fill text-secondary"></i>
-                                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">{{ __('member.templates_member_show_second_place') }}</span>
-                                                            @elseif($result->medal_type == '3rd')
-                                                                <i class="bi bi-award-fill" style="color: #CD7F32;"></i>
-                                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white" style="background-color: #CD7F32;">{{ __('member.templates_member_show_third_place') }}</span>
-                                                            @elseif($result->medal_type == 'special')
-                                                                <i class="bi bi-trophy-fill text-warning"></i>
-                                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">{{ __('member.templates_member_show_special_award') }}</span>
-                                                            @endif
-                                                            @if($result->points)
-                                                                <small class="text-gray-500">{{ $result->points }} pts</small>
-                                                            @endif
-                                                        </div>
-                                                        @if($result->description)
-                                                            <small class="text-gray-500">{{ $result->description }}</small>
-                                                        @endif
-                                                    @endforeach
+                                            </div>
+
+                                            <div class="border-t border-gray-50 pt-2.5">
+                                                <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{{ __('member.templates_member_show_th_club_affiliation') }}</p>
+                                                @if($event->clubAffiliation)
+                                                    <p class="text-xs font-semibold text-gray-700 truncate">{{ $event->clubAffiliation->club_name }}</p>
+                                                    @if($event->clubAffiliation->location)
+                                                        <p class="text-[11px] text-gray-400 truncate">{{ $event->clubAffiliation->location }}</p>
+                                                    @endif
                                                 @else
-                                                    <span class="text-gray-500 text-sm">{{ __('member.templates_member_show_no_results_recorded') }}</span>
+                                                    <p class="inline-flex items-center gap-1 text-xs text-gray-500"><i class="bi bi-person"></i>{{ __('member.templates_member_show_individual') }}</p>
                                                 @endif
-                                            </td>
-                                            <td>
-                                                @if($event->notesMedia->count() > 0)
+                                            </div>
+
+                                            @if($event->notesMedia->count() > 0)
+                                                <div class="border-t border-gray-50 pt-2.5">
+                                                    <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{{ __('member.templates_member_show_th_notes_media') }}</p>
                                                     @foreach($event->notesMedia as $note)
                                                         @if($note->note_text)
-                                                            <p class="mb-1 small">{{ $note->note_text }}</p>
+                                                            <p class="text-xs text-gray-600 leading-snug mb-1">{{ $note->note_text }}</p>
                                                         @endif
                                                         @if($note->media_link)
-                                                            <a href="{{ $note->media_link }}" target="_blank" class="border border-primary text-primary px-2 py-1 rounded text-xs hover:bg-primary hover:text-white transition-colors">
-                                                                <i class="bi bi-image me-1"></i>{{ __('member.templates_member_show_view_media') }}
+                                                            <a href="{{ $note->media_link }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline">
+                                                                <i class="bi bi-image"></i>{{ __('member.templates_member_show_view_media') }}
                                                             </a>
                                                         @endif
                                                     @endforeach
-                                                @else
-                                                    <span class="text-gray-500 text-sm">{{ __('member.templates_member_show_no_notes_available') }}</span>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </article>
+                            @endforeach
                         </div>
+                    </div>
                         <div class="text-center py-5" id="tournamentsEmptyState" style="{{ $tournamentEvents->count() > 0 ? 'display:none;' : '' }}">
                             <i class="bi bi-trophy text-gray-500" style="font-size: 3rem;"></i>
                             <p class="text-gray-500 mt-3">{{ __('member.templates_member_show_no_tournament_records') }}</p>
@@ -2122,12 +2214,20 @@
                  x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
                  class="relative bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden" @click.stop>
                 <div class="flex items-center justify-between p-4 border-b border-gray-200 flex items-center justify-between p-4 border-b">
-                    <h5 class="text-lg font-medium font-medium text-lg">{{ __('member.templates_member_show_add_tournament_participation') }}</h5>
+                    <h5 id="tournamentModalTitle" class="text-lg font-medium font-medium text-lg">{{ __('member.templates_member_show_add_tournament_participation') }}</h5>
                     <button type="button" @click="open = false" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
                 </div>
-                <form id="tournamentParticipationForm" method="POST" action="{{ $relationship->relationship_type === 'admin_view' ? route('admin.platform.members.store-tournament', $relationship->dependent->id) : route('member.store-tournament', $relationship->dependent->id) }}">
+                <form id="tournamentParticipationForm" method="POST"
+                      data-create-action="{{ $relationship->relationship_type === 'admin_view' ? route('admin.platform.members.store-tournament', $relationship->dependent->id) : route('member.store-tournament', $relationship->dependent->id) }}"
+                      action="{{ $relationship->relationship_type === 'admin_view' ? route('admin.platform.members.store-tournament', $relationship->dependent->id) : route('member.store-tournament', $relationship->dependent->id) }}">
                     @csrf
+                    {{-- 'POST' on create, 'PUT' on edit (Laravel method spoofing). --}}
+                    <input type="hidden" name="_method" id="tournamentFormMethod" value="POST">
                     <div class="p-4 p-4 overflow-y-auto" style="max-height: calc(90vh - 140px);">
+                        <div id="tournamentEditWarning" class="hidden mb-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                            <i class="bi bi-exclamation-triangle-fill mt-0.5"></i>
+                            <span>{{ __('member.tournament_edit_resets_badge') }}</span>
+                        </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <!-- Tournament Details -->
                             <div>
@@ -2699,7 +2799,7 @@
 
         // Tournament filtering functionality
         const sportFilter = document.getElementById('sportFilter');
-        const tournamentsTable = document.getElementById('tournamentsTable');
+        const tournamentsList = document.getElementById('tournamentsList');
         const awardCards = document.getElementById('awardCards');
 
         // Global variables for current filters
@@ -2707,60 +2807,35 @@
         let currentMedalFilter = 'all';
 
         function applyTournamentFilters() {
-            const rows = tournamentsTable.querySelectorAll('tbody tr');
+            if (!tournamentsList) return;
+            const rows = tournamentsList.querySelectorAll('[data-tournament-row]');
 
             let visibleRows = 0;
-            let specialCount = 0, firstCount = 0, secondCount = 0, thirdCount = 0;
+            const counts = { special: 0, '1st': 0, '2nd': 0, '3rd': 0 };
 
             rows.forEach(row => {
+                // Medals live on the card as a data attribute, so filtering never depends on
+                // reading translated badge text out of the DOM.
                 const sport = row.getAttribute('data-sport');
-                const performanceCell = row.querySelector('td:nth-child(3)');
-                let hasMatchingMedal = false;
-
-                if (performanceCell) {
-                    const badges = performanceCell.querySelectorAll('.badge');
-                    badges.forEach(badge => {
-                        if (currentMedalFilter === 'all') {
-                            hasMatchingMedal = true;
-                        } else if (currentMedalFilter === 'special' && badge.textContent.includes('{{ __("member.templates_member_show_special_award") }}')) {
-                            hasMatchingMedal = true;
-                        } else if (currentMedalFilter === '1st' && badge.textContent.includes('{{ __("member.templates_member_show_first_place") }}')) {
-                            hasMatchingMedal = true;
-                        } else if (currentMedalFilter === '2nd' && badge.textContent.includes('{{ __("member.templates_member_show_second_place") }}')) {
-                            hasMatchingMedal = true;
-                        } else if (currentMedalFilter === '3rd' && badge.textContent.includes('{{ __("member.templates_member_show_third_place") }}')) {
-                            hasMatchingMedal = true;
-                        }
-                    });
-                }
+                const medals = (row.getAttribute('data-medals') || '').split(' ').filter(Boolean);
 
                 const sportMatch = currentSportFilter === 'all' || sport === currentSportFilter;
-                const medalMatch = currentMedalFilter === 'all' || hasMatchingMedal;
+                const medalMatch = currentMedalFilter === 'all' || medals.includes(currentMedalFilter);
 
                 if (sportMatch && medalMatch) {
                     row.style.display = '';
                     visibleRows++;
-
-                    // Count awards in visible rows
-                    if (performanceCell) {
-                        const badges = performanceCell.querySelectorAll('.badge');
-                        badges.forEach(badge => {
-                            if (badge.textContent.includes('{{ __("member.templates_member_show_special_award") }}')) specialCount++;
-                            else if (badge.textContent.includes('{{ __("member.templates_member_show_first_place") }}')) firstCount++;
-                            else if (badge.textContent.includes('{{ __("member.templates_member_show_second_place") }}')) secondCount++;
-                            else if (badge.textContent.includes('{{ __("member.templates_member_show_third_place") }}')) thirdCount++;
-                        });
-                    }
+                    medals.forEach(m => { if (counts[m] !== undefined) counts[m]++; });
                 } else {
                     row.style.display = 'none';
                 }
             });
 
             // Update award counts
-            document.getElementById('specialCount').textContent = specialCount;
-            document.getElementById('firstCount').textContent = firstCount;
-            document.getElementById('secondCount').textContent = secondCount;
-            document.getElementById('thirdCount').textContent = thirdCount;
+            document.getElementById('specialCount').textContent = counts.special;
+            document.getElementById('firstCount').textContent = counts['1st'];
+            document.getElementById('secondCount').textContent = counts['2nd'];
+            document.getElementById('thirdCount').textContent = counts['3rd'];
 
             // Show/hide award cards based on visible rows
             if (visibleRows === 0) {
@@ -2770,12 +2845,16 @@
             }
         }
 
-        if (sportFilter && tournamentsTable) {
+        if (sportFilter && tournamentsList) {
             sportFilter.addEventListener('change', function() {
                 currentSportFilter = this.value;
                 applyTournamentFilters();
             });
         }
+
+        // Exposed: the record card handlers live in a different script block and
+        // re-apply the filters after adding, editing or deleting a card.
+        window.applyTournamentFilters = applyTournamentFilters;
 
         // Function to filter tournaments by medal type (called from achievement badges)
         window.filterTournamentsByMedal = function(medalType) {
@@ -3677,7 +3756,135 @@ document.addEventListener('DOMContentLoaded', function() {
         if (evInput) evInput.value = '';
         if (evPrev) { evPrev.classList.add('hidden'); const img = evPrev.querySelector('img'); if (img) img.src = ''; }
         if (evLabel) evLabel.textContent = '{{ __('Choose an image (JPG, PNG, WebP)') }}';
+
+        // Back to CREATE mode — editTournament() re-points these afterwards.
+        const tForm = document.getElementById('tournamentParticipationForm');
+        if (tForm) tForm.action = tForm.dataset.createAction;
+        const tMethod = document.getElementById('tournamentFormMethod');
+        if (tMethod) tMethod.value = 'POST';
+        const tTitle = document.getElementById('tournamentModalTitle');
+        if (tTitle) tTitle.textContent = '{{ __('member.templates_member_show_add_tournament_participation') }}';
+        const tWarn = document.getElementById('tournamentEditWarning');
+        if (tWarn) tWarn.classList.add('hidden');
+        // Alpine owns the date dropdown's state; clearing .value alone wouldn't stick.
+        setTournamentDate('');
     });
+
+    /** Push a YYYY-MM-DD string into the Alpine-backed birthdate dropdown. */
+    function setTournamentDate(iso) {
+        const hidden = document.getElementById('tournament_date');
+        if (!hidden) return;
+        const scope = hidden.closest('[x-data]');
+        const state = (window.Alpine && scope) ? Alpine.$data(scope) : null;
+        if (!state) { hidden.value = iso || ''; return; }
+        const [y, m, d] = (iso || '').split('-');
+        state.selectedYear = y || '';
+        state.selectedMonth = m || '';
+        state.selectedDay = d || '';
+        state.hiddenValue = (y && m && d) ? iso : '';
+    }
+
+    /** Open the tournament modal in EDIT mode, prefilled from the card's data-edit blob. */
+    window.editTournament = function (el) {
+        const card = el.closest('[data-tournament-row]');
+        if (!card || !card.dataset.edit) return;
+
+        let t;
+        try { t = JSON.parse(card.dataset.edit); } catch (e) { return; }
+
+        // Resets the form and every dynamic row, then we fill it in.
+        window.dispatchEvent(new CustomEvent('open-tournament-modal'));
+
+        const form = document.getElementById('tournamentParticipationForm');
+        form.action = card.dataset.updateUrl;
+        document.getElementById('tournamentFormMethod').value = 'PUT';
+        document.getElementById('tournamentModalTitle').textContent = '{{ __('member.tournament_edit_title') }}';
+        document.getElementById('tournamentEditWarning').classList.toggle('hidden', !t.verified);
+
+        form.querySelector('#tournament_title').value = t.title || '';
+        form.querySelector('#tournament_type').value = t.type || '';
+        form.querySelector('#tournament_sport').value = t.sport || '';
+        form.querySelector('#tournament_time').value = t.time || '';
+        form.querySelector('#tournament_location').value = t.location || '';
+        form.querySelector('#participants_count').value = t.participants_count || '';
+        form.querySelector('#club_affiliation_id').value = t.club_affiliation_id || '';
+        setTournamentDate(t.date);
+
+        // Rebuild the repeatable rows — the reset left exactly one empty row of each.
+        (t.performance_results || []).forEach((r, i) => {
+            if (i > 0) document.getElementById('addPerformanceResult').click();
+            const row = document.querySelectorAll('#performanceResultsContainer .performance-result-item')[i];
+            if (!row) return;
+            row.querySelector('[name$="[medal_type]"]').value = r.medal_type || '';
+            row.querySelector('[name$="[points]"]').value = r.points ?? '';
+            row.querySelector('[name$="[description]"]').value = r.description || '';
+        });
+        (t.notes_media || []).forEach((n, i) => {
+            if (i > 0) document.getElementById('addNotesMedia').click();
+            const row = document.querySelectorAll('#notesMediaContainer .notes-media-item')[i];
+            if (!row) return;
+            row.querySelector('[name$="[note_text]"]').value = n.note_text || '';
+            row.querySelector('[name$="[media_link]"]').value = n.media_link || '';
+        });
+    }
+
+    /** Delete a tournament record after an in-app confirmation (never a native dialog). */
+    window.deleteTournament = async function (el) {
+        const card = el.closest('[data-tournament-row]');
+        if (!card || !card.dataset.deleteUrl) return;
+
+        const ok = await window.confirmAction({
+            title: '{{ __('member.tournament_delete_confirm_title') }}',
+            message: '{{ __('member.tournament_delete_confirm_body') }}',
+            type: 'danger',
+            confirmText: '{{ __('shared.delete') }}',
+        });
+        if (!ok) return;
+
+        try {
+            const res = await fetch(card.dataset.deleteUrl, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+            const data = await res.json();
+            if (data.success) {
+                card.remove();
+                window.applyTournamentFilters && window.applyTournamentFilters();
+                const list = document.getElementById('tournamentsList');
+                if (list && !list.querySelector('[data-tournament-row]')) {
+                    const wrapper = document.getElementById('tournamentsListWrapper');
+                    if (wrapper) wrapper.style.display = 'none';
+                    const empty = document.getElementById('tournamentsEmptyState');
+                    if (empty) empty.style.display = '';
+                }
+                window.showToast && window.showToast('success', data.message);
+            } else {
+                window.showToast && window.showToast('error', data.message || '{{ __('shared.error') }}');
+            }
+        } catch (e) {
+            window.showToast && window.showToast('error', '{{ __('shared.error') }}');
+        }
+    }
+
+    /** No platform club can confirm this medal → share the profile so peers can vouch. */
+    window.shareTournamentForVouch = async function (url) {
+        const abs = new URL(url, window.location.origin).href;
+        const text = @js(__('member.vouch_share_text'));
+        if (navigator.share) {
+            try { await navigator.share({ url: abs, text }); return; }
+            catch (e) { if (e && e.name === 'AbortError') return; }
+        }
+        try {
+            await navigator.clipboard.writeText(abs);
+            window.showToast && window.showToast('success', @js(__('member.link_copied')));
+        } catch (e) {
+            window.showToast && window.showToast('info', abs);
+        }
+    }
 
     // Read the chosen evidence image into a hidden field as a base64 data-URI.
     // Client-side guardrails only; the server re-sniffs real bytes and rejects SVG.
@@ -3716,19 +3923,33 @@ document.addEventListener('DOMContentLoaded', function() {
             method: 'POST',
             body: formData,
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                // Without these a failed validation redirects instead of returning JSON,
+                // and the user only ever sees the generic "try again" toast.
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             }
         })
         .then(response => response.json())
         .then(data => {
+            if (data.errors) {
+                const first = Object.values(data.errors)[0];
+                showAlert(Array.isArray(first) ? first[0] : String(first), 'danger');
+                return;
+            }
             if (data.success) {
-                // Close modal and insert the new row in place (no reload)
+                // Close modal and patch the list in place (no reload)
+                const wasEdit = document.getElementById('tournamentFormMethod').value === 'PUT';
                 window.dispatchEvent(new CustomEvent('close-tournament-modal'));
                 if (data.tournament) {
-                    addTournamentRow(data.tournament);
+                    if (wasEdit) {
+                        replaceTournamentRow(data.tournament);
+                    } else {
+                        addTournamentRow(data.tournament);
+                    }
                     window.dispatchEvent(new CustomEvent('member-profile-updated', { detail: { tournament: data.tournament } }));
                 }
-                showAlert('{{ __("member.templates_member_show_tournament_added_success") }}', 'success');
+                showAlert(wasEdit ? '{{ __("member.tournament_updated") }}' : '{{ __("member.templates_member_show_tournament_added_success") }}', 'success');
             } else {
                 showAlert('{{ __("member.templates_member_show_error_adding_tournament") }}' + (data.message || '{{ __("member.templates_member_show_unknown_error") }}'), 'danger');
             }
@@ -3746,70 +3967,136 @@ document.addEventListener('DOMContentLoaded', function() {
         })[s]);
     }
 
+    // Whether this viewer may edit/delete records here. The server enforces the same
+    // ladder on every write — this only decides what the UI offers.
+    const CAN_MANAGE_RECORDS = @json($relationship->relationship_type == 'self'
+        || Auth::id() == $relationship->guardian_user_id
+        || $relationship->relationship_type == 'admin_view');
+
+    // Mirror of the Blade medal theme — keep the two in sync when either changes.
+    const MEDAL_RANK  = { '1st': 4, special: 3, '2nd': 2, '3rd': 1 };
+    const MEDAL_THEME = {
+        '1st':     { rail: 'bg-amber-400',  tile: 'bg-amber-50 text-amber-600 ring-amber-100',    chip: 'bg-amber-100 text-amber-800',   icon: 'bi-award-fill',  label: '{{ __('member.templates_member_show_first_place') }}' },
+        '2nd':     { rail: 'bg-slate-300',  tile: 'bg-slate-50 text-slate-500 ring-slate-200',    chip: 'bg-slate-100 text-slate-700',   icon: 'bi-award-fill',  label: '{{ __('member.templates_member_show_second_place') }}' },
+        '3rd':     { rail: 'bg-orange-400', tile: 'bg-orange-50 text-orange-600 ring-orange-100', chip: 'bg-orange-100 text-orange-800', icon: 'bi-award-fill',  label: '{{ __('member.templates_member_show_third_place') }}' },
+        'special': { rail: 'bg-primary',    tile: 'bg-accent text-primary ring-primary/15',       chip: 'bg-accent text-primary',        icon: 'bi-trophy-fill', label: '{{ __('member.templates_member_show_special_award') }}' },
+    };
+    const MEDAL_NONE = { rail: 'bg-gray-200', tile: 'bg-gray-50 text-gray-400 ring-gray-100', icon: 'bi-flag' };
+
     function buildTournamentRow(t) {
-        const tr = document.createElement('tr');
-        tr.setAttribute('data-sport', t.sport || '');
+        const card = document.createElement('article');
+        const results = t.performance_results || [];
+        const medals = [...new Set(results.map(r => r.medal_type).filter(Boolean))];
+        const best = medals.slice().sort((a, b) => (MEDAL_RANK[b] || 0) - (MEDAL_RANK[a] || 0))[0];
+        const theme = MEDAL_THEME[best] || MEDAL_NONE;
+
+        card.setAttribute('data-tournament-row', '');
+        card.setAttribute('data-uuid', t.uuid || '');
+        card.setAttribute('data-sport', t.sport || '');
+        card.setAttribute('data-medals', medals.join(' '));
+        if (CAN_MANAGE_RECORDS && t.update_url) {
+            card.setAttribute('data-update-url', t.update_url);
+            card.setAttribute('data-delete-url', t.delete_url);
+            card.setAttribute('data-edit', JSON.stringify(Object.assign({}, t.edit, {
+                uuid: t.uuid,
+                verified: t.verification && t.verification.status === 'verified',
+                performance_results: results,
+                notes_media: t.notes_media || [],
+            })));
+        }
+        card.className = 'group relative bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 transition-all overflow-hidden';
 
         let perfHtml = '';
-        if (t.performance_results && t.performance_results.length > 0) {
-            t.performance_results.forEach(r => {
-                let medal = '';
-                if (r.medal_type === '1st') {
-                    medal = '<i class="bi bi-award-fill text-warning"></i><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">{{ __('member.templates_member_show_first_place') }}</span>';
-                } else if (r.medal_type === '2nd') {
-                    medal = '<i class="bi bi-award-fill text-secondary"></i><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">{{ __('member.templates_member_show_second_place') }}</span>';
-                } else if (r.medal_type === '3rd') {
-                    medal = '<i class="bi bi-award-fill" style="color: #CD7F32;"></i><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white" style="background-color: #CD7F32;">{{ __('member.templates_member_show_third_place') }}</span>';
-                } else if (r.medal_type === 'special') {
-                    medal = '<i class="bi bi-trophy-fill text-warning"></i><span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">{{ __('member.templates_member_show_special_award') }}</span>';
-                }
-                perfHtml += `<div class="flex items-center gap-2 mb-1">${medal}${r.points ? `<small class="text-gray-500">${escapeHtml(r.points)} {{ __("member.templates_member_show_pts") }}</small>` : ''}</div>`;
-                if (r.description) {
-                    perfHtml += `<small class="text-gray-500">${escapeHtml(r.description)}</small>`;
-                }
+        if (results.length > 0) {
+            perfHtml = '<div class="flex flex-col gap-1.5">';
+            results.forEach(r => {
+                const rt = MEDAL_THEME[r.medal_type];
+                perfHtml += '<div class="flex items-center gap-2 flex-wrap">';
+                if (rt) perfHtml += `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${rt.chip}"><i class="bi ${rt.icon}"></i>${rt.label}</span>`;
+                if (r.points) perfHtml += `<span class="text-[11px] font-medium text-gray-500 tabular-nums">${escapeHtml(r.points)} {{ __("member.templates_member_show_pts") }}</span>`;
+                perfHtml += '</div>';
+                if (r.description) perfHtml += `<p class="text-[11px] text-gray-400 leading-snug">${escapeHtml(r.description)}</p>`;
             });
+            perfHtml += '</div>';
         } else {
-            perfHtml = '<span class="text-gray-500 text-sm">{{ __('member.templates_member_show_no_results_recorded') }}</span>';
+            perfHtml = '<p class="text-xs text-gray-400 italic">{{ __('member.templates_member_show_no_results_recorded') }}</p>';
         }
 
         let notesHtml = '';
         if (t.notes_media && t.notes_media.length > 0) {
+            notesHtml = `<div class="border-t border-gray-50 pt-2.5">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{{ __('member.templates_member_show_th_notes_media') }}</p>`;
             t.notes_media.forEach(n => {
-                if (n.note_text) notesHtml += `<p class="mb-1 small">${escapeHtml(n.note_text)}</p>`;
-                if (n.media_link) notesHtml += `<a href="${escapeHtml(n.media_link)}" target="_blank" class="border border-primary text-primary px-2 py-1 rounded text-xs hover:bg-primary hover:text-white transition-colors"><i class="bi bi-image me-1"></i>{{ __('member.templates_member_show_view_media') }}</a>`;
+                if (n.note_text) notesHtml += `<p class="text-xs text-gray-600 leading-snug mb-1">${escapeHtml(n.note_text)}</p>`;
+                if (n.media_link) notesHtml += `<a href="${escapeHtml(n.media_link)}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"><i class="bi bi-image"></i>{{ __('member.templates_member_show_view_media') }}</a>`;
             });
-        } else {
-            notesHtml = '<span class="text-gray-500 text-sm">{{ __('member.templates_member_show_no_notes_available') }}</span>';
+            notesHtml += '</div>';
         }
 
         let affHtml;
         if (t.club_affiliation) {
-            affHtml = `<div><div class="small font-semibold">${escapeHtml(t.club_affiliation.club_name)}</div><div class="text-gray-500 text-sm">${escapeHtml(t.club_affiliation.location)}</div></div>`;
+            affHtml = `<p class="text-xs font-semibold text-gray-700 truncate">${escapeHtml(t.club_affiliation.club_name)}</p>`;
+            if (t.club_affiliation.location) affHtml += `<p class="text-[11px] text-gray-400 truncate">${escapeHtml(t.club_affiliation.location)}</p>`;
         } else {
-            affHtml = '<span class="text-gray-500 text-sm">{{ __('member.templates_member_show_individual') }}</span>';
+            affHtml = '<p class="inline-flex items-center gap-1 text-xs text-gray-500"><i class="bi bi-person"></i>{{ __('member.templates_member_show_individual') }}</p>';
         }
 
-        let meta = `<i class="bi bi-calendar-event me-1"></i>${escapeHtml(t.date)}`;
-        if (t.time) meta += `<i class="bi bi-clock me-1 ms-2"></i>${escapeHtml(t.time)}`;
-        if (t.location) meta += `<i class="bi bi-geo-alt me-1 ms-2"></i>${escapeHtml(t.location)}`;
-        if (t.participants_count) meta += `<i class="bi bi-people me-1 ms-2"></i>${escapeHtml(t.participants_count)} {{ __("member.templates_member_show_participants") }}`;
+        let meta = `<span class="inline-flex items-center gap-1"><i class="bi bi-calendar-event text-primary/50"></i>${escapeHtml(t.date)}</span>`;
+        if (t.time) meta += `<span class="inline-flex items-center gap-1"><i class="bi bi-clock text-primary/50"></i>${escapeHtml(t.time)}</span>`;
+        if (t.location) meta += `<span class="inline-flex items-center gap-1 min-w-0"><i class="bi bi-geo-alt text-primary/50"></i><span class="truncate">${escapeHtml(t.location)}</span></span>`;
+        if (t.participants_count) meta += `<span class="inline-flex items-center gap-1"><i class="bi bi-people text-primary/50"></i>${escapeHtml(t.participants_count)} {{ __("member.templates_member_show_participants") }}</span>`;
 
-        const typeBadge = (t.type === 'championship') ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-800';
+        const typeBadge = (t.type === 'championship') ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-700';
 
-        tr.innerHTML = `
-            <td>
-                <div class="font-bold">${escapeHtml(t.title)}</div>
-                <div class="flex gap-2 mt-1 flex-wrap">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${typeBadge}">${escapeHtml(t.type_label)}</span>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">${escapeHtml(t.sport)}</span>
+        // Same edit/delete menu the Blade card renders; Alpine picks it up on insert.
+        const actionsHtml = (CAN_MANAGE_RECORDS && t.update_url) ? `
+            <div x-data="{ open: false }" class="relative flex-shrink-0 -mt-1">
+                <button type="button" @click="open = !open" @click.outside="open = false"
+                        class="w-8 h-8 rounded-lg grid place-items-center text-gray-400 hover:text-gray-700 hover:bg-gray-50 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                        aria-label="{{ __('shared.actions') }}">
+                    <i class="bi bi-three-dots-vertical"></i>
+                </button>
+                <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-100"
+                     x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                     class="absolute end-0 mt-1 w-44 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20 overflow-hidden">
+                    <button type="button" @click="open = false; editTournament($el)" class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-muted/60 transition-colors"><i class="bi bi-pencil text-primary"></i>{{ __('shared.edit') }}</button>
+                    <button type="button" @click="open = false; deleteTournament($el)" class="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"><i class="bi bi-trash"></i>{{ __('shared.delete') }}</button>
                 </div>
-                <div class="text-gray-500 text-sm mt-1">${meta}</div>
-                <div class="mt-2 flex items-center gap-2 flex-wrap" data-verify-row="${escapeHtml(t.uuid || '')}">${buildVerifyBlock(t)}</div>
-            </td>
-            <td>${affHtml}</td>
-            <td>${perfHtml}</td>
-            <td>${notesHtml}</td>`;
-        return tr;
+            </div>` : '';
+
+        card.innerHTML = `
+            <span class="absolute inset-y-0 start-0 w-1 ${theme.rail}"></span>
+            <div class="p-4 ps-5 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_18rem] gap-4">
+                <div class="flex items-start gap-3 min-w-0">
+                    <span class="w-12 h-12 rounded-xl grid place-items-center ring-1 flex-shrink-0 ${theme.tile} group-hover:scale-105 transition-transform">
+                        <i class="bi ${theme.icon} text-lg"></i>
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-start gap-2">
+                            <h6 class="font-bold text-[15px] text-gray-900 leading-snug break-words flex-1">${escapeHtml(t.title)}</h6>
+                            ${actionsHtml}
+                        </div>
+                        <div class="flex gap-1.5 mt-1.5 flex-wrap">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${typeBadge}">${escapeHtml(t.type_label)}</span>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700">${escapeHtml(t.sport)}</span>
+                        </div>
+                        <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">${meta}</div>
+                        <div class="mt-2.5 flex items-center gap-2 flex-wrap" data-verify-row="${escapeHtml(t.uuid || '')}">${buildVerifyBlock(t)}</div>
+                    </div>
+                </div>
+                <div class="flex flex-col gap-3 lg:border-s lg:border-gray-100 lg:ps-4">
+                    <div>
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">{{ __('member.templates_member_show_th_performance_result') }}</p>
+                        ${perfHtml}
+                    </div>
+                    <div class="border-t border-gray-50 pt-2.5">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{{ __('member.templates_member_show_th_club_affiliation') }}</p>
+                        ${affHtml}
+                    </div>
+                    ${notesHtml}
+                </div>
+            </div>`;
+        return card;
     }
 
     // Honest provenance badge + evidence + request action for a JS-rendered row.
@@ -3838,7 +4125,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Ask the named club to verify this self-claimed achievement.
-    async function requestAchievementVerification(btn) {
+    // On window: the button uses an inline onclick, which resolves against globals.
+    window.requestAchievementVerification = async function (btn) {
         const url = btn.getAttribute('data-verify-url');
         if (!url) return;
         btn.disabled = true;
@@ -3883,11 +4171,20 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     window.addEventListener('realtime:verification', window.__memberVerifyHandler);
 
+    /** Swap an edited record's card for a freshly-built one, keeping its position. */
+    function replaceTournamentRow(t) {
+        const list = document.getElementById('tournamentsList');
+        const existing = list && t.uuid ? list.querySelector(`[data-uuid="${CSS.escape(t.uuid)}"]`) : null;
+        if (!existing) { addTournamentRow(t); return; }
+        existing.replaceWith(buildTournamentRow(t));
+        window.applyTournamentFilters && window.applyTournamentFilters();
+    }
+
     function addTournamentRow(t) {
-        const tbody = document.getElementById('tournamentsTableBody');
-        if (!tbody) return;
-        tbody.insertBefore(buildTournamentRow(t), tbody.firstChild);
-        const wrapper = document.getElementById('tournamentsTableWrapper');
+        const list = document.getElementById('tournamentsList');
+        if (!list) return;
+        list.insertBefore(buildTournamentRow(t), list.firstChild);
+        const wrapper = document.getElementById('tournamentsListWrapper');
         if (wrapper) wrapper.style.display = '';
         const empty = document.getElementById('tournamentsEmptyState');
         if (empty) empty.style.display = 'none';

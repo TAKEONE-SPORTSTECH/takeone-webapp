@@ -22,26 +22,28 @@ class Results
             if (! $final || ! $final->winner) {
                 continue; // no champion yet
             }
-            $gold = $final->winner === 'a' ? $final->a_name : $final->b_name;
-            $silver = $final->winner === 'a' ? $final->b_name : $final->a_name;
+            // Medals carry the ENTRY that won them, so a result can reach the
+            // athlete's profile, a club medal tally and ranking points — not
+            // just a name printed on a board.
+            $medal = fn (int $place, $bout, string $side) => [
+                'place' => $place,
+                'name' => $bout->{$side.'_name'},
+                'competitor_id' => $bout->{$side.'_competitor_id'},
+            ];
 
-            $bronze = [];
+            $win = $final->winner;
+            $lose = $win === 'a' ? 'b' : 'a';
+
+            $medals = [$medal(1, $final, $win), $medal(2, $final, $lose)];
+
             foreach ($cat->matches->where('round', 'Semifinal') as $sf) {
                 if (! $sf->winner) {
                     continue;
                 }
-                $loser = $sf->winner === 'a' ? $sf->b_name : $sf->a_name;
-                if ($loser) {
-                    $bronze[] = $loser;
+                $loserSide = $sf->winner === 'a' ? 'b' : 'a';
+                if ($sf->{$loserSide.'_name'}) {
+                    $medals[] = $medal(3, $sf, $loserSide);
                 }
-            }
-
-            $medals = [
-                ['place' => 1, 'name' => $gold],
-                ['place' => 2, 'name' => $silver],
-            ];
-            foreach ($bronze as $b) {
-                $medals[] = ['place' => 3, 'name' => $b];
             }
 
             $out[] = ['division' => $cat->name, 'class' => $cat->weight_class, 'medals' => $medals];

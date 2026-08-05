@@ -2376,10 +2376,6 @@
     transform: scale(1.1);
 }
 
-.club-card:hover .club-title {
-    color: #667eea !important;
-}
-
 @keyframes pulseScale {
     0% { transform: scale(1); opacity: 1; }
     50% { transform: scale(1.2); opacity: 0.7; }

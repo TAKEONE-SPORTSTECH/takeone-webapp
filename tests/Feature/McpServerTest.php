@@ -425,4 +425,174 @@ class McpServerTest extends TestCase
         $this->assertStringContainsString('disabled', $result['error']);
         $this->assertDatabaseCount('member_certifications', 0);
     }
+
+    /* ---------------- Event entry ---------------- */
+
+    public function test_enter_event_athletes_lists_the_roster_then_enters_them(): void
+    {
+        $coach = $this->createUser();
+        $club = $this->createClub($coach, ['country' => 'BH']);
+        $coach->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
+
+        $event = \App\Models\ClubEvent::create([
+            'tenant_id' => $club->id, 'created_by' => $coach->id, 'title' => 'Spring Open',
+            'event_type' => 'championship', 'sport' => 'taekwondo', 'scope' => 'internal',
+            'date' => now()->addWeeks(2)->toDateString(), 'start_time' => '09:00',
+            'status' => 'active', 'is_archived' => false,
+        ]);
+        \App\Models\EventCategory::create(['event_id' => $event->id, 'name' => 'Senior Men -58 kg', 'sort_order' => 1]);
+
+        $athlete = $this->createUser(['full_name' => 'Ali', 'gender' => 'Male', 'birthdate' => now()->subYears(25)->toDateString()]);
+        $athlete->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
+        \App\Models\HealthRecord::create(['user_id' => $athlete->id, 'weight' => 57, 'recorded_at' => now()]);
+
+        $this->actingAs($coach->fresh());
+
+        // No ids → preview only, nothing written.
+        $preview = $this->callTool(\App\Mcp\Tools\EnterEventAthletesTool::class, ['event' => $event->uuid]);
+        $this->assertNotEmpty($preview['roster']);
+        $this->assertDatabaseMissing('club_event_registrations', ['event_id' => $event->id]);
+
+        $result = $this->callTool(\App\Mcp\Tools\EnterEventAthletesTool::class, [
+            'event' => $event->uuid,
+            'athlete_ids' => [$athlete->id],
+        ]);
+
+        $this->assertCount(1, $result['entered']);
+        $this->assertSame('Senior Men -58 kg', $result['entered'][0]['division']);
+    }
+
+    public function test_enter_event_athletes_denies_someone_who_runs_no_club(): void
+    {
+        $owner = $this->createUser();
+        $club = $this->createClub($owner, ['country' => 'BH']);
+
+        $event = \App\Models\ClubEvent::create([
+            'tenant_id' => $club->id, 'created_by' => $owner->id, 'title' => 'Spring Open',
+            'event_type' => 'championship', 'sport' => 'taekwondo', 'scope' => 'internal',
+            'date' => now()->addWeeks(2)->toDateString(), 'start_time' => '09:00',
+            'status' => 'active', 'is_archived' => false,
+        ]);
+
+        $member = $this->createUser();
+        $member->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
+        $this->actingAs($member->fresh());
+
+        $result = $this->callTool(\App\Mcp\Tools\EnterEventAthletesTool::class, [
+            'event' => $event->uuid,
+            'athlete_ids' => [$member->id],
+        ]);
+
+        $this->assertStringContainsString('club owner or club admin', $result['error']);
+    }
+
+    /* ---------------- Event brackets ---------------- */
+
+    /**
+     * A championship with a generated draw, plus the organiser who runs it.
+     *
+     * @return array{0: \App\Models\ClubEvent, 1: \App\Models\User, 2: \App\Models\EventCategory}
+     */
+    private function drawnChampionship(): array
+    {
+        $organiser = $this->createUser(['full_name' => 'Master Kim']);
+        $club = $this->createClub($organiser, ['country' => 'BH']);
+        $organiser->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
+
+        $event = \App\Models\ClubEvent::create([
+            'tenant_id' => $club->id, 'created_by' => $organiser->id, 'title' => 'Spring Open',
+            'event_type' => 'championship', 'sport' => 'taekwondo', 'scope' => 'internal',
+            'date' => now()->addWeeks(2)->toDateString(), 'end_date' => now()->addWeeks(2)->toDateString(),
+            'start_time' => '09:00', 'end_time' => '17:00', 'status' => 'active', 'is_archived' => false,
+        ]);
+        $category = \App\Models\EventCategory::create([
+            'event_id' => $event->id, 'name' => 'Senior Men -58 kg', 'sort_order' => 1,
+        ]);
+
+        foreach (range(1, 4) as $i) {
+            $athlete = $this->createUser([
+                'full_name' => 'Athlete '.$i, 'gender' => 'Male',
+                'birthdate' => now()->subYears(25)->toDateString(),
+            ]);
+            $athlete->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
+            \App\Models\ClubEventRegistration::create([
+                'event_id' => $event->id, 'user_id' => $athlete->id, 'category_id' => $category->id,
+                'role' => 'participant', 'paid' => true, 'weight' => 57,
+            ]);
+        }
+
+        app(\App\Events\EventTypeRegistry::class)->for($event)->performAction($event, 'generate_draw');
+
+        return [$event, $organiser->fresh(), $category->fresh()];
+    }
+
+    public function test_get_event_bracket_returns_the_draw(): void
+    {
+        [$event, $organiser] = $this->drawnChampionship();
+        $this->actingAs($organiser);
+
+        $result = $this->callTool(\App\Mcp\Tools\GetEventBracketTool::class, ['event' => $event->uuid]);
+
+        $this->assertTrue($result['bracketed']);
+        $this->assertFalse($result['event']['draw_locked']);
+        $this->assertCount(1, $result['divisions']);
+        $this->assertCount(2, $result['divisions'][0]['rounds'], 'four entrants → semi-finals and a final');
+    }
+
+    public function test_get_event_bracket_hides_an_event_the_user_cannot_see(): void
+    {
+        [$event] = $this->drawnChampionship();
+
+        // A member of an unrelated club: an internal-scope event is not theirs
+        // to see, and the answer must not reveal that the uuid is real.
+        $outsider = $this->createUser();
+        $otherClub = $this->createClub($outsider, ['country' => 'BH']);
+        $outsider->memberClubs()->syncWithoutDetaching([$otherClub->id => ['status' => 'active']]);
+        $this->actingAs($outsider->fresh());
+
+        $result = $this->callTool(\App\Mcp\Tools\GetEventBracketTool::class, ['event' => $event->uuid]);
+
+        $this->assertStringContainsString('Event not found', $result['error']);
+    }
+
+    public function test_arrange_event_bracket_moves_a_competitor(): void
+    {
+        [$event, $organiser, $category] = $this->drawnChampionship();
+        $this->actingAs($organiser);
+
+        $bout = $category->matches()->orderBy('slot')->first();
+        $name = $bout->a_name;
+
+        $result = $this->callTool(\App\Mcp\Tools\ArrangeEventBracketTool::class, [
+            'event' => $event->uuid,
+            'division' => 'Senior Men -58 kg',
+            'from_match_id' => $bout->id,
+            'from_side' => 'a',
+        ]);
+
+        $this->assertTrue($result['moved']);
+        $this->assertNull($bout->fresh()->a_name);
+        $this->assertNotSame($name, $bout->fresh()->a_name);
+    }
+
+    public function test_arrange_event_bracket_denies_a_non_organiser(): void
+    {
+        [$event, , $category] = $this->drawnChampionship();
+
+        $watcher = $this->createUser();
+        $watcher->memberClubs()->syncWithoutDetaching([$event->tenant_id => ['status' => 'active']]);
+        $this->actingAs($watcher->fresh());
+
+        $bout = $category->matches()->orderBy('slot')->first();
+
+        $result = $this->callTool(\App\Mcp\Tools\ArrangeEventBracketTool::class, [
+            'event' => $event->uuid,
+            'division' => 'Senior Men -58 kg',
+            'from_match_id' => $bout->id,
+            'from_side' => 'a',
+        ]);
+
+        $this->assertStringContainsString('organiser', $result['error']);
+        $this->assertNotNull($bout->fresh()->a_name);
+    }
 }

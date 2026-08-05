@@ -67,6 +67,7 @@ class ClubEvent extends Model
         'cta_text',
         'status',
         'scope',
+        'notify_countries',
         'uuid',
         'is_archived',
         // mobile Events extensions
@@ -92,6 +93,7 @@ class ClubEvent extends Model
         'enrollment_starts_at' => 'date',
         'enrollment_ends_at' => 'date',
         'tags' => 'array',
+        'notify_countries' => 'array',
         'images' => 'array',
         'max_capacity' => 'integer',
         'cancel_within_days' => 'integer',

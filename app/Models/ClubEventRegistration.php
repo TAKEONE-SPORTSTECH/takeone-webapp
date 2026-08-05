@@ -23,6 +23,7 @@ class ClubEventRegistration extends Model
         'weighed_in_by',
         'meta',
         'registered_at',
+        'entered_by',
     ];
 
     protected $casts = [
@@ -46,5 +47,11 @@ class ClubEventRegistration extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(EventCategory::class, 'category_id');
+    }
+
+    /** The coach/admin who entered this athlete. Null = they entered themselves. */
+    public function enteredBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'entered_by');
     }
 }

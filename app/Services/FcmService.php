@@ -33,8 +33,13 @@ class FcmService
      * Send a push to every device registered to a user.
      *
      * @param  array<string,mixed>  $data  Extra key/value data (e.g. action_url, type) — cast to strings.
+     * @param  array{urgent?: bool}  $options  `urgent` marks a time-critical
+     *                                         call (an athlete summoned to the mat): delivered at max priority
+     *                                         on its own Android channel so it survives Doze and rings even when
+     *                                         the phone is idle. Everything else keeps the standard lane, so
+     *                                         routine notifications can never train people to silence the app.
      */
-    public function sendToUser(int $userId, string $title, string $body, array $data = []): void
+    public function sendToUser(int $userId, string $title, string $body, array $data = [], array $options = []): void
     {
         if (! $this->enabled()) {
             return;
@@ -53,6 +58,7 @@ class FcmService
 
         $url = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
         $stringData = array_map(static fn ($v) => (string) $v, $data);
+        $urgent = (bool) ($options['urgent'] ?? false);
 
         foreach ($tokens as $id => $token) {
             try {
@@ -70,8 +76,13 @@ class FcmService
                                 'priority' => 'HIGH',
                                 'notification' => [
                                     'default_sound' => true,
-                                    'notification_priority' => 'PRIORITY_HIGH',
+                                    'channel_id' => $urgent ? 'takeone_urgent' : 'takeone_default',
+                                    'notification_priority' => $urgent ? 'PRIORITY_MAX' : 'PRIORITY_HIGH',
                                 ],
+                            ],
+                            'apns' => [
+                                'headers' => ['apns-priority' => $urgent ? '10' : '5'],
+                                'payload' => ['aps' => ['sound' => 'default', 'interruption-level' => $urgent ? 'time-sensitive' : 'active']],
                             ],
                         ],
                     ]);

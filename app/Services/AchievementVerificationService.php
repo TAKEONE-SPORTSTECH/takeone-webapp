@@ -128,6 +128,48 @@ class AchievementVerificationService
     }
 
     /**
+     * The owner edited the claim's material facts, so every attestation that was
+     * made about the OLD facts is void: drop the record back to `self_reported`
+     * and discard prior vouches and any club decision.
+     *
+     * Without this, a member could get a modest claim verified and then rewrite it
+     * into a bigger one while keeping the badge — the whole point of the provenance
+     * layer is that a badge always refers to the facts someone actually attested to.
+     */
+    public function resetAfterEdit(Model $model, User $actor): Model
+    {
+        $wasAttested = $model->verification_status !== $model::STATUS_SELF_REPORTED
+            || $model->verification_method !== null
+            || $model->vouches()->exists();
+
+        if (! $wasAttested) {
+            return $model;
+        }
+
+        $model->vouches()->delete();
+
+        $model->forceFill([
+            'verification_status' => $model::STATUS_SELF_REPORTED,
+            'verification_method' => null,
+            'verified_by_tenant_id' => null,
+            'verified_by_user_id' => null,
+            'verified_at' => null,
+            'verification_note' => null,
+            'verification_announced_at' => null,
+        ])->save();
+
+        Log::info('Verification reset after owner edit', [
+            'vouchable' => $model::class.'#'.$model->getKey(),
+            'claim_owner_id' => $model->attestationOwnerId(),
+            'actor_id' => $actor->id,
+        ]);
+
+        $this->pushStatus($model);
+
+        return $model;
+    }
+
+    /**
      * Record a peer/coach vouch (or dispute), then recompute the record's status.
      * Eligibility is enforced here as defence-in-depth on top of the FormRequest.
      */

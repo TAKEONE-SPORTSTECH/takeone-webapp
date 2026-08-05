@@ -693,6 +693,85 @@ A component must never require mystery code from elsewhere to function. If it de
 
 ---
 
+## Events Are Self-Contained Packages — STRICT
+
+**Rule:** Every event type is its own **code package** — a self-contained vertical that owns its data, its rules, its lifecycle, its inputs, its outputs, and its screens. An event type is NEVER a set of `if`/`match` branches inside a shared controller, a shared form, or a shared view.
+
+A Taekwondo Tournament, a Belt Test, and a Football League are three different products that happen to share a calendar entry. They must be three packages.
+
+### What a package owns (the full vertical)
+
+Each event-type package is responsible for **all** of the following. If any one of these lives outside the package, the package is not done:
+
+1. **Schema** — the type-specific fields it stores, and their validation rules.
+2. **Creation input** — the fields its create/edit form asks for (and nothing another type needs).
+3. **Enrolment rules** — who may register, in what role (participant / spectator / team / examinee), what gates apply (weight class, belt rank, age, squad size), and what a registration record means for this type.
+4. **Lifecycle / state machine** — the legal states and the legal transitions between them (e.g. `draft → enrolling → weigh-in → draw locked → running → completed`). Transitions are validated **server-side, inside the package**.
+5. **Processing / engine** — the domain logic. Building a draw per weight class, advancing a winner into the next slot when a bout ends, computing bronze from both semi-finals, scoring test items into pass/fail, computing a league table from fixtures.
+6. **Outputs** — results, podium/medals, grades, standings, and whatever the type awards (belt rank, medal, ranking points), including how that result is written back to the member's profile.
+7. **Financials** — how revenue is derived for this type (entry fees, per-division fees, ticket tiers, exam fees) so the event P&L is correct per type.
+8. **Display** — its own create form, detail page, and run-day screens, **mobile and desktop** (per Mobile / Desktop Separation).
+
+### Required structure — sport folder, event types inside it
+
+**A sport owns a folder; each kind of event that sport runs is a sub-folder of it.** One sport has many event types (a Taekwondo club runs tournaments, belt tests, poomsae competitions and gradings) and they share the sport's weight tables, belt ladder and vocabulary — so the sport, not the event type, is the top level.
+
+```
+app/Events/Sports/<Sport>/
+├── <Sport>.php                            the sport itself: weight/belt tables,
+│                                          classification, sport-level conventions
+├── resources/lang/{en,ar}/messages.php    strings EVERY event of this sport shares
+│                                          → sport-<sport>::messages.…
+├── <Type>/                                one event type
+│   ├── <Type>.php                         the EventType implementation
+│   ├── …                                  its collaborators (gate, engine, roster)
+│   └── resources/
+│       ├── views/{mobile,desktop}/        its screens → event-<key>::<view>
+│       └── lang/{en,ar}/messages.php      its strings → event-<key>::messages.…
+└── <OtherType>/                           another event type, same sport
+```
+
+- Both levels are bound automatically by `App\Events\EventPackageServiceProvider`, which discovers the folders from the registry. **Never wire a package path by hand.** Use `view('event-<key>::mobile.show')`, `__('event-<key>::messages.…')` and `__('sport-<sport>::messages.…')`.
+- **Put a string at the level that owns it:** shared by every event of the sport → the sport folder; used by one event type → that type's folder; shared by the event SYSTEM across all sports → `lang/{en,ar}/events.php`.
+- Cross-sport types that aren't tied to a sport (the generic fallback) live at `app/Events/<Name>/`, outside `Sports/`.
+- Only **migrations** may live outside the folder (Laravel loads them from `database/migrations`) — name them for the package so ownership stays obvious.
+- **Adding, moving or deleting a type must be adding, moving or deleting one directory** (plus its one line in `config/event_types.php`); the same is true of a whole sport.
+- Every package implements a shared **`EventType` contract** and is registered in a single **event-type registry**, exactly as `app/Sports/Combat/SportRegistry.php` already does for combat sports (`CombatSport` / `AbstractCombatSport` / `Taekwondo`). That registry is the precedent — generalise it, do not invent a second mechanism.
+- Shared engines that genuinely serve several types (draw building, scheduling, results) stay in a common namespace and are **called by** packages; they are never called directly from a controller.
+
+### Storage model
+
+- **Core columns stay shared** on `club_events` (title, dates, times, location, host club, scope, status, capacity, fees) so listing, search, calendar, permissions, and financial roll-ups stay uniform across all types.
+- **Type-specific data lives in package-owned tables** (e.g. `event_matches` / `event_categories` for brackets, a dedicated table for belt-test scores, another for league fixtures). Do NOT keep bolting type-specific columns onto `club_events`, and do NOT dump structured type data into a generic JSON blob when it needs to be queried, joined, or validated.
+
+### Controllers are thin dispatchers
+
+Controllers resolve the event's type from the registry and delegate. A controller must never contain type-specific logic. These are **forbidden**:
+
+- `if ($event->sport === 'taekwondo')` (or any `sport`/`event_type` string comparison) in a controller, service, or view outside that type's own package.
+- A single create form with `x-show` branches per type; each package supplies its own form.
+- A shared detail/run-day view with per-type sections toggled inline.
+- Domain logic (standings tables, bracket maths, scoring) written inline in a controller method.
+
+### Adding a new event type
+
+Adding a type must require **only**: create the package directory, implement the contract, register it, add its views, add its migration(s) for any package-owned tables, add its MCP tool coverage, add its tests. **No edits to a shared controller, shared form, or shared view.** If adding a type forces you to edit shared code, the abstraction is wrong — fix the abstraction, don't add the branch.
+
+### Applies to existing types too
+
+This is not future-only. The current events code violates it: `PersonalEventController` hardcodes Taekwondo by name in several places, computes football league standings inline, and has no belt-test implementation at all despite `belt_test` being a declared type. **Taekwondo is the reference migration** — extract it into the first package and prove the contract, then port the remaining types. Any change to an existing event type must move that logic toward its package, never deepen the branching.
+
+### Boundaries this rule does NOT override
+
+- **Security** — each package independently satisfies every Security section: authorization and tenant scoping on every action, server-side validation of its own inputs, safe uploads, no client-trusted state transitions. A package is a full attack surface.
+- **MCP sync** — a new event type is a new readable/actionable surface; it ships with its MCP tool coverage in the same change.
+- **Design-First / Mobile rules** — a package's screens follow the Design System, the Mobile Pattern Language, and the mobile/desktop split like any other UI.
+- **Component-First** — packages reuse the shared Blade component library for their forms and cards; "self-contained" means owning its *domain*, not duplicating the design system.
+
+> Test for whether a package is really a package: *could this event type be deleted from the app by removing its one directory, its tables, and its registry line — with nothing else breaking?* If not, it isn't self-contained yet.
+
+---
+
 ## Frontend Technology Decision Rules — STRICT
 
 This project uses multiple frontend patterns intentionally:
@@ -952,6 +1031,18 @@ All mobile shells reuse `id="shell-content"`, so the mobile navigator can't tell
 
 ---
 
+## Never Run Tests With a Cached Config — STRICT
+
+**Rule:** `php artisan config:clear` **before** running the test suite, every time. Only re-run `config:cache` afterwards.
+
+`RefreshDatabase` runs `migrate:fresh`, which **drops every table**. `phpunit.xml` points the suite at `DB_DATABASE=:memory:`, but `config:cache` freezes `env()` into `bootstrap/cache/config.php`, and a cached config silently overrides those phpunit env vars — so the suite runs `migrate:fresh` against the **real database**.
+
+This destroyed the stage database once (2026-08-02). `tests/TestCase.php` now refuses to run while a config cache exists, and refuses any sqlite connection that is not `:memory:`, aborting before a single table is touched. **Do not weaken or bypass that guard.** If it fires, the fix is `php artisan config:clear` — never deleting the check.
+
+Correct order: `config:clear` → `vendor/bin/phpunit` → `config:cache`.
+
+---
+
 ## LOCKED — Do Not Modify: Profile Picture Cropper Config
 
 These values are final and must never be changed:
@@ -1126,7 +1217,7 @@ These are launch gates that live in the **environment/ops**, not the repo — a 
 
 - **Production env flags (BLOCKER).** The live `.env` must be `APP_ENV=production` + `APP_DEBUG=false` (it was `local`/`true` on `https://takeone.bh`, which leaks a full stack trace + secrets on every error). Also set `LOG_LEVEL=warning` and `LOG_STACK=single,sentry` (so `Log::error()` reaches Sentry). **Re-run `php artisan config:cache` after ANY `.env` change** — caching freezes `env()`.
 - **Warm prod caches on deploy:** `config:cache` + `route:cache` + `event:cache` + `view:cache` — all four now succeed. `view:cache` used to die with `DirectoryNotFoundException` for `vendor/takeone/cropper/src/resources/views`: takeone/cropper's provider registers `__DIR__.'/resources/views'` from `src/`, but ships its views one level up at `resources/views`. `AppServiceProvider::pruneMissingViewPaths()` now drops non-existent paths from every view namespace on `booted()`, so the bad hint is gone before `view:cache` walks it. The published copy at `resources/views/vendor/takeone/` is what resolves at runtime, and still does. **This is a workaround for an upstream package bug** — fix the path in `laravel-image-cropper` and the guard becomes a no-op (keep it; it protects against any package doing the same).
-- **Backups / DR (BLOCKER).** Stand up a cron'd, rotated, **off-server** backup of the DB **and** upload folders (`storage/app/public/*`, `storage/app/private/payment-proofs`, chat attachments). Copy the Android release keystore (`mobile/android/app/takeone-release.jks`, git-ignored) to secure external storage — losing it means the Play Store app can never be updated. (`/database/*.sqlite*` is now in `.gitignore` — the DB, its `-wal`/`-shm` sidecars, and `.bak-*` snapshots can never be committed. Nothing sqlite was ever tracked, so no history scrub was needed.)
+- **Backups / DR (PARTLY DONE — off-server still a BLOCKER).** `php artisan takeone:backup` snapshots the DB (SQLite `VACUUM INTO` after a WAL checkpoint, so it is consistent under load) plus the upload folders, **verifies each artifact by reading it back**, prunes on a retention window (`BACKUP_RETAIN_DAYS`, never below `BACKUP_KEEP_MINIMUM`) and exits non-zero on any failure. Scheduled nightly at 03:30 in `routes/console.php`; config in `config/backup.php`. ⚠️ **Still required: set `BACKUP_DISK`** to a remote filesystem — until then every copy sits on the same disk as the data and does not survive losing the box (the command warns on every run). Also copy the Android release keystore (`mobile/android/app/takeone-release.jks`, git-ignored) to secure external storage — losing it means the Play Store app can never be updated. Copy the Android release keystore (`mobile/android/app/takeone-release.jks`, git-ignored) to secure external storage — losing it means the Play Store app can never be updated. (`/database/*.sqlite*` is now in `.gitignore` — the DB, its `-wal`/`-shm` sidecars, and `.bak-*` snapshots can never be committed. Nothing sqlite was ever tracked, so no history scrub was needed.)
 - **Mail (MAJOR).** Queued mail had failing jobs (`SendQueuedMailable`) — verification emails silently not sending. Diagnose the Gmail SMTP creds, send a real end-to-end verification, then clear `queue:failed`. Mail is real Gmail SMTP (`smtp.gmail.com:465 ssl`), queued — see the no-Mailpit rule.
 - **Datastore at scale (MAJOR).** Production is SQLite (WAL). Fine for a soft launch, but SQLite is single-writer — under concurrent multi-club writes it throws "database is locked". A ready `mysql` connection already sits in `config/database.php`; migrate before real concurrency. Keep WAL checkpoints healthy (the `-wal` file should not dwarf the DB).
 - **Workers as least-privilege.** Supervisor `queue:work` should run as `www-data`, not `root`.
@@ -1388,6 +1479,7 @@ All components live in `resources/views/components/` and are called as `<x-{name
 | `<x-admin-hero>` | Platform/club-admin page hero band (purple gradient, control-center style) — title + optional eyebrow/subtitle, optional right-side `count` chip, and an `actions` slot for buttons/badges. Used on the platform dashboard + admin list pages. | `title` (required), `eyebrow`, `subtitle`, `icon` (bi-*), `count`, `countLabel`; slot: `actions` |
 | `<x-financial-chart>` | Monthly income/expense Chart.js bar chart with drill-down modal | `monthlyData`, `transactions`, `currency`, `canvasId`, `maintainAspectRatio`, `canvasHeightAttr`, `containerClass` |
 | `<x-location-map>` | Leaflet map with address search and lat/lng hidden inputs | `id`, `latName`, `lngName`, `addressName`, `lat`, `lng`, `address`, `defaultLat`, `defaultLng`, `height`, `required` |
+| `<x-tournament-bracket>` | **Zoomable knockout bracket — the one bracket renderer for every sport.** Pan/zoom with the same gestures and mechanics as the family tree (`family/partials/tree-runtime.blade.php`): a `touch-action:none` viewport, a canvas carrying ONE transform, SVG connectors measured from the laid-out DOM, native-touch + pointer + wheel paths kept apart. Fed by the shared payload `App\Events\Support\BracketView` (`EventType::bracketView()`), so it never knows which sport it draws. With `can-arrange`, organisers get an **Arrange mode**: drag a competitor between first-round slots or to/from the entrants bench, **or** tap-to-pick → tap-to-place (also the keyboard path). Each drop saves atomically to `me.events.bracket.arrange`; later rounds are never arrangeable (they're derived) and the draw locks the moment the event starts. Owns its own realtime refresh (`realtime:events`), styling and RTL mirroring. Runtime lives in `components/bracket/runtime.blade.php`. Dispatches `bracket:loaded` / `bracket:state` / `bracket:match` on the viewport. | `data-url` (required), `arrange-url`, `clear-url`, `event-uuid`, `can-arrange`, `my-competitor-ids`, `id`, `height` |
 | `<x-client-paginator>` | Client-side pagination for any list filtered via JS. Renders the container div and injects the `ClientPaginator` JS class (once per page). Instantiate in JS: `new ClientPaginator({ itemsSelector, containerId, perPage, countBadgeId, scrollTargetId, labelSingular, labelPlural, filterFn })` then call `.refresh()` when filters change. Registered in `window._pagers[id]` for inline `onclick` access. | `id` (required), `perPage` (default `20`) |
 
 > **`<x-stat-card>` sparkline alignment rule:** Always pass `:spark-data` from the same domain as the card's value (e.g. revenue card → monthly revenue array, not monthly member counts). When no real time-series exists yet, pass `array_fill(0, 12, 0)` as a flat baseline — never reuse another card's unrelated data array. The component is `flex flex-col` with `mt-auto` on the sparkline, so it always pins to the bottom of the card in equal-height grid rows. Do not remove these classes from the component.

@@ -1183,12 +1183,43 @@
 
             <div id="mobileTournamentsList" class="space-y-3">
             @forelse($tournamentEvents as $t)
-                <div class="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-4 overflow-hidden">
+                @php
+                    // A club decision is final — never offer a button that would no-op.
+                    $clubDecided = $t->verification_method === 'club_confirm'
+                        && in_array($t->verification_status, ['verified', 'rejected'], true);
+                    $canRequestVerify = $t->clubAffiliation?->tenant_id && ! $clubDecided && $t->verification_status !== 'verified';
+                    $editPayload = [
+                        'uuid' => $t->uuid,
+                        'title' => $t->title,
+                        'type' => $t->type,
+                        'sport' => $t->sport,
+                        'date' => optional($t->date)->toDateString(),
+                        'location' => $t->location,
+                        'club_affiliation_id' => $t->club_affiliation_id,
+                        'medal_type' => optional($t->performanceResults->first())->medal_type,
+                        'verified' => $t->verification_status === 'verified',
+                        'update_url' => route('member.tournament.update', [$t->user_id, $t->uuid]),
+                        'delete_url' => route('member.tournament.destroy', [$t->user_id, $t->uuid]),
+                    ];
+                @endphp
+                {{-- Payload goes through {{ }} so quotes/apostrophes in a title are HTML-escaped;
+                     inlining raw JSON into an @click attribute would break on an apostrophe. --}}
+                <div data-tournament-card data-uuid="{{ $t->uuid }}" @if($isSelf) data-edit="{{ json_encode($editPayload) }}" @endif class="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-4 overflow-hidden">
                     <span class="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 w-1 bg-amber-400/80"></span>
                     <div class="flex items-start gap-3">
                         <span class="w-12 h-12 rounded-xl bg-amber-50 grid place-items-center text-amber-600 flex-shrink-0 ring-1 ring-amber-100"><i class="bi bi-trophy-fill text-lg"></i></span>
                         <div class="min-w-0 flex-1">
-                            <p class="font-bold text-foreground text-[15px] leading-snug truncate">{{ $t->title }}</p>
+                            <div class="flex items-start gap-2">
+                                <p class="font-bold text-foreground text-[15px] leading-snug truncate flex-1">{{ $t->title }}</p>
+                                @if($isSelf)
+                                    <div class="flex items-center gap-1 flex-shrink-0 -mt-1">
+                                        <button type="button" @click="openEdit($el)" aria-label="{{ __('shared.edit') }}"
+                                                class="m-press w-8 h-8 rounded-lg grid place-items-center text-muted-foreground active:bg-muted"><i class="bi bi-pencil text-[13px]"></i></button>
+                                        <button type="button" @click="remove($el)" aria-label="{{ __('shared.delete') }}"
+                                                class="m-press w-8 h-8 rounded-lg grid place-items-center text-red-500 active:bg-red-50"><i class="bi bi-trash text-[13px]"></i></button>
+                                    </div>
+                                @endif
+                            </div>
                             <p class="text-[12px] font-medium text-foreground/60 truncate mt-0.5">{{ $t->sport }}@if($t->location) · {{ $t->location }}@endif</p>
                             {{-- Inline meta: date + medals + verification (all one row, matches Work history) --}}
                             @php $mc = ['1st'=>'bg-amber-100 text-amber-700','2nd'=>'bg-slate-100 text-slate-600','3rd'=>'bg-orange-100 text-orange-700','special'=>'bg-accent text-primary']; @endphp
@@ -1203,8 +1234,9 @@
                                     @if($t->evidence_path)
                                         <a href="{{ route('member.tournament.evidence', [$t->user_id, $t->uuid]) }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary"><i class="bi bi-paperclip"></i>{{ __('Evidence') }}</a>
                                     @endif
-                                    @if($isSelf && $t->clubAffiliation?->tenant_id && ! in_array($t->verification_status, ['verified','pending']))
-                                        <button type="button" data-verify-btn @click="requestVerify($el, '{{ route('member.tournament.request-verification', [$t->user_id, $t->uuid]) }}')" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary"><i class="bi bi-patch-check"></i>{{ __('Request verification') }}</button>
+                                    @if($isSelf && $canRequestVerify)
+                                        {{-- While pending this is a rate-limited nudge, not a new request. --}}
+                                        <button type="button" data-verify-btn @click="requestVerify($el, '{{ route('member.tournament.request-verification', [$t->user_id, $t->uuid]) }}')" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary"><i class="bi bi-patch-check"></i>{{ $t->verification_status === 'pending' ? __('member.tournament_verify_resend') : __('Request verification') }}</button>
                                     @elseif($isSelf && ! $t->clubAffiliation?->tenant_id && $t->verification_status !== 'verified')
                                         {{-- No platform club to confirm → peers/coaches vouch on the public profile. --}}
                                         <button type="button" @click="shareForVouch('{{ route('people.show', $user->uuid) }}')" class="inline-flex items-center gap-1 text-[11px] font-medium text-primary" title="{{ __('member.get_vouched_hint') }}"><i class="bi bi-people"></i>{{ __('member.get_vouched') }}</button>
@@ -1243,12 +1275,16 @@
                         <div class="flex-shrink-0 px-5 pt-3 pb-3 border-b border-gray-100">
                             <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3"></div>
                             <div class="flex items-center justify-between">
-                                <h3 class="font-bold text-foreground">{{ __('Add achievement') }}</h3>
+                                <h3 class="font-bold text-foreground" x-text="editing ? '{{ __('member.tournament_edit_title') }}' : '{{ __('Add achievement') }}'"></h3>
                                 <button type="button" @click="addOpen=false" class="w-8 h-8 rounded-full grid place-items-center text-muted-foreground hover:bg-muted"><i class="bi bi-x-lg"></i></button>
                             </div>
                         </div>
                         {{-- Body --}}
                         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                            <div x-show="editing && wasVerified" x-cloak class="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                                <i class="bi bi-exclamation-triangle-fill mt-0.5"></i>
+                                <span>{{ __('member.tournament_edit_resets_badge') }}</span>
+                            </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Title') }}</label>
                                 <input type="text" x-model="form.title" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="{{ __('e.g. National Championship 2019') }}">
@@ -1328,7 +1364,7 @@
                         <div class="flex-shrink-0 border-t border-gray-100 bg-background px-5 pt-3" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
                             <button type="button" @click="submit()" :disabled="saving"
                                     class="w-full bg-primary text-white py-3 rounded-xl font-semibold disabled:opacity-60 flex items-center justify-center gap-2">
-                                <span x-show="!saving">{{ __('Save achievement') }}</span>
+                                <span x-show="!saving" x-text="editing ? '{{ __('shared.save') }}' : '{{ __('Save achievement') }}'"></span>
                                 <span x-show="saving"><i class="bi bi-arrow-repeat animate-spin"></i></span>
                             </button>
                         </div>
@@ -3363,13 +3399,67 @@ window.tournamentSheet = function (cfg) {
             { v: 'special', e: '🏆', l: @js(__('Special')) },
         ],
         form: {},
+        editing: false,
+        wasVerified: false,
+        updateUrl: '',
         blankForm() {
             return { title: '', sport: '', date: '', type: 'tournament', location: '', club_affiliation_id: null, medal_type: '' };
         },
         openAdd() {
             this.form = this.blankForm();
+            this.editing = false; this.wasVerified = false; this.updateUrl = '';
             this.evidence = null; this.evidenceName = ''; this.evidencePreview = '';
             this.addOpen = true;
+        },
+        /** Read the card's escaped payload; both actions are driven from the DOM. */
+        cardPayload(el) {
+            const card = el.closest('[data-tournament-card]');
+            if (!card || !card.dataset.edit) return null;
+            try { return JSON.parse(card.dataset.edit); } catch (e) { return null; }
+        },
+        /** Same sheet, edit mode — prefilled from the card's payload. */
+        openEdit(el) {
+            const t = this.cardPayload(el);
+            if (!t) return;
+            this.form = {
+                title: t.title || '', sport: t.sport || '', date: t.date || '',
+                type: t.type || 'tournament', location: t.location || '',
+                club_affiliation_id: t.club_affiliation_id || null, medal_type: t.medal_type || '',
+            };
+            this.editing = true;
+            this.wasVerified = !! t.verified;
+            this.updateUrl = t.update_url;
+            this.evidence = null; this.evidenceName = ''; this.evidencePreview = '';
+            this.addOpen = true;
+        },
+        /** Delete a record after an in-app confirmation (never a native dialog). */
+        async remove(el) {
+            const t = this.cardPayload(el);
+            if (!t) return;
+            const ok = await window.confirmAction({
+                title: @js(__('member.tournament_delete_confirm_title')),
+                message: @js(__('member.tournament_delete_confirm_body')),
+                type: 'danger',
+                confirmText: @js(__('shared.delete')),
+            });
+            if (! ok) return;
+            try {
+                const res = await fetch(t.delete_url, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': cfg.csrf, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const data = await res.json();
+                if (data.success) {
+                    const card = document.querySelector('[data-tournament-card][data-uuid="' + CSS.escape(t.uuid) + '"]');
+                    if (card) card.remove();
+                    window.showToast && window.showToast('success', data.message);
+                    // Medal tiles are server-computed, so refresh them.
+                    if (! window.location.hash) { try { history.replaceState(history.state, '', '#tournaments'); } catch (e) {} }
+                    window.location.reload();
+                } else {
+                    window.showToast && window.showToast('error', data.message || @js(__('shared.error')));
+                }
+            } catch (e) { window.showToast && window.showToast('error', @js(__('Something went wrong.'))); }
         },
         readEvidence(ev) {
             var file = ev.target.files && ev.target.files[0];
@@ -3405,12 +3495,14 @@ window.tournamentSheet = function (cfg) {
             if (this.form.club_affiliation_id) fd.append('club_affiliation_id', this.form.club_affiliation_id);
             if (this.form.medal_type) fd.append('performance_results[0][medal_type]', this.form.medal_type);
             if (this.evidence) fd.append('evidence', this.evidence);
+            // Laravel method spoofing: the same multipart POST, routed to PUT on edit.
+            if (this.editing) fd.append('_method', 'PUT');
             try {
-                var res = await fetch(cfg.storeUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': cfg.csrf, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: fd });
+                var res = await fetch(this.editing ? this.updateUrl : cfg.storeUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': cfg.csrf, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: fd });
                 var data = await res.json();
                 if (data.success) {
                     this.addOpen = false;
-                    window.showToast && window.showToast('success', @js(__('Achievement added.')));
+                    window.showToast && window.showToast('success', this.editing ? @js(__('member.tournament_updated')) : @js(__('Achievement added.')));
                     // Reload so the server-computed medal tiles + "awaiting verification"
                     // note reflect the new record (self-reported medals stay uncounted in
                     // the verified tiles by design). The #tournaments hash returns here.

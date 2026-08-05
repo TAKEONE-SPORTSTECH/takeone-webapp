@@ -52,7 +52,10 @@
         weigh_in_at: @js($ev?->weigh_in_at ? \Carbon\Carbon::parse($ev->weigh_in_at)->format('Y-m-d\TH:i') : ''),
         enrollment_starts: @js($ev?->enrollment_starts_at?->format('Y-m-d') ?? ($isEdit ? '' : now()->format('Y-m-d'))),
         enrollment_ends: @js($ev?->enrollment_ends_at?->format('Y-m-d') ?? ''),
-        tkdConfig: @js($tkdDivisions ?? []),
+        {{-- Weight tables come from the Taekwondo package's own catalogue. This
+             division picker is the last type-specific block left in the shared
+             create form; Phase 2 moves it into the package's own screen. --}}
+        tkdConfig: @js($catalogs['taekwondo_tournament']['weight_divisions'] ?? []),
         tkdAge: 'Senior',
         tkdGender: 'male',
         tkdChecked: {},
@@ -226,9 +229,23 @@
         addFixture() { this.league.fixtures.push({ home: '', away: '', date: '', home_score: '', away_score: '' }); },
         removeFixture(i) { this.league.fixtures.splice(i, 1); },
 
-        canSave() { return this.tenant_id && this.title.trim().length > 1 && this.date && this.start_time; },
+        // What is still missing, by name — so the form can SAY it rather than
+        // just sitting there dimmed.
+        missing() {
+            const m = [];
+            if (!this.tenant_id) m.push('{{ __("personal.personal_event_create_club") }}');
+            if (this.title.trim().length < 2) m.push('{{ __("personal.personal_event_create_title_label") }}');
+            if (!this.date) m.push('{{ __("personal.personal_event_create_start_date") }}');
+            if (!this.start_time) m.push('{{ __("personal.personal_event_create_start_time") }}');
+            return m;
+        },
+        canSave() { return this.missing().length === 0; },
         async save() {
-            if (!this.canSave()) { window.showToast('warning','{{ __("personal.personal_event_create_need_title_date_time") }}'); return; }
+            const missing = this.missing();
+            if (missing.length) {
+                window.showToast('warning', '{{ __("personal.personal_event_create_still_needed") }} ' + missing.join(', '));
+                return;
+            }
             if (this.sending) return;
             this.sending = true;
             try {
@@ -819,8 +836,10 @@
             <button type="button" @click="addPhase()" class="m-press mt-3 w-full py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground"><i class="bi bi-plus-lg"></i> {{ __('personal.personal_event_create_add_stage') }}</button>
         </div>
 
-        {{-- Save --}}
-        <button type="button" @click="save()" :disabled="!canSave() || sending"
+        {{-- Save — stays CLICKABLE when the form is incomplete (only `sending`
+             disables it) so tapping it names what is missing. A disabled button
+             that silently ignores you is indistinguishable from a broken one. --}}
+        <button type="button" @click="save()" :disabled="sending"
                 class="m-press w-full py-3.5 rounded-2xl text-white font-black text-sm flex items-center justify-center gap-2 transition-opacity"
                 :class="(canSave() && !sending) ? '' : 'opacity-50'" :style="`background:${color}`">
             <i class="bi" :class="sending ? 'bi-arrow-repeat animate-spin' : (isEdit ? 'bi-check2' : 'bi-calendar-plus')"></i>

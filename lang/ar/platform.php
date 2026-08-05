@@ -207,6 +207,7 @@ return [
     'backup_index_export_desc' => 'نزّل جميع مستخدمي المصادقة مع كلمات المرور المشفّرة لأغراض الترحيل.',
     'backup_index_export_button' => 'تصدير المستخدمين',
     'backup_index_export_note' => 'يشمل كلمات المرور المشفّرة',
+    'backup_index_group_export' => 'التصدير والتنزيل',
     'backup_index_best_practices' => 'أفضل الممارسات',
     'backup_index_backup_guidelines' => 'إرشادات النسخ الاحتياطي',
     'backup_index_guideline_1' => 'جدوِل نسخًا احتياطية تلقائية منتظمة (يُنصح بها يوميًا)',

@@ -59,7 +59,7 @@
                                     class="w-full text-start flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted transition-colors">
                                 <i class="bi bi-pencil"></i> {{ __('personal.event_show_edit_event') }}
                             </button>
-                            @if(!($isTkd ?? false))
+                            @if(($manual_results ?? true))
                                 <button type="button" @click="openResults()"
                                         class="w-full text-start flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted transition-colors">
                                     <i class="bi bi-trophy"></i> {{ __('personal.event_show_set_winners') }}
@@ -191,8 +191,8 @@
     </div>
 
     {{-- ===== Manager: record winners (finished events) ===== --}}
-    {{-- Taekwondo championships derive the podium from the brackets (wins/losses) — no manual entry. --}}
-    @if(($canManage ?? false) && !($isTkd ?? false))
+    {{-- Types that derive their podium from their own engine (brackets, tables) opt out via allowsManualResults(). --}}
+    @if(($canManage ?? false) && ($manual_results ?? true))
         <div class="px-4 mt-4" x-show="results.length === 0">
             <button type="button" @click="openResults()"
                     class="m-press w-full py-3 rounded-2xl border-2 border-dashed border-gray-200 text-sm font-bold text-foreground flex items-center justify-center gap-2">
@@ -259,8 +259,8 @@
     @endif
 
     {{-- ===== League: standings + fixtures ===== --}}
-    @if(!empty($e['league']))
-        @php $lg = $e['league']; @endphp
+    @if(!empty($league))
+        @php $lg = $league; @endphp
         @if(!empty($lg['standings']))
             <div class="px-4 mt-4">
                 <div class="m-card rounded-2xl p-4">

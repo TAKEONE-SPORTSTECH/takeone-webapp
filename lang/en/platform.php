@@ -207,6 +207,7 @@ return [
     'backup_index_export_desc' => 'Download all authentication users with encrypted passwords for migration purposes.',
     'backup_index_export_button' => 'Export Users',
     'backup_index_export_note' => 'Includes encrypted passwords',
+    'backup_index_group_export' => 'Export & download',
     'backup_index_best_practices' => 'Best Practices',
     'backup_index_backup_guidelines' => 'Backup Guidelines',
     'backup_index_guideline_1' => 'Schedule regular automated backups (daily recommended)',
