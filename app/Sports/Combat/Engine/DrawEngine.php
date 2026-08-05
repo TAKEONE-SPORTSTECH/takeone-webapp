@@ -87,6 +87,9 @@ class DrawEngine
         $competitors = $regs->map(fn ($r) => [
             'id' => $r->id,
             'name' => $r->user?->full_name ?? $r->user?->name ?? 'Athlete',
+            // The entry's country (ISO alpha-2), so the board can fly a flag.
+            // Same source Arrangement::place() reads when a draw is hand-made.
+            'country' => $r->meta ?: null,
             'provisional' => ! $paidOnly && (! $r->paid || $r->weight === null),
             'key' => md5($cat->id.':'.$r->user_id),
         ])->sortBy('key')->values();
@@ -127,9 +130,11 @@ class DrawEngine
                 'slot' => $slot++,
                 'a_name' => $a['name'] ?? null,
                 'a_competitor_id' => $a['id'] ?? null,
+                'a_country' => $a['country'] ?? null,
                 'a_provisional' => $a['provisional'] ?? false,
                 'b_name' => $b['name'] ?? null,
                 'b_competitor_id' => $b['id'] ?? null,
+                'b_country' => $b['country'] ?? null,
                 'b_provisional' => $b['provisional'] ?? false,
                 'winner' => $bye ? ($a ? 'a' : 'b') : null,
                 'status' => $bye ? 'done' : 'upcoming',

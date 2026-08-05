@@ -79,6 +79,7 @@ class Advancement
             $won = $current->winner;
             $name = $won ? $current->{$won.'_name'} : null;
             $competitorId = $won ? $current->{$won.'_competitor_id'} : null;
+            $country = $won ? $current->{$won.'_country'} : null;
             $provisional = $won ? (bool) $current->{$won.'_provisional'} : false;
 
             // Compare on the competitor, falling back to the name for a
@@ -93,6 +94,7 @@ class Advancement
 
             $bout->{$side.'_name'} = $name;
             $bout->{$side.'_competitor_id'} = $competitorId;
+            $bout->{$side.'_country'} = $name ? $country : null;
             $bout->{$side.'_provisional'} = $name ? $provisional : false;
             $bout->{$side.'_score'} = null;
 

@@ -15,6 +15,17 @@
     $byQual  = str_contains(strtolower($e['participant_fee']), 'qualified');
     $hasTicket = !empty($e['spectator']);
     $ticketPaid = $hasTicket && !str_contains(strtolower($e['spectator']['fee']), 'free');
+
+    // Why competing is not on offer — the exact sentence the server produced, so
+    // the apology dialog gives the real reason rather than a generic refusal.
+    // Defined up here because partials.event-show-script (included below) reads it.
+    $whyNot = ($banned ?? false)
+        ? ($eligReason ?? __('personal.event_show_removed_default'))
+        : (($e['ended'] ?? false)
+            ? __('personal.event_show_ended_msg')
+            : ($byQual
+                ? __('personal.event_show_entry_by_qualification')
+                : ($eligReason ?? __('personal.event_show_not_eligible_default'))));
 @endphp
 <div @include('partials.event-show-script')
      class="-mx-4 -mt-4 pb-4">
@@ -344,36 +355,84 @@
         <div class="m-card rounded-2xl p-4">
             <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-tag text-primary"></i> {{ __('personal.event_show_entry_tickets') }}</h2>
 
-            {{-- Participant fee --}}
-            <div class="mt-3 flex items-center gap-3 rounded-xl border border-gray-100 p-3">
-                <div class="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0 {{ $pPaid ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-600' }}"><i class="bi bi-person-check text-lg"></i></div>
-                <div class="min-w-0 flex-1">
-                    <p class="text-sm font-bold text-foreground">{{ $byQual ? __('personal.event_show_take_part') : __('personal.event_show_join_participant') }}</p>
-                    <p class="text-[11px] text-muted-foreground">
-                        @if(!($canCompete ?? true)) <span class="text-amber-600 font-semibold">{{ __('personal.event_show_not_eligible_spectators') }}</span>
-                        @elseif($byQual) {{ __('personal.event_show_reserved_finalists') }}
-                        @elseif($pPaid) {{ __('personal.event_show_fee_paid_club') }}
-                        @else {{ __('personal.event_show_free_members') }} @endif
-                    </p>
+            {{-- Each row IS the way in: the row already names the thing, its
+                 price and who it is for, so a separate CTA underneath only
+                 repeated it. Rows that cannot be taken (ineligible, already
+                 registered, blocked, event over) stay on screen but disabled, so
+                 the price list still reads as a price list.
+
+                 A row shows a tick and turns green once you hold that place. --}}
+            @php
+                $locked = ($banned ?? false) || ($e['ended'] ?? false);
+                // $whyNot is set at the top of this view — the script partial needs it.
+                $canJoin = ! $locked && ($canCompete ?? true) && ! $byQual;
+            @endphp
+
+            {{-- ===== Join / spectate =====
+                 Same shape as the "Brackets & draws" card further down the page:
+                 a dark gradient, a soft circle bleeding off the corner, a
+                 translucent icon tile and a chevron. Those already read as
+                 pressable here, so the two ways INTO the event use the same
+                 language rather than inventing a second one.
+
+                 Green once you hold that place. The ineligible variant keeps the
+                 shape but goes slate, so it still invites a tap ("Why not?")
+                 without pretending to be the main action. --}}
+
+            {{-- Participant --}}
+            <button type="button"
+                    @click="{{ $canJoin ? 'toggleGoing()' : 'explainIneligible()' }}"
+                    :disabled="registered"
+                    class="m-press mt-3 w-full block rounded-2xl p-4 text-white text-start relative overflow-hidden
+                           shadow-lg transition-all active:scale-[.98] disabled:cursor-not-allowed"
+                    :style="going
+                        ? 'background: linear-gradient(135deg, #16a34a, #1f2937)'
+                        : 'background: linear-gradient(135deg, {{ $canJoin ? $e['color'] : '#64748b' }}, #1f2937)'">
+                <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
+                <div class="relative flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
+                        <i class="bi text-2xl" :class="going ? 'bi-check2-circle' : '{{ $canJoin ? 'bi-person-check' : 'bi-info-circle' }}'"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <h3 class="font-black text-base leading-tight"
+                            x-text="going ? '{{ __('personal.event_show_youre_participant') }}' : '{{ $byQual ? __('personal.event_show_take_part') : __('personal.event_show_join_participant') }}'">{{ $byQual ? __('personal.event_show_take_part') : __('personal.event_show_join_participant') }}</h3>
+                        <p class="text-xs text-white/85 mt-0.5">
+                            @if(!($canCompete ?? true)) {{ __('personal.event_show_not_eligible_spectators') }}
+                            @elseif($byQual) {{ __('personal.event_show_reserved_finalists') }}
+                            @elseif($pPaid) {{ __('personal.event_show_fee_paid_club') }}
+                            @else {{ __('personal.event_show_free_members') }} @endif
+                        </p>
+                    </div>
+                    <span class="text-sm font-black flex-shrink-0"
+                          x-text="going ? '{{ __('personal.event_show_cta_joined') }}' : '{{ $canJoin ? $e['participant_fee'] : __('personal.event_show_cta_why') }}'">{{ $canJoin ? $e['participant_fee'] : __('personal.event_show_cta_why') }}</span>
+                    <i class="bi bi-chevron-right text-white/80 flex-shrink-0"></i>
                 </div>
-                <span class="text-sm font-black flex-shrink-0 {{ $pPaid ? 'text-amber-600' : 'text-foreground' }}">{{ $e['participant_fee'] }}</span>
-            </div>
+            </button>
 
             {{-- Spectator ticket --}}
             @if($hasTicket)
-                <div class="mt-2 flex items-center gap-3 rounded-xl border border-gray-100 p-3">
-                    <div class="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0 {{ $ticketPaid ? 'bg-purple-50 text-primary' : 'bg-sky-50 text-sky-600' }}"><i class="bi bi-ticket-perforated text-lg"></i></div>
-                    <div class="min-w-0 flex-1">
-                        <p class="text-sm font-bold text-foreground">{{ __('personal.event_show_spectator_ticket') }}</p>
-                        <p class="text-[11px] text-muted-foreground"><span x-text="spectators">{{ $e['spectator']['count'] }}</span> {{ __('personal.event_show_watching') }}{{ $ticketPaid ? ' · '.__('personal.event_show_entry_watch_matches') : ' · '.__('personal.event_show_free_to_watch') }}</p>
+                <button type="button" @click="toggleWatch()"
+                        :disabled="registered || {{ $locked ? 'true' : 'false' }}"
+                        class="m-press mt-2.5 w-full block rounded-2xl p-4 text-white text-start relative overflow-hidden
+                               shadow-lg transition-all active:scale-[.98]
+                               disabled:cursor-not-allowed disabled:opacity-60"
+                        :style="watching
+                            ? 'background: linear-gradient(135deg, #16a34a, #1f2937)'
+                            : 'background: linear-gradient(135deg, {{ $ticketPaid ? '#7c3aed' : '#0284c7' }}, #1f2937)'">
+                    <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
+                    <div class="relative flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
+                            <i class="bi text-2xl" :class="watching ? 'bi-check2-circle' : 'bi-ticket-perforated'"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="font-black text-base leading-tight"
+                                x-text="watching ? '{{ __('personal.event_show_ticket_booked') }}' : '{{ __('personal.event_show_spectator_ticket') }}'">{{ __('personal.event_show_spectator_ticket') }}</h3>
+                            <p class="text-xs text-white/85 mt-0.5"><span x-text="spectators">{{ $e['spectator']['count'] }}</span> {{ __('personal.event_show_watching') }}{{ $ticketPaid ? ' · '.__('personal.event_show_entry_watch_matches') : ' · '.__('personal.event_show_free_to_watch') }}</p>
+                        </div>
+                        <span class="text-sm font-black flex-shrink-0"
+                              x-text="watching ? '{{ __('personal.event_show_cta_booked') }}' : '{{ $e['spectator']['fee'] }}'">{{ $e['spectator']['fee'] }}</span>
+                        <i class="bi bi-chevron-right text-white/80 flex-shrink-0"></i>
                     </div>
-                    <span class="text-sm font-black flex-shrink-0 {{ $ticketPaid ? 'text-primary' : 'text-sky-600' }}">{{ $e['spectator']['fee'] }}</span>
-                </div>
-                <button type="button" @click="toggleWatch()" :disabled="registered || {{ ($banned ?? false) ? 'true' : 'false' }}"
-                        class="m-press mt-3 w-full py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors border disabled:cursor-not-allowed disabled:opacity-60"
-                        :class="watching ? 'bg-green-50 text-green-700 border-green-200' : (going ? 'bg-muted text-muted-foreground border-gray-100' : 'border-gray-200 text-foreground')">
-                    <i class="bi" :class="watching ? 'bi-check2-circle' : 'bi-ticket-perforated'"></i>
-                    <span x-text="watching ? '{{ __("personal.event_show_ticket_booked") }}' : (going ? '{{ __("personal.event_show_youre_participant") }}' : '{{ ($banned ?? false) ? __('personal.event_show_not_available') : ($ticketPaid ? __('personal.event_show_buy_ticket_watch', ['fee' => $e['spectator']['fee']]) : __('personal.event_show_get_free_pass')) }}')"></span>
                 </button>
             @endif
         </div>
@@ -465,137 +524,35 @@
     </div>
     @endif
 
-    {{-- ===== Participants (people who already joined) ===== --}}
+    {{-- ===== Who's joined — opens on its own page =====
+         The roster used to sit inline here: three tabs and up to 48 names that
+         every visitor had to scroll past to reach the location and the join
+         button. It is now one card that opens the full list, matching how
+         Brackets & draws is reached from this screen. --}}
     <div class="px-4 mt-4">
-        @php $showTabs = $hasTicket || ($canManage ?? false); @endphp
-        <div class="m-card rounded-2xl p-4" x-data="{ rtab: 'participants' }">
-            <div class="flex items-center justify-between">
-                <h2 class="text-sm font-bold text-foreground flex items-center gap-2">
-                    <i class="bi bi-people text-primary"></i> {{ $byQual ? __('personal.event_show_finalists') : __('personal.event_show_whos_joined') }}
-                </h2>
-                @unless($showTabs)
-                    <span class="text-[11px] font-semibold text-primary" x-text="`${goingCount} {{ __('personal.event_show_in') }}`">{{ $e['participants_total'] ?? $e['going'] }} {{ __('personal.event_show_in') }}</span>
-                @endunless
-            </div>
-
-            @if($showTabs)
-                {{-- Tabs: competitors · spectators · (manager) blocked --}}
-                <div class="flex gap-2 mt-3 overflow-x-auto">
-                    <button type="button" @click="rtab='participants'"
-                            class="m-press flex-1 py-1.5 rounded-lg text-xs font-bold border-2 transition-colors flex items-center justify-center gap-1.5 whitespace-nowrap"
-                            :class="rtab==='participants' ? 'border-primary bg-accent text-primary' : 'border-gray-200 text-muted-foreground'">
-                        <i class="bi bi-person-arms-up"></i> {{ __('personal.event_show_participants') }}
-                        <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary" x-text="goingCount">{{ $e['participants_total'] }}</span>
-                    </button>
-                    @if($hasTicket)
-                        <button type="button" @click="rtab='spectators'"
-                                class="m-press flex-1 py-1.5 rounded-lg text-xs font-bold border-2 transition-colors flex items-center justify-center gap-1.5 whitespace-nowrap"
-                                :class="rtab==='spectators' ? 'border-primary bg-accent text-primary' : 'border-gray-200 text-muted-foreground'">
-                            <i class="bi bi-eye"></i> {{ __('personal.event_show_spectators') }}
-                            <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary" x-text="spectators">{{ $e['spectators_total'] }}</span>
-                        </button>
-                    @endif
-                    @if($canManage ?? false)
-                        <button type="button" @click="rtab='blocked'"
-                                class="m-press flex-1 py-1.5 rounded-lg text-xs font-bold border-2 transition-colors flex items-center justify-center gap-1.5 whitespace-nowrap"
-                                :class="rtab==='blocked' ? 'border-primary bg-accent text-primary' : 'border-gray-200 text-muted-foreground'">
-                            <i class="bi bi-shield-x"></i> {{ __('personal.event_show_blocked') }}
-                            <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary" x-text="blockedCount">{{ count($e['bans_list'] ?? []) }}</span>
-                        </button>
-                    @endif
+        <a href="{{ route('me.events.people', $e['key']) }}" data-shell-link data-route="me.events"
+           class="block m-press rounded-2xl p-4 text-white relative overflow-hidden shadow-lg"
+           style="background: linear-gradient(135deg, {{ $e['color'] }}, #1f2937);">
+            <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
+            <div class="relative flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
+                    <i class="bi bi-people-fill text-2xl"></i>
                 </div>
-            @endif
-
-            {{-- Participants (competitors only) --}}
-            <div class="mt-3 space-y-2.5" @if($showTabs) x-show="rtab==='participants'" x-transition @endif>
-                @forelse($e['participants'] as $i => $pp)
-                    @php $initials = collect(explode(' ', $pp['name']))->map(fn($p) => mb_substr($p, 0, 1))->take(2)->implode(''); @endphp
-                    <div class="flex items-center gap-3" @if($pp['id'] ?? false) id="prow-{{ $pp['id'] }}" @endif>
-                        <div class="w-9 h-9 rounded-full grid place-items-center text-white text-[11px] font-bold flex-shrink-0"
-                             style="background: hsl({{ ($i * 67) % 360 }} 55% 58%);">{{ $initials }}</div>
-                        <div class="min-w-0 flex-1">
-                            <p class="text-sm font-semibold text-foreground truncate">{{ $pp['name'] }}</p>
-                            @php
-                                $bits = array_filter([
-                                    $pp['gender'] ?? null,
-                                    $pp['category'] ?? null,
-                                    $pp['weight_class'] ?? null,
-                                ]);
-                            @endphp
-                            <p class="text-[11px] text-muted-foreground truncate">{{ $bits ? implode(' · ', $bits) : $pp['meta'] }}</p>
-                        </div>
-                        @if(($pp['paid'] ?? true))
-                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-50 text-green-600 flex-shrink-0"><i class="bi bi-check2"></i> {{ __('personal.event_show_joined') }}</span>
-                        @else
-                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 flex-shrink-0"><i class="bi bi-hourglass-split"></i> {{ __('personal.event_show_pending') }}</span>
+                <div class="min-w-0 flex-1">
+                    <h3 class="font-black text-base leading-tight">{{ $byQual ? __('personal.event_show_finalists') : __('personal.event_show_whos_joined') }}</h3>
+                    {{-- Bound to the page's own Alpine counters, so joining or
+                         removing someone updates this card without a reload —
+                         the same numbers the tabs used to show. --}}
+                    <p class="text-xs text-white/85 mt-0.5">
+                        <span x-text="goingCount">{{ $e['participants_total'] ?? $e['going'] }}</span> {{ __('personal.event_show_in') }}
+                        @if($hasTicket)
+                            · <span x-text="spectators">{{ $e['spectator']['count'] }}</span> {{ __('personal.event_show_spectators') }}
                         @endif
-                        @if(($canManage ?? false) && ($pp['id'] ?? false))
-                            <x-event-moderate-menu :id="$pp['id']" :name="$pp['name']" />
-                        @endif
-                    </div>
-                @empty
-                    <p class="text-[11px] text-muted-foreground text-center py-3">{{ __('personal.event_show_no_competitors') }}</p>
-                @endforelse
-                @php $more = max(($e['participants_total'] ?? count($e['participants'])) - count($e['participants']), 0); @endphp
-                @if($more > 0)
-                    <p class="text-[11px] text-muted-foreground text-center pt-1">+ {{ $more }} {{ __('personal.event_show_more') }}</p>
-                @endif
+                    </p>
+                </div>
+                <i class="bi bi-chevron-right text-white/80"></i>
             </div>
-
-            @if($hasTicket)
-                {{-- Spectators (ticket holders) --}}
-                <div class="mt-3 space-y-2.5" x-show="rtab==='spectators'" x-cloak x-transition>
-                    @forelse($e['spectators_list'] as $i => $sp)
-                        @php $sinitials = collect(explode(' ', $sp['name']))->map(fn($p) => mb_substr($p, 0, 1))->take(2)->implode(''); @endphp
-                        <div class="flex items-center gap-3" @if($sp['id'] ?? false) id="srow-{{ $sp['id'] }}" @endif>
-                            <div class="w-9 h-9 rounded-full grid place-items-center text-white text-[11px] font-bold flex-shrink-0"
-                                 style="background: hsl({{ (($i + 3) * 53) % 360 }} 45% 60%);">{{ $sinitials }}</div>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-sm font-semibold text-foreground truncate">{{ $sp['name'] }}</p>
-                                <p class="text-[11px] text-muted-foreground truncate">{{ __('personal.event_show_spectator') }}{{ str_contains(strtolower($e['spectator']['fee']),'free') ? '' : ' · '.$e['spectator']['fee'] }}</p>
-                            </div>
-                            @if(($sp['paid'] ?? true))
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-50 text-sky-600 flex-shrink-0"><i class="bi bi-ticket-perforated"></i> {{ str_contains(strtolower($e['spectator']['fee']),'free') ? __('personal.event_show_pass') : __('personal.event_show_ticket') }}</span>
-                            @else
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 flex-shrink-0"><i class="bi bi-hourglass-split"></i> {{ __('personal.event_show_pending') }}</span>
-                            @endif
-                            @if(($canManage ?? false) && ($sp['id'] ?? false))
-                                <x-event-moderate-menu :id="$sp['id']" :name="$sp['name']" />
-                            @endif
-                        </div>
-                    @empty
-                        <p class="text-[11px] text-muted-foreground text-center py-3">{{ __('personal.event_show_no_spectators') }}</p>
-                    @endforelse
-                    @php $smore = max(($e['spectators_total'] ?? 0) - count($e['spectators_list'] ?? []), 0); @endphp
-                    @if($smore > 0)
-                        <p class="text-[11px] text-muted-foreground text-center pt-1">+ {{ $smore }} {{ __('personal.event_show_more') }}</p>
-                    @endif
-                </div>
-            @endif
-
-            @if($canManage ?? false)
-                {{-- Blocked / blacklisted (manager only) --}}
-                <div class="mt-3" x-show="rtab==='blocked'" x-cloak x-transition>
-                    <div id="blocked-list" class="space-y-2.5">
-                        @foreach($e['bans_list'] ?? [] as $bn)
-                            @php $binit = collect(explode(' ', $bn['name']))->map(fn($p) => mb_substr($p, 0, 1))->take(2)->implode(''); @endphp
-                            <div id="brow-{{ $bn['id'] }}" class="flex items-center gap-3">
-                                <div class="w-9 h-9 rounded-full grid place-items-center text-white text-[11px] font-bold flex-shrink-0 bg-gray-400">{{ $binit }}</div>
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-sm font-semibold text-foreground truncate">{{ $bn['name'] }}</p>
-                                    <p class="text-[11px] text-muted-foreground truncate">{{ $bn['scope'] === 'club' ? __('personal.event_show_blacklisted_scope') : __('personal.event_show_blocked_scope') }}</p>
-                                </div>
-                                <button type="button" @click="unblock({{ $bn['id'] }})"
-                                        class="m-press text-[10px] font-bold px-2.5 py-1 rounded-full border border-gray-200 text-foreground hover:bg-muted flex-shrink-0">
-                                    <i class="bi bi-arrow-counterclockwise"></i> {{ __('personal.event_show_unblock') }}
-                                </button>
-                            </div>
-                        @endforeach
-                    </div>
-                    <p id="blocked-empty" class="text-[11px] text-muted-foreground text-center py-3" @if(count($e['bans_list'] ?? [])) style="display:none" @endif>{{ __('personal.event_show_no_blocked') }}</p>
-                </div>
-            @endif
-        </div>
+        </a>
     </div>
 
     {{-- ===== Location ===== --}}
@@ -658,86 +615,13 @@
         </div>
     </div>
 
-    {{-- ===== Join action ===== --}}
+    {{-- ===== Proof of payment =====
+         The join / spectate CTAs that used to sit here are gone: the two pricing
+         rows above ARE the way in now, and this card only repeated them — plus an
+         "you're not eligible" notice that the participant row's own dialog now
+         gives on tap. What stays is the proof-of-payment flow, which has nowhere
+         else to live. --}}
     <div class="px-4 mt-4">
-        @if($e['ended'] ?? false)
-            {{-- Event finished — view only. --}}
-            <div class="m-card rounded-2xl p-4 flex items-center gap-3 text-muted-foreground">
-                <i class="bi bi-flag-fill text-lg"></i>
-                <div class="leading-tight">
-                    <p class="text-sm font-bold text-foreground">{{ __('personal.event_show_ended_title') }}</p>
-                    <p class="text-[11px]">{{ __('personal.event_show_ended_msg') }}</p>
-                </div>
-            </div>
-        @elseif($banned ?? false)
-            {{-- Removed/blocked by the organiser — no join, no ticket. --}}
-            <div class="m-card rounded-2xl p-4 flex items-center gap-3">
-                <i class="bi bi-shield-x text-lg text-red-500"></i>
-                <div class="leading-tight">
-                    <p class="text-sm font-bold text-foreground">{{ __('personal.event_show_cant_join_title') }}</p>
-                    <p class="text-[11px] text-muted-foreground">{{ $eligReason ?? __('personal.event_show_removed_default') }}</p>
-                </div>
-            </div>
-        @elseif($byQual)
-            {{-- Spectator-first event: participation is by qualification, so the
-                 primary CTA is the ticket to watch. --}}
-            <div class="m-card rounded-2xl p-4 flex items-center gap-3">
-                <div class="leading-tight">
-                    <p class="text-[10px] text-muted-foreground uppercase tracking-wide">{{ __('personal.event_show_ticket') }}</p>
-                    <p class="text-base font-black text-foreground">{{ $hasTicket ? $e['spectator']['fee'] : '—' }}</p>
-                </div>
-                <button type="button" @click="toggleWatch()" :disabled="registered"
-                        class="m-press flex-1 py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-colors disabled:cursor-not-allowed"
-                        :class="watching ? 'bg-green-50 text-green-700 border border-green-200' : 'text-white'"
-                        :style="watching ? '' : 'background: {{ $e['color'] }}'">
-                    <i class="bi" :class="watching ? 'bi-check2-circle' : 'bi-ticket-perforated'"></i>
-                    <span x-text="watching ? '{{ __("personal.event_show_ticket_booked") }}' : '{{ __("personal.event_show_buy_ticket_watch_short") }}'"></span>
-                </button>
-            </div>
-        @elseif(!($canCompete ?? true))
-            {{-- Not eligible to COMPETE (e.g. wrong age/weight category) — spectating only. --}}
-            <div class="m-card rounded-2xl p-4">
-                <div class="flex items-start gap-2.5">
-                    <i class="bi bi-info-circle-fill text-base mt-0.5" style="color: {{ $e['color'] }};"></i>
-                    <p class="text-[12px] text-muted-foreground leading-snug">{{ $eligReason ?? __('personal.event_show_not_eligible_default') }}</p>
-                </div>
-                @if($hasTicket)
-                    <div class="mt-3 flex items-center gap-3">
-                        <div class="leading-tight">
-                            <p class="text-[10px] text-muted-foreground uppercase tracking-wide">{{ __('personal.event_show_ticket') }}</p>
-                            <p class="text-base font-black text-foreground">{{ $e['spectator']['fee'] }}</p>
-                        </div>
-                        <button type="button" @click="toggleWatch()" :disabled="registered"
-                                class="m-press flex-1 py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-colors disabled:cursor-not-allowed"
-                                :class="watching ? 'bg-green-50 text-green-700 border border-green-200' : 'text-white'"
-                                :style="watching ? '' : 'background: {{ $e['color'] }}'">
-                            <i class="bi" :class="watching ? 'bi-check2-circle' : 'bi-ticket-perforated'"></i>
-                            <span x-text="watching ? '{{ __("personal.event_show_ticket_booked") }}' : '{{ __('personal.event_show_join_spectator') }}{{ $ticketPaid ? ' · '.$e['spectator']['fee'] : '' }}'"></span>
-                        </button>
-                    </div>
-                @else
-                    <div class="mt-3 w-full py-3 rounded-2xl bg-muted text-muted-foreground text-sm font-bold flex items-center justify-center gap-2">
-                        <i class="bi bi-lock"></i> Spectating not available
-                    </div>
-                @endif
-            </div>
-        @else
-            <div class="m-card rounded-2xl p-4 flex items-center gap-3">
-                <div class="leading-tight">
-                    <p class="text-[10px] text-muted-foreground uppercase tracking-wide">{{ $pPaid ? __('personal.event_show_entry_fee') : __('personal.event_show_entry') }}</p>
-                    <p class="text-base font-black text-foreground">{{ $e['participant_fee'] }}</p>
-                </div>
-                <button type="button" @click="toggleGoing()" :disabled="registered"
-                        class="m-press flex-1 py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-colors disabled:cursor-not-allowed"
-                        :class="going ? 'bg-green-50 text-green-700 border border-green-200' : (watching ? 'bg-muted text-muted-foreground' : 'text-white')"
-                        :style="(going || watching) ? '' : 'background: {{ $e['color'] }}'">
-                    <i class="bi" :class="going ? 'bi-check2-circle' : (watching ? 'bi-ticket-perforated' : 'bi-plus-circle')"></i>
-                    <span x-text="going ? '{{ __("personal.event_show_youre_going") }}' : (watching ? '{{ __("personal.event_show_youre_watching") }}' : '{{ $pPaid ? __('personal.event_show_register_fee', ['fee' => $e['participant_fee']]) : __('personal.event_show_join_event') }}')"></span>
-                </button>
-            </div>
-        @endif
-
-        {{-- Optional manual proof-of-payment (paid participant events) --}}
         @include('partials.event-payment-proof')
     </div>
 

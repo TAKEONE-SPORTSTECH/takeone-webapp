@@ -133,6 +133,18 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     Route::put('/events/{event:uuid}/results', [App\Http\Controllers\PersonalEventController::class, 'setResults'])->name('events.results')->middleware('throttle:member-write');
     Route::delete('/events/{event:uuid}', [App\Http\Controllers\PersonalEventController::class, 'destroy'])->name('events.destroy')->middleware('throttle:member-write');
     Route::get('/events/{event:uuid}/brackets', [App\Http\Controllers\PersonalEventController::class, 'bracket'])->name('events.bracket');
+    // The same board, full screen and free of chrome, for organisers arranging a
+    // draw. Redirects back to the bracket for anyone who may not arrange.
+    Route::get('/events/{event:uuid}/brackets/manage', [App\Http\Controllers\PersonalEventController::class, 'manageBracket'])->name('events.bracket.manage');
+
+    // Who's joined — the roster that used to render inline on the event screen.
+    Route::get('/events/{event:uuid}/people', [App\Http\Controllers\PersonalEventController::class, 'people'])->name('events.people');
+
+    // Officials (the jury). Appointing is the organiser's call, so these are all
+    // canManage-gated; being an official only ever grants arranging the draw.
+    Route::get('/events/{event:uuid}/officials', [App\Http\Controllers\PersonalEventController::class, 'officials'])->name('events.officials');
+    Route::post('/events/{event:uuid}/officials', [App\Http\Controllers\PersonalEventController::class, 'storeOfficial'])->name('events.officials.store')->middleware('throttle:member-write');
+    Route::delete('/events/{event:uuid}/officials/{user}', [App\Http\Controllers\PersonalEventController::class, 'destroyOfficial'])->name('events.officials.destroy')->middleware('throttle:member-write');
     // Bracket screen data + hand-arranging the draw. Generic to every bracketed
     // type (the package decides what a legal arrangement is), so this is one
     // surface rather than a route per sport.

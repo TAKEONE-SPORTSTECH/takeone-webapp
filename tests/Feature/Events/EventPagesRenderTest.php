@@ -115,11 +115,15 @@ class EventPagesRenderTest extends TestCase
     }
 
     /**
-     * Both bracket screens mount the shared zoomable board. Device-split per
-     * CLAUDE.md, but one renderer — so a draw looks and behaves the same on a
-     * phone (and therefore inside the Android app) as on a desktop.
+     * The zoomable board is mounted by the desktop bracket screen and by the
+     * full-screen draw manager — one renderer for both, so a draw looks and
+     * behaves the same on a phone (and therefore inside the Android app).
+     *
+     * The MOBILE bracket screen deliberately no longer embeds it: 62vh of board
+     * under a header was worse than a link to a screen that gives it the whole
+     * viewport. That page keeps the readable round-by-round detail instead.
      */
-    public function test_both_bracket_screens_mount_the_zoomable_board(): void
+    public function test_the_zoomable_board_mounts_where_it_belongs(): void
     {
         $owner = $this->createUser();
         $club = $this->club($owner);
@@ -131,11 +135,18 @@ class EventPagesRenderTest extends TestCase
         $desktop->assertSee('BracketBoard.mount', false);
         $desktop->assertSee('event-bracket-viewport', false);
 
+        // Mobile: no board of its own, but a way through to the full-screen one.
         $mobile = $this->actingAs($member)
             ->withHeaders(['User-Agent' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'])
             ->get("/me/events/{$event->uuid}/brackets")->assertOk();
-        $mobile->assertSee('BracketBoard.mount', false);
-        $mobile->assertSee('event-bracket-viewport', false);
+        $mobile->assertDontSee('event-bracket-viewport', false);
+
+        // The organiser's full-screen manager is where a phone arranges a draw.
+        $manage = $this->actingAs($owner)
+            ->withHeaders(['User-Agent' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'])
+            ->get("/me/events/{$event->uuid}/brackets/manage")->assertOk();
+        $manage->assertSee('BracketBoard.mount', false);
+        $manage->assertSee('manage-bracket-viewport', false);
     }
 
     public function test_create_and_edit_forms_render(): void

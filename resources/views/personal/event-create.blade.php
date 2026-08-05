@@ -17,8 +17,15 @@
     $initTenant  = $ev?->tenant_id ?? (!empty($clubs) ? $clubs[0]['id'] : 'null');
     $initStart   = $ev?->start_time ? \Carbon\Carbon::parse($ev->start_time)->format('H:i') : '';
     $initEnd     = $ev?->end_time ? \Carbon\Carbon::parse($ev->end_time)->format('H:i') : '';
-    $partFree    = $ev ? empty($ev->participant_fee) : true;
-    $submitUrl   = $isEdit ? route('me.events.update', $ev->id) : route('me.events.store');
+    // A NEW event is paid by default — an organiser opts INTO free, rather than
+    // opting out of charging. Editing always reflects what the event actually is.
+    $partFree    = $ev ? empty($ev->participant_fee) : false;
+    // Same idea for spectators: tickets are on by default on a new event.
+    $specOn      = $ev ? (bool) $ev->spectator_enabled : true;
+    // uuid, not id: these routes bind {event:uuid}. A GET by id happens to be
+    // redirected to the uuid form, which hid this — but PUT by id 404s, so
+    // "Save changes" was silently failing.
+    $submitUrl   = $isEdit ? route('me.events.update', $ev->uuid) : route('me.events.store');
     $submitMethod = $isEdit ? 'PUT' : 'POST';
     // belt range parsed out of `level` ("White → Brown")
     $beltFrom = ''; $beltTo = '';
@@ -75,7 +82,7 @@
         clubs: @js($clubs),
         participant_free: {{ $partFree ? 'true' : 'false' }},
         participant_amount: @js($pAmt),
-        spectator_enabled: {{ ($ev?->spectator_enabled ?? false) ? 'true' : 'false' }},
+        spectator_enabled: {{ $specOn ? 'true' : 'false' }},
         spectator_amount: @js($sAmt),
         max_capacity: @js((string) ($ev?->max_capacity ?? '')),
         prize: @js($ev?->prize ?? ''),
@@ -307,7 +314,7 @@
     <header class="m-hero px-5 pt-5 pb-10 text-white relative overflow-hidden" :style="`background: linear-gradient(150deg, ${color}, #1f2937)`">
         <div class="absolute -end-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
         <div class="flex items-center gap-3 relative z-10">
-            <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ $isEdit ? route('me.events.show', $ev->id) : route('me.events') }}')"
+            <button type="button" onclick="history.length > 1 ? history.back() : (window.location.href='{{ $isEdit ? route('me.events.show', $ev->uuid) : route('me.events') }}')"
                class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="{{ __('shared.back') }}">
                 <i class="bi bi-arrow-left text-lg"></i>
             </button>
@@ -835,6 +842,132 @@
             </div>
             <button type="button" @click="addPhase()" class="m-press mt-3 w-full py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground"><i class="bi bi-plus-lg"></i> {{ __('personal.personal_event_create_add_stage') }}</button>
         </div>
+
+        {{-- ===== Officials (the jury) — edit mode only =====
+             Appointing needs an event to appoint to, so this has no place in the
+             create wizard. It saves on its own rather than riding the form's
+             submit: appointing someone is a decision in its own right, and an
+             organiser should not have to press "Save changes" for it to count. --}}
+        @if($isEdit)
+        <div class="m-card rounded-2xl p-4 mt-4"
+             x-data="{
+                officials: [], candidates: [], q: '', open: false, busy: false, loaded: false,
+                async load() {
+                    try {
+                        const res = await fetch(`{{ route('me.events.officials', $ev->uuid) }}?q=${encodeURIComponent(this.q)}`, {
+                            headers: { 'Accept': 'application/json' }, credentials: 'same-origin',
+                        });
+                        const d = await res.json();
+                        if (!res.ok || !d.success) throw new Error(d.message || 'Could not load');
+                        this.officials = d.officials; this.candidates = d.candidates; this.loaded = true;
+                    } catch (e) { window.showToast('error', e.message); }
+                },
+                async add(id) {
+                    if (this.busy) return; this.busy = true;
+                    try {
+                        const res = await fetch('{{ route('me.events.officials.store', $ev->uuid) }}', {
+                            method: 'POST',
+                            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json',
+                                       'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
+                            credentials: 'same-origin',
+                            body: JSON.stringify({ user_id: id }),
+                        });
+                        const d = await res.json().catch(() => ({}));
+                        if (!res.ok || !d.success) throw new Error(d.message || 'Could not appoint');
+                        window.showToast('success', d.message);
+                        this.q = ''; this.open = false; await this.load();
+                    } catch (e) { window.showToast('error', e.message); }
+                    finally { this.busy = false; }
+                },
+                async remove(id) {
+                    if (this.busy) return; this.busy = true;
+                    try {
+                        const res = await fetch(`{{ url('me/events/'.$ev->uuid.'/officials') }}/${id}`, {
+                            method: 'DELETE',
+                            headers: { 'Accept': 'application/json',
+                                       'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
+                            credentials: 'same-origin',
+                        });
+                        const d = await res.json().catch(() => ({}));
+                        if (!res.ok || !d.success) throw new Error(d.message || 'Could not remove');
+                        window.showToast('success', d.message);
+                        await this.load();
+                    } catch (e) { window.showToast('error', e.message); }
+                    finally { this.busy = false; }
+                },
+                initials(n) { return (n || '').split(' ').map(p => p[0]).slice(0, 2).join(''); },
+             }"
+             x-init="load()">
+
+            <h3 class="text-sm font-bold text-foreground flex items-center gap-2">
+                <i class="bi bi-person-badge text-primary"></i>
+                {{ __('personal.personal_event_officials_heading') }}
+            </h3>
+            <p class="text-[11px] text-muted-foreground mt-1 mb-3">
+                {{ __('personal.personal_event_officials_intro') }}
+            </p>
+
+            {{-- Appointed --}}
+            <div class="space-y-2">
+                <template x-for="o in officials" :key="o.id">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-full grid place-items-center text-white text-[11px] font-bold flex-shrink-0 bg-primary overflow-hidden">
+                            <template x-if="o.avatar"><img :src="o.avatar" alt="" class="w-full h-full object-cover"></template>
+                            <template x-if="!o.avatar"><span x-text="initials(o.name)"></span></template>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm font-semibold text-foreground truncate" x-text="o.name"></p>
+                            <p class="text-[10px] text-muted-foreground truncate" x-text="o.email"></p>
+                        </div>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary flex-shrink-0">
+                            {{ __('personal.personal_event_officials_jury') }}
+                        </span>
+                        <button type="button" @click="remove(o.id)" :disabled="busy"
+                                class="w-8 h-8 rounded-lg grid place-items-center text-red-500 hover:bg-red-50 transition-colors flex-shrink-0 disabled:opacity-50"
+                                title="{{ __('personal.personal_event_officials_remove') }}">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </template>
+
+                <p x-show="loaded && !officials.length" x-cloak
+                   class="text-[11px] text-muted-foreground text-center py-2">
+                    {{ __('personal.personal_event_officials_none') }}
+                </p>
+            </div>
+
+            {{-- Appoint --}}
+            <div class="relative mt-3" @click.outside="open = false">
+                <input type="text" x-model="q" @focus="open = true" @input.debounce.250ms="load()"
+                       placeholder="{{ __('personal.personal_event_officials_search') }}"
+                       class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
+
+                <div x-show="open" x-cloak x-transition.opacity.duration.120ms
+                     class="absolute inset-x-0 top-full mt-2 max-h-64 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl z-40 py-1">
+                    <template x-for="c in candidates" :key="c.id">
+                        <button type="button" @click="add(c.id)" :disabled="busy"
+                                class="w-full flex items-center gap-2.5 px-3 py-2 text-start hover:bg-muted/60 transition-colors disabled:opacity-50">
+                            <div class="w-7 h-7 rounded-full grid place-items-center bg-muted text-[10px] font-bold text-muted-foreground flex-shrink-0 overflow-hidden">
+                                <template x-if="c.avatar"><img :src="c.avatar" alt="" class="w-full h-full object-cover"></template>
+                                <template x-if="!c.avatar"><span x-text="initials(c.name)"></span></template>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-sm font-semibold text-foreground truncate" x-text="c.name"></p>
+                                <p class="text-[10px] text-muted-foreground truncate" x-text="c.email"></p>
+                            </div>
+                            <span class="text-[10px] font-bold text-primary flex-shrink-0">
+                                {{ __('personal.personal_event_officials_add') }}
+                            </span>
+                        </button>
+                    </template>
+
+                    <p x-show="!candidates.length" x-cloak class="text-[11px] text-muted-foreground text-center py-3">
+                        {{ __('personal.personal_event_officials_no_matches') }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        @endif
 
         {{-- Save — stays CLICKABLE when the form is incomplete (only `sending`
              disables it) so tapping it names what is missing. A disabled button

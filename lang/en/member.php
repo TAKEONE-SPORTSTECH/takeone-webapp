@@ -922,6 +922,8 @@ return [
     'partials_affiliations_enhanced_remove_skill' => 'Remove skill',
     'partials_affiliations_enhanced_unknown' => 'Unknown',
     'partials_affiliations_enhanced_training_packages' => 'Training Packages',
+    'club_singular' => 'Club',
+    'partials_affiliations_enhanced_member' => 'Member',
     'partials_affiliations_enhanced_instructor' => 'Instructor',
     'partials_affiliations_enhanced_media_certificates' => 'Media & Certificates',
     'partials_affiliations_enhanced_add_media' => 'Add Media',

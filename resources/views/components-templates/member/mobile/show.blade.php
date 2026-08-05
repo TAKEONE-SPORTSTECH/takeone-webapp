@@ -1314,7 +1314,11 @@
                             </div>
                             {{-- Club — selection cards (drives verification) --}}
                             <div x-show="affiliations.length">
-                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('Club') }} <span class="text-xs font-normal text-gray-400">({{ __('for verification') }})</span></label>
+                                {{-- member.club_singular, NOT __('Club'): a bare
+                                     __('Club') resolves to the club.php translation
+                                     GROUP on a case-insensitive filesystem, handing
+                                     an array to htmlspecialchars(). --}}
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ __('member.club_singular') }} <span class="text-xs font-normal text-gray-400">({{ __('for verification') }})</span></label>
                                 <div class="space-y-2">
                                     <button type="button" @click="form.club_affiliation_id=null"
                                             class="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm text-start transition-colors"

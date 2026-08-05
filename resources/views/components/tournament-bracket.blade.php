@@ -8,6 +8,14 @@
     'myCompetitorIds' => [],        // highlights the viewer's own bouts
     'height' => '70vh',             // a CSS length, applied inline — see below
     'showDivisions' => true,        // false when the host page has its own switcher
+    'bare' => false,                // the board IS the page, not a card on it —
+                                    // drop the rounding, border and shadow
+    'bleed' => false,               // pull the board out of the host page's
+                                    // standard px-4/6/8 gutters so it runs edge
+                                    // to edge. Separate from `bare` because a
+                                    // page with no gutters of its own (the
+                                    // full-screen draw manager) wants the chrome
+                                    // gone but must NOT be pulled outward.
 ])
 
 {{--
@@ -82,7 +90,9 @@
          a height that silently resolves to 0 (an arbitrary class the CSS build
          never saw, because this component was added after the last build)
          would leave a zero-height, un-clickable board. Inline always applies. --}}
-    <div class="relative rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-white"
+    <div class="relative overflow-hidden bg-white
+                {{ $bare ? '' : 'rounded-2xl border border-gray-100 shadow-sm' }}
+                {{ $bleed ? '-mx-4 sm:-mx-6 lg:-mx-8' : '' }}"
          style="height: {{ $height }};">
         {{-- The board itself. Everything inside is built by the runtime. --}}
         <div id="{{ $viewportId }}" class="w-full h-full"></div>
@@ -153,7 +163,8 @@
     </div>
 
     {{-- Legend --}}
-    <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.65rem] text-muted-foreground">
+    <div id="{{ $id }}-legend"
+         class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.65rem] text-muted-foreground">
         <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span>{{ __('events.bracket_legend_provisional') }}</span>
         <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-green-600"></span>{{ __('events.bracket_legend_done') }}</span>
         <span class="flex items-center gap-1.5"><i class="bi bi-hand-index-thumb"></i>{{ __('events.bracket_legend_gestures') }}</span>

@@ -10,10 +10,12 @@ use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
 use App\Models\EventExpense;
+use App\Models\EventOfficial;
 use App\Models\EventParticipantBan;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -261,6 +263,81 @@ class PersonalEventController extends Controller
     }
 
     /**
+     * Who's joined — the roster on its own screen.
+     *
+     * Same data show() builds, same partial it used to render inline. On a
+     * phone a 48-name list with three tabs sat between the event detail and the
+     * join button; here it gets the screen to itself and the event page keeps a
+     * card that opens it.
+     */
+    public function people(ClubEvent $event, Request $request): View
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        $type = $this->typeFor($event);
+
+        $event->loadCount(['participantRegistrations']);
+        $myReg = $this->myRegistrations($me->id, collect([$event->id]));
+        // The whole roster: this page exists to list everyone, and its search
+        // can only narrow names that are actually on the page.
+        $e = $this->eventView($event, $me->id, $myReg, full: true, wholeRoster: true);
+        $e['cancelled'] = $event->status === 'cancelled';
+
+        $canManage = $this->canManage($event, $me);
+        $banned = $this->isBanned($event, $me->id);
+        $gate = $type->enrolmentGate($event, $me, $myReg->get($event->id));
+
+        return view('personal.event-people', [
+            'e' => $e,
+            'canManage' => $canManage,
+            'banned' => $banned,
+            'canCompete' => $banned ? false : $gate->allowed,
+            'eligReason' => $banned ? __('events.banned_by_organiser') : $gate->message,
+            'actions' => $canManage ? $type->availableActions($event) : [],
+            'finance' => $canManage ? $type->finance($event) : null,
+        ] + $type->viewData($event, $me));
+    }
+
+    /**
+     * Manage the draw — the board, full screen, and nothing else.
+     *
+     * Arranging a bracket is close work: you are reading names, spotting two
+     * club-mates drawn together, dragging one of them somewhere better. On the
+     * ordinary bracket page the board shares the screen with a header band and
+     * the readable bout detail beneath it. Here it gets the whole viewport.
+     *
+     * Same board component, same endpoints — only the chrome is gone. Anyone
+     * who may not arrange is sent back to the read-only bracket page rather
+     * than shown a board they cannot touch.
+     */
+    public function manageBracket(Request $request, ClubEvent $event): View|RedirectResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        $type = $this->typeFor($event);
+        $type->onEntrantsChanged($event);
+
+        $canManage = $this->canManage($event, $me);
+
+        if (! $this->canArrangeDraw($event, $type, $canManage)) {
+            return redirect()
+                ->route('me.events.bracket', $event->uuid)
+                ->with('error', __('events.draw_final'));
+        }
+
+        return view('personal.event-manage-draw', [
+            'e' => $this->eventView($event, $me->id, $this->myRegistrations($me->id, collect([$event->id])), full: true),
+            'canArrange' => true,
+            'myCompetitorIds' => ClubEventRegistration::where('event_id', $event->id)
+                ->where('user_id', $me->id)->pluck('id')->all(),
+            // Deep-link straight to the division the organiser came from.
+            'division' => $request->query('division'),
+        ]);
+    }
+
+    /**
      * The bracket screen's own data feed. The renderer re-fetches this on every
      * realtime nudge, so a draw someone else arranges — or a bout that just
      * landed — appears without anyone reloading.
@@ -290,7 +367,9 @@ class PersonalEventController extends Controller
     public function arrangeBracket(Request $request, ClubEvent $event): JsonResponse
     {
         $me = Auth::user();
-        $this->assertCanManage($event, $me);
+        // Arranging, not managing: the appointed jury may do this without being
+        // able to edit or delete the event.
+        $this->assertCanArrange($event, $me);
 
         $data = $request->validate([
             'category_id' => ['required', 'integer'],
@@ -310,7 +389,7 @@ class PersonalEventController extends Controller
     public function clearBracket(Request $request, ClubEvent $event): JsonResponse
     {
         $me = Auth::user();
-        $this->assertCanManage($event, $me);
+        $this->assertCanArrange($event, $me);
 
         $data = $request->validate(['category_id' => ['required', 'integer']]);
 
@@ -362,10 +441,127 @@ class PersonalEventController extends Controller
     }
 
     /** May this viewer rearrange the draw right now? */
+    /**
+     * WHO may arrange (organiser, appointed jury, platform staff) AND whether
+     * arranging is on offer at all — the package withdraws `arrange_draw` the
+     * moment the event starts, so a started draw is final for everyone.
+     */
     private function canArrangeDraw(ClubEvent $event, EventType $type, bool $canManage): bool
     {
-        return $canManage
+        $who = $canManage || app(EventAccess::class)->isOfficial($event, Auth::user());
+
+        return $who
             && collect($type->availableActions($event))->pluck('action')->contains('arrange_draw');
+    }
+
+    /**
+     * 403 unless this user is allowed to arrange draws for this event.
+     *
+     * WHO only — deliberately not whether arranging is on offer right now. An
+     * organiser asking to move a competitor after the event has started is not
+     * forbidden, they are asking for something that can no longer happen:
+     * dispatchAction() refuses the withdrawn action with 422, and Arrangement
+     * refuses it again underneath. Answering 403 here would tell an organiser
+     * they lack a permission they actually hold.
+     */
+    private function assertCanArrange(ClubEvent $event, User $me): void
+    {
+        abort_unless(app(EventAccess::class)->canArrange($event, $me), 403);
+    }
+
+    /* ---------------- Officials (the jury) ---------------- */
+
+    /**
+     * The event's appointed officials, plus who else could be appointed.
+     *
+     * Candidates are members of the HOST club: a jury is drawn from the club
+     * running the championship, and bounding the pool that way keeps this from
+     * becoming a search across every user on the platform.
+     *
+     * Appointing is the organiser's call (canManage), never the jury's own —
+     * otherwise an official could appoint their friends onto the panel.
+     */
+    public function officials(Request $request, ClubEvent $event): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+
+        $appointed = $event->officials()->with('user:id,full_name,name,email,profile_picture')->get();
+        $appointedIds = $appointed->pluck('user_id')->all();
+
+        $q = trim((string) $request->query('q', ''));
+
+        $candidates = User::query()
+            ->whereIn('id', DB::table('memberships')->where('tenant_id', $event->tenant_id)->pluck('user_id'))
+            ->whereNotIn('id', $appointedIds)
+            ->when($q !== '', fn ($query) => $query->where(fn ($w) => $w
+                ->where('full_name', 'like', "%{$q}%")
+                ->orWhere('name', 'like', "%{$q}%")
+                ->orWhere('email', 'like', "%{$q}%")))
+            ->orderBy('full_name')
+            ->limit(20)
+            ->get(['id', 'full_name', 'name', 'email', 'profile_picture']);
+
+        $shape = fn (User $u) => [
+            'id' => $u->id,
+            'name' => $u->full_name ?: $u->name,
+            'email' => $u->email,
+            'avatar' => $u->profile_picture ? asset('storage/'.$u->profile_picture) : null,
+        ];
+
+        return response()->json([
+            'success' => true,
+            'officials' => $appointed->map(fn (EventOfficial $o) => $shape($o->user) + ['role' => $o->role])->values(),
+            'candidates' => $candidates->map($shape)->values(),
+        ]);
+    }
+
+    /** Appoint someone to the jury. */
+    public function storeOfficial(Request $request, ClubEvent $event): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+
+        $data = $request->validate([
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        // Only from the host club — the same pool officials() offers.
+        $isMember = DB::table('memberships')
+            ->where('tenant_id', $event->tenant_id)
+            ->where('user_id', $data['user_id'])
+            ->exists();
+
+        if (! $isMember) {
+            return response()->json([
+                'success' => false,
+                'message' => __('personal.personal_event_officials_not_a_member'),
+            ], 422);
+        }
+
+        EventOfficial::firstOrCreate(
+            ['event_id' => $event->id, 'user_id' => $data['user_id']],
+            ['role' => 'jury', 'assigned_by' => $me->id],
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => __('personal.personal_event_officials_added'),
+        ]);
+    }
+
+    /** Remove someone from the jury. */
+    public function destroyOfficial(ClubEvent $event, int $user): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+
+        $event->officials()->where('user_id', $user)->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('personal.personal_event_officials_removed'),
+        ]);
     }
 
     public function create(): View
@@ -1083,7 +1279,13 @@ class PersonalEventController extends Controller
             ->get()->keyBy('event_id');
     }
 
-    private function eventView(ClubEvent $e, int $meId, $myReg, bool $full = false): array
+    /**
+     * @param  bool  $full  detail page: the classified roster rather than a teaser
+     * @param  bool  $wholeRoster  don't cap the roster at 12. Only the dedicated
+     *                             people page asks for this — the event screens
+     *                             show a teaser and link to it.
+     */
+    private function eventView(ClubEvent $e, int $meId, $myReg, bool $full = false, bool $wholeRoster = false): array
     {
         $type = $this->typeFor($e);
         $date = $e->date ? Carbon::parse($e->date) : now();
@@ -1099,11 +1301,11 @@ class PersonalEventController extends Controller
         $spectatorsTotal = $spectators;
         if ($full) {
             $prows = $type->rosterRows($e);
-            $participants = array_slice($prows, 0, 12);
+            $participants = $wholeRoster ? $prows : array_slice($prows, 0, 12);
             $participantsTotal = count($prows);
             if ($e->spectator_enabled) {
                 $srows = $this->spectatorRows($e);
-                $spectatorRows = array_slice($srows, 0, 12);
+                $spectatorRows = $wholeRoster ? $srows : array_slice($srows, 0, 12);
                 $spectatorsTotal = count($srows);
             }
         } else {

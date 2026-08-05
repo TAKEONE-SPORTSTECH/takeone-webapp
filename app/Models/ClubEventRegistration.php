@@ -17,6 +17,7 @@ class ClubEventRegistration extends Model
         'paid',
         'payment_proof',
         'paid_at',
+        'paid_by',
         'category_id',
         'weight',
         'weighed_in_at',

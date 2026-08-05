@@ -45,7 +45,18 @@ class Roster
                     'category' => $ageGroup,
                     'weight_class' => $weightClass,
                     'meta' => $user?->gender ?: ($ageGroup ? __('event-taekwondo_tournament::messages.roster_registered') : __('event-taekwondo_tournament::messages.roster_unclassified')),
+                    // The three things an organiser checks off before a
+                    // competitor can be drawn. `weighed` is the OFFICIAL
+                    // weigh-in (weighed_in_at), which is not the same as
+                    // `weighed_in` below — that only means a weight is on file.
+                    'country' => $r->meta ?: null,
+                    'enrolled' => $r->status === 'joined',
+                    // Claimed vs verified: amber until an official has put their
+                    // name to it (paid_by / weighed_in_by), then green.
                     'paid' => (bool) $r->paid,
+                    'paid_verified' => $r->paid && $r->paid_by !== null,
+                    'weighed' => $r->weighed_in_at !== null,
+                    'weighed_verified' => $r->weighed_in_at !== null && $r->weighed_in_by !== null,
                     'weighed_in' => $r->weight !== null,
                     'has_weight' => $weightOnFile !== null,
                 ];

@@ -296,7 +296,7 @@
                                                                 @if($linkedUser)
                                                                     <a href="{{ route('people.show', $linkedUser->uuid) }}"
                                                                        class="badge skill-badge bg-success text-decoration-none inst-badge"
-                                                                       data-bs-toggle="tooltip" data-bs-placement="top" title="{{ __('Member') }}">
+                                                                       data-bs-toggle="tooltip" data-bs-placement="top" title="{{ __('member.partials_affiliations_enhanced_member') }}">
                                                                         {!! $insAvatarHtml !!}{{ $insName }}
                                                                     </a>
                                                                 @else
@@ -1896,7 +1896,7 @@ document.addEventListener('DOMContentLoaded', function() {
         wrap.style.display = list.length ? '' : 'none';
         const memberId = document.querySelector(`.btn-add-instructor[data-affiliation-id="${affId}"]`)?.dataset.memberId || '';
         wrap.innerHTML = list.map(ins => {
-            const role = ins.linked ? '{{ __('Member') }}' : '{{ __('member.partials_affiliations_enhanced_instructor') }}';
+            const role = ins.linked ? '{{ __('member.partials_affiliations_enhanced_member') }}' : '{{ __('member.partials_affiliations_enhanced_instructor') }}';
             const avatar = `<span class="inst-badge-avatar">${ins.avatar
                 ? `<img src="${escapeHtml(ins.avatar)}" alt="">`
                 : '<i class="bi bi-person-fill"></i>'}</span>`;

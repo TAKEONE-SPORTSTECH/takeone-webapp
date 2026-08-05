@@ -45,6 +45,9 @@ class ClubEventController extends Controller
         $paid = ! $registration->paid;
         $registration->paid = $paid;
         $registration->paid_at = $paid ? now() : null;
+        // Record WHO approved it. The roster shows a payment as merely claimed
+        // (amber) until an official has put their name to it.
+        $registration->paid_by = $paid ? auth()->id() : null;
         $registration->save();
 
         if ($paid) {

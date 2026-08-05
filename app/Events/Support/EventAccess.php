@@ -31,6 +31,34 @@ class EventAccess
         return $event->created_by === $user->id || $user->isSuperAdmin();
     }
 
+    /**
+     * Appointed to officiate THIS event — the jury.
+     *
+     * Deliberately not folded into canManage(): that gates editing, deleting,
+     * results and financials, and a jury has no business there. It is checked
+     * on its own by canArrangeDraw().
+     */
+    public function isOfficial(ClubEvent $event, User $user, string $role = 'jury'): bool
+    {
+        return $event->officials()
+            ->where('user_id', $user->id)
+            ->where('role', $role)
+            ->exists();
+    }
+
+    /**
+     * Who may hand-arrange a draw: the organiser who created the event, the
+     * jury appointed to it, and platform staff.
+     *
+     * This answers "who", never "when" — the event-started gate lives in the
+     * package's availableActions() and in Arrangement itself, so a draw is
+     * final from the first bout no matter who is asking.
+     */
+    public function canArrange(ClubEvent $event, User $user): bool
+    {
+        return $this->canManage($event, $user) || $this->isOfficial($event, $user);
+    }
+
     public function eligible(ClubEvent $event, User $user): bool
     {
         if ($user->memberClubs()->whereKey($event->tenant_id)->exists()) {
