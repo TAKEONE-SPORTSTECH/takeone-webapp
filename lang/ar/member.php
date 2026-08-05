@@ -922,6 +922,8 @@ return [
     'partials_affiliations_enhanced_remove_skill' => 'إزالة المهارة',
     'partials_affiliations_enhanced_unknown' => 'غير معروف',
     'partials_affiliations_enhanced_training_packages' => 'باقات التدريب',
+    'club_singular' => 'نادٍ',
+    'partials_affiliations_enhanced_member' => 'عضو',
     'partials_affiliations_enhanced_instructor' => 'مدرب',
     'partials_affiliations_enhanced_media_certificates' => 'الوسائط والشهادات',
     'partials_affiliations_enhanced_add_media' => 'إضافة وسائط',
