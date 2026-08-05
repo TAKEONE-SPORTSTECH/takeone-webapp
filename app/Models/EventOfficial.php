@@ -14,6 +14,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class EventOfficial extends Model
 {
+    /** Arrange the draw before the event starts. */
+    public const ROLE_JURY = 'jury';
+
+    /** Record and verify official weights at the weigh-in. */
+    public const ROLE_WEIGH_IN = 'weigh_in';
+
+    /** Check proof of payment against the club account and approve it. */
+    public const ROLE_PAYMENTS = 'payments';
+
+    /** @return array<int, string> */
+    public static function roles(): array
+    {
+        return [self::ROLE_JURY, self::ROLE_WEIGH_IN, self::ROLE_PAYMENTS];
+    }
+
     protected $fillable = [
         'event_id',
         'user_id',

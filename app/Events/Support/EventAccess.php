@@ -3,6 +3,7 @@
 namespace App\Events\Support;
 
 use App\Models\ClubEvent;
+use App\Models\EventOfficial;
 use App\Models\User;
 
 /**
@@ -57,6 +58,33 @@ class EventAccess
     public function canArrange(ClubEvent $event, User $user): bool
     {
         return $this->canManage($event, $user) || $this->isOfficial($event, $user);
+    }
+
+    /**
+     * Record and verify official weights.
+     *
+     * The organiser is included because someone has to be able to run a
+     * weigh-in when the appointed official does not turn up — but the row still
+     * records WHO signed it off, so an unverified weight can never reach the
+     * final draw just because nobody was appointed.
+     */
+    public function canVerifyWeighIn(ClubEvent $event, User $user): bool
+    {
+        return $this->canManage($event, $user)
+            || $this->isOfficial($event, $user, EventOfficial::ROLE_WEIGH_IN);
+    }
+
+    /** Check proof of payment against the club account and approve it. */
+    public function canVerifyPayments(ClubEvent $event, User $user): bool
+    {
+        return $this->canManage($event, $user)
+            || $this->isOfficial($event, $user, EventOfficial::ROLE_PAYMENTS);
+    }
+
+    /** Any officiating job at all — used to decide who sees the console. */
+    public function canOfficiate(ClubEvent $event, User $user): bool
+    {
+        return $this->canVerifyWeighIn($event, $user) || $this->canVerifyPayments($event, $user);
     }
 
     public function eligible(ClubEvent $event, User $user): bool

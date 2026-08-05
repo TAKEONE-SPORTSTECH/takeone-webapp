@@ -19,6 +19,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -216,6 +217,10 @@ class PersonalEventController extends Controller
             'eligReason' => $banned ? __('events.banned_by_organiser') : $gate->message,
             'actions' => $canManage ? $type->availableActions($event) : [],
             'finance' => $canManage ? $type->finance($event) : null,
+            // The verification desk only exists for the people who staff it.
+            'canOfficiate' => app(EventAccess::class)->canOfficiate($event, $me),
+            // How to pay, for the join sheet.
+            'payment' => $this->paymentInstructions($event),
         ] + $type->viewData($event, $me));
     }
 
@@ -260,6 +265,144 @@ class PersonalEventController extends Controller
                 'actions' => $canManage ? $type->availableActions($event) : [],
             ] + $type->viewData($event, $me)
         );
+    }
+
+    /* ---------------- Officials' console ---------------- */
+
+    /**
+     * Where appointed officials do their job: weigh athletes in, and check
+     * payments one by one against the club account.
+     *
+     * Both queues answer the same question — is this entry allowed into the
+     * FINAL draw? — so they live on one screen rather than two, and each row
+     * says which of the two gates it is still waiting on.
+     */
+    public function verify(ClubEvent $event, Request $request): View|RedirectResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        $access = app(EventAccess::class);
+        if (! $access->canOfficiate($event, $me)) {
+            return redirect()->route('me.events.show', $event->uuid)
+                ->with('error', __('personal.event_verify_not_an_official'));
+        }
+
+        $rows = $event->participantRegistrations()
+            ->with(['user:id,full_name,name,mobile,profile_picture', 'category:id,name,weight_class'])
+            ->get()
+            ->map(fn (ClubEventRegistration $r) => [
+                'id' => $r->id,
+                'name' => $r->user?->full_name ?: ($r->user?->name ?: __('events.athlete')),
+                'division' => $r->category?->name,
+                'weight' => $r->weight,
+                'weighed' => $r->weighed_in_at !== null,
+                'weigh_verified' => $r->weighed_in_by !== null,
+                'paid' => (bool) $r->paid,
+                'pay_verified' => $r->paid_by !== null,
+                'has_proof' => (bool) $r->payment_proof,
+                'proof_url' => $r->payment_proof ? route('me.events.verify.proof', [$event->uuid, $r->id]) : null,
+                // The single question this screen exists to answer.
+                'ready' => $r->paid && $r->paid_by && $r->weight !== null && $r->weighed_in_by,
+            ])
+            ->values()->all();
+
+        return view('personal.event-verify', [
+            'e' => $this->eventView($event, $me->id, $this->myRegistrations($me->id, collect([$event->id])), full: true),
+            'rows' => $rows,
+            'canWeigh' => $access->canVerifyWeighIn($event, $me),
+            'canPay' => $access->canVerifyPayments($event, $me),
+            'payment' => $this->paymentInstructions($event),
+        ]);
+    }
+
+    /** Record an official weight. Signing it is the point — hence weighed_in_by. */
+    public function verifyWeighIn(Request $request, ClubEvent $event, ClubEventRegistration $registration): JsonResponse
+    {
+        $me = Auth::user();
+        abort_unless(app(EventAccess::class)->canVerifyWeighIn($event, $me), 403);
+        abort_unless($registration->event_id === $event->id, 404);
+
+        $data = $request->validate([
+            'weight' => ['required', 'numeric', 'min:10', 'max:250'],
+        ]);
+
+        $registration->update([
+            'weight' => $data['weight'],
+            'weighed_in_at' => now(),
+            'weighed_in_by' => $me->id,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('personal.event_verify_weight_recorded'),
+            'weight' => (float) $data['weight'],
+        ]);
+    }
+
+    /**
+     * Approve or reject a payment after looking at the proof.
+     *
+     * Rejecting clears the verifier as well as the flag: a payment that was
+     * approved by mistake must fall all the way back to unverified, or the
+     * entry keeps its place in the final draw on a signature that was withdrawn.
+     */
+    public function verifyPayment(Request $request, ClubEvent $event, ClubEventRegistration $registration): JsonResponse
+    {
+        $me = Auth::user();
+        abort_unless(app(EventAccess::class)->canVerifyPayments($event, $me), 403);
+        abort_unless($registration->event_id === $event->id, 404);
+
+        $approve = (bool) $request->validate(['approve' => ['required', 'boolean']])['approve'];
+
+        $registration->update([
+            'paid' => $approve,
+            'paid_at' => $approve ? now() : null,
+            'paid_by' => $approve ? $me->id : null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => $approve
+                ? __('personal.event_verify_payment_approved')
+                : __('personal.event_verify_payment_rejected'),
+        ]);
+    }
+
+    /** Stream one entry's proof image to an official (private disk). */
+    public function verifyProof(ClubEvent $event, ClubEventRegistration $registration)
+    {
+        $me = Auth::user();
+        abort_unless(app(EventAccess::class)->canVerifyPayments($event, $me), 403);
+        abort_unless($registration->event_id === $event->id, 404);
+        abort_unless($registration->payment_proof && Storage::disk('local')->exists($registration->payment_proof), 404);
+
+        return Storage::disk('local')->response($registration->payment_proof);
+    }
+
+    /**
+     * How to pay this club, for the join sheet.
+     *
+     * Returns the club's primary bank account when it has one. Many clubs take
+     * cash at the door and have never filled this in, so `bank` is null far more
+     * often than not — the sheet falls back to "pay at the club" rather than
+     * showing an empty transfer form.
+     */
+    private function paymentInstructions(ClubEvent $event): array
+    {
+        $bank = $event->tenant?->bankAccounts()
+            ->orderByDesc('is_primary')->orderBy('id')->first();
+
+        return [
+            'club' => $event->tenant?->club_name,
+            'bank' => $bank ? array_filter([
+                'bank_name' => $bank->bank_name,
+                'account_name' => $bank->account_name,
+                'account_number' => $bank->account_number,
+                'iban' => $bank->iban,
+                'benefitpay' => $bank->benefitpay_account,
+            ]) : null,
+        ];
     }
 
     /**
@@ -486,37 +629,79 @@ class PersonalEventController extends Controller
         $me = Auth::user();
         $this->assertCanManage($event, $me);
 
-        $appointed = $event->officials()->with('user:id,full_name,name,email,profile_picture')->get();
-        $appointedIds = $appointed->pluck('user_id')->all();
+        $appointed = $event->officials()->with('user:id,full_name,name,email,mobile,profile_picture')->get();
+
+        // One person may hold two jobs — the club treasurer often runs the
+        // weigh-in as well — so the candidate list no longer drops someone the
+        // moment they are appointed to anything. Each row instead carries the
+        // roles they already hold, and storeOfficial() refuses the duplicate.
+        $heldRoles = $appointed->groupBy('user_id')->map->pluck('role');
 
         $q = trim((string) $request->query('q', ''));
 
-        $candidates = User::query()
-            ->whereIn('id', DB::table('memberships')->where('tenant_id', $event->tenant_id)->pluck('user_id'))
-            ->whereNotIn('id', $appointedIds)
-            ->when($q !== '', fn ($query) => $query->where(fn ($w) => $w
-                ->where('full_name', 'like', "%{$q}%")
-                ->orWhere('name', 'like', "%{$q}%")
-                ->orWhere('email', 'like', "%{$q}%")))
-            ->orderBy('full_name')
-            ->limit(20)
-            ->get(['id', 'full_name', 'name', 'email', 'profile_picture']);
+        // Treat it as a phone search ONLY when the whole query looks like a
+        // number. Pulling the digits out of any query made "user.3@mail" search
+        // for "%3%", which matches nearly every phone on the books and returned
+        // the entire club.
+        $phone = '';
+        if (preg_match('/^[\d\s+()\-\.]{4,}$/', $q)) {
+            $phone = preg_replace('/\D+/', '', $q);
+            // Match on the tail so a typed country code still finds a number
+            // stored without one ("+973 3340 0036" vs "33400036").
+            if (strlen($phone) > 8) {
+                $phone = substr($phone, -8);
+            }
+        }
 
+        $candidates = User::query()
+            ->distinct()
+            ->whereIn('id', DB::table('memberships')->where('tenant_id', $event->tenant_id)->distinct()->pluck('user_id'))
+            ->when($q !== '', fn ($query) => $query->where(function ($w) use ($q, $phone) {
+                $w->where('full_name', 'like', "%{$q}%")
+                    ->orWhere('name', 'like', "%{$q}%")
+                    ->orWhere('email', 'like', "%{$q}%");
+
+                if ($phone !== '') {
+                    $w->orWhere('mobile', 'like', "%{$phone}%");
+                }
+            }))
+            ->orderBy('full_name')
+            ->orderBy('id')
+            ->limit(20)
+            ->get(['id', 'full_name', 'name', 'email', 'mobile', 'profile_picture']);
+
+        // Names repeat — clubs have two Ahmeds — so every row carries the email
+        // and phone that tell them apart. A picker that shows four identical rows
+        // is a picker you cannot choose from.
         $shape = fn (User $u) => [
             'id' => $u->id,
             'name' => $u->full_name ?: $u->name,
             'email' => $u->email,
+            'phone' => is_array($u->mobile) && ! empty($u->mobile['number'])
+                ? trim(($u->mobile['code'] ?? '').' '.$u->mobile['number'])
+                : null,
             'avatar' => $u->profile_picture ? asset('storage/'.$u->profile_picture) : null,
         ];
 
         return response()->json([
             'success' => true,
-            'officials' => $appointed->map(fn (EventOfficial $o) => $shape($o->user) + ['role' => $o->role])->values(),
-            'candidates' => $candidates->map($shape)->values(),
+            // `id` is the APPOINTMENT, not the person: the same member can appear
+            // twice with two roles, and removing one must not remove the other.
+            'officials' => $appointed
+                ->map(fn (EventOfficial $o) => $shape($o->user) + ['id' => $o->id, 'user_id' => $o->user_id, 'role' => $o->role])
+                ->values(),
+            'candidates' => $candidates
+                ->map(fn (User $u) => $shape($u) + ['roles' => ($heldRoles[$u->id] ?? collect())->values()])
+                ->values(),
+            'roles' => collect(EventOfficial::roles())->map(fn ($r) => [
+                'value' => $r,
+                'label' => __('personal.personal_event_officials_role_'.$r),
+                'hint' => __('personal.personal_event_officials_role_'.$r.'_hint'),
+            ])->values(),
         ]);
     }
 
-    /** Appoint someone to the jury. */
+    /** Appoint someone to one officiating job on this event. */
     public function storeOfficial(Request $request, ClubEvent $event): JsonResponse
     {
         $me = Auth::user();
@@ -524,6 +709,7 @@ class PersonalEventController extends Controller
 
         $data = $request->validate([
             'user_id' => ['required', 'integer', 'exists:users,id'],
+            'role' => ['required', Rule::in(EventOfficial::roles())],
         ]);
 
         // Only from the host club — the same pool officials() offers.
@@ -539,10 +725,21 @@ class PersonalEventController extends Controller
             ], 422);
         }
 
-        EventOfficial::firstOrCreate(
-            ['event_id' => $event->id, 'user_id' => $data['user_id']],
-            ['role' => 'jury', 'assigned_by' => $me->id],
-        );
+        $official = EventOfficial::firstOrNew([
+            'event_id' => $event->id,
+            'user_id' => $data['user_id'],
+            'role' => $data['role'],
+        ]);
+
+        if ($official->exists) {
+            return response()->json([
+                'success' => false,
+                'message' => __('personal.personal_event_officials_already'),
+            ], 422);
+        }
+
+        $official->assigned_by = $me->id;
+        $official->save();
 
         return response()->json([
             'success' => true,
@@ -550,13 +747,13 @@ class PersonalEventController extends Controller
         ]);
     }
 
-    /** Remove someone from the jury. */
-    public function destroyOfficial(ClubEvent $event, int $user): JsonResponse
+    /** Withdraw ONE appointment — not every job the person holds. */
+    public function destroyOfficial(ClubEvent $event, int $official): JsonResponse
     {
         $me = Auth::user();
         $this->assertCanManage($event, $me);
 
-        $event->officials()->where('user_id', $user)->delete();
+        $event->officials()->whereKey($official)->delete();
 
         return response()->json([
             'success' => true,
@@ -1369,6 +1566,10 @@ class PersonalEventController extends Controller
             'joined' => $reg && $reg->role === 'participant',
             // The member's OWN proof-of-payment is awaiting the club's approval.
             'payment_pending' => $reg && $reg->role === 'participant' && ! $reg->paid && (bool) $reg->payment_proof,
+            // Holding a place with the fee still outstanding — "pay later", or a
+            // proof that no official has approved yet. Distinct from being IN:
+            // a screen that says "Booked" over an unpaid entry is lying to them.
+            'fee_due' => $reg && ! $reg->paid,
             'watching' => $reg && $reg->role === 'spectator',
             'started' => $e->hasStarted(),
             'ended' => $e->hasEnded(),

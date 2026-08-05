@@ -342,6 +342,22 @@
             </div>
             @endif
 
+            {{-- Verification desk — only the officials appointed to staff it. --}}
+            @if($canOfficiate ?? false)
+            <a href="{{ route('me.events.verify', $e['key']) }}"
+               class="flex items-center gap-3 bg-white rounded-2xl border-2 border-dashed p-4 hover:shadow-sm transition-shadow"
+               style="border-color: {{ $e['color'] }}55;">
+                <div class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 text-white" style="background: {{ $e['color'] }};">
+                    <i class="bi bi-clipboard2-check text-xl"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <h3 class="font-black text-[15px] leading-tight text-foreground">{{ __('personal.event_verify_open') }}</h3>
+                    <p class="text-[11px] text-muted-foreground mt-0.5">{{ __('personal.event_verify_open_sub') }}</p>
+                </div>
+                <i class="bi bi-chevron-right text-muted-foreground rtl:rotate-180"></i>
+            </a>
+            @endif
+
             {{-- Participants --}}
             <div>
                 @php $showTabs = $hasTicket || ($canManage ?? false); @endphp

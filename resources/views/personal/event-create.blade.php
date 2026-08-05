@@ -851,7 +851,10 @@
         @if($isEdit)
         <div class="m-card rounded-2xl p-4 mt-4"
              x-data="{
-                officials: [], candidates: [], q: '', open: false, busy: false, loaded: false,
+                officials: [], candidates: [], roles: [], role: 'jury', q: '', open: false, busy: false, loaded: false,
+                get roleMeta() { return this.roles.find(r => r.value === this.role) || {}; },
+                roleLabel(v) { return (this.roles.find(r => r.value === v) || {}).label || v; },
+                byRole(v) { return this.officials.filter(o => o.role === v); },
                 async load() {
                     try {
                         const res = await fetch(`{{ route('me.events.officials', $ev->uuid) }}?q=${encodeURIComponent(this.q)}`, {
@@ -859,7 +862,8 @@
                         });
                         const d = await res.json();
                         if (!res.ok || !d.success) throw new Error(d.message || 'Could not load');
-                        this.officials = d.officials; this.candidates = d.candidates; this.loaded = true;
+                        this.officials = d.officials; this.candidates = d.candidates;
+                        this.roles = d.roles; this.loaded = true;
                     } catch (e) { window.showToast('error', e.message); }
                 },
                 async add(id) {
@@ -870,7 +874,7 @@
                             headers: { 'Accept': 'application/json', 'Content-Type': 'application/json',
                                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
                             credentials: 'same-origin',
-                            body: JSON.stringify({ user_id: id }),
+                            body: JSON.stringify({ user_id: id, role: this.role }),
                         });
                         const d = await res.json().catch(() => ({}));
                         if (!res.ok || !d.success) throw new Error(d.message || 'Could not appoint');
@@ -907,26 +911,33 @@
                 {{ __('personal.personal_event_officials_intro') }}
             </p>
 
-            {{-- Appointed --}}
-            <div class="space-y-2">
-                <template x-for="o in officials" :key="o.id">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-full grid place-items-center text-white text-[11px] font-bold flex-shrink-0 bg-primary overflow-hidden">
-                            <template x-if="o.avatar"><img :src="o.avatar" alt="" class="w-full h-full object-cover"></template>
-                            <template x-if="!o.avatar"><span x-text="initials(o.name)"></span></template>
+            {{-- Appointed, grouped by the job — an organiser checks "is anyone
+                 doing the weigh-in?", not "who is on the list?". --}}
+            <div class="space-y-3">
+                <template x-for="r in roles" :key="r.value">
+                    <div x-show="byRole(r.value).length" x-cloak>
+                        <p class="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground mb-1.5" x-text="r.label"></p>
+                        <div class="space-y-2">
+                            <template x-for="o in byRole(r.value)" :key="o.id">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-full grid place-items-center text-white text-[11px] font-bold flex-shrink-0 bg-primary overflow-hidden">
+                                        <template x-if="o.avatar"><img :src="o.avatar" alt="" class="w-full h-full object-cover"></template>
+                                        <template x-if="!o.avatar"><span x-text="initials(o.name)"></span></template>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-sm font-semibold text-foreground truncate" x-text="o.name"></p>
+                                        <p class="text-[10px] text-muted-foreground truncate">
+                                            <span x-text="o.email"></span><template x-if="o.phone"><span> · <span x-text="o.phone"></span></span></template>
+                                        </p>
+                                    </div>
+                                    <button type="button" @click="remove(o.id)" :disabled="busy"
+                                            class="w-8 h-8 rounded-lg grid place-items-center text-red-500 hover:bg-red-50 transition-colors flex-shrink-0 disabled:opacity-50"
+                                            title="{{ __('personal.personal_event_officials_remove') }}">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                            </template>
                         </div>
-                        <div class="min-w-0 flex-1">
-                            <p class="text-sm font-semibold text-foreground truncate" x-text="o.name"></p>
-                            <p class="text-[10px] text-muted-foreground truncate" x-text="o.email"></p>
-                        </div>
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary flex-shrink-0">
-                            {{ __('personal.personal_event_officials_jury') }}
-                        </span>
-                        <button type="button" @click="remove(o.id)" :disabled="busy"
-                                class="w-8 h-8 rounded-lg grid place-items-center text-red-500 hover:bg-red-50 transition-colors flex-shrink-0 disabled:opacity-50"
-                                title="{{ __('personal.personal_event_officials_remove') }}">
-                            <i class="bi bi-x-lg"></i>
-                        </button>
                     </div>
                 </template>
 
@@ -936,7 +947,24 @@
                 </p>
             </div>
 
-            {{-- Appoint --}}
+            {{-- Appoint. The job is chosen FIRST, then the person: the search
+                 result you tap is appointed to whatever is selected here, so the
+                 selected chip must always be visible above the picker. --}}
+            <div class="mt-4">
+                <p class="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground mb-1.5">
+                    {{ __('personal.personal_event_officials_role') }}
+                </p>
+                <div class="flex gap-1.5">
+                    <template x-for="r in roles" :key="r.value">
+                        <button type="button" @click="role = r.value"
+                                class="flex-1 py-2 rounded-xl border-2 text-[11px] font-black transition-colors"
+                                :class="role === r.value ? 'border-transparent bg-primary text-white' : 'border-gray-200 bg-white text-muted-foreground'"
+                                x-text="r.label"></button>
+                    </template>
+                </div>
+                <p class="text-[11px] text-muted-foreground mt-1.5" x-text="roleMeta.hint"></p>
+            </div>
+
             <div class="relative mt-3" @click.outside="open = false">
                 <input type="text" x-model="q" @focus="open = true" @input.debounce.250ms="load()"
                        placeholder="{{ __('personal.personal_event_officials_search') }}"
@@ -945,7 +973,7 @@
                 <div x-show="open" x-cloak x-transition.opacity.duration.120ms
                      class="absolute inset-x-0 top-full mt-2 max-h-64 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl z-40 py-1">
                     <template x-for="c in candidates" :key="c.id">
-                        <button type="button" @click="add(c.id)" :disabled="busy"
+                        <button type="button" @click="add(c.id)" :disabled="busy || c.roles.includes(role)"
                                 class="w-full flex items-center gap-2.5 px-3 py-2 text-start hover:bg-muted/60 transition-colors disabled:opacity-50">
                             <div class="w-7 h-7 rounded-full grid place-items-center bg-muted text-[10px] font-bold text-muted-foreground flex-shrink-0 overflow-hidden">
                                 <template x-if="c.avatar"><img :src="c.avatar" alt="" class="w-full h-full object-cover"></template>
@@ -953,11 +981,19 @@
                             </div>
                             <div class="min-w-0 flex-1">
                                 <p class="text-sm font-semibold text-foreground truncate" x-text="c.name"></p>
-                                <p class="text-[10px] text-muted-foreground truncate" x-text="c.email"></p>
+                                <p class="text-[10px] text-muted-foreground truncate">
+                                    <template x-if="c.roles.length">
+                                        {{-- What they already do here matters more than their email. --}}
+                                        <span class="text-primary font-bold" x-text="c.roles.map(r => roleLabel(r)).join(' · ')"></span>
+                                    </template>
+                                    <template x-if="! c.roles.length">
+                                        <span><span x-text="c.email"></span><template x-if="c.phone"><span> · <span x-text="c.phone"></span></span></template></span>
+                                    </template>
+                                </p>
                             </div>
-                            <span class="text-[10px] font-bold text-primary flex-shrink-0">
-                                {{ __('personal.personal_event_officials_add') }}
-                            </span>
+                            <span class="text-[10px] font-bold flex-shrink-0"
+                                  :class="c.roles.includes(role) ? 'text-muted-foreground' : 'text-primary'"
+                                  x-text="c.roles.includes(role) ? '{{ __('personal.personal_event_officials_appointed') }}' : '{{ __('personal.personal_event_officials_add') }}'"></span>
                         </button>
                     </template>
 
