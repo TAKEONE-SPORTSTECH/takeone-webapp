@@ -173,6 +173,12 @@ class ClubEvent extends Model
         return $this->hasMany(EventMatch::class, 'event_id');
     }
 
+    /** People appointed to officiate this event (jury by default). */
+    public function officials(): HasMany
+    {
+        return $this->hasMany(EventOfficial::class, 'event_id');
+    }
+
     /** Participant registrations (not spectators). */
     public function participantRegistrations(): HasMany
     {
