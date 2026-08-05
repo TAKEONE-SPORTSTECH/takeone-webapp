@@ -369,7 +369,7 @@ class PersonalEventController extends Controller
         $me = Auth::user();
         // Arranging, not managing: the appointed jury may do this without being
         // able to edit or delete the event.
-        $this->assertCanArrange($event, $this->typeFor($event), $me);
+        $this->assertCanArrange($event, $me);
 
         $data = $request->validate([
             'category_id' => ['required', 'integer'],
@@ -389,7 +389,7 @@ class PersonalEventController extends Controller
     public function clearBracket(Request $request, ClubEvent $event): JsonResponse
     {
         $me = Auth::user();
-        $this->assertCanArrange($event, $this->typeFor($event), $me);
+        $this->assertCanArrange($event, $me);
 
         $data = $request->validate(['category_id' => ['required', 'integer']]);
 
@@ -454,10 +454,19 @@ class PersonalEventController extends Controller
             && collect($type->availableActions($event))->pluck('action')->contains('arrange_draw');
     }
 
-    /** 403 unless this user may arrange this event's draw right now. */
-    private function assertCanArrange(ClubEvent $event, EventType $type, User $me): void
+    /**
+     * 403 unless this user is allowed to arrange draws for this event.
+     *
+     * WHO only — deliberately not whether arranging is on offer right now. An
+     * organiser asking to move a competitor after the event has started is not
+     * forbidden, they are asking for something that can no longer happen:
+     * dispatchAction() refuses the withdrawn action with 422, and Arrangement
+     * refuses it again underneath. Answering 403 here would tell an organiser
+     * they lack a permission they actually hold.
+     */
+    private function assertCanArrange(ClubEvent $event, User $me): void
     {
-        abort_unless($this->canArrangeDraw($event, $type, $this->canManage($event, $me)), 403);
+        abort_unless(app(EventAccess::class)->canArrange($event, $me), 403);
     }
 
     /* ---------------- Officials (the jury) ---------------- */
