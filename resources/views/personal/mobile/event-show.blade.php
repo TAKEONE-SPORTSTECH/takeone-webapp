@@ -381,7 +381,7 @@
 
             {{-- Participant --}}
             <button type="button"
-                    @click="{{ $canJoin ? 'toggleGoing()' : 'explainIneligible()' }}"
+                    @click="{{ $canJoin ? "startJoin('participant')" : 'explainIneligible()' }}"
                     :disabled="registered"
                     class="m-press mt-3 w-full block rounded-2xl p-4 text-white text-start relative overflow-hidden
                            shadow-lg transition-all active:scale-[.98] disabled:cursor-not-allowed"
@@ -411,7 +411,7 @@
 
             {{-- Spectator ticket --}}
             @if($hasTicket)
-                <button type="button" @click="toggleWatch()"
+                <button type="button" @click="startJoin('spectator')"
                         :disabled="registered || {{ $locked ? 'true' : 'false' }}"
                         class="m-press mt-2.5 w-full block rounded-2xl p-4 text-white text-start relative overflow-hidden
                                shadow-lg transition-all active:scale-[.98]
@@ -623,6 +623,7 @@
          else to live. --}}
     <div class="px-4 mt-4">
         @include('partials.event-payment-proof')
+        @include('partials.event-join-sheet')
     </div>
 
     {{-- In-place division confirmation (taekwondo) --}}

@@ -216,6 +216,8 @@ class PersonalEventController extends Controller
             'eligReason' => $banned ? __('events.banned_by_organiser') : $gate->message,
             'actions' => $canManage ? $type->availableActions($event) : [],
             'finance' => $canManage ? $type->finance($event) : null,
+            // How to pay, for the join sheet.
+            'payment' => $this->paymentInstructions($event),
         ] + $type->viewData($event, $me));
     }
 
@@ -260,6 +262,31 @@ class PersonalEventController extends Controller
                 'actions' => $canManage ? $type->availableActions($event) : [],
             ] + $type->viewData($event, $me)
         );
+    }
+
+    /**
+     * How to pay this club, for the join sheet.
+     *
+     * Returns the club's primary bank account when it has one. Many clubs take
+     * cash at the door and have never filled this in, so `bank` is null far more
+     * often than not — the sheet falls back to "pay at the club" rather than
+     * showing an empty transfer form.
+     */
+    private function paymentInstructions(ClubEvent $event): array
+    {
+        $bank = $event->tenant?->bankAccounts()
+            ->orderByDesc('is_primary')->orderBy('id')->first();
+
+        return [
+            'club' => $event->tenant?->club_name,
+            'bank' => $bank ? array_filter([
+                'bank_name' => $bank->bank_name,
+                'account_name' => $bank->account_name,
+                'account_number' => $bank->account_number,
+                'iban' => $bank->iban,
+                'benefitpay' => $bank->benefitpay_account,
+            ]) : null,
+        ];
     }
 
     /**
