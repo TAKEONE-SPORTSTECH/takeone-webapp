@@ -73,6 +73,24 @@ x-data="{
             finally { this.busy = false; }
         },
         get registered() { return this.going || this.watching; },
+
+        /**
+         * Why this person cannot enter as a competitor.
+         *
+         * The row stays pressable when they are not eligible — a dead button
+         * tells you nothing. Pressing it says sorry and gives the SERVER's own
+         * reason (wrong age group, no weight on file, blocked, qualification
+         * only), not a generic refusal.
+         */
+        async explainIneligible() {
+            await window.confirmAction({
+                title: @js(__('personal.event_show_cant_join_title')),
+                message: @js($whyNot ?? __('personal.event_show_not_eligible_default')),
+                type: 'warning',
+                confirmText: @js(__('personal.event_show_cta_understood')),
+                hideCancel: true,
+            });
+        },
         // Registration is FINAL — joining is one-way, no self-cancel.
         async toggleGoing() {
             if (this.byQual) { window.showToast('info','{{ __("personal.event_show_entry_by_qualification") }}'); return; }
