@@ -325,7 +325,18 @@ abstract class AbstractEventType implements EventType
                 'category' => $r->category?->name,
                 'weight_class' => $r->category?->weight_class,
                 'meta' => $r->meta ?: ($r->category?->name ?? ($r->paid ? 'Registered' : 'Pending payment')),
+                // The three things an organiser checks off before a competitor
+                // can be drawn. `meta` is the entry's country, the same field
+                // BracketView reads to fly a flag.
+                'country' => $r->meta ?: null,
+                'enrolled' => $r->status === 'joined',
+                // Claimed vs verified. Money and weight are both things a
+                // competitor asserts and an official confirms; the roster shows
+                // the assertion in amber and the confirmation in green.
                 'paid' => (bool) $r->paid,
+                'paid_verified' => $r->paid && $r->paid_by !== null,
+                'weighed' => $r->weighed_in_at !== null,
+                'weighed_verified' => $r->weighed_in_at !== null && $r->weighed_in_by !== null,
             ])->values()->all();
     }
 
