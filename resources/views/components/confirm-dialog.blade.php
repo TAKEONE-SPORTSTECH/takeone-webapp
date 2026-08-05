@@ -28,9 +28,11 @@
                             class="px-5 py-2.5 text-sm font-medium text-foreground bg-white border border-border rounded-lg hover:bg-muted/50 transition-colors">
                         Cancel
                     </button>
+                    {{-- Colours are set per type in JS (see `types` below); this
+                         class list is replaced wholesale on open. --}}
                     <button type="button"
                             id="confirmDialogConfirm"
-                            class="px-5 py-2.5 text-sm font-medium text-white rounded-lg transition-colors">
+                            class="px-5 py-2.5 text-sm font-semibold rounded-lg transition-colors">
                     </button>
                 </div>
             </div>
@@ -47,6 +49,9 @@ window.confirmAction = function(options = {}) {
         type: 'danger',
         confirmText: 'Delete',
         cancelText: 'Cancel',
+        // Informational use: one button to dismiss. A message that only tells
+        // you something has nothing to cancel.
+        hideCancel: false,
     };
     const opts = { ...defaults, ...options };
 
@@ -65,30 +70,42 @@ window.confirmAction = function(options = {}) {
         message.textContent = opts.message;
         confirmBtn.textContent = opts.confirmText;
         cancelBtn.textContent = opts.cancelText;
+        cancelBtn.classList.toggle('hidden', !!opts.hideCancel);
 
         // Set type styling
+        // btnClass carries the TEXT colour as well as the background. The palette
+        // is deliberately pastel — warning is 80% lightness — so white-on-token
+        // is unreadable (1.5:1). Each token ships a matching *-foreground for
+        // exactly this; use it rather than assuming white.
         const types = {
+            primary: {
+                iconBg: 'bg-primary/10',
+                iconHtml: '<i class="bi bi-question-circle text-primary text-2xl"></i>',
+                btnClass: 'bg-primary text-primary-foreground hover:bg-primary/90',
+            },
             danger: {
                 iconBg: 'bg-destructive/10',
                 iconHtml: '<i class="bi bi-exclamation-triangle text-destructive text-2xl"></i>',
-                btnClass: 'bg-destructive hover:bg-destructive/90',
+                btnClass: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
             },
             warning: {
                 iconBg: 'bg-warning/10',
-                iconHtml: '<i class="bi bi-exclamation-triangle text-warning text-2xl"></i>',
-                btnClass: 'bg-warning hover:bg-warning/90',
+                iconHtml: '<i class="bi bi-exclamation-triangle text-warning-foreground text-2xl"></i>',
+                btnClass: 'bg-warning text-warning-foreground hover:bg-warning/90',
             },
             info: {
                 iconBg: 'bg-info/10',
-                iconHtml: '<i class="bi bi-info-circle text-info text-2xl"></i>',
-                btnClass: 'bg-info hover:bg-info/90',
+                iconHtml: '<i class="bi bi-info-circle text-info-foreground text-2xl"></i>',
+                btnClass: 'bg-info text-info-foreground hover:bg-info/90',
             },
         };
 
         const style = types[opts.type] || types.danger;
         icon.className = `mx-auto w-14 h-14 rounded-full flex items-center justify-center mb-4 ${style.iconBg}`;
         icon.innerHTML = style.iconHtml;
-        confirmBtn.className = `px-5 py-2.5 text-sm font-medium text-white rounded-lg transition-colors ${style.btnClass}`;
+        // No text-white here — the type supplies its own foreground, or a pastel
+        // background would end up with white text on it and look disabled.
+        confirmBtn.className = `px-5 py-2.5 text-sm font-semibold rounded-lg transition-colors ${style.btnClass}`;
 
         // Show dialog
         dialog.classList.remove('hidden');
