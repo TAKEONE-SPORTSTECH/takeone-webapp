@@ -68,4 +68,22 @@ return [
     'location_request_timed_out' => ' انتهت مهلة طلب الموقع.',
     'failed_to_fetch_clubs'      => 'تعذّر تحميل الأندية. يرجى المحاولة مرة أخرى.',
     'error_fetching_clubs'       => 'حدث خطأ أثناء تحميل الأندية.',
+
+    // Events tab
+    'ev_happening_now'   => 'يحدث الآن',
+    'ev_coming_up'       => 'قادم قريباً',
+    'ev_live'            => 'مباشر',
+    'ev_starts_in'       => 'يبدأ خلال',
+    'ev_going'           => 'مشارك',
+    'ev_spots_left'      => 'مقعد متبقٍ',
+    'ev_full'            => 'مكتمل',
+    'ev_open'            => 'متاح',
+    'ev_view_event'      => 'عرض الفعالية',
+    'ev_tba'             => 'يُحدد لاحقاً',
+    'ev_free'            => 'مجاني',
+    'ev_until'           => 'حتى',
+    'ev_none_title'      => 'لا توجد فعاليات مفتوحة',
+    'ev_none_hint'       => 'لا توجد فعاليات جارية أو مجدولة لك حالياً.',
+    'ev_finding'         => 'جارٍ تحميل الفعاليات...',
+    'ev_failed'          => 'تعذّر تحميل الفعاليات. يرجى المحاولة مرة أخرى.',
 ];

@@ -22,6 +22,7 @@ use App\Services\SubscriptionService;
 use App\Support\ClubCache;
 use App\Traits\HandlesClubAuthorization;
 use App\Traits\StoresBase64Images;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -96,11 +97,40 @@ class PlatformController extends Controller
                 ];
             });
 
+        // Only render a category tab when it can actually return something.
+        //
+        // The six placeholder categories (nutrition, physiotherapy, shops,
+        // venues, supplements, food plans) are absent deliberately: they have no
+        // data source at all, and the runtime falls back to listing CLUBS for any
+        // unknown category — so they did not merely look empty, they showed the
+        // wrong results under a label that promised something else.
+        $categories = collect([
+            [
+                'key' => 'sports-clubs',
+                'icon' => 'bi-trophy',
+                'label' => __('explore.cat_clubs'),
+                'count' => Tenant::count(),
+            ],
+            [
+                'key' => 'personal-trainers',
+                'icon' => 'bi-person',
+                'label' => __('explore.cat_trainers'),
+                'count' => $instructors->count(),
+            ],
+            [
+                'key' => 'events',
+                'icon' => 'bi-calendar-event',
+                'label' => __('explore.cat_events'),
+                // Same query the Events tab runs, so the tab can never open empty.
+                'count' => $this->openEventsFor($user)->count(),
+            ],
+        ])->filter(fn ($c) => $c['count'] > 0)->values();
+
         $isMobile = request()->attributes->get('is_mobile', false);
 
         // The mobile shell reads $shellTitle to label its header for pages that
         // sit outside the bottom-nav route list (explore is one).
-        return view($isMobile ? 'platform.mobile.explore' : 'platform.explore', compact('familyMembers', 'instructors'))
+        return view($isMobile ? 'platform.mobile.explore' : 'platform.explore', compact('familyMembers', 'instructors', 'categories'))
             ->with('shellTitle', __('explore.explore'));
     }
 
@@ -621,6 +651,111 @@ class PlatformController extends Controller
             'success' => true,
             'clubs' => $clubsData,
             'total' => $clubsData->count(),
+        ]);
+    }
+
+    /**
+     * Open events for the explore "Events" tab.
+     *
+     * Returns only what is still live on the calendar — events that have not
+     * started yet, plus events running right now. Anything already finished is
+     * excluded, as are archived and cancelled events.
+     *
+     * Visibility mirrors App\Events\Support\EventAccess::eligible() exactly
+     * (own-club events at any scope, plus other clubs' events whose scope
+     * reaches this member), so the tab can never advertise an event whose
+     * detail page would then 403.
+     */
+    /**
+     * Open events this user may see — not started yet, plus running right now.
+     *
+     * Shared by the Events tab itself and by the tab list that decides whether
+     * to render the tab at all, so a visible "Events" tab can never open onto
+     * an empty pane.
+     */
+    private function openEventsFor(\App\Models\User $me): \Illuminate\Support\Collection
+    {
+        $clubIds = $me->memberClubs()->pluck('tenants.id');
+        $myCountries = $me->memberClubs()->pluck('tenants.country')->filter()->unique()->values();
+        $today = now()->startOfDay()->toDateString();
+
+        return ClubEvent::query()
+            ->where('is_archived', false)
+            ->where('status', '!=', 'cancelled')
+            ->where(function ($q) use ($clubIds, $myCountries, $me) {
+                $q->whereIn('tenant_id', $clubIds)
+                    ->orWhereIn('scope', ['inter_club', 'worldwide'])
+                    ->orWhere(fn ($w) => $w->whereIn('scope', ['nationwide', 'regional'])
+                        ->whereHas('tenant', fn ($t) => $t->whereIn('country', $myCountries)))
+                    ->orWhere('created_by', $me->id);
+            })
+            // Date-grain prefilter so the DB never hands back the whole archive.
+            // The exact end moment (which needs end_time) is settled in PHP via
+            // the model's own hasEnded() — one rule, one place.
+            ->where(function ($q) use ($today) {
+                $q->where(fn ($w) => $w->whereNotNull('end_date')->whereDate('end_date', '>=', $today))
+                    ->orWhere(fn ($w) => $w->whereNull('end_date')->whereDate('date', '>=', $today));
+            })
+            ->withCount('participantRegistrations')
+            ->with('tenant:id,club_name,country,logo')
+            ->orderBy('date')
+            ->orderBy('start_time')
+            ->limit(120)
+            ->get()
+            ->reject(fn (ClubEvent $e) => $e->hasEnded())
+            ->values();
+    }
+
+    public function events(Request $request)
+    {
+        $events = $this->openEventsFor(Auth::user());
+
+        $payload = $events->map(function (ClubEvent $e) {
+            $date = $e->date;
+            $start = $e->start_time ? Carbon::parse($e->start_time) : null;
+            $end = $e->end_time ? Carbon::parse($e->end_time) : null;
+            $startsAt = $date->copy()->setTimeFromTimeString($e->start_time ?: '00:00');
+            $live = $e->isOngoing();
+            $going = (int) ($e->participant_registrations_count ?? 0);
+            $cap = (int) ($e->max_capacity ?: 0);
+
+            return [
+                // Public key is the uuid — never the auto-increment id.
+                'key' => $e->uuid,
+                'url' => route('me.events.show', $e->uuid),
+                'title' => $e->title,
+                'state' => $live ? 'live' : 'upcoming',
+                'day' => $date->format('d'),
+                'mon' => $date->format('M'),
+                'wday' => $date->format('D'),
+                'date_label' => $date->isoFormat('ddd, D MMM YYYY'),
+                'end_date_label' => $e->end_date && ! $e->end_date->isSameDay($date)
+                    ? $e->end_date->isoFormat('D MMM')
+                    : null,
+                'time' => $start ? $start->format('g:i A') : null,
+                'end_time' => $end ? $end->format('g:i A') : null,
+                'starts_in' => $live ? null : $startsAt->diffForHumans(['parts' => 2, 'short' => true]),
+                'club' => $e->tenant?->club_name,
+                'location' => $e->location,
+                'type' => $e->event_type,
+                'sport' => $e->sport,
+                'level' => $e->level,
+                'icon' => $e->icon ?: 'bi-calendar-event',
+                'color' => $e->color ?: '#7c3aed',
+                'image' => is_array($e->images) ? ($e->images[0] ?? null) : null,
+                'going' => $going,
+                'capacity' => $cap ?: null,
+                'spots_left' => $cap ? max(0, $cap - $going) : null,
+                'fee' => $e->participant_fee ?: null,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'events' => $payload,
+            'live' => $payload->where('state', 'live')->count(),
+            'upcoming' => $payload->where('state', 'upcoming')->count(),
+            'total' => $payload->count(),
         ]);
     }
 

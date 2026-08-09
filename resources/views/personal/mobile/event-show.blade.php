@@ -43,6 +43,15 @@
                 <i class="bi bi-arrow-left text-lg"></i>
             </button>
             <div class="flex items-center gap-2">
+                {{-- Owner-only: the event's P&L. Sits with the other cover actions
+                     rather than in the page body — it is a tool for running the
+                     event, not part of reading it. --}}
+                @if($finance ?? false)
+                    <button type="button" @click="financeOpen=true"
+                            class="m-press w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center" aria-label="{{ __('personal.event_show_finance') }}">
+                        <i class="bi bi-cash-stack text-base"></i>
+                    </button>
+                @endif
                 <x-qr-code
                     :url="route('me.events.show', ['event' => $e['key']])"
                     :title="$e['title'] . ' — ' . __('personal.event_show_event')"
@@ -123,34 +132,57 @@
     {{-- ===== Quick facts card (overlaps cover) ===== --}}
     <div class="px-4 -mt-10 relative z-10">
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 p-4">
+            {{-- Quick facts are not just a summary — each one is the door to its
+                 own fuller answer further down the page. When / how much / where,
+                 and a tap takes you to the run-of-show, the way in, or the map.
+                 The chip does the linking work the reader would otherwise do by
+                 scrolling — which on a phone is most of the page. --}}
             <div class="grid grid-cols-3 gap-2 text-center">
-                <div>
+                {{-- When: the day AND the time it starts. Lands on the
+                     run-of-show row for the event's own date. --}}
+                <button type="button" @click="jump(['run-start', 'how-it-runs'])"
+                        class="m-press rounded-xl -m-1 p-1"
+                        aria-label="{{ __('personal.event_show_how_it_runs') }}">
                     <div class="w-10 h-10 mx-auto rounded-xl bg-accent text-primary grid place-items-center"><i class="bi bi-calendar3"></i></div>
-                    <p class="text-xs font-bold text-foreground mt-1.5">{{ $e['wday'] }} {{ $e['day'] }}</p>
-                    <p class="text-[10px] text-muted-foreground">{{ $e['mon'] }}</p>
-                </div>
-                <div class="border-x border-gray-100">
-                    <div class="w-10 h-10 mx-auto rounded-xl bg-accent text-primary grid place-items-center"><i class="bi bi-clock"></i></div>
-                    <p class="text-xs font-bold text-foreground mt-1.5">{{ $e['time'] }}</p>
-                    <p class="text-[10px] text-muted-foreground">{{ $e['duration'] }}</p>
-                </div>
-                <div>
+                    <p class="text-xs font-bold text-foreground mt-1.5 truncate">{{ $e['wday'] }} {{ $e['day'] }} {{ $e['mon'] }}</p>
+                    <p class="text-[10px] text-muted-foreground truncate">{{ $e['time'] }}</p>
+                </button>
+                {{-- How much: lands on the Participate row and makes it announce
+                     itself — "what does it cost" and "how do I get in" are the
+                     same question asked twice. --}}
+                <button type="button" @click="jump('join-participate')"
+                        class="m-press border-x border-gray-100 py-1"
+                        aria-label="{{ $byQual ? __('personal.event_show_entry') : __('personal.event_show_to_join') }}">
                     <div class="w-10 h-10 mx-auto rounded-xl bg-accent text-primary grid place-items-center"><i class="bi bi-cash-coin"></i></div>
-                    <p class="text-xs font-bold text-foreground mt-1.5">{{ $e['participant_fee'] }}</p>
-                    <p class="text-[10px] text-muted-foreground">{{ $byQual ? __('personal.event_show_entry') : __('personal.event_show_to_join') }}</p>
-                </div>
+                    <p class="text-xs font-bold text-foreground mt-1.5 truncate">{{ $e['participant_fee'] }}</p>
+                    <p class="text-[10px] text-muted-foreground truncate">{{ $byQual ? __('personal.event_show_entry') : __('personal.event_show_to_join') }}</p>
+                </button>
+                {{-- Where: lands on the map. A button like its two neighbours —
+                     one inert cell in a row of three tappable ones reads as
+                     broken, not as restraint. --}}
+                <button type="button" @click="jump('where')"
+                        class="m-press min-w-0 rounded-xl -m-1 p-1"
+                        aria-label="{{ __('personal.event_show_location') }}">
+                    <div class="w-10 h-10 mx-auto rounded-xl bg-accent text-primary grid place-items-center"><i class="bi bi-geo-alt"></i></div>
+                    <p class="text-xs font-bold text-foreground mt-1.5 truncate" title="{{ $e['location'] }}">{{ $e['location'] }}</p>
+                    <p class="text-[10px] text-muted-foreground">{{ __('personal.event_show_venue') }}</p>
+                </button>
             </div>
 
-            {{-- capacity --}}
-            <div class="mt-5">
-                <div class="flex items-center justify-between text-[11px] mb-1.5">
-                    <span class="font-semibold text-foreground"><span x-text="goingCount">{{ $e['going'] }}</span> {{ __('personal.event_show_going') }}</span>
-                    <span class="text-muted-foreground"><span x-text="cap - goingCount">{{ $e['cap'] - $e['going'] }}</span> {{ __('personal.event_show_spots_left') }}</span>
+            {{-- Capacity — only when the organiser actually set one. With no
+                 limit there are no "spots left" to count, and the bar would read
+                 100% full for an event anyone can still join. --}}
+            @if($e['capped'] ?? false)
+                <div class="mt-5">
+                    <div class="flex items-center justify-between text-[11px] mb-1.5">
+                        <span class="font-semibold text-foreground"><span x-text="goingCount">{{ $e['going'] }}</span> {{ __('personal.event_show_going') }}</span>
+                        <span class="text-muted-foreground"><span x-text="Math.max(0, cap - goingCount)">{{ max(0, $e['cap'] - $e['going']) }}</span> {{ __('personal.event_show_spots_left') }}</span>
+                    </div>
+                    <div class="h-2 rounded-full bg-muted overflow-hidden">
+                        <div class="m-bar-fill h-full rounded-full" :style="`width:${pct}%; background:{{ $e['color'] }}`" style="width: {{ round($e['going'] / $e['cap'] * 100) }}%"></div>
+                    </div>
                 </div>
-                <div class="h-2 rounded-full bg-muted overflow-hidden">
-                    <div class="m-bar-fill h-full rounded-full" :style="`width:${pct}%; background:{{ $e['color'] }}`" style="width: {{ round($e['going'] / $e['cap'] * 100) }}%"></div>
-                </div>
-            </div>
+            @endif
         </div>
     </div>
 
@@ -192,22 +224,16 @@
         </div>
     @endif
 
-    {{-- ===== Show results (everyone, when finals decided) + Finance (owner) ===== --}}
-    @if(!empty($e['bracket_results']) || ($finance ?? false))
-        <div class="px-4 mt-4 flex gap-2">
-            @if(!empty($e['bracket_results']))
-                <button type="button" @click="showResultsOpen=true"
-                        class="m-press flex-1 py-3 rounded-2xl text-white text-sm font-bold flex items-center justify-center gap-2" style="background: {{ $e['color'] }};">
-                    <i class="bi bi-trophy-fill"></i> {{ __('personal.event_show_show_results') }}
-                </button>
-            @endif
-            @if($finance ?? false)
-                <button type="button" @click="financeOpen=true"
-                        class="m-press flex-1 py-3 rounded-2xl border-2 text-sm font-bold flex items-center justify-center gap-2"
-                        style="border-color: {{ $e['color'] }}; color: {{ $e['color'] }};">
-                    <i class="bi bi-cash-stack"></i> {{ __('personal.event_show_finance') }}
-                </button>
-            @endif
+    {{-- ===== Show results (everyone, when finals decided) =====
+         Finance used to sit beside this as a second full-width button; it is an
+         owner-only tool, not something a competitor acts on while reading the
+         event, so it moved up to the cover's action row next to the QR button. --}}
+    @if(!empty($e['bracket_results']))
+        <div class="px-4 mt-4">
+            <button type="button" @click="showResultsOpen=true"
+                    class="m-press w-full py-3 rounded-2xl text-white text-sm font-bold flex items-center justify-center gap-2" style="background: {{ $e['color'] }};">
+                <i class="bi bi-trophy-fill"></i> {{ __('personal.event_show_show_results') }}
+            </button>
         </div>
     @endif
 
@@ -229,24 +255,20 @@
                 ? 'https://www.google.com/maps/dir/?api=1&destination=' . urlencode($e['location'])
                 : null));
         $hasMap = !empty($e['lat']) && !empty($e['lng']);
-        // Gradients do not mirror in RTL; flip the rule by hand.
-        $ruleDir = config('locales.'.app()->getLocale().'.dir', 'ltr') === 'rtl' ? '270deg' : '90deg';
     @endphp
     <div class="px-4 mt-4">
         <div class="m-card rounded-2xl overflow-hidden">
 
-            {{-- About. Titled like every other section so the card has one
-                 grammar. Tags are pills tinted with the event colour, matching the
-                 division chips further down. --}}
-            <div class="p-5">
-                <div>
-                    <h3 class="text-[19px] font-black tracking-[-0.02em] leading-none text-foreground">{{ __('personal.event_show_about') }}</h3>
-                    <span class="block h-[3px] w-24 rounded-full mt-2.5"
-                          style="background: linear-gradient({{ $ruleDir }}, {{ $e['color'] }} 0%, {{ $e['color'] }}80 40%, {{ $e['color'] }}00 100%);"></span>
-                </div>
+            {{-- Every section is announced by the same full-bleed dark band, so the
+                 card reads as one object with a repeating beat rather than a stack
+                 of differently-styled panels. The prize band was the original of
+                 this shape; the rest now match it. --}}
+            <x-event-section-band :color="$e['color']" icon="bi-info-circle"
+                                  :title="__('personal.event_show_about')" />
 
+            <div class="p-5">
                 @if(trim((string) ($e['about'] ?? '')) !== '')
-                    <p class="text-[15px] leading-relaxed text-foreground mt-4">{{ $e['about'] }}</p>
+                    <p class="text-[15px] leading-relaxed text-foreground">{{ $e['about'] }}</p>
                 @endif
 
                 @if(!empty($e['tags']))
@@ -259,38 +281,13 @@
                 @endif
             </div>
 
-            {{-- Prize — a full-bleed band, the loudest thing on the card because
-                 it is the only thing here anyone brags about. --}}
-            @if(!empty($e['prize']))
-                <div class="px-5 py-4 text-white relative overflow-hidden"
-                     style="background: linear-gradient(135deg, {{ $e['color'] }}, #1f2937);">
-                    <div class="absolute -right-8 -top-8 w-28 h-28 rounded-full bg-white/10"></div>
-                    <div class="relative flex items-center gap-3">
-                        <i class="bi bi-award-fill text-2xl text-white/90"></i>
-                        <div class="min-w-0">
-                            <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-white/70">{{ __('personal.event_show_prize_pool') }}</p>
-                            <p class="text-base font-black leading-tight mt-0.5">{{ $e['prize'] }}</p>
-                        </div>
-                    </div>
-                </div>
-            @endif
-
             {{-- ===== The spine ===== --}}
             @if(!empty($e['phases']))
+                <span id="how-it-runs" class="block"></span>
+                <x-event-section-band :color="$e['color']" icon="bi-signpost-split"
+                                      :title="__('personal.event_show_how_it_runs')" />
                 <div class="p-5">
                     <div>
-                        <h3 class="text-[19px] font-black tracking-[-0.02em] leading-none text-foreground">{{ __('personal.event_show_how_it_runs') }}</h3>
-                        {{-- The card's signature: a rule that starts solid in the
-                             event colour and tapers out, echoing the gradients the
-                             hero, prize band and join buttons already use. Repeated
-                             under every heading so the card has a spine of its own.
-                             $ruleDir flips it in RTL — a CSS gradient does not
-                             mirror itself. --}}
-                        <span class="block h-[3px] w-24 rounded-full mt-2.5"
-                              style="background: linear-gradient({{ $ruleDir }}, {{ $e['color'] }} 0%, {{ $e['color'] }}80 40%, {{ $e['color'] }}00 100%);"></span>
-                    </div>
-
-                    <div class="mt-4">
                         @foreach($e['phases'] as $ph)
                             @php
                                 // Status is derived from the date — past = done, today = now, future = upcoming.
@@ -298,8 +295,15 @@
                                 $today  = \Carbon\Carbon::today();
                                 $done   = $pdate && $pdate->lt($today);
                                 $active = $pdate && $pdate->isSameDay($today);
+                                // The phase on the event's own day — where the date
+                                // chip lands. First match only, so an opening day
+                                // with several phases cannot claim the id twice.
+                                $isStart = $pdate && $pdate->toDateString() === ($e['date_iso'] ?? null) && ! ($startTagged ?? false);
+                                $startTagged = ($startTagged ?? false) || $isStart;
                             @endphp
-                            <div class="flex gap-3.5 {{ $done ? 'opacity-45' : '' }}">
+                            <div @if($isStart) id="run-start" @endif
+                                 class="flex gap-3.5 rounded-xl {{ $done ? 'opacity-45' : '' }}"
+                                 style="--m-attn-color: {{ $e['color'] }}80;">
 
                                 {{-- The date column: a calendar leaf, so the eye can
                                      run down the dates without reading a word. --}}
@@ -396,19 +400,10 @@
                     // own sort_order — the sequence the organiser arranged them in.
                     // Imposing an alphabetical order here would quietly override it.
                 @endphp
-                <div class="px-5 pb-5 border-t border-gray-100 pt-6">
-                    <div>
-                        <h3 class="text-[19px] font-black tracking-[-0.02em] leading-none text-foreground">{{ __('personal.event_show_divisions') }}</h3>
-                        {{-- The card's signature: a rule that starts solid in the
-                             event colour and tapers out, echoing the gradients the
-                             hero, prize band and join buttons already use. Repeated
-                             under every heading so the card has a spine of its own.
-                             $ruleDir flips it in RTL — a CSS gradient does not
-                             mirror itself. --}}
-                        <span class="block h-[3px] w-24 rounded-full mt-2.5"
-                              style="background: linear-gradient({{ $ruleDir }}, {{ $e['color'] }} 0%, {{ $e['color'] }}80 40%, {{ $e['color'] }}00 100%);"></span>
-                    </div>
-                    <div class="mt-4 space-y-3.5">
+                <x-event-section-band :color="$e['color']" icon="bi-diagram-3-fill"
+                                      :title="__('personal.event_show_divisions')" />
+                <div class="p-5">
+                    <div class="space-y-3.5">
                         @foreach($divGroups as $g)
                             @php $tint = $g['female'] ? '#ec4899' : '#3b82f6'; @endphp
                             <div>
@@ -429,19 +424,10 @@
 
             {{-- Requirements — a short contract, set as one. --}}
             @if(!empty($e['requirements']))
-                <div class="px-5 pb-5 border-t border-gray-100 pt-6">
-                    <div>
-                        <h3 class="text-[19px] font-black tracking-[-0.02em] leading-none text-foreground">{{ __('personal.event_show_requirements') }}</h3>
-                        {{-- The card's signature: a rule that starts solid in the
-                             event colour and tapers out, echoing the gradients the
-                             hero, prize band and join buttons already use. Repeated
-                             under every heading so the card has a spine of its own.
-                             $ruleDir flips it in RTL — a CSS gradient does not
-                             mirror itself. --}}
-                        <span class="block h-[3px] w-24 rounded-full mt-2.5"
-                              style="background: linear-gradient({{ $ruleDir }}, {{ $e['color'] }} 0%, {{ $e['color'] }}80 40%, {{ $e['color'] }}00 100%);"></span>
-                    </div>
-                    <ul class="mt-3 space-y-2">
+                <x-event-section-band :color="$e['color']" icon="bi-clipboard-check"
+                                      :title="__('personal.event_show_requirements')" />
+                <div class="p-5">
+                    <ul class="space-y-2">
                         @foreach($e['requirements'] as $req)
                             <li class="flex items-start gap-2.5 text-[13px] text-foreground/85 leading-snug">
                                 <i class="bi bi-check-circle-fill text-[13px] mt-0.5 flex-shrink-0" style="color: {{ $e['color'] }};"></i>
@@ -452,9 +438,22 @@
                 </div>
             @endif
 
+            {{-- Documents — rulebook, entry form, schedule. The section only
+                 exists when there is something to download, unless you are the
+                 organiser, who needs the uploader to put the first one there. --}}
+            @if(!empty($documents) || ($canManage ?? false))
+                <x-event-section-band :color="$e['color']" icon="bi-paperclip"
+                                      :title="__('personal.event_docs_heading')" />
+                <div class="p-5">
+                    <x-event-documents :event="$e['key']" :documents="$documents ?? []"
+                                       :can-manage="$canManage ?? false" :color="$e['color']" />
+                </div>
+            @endif
+
             {{-- Venue — the map IS the section. The address sits on it under a
                  scrim rather than in a row above it, so the card closes on one
                  object instead of two stacked. --}}
+            <span id="where" class="block"></span>
             @if($hasMap)
                 {{-- The map component is built for forms, so its root is space-y-4
                      and its inner wrapper space-y-2 — which put a 1rem margin above
@@ -469,20 +468,10 @@
                     #evtmap{{ $e['id'] }}Map { display: block; }
                 </style>
                 {{-- Named like every other section, so the map is announced
-                     rather than just appearing at the foot of the card. --}}
-                <div class="px-5 pt-6 pb-4 border-t border-gray-100">
-                    <div>
-                        <h3 class="text-[19px] font-black tracking-[-0.02em] leading-none text-foreground">{{ __('personal.event_show_location') }}</h3>
-                        {{-- The card's signature: a rule that starts solid in the
-                             event colour and tapers out, echoing the gradients the
-                             hero, prize band and join buttons already use. Repeated
-                             under every heading so the card has a spine of its own.
-                             $ruleDir flips it in RTL — a CSS gradient does not
-                             mirror itself. --}}
-                        <span class="block h-[3px] w-24 rounded-full mt-2.5"
-                              style="background: linear-gradient({{ $ruleDir }}, {{ $e['color'] }} 0%, {{ $e['color'] }}80 40%, {{ $e['color'] }}00 100%);"></span>
-                    </div>
-                </div>
+                     rather than just appearing at the foot of the card. The band
+                     sits directly on the map — no padded gap between them. --}}
+                <x-event-section-band :color="$e['color']" icon="bi-geo-alt-fill"
+                                      :title="__('personal.event_show_location')" />
 
                 <div class="relative">
                     <x-location-map
@@ -529,10 +518,11 @@
                 </script>
             @else
                 {{-- No coordinates: the venue still has to be findable. --}}
-                <div class="px-5 py-4 border-t border-gray-100 flex items-center justify-between gap-3">
+                <x-event-section-band :color="$e['color']" icon="bi-geo-alt-fill"
+                                      :title="__('personal.event_show_location')" />
+                <div class="px-5 py-4 flex items-center justify-between gap-3">
                     <div class="min-w-0">
-                        <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{{ __('personal.event_show_venue') }}</p>
-                        <p class="text-sm font-black text-foreground leading-tight mt-0.5">{{ $e['location'] }}</p>
+                        <p class="text-sm font-black text-foreground leading-tight">{{ $e['location'] }}</p>
                     </div>
                     @if($dirHref)
                         <a href="{{ $dirHref }}" target="_blank" rel="noopener"
@@ -635,6 +625,23 @@
         </div>
     @endif
 
+    {{-- ===== Before we start =====
+         Run-day work for the people who do it, above the roster and the draw
+         because until the event is started this is the job. The component
+         decides what is editable; the controller has already decided whether
+         this viewer receives a list at all. --}}
+    @if($canOfficiate ?? false)
+        <div class="px-4 mt-4">
+            <x-event-checklist :event="$e['key']"
+                               :items="$checklist ?? []"
+                               :can-manage="$canManage"
+                               :can-check="true"
+                               :started="$e['started'] ?? false"
+                               :overridden="$e['start_overridden'] ?? false"
+                               :color="$e['color']" />
+        </div>
+    @endif
+
     {{-- ===== Agenda timeline ===== --}}
     @if(!empty($e['agenda']))
     <div class="px-4 mt-4">
@@ -684,35 +691,20 @@
                             · <span x-text="spectators">{{ $e['spectator']['count'] }}</span> {{ __('personal.event_show_spectators') }}
                         @endif
                     </p>
+                    {{-- There was a second card below this one ("Verification
+                         desk") listing the same competitors with buttons on them.
+                         The buttons moved onto the roster rows, so this card is
+                         now the single door — officials are told so here. --}}
+                    @if($canOfficiate ?? false)
+                        <p class="text-[11px] text-white/70 mt-0.5 flex items-center gap-1">
+                            <i class="bi bi-clipboard2-check"></i>{{ __('personal.event_verify_open_sub') }}
+                        </p>
+                    @endif
                 </div>
                 <i class="bi bi-chevron-right text-white/80"></i>
             </div>
         </a>
     </div>
-
-    {{-- ===== Verification desk — officials only =====
-         Deliberately a separate door from the roster: the roster answers "who is
-         coming", this answers "who is cleared to fight", and only the people
-         appointed to sign that off ever see it. --}}
-    @if($canOfficiate ?? false)
-    <div class="px-4 mt-3">
-        <a href="{{ route('me.events.verify', $e['key']) }}" data-shell-link data-route="me.events"
-           class="block m-press rounded-2xl p-4 border-2 border-dashed"
-           style="border-color: {{ $e['color'] }}55;">
-            <div class="flex items-center gap-3">
-                <div class="w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 text-white"
-                     style="background: {{ $e['color'] }};">
-                    <i class="bi bi-clipboard2-check text-xl"></i>
-                </div>
-                <div class="min-w-0 flex-1">
-                    <h3 class="font-black text-[15px] leading-tight text-foreground">{{ __('personal.event_verify_open') }}</h3>
-                    <p class="text-[11px] text-muted-foreground mt-0.5">{{ __('personal.event_verify_open_sub') }}</p>
-                </div>
-                <i class="bi bi-chevron-right text-muted-foreground rtl:rotate-180"></i>
-            </div>
-        </a>
-    </div>
-    @endif
 
     {{-- ===== Proof of payment =====
          The join / spectate CTAs that used to sit here are gone: the two pricing
@@ -774,8 +766,11 @@
              shape but goes slate, so it still invites a tap ("Why not?")
              without pretending to be the main action. --}}
 
-        {{-- Participant --}}
-        <button type="button"
+        {{-- Participant — also the amount chip's landing point. No
+             --m-attn-color: the row carries an Alpine :style binding and a
+             second static style on the same element is asking for one to
+             clobber the other, so the pulse uses the brand primary. --}}
+        <button type="button" id="join-participate"
                 @click="{{ $canJoin ? "startJoin('participant')" : 'explainIneligible()' }}"
                 :disabled="registered && !feeDue"
                 class="m-press mt-3 w-full block rounded-2xl p-4 text-white text-start relative overflow-hidden

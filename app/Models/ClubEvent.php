@@ -109,6 +109,8 @@ class ClubEvent extends Model
         'agenda' => 'array',
         'results' => 'array',
         'league' => 'array',
+        'started_at' => 'datetime',
+        'start_overridden' => 'boolean',
     ];
 
     /**
@@ -135,21 +137,43 @@ class ClubEvent extends Model
      */
     public function isOngoing(): bool
     {
-        if ($this->hasEnded()) {
-            return false;
-        }
-
-        return $this->date->copy()->setTimeFromTimeString($this->start_time)->isPast();
+        return $this->hasStarted() && ! $this->hasEnded();
     }
 
-    /** True once the event's start moment has passed. */
+    /**
+     * True once someone has STARTED this event.
+     *
+     * Deliberately not the clock. The start time is a plan; starting is a
+     * decision, made by the organiser once the hall is ready — and the
+     * readiness checklist can hold that decision back. An event whose start
+     * time has passed but which nobody started is late, not running, and its
+     * draw is still arrangeable.
+     *
+     * Everything that asks "may this still be changed?" (draw locking, the
+     * arrange screens, the package actions) reads this one method, so there is
+     * exactly one answer.
+     */
     public function hasStarted(): bool
     {
+        return $this->started_at !== null;
+    }
+
+    /** The moment the clock says it was MEANT to begin. */
+    public function scheduledStart(): ?\Carbon\Carbon
+    {
         if (! $this->date) {
-            return false;
+            return null;
         }
 
-        return $this->date->copy()->setTimeFromTimeString($this->start_time ?: '00:00')->isPast();
+        return $this->date->copy()->setTimeFromTimeString($this->start_time ?: '00:00');
+    }
+
+    /** Its scheduled start has passed and nobody has started it. */
+    public function isOverdueToStart(): bool
+    {
+        $due = $this->scheduledStart();
+
+        return ! $this->hasStarted() && ! $this->hasEnded() && $due !== null && $due->isPast();
     }
 
     /** True when this event's sport is a registered combat sport (config/combat.php). */
@@ -179,6 +203,30 @@ class ClubEvent extends Model
         return $this->hasMany(EventOfficial::class, 'event_id');
     }
 
+    /** What must be true before the day can begin, in the organiser's order. */
+    public function checklistItems(): HasMany
+    {
+        return $this->hasMany(EventChecklistItem::class, 'event_id')
+            ->orderBy('sort_order')->orderBy('id');
+    }
+
+    /**
+     * Nothing on the checklist is still outstanding.
+     *
+     * An event with no checklist is ready by definition — the organiser who
+     * never wrote a list is not thereby blocked from starting their event.
+     */
+    public function isReadyToStart(): bool
+    {
+        return $this->outstandingChecks() === 0;
+    }
+
+    /** How many checklist items are still unchecked. */
+    public function outstandingChecks(): int
+    {
+        return $this->checklistItems()->whereNull('checked_at')->count();
+    }
+
     /** Participant registrations (not spectators). */
     public function participantRegistrations(): HasMany
     {
@@ -193,5 +241,11 @@ class ClubEvent extends Model
     public function expenses(): HasMany
     {
         return $this->hasMany(EventExpense::class, 'event_id');
+    }
+
+    /** Files attached for people to download (rulebook, entry form, schedule). */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(EventDocument::class, 'event_id')->orderBy('sort_order');
     }
 }

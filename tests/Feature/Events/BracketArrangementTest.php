@@ -207,8 +207,11 @@ class BracketArrangementTest extends TestCase
         $category = $this->drawnDivision($event);
         $bout = $this->firstRound($category)[0];
 
-        // The event is under way — nobody's opponent changes now.
+        // The event is under way — nobody's opponent changes now. Backdating no
+        // longer does this: an event runs because someone STARTED it, not
+        // because the clock passed its start time.
         $event->update(['date' => now()->subDay()->toDateString(), 'end_date' => now()->addDay()->toDateString()]);
+        $event->forceFill(['started_at' => now(), 'started_by' => $this->organiser->id])->save();
 
         $before = $bout->fresh()->a_name;
 

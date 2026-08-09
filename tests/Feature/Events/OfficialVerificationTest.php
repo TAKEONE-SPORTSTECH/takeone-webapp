@@ -195,17 +195,33 @@ class OfficialVerificationTest extends TestCase
         $this->assertNull($entry->paid_by);
     }
 
-    public function test_an_ordinary_member_cannot_open_the_console(): void
+    /**
+     * The console is no longer a screen — it is the roster, with the gates on
+     * the rows. What used to be "can this person open the console?" is now
+     * "does this person get controls on the list everyone can see?".
+     */
+    public function test_an_ordinary_member_gets_the_roster_without_any_controls(): void
     {
         $event = $this->event();
+        $category = $this->division($event);
+        $this->entry($event, $category, $this->member('Athlete One'));
         $nobody = $this->member('Just A Member');
 
+        // The old console URL now lands on the roster for everyone…
         $this->actingAs($nobody)
             ->get("/me/events/{$event->uuid}/verify")
-            ->assertRedirect(route('me.events.show', $event->uuid));
+            ->assertRedirect(route('me.events.people', $event->uuid));
+
+        // …but an ordinary member gets a plain list: no registration ids to act
+        // on, and no link to anyone's proof of payment.
+        $this->actingAs($nobody)
+            ->get("/me/events/{$event->uuid}/people")
+            ->assertOk()
+            ->assertDontSee('reg_id')
+            ->assertDontSee('officiating: true', false);
     }
 
-    public function test_the_console_renders_for_an_appointed_official(): void
+    public function test_the_gates_render_on_the_roster_for_an_appointed_official(): void
     {
         $event = $this->event();
         $category = $this->division($event);
@@ -218,9 +234,16 @@ class OfficialVerificationTest extends TestCase
         ]);
 
         $this->actingAs($scale)
-            ->get("/me/events/{$event->uuid}/verify")
+            ->get("/me/events/{$event->uuid}/people")
             ->assertOk()
-            ->assertSee('Athlete One');
+            ->assertSee('Athlete One')
+            ->assertSee('officiating: true', false)
+            ->assertSee('reg_id')
+            // The row is one line that opens a sheet — the gates are not
+            // stamped inline onto every card any more.
+            ->assertSee('openPerson(', false)
+            ->assertSee('sheet-weight', false)
+            ->assertDontSee('id="w-', false);
     }
 
     /* ---------------- The gate itself ---------------- */

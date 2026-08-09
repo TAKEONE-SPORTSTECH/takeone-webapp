@@ -396,5 +396,43 @@ x-data="{
             finally { this.busy = false; }
         },
         medal(place) { return ({1:'#f59e0b',2:'#9ca3af',3:'#b45309'})[place] || '{{ $e['color'] }}'; },
-        get pct() { return Math.round(this.goingCount / this.cap * 100); }
+        get pct() { return Math.round(this.goingCount / this.cap * 100); },
+
+        /*
+         * Take the reader from a summary chip to the thing it summarises.
+         *
+         * The quick-facts card at the top answers when / how much / where in
+         * three words each. Every one of those answers has a fuller version
+         * further down the page, and scrolling to it by hand is the reader
+         * doing the linking work. So the chip does it: scroll there, then
+         * pulse the exact element — the scroll only gets you to the region,
+         * the pulse says which row.
+         *
+         * Falls back through a list of ids so a page that does not render the
+         * richer section (no timeline, say) still lands somewhere sensible,
+         * and does nothing at all if none of them exist — a chip that silently
+         * scrolls to the top would read as broken.
+         *
+         * NOTE: this whole partial is rendered INSIDE the x-data attribute of a
+         * div. A literal double quote anywhere in here, even in a comment,
+         * closes that attribute early and the rest of the file spills onto the
+         * page as visible text. Keep every quote single, prose included.
+         */
+        jump(ids, block = 'center') {
+            const el = (Array.isArray(ids) ? ids : [ids])
+                .map(id => document.getElementById(id)).find(Boolean);
+            if (! el) return;
+
+            const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            el.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block });
+
+            // Re-tapping the same chip should pulse again: drop the class and
+            // force a reflow before re-adding, or the animation never restarts.
+            el.classList.remove('m-attn');
+            void el.offsetWidth;
+            el.classList.add('m-attn');
+            clearTimeout(this._attn);
+            this._attn = setTimeout(() => el.classList.remove('m-attn'), 3600);
+        },
+        _attn: null,
      }"

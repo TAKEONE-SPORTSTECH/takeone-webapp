@@ -15,19 +15,24 @@
     Expects: $e, $payment (from PersonalEventController::paymentInstructions).
 --}}
 <template x-teleport="body" data-teleport-template="true">
-    <div x-show="joinOpen" x-cloak class="fixed inset-0 z-[70]" @keydown.escape.window="closeJoin()" style="display:none;">
+    <div x-show="joinOpen" x-cloak class="fixed inset-0 z-[70] flex items-end sm:items-center sm:justify-center sm:p-4"
+         @keydown.escape.window="closeJoin()" style="display:none;">
         <div x-show="joinOpen" x-transition.opacity class="absolute inset-0 bg-black/40" @click="closeJoin()"></div>
 
+        {{-- A bottom sheet on a phone, a centred dialog from `sm` up. Desktop
+             includes this same partial, and a sheet pinned to the bottom of a
+             1440px window reads as a stuck toolbar rather than a decision. Same
+             idiom <x-qr-code> already uses, so the two behave alike. --}}
         <div x-show="joinOpen"
              x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+             x-transition:enter-start="translate-y-full sm:translate-y-4 sm:opacity-0" x-transition:enter-end="translate-y-0 sm:opacity-100"
              x-transition:leave="transition ease-in duration-200"
-             x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
-             class="absolute inset-x-0 bottom-0 max-h-[92vh] flex flex-col bg-white rounded-t-3xl shadow-2xl">
+             x-transition:leave-start="translate-y-0 sm:opacity-100" x-transition:leave-end="translate-y-full sm:translate-y-4 sm:opacity-0"
+             class="relative w-full sm:max-w-md max-h-[92vh] sm:max-h-[85vh] flex flex-col bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl">
 
             {{-- Handle + what you are joining --}}
             <div class="flex-shrink-0 px-5 pt-3 pb-4 border-b border-gray-100">
-                <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
+                <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3 sm:hidden"></div>
                 <h3 class="text-lg font-bold text-gray-900"
                     x-text="joinMode === 'settle'
                         ? '{{ __('personal.event_show_join_settle_title') }}'

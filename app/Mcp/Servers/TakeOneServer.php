@@ -11,9 +11,12 @@ use App\Mcp\Tools\EnrollMembersTool;
 use App\Mcp\Tools\EnterEventAthletesTool;
 use App\Mcp\Tools\GetClubTool;
 use App\Mcp\Tools\GetEventBracketTool;
+use App\Mcp\Tools\GetEventReadinessTool;
 use App\Mcp\Tools\GetMemberTool;
 use App\Mcp\Tools\ListActivityCatalogTool;
 use App\Mcp\Tools\ListClubsTool;
+use App\Mcp\Tools\ListEventDocumentsTool;
+use App\Mcp\Tools\ListEventsTool;
 use App\Mcp\Tools\ListMembersTool;
 use App\Mcp\Tools\NotifyMemberTool;
 use App\Mcp\Tools\RecordTransactionTool;
@@ -40,8 +43,10 @@ Getting started:
   2. Use `list_clubs` / `get_club` to browse clubs the user can access.
   3. Use `list_members` / `get_member` for member data (private profiles are gated).
   4. Use `club_financials` for a club's money (admins only); `club_staff` lists instructors/staff and their compensation (admins only, read-only).
-  5. `get_event_bracket` reads an event's knockout draw — divisions, rounds, bouts, scores, podium.
-  6. `search_people` finds discoverable members who share a confirmed club membership with the acting user (never platform-wide; safe public fields only).
+  5. `list_events` finds events the user may see — open ones (not started + running now) by default; it hands out the event uuid the other event tools need.
+  6. `list_event_documents` lists files attached to an event (rulebook, entry form, schedule) with download links.
+  7. `get_event_bracket` reads an event's knockout draw — divisions, rounds, bouts, scores, podium.
+  8. `search_people` finds discoverable members who share a confirmed club membership with the acting user (never platform-wide; safe public fields only).
 
 Write tools (may be globally disabled via server config):
   • `record_transaction` — log manual income/expense for a club (admins only).
@@ -68,8 +73,11 @@ class TakeOneServer extends Server
         RecordTransactionTool::class,
         NotifyMemberTool::class,
         EnrollMembersTool::class,
+        ListEventsTool::class,
+        ListEventDocumentsTool::class,
         EnterEventAthletesTool::class,
         GetEventBracketTool::class,
+        GetEventReadinessTool::class,
         ArrangeEventBracketTool::class,
         ListActivityCatalogTool::class,
         VerifyAchievementTool::class,

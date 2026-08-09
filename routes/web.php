@@ -140,6 +140,13 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     // Who's joined — the roster that used to render inline on the event screen.
     Route::get('/events/{event:uuid}/people', [App\Http\Controllers\PersonalEventController::class, 'people'])->name('events.people');
 
+    // Documents attached to an event (rulebook, entry form, schedule).
+    // Upload/delete are organiser-only; download is anyone the event reaches —
+    // each is re-checked in the controller, never inferred from the URL.
+    Route::post('/events/{event:uuid}/documents', [App\Http\Controllers\EventDocumentController::class, 'store'])->name('events.documents.store')->middleware('throttle:uploads');
+    Route::get('/events/{event:uuid}/documents/{document:uuid}', [App\Http\Controllers\EventDocumentController::class, 'download'])->name('events.documents.download');
+    Route::delete('/events/{event:uuid}/documents/{document:uuid}', [App\Http\Controllers\EventDocumentController::class, 'destroy'])->name('events.documents.destroy')->middleware('throttle:member-write');
+
     // Officials' console: weigh-ins and payment checks. Each action authorises
     // against its own role — a weigh-in official cannot approve money.
     Route::get('/events/{event:uuid}/verify', [App\Http\Controllers\PersonalEventController::class, 'verify'])->name('events.verify');
@@ -147,10 +154,20 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     Route::put('/events/{event:uuid}/verify/{registration}/payment', [App\Http\Controllers\PersonalEventController::class, 'verifyPayment'])->name('events.verify.payment')->middleware('throttle:member-write');
     Route::get('/events/{event:uuid}/verify/{registration}/proof', [App\Http\Controllers\PersonalEventController::class, 'verifyProof'])->name('events.verify.proof');
 
+    // Run-day checklist, and the start it gates. Writing the list is the
+    // organiser's (canManage); clearing an item is any appointed official's
+    // (canOfficiate); starting — which locks the draw — is the organiser's
+    // alone. Items bind by uuid, never their row id.
+    Route::post('/events/{event:uuid}/checklist', [App\Http\Controllers\PersonalEventController::class, 'storeChecklistItem'])->name('events.checklist.store')->middleware('throttle:member-write');
+    Route::put('/events/{event:uuid}/checklist/{checklistItem:uuid}', [App\Http\Controllers\PersonalEventController::class, 'toggleChecklistItem'])->name('events.checklist.toggle')->middleware('throttle:member-write');
+    Route::delete('/events/{event:uuid}/checklist/{checklistItem:uuid}', [App\Http\Controllers\PersonalEventController::class, 'destroyChecklistItem'])->name('events.checklist.destroy')->middleware('throttle:member-write');
+    Route::post('/events/{event:uuid}/start', [App\Http\Controllers\PersonalEventController::class, 'startEvent'])->name('events.start')->middleware('throttle:member-write');
+
     // Officials (the jury). Appointing is the organiser's call, so these are all
     // canManage-gated; being an official only ever grants arranging the draw.
     Route::get('/events/{event:uuid}/officials', [App\Http\Controllers\PersonalEventController::class, 'officials'])->name('events.officials');
     Route::post('/events/{event:uuid}/officials', [App\Http\Controllers\PersonalEventController::class, 'storeOfficial'])->name('events.officials.store')->middleware('throttle:member-write');
+    Route::put('/events/{event:uuid}/officials/{official}', [App\Http\Controllers\PersonalEventController::class, 'updateOfficial'])->name('events.officials.update')->whereNumber('official')->middleware('throttle:member-write');
     Route::delete('/events/{event:uuid}/officials/{official}', [App\Http\Controllers\PersonalEventController::class, 'destroyOfficial'])->name('events.officials.destroy')->middleware('throttle:member-write');
     // Bracket screen data + hand-arranging the draw. Generic to every bracketed
     // type (the package decides what a legal arrangement is), so this is one
@@ -367,6 +384,8 @@ Route::middleware(['auth', 'two-factor'])->group(function () {
     Route::post('/impersonate/leave', [App\Http\Controllers\ImpersonationController::class, 'stop'])->name('impersonate.leave');
     Route::get('/clubs/nearby', [PlatformController::class, 'nearby'])->name('clubs.nearby');
     Route::get('/clubs/all', [PlatformController::class, 'all'])->name('clubs.all');
+    // Explore → Events tab: open events only (not started + running now).
+    Route::get('/explore/events', [PlatformController::class, 'events'])->name('explore.events')->middleware('throttle:60,1');
     Route::get('/trainer/{user}', [TrainerController::class, 'show'])->name('trainer.show');
 
     // Country-prefixed club routes

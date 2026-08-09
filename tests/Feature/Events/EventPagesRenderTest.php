@@ -149,6 +149,80 @@ class EventPagesRenderTest extends TestCase
         $manage->assertSee('manage-bracket-viewport', false);
     }
 
+    /**
+     * The quick-facts chips are links to elsewhere on the page, and a link to a
+     * missing anchor is a chip that silently does nothing. Both device views
+     * must ship the chip AND its landing point together.
+     */
+    public function test_the_quick_fact_chips_have_somewhere_to_land(): void
+    {
+        $owner = $this->createUser();
+        $club = $this->club($owner);
+        $event = $this->event($owner, $club, [
+            'gps_lat' => 26.2285, 'gps_long' => 50.5860, 'location' => 'Isa Town Hall',
+        ]);
+        $member = $this->member($club);
+
+        $phone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148';
+
+        foreach ([null, $phone] as $agent) {
+            $req = $this->actingAs($member);
+            if ($agent) {
+                $req = $req->withHeaders(['User-Agent' => $agent]);
+            }
+
+            $page = $req->get("/me/events/{$event->uuid}")->assertOk();
+
+            // Each chip…
+            $page->assertSee("jump(['run-start', 'how-it-runs'])", false)
+                ->assertSee("jump('join-participate')", false)
+                ->assertSee("jump('where')", false);
+
+            // …and the thing it scrolls to.
+            $page->assertSee('id="join-participate"', false)
+                ->assertSee('id="where"', false);
+        }
+    }
+
+    /**
+     * partials/event-show-script is rendered INSIDE an x-data attribute, so a
+     * literal double quote anywhere in it — including in a comment — closes the
+     * attribute early. Everything after that point stops being script and
+     * spills onto the page as visible text, which is how it is noticed: raw
+     * code across the top of the banner.
+     *
+     * Asserting the attribute still holds the LAST thing the object defines is
+     * what catches it; a page that renders 200 OK tells you nothing here.
+     */
+    public function test_the_event_alpine_root_survives_intact(): void
+    {
+        $owner = $this->createUser();
+        $club = $this->club($owner);
+        $event = $this->event($owner, $club);
+        $member = $this->member($club);
+
+        $phone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148';
+
+        foreach ([null, $phone] as $agent) {
+            $req = $this->actingAs($member);
+            if ($agent) {
+                $req = $req->withHeaders(['User-Agent' => $agent]);
+            }
+
+            $html = $req->get("/me/events/{$event->uuid}")->assertOk()->getContent();
+
+            // Slice out the attribute: from the x-data that opens the event
+            // object to the first double quote after it.
+            $anchor = strpos($html, 'goingCount:');
+            $this->assertNotFalse($anchor, 'the event Alpine root did not render');
+            $open = strrpos(substr($html, 0, $anchor), 'x-data="') + 8;
+            $attr = substr($html, $open, strpos($html, '"', $anchor) - $open);
+
+            $this->assertStringContainsString('jump(', $attr, 'the x-data attribute was cut short — look for a literal double quote in event-show-script');
+            $this->assertStringEndsWith('}', rtrim($attr));
+        }
+    }
+
     public function test_create_and_edit_forms_render(): void
     {
         $owner = $this->createUser();

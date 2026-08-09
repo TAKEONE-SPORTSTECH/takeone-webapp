@@ -12,6 +12,10 @@
         @php
             $showTabs = $hasTicket || ($canManage ?? false);
 
+            $canWeigh = $canWeigh ?? false;
+            $canPay = $canPay ?? false;
+            $officiating = $canWeigh || $canPay;
+
             // flag-icons needs a lowercase ISO alpha-2 class. Normalised the same
             // way the bracket runtime does it, so a stray code can never emit a
             // broken `fi fi-` class. Returns '' when unusable.
@@ -20,6 +24,35 @@
 
                 return strlen($c) === 2 ? '<span class="fi fi-'.$c.' rounded-sm shrink-0"></span>' : '';
             };
+
+            // The live state of the two gates, keyed by user id so a server-
+            // rendered row can bind to it. Built ONLY from rows the controller
+            // decided this viewer may officiate (they carry reg_id); everyone
+            // else gets an empty map and none of the controls below render.
+            $gates = collect($e['participants'] ?? [])
+                ->filter(fn ($p) => ($p['reg_id'] ?? null) && ($p['id'] ?? null))
+                ->mapWithKeys(fn ($p) => [$p['id'] => [
+                    'reg_id' => $p['reg_id'],
+                    'name' => $p['name'],
+                    // The same identity line the row shows, so the sheet opens
+                    // on the person you tapped rather than on a bare name.
+                    'meta' => implode(' · ', array_filter([
+                        $p['gender'] ?? null, $p['category'] ?? null, $p['weight_class'] ?? null,
+                    ])) ?: ($p['meta'] ?? ''),
+                    // Both roles get the signed/not-signed pair — that is what
+                    // the "cleared for the draw" badge is made of.
+                    'weigh_verified' => (bool) ($p['weighed_verified'] ?? false),
+                    'pay_verified' => (bool) ($p['paid_verified'] ?? false),
+                ] + ($canWeigh ? [
+                    'weight' => $p['weight'] ?? null,
+                ] : []) + ($canPay ? [
+                    // No stored payment method: a member who paid online uploads
+                    // a receipt, a member paying cash has nothing to upload. So
+                    // the presence of a proof file IS how they paid, and the
+                    // sheet asks the official a different question for each.
+                    'has_proof' => (bool) ($p['has_proof'] ?? false),
+                    'proof_url' => $p['proof_url'] ?? null,
+                ] : [])])->all();
         @endphp
         {{-- No card around the whole list: each person is their own card, so the
              roster reads as a stack of people rather than one long slab. Only the
@@ -43,6 +76,110 @@
                 noMatches(list) {
                     return this.q.trim() !== '' && !(this.names[list] || []).some(n => this.match(n));
                 },
+
+                @if($officiating)
+                {{-- ── Officiating ──────────────────────────────────────────
+                     The two gates an entry passes before it can be drawn, run
+                     from the roster row itself.
+
+                     Emitted ONLY for the roles that sign them off. Not because
+                     the endpoints would trust it — each one re-authorises — but
+                     because an ordinary competitor has no use for a scale and a
+                     receipt viewer, and shipping the wiring to them just puts
+                     the shape of the officials' tools in everyone's page. --}}
+                officiating: true,
+                gates: @js($gates),
+                vfilter: 'all',
+                busy: null,
+                sel: null,        {{-- user id whose action sheet is open --}}
+                draft: '',        {{-- the weight being typed for them --}}
+
+                {{-- One sheet, opened from the row. Everything an official or
+                     organiser can do to this person is in it, so the row itself
+                     stays a single readable line. --}}
+                openPerson(uid) {
+                    this.sel = uid;
+                    this.draft = this.gates[uid]?.weight ?? '';
+                },
+                closePerson() { this.sel = null; this.draft = ''; },
+                get current() { return this.sel === null ? null : (this.gates[this.sel] || null); },
+
+                gate(uid) { return this.gates[uid] || null; },
+                {{-- Both signatures, and nothing else. The weight itself is not
+                     part of this test: the weigh-in endpoint writes the weight
+                     and the signature together, so `weigh_verified` already
+                     implies one exists — and a payments official is not sent the
+                     number to test against. --}}
+                isReady(uid) {
+                    const g = this.gates[uid];
+                    return !!(g && g.pay_verified && g.weigh_verified);
+                },
+                get readyCount() { return Object.keys(this.gates).filter(u => this.isReady(u)).length; },
+                get gateTotal() { return Object.keys(this.gates).length; },
+                {{-- Search and the ready/pending filter both narrow the SAME
+                     list rather than opening a second one. --}}
+                passes(uid) {
+                    if (! this.officiating || this.vfilter === 'all') return true;
+                    return this.vfilter === 'ready' ? this.isReady(uid) : ! this.isReady(uid);
+                },
+
+                async send(url, body) {
+                    const res = await fetch(url, {
+                        method: 'PUT',
+                        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json',
+                                   'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify(body),
+                    });
+                    const d = await res.json().catch(() => ({}));
+                    if (! res.ok || ! d.success) throw new Error(d.message || '{{ __('personal.event_verify_failed') }}');
+                    return d;
+                },
+
+                async weigh(uid) {
+                    const g = this.gates[uid];
+                    const weight = parseFloat(this.draft);
+                    if (! g || ! (weight > 0)) { window.showToast('error', @js(__('personal.event_verify_bad_weight'))); return; }
+
+                    this.busy = uid;
+                    try {
+                        const d = await this.send(`{{ url('me/events/'.$e['key'].'/verify') }}/${g.reg_id}/weigh-in`, { weight });
+                        g.weight = d.weight; g.weigh_verified = true;
+                        window.showToast('success', d.message);
+                    } catch (e) { window.showToast('error', e.message); }
+                    finally { this.busy = null; }
+                },
+
+                async pay(uid, approve) {
+                    const g = this.gates[uid];
+                    if (! g) return;
+
+                    this.busy = uid;
+                    try {
+                        const d = await this.send(`{{ url('me/events/'.$e['key'].'/verify') }}/${g.reg_id}/payment`, { approve });
+                        g.pay_verified = approve;
+                        window.showToast('success', d.message);
+                    } catch (e) { window.showToast('error', e.message); }
+                    finally { this.busy = null; }
+                },
+
+                {{-- Moderation runs through the event screen's own moderate()
+                     (outer x-data), so removing someone behaves identically to
+                     before. The sheet just has to get out of the way first —
+                     its subject is about to leave the list. --}}
+                async moderateFromSheet(action) {
+                    const uid = this.sel, g = this.current;
+                    if (! g) return;
+                    this.closePerson();
+                    await this.moderate(uid, g.name, action);
+                },
+                @else
+                {{-- Everyone else: the roster is a list of names. `passes()` is
+                     the one hook the row markup calls unconditionally, so it
+                     stays — and always says yes. --}}
+                officiating: false,
+                passes(uid) { return true; },
+                @endif
              }">
             {{-- Heading and the list switcher on one line. A menu rather than a
                  row of tabs: three full-width tabs ate a whole band of a phone
@@ -146,11 +283,69 @@
                 @endif
             </div>
 
+            @if($officiating)
+                {{-- The officials' band. This is what the separate console used
+                     to be — one number ("how many entries can actually be
+                     drawn?") and a way to jump to the ones still waiting. It
+                     sits above the list it filters instead of on a screen of
+                     its own, so the answer and the work are never apart. --}}
+                <div class="mt-3" x-show="rtab==='participants'" x-transition>
+                    <div class="rounded-2xl p-4 text-white relative overflow-hidden"
+                         style="background: linear-gradient(135deg, {{ $e['color'] }}, #1f2937);">
+                        <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
+                        <div class="relative flex items-end justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-white/70">{{ __('personal.event_verify_final_draw') }}</p>
+                                <p class="text-2xl font-black leading-none mt-1">
+                                    <span x-text="readyCount"></span><span class="text-white/60"> / <span x-text="gateTotal"></span></span>
+                                </p>
+                                <p class="text-xs text-white/85 mt-1">{{ __('personal.event_verify_ready_hint') }}</p>
+                            </div>
+                            <div class="w-11 h-11 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
+                                <i class="bi bi-clipboard2-check text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 mt-3">
+                        @foreach(['all' => __('personal.event_verify_all'), 'pending' => __('personal.event_verify_pending'), 'ready' => __('personal.event_verify_ready')] as $key => $label)
+                            <button type="button" @click="vfilter = '{{ $key }}'"
+                                    :class="vfilter === '{{ $key }}' ? 'text-white border-transparent' : 'bg-white text-muted-foreground border-gray-200'"
+                                    :style="vfilter === '{{ $key }}' ? 'background: {{ $e['color'] }}' : ''"
+                                    class="flex-1 py-2 rounded-xl border-2 text-xs font-black transition-colors">{{ $label }}</button>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
             {{-- Participants (competitors only) --}}
             <div class="mt-3 space-y-2.5" @if($showTabs) x-show="rtab==='participants'" x-transition @endif>
                 @forelse($e['participants'] as $i => $pp)
                     @php $initials = collect(explode(' ', $pp['name']))->map(fn($p) => mb_substr($p, 0, 1))->take(2)->implode(''); @endphp
-                    <div class="m-card rounded-2xl p-3 flex items-center gap-3" x-show="match(@js($pp['name']))" @if($pp['id'] ?? false) id="prow-{{ $pp['id'] }}" @endif>
+                    @php
+                        $uid = $pp['id'] ?? null;
+                        $hasGate = $officiating && ($pp['reg_id'] ?? false) && $uid;
+                        // One tap target per person. The row stays a single line
+                        // whatever your role; everything you can DO to this
+                        // person lives in the sheet it opens. A viewer with no
+                        // actions gets an inert row, not a button that does
+                        // nothing. Gated on $hasGate alone — an organiser always
+                        // has both verify roles, so this covers moderation too,
+                        // and a row with no gate would open an empty sheet.
+                        $tappable = $hasGate;
+                    @endphp
+                    <div class="m-card rounded-2xl p-3 @if($tappable) cursor-pointer m-press hover:bg-muted/30 transition-colors @endif"
+                         x-show="match(@js($pp['name'])) @if($hasGate) && passes({{ $uid }}) @endif"
+                         @if($hasGate) :class="isReady({{ $uid }}) && 'border-green-200'" @endif
+                         @if($tappable)
+                             role="button" tabindex="0"
+                             @click="openPerson({{ $uid }})"
+                             @keydown.enter.prevent="openPerson({{ $uid }})"
+                             @keydown.space.prevent="openPerson({{ $uid }})"
+                             aria-haspopup="dialog"
+                         @endif
+                         @if($uid) id="prow-{{ $uid }}" @endif>
+                      <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-full grid place-items-center text-white text-[11px] font-bold flex-shrink-0"
                              style="background: hsl({{ ($i * 67) % 360 }} 55% 58%);">{{ $initials }}</div>
                         <div class="min-w-0 flex-1">
@@ -179,21 +374,40 @@
                                 $weighState = ($pp['weighed_verified'] ?? false) ? 'verified'
                                     : (($pp['weighed'] ?? false) ? 'claimed' : 'none');
                             @endphp
-                            <div class="flex items-center gap-1 mt-1.5 flex-wrap">
-                                <x-event-status-chip :state="($pp['enrolled'] ?? true) ? 'verified' : 'none'"
-                                                     icon="bi-person-check" done-icon="bi-person-check-fill"
-                                                     :label="__('personal.event_show_chip_enrolled')" />
-                                <x-event-status-chip :state="$paidState"
-                                                     icon="bi-cash" done-icon="bi-cash-coin"
-                                                     :label="__('personal.event_show_chip_paid')" />
-                                <x-event-status-chip :state="$weighState"
-                                                     icon="bi-speedometer" done-icon="bi-speedometer2"
-                                                     :label="__('personal.event_show_chip_weighed')" />
-                            </div>
+                            {{-- Only for the people who sign these off — and for
+                                 your own row. The controller decides (show_status)
+                                 and omits the underlying fields entirely for
+                                 everyone else, so this cannot leak by accident.
+                                 Suppressed on a row that has live gates below:
+                                 these chips are a server-rendered snapshot and
+                                 would go stale the moment an official acts. --}}
+                            @if(($pp['show_status'] ?? false) && ! $hasGate)
+                                <div class="flex items-center gap-1 mt-1.5 flex-wrap">
+                                    <x-event-status-chip :state="($pp['enrolled'] ?? true) ? 'verified' : 'none'"
+                                                         icon="bi-person-check" done-icon="bi-person-check-fill"
+                                                         :label="__('personal.event_show_chip_enrolled')" />
+                                    <x-event-status-chip :state="$paidState"
+                                                         icon="bi-cash" done-icon="bi-cash-coin"
+                                                         :label="__('personal.event_show_chip_paid')" />
+                                    <x-event-status-chip :state="$weighState"
+                                                         icon="bi-speedometer" done-icon="bi-speedometer2"
+                                                         :label="__('personal.event_show_chip_weighed')" />
+                                </div>
+                            @endif
                         </div>
-                        @if(($canManage ?? false) && ($pp['id'] ?? false))
-                            <x-event-moderate-menu :id="$pp['id']" :name="$pp['name']" />
+                        @if($hasGate)
+                            {{-- Whether this entry can be drawn, on the row that
+                                 decides it — so an official never has to hold the
+                                 answer and the buttons on two different screens. --}}
+                            <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black self-start"
+                                  :class="isReady({{ $uid }}) ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'"
+                                  x-text="isReady({{ $uid }}) ? @js(__('personal.event_verify_in_draw')) : @js(__('personal.event_verify_held'))"></span>
                         @endif
+                        @if($tappable)
+                            {{-- Affordance only — the whole card is the target. --}}
+                            <i class="bi bi-chevron-right text-muted-foreground text-xs flex-shrink-0 rtl:rotate-180"></i>
+                        @endif
+                      </div>
                     </div>
                 @empty
                     <p class="text-[11px] text-muted-foreground text-center py-3">{{ __('personal.event_show_no_competitors') }}</p>
@@ -218,10 +432,14 @@
                                 <p class="text-sm font-semibold text-foreground truncate">{{ $sp['name'] }}</p>
                                 <p class="text-[11px] text-muted-foreground truncate">{{ __('personal.event_show_spectator') }}{{ str_contains(strtolower($e['spectator']['fee']),'free') ? '' : ' · '.$e['spectator']['fee'] }}</p>
                             </div>
-                            @if(($sp['paid'] ?? true))
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-50 text-sky-600 flex-shrink-0"><i class="bi bi-ticket-perforated"></i> {{ str_contains(strtolower($e['spectator']['fee']),'free') ? __('personal.event_show_pass') : __('personal.event_show_ticket') }}</span>
-                            @else
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 flex-shrink-0"><i class="bi bi-hourglass-split"></i> {{ __('personal.event_show_pending') }}</span>
+                            {{-- Ticket state is staff-only (and your own row);
+                                 everyone else just sees that they hold a ticket. --}}
+                            @if($sp['show_status'] ?? false)
+                                @if(($sp['paid'] ?? true))
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-50 text-sky-600 flex-shrink-0"><i class="bi bi-ticket-perforated"></i> {{ str_contains(strtolower($e['spectator']['fee']),'free') ? __('personal.event_show_pass') : __('personal.event_show_ticket') }}</span>
+                                @else
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 flex-shrink-0"><i class="bi bi-hourglass-split"></i> {{ __('personal.event_show_pending') }}</span>
+                                @endif
                             @endif
                             @if(($canManage ?? false) && ($sp['id'] ?? false))
                                 <x-event-moderate-menu :id="$sp['id']" :name="$sp['name']" />
@@ -263,5 +481,208 @@
                         {{ __('personal.event_show_search_none') }}
                     </p>
                 </div>
+            @endif
+
+            @if($officiating)
+                {{-- ===== The person sheet =====
+                     Tapping a roster row opens this. It is the whole reason the
+                     row could go back to one line: the two gates, the receipt,
+                     and moderation all live here, for one person at a time.
+
+                     Teleported to <body> per the mobile-forms rule — the roster
+                     scrolls inside a transformed shell ancestor, and a fixed
+                     overlay left inside it would be clipped. Scrollable body,
+                     safe-area footer. --}}
+                <template x-teleport="body" data-teleport-template="true">
+                    <div x-show="sel !== null" x-cloak
+                         class="fixed inset-0 z-[70] flex items-end sm:items-center sm:justify-center sm:p-4"
+                         @keydown.escape.window="closePerson()" role="dialog" aria-modal="true" style="display:none;">
+                        <div x-show="sel !== null" x-transition.opacity class="absolute inset-0 bg-black/50" @click="closePerson()"></div>
+
+                        <div x-show="sel !== null"
+                             x-transition:enter="transition ease-out duration-300"
+                             x-transition:enter-start="translate-y-full sm:translate-y-4 sm:opacity-0"
+                             x-transition:enter-end="translate-y-0 sm:opacity-100"
+                             x-transition:leave="transition ease-in duration-200"
+                             x-transition:leave-start="translate-y-0 sm:opacity-100"
+                             x-transition:leave-end="translate-y-full sm:translate-y-4 sm:opacity-0"
+                             class="relative w-full sm:max-w-md max-h-[92vh] sm:max-h-[85vh] flex flex-col bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl">
+
+                            {{-- Who --}}
+                            <div class="flex-shrink-0 px-5 pt-3 pb-4 border-b border-gray-100">
+                                <div class="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3 sm:hidden"></div>
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <h3 class="text-lg font-bold text-gray-900 truncate" x-text="current?.name"></h3>
+                                        <p class="text-sm text-muted-foreground truncate" x-text="current?.meta"></p>
+                                    </div>
+                                    <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black mt-1"
+                                          :class="isReady(sel) ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'"
+                                          x-text="isReady(sel) ? @js(__('personal.event_verify_in_draw')) : @js(__('personal.event_verify_held'))"></span>
+                                </div>
+                            </div>
+
+                            <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+
+                                {{-- ── Gate 1 · weigh-in ───────────────────────────
+                                     The WHOLE section is for the weigh-in role (or
+                                     the organiser, who holds every role). A payments
+                                     official has no business reading a child's body
+                                     weight, so they do not get the section at all —
+                                     not a version of it with the button removed.
+                                     `canWeigh` is EventAccess::canVerifyWeighIn, the
+                                     same check the endpoint enforces.
+
+                                     The official is standing at the scale reading a
+                                     number off it, so the field is the section — no
+                                     extra tap to reveal it. --}}
+                                @if($canWeigh)
+                                    <div class="rounded-2xl border border-gray-200 p-4">
+                                        <div class="flex items-center gap-2.5">
+                                            <i class="bi text-lg shrink-0"
+                                               :class="current?.weigh_verified ? 'bi-check-circle-fill text-green-600' : 'bi-circle text-muted-foreground'"></i>
+                                            <div class="min-w-0 flex-1">
+                                                <p class="text-sm font-bold text-foreground">{{ __('personal.event_verify_weigh_in') }}</p>
+                                                <p class="text-[11px] text-muted-foreground"
+                                                   x-text="current?.weight
+                                                            ? current.weight + ' kg' + (current.weigh_verified ? '' : ' · ' + @js(__('personal.event_verify_self_declared')))
+                                                            : @js(__('personal.event_verify_no_weight'))"></p>
+                                            </div>
+                                        </div>
+
+                                        <div class="mt-3 flex items-center gap-2">
+                                            <div class="relative flex-1">
+                                                <input id="sheet-weight" type="number" inputmode="decimal" step="0.1" min="10" max="250"
+                                                       x-model="draft" @keydown.enter.prevent="weigh(sel)"
+                                                       class="w-full h-11 ps-3 pe-10 rounded-xl border-2 border-gray-200 text-sm font-bold text-foreground
+                                                              focus:outline-none focus:border-current"
+                                                       style="caret-color: {{ $e['color'] }};"
+                                                       placeholder="{{ __('personal.event_verify_enter_weight') }}">
+                                                <span class="absolute inset-y-0 end-3 flex items-center text-[11px] font-black text-muted-foreground">kg</span>
+                                            </div>
+                                            <button type="button" @click="weigh(sel)" :disabled="busy === sel"
+                                                    class="m-press h-11 px-4 rounded-xl text-white text-xs font-black disabled:opacity-60 shrink-0"
+                                                    style="background: {{ $e['color'] }};"
+                                                    x-text="current?.weigh_verified ? @js(__('personal.event_verify_reweigh')) : @js(__('personal.event_verify_mark_weighed'))"></button>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- ── Gate 2 · payment ────────────────────────────
+                                     Same rule as the weigh-in above: the whole
+                                     section belongs to the payments role (or the
+                                     organiser). A weigh-in official never sees
+                                     another family's money — and, since the
+                                     receipt lives in here, never sees the bank
+                                     transfer either. `canPay` is
+                                     EventAccess::canVerifyPayments, the check the
+                                     endpoint and the proof stream both enforce.
+
+                                     Two different questions, so two different
+                                     answers. A receipt on file means they paid
+                                     online: the job is to LOOK at it, so it is
+                                     shown, not linked. No receipt means cash at the
+                                     club: nothing to inspect, just a fact to
+                                     confirm. --}}
+                                @if($canPay)
+                                    <div class="rounded-2xl border border-gray-200 p-4">
+                                        <div class="flex items-center gap-2.5">
+                                            <i class="bi text-lg shrink-0"
+                                               :class="current?.pay_verified ? 'bi-check-circle-fill text-green-600' : 'bi-circle text-muted-foreground'"></i>
+                                            <div class="min-w-0 flex-1">
+                                                <p class="text-sm font-bold text-foreground">{{ __('personal.event_verify_payment') }}</p>
+                                                <p class="text-[11px] text-muted-foreground"
+                                                   x-text="current?.pay_verified ? @js(__('personal.event_verify_approved'))
+                                                           : (current?.has_proof ? @js(__('personal.event_verify_paid_online')) : @js(__('personal.event_verify_paying_cash')))"></p>
+                                            </div>
+                                        </div>
+
+                                        {{-- Paid online: the transaction file itself. --}}
+                                        <template x-if="current?.proof_url">
+                                            <div class="mt-3">
+                                                <p class="text-[11px] text-muted-foreground mb-1.5">
+                                                    {{ __('personal.event_verify_check_against') }}
+                                                    <span class="font-bold text-foreground">{{ $payment['bank']['iban'] ?? ($payment['club'] ?? '') }}</span>
+                                                </p>
+                                                <div class="rounded-xl overflow-hidden border border-gray-200 bg-muted/30">
+                                                    <img :src="current.proof_url" alt="{{ __('personal.event_verify_view_proof') }}" class="w-full object-contain max-h-72">
+                                                </div>
+                                            </div>
+                                        </template>
+
+                                        {{-- Paying cash: nothing to inspect. --}}
+                                        <template x-if="! current?.has_proof && ! current?.pay_verified">
+                                            <p class="mt-3 text-[11px] text-muted-foreground flex items-start gap-1.5">
+                                                <i class="bi bi-cash-stack mt-0.5"></i>
+                                                <span>{{ __('personal.event_verify_cash_hint') }}</span>
+                                            </p>
+                                        </template>
+
+                                        <div class="mt-3 flex items-center gap-2">
+                                            {{-- Approved already → the only remaining
+                                                 move is to take it back. --}}
+                                            <button type="button" x-show="current?.pay_verified" x-cloak
+                                                    @click="pay(sel, false)" :disabled="busy === sel"
+                                                    class="m-press flex-1 h-11 rounded-xl border border-gray-200 text-red-600 text-xs font-black disabled:opacity-60">
+                                                {{ __('personal.event_verify_revoke') }}
+                                            </button>
+
+                                            <template x-if="! current?.pay_verified">
+                                                <div class="flex-1 flex items-center gap-2">
+                                                    <button type="button" x-show="current?.has_proof"
+                                                            @click="pay(sel, false)" :disabled="busy === sel"
+                                                            class="m-press flex-1 h-11 rounded-xl border border-gray-200 text-red-600 text-xs font-black disabled:opacity-60">
+                                                        {{ __('personal.event_verify_reject') }}
+                                                    </button>
+                                                    <button type="button" @click="pay(sel, true)" :disabled="busy === sel"
+                                                            class="m-press flex-1 h-11 rounded-xl text-white text-xs font-black disabled:opacity-60"
+                                                            style="background: {{ $e['color'] }};"
+                                                            x-text="current?.has_proof ? @js(__('personal.event_verify_approve')) : @js(__('personal.event_verify_confirm_cash'))"></button>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                @if($canManage ?? false)
+                                    {{-- ── Moderation ──────────────────────────────
+                                         What the three-dots menu on the row used to
+                                         hold. Last in the sheet and visually
+                                         separated: these end someone's participation
+                                         and should never sit under the thumb next to
+                                         "confirm cash". Each still confirms through
+                                         the shared dialog. --}}
+                                    <div class="pt-1">
+                                        <p class="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground mb-2">
+                                            {{ __('personal.event_show_manage') }}
+                                        </p>
+                                        <div class="rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+                                            <button type="button" @click="moderateFromSheet('remove')"
+                                                    class="w-full px-4 py-3 text-xs font-bold text-foreground hover:bg-muted flex items-center gap-2.5">
+                                                <i class="bi bi-person-dash"></i>{{ __('personal.event_show_remove_btn_long') }}
+                                            </button>
+                                            <button type="button" @click="moderateFromSheet('block')"
+                                                    class="w-full px-4 py-3 text-xs font-bold text-amber-600 hover:bg-amber-50 flex items-center gap-2.5">
+                                                <i class="bi bi-slash-circle"></i>{{ __('personal.event_show_block_btn_long') }}
+                                            </button>
+                                            <button type="button" @click="moderateFromSheet('blacklist')"
+                                                    class="w-full px-4 py-3 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-2.5">
+                                                <i class="bi bi-ban"></i>{{ __('personal.event_show_blacklist_btn_long') }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+
+                            <div class="flex-shrink-0 px-5 pt-3 border-t border-gray-100"
+                                 style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
+                                <button type="button" @click="closePerson()"
+                                        class="w-full py-3 rounded-xl border border-gray-200 text-foreground font-bold text-sm">
+                                    {{ __('personal.event_show_done') }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
             @endif
         </div>

@@ -68,4 +68,22 @@ return [
     'location_request_timed_out' => ' The location request timed out.',
     'failed_to_fetch_clubs'      => 'Failed to load clubs. Please try again.',
     'error_fetching_clubs'       => 'An error occurred while loading clubs.',
+
+    // Events tab
+    'ev_happening_now'   => 'Happening now',
+    'ev_coming_up'       => 'Coming up',
+    'ev_live'            => 'Live',
+    'ev_starts_in'       => 'Starts in',
+    'ev_going'           => 'going',
+    'ev_spots_left'      => 'spots left',
+    'ev_full'            => 'Full',
+    'ev_open'            => 'Open',
+    'ev_view_event'      => 'View event',
+    'ev_tba'             => 'TBA',
+    'ev_free'            => 'Free',
+    'ev_until'           => 'until',
+    'ev_none_title'      => 'No open events',
+    'ev_none_hint'       => 'Nothing is running or scheduled for you right now.',
+    'ev_finding'         => 'Loading events...',
+    'ev_failed'          => 'Failed to load events. Please try again.',
 ];

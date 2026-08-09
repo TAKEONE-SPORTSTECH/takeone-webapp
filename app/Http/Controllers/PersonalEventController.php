@@ -9,6 +9,7 @@ use App\Events\Support\EventAccess;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
+use App\Models\EventChecklistItem;
 use App\Models\EventExpense;
 use App\Models\EventOfficial;
 use App\Models\EventParticipantBan;
@@ -218,9 +219,22 @@ class PersonalEventController extends Controller
             'actions' => $canManage ? $type->availableActions($event) : [],
             'finance' => $canManage ? $type->finance($event) : null,
             // The verification desk only exists for the people who staff it.
-            'canOfficiate' => app(EventAccess::class)->canOfficiate($event, $me),
+            'canOfficiate' => $canOfficiate = app(EventAccess::class)->canOfficiate($event, $me),
+            // The run-day checklist is run-day work: it goes to the people who
+            // do it and nobody else. A competitor has no use for "mats laid"
+            // and no business reading the organiser's preparation notes.
+            'checklist' => $canOfficiate
+                ? $event->checklistItems()->with('checker:id,full_name,name')->get()
+                    ->map(fn ($i) => $this->checklistItemView($i))->all()
+                : [],
             // How to pay, for the join sheet.
             'payment' => $this->paymentInstructions($event),
+            // Attached documents — the viewer already passed assertVisible()
+            // above, which is exactly the rule the download route re-checks.
+            'documents' => $event->documents()
+                ->get()
+                ->map(fn ($d) => app(\App\Http\Controllers\EventDocumentController::class)->present($d, $event))
+                ->all(),
         ] + $type->viewData($event, $me));
     }
 
@@ -270,50 +284,19 @@ class PersonalEventController extends Controller
     /* ---------------- Officials' console ---------------- */
 
     /**
-     * Where appointed officials do their job: weigh athletes in, and check
-     * payments one by one against the club account.
+     * The officials' console was folded into the roster — see people().
      *
-     * Both queues answer the same question — is this entry allowed into the
-     * FINAL draw? — so they live on one screen rather than two, and each row
-     * says which of the two gates it is still waiting on.
+     * Kept as a redirect rather than deleted: the console was linked from the
+     * event screen and is the kind of URL an organiser bookmarks or messages to
+     * the official working the door. A dead link on the morning of an event is
+     * the worst possible time to find out a screen moved.
      */
-    public function verify(ClubEvent $event, Request $request): View|RedirectResponse
+    public function verify(ClubEvent $event, Request $request): RedirectResponse
     {
         $me = Auth::user();
         $this->assertVisible($event, $me);
 
-        $access = app(EventAccess::class);
-        if (! $access->canOfficiate($event, $me)) {
-            return redirect()->route('me.events.show', $event->uuid)
-                ->with('error', __('personal.event_verify_not_an_official'));
-        }
-
-        $rows = $event->participantRegistrations()
-            ->with(['user:id,full_name,name,mobile,profile_picture', 'category:id,name,weight_class'])
-            ->get()
-            ->map(fn (ClubEventRegistration $r) => [
-                'id' => $r->id,
-                'name' => $r->user?->full_name ?: ($r->user?->name ?: __('events.athlete')),
-                'division' => $r->category?->name,
-                'weight' => $r->weight,
-                'weighed' => $r->weighed_in_at !== null,
-                'weigh_verified' => $r->weighed_in_by !== null,
-                'paid' => (bool) $r->paid,
-                'pay_verified' => $r->paid_by !== null,
-                'has_proof' => (bool) $r->payment_proof,
-                'proof_url' => $r->payment_proof ? route('me.events.verify.proof', [$event->uuid, $r->id]) : null,
-                // The single question this screen exists to answer.
-                'ready' => $r->paid && $r->paid_by && $r->weight !== null && $r->weighed_in_by,
-            ])
-            ->values()->all();
-
-        return view('personal.event-verify', [
-            'e' => $this->eventView($event, $me->id, $this->myRegistrations($me->id, collect([$event->id])), full: true),
-            'rows' => $rows,
-            'canWeigh' => $access->canVerifyWeighIn($event, $me),
-            'canPay' => $access->canVerifyPayments($event, $me),
-            'payment' => $this->paymentInstructions($event),
-        ]);
+        return redirect()->route('me.events.people', $event->uuid);
     }
 
     /** Record an official weight. Signing it is the point — hence weighed_in_by. */
@@ -406,12 +389,19 @@ class PersonalEventController extends Controller
     }
 
     /**
-     * Who's joined — the roster on its own screen.
+     * Who's joined — the roster, and the only place anyone works on it.
      *
-     * Same data show() builds, same partial it used to render inline. On a
-     * phone a 48-name list with three tabs sat between the event detail and the
-     * join button; here it gets the screen to itself and the event page keeps a
-     * card that opens it.
+     * There used to be a second screen (the officials' console) listing exactly
+     * the same competitors, for the sole reason that its rows carried buttons.
+     * That is one list of people rendered twice: an organiser checking a payment
+     * had to hold two screens in their head and remember which one could act.
+     * The gates now live ON the roster row, so there is one list, and what you
+     * may do to a row is decided by what you are — not by which URL you opened.
+     *
+     * Nothing here widens who sees what. The roster payload is already scoped by
+     * scopeRosterStatus(); the ACTIONABLE data (registration id, recorded weight,
+     * proof of payment) is merged in below only for the roles that sign those
+     * gates off, and each endpoint re-authorises on its own.
      */
     public function people(ClubEvent $event, Request $request): View
     {
@@ -431,6 +421,16 @@ class PersonalEventController extends Controller
         $banned = $this->isBanned($event, $me->id);
         $gate = $type->enrolmentGate($event, $me, $myReg->get($event->id));
 
+        // The two officiating jobs, asked separately: a weigh-in official may
+        // put an athlete on the scale but must not be able to approve money.
+        $access = app(EventAccess::class);
+        $canWeigh = $access->canVerifyWeighIn($event, $me);
+        $canPay = $access->canVerifyPayments($event, $me);
+
+        if ($canWeigh || $canPay) {
+            $e['participants'] = $this->attachVerification($event, $e['participants'], $canWeigh, $canPay);
+        }
+
         return view('personal.event-people', [
             'e' => $e,
             'canManage' => $canManage,
@@ -439,7 +439,62 @@ class PersonalEventController extends Controller
             'eligReason' => $banned ? __('events.banned_by_organiser') : $gate->message,
             'actions' => $canManage ? $type->availableActions($event) : [],
             'finance' => $canManage ? $type->finance($event) : null,
+            'canWeigh' => $canWeigh,
+            'canPay' => $canPay,
+            'payment' => $this->paymentInstructions($event),
         ] + $type->viewData($event, $me));
+    }
+
+    /**
+     * Merge the officiating payload onto roster rows — officials only.
+     *
+     * Roster rows are keyed by USER id (that is what moderation acts on), but
+     * the weigh-in and payment endpoints act on a REGISTRATION. This is where
+     * the two are joined, and it is the only place `reg_id`, the recorded
+     * weight, or a proof-of-payment URL ever enters a roster payload.
+     *
+     * Each gate's DETAIL goes only to the role that guards it, because the two
+     * jobs are held by different people:
+     *   - the body weight — these are Kids divisions — only to weigh-in
+     *   - whether a receipt exists, and the link to it, only to payments
+     *
+     * What both roles do get is the pair of signed/not-signed booleans, since
+     * "is this entry cleared for the draw?" is the question the whole screen
+     * answers and neither flag discloses a weight or a bank transfer.
+     *
+     * Callers must have already established that the viewer may officiate.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return array<int, array<string, mixed>>
+     */
+    private function attachVerification(ClubEvent $event, array $rows, bool $canWeigh, bool $canPay): array
+    {
+        $regs = $event->participantRegistrations()
+            ->get(['id', 'user_id', 'weight', 'payment_proof'])
+            ->keyBy('user_id');
+
+        return array_map(function (array $row) use ($regs, $canWeigh, $canPay, $event) {
+            $reg = $regs->get($row['id'] ?? null);
+
+            if (! $reg) {
+                return $row;
+            }
+
+            $row['reg_id'] = $reg->id;
+
+            if ($canWeigh) {
+                $row['weight'] = $reg->weight !== null ? (float) $reg->weight : null;
+            }
+
+            if ($canPay) {
+                $row['has_proof'] = (bool) $reg->payment_proof;
+                $row['proof_url'] = $reg->payment_proof
+                    ? route('me.events.verify.proof', [$event->uuid, $reg->id])
+                    : null;
+            }
+
+            return $row;
+        }, $rows);
     }
 
     /**
@@ -612,6 +667,211 @@ class PersonalEventController extends Controller
         abort_unless(app(EventAccess::class)->canArrange($event, $me), 403);
     }
 
+    /* ---------------- Run-day checklist, and starting ---------------- */
+
+    /**
+     * Add one thing that must be true before the day can begin.
+     *
+     * The organiser writes the list; officials clear it. Deliberately free
+     * text — "mats laid", "first-aid on site", "scoreboard tested" are not
+     * facts this system can enumerate, and a fixed vocabulary would just push
+     * organisers into an "Other" box.
+     */
+    public function storeChecklistItem(Request $request, ClubEvent $event): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+
+        $data = $request->validate([
+            'label' => ['required', 'string', 'max:160'],
+        ]);
+
+        $item = $event->checklistItems()->create([
+            'label' => $data['label'],
+            // Append. The organiser's order is the order they wrote them in.
+            'sort_order' => (int) $event->checklistItems()->max('sort_order') + 1,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('personal.event_check_added'),
+            'item' => $this->checklistItemView($item),
+            'outstanding' => $event->outstandingChecks(),
+        ]);
+    }
+
+    /**
+     * Clear an item, or put it back.
+     *
+     * Any appointed official may do this, not only the organiser: the list is
+     * shared run-day work and the person who laid the mats is the person who
+     * knows they are laid. Who cleared it is recorded either way.
+     *
+     * Refused once the event has started — the checklist is a gate on starting,
+     * and a gate you can still edit afterwards is decoration.
+     */
+    public function toggleChecklistItem(Request $request, ClubEvent $event, EventChecklistItem $checklistItem): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+        abort_unless(app(EventAccess::class)->canOfficiate($event, $me), 403);
+        // The route parameter is named for the checklistItems() relation, so
+        // Laravel already scopes the lookup to THIS event. Re-checked anyway:
+        // the day someone renames the parameter, this is what still refuses an
+        // item belonging to another organiser's event.
+        abort_unless($checklistItem->event_id === $event->id, 404);
+
+        if ($event->hasStarted()) {
+            return response()->json([
+                'success' => false,
+                'message' => __('personal.event_check_locked'),
+            ], 422);
+        }
+
+        $checked = (bool) $request->validate(['checked' => ['required', 'boolean']])['checked'];
+
+        $checklistItem->update([
+            'checked_at' => $checked ? now() : null,
+            'checked_by' => $checked ? $me->id : null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => $checked ? __('personal.event_check_done') : __('personal.event_check_undone'),
+            'item' => $this->checklistItemView($checklistItem->fresh()),
+            'outstanding' => $event->outstandingChecks(),
+        ]);
+    }
+
+    /** Drop an item from the list. The organiser's list, the organiser's call. */
+    public function destroyChecklistItem(ClubEvent $event, EventChecklistItem $checklistItem): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+        abort_unless($checklistItem->event_id === $event->id, 404);
+
+        $checklistItem->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('personal.event_check_removed'),
+            'outstanding' => $event->outstandingChecks(),
+        ]);
+    }
+
+    /**
+     * Begin the competition.
+     *
+     * This is the moment the draw locks and the event becomes read-only work —
+     * so it is the organiser's call alone, never an official's, and never the
+     * clock's.
+     *
+     * With items outstanding the request is refused unless the organiser
+     * explicitly overrides. The override is not a way around the checklist; it
+     * is the organiser saying "I know, start anyway", and it is recorded on the
+     * event so the decision has a name against it afterwards.
+     */
+    public function startEvent(Request $request, ClubEvent $event): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+
+        if ($event->hasStarted()) {
+            return response()->json([
+                'success' => false,
+                'message' => __('personal.event_start_already'),
+            ], 422);
+        }
+
+        if ($event->status === 'cancelled') {
+            return response()->json([
+                'success' => false,
+                'message' => __('personal.event_start_cancelled'),
+            ], 422);
+        }
+
+        $override = (bool) ($request->validate([
+            'override' => ['nullable', 'boolean'],
+        ])['override'] ?? false);
+
+        $outstanding = $event->outstandingChecks();
+
+        if ($outstanding > 0 && ! $override) {
+            return response()->json([
+                'success' => false,
+                'code' => 'checklist_incomplete',
+                'outstanding' => $outstanding,
+                'message' => trans_choice('personal.event_start_blocked', $outstanding, ['count' => $outstanding]),
+            ], 422);
+        }
+
+        // Not mass-assigned: starting is a state transition, not a form field.
+        $event->started_at = now();
+        $event->started_by = $me->id;
+        $event->start_overridden = $outstanding > 0;
+        $event->save();
+
+        // Whoever is looking at this event is looking at a screen whose answer
+        // just changed — the draw locked, the actions closed.
+        $this->pushEventRefresh($event);
+
+        return response()->json([
+            'success' => true,
+            'message' => $outstanding > 0
+                ? trans_choice('personal.event_start_overridden', $outstanding, ['count' => $outstanding])
+                : __('personal.event_started'),
+            'started_at' => $event->started_at->toIso8601String(),
+            'overridden' => $event->start_overridden,
+        ]);
+    }
+
+    /**
+     * Tell everyone attached to this event that its state changed.
+     *
+     * A refresh signal rather than a payload, per the realtime rule: the event
+     * screen renders differently for the organiser, an official, a competitor
+     * and a spectator, so there is no single patch that is correct for all of
+     * them — each client re-reads the page it is entitled to. It also means
+     * this carries nothing an unintended recipient could read.
+     */
+    private function pushEventRefresh(ClubEvent $event): void
+    {
+        $userIds = $event->registrations()->pluck('user_id')
+            ->merge($event->officials()->pluck('user_id'))
+            ->push($event->created_by)
+            ->filter()->unique()->values()->all();
+
+        if (! $userIds) {
+            return;
+        }
+
+        rescue(function () use ($userIds, $event) {
+            if (! \Realtime()->enabled()) {
+                return;
+            }
+
+            // publishMany takes pre-built topics so the whole fan-out goes over
+            // one broker connection.
+            \Realtime()->publishMany(array_map(fn (int $uid) => [
+                'topic' => \Realtime()->userTopic($uid, 'events'),
+                'payload' => ['action' => 'refresh', 'event' => $event->uuid],
+            ], $userIds));
+        }, null, false);
+    }
+
+    /** One checklist row, shaped for the UI. */
+    private function checklistItemView(EventChecklistItem $item): array
+    {
+        return [
+            'uuid' => $item->uuid,
+            'label' => $item->label,
+            'checked' => $item->isChecked(),
+            // Who signed it off — the reason the list is worth keeping.
+            'by' => $item->checked_by ? ($item->checker?->full_name ?? $item->checker?->name) : null,
+            'at' => $item->checked_at?->format('M j, g:i A'),
+        ];
+    }
+
     /* ---------------- Officials (the jury) ---------------- */
 
     /**
@@ -688,7 +948,15 @@ class PersonalEventController extends Controller
             // `id` is the APPOINTMENT, not the person: the same member can appear
             // twice with two roles, and removing one must not remove the other.
             'officials' => $appointed
-                ->map(fn (EventOfficial $o) => $shape($o->user) + ['id' => $o->id, 'user_id' => $o->user_id, 'role' => $o->role])
+                ->map(fn (EventOfficial $o) => $shape($o->user) + [
+                    'id' => $o->id,
+                    'user_id' => $o->user_id,
+                    'role' => $o->role,
+                    // Volunteer or paid, and how much — a paid appointment is a
+                    // line in the event's P&L, kept in step automatically.
+                    'compensation' => $o->compensation,
+                    'fee' => $o->fee !== null ? (float) $o->fee : null,
+                ])
                 ->values(),
             'candidates' => $candidates
                 ->map(fn (User $u) => $shape($u) + ['roles' => ($heldRoles[$u->id] ?? collect())->values()])
@@ -698,6 +966,12 @@ class PersonalEventController extends Controller
                 'label' => __('personal.personal_event_officials_role_'.$r),
                 'hint' => __('personal.personal_event_officials_role_'.$r.'_hint'),
             ])->values(),
+            'compensations' => collect(EventOfficial::compensations())->map(fn ($c) => [
+                'value' => $c,
+                'label' => __('personal.event_officials_'.$c),
+                'hint' => __('personal.event_officials_'.$c.'_hint'),
+            ])->values(),
+            'currency' => $event->tenant?->currency ?: 'BHD',
         ]);
     }
 
@@ -710,6 +984,10 @@ class PersonalEventController extends Controller
         $data = $request->validate([
             'user_id' => ['required', 'integer', 'exists:users,id'],
             'role' => ['required', Rule::in(EventOfficial::roles())],
+            // Officiating is volunteered or paid; if paid, the amount is not
+            // optional — it becomes a line in the event's P&L.
+            'compensation' => ['required', Rule::in(EventOfficial::compensations())],
+            'fee' => ['nullable', 'numeric', 'min:0.001', 'max:999999', 'required_if:compensation,'.EventOfficial::COMP_PAID],
         ]);
 
         // Only from the host club — the same pool officials() offers.
@@ -739,11 +1017,50 @@ class PersonalEventController extends Controller
         }
 
         $official->assigned_by = $me->id;
+        $official->compensation = $data['compensation'];
+        // Never carry a fee on a volunteer — it would sit in the row unused and
+        // reappear as a cost the moment someone flipped the type.
+        $official->fee = $data['compensation'] === EventOfficial::COMP_PAID ? $data['fee'] : null;
+        // Saving syncs the matching expense (EventOfficial::booted).
         $official->save();
 
         return response()->json([
             'success' => true,
             'message' => __('personal.personal_event_officials_added'),
+        ]);
+    }
+
+    /**
+     * Change what an official is being paid (or move them to volunteer).
+     *
+     * The linked expense follows automatically, so the ledger can never drift
+     * from who is actually being paid.
+     */
+    public function updateOfficial(Request $request, ClubEvent $event, EventOfficial $official): JsonResponse
+    {
+        $me = Auth::user();
+        $this->assertCanManage($event, $me);
+        abort_unless($official->event_id === $event->id, 404);
+
+        $data = $request->validate([
+            'compensation' => ['required', Rule::in(EventOfficial::compensations())],
+            'fee' => ['nullable', 'numeric', 'min:0.001', 'max:999999', 'required_if:compensation,'.EventOfficial::COMP_PAID],
+        ]);
+
+        $official->compensation = $data['compensation'];
+        $official->fee = $data['compensation'] === EventOfficial::COMP_PAID ? $data['fee'] : null;
+        $official->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('personal.event_officials_pay_updated'),
+            'official' => [
+                'id' => $official->id,
+                'compensation' => $official->compensation,
+                'fee' => $official->fee !== null ? (float) $official->fee : null,
+            ],
+            // The finance modal reads this to refresh without a reload.
+            'finance' => $this->typeFor($event)->finance($event),
         ]);
     }
 
@@ -1485,6 +1802,19 @@ class PersonalEventController extends Controller
     private function eventView(ClubEvent $e, int $meId, $myReg, bool $full = false, bool $wholeRoster = false): array
     {
         $type = $this->typeFor($e);
+
+        // ── Who is looking ────────────────────────────────────────────────────
+        // Staff-only facts are stripped HERE, not in the templates, so a view
+        // that forgets a guard cannot leak them. Two levels:
+        //   organiser — moderation data (who is blocked/blacklisted)
+        //   staff     — organiser OR appointed official: other people's payment
+        //               and weigh-in status, which they are the ones who sign off
+        // Everyone else sees names, division and country, plus their OWN status.
+        $viewer = Auth::user();
+        $viewer = ($viewer && $viewer->id === $meId) ? $viewer : null;
+        $access = app(EventAccess::class);
+        $isOrganiser = $viewer !== null && $access->canManage($e, $viewer);
+        $isStaff = $isOrganiser || ($viewer !== null && $access->canOfficiate($e, $viewer));
         $date = $e->date ? Carbon::parse($e->date) : now();
         $start = $e->start_time ? Carbon::parse($e->start_time) : null;
         $end = $e->end_time ? Carbon::parse($e->end_time) : null;
@@ -1497,11 +1827,13 @@ class PersonalEventController extends Controller
         $spectatorRows = [];
         $spectatorsTotal = $spectators;
         if ($full) {
-            $prows = $type->rosterRows($e);
+            $prows = $this->scopeRosterStatus($type->rosterRows($e), $isStaff, $meId);
             $participants = $wholeRoster ? $prows : array_slice($prows, 0, 12);
             $participantsTotal = count($prows);
             if ($e->spectator_enabled) {
-                $srows = $this->spectatorRows($e);
+                // Ticket-holders' payment status is staff-only too, for the same
+                // reason as the competitor roster.
+                $srows = $this->scopeRosterStatus($this->spectatorRows($e), $isStaff, $meId);
                 $spectatorRows = $wholeRoster ? $srows : array_slice($srows, 0, 12);
                 $spectatorsTotal = count($srows);
             }
@@ -1518,6 +1850,10 @@ class PersonalEventController extends Controller
             'day' => $date->format('d'),
             'mon' => $date->format('M'),
             'wday' => $date->format('D'),
+            // Comparable form of the same day. The run-of-show timeline uses it
+            // to find which of its phases IS the start of the event, so the
+            // date chip can jump straight to that row rather than the section.
+            'date_iso' => $date->toDateString(),
             'title' => $e->title,
             'club' => $e->tenant?->club_name ?? 'TAKEONE',
             'location' => $e->location ?? 'TBA',
@@ -1543,7 +1879,13 @@ class PersonalEventController extends Controller
             'icon' => $e->icon ?: $this->typeIcon($e->event_type),
             'color' => $e->color ?: $this->typeColor($e->event_type),
             'going' => $going,
+            // `cap` falls back to the head count so the progress maths never
+            // divides by zero — which means an uncapped event reads as exactly
+            // full, "0 spots left". That is a lie invented by the fallback, so
+            // `capped` says whether a limit was ever set and the capacity bars
+            // render only when it was.
             'cap' => $e->max_capacity ?: max($going, 1),
+            'capped' => (int) $e->max_capacity > 0,
             'participant_fee' => $e->participant_fee ?: 'Free',
             'spectator' => $e->spectator_enabled ? ['fee' => $e->spectator_fee ?: 'Free', 'count' => $spectators] : null,
             'prize' => $e->prize,
@@ -1562,7 +1904,9 @@ class PersonalEventController extends Controller
             'participants_total' => $participantsTotal,
             'spectators_list' => $spectatorRows,
             'spectators_total' => $spectatorsTotal,
-            'bans_list' => $full ? $this->bansList($e) : [],
+            // Moderation data. Organiser only — the blocked TAB was gated, but the
+            // names were still serialised into the page for every viewer.
+            'bans_list' => $full && $isOrganiser ? $this->bansList($e) : [],
             'joined' => $reg && $reg->role === 'participant',
             // The member's OWN proof-of-payment is awaiting the club's approval.
             'payment_pending' => $reg && $reg->role === 'participant' && ! $reg->paid && (bool) $reg->payment_proof,
@@ -1572,6 +1916,11 @@ class PersonalEventController extends Controller
             'fee_due' => $reg && ! $reg->paid,
             'watching' => $reg && $reg->role === 'spectator',
             'started' => $e->hasStarted(),
+            // Its scheduled time came and went and nobody started it — the
+            // difference between "running" and "late", which the old clock-based
+            // rule could not express.
+            'overdue' => $e->isOverdueToStart(),
+            'start_overridden' => (bool) $e->start_overridden,
             'ended' => $e->hasEnded(),
             'categories' => $e->categories()->exists() ? ['_' => true] : [],
         ];
@@ -1580,6 +1929,34 @@ class PersonalEventController extends Controller
     }
 
     /** Active bans affecting this event (event blocks + club-wide blacklist), for the manager tab. */
+    /**
+     * Strip other people's payment / weigh-in status from roster rows.
+     *
+     * Whether a competitor has paid their fee and whether they made weight are
+     * facts for the organiser and the officials who sign them off — not for
+     * everyone else in the draw. These events run Kids divisions, so this is
+     * another family's child's fee and body weight.
+     *
+     * Each row keeps its OWN status: you must be able to see that your fee is
+     * outstanding. `show_status` tells the template whether to draw the chips at
+     * all, so a hidden row never renders as a grey "not paid" — which would
+     * still be disclosing something.
+     */
+    private function scopeRosterStatus(array $rows, bool $isStaff, int $meId): array
+    {
+        return array_map(function (array $row) use ($isStaff, $meId) {
+            $mine = ($row['id'] ?? null) === $meId;
+
+            if ($isStaff || $mine) {
+                return $row + ['show_status' => true];
+            }
+
+            return array_diff_key($row, array_flip([
+                'paid', 'paid_verified', 'weighed', 'weighed_verified', 'weighed_in', 'has_weight',
+            ])) + ['show_status' => false];
+        }, $rows);
+    }
+
     private function bansList(ClubEvent $e): array
     {
         return EventParticipantBan::with('user:id,full_name,name')
@@ -1627,6 +2004,17 @@ class PersonalEventController extends Controller
     {
         $this->assertCanManage($event, Auth::user());
         abort_unless($expense->event_id === $event->id, 404);
+
+        // An officials' fee is owned by the appointment. Deleting the line here
+        // would drop a real cost out of the P&L while the person is still
+        // recorded as being paid — change the appointment instead.
+        if ($expense->isSystemManaged()) {
+            return response()->json([
+                'success' => false,
+                'message' => __('personal.event_expense_locked_to_official'),
+            ], 422);
+        }
+
         $expense->delete();
 
         return response()->json(['success' => true]);

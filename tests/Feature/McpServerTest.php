@@ -526,6 +526,93 @@ class McpServerTest extends TestCase
         return [$event, $organiser->fresh(), $category->fresh()];
     }
 
+    public function test_list_events_returns_open_events_and_hands_out_the_uuid(): void
+    {
+        [$event, $organiser] = $this->drawnChampionship();
+        $this->actingAs($organiser);
+
+        $result = $this->callTool(\App\Mcp\Tools\ListEventsTool::class);
+
+        $this->assertSame('open', $result['state']);
+        $this->assertSame(1, $result['total']);
+        $this->assertSame($event->uuid, $result['events'][0]['uuid']);
+        $this->assertSame('upcoming', $result['events'][0]['state']);
+        $this->assertTrue($result['events'][0]['can_manage']);
+    }
+
+    public function test_list_events_excludes_finished_events_from_the_open_state(): void
+    {
+        [$event, $organiser] = $this->drawnChampionship();
+
+        // Move it into the past — "open" must drop it, "past" must find it.
+        $event->update([
+            'date' => now()->subDays(5)->toDateString(),
+            'end_date' => now()->subDays(4)->toDateString(),
+        ]);
+        $this->actingAs($organiser);
+
+        $this->assertSame(0, $this->callTool(\App\Mcp\Tools\ListEventsTool::class)['total']);
+        $this->assertSame(1, $this->callTool(\App\Mcp\Tools\ListEventsTool::class, ['state' => 'past'])['total']);
+    }
+
+    public function test_list_events_hides_an_event_the_user_cannot_see(): void
+    {
+        $this->drawnChampionship();
+
+        // A member of an unrelated club: an internal-scope event is not theirs to see.
+        $outsider = $this->createUser();
+        $otherClub = $this->createClub($outsider, ['country' => 'BH']);
+        $outsider->memberClubs()->syncWithoutDetaching([$otherClub->id => ['status' => 'active']]);
+        $this->actingAs($outsider->fresh());
+
+        $result = $this->callTool(\App\Mcp\Tools\ListEventsTool::class, ['state' => 'all']);
+
+        $this->assertSame(0, $result['total']);
+    }
+
+    public function test_list_event_documents_hides_an_event_the_user_cannot_see(): void
+    {
+        [$event] = $this->drawnChampionship();
+
+        $outsider = $this->createUser();
+        $otherClub = $this->createClub($outsider, ['country' => 'BH']);
+        $outsider->memberClubs()->syncWithoutDetaching([$otherClub->id => ['status' => 'active']]);
+        $this->actingAs($outsider->fresh());
+
+        $result = $this->callTool(\App\Mcp\Tools\ListEventDocumentsTool::class, ['event' => $event->uuid]);
+
+        $this->assertStringContainsString('Event not found', $result['error']);
+    }
+
+    public function test_list_event_documents_returns_attached_files(): void
+    {
+        [$event, $organiser] = $this->drawnChampionship();
+
+        \App\Models\EventDocument::create([
+            'event_id' => $event->id, 'title' => 'Rulebook 2026',
+            'path' => 'events/'.$event->uuid.'/documents/x.pdf',
+            'mime' => 'application/pdf', 'extension' => 'pdf', 'size' => 2048,
+        ]);
+        $this->actingAs($organiser);
+
+        $result = $this->callTool(\App\Mcp\Tools\ListEventDocumentsTool::class, ['event' => $event->uuid]);
+
+        $this->assertSame(1, $result['total']);
+        $this->assertSame('Rulebook 2026', $result['documents'][0]['title']);
+        $this->assertSame('pdf', $result['documents'][0]['type']);
+        // Metadata only — a storage path must never leave the server.
+        $this->assertArrayNotHasKey('path', $result['documents'][0]);
+    }
+
+    public function test_list_events_requires_authentication(): void
+    {
+        config(['takeone-mcp.stdio_user_id' => null]);
+
+        $result = $this->callTool(\App\Mcp\Tools\ListEventsTool::class);
+
+        $this->assertStringContainsString('Not authenticated', $result['error']);
+    }
+
     public function test_get_event_bracket_returns_the_draw(): void
     {
         [$event, $organiser] = $this->drawnChampionship();
