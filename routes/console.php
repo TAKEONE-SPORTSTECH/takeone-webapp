@@ -35,3 +35,9 @@ Schedule::command('takeone:backup')
     ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('Nightly backup FAILED — restore capability is compromised.'));
 Schedule::command('goals:daily-encouragement')->dailyAt('09:00');
 Schedule::command('alerts:recheck-low-stock')->dailyAt('08:00');
+
+// Court displays that enrolled and were never claimed. Enrolment is open by
+// necessity (a fresh Pi has no credential to offer) and grants access to
+// nothing, so this is the other half of that trade — abandoned rows are swept
+// up instead of accumulating. Claimed screens are never touched.
+Schedule::command('court:pair --prune')->dailyAt('04:00');

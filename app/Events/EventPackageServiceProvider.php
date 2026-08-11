@@ -41,6 +41,7 @@ class EventPackageServiceProvider extends ServiceProvider
 
             // The event type's own resources.
             $this->bindResources('event-'.$key, $typePath);
+            $this->registerCommands($typePath);
 
             // Resources shared by every event type of the same sport, when the
             // package sits inside a sport folder.
@@ -68,6 +69,54 @@ class EventPackageServiceProvider extends ServiceProvider
         return preg_match('/^App\\\\Events\\\\Sports\\\\([^\\\\]+)\\\\/', $namespace, $m)
             ? strtolower($m[1])
             : null;
+    }
+
+    /**
+     * Register any artisan commands the package ships, wherever they sit in it.
+     *
+     * Console classes live beside the domain code they serve rather than in the
+     * app's shared Commands folder, so Laravel's auto-discovery never sees them.
+     * Discovering them here keeps the package rule intact: shipping a command
+     * with a new event type stays a matter of adding one file to its directory,
+     * with no shared registration to edit.
+     */
+    private function registerCommands(string $path): void
+    {
+        if (! $this->app->runningInConsole() || ! is_dir($path)) {
+            return;
+        }
+
+        $commands = [];
+
+        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($path)) as $file) {
+            if ($file->getExtension() !== 'php' || ! str_contains($file->getPathname(), DIRECTORY_SEPARATOR)) {
+                continue;
+            }
+
+            // resources/ holds views and translations, never PHP classes.
+            if (str_contains($file->getPathname(), DIRECTORY_SEPARATOR.'resources'.DIRECTORY_SEPARATOR)) {
+                continue;
+            }
+
+            $class = $this->classFor($file->getPathname());
+
+            if ($class && is_subclass_of($class, \Illuminate\Console\Command::class)) {
+                $commands[] = $class;
+            }
+        }
+
+        if ($commands) {
+            $this->commands($commands);
+        }
+    }
+
+    /** The PSR-4 class name for a file under app/, or null if it has none. */
+    private function classFor(string $file): ?string
+    {
+        $relative = str_replace([app_path().DIRECTORY_SEPARATOR, '.php'], '', $file);
+        $class = 'App\\'.str_replace(DIRECTORY_SEPARATOR, '\\', $relative);
+
+        return class_exists($class) ? $class : null;
     }
 
     /** Bind a folder's views and translations under the given namespace. */

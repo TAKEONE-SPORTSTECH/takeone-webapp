@@ -29,6 +29,15 @@ return Application::configure(basePath: dirname(__DIR__))
         // with a "419 Page Expired". Applies to desktop + mobile alike.
         $middleware->validateCsrfTokens(except: [
             'impersonate/leave',
+            // A Raspberry Pi court display enrolling itself on first boot. This
+            // is a device calling in, not a browser posting a form: there is no
+            // session and no cookie, so there is no cross-site request to forge
+            // — CSRF here only guarantees the call can never succeed. The
+            // endpoint is protected by what it grants instead (an unclaimed
+            // screen that can render a QR code and nothing else) plus a hard
+            // rate limit. Note this cannot be caught by tests: Laravel skips
+            // CSRF under phpunit, so it fails only against a real device.
+            'court/enroll',
         ]);
         $middleware->alias([
             'no-store'   => \App\Http\Middleware\NoStoreCache::class,

@@ -91,6 +91,16 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($request->user()?->id ?: $request->ip());
         });
 
+        // A hall screen enrolling itself on first boot. Unauthenticated by
+        // necessity — a fresh Pi has no credential and no keyboard — and what it
+        // gets back grants no access to any data, only the right to show a
+        // pairing code. But it does write a row, so: 5 an hour per address,
+        // which is far beyond any real venue (a Pi enrols ONCE, ever) and makes
+        // bulk row creation pointless.
+        RateLimiter::for('court-enroll', function (Request $request) {
+            return Limit::perHour(5)->by($request->ip());
+        });
+
         // File uploads (gallery, profile pictures, facility images, etc.):
         // 20 per minute per user — generous enough for normal use, blocks DoS.
         RateLimiter::for('uploads', function (Request $request) {

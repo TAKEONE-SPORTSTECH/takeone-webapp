@@ -61,6 +61,41 @@ Route::middleware(['auth', 'verified'])->get('/market/forms-preview', function (
 // Public version manifest polled by the installed Android app to detect updates.
 Route::get('/app/manifest.json', [App\Http\Controllers\MobileAppController::class, 'manifest'])->name('app.manifest');
 
+// The hall board a Raspberry Pi opens. Unauthenticated BY DESIGN: a wall screen
+// has no keyboard and nobody to sign in, so the device's own token is its
+// identity. The URL carries no event and no court — both are read off the paired
+// device — so there is no identifier here to tamper with or enumerate.
+Route::get('/court/{token}', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'board'])
+    ->name('court-display.board')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:60,1');
+// A screen's first boot: it has nothing on its SD card and asks for an identity.
+// What it receives is an UNCLAIMED device that can show a pairing code and
+// nothing else, so the endpoint grants no access to any data — but it does write
+// a row, hence the hard throttle.
+Route::post('/court/enroll', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'enroll'])
+    ->name('court-display.enroll')->middleware('throttle:court-enroll');
+
+// "Have I been claimed yet?" — one boolean, polled by an unpaired screen.
+Route::get('/court/{token}/status', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'status'])
+    ->name('court-display.status')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:60,1');
+
+// Claiming a screen — the page its QR points at. Authenticated, because the
+// pairing code is printed on a wall in a public hall and is worth nothing on its
+// own: every event offered is one the signed-in organiser can already manage.
+Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
+    Route::get('/court/claim/{code}', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'claim'])
+        ->name('court-display.claim')->where('code', '[A-Z0-9]{6}')->middleware('throttle:30,1');
+    Route::post('/court/claim/{code}', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'storeClaim'])
+        ->name('court-display.claim.store')->where('code', '[A-Z0-9]{6}')->middleware('throttle:member-write');
+    Route::get('/court/screen/{device}', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'claimed'])
+        ->name('court-display.claimed')->whereNumber('device');
+});
+
+// Court-display webfonts. Public and unauthenticated by necessity — a hall screen
+// has no session — but they are static typefaces served from a fixed whitelist,
+// so there is nothing here to scope to a viewer.
+Route::get('/court-display/font/{file}', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'font'])
+    ->name('court-display.font')->where('file', '[a-z0-9.-]+')->middleware('throttle:60,1');
+
 // Personal (member) mobile experience — shared mobile shell
 Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')->group(function () {
     Route::get('/', [App\Http\Controllers\PersonalMobileController::class, 'home'])->name('home');
@@ -189,6 +224,11 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     // Run day: the athlete's countdown (and the coach's squad view of it).
     // Venue board — a hall screen for a mat (?mat=Mat+1) or the whole venue.
     Route::get('/events/{event:uuid}/board', [App\Http\Controllers\PersonalEventController::class, 'board'])->name('events.board');
+    // Court display — rehearse the Raspberry Pi hall screen in a browser. The Pi
+    // itself never calls this: it renders a cached copy of the same view against
+    // board state pushed over MQTT. Organiser-only, because the court comes
+    // straight off the URL.
+    Route::get('/events/{event:uuid}/court/{court}/preview', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'preview'])->name('events.court-display.preview')->where('court', '[^/]{1,40}')->middleware('throttle:60,1');
     Route::get('/events/{event:uuid}/next-up', [App\Http\Controllers\PersonalEventController::class, 'nextUp'])->name('events.next-up');
     Route::get('/events/{event:uuid}/entry-roster', [App\Http\Controllers\PersonalEventController::class, 'entryRoster'])->name('events.entry-roster');
     Route::post('/events/{event:uuid}/entries', [App\Http\Controllers\PersonalEventController::class, 'storeEntries'])->name('events.entries')->middleware('throttle:admin-write');
