@@ -47,11 +47,14 @@
                 {{-- Owner-only: the event's P&L. Sits with the other cover actions
                      rather than in the page body — it is a tool for running the
                      event, not part of reading it. --}}
-                @if($finance ?? false)
-                    <button type="button" @click="financeOpen=true"
-                            class="w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center hover:bg-white/25 transition-colors" aria-label="{{ __('personal.event_show_finance') }}">
-                        <i class="bi bi-cash-stack text-base"></i>
-                    </button>
+                {{-- The door to the console. Running the event is a different job
+                     from reading this page, so it is one button out, not a set of
+                     organiser tools threaded through the content. --}}
+                @if(($canManage ?? false) || ($canOfficiate ?? false))
+                    <a href="{{ route('me.events.manage', $e['key']) }}"
+                       class="w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center hover:bg-white/25 transition-colors" title="{{ __('personal.event_manage_title') }}">
+                        <i class="bi bi-sliders text-base"></i>
+                    </a>
                 @endif
                 <x-qr-code
                     :url="route('me.events.show', ['event' => $e['key']])"
@@ -66,37 +69,6 @@
                         class="w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center hover:bg-white/25 transition-colors" aria-label="{{ __('personal.event_show_share') }}">
                     <i class="bi bi-share text-base"></i>
                 </button>
-                @if($canManage ?? false)
-                    <div class="relative" @click.outside="manageOpen=false">
-                        <button type="button" @click="manageOpen=!manageOpen"
-                                class="w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center hover:bg-white/25 transition-colors" aria-label="{{ __('personal.event_show_manage') }}">
-                            <i class="bi bi-three-dots-vertical text-base"></i>
-                        </button>
-                        <div x-show="manageOpen" x-cloak
-                             x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
-                             class="absolute end-0 top-12 z-40 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 text-foreground"
-                             style="transform-origin: top right;">
-                            <button type="button" @click="goEdit()"
-                                    class="w-full text-start flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted transition-colors">
-                                <i class="bi bi-pencil"></i> {{ __('personal.event_show_edit_event') }}
-                            </button>
-                            @if(($manual_results ?? true))
-                                <button type="button" @click="openResults()"
-                                        class="w-full text-start flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted transition-colors">
-                                    <i class="bi bi-trophy"></i> {{ __('personal.event_show_set_winners') }}
-                                </button>
-                            @endif
-                            <button type="button" @click="cancelEvent()" x-show="!cancelled"
-                                    class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-amber-600 hover:bg-amber-50 transition-colors">
-                                <i class="bi bi-slash-circle"></i> {{ __('personal.event_show_cancel_event') }}
-                            </button>
-                            <button type="button" @click="deleteEvent()"
-                                    class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                                <i class="bi bi-trash"></i> {{ __('personal.event_show_delete_event') }}
-                            </button>
-                        </div>
-                    </div>
-                @endif
                 </div>
             </div>
 
@@ -136,9 +108,6 @@
             <div x-show="results.length > 0" x-cloak class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
                 <div class="flex items-center justify-between">
                     <h2 class="text-sm font-bold text-foreground flex items-center gap-2"><i class="bi bi-trophy-fill text-amber-500"></i> {{ __('personal.event_show_winners') }}</h2>
-                    @if($canManage ?? false)
-                        <button type="button" @click="openResults()" class="text-xs font-bold text-primary px-2 py-1 rounded-lg bg-accent hover:bg-accent/70 transition-colors"><i class="bi bi-pencil"></i> {{ __('shared.edit') }}</button>
-                    @endif
                 </div>
                 <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <template x-for="w in results" :key="w.place + '-' + w.name">
@@ -157,14 +126,6 @@
                 </div>
             </div>
 
-            @if(($canManage ?? false) && ($manual_results ?? true))
-                <div x-show="results.length === 0">
-                    <button type="button" @click="openResults()"
-                            class="w-full py-3 rounded-2xl border-2 border-dashed border-gray-200 text-sm font-bold text-foreground flex items-center justify-center gap-2 hover:border-gray-300 transition-colors">
-                        <i class="bi bi-trophy"></i> {{ __('personal.event_show_record_winners') }}
-                    </button>
-                </div>
-            @endif
 
             {{-- Finance used to sit beside this as a second button; it is an
                  owner-only tool, not something a competitor acts on while reading
@@ -384,12 +345,14 @@
                 {{-- Documents — rulebook, entry form, schedule. The section only
                      exists when there is something to download, unless you are the
                      organiser, who needs the uploader to put the first one there. --}}
-                @if(!empty($documents) || ($canManage ?? false))
+                @if(!empty($documents))
                     <x-event-section-band :color="$e['color']" icon="bi-paperclip"
                                           :title="__('personal.event_docs_heading')" />
                     <div class="p-6">
+                        {{-- Read-only here. Uploading and deleting is organiser work
+                             and lives in the console. --}}
                         <x-event-documents :event="$e['key']" :documents="$documents ?? []"
-                                           :can-manage="$canManage ?? false" :color="$e['color']" />
+                                           :can-manage="false" :color="$e['color']" />
                     </div>
                 @endif
 
@@ -728,17 +691,6 @@
                  event is started this is the thing the organiser is here to do.
                  The component decides what is editable; the controller has
                  already decided whether this viewer gets a list at all. --}}
-            @if($canOfficiate ?? false)
-                <div class="pt-2">
-                    <x-event-checklist :event="$e['key']"
-                                       :items="$checklist ?? []"
-                                       :can-manage="$canManage"
-                                       :can-check="true"
-                                       :started="$e['started'] ?? false"
-                                       :overridden="$e['start_overridden'] ?? false"
-                                       :color="$e['color']" />
-                </div>
-            @endif
 
             {{-- ===== Management =====
                  The ways OUT of this page, gathered in one place under the join
@@ -851,59 +803,6 @@
          "></div>
 
     {{-- ===== Set-winners modal ===== --}}
-    @if($canManage ?? false)
-        <div x-show="resultsOpen" x-cloak class="fixed inset-0 z-[60]" style="display:none;">
-            <div class="absolute inset-0 bg-black/40" @click="resultsOpen=false" x-transition.opacity></div>
-            <div x-show="resultsOpen" x-cloak
-                 x-transition:enter="transition ease-out duration-250" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
-                 class="fixed inset-0 z-[60] flex items-center justify-center p-4">
-                <div class="w-full max-w-lg max-h-[85vh] flex flex-col bg-white rounded-2xl shadow-2xl" @click.outside="resultsOpen=false">
-                    <div class="p-4 border-b border-gray-100 flex items-center justify-between">
-                        <h3 class="font-black text-foreground flex items-center gap-2"><i class="bi bi-trophy-fill text-amber-500"></i> {{ __('personal.event_show_winners_results') }}</h3>
-                        <button type="button" @click="resultsOpen=false" class="w-8 h-8 rounded-full bg-muted grid place-items-center hover:bg-gray-200 transition-colors"><i class="bi bi-x-lg text-xs"></i></button>
-                    </div>
-
-                    <datalist id="event-participants">
-                        @foreach($e['participants'] as $pp)
-                            <option value="{{ $pp['name'] }}"></option>
-                        @endforeach
-                    </datalist>
-
-                    <div class="flex-1 overflow-y-auto p-4 space-y-3">
-                        <p class="text-xs text-muted-foreground">{{ __('personal.event_show_add_podium_help') }}</p>
-                        <template x-for="(w, i) in winners" :key="i">
-                            <div class="rounded-2xl border border-gray-100 p-3">
-                                <div class="flex items-center justify-between mb-2">
-                                    <span class="text-xs font-bold px-2 py-0.5 rounded-full text-white" :style="`background:${medal(w.place)}`"
-                                          x-text="w.place===1 ? '{{ __("personal.event_show_place_1st") }}' : (w.place===2 ? '{{ __("personal.event_show_place_2nd") }}' : (w.place===3 ? '{{ __("personal.event_show_place_3rd") }}' : '#' + w.place))"></span>
-                                    <button type="button" @click="removeWinner(i)" class="text-xs text-red-500 font-semibold hover:underline"><i class="bi bi-trash"></i> {{ __('personal.event_show_remove_btn') }}</button>
-                                </div>
-                                <input type="text" list="event-participants" x-model="w.name" placeholder="{{ __('personal.event_show_ph_winner_name') }}"
-                                       class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm mb-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                                <div class="flex items-center gap-2">
-                                    <input type="number" min="1" x-model="w.place" placeholder="{{ __('personal.event_show_ph_place') }}"
-                                           class="w-20 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                                    <input type="text" x-model="w.prize" placeholder="{{ __('personal.event_show_ph_prize') }}"
-                                           class="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                                </div>
-                            </div>
-                        </template>
-                        <button type="button" @click="addWinner()" class="w-full py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-bold text-muted-foreground hover:border-gray-300 transition-colors">
-                            <i class="bi bi-plus-lg"></i> {{ __('personal.event_show_add_place') }}
-                        </button>
-                    </div>
-
-                    <div class="p-4 border-t border-gray-100">
-                        <button type="button" @click="saveResults()" :disabled="busy"
-                                class="w-full py-3.5 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60 hover:opacity-90 transition-opacity" style="background: {{ $e['color'] }};">
-                            <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-check2-circle'"></i>
-                            <span x-text="busy ? '{{ __("personal.event_show_saving") }}' : '{{ __("personal.event_show_save_winners") }}'"></span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endif
 
     {{-- ===== Results sheet (combat) ===== --}}
     @if(!empty($e['bracket_results']))
@@ -942,74 +841,6 @@
     @endif
 
     {{-- ===== Finance modal ===== --}}
-    @if($finance ?? false)
-        <div x-show="financeOpen" x-cloak class="fixed inset-0 z-[60]" style="display:none;">
-            <div class="absolute inset-0 bg-black/40" @click="financeOpen=false" x-transition.opacity></div>
-            <div x-show="financeOpen" x-cloak
-                 x-transition:enter="transition ease-out duration-250" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
-                 class="fixed inset-0 z-[60] flex items-center justify-center p-4">
-                <div class="w-full max-w-lg max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl" @click.outside="financeOpen=false">
-                    <div class="p-4 border-b border-gray-100 flex items-center justify-between">
-                        <h3 class="font-black text-foreground flex items-center gap-2"><i class="bi bi-cash-stack text-green-600"></i> {{ __('personal.event_show_event_finance') }}</h3>
-                        <button type="button" @click="financeOpen=false" class="w-8 h-8 rounded-full bg-muted grid place-items-center hover:bg-gray-200 transition-colors"><i class="bi bi-x-lg text-xs"></i></button>
-                    </div>
-
-                    <div class="flex-1 overflow-y-auto p-4 space-y-4">
-                        <div class="rounded-2xl border border-gray-100 p-3">
-                            <p class="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">{{ __('personal.event_show_money_collected') }}</p>
-                            <div class="flex items-center justify-between text-sm py-1">
-                                <span class="text-muted-foreground"><span x-text="fin.paid_participants"></span> {{ __('personal.event_show_paid_entries') }} <span x-text="money(fin.participant_fee)"></span></span>
-                                <span class="font-bold text-foreground" x-text="money(fin.participant_revenue)"></span>
-                            </div>
-                            <template x-if="fin.spectator_enabled">
-                                <div class="flex items-center justify-between text-sm py-1">
-                                    <span class="text-muted-foreground"><span x-text="fin.paid_spectators"></span> {{ __('personal.event_show_tickets_x') }} <span x-text="money(fin.spectator_fee)"></span></span>
-                                    <span class="font-bold text-foreground" x-text="money(fin.spectator_revenue)"></span>
-                                </div>
-                            </template>
-                            <div class="flex items-center justify-between text-sm pt-2 mt-1 border-t border-gray-100">
-                                <span class="font-bold text-foreground">{{ __('personal.event_show_total_revenue') }}</span>
-                                <span class="font-black text-green-600" x-text="money(fin.revenue)"></span>
-                            </div>
-                        </div>
-
-                        <div class="rounded-2xl border border-gray-100 p-3">
-                            <p class="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">{{ __('personal.event_show_expenses') }}</p>
-                            <div class="space-y-1.5">
-                                <template x-for="x in fin.expenses" :key="x.id">
-                                    <div class="flex items-center gap-2 text-sm">
-                                        <span class="flex-1 min-w-0 truncate text-foreground" x-text="x.label"></span>
-                                        <span class="font-bold text-red-600" x-text="'− ' + money(x.amount)"></span>
-                                        <button type="button" @click="removeExpense(x.id)" class="w-7 h-7 rounded-lg bg-muted grid place-items-center text-red-500 flex-shrink-0 hover:bg-red-50 transition-colors"><i class="bi bi-x-lg text-[10px]"></i></button>
-                                    </div>
-                                </template>
-                                <p x-show="!fin.expenses.length" class="text-xs text-muted-foreground text-center py-1">{{ __('personal.event_show_no_expenses') }}</p>
-                            </div>
-                            <div class="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-                                <input x-model="newExpLabel" type="text" placeholder="{{ __('personal.event_show_ph_expense') }}"
-                                       class="flex-1 min-w-0 px-2.5 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
-                                <div class="relative w-28 flex-shrink-0">
-                                    <span class="absolute start-2 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground pointer-events-none" x-text="fin.currency"></span>
-                                    <input x-model="newExpAmount" type="number" min="0" step="0.001" inputmode="decimal" placeholder="0"
-                                           class="w-full ps-12 pe-2 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none">
-                                </div>
-                                <button type="button" @click="addExpense()" :disabled="busy" class="w-9 h-9 rounded-xl bg-primary text-white grid place-items-center flex-shrink-0 disabled:opacity-50 hover:bg-primary/90 transition-colors"><i class="bi bi-plus-lg"></i></button>
-                            </div>
-                            <div class="flex items-center justify-between text-sm pt-2 mt-2 border-t border-gray-100">
-                                <span class="font-bold text-foreground">{{ __('personal.event_show_total_expenses') }}</span>
-                                <span class="font-black text-red-600" x-text="'− ' + money(expensesTotal)"></span>
-                            </div>
-                        </div>
-
-                        <div class="rounded-2xl p-4 flex items-center justify-between" :class="profit >= 0 ? 'bg-green-50' : 'bg-red-50'">
-                            <span class="text-sm font-black" :class="profit >= 0 ? 'text-green-700' : 'text-red-700'">{{ __('personal.event_show_profit') }}</span>
-                            <span class="text-lg font-black" :class="profit >= 0 ? 'text-green-700' : 'text-red-700'" x-text="money(profit)"></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endif
 
 </div>
 @endsection

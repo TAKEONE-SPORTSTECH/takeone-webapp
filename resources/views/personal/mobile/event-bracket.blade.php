@@ -201,52 +201,10 @@
                     <p class="text-[11px] text-muted-foreground mt-2 flex items-center gap-1.5"><i class="bi bi-info-circle"></i> {{ $c['note'] }}</p>
                 @endif
 
-                {{-- Draw actions. Two different permissions on purpose:
-                     Manage follows $canArrange (organiser, appointed jury, staff —
-                     and only while the draw is still open), Generate follows
-                     $canManage because re-cutting every division is the
-                     organiser's call, not the jury's. --}}
-                @php
-                    $showManage = ($canArrange ?? false);
-                    $showGenerate = ($canManage ?? false) && ! ($e['started'] ?? false);
-                @endphp
-
-                @if(! ($e['ended'] ?? false) && ($showManage || $showGenerate))
-                    <div class="mt-3 flex items-center gap-2">
-                        {{-- Opens the board full screen, on THIS division. The older
-                             form editor (openEditor) is still defined above and
-                             still owns podium + division details; it is simply no
-                             longer what this button reaches for. --}}
-                        @if($showManage)
-                            <a href="{{ route('me.events.bracket.manage', [$e['key'], 'division' => $c['id']]) }}"
-                               class="m-press flex-1 py-2.5 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2"
-                               style="background: {{ $color }};">
-                                <i class="bi bi-diagram-3-fill"></i>
-                                <span>{{ __('personal.personal_event_bracket_manage_short') }}</span>
-                            </a>
-                        @endif
-
-                        {{-- Secondary styling, and NOT tinted with the event colour,
-                             because this one is event-wide: it re-cuts every
-                             division's draw, not just the one this card shows. --}}
-                        @if($showGenerate)
-                            <button type="button" @click="generateNewDraw()" :disabled="busy"
-                                    class="m-press flex-1 py-2.5 rounded-xl border border-gray-200 bg-white text-foreground
-                                           text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60">
-                                <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-shuffle'"></i>
-                                <span>{{ __('personal.personal_event_bracket_generate_short') }}</span>
-                            </button>
-                        @endif
-                    </div>
-
-                    {{-- Sits with the buttons it describes: what Generate will do,
-                         and until when. No px-4 — the card already pads itself. --}}
-                    @if($showGenerate)
-                        <p class="text-[11px] text-muted-foreground text-center mt-2">
-                            {{ __('personal.personal_event_bracket_provisional_draw_hint') }}
-                        </p>
-                    @endif
-                @endif
+                {{-- No draw controls here. This page SHOWS the draw; arranging it
+                     and re-cutting it are organiser work and live in the event
+                     console (/manage → Draw and brackets). A visitor came to read
+                     the bracket, not to run it. --}}
             </div>
             @endif
 

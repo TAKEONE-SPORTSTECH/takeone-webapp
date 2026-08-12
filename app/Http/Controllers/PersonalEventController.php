@@ -238,6 +238,67 @@ class PersonalEventController extends Controller
         ] + $type->viewData($event, $me));
     }
 
+    /**
+     * The organiser's console — everything you DO to an event, off the page
+     * everybody else reads.
+     *
+     * The public page had grown a finance button, a ⋮ menu, a winners editor,
+     * an uploader and the run-day checklist threaded between the cover, the
+     * agenda and the join button. Two audiences, one screen. This is the other
+     * audience's screen; `show` keeps only what a visitor came for.
+     *
+     * Reached by the organiser and by anyone appointed to officiate — and each
+     * section is gated on its own, because a weigh-in official has a job here
+     * (the checklist, their verification desk) but no business in the money or
+     * the danger zone. Every endpoint those sections call re-checks the same
+     * rule server-side; what this screen renders is only what it offers.
+     */
+    public function manage(ClubEvent $event, Request $request): View
+    {
+        $me = Auth::user();
+        $this->assertVisible($event, $me);
+
+        $access = app(EventAccess::class);
+        $canManage = $this->canManage($event, $me);
+        $canOfficiate = $access->canOfficiate($event, $me);
+
+        // Nobody without a job here gets so much as the shape of the page.
+        abort_unless($canManage || $canOfficiate, 403);
+
+        $type = $this->typeFor($event);
+
+        $event->loadCount(['participantRegistrations']);
+        $e = $this->eventView($event, $me->id, $this->myRegistrations($me->id, collect([$event->id])), full: true);
+        $e['cancelled'] = $event->status === 'cancelled';
+
+        $isMobile = (bool) $request->attributes->get('is_mobile');
+
+        return view($isMobile ? 'personal.mobile.event-manage' : 'personal.desktop.event-manage', [
+            'e' => $e,
+            'canManage' => $canManage,
+            'canOfficiate' => $canOfficiate,
+            'canWeigh' => $access->canVerifyWeighIn($event, $me),
+            'canPay' => $access->canVerifyPayments($event, $me),
+            'actions' => $canManage ? $type->availableActions($event) : [],
+            // Money is the organiser's alone — an official never receives it.
+            'finance' => $canManage ? $type->finance($event) : null,
+            'checklist' => $event->checklistItems()->with('checker:id,full_name,name')->get()
+                ->map(fn ($i) => $this->checklistItemView($i))->all(),
+            'documents' => $event->documents()
+                ->get()
+                ->map(fn ($d) => app(\App\Http\Controllers\EventDocumentController::class)->present($d, $event))
+                ->all(),
+            // Counts for the section cards, so each one says what is waiting
+            // inside it before it is opened.
+            'counts' => [
+                'entrants' => (int) ($event->participant_registrations_count ?? 0),
+                'officials' => $event->officials()->count(),
+                'documents' => $event->documents()->count(),
+                'outstanding' => $event->outstandingChecks(),
+            ],
+        ] + $type->viewData($event, $me));
+    }
+
     /** True if the member is barred from this event (event block OR club-wide blacklist). */
     private function isBanned(ClubEvent $event, int $userId): bool
     {

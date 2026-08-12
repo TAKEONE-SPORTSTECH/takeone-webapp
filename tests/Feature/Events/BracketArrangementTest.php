@@ -386,7 +386,7 @@ class BracketArrangementTest extends TestCase
             ->assertJson(['can_arrange' => false]);
     }
 
-    public function test_the_arrange_control_is_not_rendered_for_a_viewer_who_cannot_manage(): void
+    public function test_the_public_board_never_carries_the_arrange_control(): void
     {
         $event = $this->event();
         $this->drawnDivision($event);
@@ -395,13 +395,19 @@ class BracketArrangementTest extends TestCase
         // The URL is emitted through @json, which escapes forward slashes.
         $needle = trim(json_encode(route('me.events.bracket.arrange', $event->uuid)), '"');
 
-        $this->actingAs($this->organiser)->get("/me/events/{$event->uuid}/brackets")
+        // /brackets SHOWS the draw. Nobody rearranges it there — not even the
+        // organiser, whose editor lives in the console. A visitor came to read
+        // the bracket, not to run it.
+        foreach ([$this->organiser, $watcher] as $viewer) {
+            $this->actingAs($viewer)->get("/me/events/{$event->uuid}/brackets")
+                ->assertOk()
+                ->assertDontSee($needle, false);
+        }
+
+        // The organiser's own editor is where moving people happens.
+        $this->actingAs($this->organiser)->get("/me/events/{$event->uuid}/brackets/manage")
             ->assertOk()
             ->assertSee($needle, false);
-
-        $this->actingAs($watcher)->get("/me/events/{$event->uuid}/brackets")
-            ->assertOk()
-            ->assertDontSee($needle, false);
     }
 
     private function bracketData(ClubEvent $event): array

@@ -78,31 +78,10 @@
                 </p>
             </div>
 
-            {{-- Manage follows $canArrange (organiser, appointed jury, staff, and
-                 only while the draw is open); Generate follows $canManage, because
-                 re-cutting every division is the organiser's call. --}}
-            @if(!($e['ended'] ?? false) && (($canArrange ?? false) || (($canManage ?? false) && !($e['started'] ?? false))))
-                <div class="flex items-center gap-2">
-                    {{-- Arranging is close work — hand it the whole viewport. --}}
-                    @if($canArrange ?? false)
-                        <a href="{{ route('me.events.bracket.manage', $e['key']) }}"
-                           class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-foreground
-                                  text-sm font-bold hover:bg-white/90 transition-colors shadow-sm">
-                            <i class="bi bi-arrows-fullscreen"></i>
-                            {{ __('personal.personal_event_bracket_manage_draw') }}
-                        </a>
-                    @endif
-
-                    @if(($canManage ?? false) && !($e['started'] ?? false))
-                        <button type="button" @click="generateNewDraw()" :disabled="busy"
-                                class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/15 border border-white/25 backdrop-blur
-                                       text-sm font-bold hover:bg-white/25 transition-colors disabled:opacity-60">
-                            <i class="bi" :class="busy ? 'bi-arrow-repeat animate-spin' : 'bi-shuffle'"></i>
-                            {{ __('personal.personal_event_bracket_generate_draw_match_numbers') }}
-                        </button>
-                    @endif
-                </div>
-            @endif
+            {{-- No draw controls here. This page SHOWS the draw; arranging it and
+                 re-cutting it are organiser work and live in the event console
+                 (/manage → Draw and brackets), which opens the full-screen board.
+                 A visitor came to read the bracket, not to run it. --}}
         </div>
     </div>
 
@@ -112,10 +91,10 @@
     <x-tournament-bracket
         id="event-bracket"
         :data-url="route('me.events.bracket.data', $e['key'])"
-        :arrange-url="route('me.events.bracket.arrange', $e['key'])"
-        :clear-url="route('me.events.bracket.clear', $e['key'])"
         :event-uuid="$e['key']"
-        :can-arrange="$canArrange ?? false"
+        {{-- Read-only board: no arrange mode, and no arrange/clear endpoints
+             handed to the client at all. The console owns rearranging. --}}
+        :can-arrange="false"
         :my-competitor-ids="$myCompetitorIds ?? []"
         height="68vh"
         bare bleed />
