@@ -911,6 +911,43 @@ Never use a native `<select>`/`<option>`, or a native `<input type="date">` / `t
 ### 5. Logos render on transparent backgrounds — never on a white tile
 Club logos, brand logos, and business/chain logos are supplied as transparent PNGs and MUST be shown as the bare image on a transparent background. Never wrap a logo in a white/filled rounded card, tile, or "chip" (`bg-white`, `p-1`, `shadow`, `ring`, `rounded-2xl overflow-hidden`) — that white square looks broken against non-white/hero/photo backdrops. Use only a sizing container plus the image: `<span class="w-16 h-16 flex-shrink-0"><img class="w-full h-full object-contain" ...></span>`. No background fill, no padding box, no ring/shadow behind the mark. This applies to every logo placement (public club page hero, cards, headers, nav, feed avatars where a real logo is used).
 
+### 6. Page headers are full-bleed hero bands — never a small rounded card
+Every page that introduces a subject (an event, a club, a member, a console) opens with the same **hero band**. It runs edge to edge, the content below rides up over its tail, and the page's identity — chips, title, owner — sits *under* the control row, not squeezed beside a back arrow.
+
+**The pattern** (reference: `personal/{mobile,desktop}/event-show.blade.php` cover, and both `event-manage` consoles):
+
+```blade
+<header class="m-hero -mx-4 -mt-4 px-5 pt-5 pb-16 text-white relative overflow-hidden"
+        style="background: linear-gradient(150deg, {{ $color }}, {{ $color }}b0);">
+    <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10"></div>
+    <div class="absolute right-6 bottom-8 w-24 h-24 rounded-full bg-white/10"></div>
+
+    {{-- Control row: back on the left, actions on the right. z-50 so a dropdown
+         paints above the title block. --}}
+    <div class="flex items-center justify-between relative z-50"> … </div>
+
+    {{-- Identity: chips, then the big title, then who it belongs to. --}}
+    <div class="relative z-10 mt-6">
+        <div class="flex items-center gap-1.5 flex-wrap"> …chips… </div>
+        <h1 class="text-2xl font-black mt-3 leading-tight">{{ $title }}</h1>
+        <p class="text-sm text-white/85 mt-1.5 flex items-center gap-1.5"><i class="bi bi-building"></i>{{ $owner }}</p>
+    </div>
+</header>
+
+{{-- Content rides up over the band's tail --}}
+<div class="-mt-10 relative z-10 space-y-4"> … </div>
+```
+
+**Non-negotiables**
+- **Full-bleed.** Cancel the page wrapper's padding on the band (`-mx-4 -mt-4`, or `-mx-4 sm:-mx-6 lg:-mx-8 -mt-6` on desktop) and restore it on the content beneath. A header that stops short of the screen edge is wrong.
+- **Gradient is `colour → colour+b0`**, not `colour → #1f2937`. The subject's own colour, lightened — not faded to charcoal.
+- **Two soft circles** (`bg-white/10`) for depth. They are part of the pattern, not decoration to drop.
+- **Bottom padding sized to what overlaps it** — `pb-16`/`pb-20` when a card rides up over the tail, less (≈`pb-10`) when the thing straddling the edge is a compact control like a filter tray. The band should end just under what overlaps it, never leave a strip of empty colour between the title and the first element.
+- **Title is `text-2xl font-black` (mobile) / `text-3xl` (desktop)** on its own line, with chips above and the owner line below.
+- **Round 40px controls**: `w-10 h-10 rounded-full bg-white/15 border border-white/25 backdrop-blur grid place-items-center`.
+
+**Never** open a page with a small `rounded-2xl p-4` gradient card holding a back arrow and a squeezed title, and never with a gradient stat card standing in for a header. Those are *cards* — fine inside the page, never as its header.
+
 ---
 
 ## No Page Reload Rule — STRICT

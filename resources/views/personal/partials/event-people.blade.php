@@ -57,7 +57,12 @@
         {{-- No card around the whole list: each person is their own card, so the
              roster reads as a stack of people rather than one long slab. Only the
              heading and tabs are grouped. --}}
-        <div x-data="{
+        {{-- The page header shows the readiness count, and it lives OUTSIDE this
+             component. x-effect re-runs whenever readyCount/gateTotal/rtab change,
+             so the header follows the desk without either side reaching into the
+             other's scope. $dispatch bubbles, so the header listens on .window. --}}
+        <div @if($officiating) x-effect="$dispatch('roster-readiness', { ready: readyCount, total: gateTotal, tab: rtab })" @endif
+             x-data="{
                 rtab: 'participants', open: false, q: '',
                 // Filtering is client-side on purpose: every name in the current
                 // list is already on the page, so typing narrows it instantly
@@ -181,11 +186,13 @@
                 passes(uid) { return true; },
                 @endif
              }">
-            {{-- Heading and the list switcher on one line. A menu rather than a
-                 row of tabs: three full-width tabs ate a whole band of a phone
-                 screen before a single name appeared, and the counts read just as
-                 well inside the menu. --}}
-            <div class="flex items-center justify-between gap-3 px-1">
+            {{-- One group, floating on the band's edge: the search and the list
+                 switcher. These are the controls you always have, whichever list
+                 you are on, so they share one tray. The competitor filter is NOT
+                 in here — it belongs to the list below, not to the page. --}}
+            <div class="mb-3">
+                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-2 space-y-2">
+                    <div class="flex items-center gap-2">
                 {{-- Search sits where the heading was: the page title already says
                      whose list this is, so the space is better spent narrowing it. --}}
                 <div class="relative flex-1 min-w-0">
@@ -197,9 +204,9 @@
                     <input type="search" x-model="q"
                            placeholder="{{ __('personal.event_show_search_people') }}"
                            aria-label="{{ __('personal.event_show_search_people') }}"
-                           class="w-full ps-8 pe-8 py-1.5 rounded-xl border border-gray-200 bg-white shadow-sm
+                           class="w-full ps-8 pe-8 py-2 rounded-xl bg-muted border-0
                                   text-xs font-bold text-foreground transition-colors
-                                  focus:ring-2 focus:ring-purple-500/40 outline-none">
+                                  focus:ring-2 focus:ring-primary/40 outline-none">
                     <button type="button" x-show="q" x-cloak @click="q = ''"
                             class="absolute end-2 top-1/2 -translate-y-1/2 w-5 h-5 grid place-items-center rounded-full
                                    text-muted-foreground hover:bg-muted transition-colors"
@@ -215,8 +222,8 @@
 
                         <button type="button" @click="open = !open"
                                 :aria-expanded="open" aria-haspopup="listbox"
-                                class="flex items-center gap-2 ps-2.5 pe-2 py-1.5 rounded-xl border border-gray-200 bg-white
-                                       text-xs font-bold text-foreground shadow-sm hover:bg-muted/60 transition-colors">
+                                class="m-press flex items-center gap-2 ps-2.5 pe-2 py-2 rounded-xl bg-muted
+                                       text-xs font-bold text-foreground hover:bg-muted/70 transition-colors">
                             {{-- The selected list. Kept as siblings rather than a
                                  lookup so each label stays translatable. --}}
                             <span x-show="rtab==='participants'" class="flex items-center gap-1.5">
@@ -281,42 +288,34 @@
                 @else
                     <span class="text-[11px] font-semibold text-primary shrink-0" x-text="`${goingCount} {{ __('personal.event_show_in') }}`">{{ $e['participants_total'] ?? $e['going'] }} {{ __('personal.event_show_in') }}</span>
                 @endif
+                    </div>{{-- /search + switcher row --}}
+                </div>{{-- /tray --}}
             </div>
 
             @if($officiating)
-                {{-- The officials' band. This is what the separate console used
-                     to be — one number ("how many entries can actually be
-                     drawn?") and a way to jump to the ones still waiting. It
-                     sits above the list it filters instead of on a screen of
-                     its own, so the answer and the work are never apart. --}}
-                <div class="mt-3" x-show="rtab==='participants'" x-transition>
-                    <div class="rounded-2xl p-4 text-white relative overflow-hidden"
-                         style="background: linear-gradient(135deg, {{ $e['color'] }}, #1f2937);">
-                        <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
-                        <div class="relative flex items-end justify-between gap-3">
-                            <div class="min-w-0">
-                                <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-white/70">{{ __('personal.event_verify_final_draw') }}</p>
-                                <p class="text-2xl font-black leading-none mt-1">
-                                    <span x-text="readyCount"></span><span class="text-white/60"> / <span x-text="gateTotal"></span></span>
-                                </p>
-                                <p class="text-xs text-white/85 mt-1">{{ __('personal.event_verify_ready_hint') }}</p>
-                            </div>
-                            <div class="w-11 h-11 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
-                                <i class="bi bi-clipboard2-check text-xl"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex gap-2 mt-3">
-                        @foreach(['all' => __('personal.event_verify_all'), 'pending' => __('personal.event_verify_pending'), 'ready' => __('personal.event_verify_ready')] as $key => $label)
-                            <button type="button" @click="vfilter = '{{ $key }}'"
-                                    :class="vfilter === '{{ $key }}' ? 'text-white border-transparent' : 'bg-white text-muted-foreground border-gray-200'"
-                                    :style="vfilter === '{{ $key }}' ? 'background: {{ $e['color'] }}' : ''"
-                                    class="flex-1 py-2 rounded-xl border-2 text-xs font-black transition-colors">{{ $label }}</button>
-                        @endforeach
-                    </div>
+                {{-- Out of the tray, on the page: the tray is the controls you
+                     always have, this is a filter over the list right below it.
+                     Two states, equal width — tapping the active one returns to
+                     the whole roster, so there is no third "All" pill whose only
+                     job is to undo another. On the page background they carry
+                     their own white fill and border; muted would disappear. --}}
+                <div class="flex gap-2 mb-3" x-show="rtab==='participants'" x-cloak x-transition>
+                    @foreach(['pending' => __('personal.event_verify_pending'), 'ready' => __('personal.event_verify_ready')] as $key => $label)
+                        <button type="button" @click="vfilter = (vfilter === '{{ $key }}' ? 'all' : '{{ $key }}')"
+                                :aria-pressed="vfilter === '{{ $key }}'"
+                                class="m-press flex-1 min-w-0 px-3 py-2 rounded-xl text-xs font-bold border transition-colors flex items-center justify-center gap-1.5"
+                                :class="vfilter === '{{ $key }}'
+                                    ? 'bg-primary text-white border-transparent shadow-sm shadow-primary/25'
+                                    : 'bg-white text-muted-foreground border-gray-200 shadow-sm'">
+                            <span class="truncate">{{ $label }}</span>
+                            <span class="text-[10px] font-black tabular-nums px-1.5 py-0.5 rounded-full flex-shrink-0"
+                                  :class="vfilter === '{{ $key }}' ? 'bg-white/20' : 'bg-muted'"
+                                  x-text="{{ $key === 'ready' ? 'readyCount' : 'gateTotal - readyCount' }}"></span>
+                        </button>
+                    @endforeach
                 </div>
             @endif
+
 
             {{-- Participants (competitors only) --}}
             <div class="mt-3 space-y-2.5" @if($showTabs) x-show="rtab==='participants'" x-transition @endif>
