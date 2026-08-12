@@ -558,30 +558,63 @@
         @endif
     @endif
 
-    {{-- ===== Brackets & draws entry ===== --}}
-    @if(!empty($e['categories']))
-        @php
-            $catCount = count($e['categories']);
-            $athleteTotal = collect($e['categories'])->sum('joined');
-        @endphp
-        <div class="px-4 mt-4">
-            <a href="{{ route('me.events.bracket', $e['key']) }}" data-shell-link data-route="me.events"
-               class="block m-press rounded-2xl p-4 text-white relative overflow-hidden shadow-lg"
-               style="background: linear-gradient(135deg, {{ $e['color'] }}, #1f2937);">
-                <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
-                <div class="relative flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
-                        <i class="bi bi-diagram-3-fill text-2xl"></i>
+    {{-- ===== Brackets & draws + Who's joined — two square doors side by side.
+         The Brackets tile only exists when the event has categories; when it
+         doesn't, Who's joined stands alone and stretches to the full width. --}}
+    @php $hasBrackets = !empty($e['categories']); @endphp
+    <div class="px-4 mt-4">
+        <div class="grid grid-cols-2 gap-3">
+            @if($hasBrackets)
+                @php
+                    $catCount = count($e['categories']);
+                    $athleteTotal = collect($e['categories'])->sum('joined');
+                @endphp
+                <a href="{{ route('me.events.bracket', $e['key']) }}" data-shell-link data-route="me.events"
+                   class="aspect-square m-press rounded-2xl p-4 text-white relative overflow-hidden shadow-lg flex flex-col justify-between"
+                   style="background: linear-gradient(135deg, {{ $e['color'] }}, #1f2937);">
+                    <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
+                    <div class="relative w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
+                        {{-- inline-block: a bare <i> is an inline box and CSS
+                         transforms do not apply to those, so rotate-90 would
+                         silently do nothing without it. --}}
+                    <i class="bi bi-diagram-3-fill text-2xl inline-block rotate-90"></i>
                     </div>
-                    <div class="min-w-0 flex-1">
+                    <div class="relative min-w-0">
                         <h3 class="font-black text-base leading-tight">{{ __('personal.event_show_brackets_draws') }}</h3>
                         <p class="text-xs text-white/85 mt-0.5">{{ $catCount }} {{ \Illuminate\Support\Str::plural(strtolower($e['division_label'] ?? 'category'), $catCount) }} · {{ $athleteTotal }} {{ __('personal.event_show_entrants') }} · {{ __('personal.event_show_live_results') }}</p>
                     </div>
-                    <i class="bi bi-chevron-right text-white/80"></i>
+                </a>
+            @endif
+
+            {{-- Who's joined — opens on its own page. The roster used to sit
+                 inline here: three tabs and up to 48 names that every visitor
+                 had to scroll past to reach the location and the join button.
+                 It is now one tile that opens the full list. --}}
+            <a href="{{ route('me.events.people', $e['key']) }}" data-shell-link data-route="me.events"
+               class="{{ $hasBrackets ? 'aspect-square flex flex-col justify-between' : 'col-span-2 flex items-center gap-3' }} m-press rounded-2xl p-4 text-white relative overflow-hidden shadow-lg"
+               style="background: linear-gradient(135deg, {{ $e['color'] }}, #1f2937);">
+                <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
+                <div class="relative w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
+                    <i class="bi bi-people-fill text-2xl"></i>
                 </div>
+                <div class="relative min-w-0 {{ $hasBrackets ? '' : 'flex-1' }}">
+                    <h3 class="font-black text-base leading-tight">{{ $byQual ? __('personal.event_show_finalists') : __('personal.event_show_whos_joined') }}</h3>
+                    {{-- Bound to the page's own Alpine counters, so joining or
+                         removing someone updates this card without a reload —
+                         the same numbers the tabs used to show. --}}
+                    <p class="text-xs text-white/85 mt-0.5">
+                        <span x-text="goingCount">{{ $e['participants_total'] ?? $e['going'] }}</span> {{ __('personal.event_show_in') }}
+                        @if($hasTicket)
+                            · <span x-text="spectators">{{ $e['spectator']['count'] }}</span> {{ __('personal.event_show_spectators') }}
+                        @endif
+                    </p>
+                </div>
+                @if(!$hasBrackets)
+                    <i class="bi bi-chevron-right text-white/80 relative rtl:rotate-180"></i>
+                @endif
             </a>
         </div>
-    @endif
+    </div>
 
 
     {{-- ===== Agenda timeline ===== --}}
@@ -607,46 +640,6 @@
         </div>
     </div>
     @endif
-
-    {{-- ===== Who's joined — opens on its own page =====
-         The roster used to sit inline here: three tabs and up to 48 names that
-         every visitor had to scroll past to reach the location and the join
-         button. It is now one card that opens the full list, matching how
-         Brackets & draws is reached from this screen. --}}
-    <div class="px-4 mt-4">
-        <a href="{{ route('me.events.people', $e['key']) }}" data-shell-link data-route="me.events"
-           class="block m-press rounded-2xl p-4 text-white relative overflow-hidden shadow-lg"
-           style="background: linear-gradient(135deg, {{ $e['color'] }}, #1f2937);">
-            <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
-            <div class="relative flex items-center gap-3">
-                <div class="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
-                    <i class="bi bi-people-fill text-2xl"></i>
-                </div>
-                <div class="min-w-0 flex-1">
-                    <h3 class="font-black text-base leading-tight">{{ $byQual ? __('personal.event_show_finalists') : __('personal.event_show_whos_joined') }}</h3>
-                    {{-- Bound to the page's own Alpine counters, so joining or
-                         removing someone updates this card without a reload —
-                         the same numbers the tabs used to show. --}}
-                    <p class="text-xs text-white/85 mt-0.5">
-                        <span x-text="goingCount">{{ $e['participants_total'] ?? $e['going'] }}</span> {{ __('personal.event_show_in') }}
-                        @if($hasTicket)
-                            · <span x-text="spectators">{{ $e['spectator']['count'] }}</span> {{ __('personal.event_show_spectators') }}
-                        @endif
-                    </p>
-                    {{-- There was a second card below this one ("Verification
-                         desk") listing the same competitors with buttons on them.
-                         The buttons moved onto the roster rows, so this card is
-                         now the single door — officials are told so here. --}}
-                    @if($canOfficiate ?? false)
-                        <p class="text-[11px] text-white/70 mt-0.5 flex items-center gap-1">
-                            <i class="bi bi-clipboard2-check"></i>{{ __('personal.event_verify_open_sub') }}
-                        </p>
-                    @endif
-                </div>
-                <i class="bi bi-chevron-right text-white/80"></i>
-            </div>
-        </a>
-    </div>
 
     {{-- ===== Proof of payment =====
          The join / spectate CTAs that used to sit here are gone: the two pricing
