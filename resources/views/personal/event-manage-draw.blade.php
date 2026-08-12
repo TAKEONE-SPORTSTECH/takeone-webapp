@@ -152,10 +152,6 @@
 @endsection
 
 @push('styles')
-<style>
-    /* The board is flush to the edges, so the legend beneath it needs its own
-       inset — it is the only thing on the page that would otherwise sit hard
-       against the corner. Kept to a margin so it never eats board height. */
-    #manage-bracket-legend { margin-top: .25rem; padding-inline: .75rem; }
-</style>
+{{-- The legend used to need an inset here because it sat beneath a board that
+     runs flush to the edges. It lives inside the board now and carries its own. --}}
 @endpush

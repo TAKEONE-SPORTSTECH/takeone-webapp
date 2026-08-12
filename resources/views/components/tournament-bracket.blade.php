@@ -160,14 +160,23 @@
                     {{ $rtl ? 'right-3' : 'left-3' }}">
             <i class="bi bi-lock-fill"></i> {{ __('events.bracket_locked') }}
         </div>
-    </div>
 
-    {{-- Legend --}}
-    <div id="{{ $id }}-legend"
-         class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.65rem] text-muted-foreground">
-        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span>{{ __('events.bracket_legend_provisional') }}</span>
-        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-green-600"></span>{{ __('events.bracket_legend_done') }}</span>
-        <span class="flex items-center gap-1.5"><i class="bi bi-hand-index-thumb"></i>{{ __('events.bracket_legend_gestures') }}</span>
+        {{-- Legend — inside the board, floating on its bottom edge. It reads the
+             board, so it belongs on it; below the frame it was a line of text the
+             page had to make room for, and on a phone that room came out of the
+             draw. pointer-events-none so it never eats a pan that starts on it,
+             and it stands down in arrange mode — the entrants bench takes this
+             same bottom strip on a narrow screen. --}}
+        <div id="{{ $id }}-legend" x-show="! arrange"
+             class="absolute bottom-3 z-20 pointer-events-none
+                    px-2.5 py-1.5 rounded-xl bg-white/85 backdrop-blur border border-gray-200 shadow-sm
+                    flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.65rem] text-muted-foreground
+                    {{-- clears the zoom/arrange control column, which shares this edge --}}
+                    {{ $rtl ? 'right-3 left-16' : 'left-3 right-16' }}">
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span>{{ __('events.bracket_legend_provisional') }}</span>
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-green-600"></span>{{ __('events.bracket_legend_done') }}</span>
+            <span class="flex items-center gap-1.5"><i class="bi bi-hand-index-thumb"></i>{{ __('events.bracket_legend_gestures') }}</span>
+        </div>
     </div>
 </div>
 
