@@ -115,10 +115,15 @@
 </div>
 
 @once
-    @push('scripts')
+    {{-- Deliberately INLINE, not @push('scripts') — pushed scripts land in
+         #shell-scripts, outside <main id="shell-content">, and the mobile shell
+         navigator only re-runs scripts inside the swapped content. Pushed, this
+         definition never arrived after an in-shell navigation and the uploader
+         was inert until a hard refresh. See event-checklist for the same note. --}}
     <script>
-        // Registered once per page; the component is instantiated per instance.
-        function eventDocuments(config) {
+        // Defined once per document; instantiated per instance. Guarded because a
+        // shell swap re-executes this tag.
+        window.eventDocuments = window.eventDocuments || function (config) {
             return {
                 event: config.event,
                 items: config.items || [],
@@ -216,7 +221,6 @@
                     }
                 },
             };
-        }
+        };
     </script>
-    @endpush
 @endonce

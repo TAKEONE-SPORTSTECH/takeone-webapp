@@ -2,6 +2,12 @@
     Run-day checklist — what has to be true before the competition starts, and
     the Start button it gates.
 
+    On the page it is ONE button showing where preparation stands. Everything
+    else — the items, adding, removing, ticking, and Start itself — lives in a
+    sheet that opens from it (a centered dialog from `sm:` up). The list is the
+    organiser's working surface, not something every official should have to
+    scroll past to reach the roster and the draw.
+
     Standalone: all state, requests and DOM updates live in this file's Alpine
     component. Drop it into any view that can supply the props; it needs no page
     glue, no shared script and no surrounding markup.
@@ -56,12 +62,15 @@
         startUrl: @js(route('me.events.start', $event)),
         base: @js(url('me/events/'.$event.'/checklist')),
      })"
-     class="space-y-3">
+     @keydown.escape.window="open = false">
 
-    {{-- Where it stands. One line that answers the only question this panel
-         exists to answer, before any of the rows are read. --}}
-    <div class="flex items-center gap-3 rounded-2xl p-4 text-white relative overflow-hidden"
-         style="background: linear-gradient(135deg, {{ $ckColor }}, #1f2937);">
+    {{-- On the page: one button, nothing else. It still answers the question the
+         panel exists to answer — where the preparation stands — but the list
+         itself lives in the sheet, one tap away, instead of pushing the roster
+         and the draw down the page for everyone who officiates. --}}
+    <button type="button" @click="open = true"
+            class="m-press w-full text-start flex items-center gap-3 rounded-2xl p-4 text-white relative overflow-hidden"
+            style="background: linear-gradient(135deg, {{ $ckColor }}, #1f2937);">
         <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
         <div class="relative w-11 h-11 rounded-2xl bg-white/15 border border-white/25 backdrop-blur grid place-items-center flex-shrink-0">
             <i class="bi text-xl" :class="started ? 'bi-play-circle-fill' : (outstanding === 0 ? 'bi-check2-circle' : 'bi-list-check')"></i>
@@ -76,110 +85,164 @@
                             : (outstanding === 0
                                 ? @js(__('personal.event_check_all_clear'))
                                 : outstandingLabel()))"></p>
-            <p class="text-[11px] text-white/80 mt-0.5" x-show="! started">{{ __('personal.event_check_sub') }}</p>
+            <p class="text-[11px] text-white/80 mt-0.5" x-show="! started">{{ __('personal.event_check_open') }}</p>
         </div>
-        <div class="relative text-right flex-shrink-0" x-show="items.length">
-            <p class="text-2xl font-black leading-none">
+        <div class="relative flex items-center gap-2 flex-shrink-0">
+            <p class="text-2xl font-black leading-none" x-show="items.length">
                 <span x-text="items.length - outstanding"></span><span class="text-white/60">/<span x-text="items.length"></span></span>
             </p>
+            <i class="bi bi-chevron-right rtl:rotate-180 text-white/70"></i>
         </div>
-    </div>
+    </button>
 
-    {{-- The list. --}}
-    <div class="space-y-2">
-        <template x-for="item in items" :key="item.uuid">
-            <div class="flex items-start gap-3 rounded-xl border p-3 transition-colors"
-                 :class="item.checked ? 'border-green-200 bg-green-50/40' : 'border-gray-200'">
+    {{-- The list itself — a sheet on a phone, a centered dialog on a wide screen.
+         Teleported to <body> so a transformed ancestor (the mobile shell's
+         stagger animation) can't clip a fixed overlay. --}}
+    <template x-teleport="body">
+        <div x-show="open" x-cloak class="fixed inset-0 z-[70] flex flex-col justify-end sm:items-center sm:justify-center sm:p-4">
+            <div x-show="open" x-transition.opacity class="absolute inset-0 bg-black/50" @click="open = false"></div>
 
-                {{-- The tick. A button for officials, a plain state dot once the
-                     event has started or for anyone who may not clear items. --}}
-                <button type="button"
-                        x-show="canCheck && ! started"
-                        @click="toggle(item)"
-                        :disabled="busy === item.uuid"
-                        class="m-press w-6 h-6 rounded-lg border-2 grid place-items-center flex-shrink-0 mt-0.5 disabled:opacity-50 transition-colors"
-                        :class="item.checked ? 'border-transparent text-white' : 'border-gray-300 text-transparent hover:border-gray-400'"
-                        :style="item.checked ? 'background: {{ $ckColor }};' : ''"
-                        :aria-pressed="item.checked"
-                        :aria-label="item.label">
-                    <i class="bi bi-check-lg text-xs"></i>
-                </button>
+            <div x-show="open"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="translate-y-full sm:translate-y-4 sm:scale-95 sm:opacity-0"
+                 x-transition:enter-end="translate-y-0 sm:scale-100 sm:opacity-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="translate-y-0 sm:scale-100 sm:opacity-100"
+                 x-transition:leave-end="translate-y-full sm:translate-y-4 sm:scale-95 sm:opacity-0"
+                 class="relative max-h-[88vh] w-full sm:max-w-lg flex flex-col bg-background rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden">
 
-                <span x-show="! (canCheck && ! started)"
-                      class="w-6 h-6 rounded-lg grid place-items-center flex-shrink-0 mt-0.5"
-                      :class="item.checked ? 'text-green-600' : 'text-muted-foreground'">
-                    <i class="bi" :class="item.checked ? 'bi-check-circle-fill' : 'bi-circle'"></i>
-                </span>
+                {{-- Header: the same standing, so opening the sheet never loses it --}}
+                <div class="flex-shrink-0 px-5 pt-3 pb-3 border-b border-gray-100">
+                    <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3 sm:hidden"></div>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <h3 class="font-bold text-foreground">{{ __('personal.event_check_title') }}</h3>
+                            <p class="text-[11px] text-muted-foreground mt-0.5"
+                               x-text="started
+                                        ? (overridden ? @js(__('personal.event_start_was_overridden')) : @js(__('personal.event_start_running')))
+                                        : (items.length === 0 || outstanding === 0
+                                            ? @js(__('personal.event_check_all_clear'))
+                                            : outstandingLabel())"></p>
+                        </div>
+                        <button type="button" @click="open = false" aria-label="{{ __('shared.close') }}"
+                                class="w-8 h-8 rounded-full grid place-items-center text-muted-foreground hover:bg-muted flex-shrink-0"><i class="bi bi-x-lg"></i></button>
+                    </div>
+                </div>
 
-                <div class="min-w-0 flex-1">
-                    <p class="text-sm font-semibold text-foreground"
-                       :class="item.checked ? 'line-through opacity-60' : ''"
-                       x-text="item.label"></p>
-                    {{-- Who cleared it. The reason a signed list beats a ticked
-                         one: there is someone to ask. --}}
-                    <p class="text-[11px] text-muted-foreground mt-0.5" x-show="item.checked && item.by" x-cloak>
-                        <span x-text="item.at"></span> · <span x-text="byLabel(item.by)"></span>
+                {{-- The list, scrolling on its own so the actions below stay put --}}
+                <div class="flex-1 overflow-y-auto min-h-0 px-5 py-4 space-y-2">
+                    <template x-for="item in items" :key="item.uuid">
+                        {{-- Centered, not top-aligned: the label is a 20px line next to a
+                             24px box, so aligning tops leaves the text visibly riding high.
+                             Rows that grow a second line (who cleared it) centre just as well. --}}
+                        <div class="flex items-center gap-3 rounded-xl border p-3 transition-colors"
+                             :class="item.checked ? 'border-green-200 bg-green-50/40' : 'border-gray-200'">
+
+                            {{-- The tick. A button for officials, a plain state dot once the
+                                 event has started or for anyone who may not clear items. --}}
+                            <button type="button"
+                                    x-show="canCheck && ! started"
+                                    @click="toggle(item)"
+                                    :disabled="busy === item.uuid"
+                                    class="m-press w-6 h-6 rounded-lg border-2 grid place-items-center flex-shrink-0 disabled:opacity-50 transition-colors"
+                                    :class="item.checked ? 'border-transparent text-white' : 'border-gray-300 text-transparent hover:border-gray-400'"
+                                    :style="item.checked ? 'background: {{ $ckColor }};' : ''"
+                                    :aria-pressed="item.checked"
+                                    :aria-label="item.label">
+                                <i class="bi bi-check-lg text-xs"></i>
+                            </button>
+
+                            <span x-show="! (canCheck && ! started)"
+                                  class="w-6 h-6 rounded-lg grid place-items-center flex-shrink-0"
+                                  :class="item.checked ? 'text-green-600' : 'text-muted-foreground'">
+                                <i class="bi" :class="item.checked ? 'bi-check-circle-fill' : 'bi-circle'"></i>
+                            </span>
+
+                            <div class="min-w-0 flex-1">
+                                <p class="text-sm font-semibold text-foreground"
+                                   :class="item.checked ? 'line-through opacity-60' : ''"
+                                   x-text="item.label"></p>
+                                {{-- Who cleared it. The reason a signed list beats a ticked
+                                     one: there is someone to ask. --}}
+                                <p class="text-[11px] text-muted-foreground mt-0.5" x-show="item.checked && item.by" x-cloak>
+                                    <span x-text="item.at"></span> · <span x-text="byLabel(item.by)"></span>
+                                </p>
+                            </div>
+
+                            <button type="button" x-show="canManage && ! started" @click="remove(item)"
+                                    class="w-7 h-7 rounded-lg grid place-items-center flex-shrink-0 text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"
+                                    :aria-label="'{{ __('personal.event_check_remove_confirm') }}'">
+                                <i class="bi bi-x-lg text-xs"></i>
+                            </button>
+                        </div>
+                    </template>
+
+                    <p x-show="! items.length" x-cloak class="text-[12px] text-muted-foreground text-center py-8">
+                        {{ $canManage ? __('personal.event_check_empty') : __('personal.event_check_empty_official') }}
                     </p>
                 </div>
 
-                <button type="button" x-show="canManage && ! started" @click="remove(item)"
-                        class="w-7 h-7 rounded-lg grid place-items-center flex-shrink-0 text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"
-                        :aria-label="'{{ __('personal.event_check_remove_confirm') }}'">
-                    <i class="bi bi-x-lg text-xs"></i>
-                </button>
+                @if($canManage)
+                    <div class="flex-shrink-0 border-t border-gray-100 bg-background px-5 pt-3 space-y-2"
+                         style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
+
+                        {{-- Add an item. Enter submits, because the organiser is writing a list
+                             and reaching for the mouse between each line is the slow way. --}}
+                        <div x-show="! started" x-cloak class="flex items-center gap-2">
+                            <input type="text" x-model="draft" maxlength="160"
+                                   @keydown.enter.prevent="add()"
+                                   placeholder="{{ __('personal.event_check_placeholder') }}"
+                                   class="flex-1 h-11 px-3 rounded-xl border-2 border-gray-200 text-sm font-semibold text-foreground
+                                          focus:outline-none focus:border-current"
+                                   style="caret-color: {{ $ckColor }};">
+                            <button type="button" @click="add()" :disabled="busy === 'add' || ! draft.trim()"
+                                    class="m-press h-11 px-4 rounded-xl text-white text-xs font-black disabled:opacity-50 flex items-center gap-2 flex-shrink-0"
+                                    style="background: {{ $ckColor }};">
+                                <i class="bi" :class="busy === 'add' ? 'bi-arrow-repeat animate-spin' : 'bi-plus-lg'"></i>
+                                {{ __('personal.event_check_add') }}
+                            </button>
+                        </div>
+
+                        {{-- The start itself. Two buttons rather than one that changes meaning:
+                             a clean start and an override are different decisions and should not
+                             share a tap target. --}}
+                        <div x-show="! started" x-cloak class="space-y-2">
+                            <button type="button" @click="start(false)" :disabled="busy === 'start' || outstanding > 0"
+                                    class="m-press w-full h-12 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2
+                                           disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+                                    style="background: {{ $ckColor }};">
+                                <i class="bi" :class="busy === 'start' ? 'bi-arrow-repeat animate-spin' : 'bi-play-fill'"></i>
+                                {{ __('personal.event_start_cta') }}
+                            </button>
+
+                            <button type="button" x-show="outstanding > 0" @click="start(true)" :disabled="busy === 'start'"
+                                    class="m-press w-full h-11 rounded-xl border-2 border-dashed text-xs font-black disabled:opacity-50
+                                           text-muted-foreground hover:text-foreground transition-colors"
+                                    style="border-color: {{ $ckColor }}55;">
+                                <i class="bi bi-exclamation-triangle"></i> {{ __('personal.event_start_override_cta') }}
+                            </button>
+                        </div>
+                    </div>
+                @endif
             </div>
-        </template>
-
-        <p x-show="! items.length" x-cloak class="text-[12px] text-muted-foreground text-center py-4">
-            {{ $canManage ? __('personal.event_check_empty') : __('personal.event_check_empty_official') }}
-        </p>
-    </div>
-
-    @if($canManage)
-        {{-- Add an item. Enter submits, because the organiser is writing a list
-             and reaching for the mouse between each line is the slow way. --}}
-        <div x-show="! started" x-cloak class="flex items-center gap-2">
-            <input type="text" x-model="draft" maxlength="160"
-                   @keydown.enter.prevent="add()"
-                   placeholder="{{ __('personal.event_check_placeholder') }}"
-                   class="flex-1 h-11 px-3 rounded-xl border-2 border-gray-200 text-sm font-semibold text-foreground
-                          focus:outline-none focus:border-current"
-                   style="caret-color: {{ $ckColor }};">
-            <button type="button" @click="add()" :disabled="busy === 'add' || ! draft.trim()"
-                    class="m-press h-11 px-4 rounded-xl text-white text-xs font-black disabled:opacity-50 flex items-center gap-2 flex-shrink-0"
-                    style="background: {{ $ckColor }};">
-                <i class="bi" :class="busy === 'add' ? 'bi-arrow-repeat animate-spin' : 'bi-plus-lg'"></i>
-                {{ __('personal.event_check_add') }}
-            </button>
         </div>
-
-        {{-- The start itself. Two buttons rather than one that changes meaning:
-             a clean start and an override are different decisions and should not
-             share a tap target. --}}
-        <div x-show="! started" x-cloak class="pt-1 space-y-2">
-            <button type="button" @click="start(false)" :disabled="busy === 'start' || outstanding > 0"
-                    class="m-press w-full h-12 rounded-xl text-white text-sm font-black flex items-center justify-center gap-2
-                           disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-                    style="background: {{ $ckColor }};">
-                <i class="bi" :class="busy === 'start' ? 'bi-arrow-repeat animate-spin' : 'bi-play-fill'"></i>
-                {{ __('personal.event_start_cta') }}
-            </button>
-
-            <button type="button" x-show="outstanding > 0" @click="start(true)" :disabled="busy === 'start'"
-                    class="m-press w-full h-11 rounded-xl border-2 border-dashed text-xs font-black disabled:opacity-50
-                           text-muted-foreground hover:text-foreground transition-colors"
-                    style="border-color: {{ $ckColor }}55;">
-                <i class="bi bi-exclamation-triangle"></i> {{ __('personal.event_start_override_cta') }}
-            </button>
-        </div>
-    @endif
+    </template>
 </div>
 
 @once
-    @push('scripts')
+    {{-- Deliberately INLINE, not @push('scripts').
+         Pushed scripts render into #shell-scripts, which sits OUTSIDE
+         <main id="shell-content"> — and the mobile shell navigator only swaps and
+         re-runs scripts found inside #shell-content. So after an in-shell
+         navigation to this page the pushed definition never arrived, x-data
+         called an undefined eventChecklist(), and the whole panel (tick, add,
+         Start) was inert until a hard refresh. Inline, it ships with the content
+         and re-runs on every swap. --}}
     <script>
-        // Registered once per page; instantiated per instance.
-        function eventChecklist(config) {
+        // Defined once per document; instantiated per instance. Guarded because a
+        // shell swap re-executes this tag, and Alpine keeps a reference to the
+        // function it already has.
+        window.eventChecklist = window.eventChecklist || function (config) {
             return {
                 items: config.items || [],
                 canManage: !!config.canManage,
@@ -191,6 +254,8 @@
                 base: config.base,
                 draft: '',
                 busy: null,
+                // The list lives in a sheet; the page carries only the button.
+                open: false,
 
                 get outstanding() { return this.items.filter(i => ! i.checked).length; },
 
@@ -326,7 +391,6 @@
                     } finally { this.busy = null; }
                 },
             };
-        }
+        };
     </script>
-    @endpush
 @endonce

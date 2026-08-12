@@ -233,4 +233,45 @@ class EventPagesRenderTest extends TestCase
         $this->actingAs($owner->fresh())->get('/me/events/create')->assertOk();
         $this->actingAs($owner->fresh())->get("/me/events/{$event->uuid}/edit")->assertOk();
     }
+    /**
+     * The run-day panel's Alpine factory has to travel INSIDE #shell-content.
+     *
+     * It lives on the event CONSOLE now — the public event page carries no
+     * organiser tooling — but the shell trap is the same one either way.
+     *
+     * The mobile shell navigator swaps only that element and re-runs only the
+     * scripts it finds inside it; anything @push('scripts')-ed lands in
+     * #shell-scripts, outside the swap. When the checklist pushed its script,
+     * navigating to the event from within the shell left eventChecklist()
+     * undefined — so tick, add and Start all did nothing until a hard refresh.
+     */
+    public function test_the_run_day_panel_script_travels_with_the_swapped_content(): void
+    {
+        $owner = $this->createUser();
+        $club = $this->club($owner);
+        $owner->memberClubs()->syncWithoutDetaching([$club->id => ['status' => 'active']]);
+        $event = $this->event($owner, $club);
+
+        $phone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148';
+
+        $html = $this->actingAs($owner->fresh())
+            ->withHeaders(['User-Agent' => $phone])
+            ->get("/me/events/{$event->uuid}/manage")
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('eventChecklist', $html, 'the run-day panel did not render at all');
+
+        $main = strpos($html, 'id="shell-content"');
+        $this->assertNotFalse($main, 'the mobile shell content element is missing');
+        $end = strpos($html, 'id="shell-scripts"', $main);
+        $this->assertNotFalse($end, 'the pushed-scripts container is missing');
+
+        $swapped = substr($html, $main, $end - $main);
+        $this->assertStringContainsString(
+            'window.eventChecklist',
+            $swapped,
+            'eventChecklist() is defined outside #shell-content — an in-shell navigation will not re-run it'
+        );
+    }
 }
