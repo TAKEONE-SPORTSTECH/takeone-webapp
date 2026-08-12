@@ -30,7 +30,6 @@ apt-get update -qq
 # without a desktop. Both are in Debian/Raspberry Pi OS Bookworm.
 apt-get install -y --no-install-recommends \
     cog \
-    libwpewebkit-1.0-3 \
     curl \
     ca-certificates
 
@@ -56,6 +55,17 @@ say "Configuring the console"
 # Boot quietly and without a login prompt on the display's tty: nothing should
 # appear on the wall except the board.
 systemctl disable --now getty@tty1.service 2>/dev/null || true
+
+# A desktop image holds DRM master through its display manager, and cog cannot
+# take a screen that X or Wayland already owns — it dies with "could not open
+# DRM device". Lite is what the README asks for, but a Pi flashed with Desktop
+# by mistake should still become a board rather than a black screen.
+if systemctl is-enabled display-manager.service >/dev/null 2>&1 ||
+   systemctl is-active display-manager.service >/dev/null 2>&1; then
+    systemctl disable --now display-manager.service 2>/dev/null || true
+    systemctl set-default multi-user.target >/dev/null
+    echo "disabled the desktop: cog needs the screen to itself"
+fi
 
 BOOT_CFG=/boot/firmware/cmdline.txt
 [ -f "$BOOT_CFG" ] || BOOT_CFG=/boot/cmdline.txt
