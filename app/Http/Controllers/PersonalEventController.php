@@ -289,6 +289,9 @@ class PersonalEventController extends Controller
                 ->get()
                 ->map(fn ($d) => app(\App\Http\Controllers\EventDocumentController::class)->present($d, $event))
                 ->all(),
+            // Hall screens, if this type drives any. The type answers; a type
+            // with no wall boards returns null and the section is simply absent.
+            'screens' => $canManage ? $type->hallScreens($event) : null,
             // Counts for the section cards, so each one says what is waiting
             // inside it before it is opened.
             'counts' => [

@@ -164,6 +164,14 @@
         </div>
     @endif
 
+    {{-- ===== Hall screens — only for a type that drives any ===== --}}
+    @if($canManage && ! empty($screens))
+        <x-court-screens :event="$e['key']"
+                         :mats="$screens['mats'] ?? []"
+                         :screens="$screens['screens'] ?? []"
+                         :color="$mgColor" />
+    @endif
+
     @if($canManage)
         {{-- ===== Finish here ===== --}}
         <div class="space-y-2">

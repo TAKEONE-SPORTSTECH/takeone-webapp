@@ -175,6 +175,16 @@
         </div>
     @endif
 
+    {{-- ===== Hall screens — only for a type that drives any ===== --}}
+    @if($canManage && ! empty($screens))
+        <div class="max-w-md">
+            <x-court-screens :event="$e['key']"
+                             :mats="$screens['mats'] ?? []"
+                             :screens="$screens['screens'] ?? []"
+                             :color="$mgColor" />
+        </div>
+    @endif
+
     @if($canManage)
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {{-- Documents --}}

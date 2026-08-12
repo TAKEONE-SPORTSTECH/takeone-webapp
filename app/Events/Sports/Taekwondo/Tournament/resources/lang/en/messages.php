@@ -104,4 +104,8 @@ return [
     'claimed_court' => 'Mat',
     'claimed_screen' => 'Screen',
     'claimed_note' => 'The screen updates itself as results are entered. You can reassign or revoke it at any time.',
+
+    // Pairing from inside the event console
+    'pair_unknown' => 'That code does not match a screen waiting to be paired. Check the code on the screen — a code is spent once it has been used.',
+    'pair_revoked' => 'The screen has been unpaired. It is back to showing its pairing code.',
 ];

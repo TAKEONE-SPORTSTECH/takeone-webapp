@@ -15,6 +15,7 @@ use App\Mcp\Tools\GetEventReadinessTool;
 use App\Mcp\Tools\GetMemberTool;
 use App\Mcp\Tools\ListActivityCatalogTool;
 use App\Mcp\Tools\ListClubsTool;
+use App\Mcp\Tools\ListCourtScreensTool;
 use App\Mcp\Tools\ListEventDocumentsTool;
 use App\Mcp\Tools\ListEventPeopleTool;
 use App\Mcp\Tools\ListEventsTool;
@@ -81,6 +82,7 @@ class TakeOneServer extends Server
         EnterEventAthletesTool::class,
         GetEventBracketTool::class,
         GetEventReadinessTool::class,
+        ListCourtScreensTool::class,
         ArrangeEventBracketTool::class,
         ListActivityCatalogTool::class,
         VerifyAchievementTool::class,

@@ -78,6 +78,12 @@ Route::post('/court/enroll', [\App\Events\Sports\Taekwondo\Tournament\CourtDispl
 Route::get('/court/{token}/status', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'status'])
     ->name('court-display.status')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:60,1');
 
+// The device agent's realtime credentials — subscribe-only, one topic. Held by
+// the agent rather than the page, because the board's own animation load can
+// starve an inbound socket message in the renderer for minutes.
+Route::get('/court/{token}/link', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'link'])
+    ->name('court-display.link')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:20,1');
+
 // Claiming a screen — the page its QR points at. Authenticated, because the
 // pairing code is printed on a wall in a public hall and is worth nothing on its
 // own: every event offered is one the signed-in organiser can already manage.
@@ -235,6 +241,12 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     // board state pushed over MQTT. Organiser-only, because the court comes
     // straight off the URL.
     Route::get('/events/{event:uuid}/court/{court}/preview', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'preview'])->name('events.court-display.preview')->where('court', '[^/]{1,40}')->middleware('throttle:60,1');
+    // Hall screens, from inside the event console: scan the QR on a Pi and it is
+    // pointed at this event and one of its mats. The event comes from the URL
+    // and is authorized per request — the scanned code is public by design.
+    Route::get('/events/{event:uuid}/screens', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'screens'])->name('events.screens')->middleware('throttle:60,1');
+    Route::post('/events/{event:uuid}/screens', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'pair'])->name('events.screens.pair')->middleware('throttle:admin-write');
+    Route::delete('/events/{event:uuid}/screens/{device}', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'revokeScreen'])->name('events.screens.revoke')->whereNumber('device')->middleware('throttle:admin-write');
     Route::get('/events/{event:uuid}/next-up', [App\Http\Controllers\PersonalEventController::class, 'nextUp'])->name('events.next-up');
     Route::get('/events/{event:uuid}/entry-roster', [App\Http\Controllers\PersonalEventController::class, 'entryRoster'])->name('events.entry-roster');
     Route::post('/events/{event:uuid}/entries', [App\Http\Controllers\PersonalEventController::class, 'storeEntries'])->name('events.entries')->middleware('throttle:admin-write');

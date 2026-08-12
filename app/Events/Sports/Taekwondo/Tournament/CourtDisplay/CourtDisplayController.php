@@ -74,11 +74,18 @@ class CourtDisplayController extends Controller
                 'code' => $device->pairing_code,
                 'token' => $token,
                 'claimUrl' => route('court-display.claim', $device->pairing_code),
+                // So a screen standing on its code jumps to the board the moment
+                // it is paired, instead of waiting out a throttled poll.
+                'screenLink' => ScreenChannel::credentials($device),
             ]);
         }
 
         return view('event-taekwondo_tournament::court-display.board', [
             'payload' => $this->display->payload($device->event, $device->court),
+            // Only a real device gets a heartbeat — the organiser's preview has
+            // no token and must not mark any screen as alive.
+            'statusUrl' => route('court-display.status', $token, false),
+            'screenLink' => ScreenChannel::credentials($device),
         ]);
     }
 
@@ -135,6 +142,37 @@ class CourtDisplayController extends Controller
     }
 
     /**
+     * The screen's own realtime credentials, for the agent on the device.
+     *
+     * The board page carries these too, but a page cannot be relied on to act on
+     * them: the board animates continuously and on a Pi 3B that saturates the
+     * renderer, so an inbound socket message can sit for minutes behind paint
+     * work. The agent is a separate process — nothing the browser does can starve
+     * it — so it holds the subscription and restarts the display when the
+     * assignment changes.
+     *
+     * Authenticated by the device token exactly as the board is, and it hands
+     * back nothing the page did not already contain: a subscribe-only JWT for
+     * one topic, which carries one word.
+     */
+    public function link(Request $request, string $token)
+    {
+        $device = CourtDisplayDevice::resolve($token);
+
+        abort_unless($device, 404);
+
+        $device->touchSeen();
+
+        $credentials = ScreenChannel::credentials($device);
+
+        // Realtime switched off is not an error: the agent falls back to asking
+        // the status endpoint, which is slower and always works.
+        abort_unless($credentials, 404);
+
+        return response()->json($credentials);
+    }
+
+    /**
      * The page an organiser lands on after scanning a screen's QR.
      *
      * The code is printed on a wall in a public hall, so it is worth nothing on
@@ -180,6 +218,159 @@ class CourtDisplayController extends Controller
             ->with('status', __('event-taekwondo_tournament::messages.pair_done', [
                 'court' => $device->court, 'event' => $event->title,
             ]));
+    }
+
+    /**
+     * The screens paired to this event — the console's own list.
+     *
+     * Same data the page rendered with, re-fetched after a pairing or a revoke
+     * so the section updates in place, and on a realtime nudge when another
+     * organiser pairs a screen at the same venue.
+     */
+    public function screens(Request $request, ClubEvent $event)
+    {
+        abort_unless(app(EventAccess::class)->canManage($event, $request->user()), 403);
+
+        return response()->json([
+            'success' => true,
+            'screens' => $this->screensFor($event),
+        ]);
+    }
+
+    /**
+     * Pair a scanned screen to THIS event and a mat on it.
+     *
+     * The organiser scans the QR on the wall from inside the event they are
+     * running, so the event is not a choice here — it comes from the URL and is
+     * authorized on its own. That is the whole difference from `storeClaim`,
+     * where the scan arrives from a phone's camera app with no event in hand and
+     * the organiser must pick one.
+     *
+     * The pairing code is public by nature — it is printed a metre tall on a
+     * wall — so it is not the credential. The credential is this route's session
+     * plus canManage on this event. A spectator who scans the same screen gets a
+     * login page, and past it, a 403.
+     */
+    public function pair(Request $request, ClubEvent $event)
+    {
+        abort_unless(app(EventAccess::class)->canManage($event, $request->user()), 403);
+
+        $data = $request->validate([
+            'code' => ['required', 'string', 'regex:/^[A-Z0-9]{6}$/'],
+            'court' => ['required', 'string', 'max:40'],
+        ]);
+
+        $court = trim($data['court']);
+        abort_unless($court !== '', 422);
+
+        $device = CourtDisplayDevice::pairable($data['code']);
+
+        // One answer for "no such code", "already claimed" and "revoked". The
+        // code is six characters and readable across a hall, so distinguishing
+        // them would turn this into a way to probe which screens exist.
+        if (! $device) {
+            return response()->json([
+                'success' => false,
+                'message' => __('event-taekwondo_tournament::messages.pair_unknown'),
+            ], 404);
+        }
+
+        $device->claim($event, $court, $request->user()->id);
+
+        // The screen is standing in front of somebody showing a QR code — it
+        // should become the board now, not on its next throttled poll.
+        ScreenChannel::notify($device, 'paired');
+
+        $this->screensChanged($event);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('event-taekwondo_tournament::messages.pair_done', [
+                'court' => $device->court, 'event' => $event->title,
+            ]),
+            'screen' => $device->present(),
+            'screens' => $this->screensFor($event),
+        ]);
+    }
+
+    /**
+     * Stop a screen showing this event and send it back to its pairing code.
+     *
+     * Scoped to the event in the URL, so an organiser can only unpair screens on
+     * an event they manage — never one belonging to somebody else's competition.
+     *
+     * Unclaims rather than revokes: the Pi keeps its token, notices on its next
+     * heartbeat that it is no longer claimed, and comes back showing a fresh
+     * code ready for another mat. Revoking would kill the token, and the agent
+     * only enrols when its token file is empty — the screen would sit on a 404
+     * until somebody took the SD card out. That destructive path stays where it
+     * belongs, on `court:pair --revoke`, for a device that is lost or stolen.
+     */
+    public function revokeScreen(Request $request, ClubEvent $event, int $device)
+    {
+        abort_unless(app(EventAccess::class)->canManage($event, $request->user()), 403);
+
+        $screen = CourtDisplayDevice::where('event_id', $event->id)->find($device);
+
+        abort_unless($screen, 404);
+
+        $screen->unclaim();
+
+        // AFTER the write, never before: the screen answers this by re-fetching
+        // its page, and a push that overtook the update would send it back to
+        // the board it was just taken off. The topic survives unclaim() — it is
+        // keyed on the token hash, which does not change.
+        ScreenChannel::notify($screen, 'unpaired');
+
+        $this->screensChanged($event);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('event-taekwondo_tournament::messages.pair_revoked'),
+            'screens' => $this->screensFor($event),
+        ]);
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function screensFor(ClubEvent $event): array
+    {
+        return CourtDisplayDevice::where('event_id', $event->id)
+            ->whereNull('revoked_at')
+            ->orderBy('court')->orderBy('id')
+            ->get()
+            ->map(fn (CourtDisplayDevice $d) => $d->present())
+            ->all();
+    }
+
+    /**
+     * Nudge the other people running this event.
+     *
+     * A refresh signal, not the screens themselves: whoever receives it re-fetches
+     * through `screens()` and is authorized there. Nothing about the hall's
+     * hardware rides on the wire, and a competitor on the same event channel —
+     * who also receives `events` messages — learns nothing from it.
+     */
+    private function screensChanged(ClubEvent $event): void
+    {
+        $ids = $event->officials()->pluck('user_id')->all();
+
+        if ($event->created_by) {
+            $ids[] = $event->created_by;
+        }
+
+        $ids = array_values(array_unique(array_map('intval', array_filter($ids))));
+
+        if (! $ids) {
+            return;
+        }
+
+        rescue(fn () => \Realtime()->publishMany(array_map(
+            fn (int $id) => [
+                'topic' => \Realtime()->userTopic($id, 'events'),
+                'payload' => ['action' => 'screens', 'event' => $event->uuid],
+            ],
+            $ids,
+        )), null, false);
     }
 
     /** Confirmation, so the organiser knows the wall screen has changed. */
