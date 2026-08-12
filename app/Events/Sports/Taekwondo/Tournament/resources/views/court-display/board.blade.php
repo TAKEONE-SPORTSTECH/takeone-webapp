@@ -68,7 +68,7 @@
   @keyframes headerIn { from { opacity: 0; transform: translateY(-40px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes rowSweep { 0% { transform: translateX(-140%) skewX(-22deg); } 45%, 100% { transform: translateX(320%) skewX(-22deg); } }
   @keyframes goldRun { 0% { background-position: 0% 50%; } 100% { background-position: 300% 50%; } }
-  @keyframes nextBreathe { 0%,100% { box-shadow: 0 0 16px oklch(0.85 0.16 85 / 0.35), 0 0 44px oklch(0.85 0.16 85 / 0.15); } 50% { box-shadow: 0 0 36px oklch(0.85 0.16 85 / 0.8), 0 0 110px oklch(0.85 0.16 85 / 0.35); } }
+  @keyframes nextBreathe { 0%,100% { box-shadow: 0 0 16px rgba(253,196,54,0.35), 0 0 44px rgba(253,196,54,0.15); box-shadow: 0 0 16px oklch(0.85 0.16 85 / 0.35), 0 0 44px oklch(0.85 0.16 85 / 0.15); } 50% { box-shadow: 0 0 36px rgba(253,196,54,0.8), 0 0 110px rgba(253,196,54,0.35); box-shadow: 0 0 36px oklch(0.85 0.16 85 / 0.8), 0 0 110px oklch(0.85 0.16 85 / 0.35); } }
   @keyframes titleShimmer { 0% { background-position: -200% 50%; } 100% { background-position: 300% 50%; } }
   @keyframes readyTrack { 0%,100% { letter-spacing: 0.2em; opacity: 1; } 50% { letter-spacing: 0.34em; opacity: 0.75; } }
   @keyframes numBeat { 0%,100% { transform: scale(1); } 50% { transform: scale(1.14); } }
@@ -94,7 +94,7 @@
      is what actually hurts, and the queue rarely changes minute to minute. */
   #stale { position: absolute; right: 60px; bottom: 34px; display: none; align-items: center; gap: 12px; padding: 8px 20px; background: rgba(10,10,14,0.85); border: 1px solid rgba(232,230,224,0.25); font-weight: 600; font-size: 22px; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(232,230,224,0.6); }
   #stale.on { display: flex; }
-  #stale .dot { width: 12px; height: 12px; border-radius: 50%; background: oklch(0.72 0.19 55); animation: numBeat 1.6s ease-in-out infinite; }
+  #stale .dot { width: 12px; height: 12px; border-radius: 50%; background: #fb7c00; background: oklch(0.72 0.19 55); animation: numBeat 1.6s ease-in-out infinite; }
 
   @media (prefers-reduced-motion: reduce) {
     #head, #rows > *, #rows * { animation: none !important; }
@@ -108,19 +108,19 @@
 
     <div id="head">
       <div style="flex:1; display:flex; align-items:center; gap:18px;">
-        <div style="width:10px; height:64px; background:oklch(0.62 0.21 25);"></div>
+        <div style="width:10px; height:64px; background:#ea3c3f; background:oklch(0.62 0.21 25);"></div>
         <div id="eventTitle" style="font-weight:700; font-size:34px; letter-spacing:0.24em; text-transform:uppercase; color:rgba(232,230,224,0.85); max-width:520px;"></div>
       </div>
       <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
-        <div style="font-family:'Anton',sans-serif; font-size:64px; letter-spacing:0.2em; padding-left:0.2em; text-transform:uppercase; white-space:nowrap; background:linear-gradient(100deg, oklch(0.85 0.16 85) 40%, #fffdf0 50%, oklch(0.85 0.16 85) 60%); background-size:200% 100%; -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; animation:titleShimmer 3.5s linear infinite;">{{ __('event-taekwondo_tournament::messages.court_title') }}</div>
-        <div style="height:3px; width:100%; background:linear-gradient(to right, transparent, oklch(0.85 0.16 85), transparent);"></div>
+        <div style="font-family:'Anton',sans-serif; font-size:64px; letter-spacing:0.2em; padding-left:0.2em; text-transform:uppercase; white-space:nowrap; background:linear-gradient(100deg, #fdc436 40%, #fffdf0 50%, #fdc436 60%); background:linear-gradient(100deg, oklch(0.85 0.16 85) 40%, #fffdf0 50%, oklch(0.85 0.16 85) 60%); background-size:200% 100%; -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; animation:titleShimmer 3.5s linear infinite;">{{ __('event-taekwondo_tournament::messages.court_title') }}</div>
+        <div style="height:3px; width:100%; background:linear-gradient(to right, transparent, #fdc436, transparent); background:linear-gradient(to right, transparent, oklch(0.85 0.16 85), transparent);"></div>
       </div>
       <div style="flex:1; display:flex; justify-content:flex-end; align-items:center; gap:18px;">
-        <div id="courtBadge" style="display:flex; align-items:baseline; gap:12px; background:rgba(10,10,14,0.72); border:1px solid oklch(0.85 0.16 85 / 0.5); padding:10px 28px;">
+        <div id="courtBadge" style="display:flex; align-items:baseline; gap:12px; background:rgba(10,10,14,0.72); border:1px solid rgba(253,196,54,0.5); border:1px solid oklch(0.85 0.16 85 / 0.5); padding:10px 28px;">
           <span style="font-weight:600; font-size:32px; letter-spacing:0.3em; color:rgba(232,230,224,0.65); text-transform:uppercase;">{{ __('event-taekwondo_tournament::messages.court_court') }}</span>
           <span id="courtNumber" style="font-family:'Anton',sans-serif; font-size:52px; color:#fff;"></span>
         </div>
-        <div style="width:10px; height:64px; background:oklch(0.55 0.18 255);"></div>
+        <div style="width:10px; height:64px; background:#026fd7; background:oklch(0.55 0.18 255);"></div>
       </div>
     </div>
 
@@ -196,7 +196,20 @@
     return /^[a-z]{2}$/.test(String(code || '')) ? 'https://flagcdn.com/w320/' + code + '.png' : null;
   }
 
-  var RED_TONE = 'oklch(0.44 0.14 25)', BLUE_TONE = 'oklch(0.4 0.12 255)';
+  // ── Colour has to survive an old engine ──────────────────────────────────
+  // The Pi images ship WPE WebKit 2.38 (cog), which does not implement oklch():
+  // it drops the WHOLE declaration, so a lone `background:oklch(...)` painted
+  // black and took the entire palette down with it. Every oklch colour is
+  // therefore declared twice — the sRGB twin first, the oklch second — and each
+  // engine keeps the last one it can parse. Wide-gamut screens still get oklch.
+  // Keep the pairs in sync: the hexes are the exact sRGB conversions.
+  function dual(prop, fallback, modern) {
+    return prop + ':' + fallback + ';' + prop + ':' + modern + ';';
+  }
+
+  var RED_TONE = { fb: '#902828', ok: 'oklch(0.44 0.14 25)' },
+      BLUE_TONE = { fb: '#0e4786', ok: 'oklch(0.4 0.12 255)' },
+      GOLD_FB = '#fdc436', GOLD = 'oklch(0.85 0.16 85)';
 
   function el(tag, style, text) {
     var n = document.createElement(tag);
@@ -210,12 +223,18 @@
     var tone = isRed ? RED_TONE : BLUE_TONE;
     var wrap = el('div', 'flex:1; min-width:0; display:flex; align-items:stretch;' +
       (isRed
-        ? 'background:linear-gradient(90deg, oklch(0.46 0.17 25) 0%, oklch(0.3 0.1 25) 100%); clip-path:polygon(0 0, 100% 0, calc(100% - 60px) 100%, 0 100%); margin-right:-30px;'
-        : 'flex-direction:row-reverse; background:linear-gradient(270deg, oklch(0.42 0.14 255) 0%, oklch(0.28 0.09 255) 100%); clip-path:polygon(60px 0, 100% 0, 100% 100%, 0 100%); margin-left:-30px;'));
+        ? dual('background', 'linear-gradient(90deg, #a21921 0%, #551112 100%)',
+                             'linear-gradient(90deg, oklch(0.46 0.17 25) 0%, oklch(0.3 0.1 25) 100%)') +
+          'clip-path:polygon(0 0, 100% 0, calc(100% - 60px) 100%, 0 100%); margin-right:-30px;'
+        : 'flex-direction:row-reverse;' +
+          dual('background', 'linear-gradient(270deg, #004b97 0%, #012854 100%)',
+                             'linear-gradient(270deg, oklch(0.42 0.14 255) 0%, oklch(0.28 0.09 255) 100%)') +
+          'clip-path:polygon(60px 0, 100% 0, 100% 100%, 0 100%); margin-left:-30px;'));
 
     // Competitor portrait. Hidden when the athlete has no published picture —
     // the corner's own tone still carries the half, and the name gets the room.
-    var photo = el('div', 'width:230px; flex:0 0 auto; background-color:' + tone + '; background-size:cover; background-position:center 12%;');
+    var photo = el('div', 'width:230px; flex:0 0 auto;' + dual('background-color', tone.fb, tone.ok) +
+      'background-size:cover; background-position:center 12%;');
     bgOrHide(photo, m[corner + 'Photo']);
     wrap.appendChild(photo);
 
@@ -257,22 +276,23 @@
   /** The centre plate: bout number, round, weight class — gold when it is next. */
   function plate(m, isNext) {
     var p = el('div', 'position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; gap:2px;' +
-      'background:' + (isNext ? 'oklch(0.85 0.16 85)' : '#101016') + '; border:2px solid ' + (isNext ? '#fffdf0' : 'rgba(255,255,255,0.3)') + ';' +
+      (isNext ? dual('background', GOLD_FB, GOLD) : 'background:#101016;') +
+      'border:2px solid ' + (isNext ? '#fffdf0' : 'rgba(255,255,255,0.3)') + ';' +
       'padding:10px 26px 12px; min-width:220px; box-shadow:0 0 30px rgba(0,0,0,0.7); z-index:3;');
 
     var text = isNext ? '#141210' : '#fff';
-    var accent = isNext ? '#141210' : 'oklch(0.85 0.16 85)';
+    var accent = isNext ? { fb: '#141210', ok: '#141210' } : { fb: GOLD_FB, ok: GOLD };
     var muted = isNext ? 'rgba(20,18,16,0.65)' : 'rgba(232,230,224,0.65)';
 
     if (isNext) {
-      p.appendChild(el('div', 'font-weight:800; font-size:26px; letter-spacing:0.2em; text-transform:uppercase; background:#141210; color:oklch(0.85 0.16 85); padding:3px 18px 3px 20px; margin-bottom:2px; animation:readyTrack 1.6s ease-in-out infinite;', @json(__('event-taekwondo_tournament::messages.court_get_ready'))));
+      p.appendChild(el('div', 'font-weight:800; font-size:26px; letter-spacing:0.2em; text-transform:uppercase; background:#141210;' + dual('color', GOLD_FB, GOLD) + 'padding:3px 18px 3px 20px; margin-bottom:2px; animation:readyTrack 1.6s ease-in-out infinite;', @json(__('event-taekwondo_tournament::messages.court_get_ready'))));
     }
 
     // "MATCH 12" — the label is only meaningful next to a number, so the whole
     // line steps aside for a bout that has not been given one yet.
     var line = el('div', 'display:flex; align-items:baseline; gap:8px;');
     line.appendChild(el('span', 'font-weight:600; font-size:26px; letter-spacing:0.24em; text-transform:uppercase; color:' + muted + ';', @json(__('event-taekwondo_tournament::messages.court_match'))));
-    var num = el('span', "font-family:'Anton',sans-serif; font-size:54px; line-height:1; color:" + accent + ';' + (isNext ? ' animation:numBeat 1.6s ease-in-out infinite;' : ''));
+    var num = el('span', "font-family:'Anton',sans-serif; font-size:54px; line-height:1;" + dual('color', accent.fb, accent.ok) + (isNext ? ' animation:numBeat 1.6s ease-in-out infinite;' : ''));
     show(line, textOrHide(num, m.number));
     line.appendChild(num);
     p.appendChild(line);
@@ -301,7 +321,8 @@
     if (isNext) anim.push('nextBreathe 2.2s 1.2s ease-in-out infinite');
 
     var r = el('div', 'flex:1; min-height:0; position:relative; display:flex; align-items:stretch;' +
-      'border:1px solid ' + (isNext ? 'oklch(0.85 0.16 85 / 0.8)' : 'rgba(255,255,255,0.15)') + '; background:#101016;' +
+      (isNext ? dual('border', '1px solid rgba(253,196,54,0.8)', '1px solid oklch(0.85 0.16 85 / 0.8)')
+              : 'border:1px solid rgba(255,255,255,0.15);') + 'background:#101016;' +
       (anim.length ? ' animation:' + anim.join(', ') + ';' : ''));
 
     var sweepWrap = el('div', 'position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:2;');
@@ -310,7 +331,10 @@
 
     if (isNext) {
       r.appendChild(el('div', 'position:absolute; inset:-2px; pointer-events:none; z-index:2; border:3px solid transparent;' +
-        'background:linear-gradient(90deg, oklch(0.85 0.16 85), #fffdf0 25%, oklch(0.85 0.16 85) 50%, #6b5310 75%, oklch(0.85 0.16 85)) border-box; background-size:300% 100%;' +
+        dual('background',
+             'linear-gradient(90deg, ' + GOLD_FB + ', #fffdf0 25%, ' + GOLD_FB + ' 50%, #6b5310 75%, ' + GOLD_FB + ') border-box',
+             'linear-gradient(90deg, ' + GOLD + ', #fffdf0 25%, ' + GOLD + ' 50%, #6b5310 75%, ' + GOLD + ') border-box') +
+        'background-size:300% 100%;' +
         '-webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); -webkit-mask-composite:xor;' +
         'mask:linear-gradient(#fff 0 0) padding-box exclude, linear-gradient(#fff 0 0); animation:goldRun 2.5s linear infinite;'));
     }
@@ -381,7 +405,34 @@
   };
 
   render(@json($payload));
+
+@isset($statusUrl)
+  // ── Heartbeat ────────────────────────────────────────────────────────────
+  // Phase 1 renders this page once and then never speaks again, so without
+  // this a device goes silent the moment it finishes loading — and the
+  // organiser's console cannot tell a screen that is running from one that was
+  // unplugged, which is the single thing worth knowing while a hall fills up.
+  //
+  // Deliberately the existing status endpoint: it already exists for the
+  // pairing screen, it touches last_seen, and it carries one boolean. Once a
+  // minute, against the pairing screen's own five seconds — a twelfth of the
+  // traffic that is already considered acceptable on a metered link.
+  // It also answers the other question a wall screen cannot ask for itself:
+  // "am I still this mat's board?" An organiser who unpairs a screen expects it
+  // to go back to its code within the minute — without this it would keep
+  // showing a queue it is no longer assigned to, which is worse than blank.
+  setInterval(function () {
+    fetch(@json($statusUrl), { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (s) { if (s && s.claimed === false) window.location.reload(); })
+      .catch(function () { /* offline — keep the last known board up */ });
+  }, 60000);
+@endisset
 })();
 </script>
+
+@isset($screenLink)
+@include('event-taekwondo_tournament::court-display.partials.screen-link')
+@endisset
 </body>
 </html>

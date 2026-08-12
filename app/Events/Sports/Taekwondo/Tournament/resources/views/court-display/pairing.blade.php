@@ -138,5 +138,9 @@
   }, 5000);
 })();
 </script>
+
+@isset($screenLink)
+@include('event-taekwondo_tournament::court-display.partials.screen-link')
+@endisset
 </body>
 </html>

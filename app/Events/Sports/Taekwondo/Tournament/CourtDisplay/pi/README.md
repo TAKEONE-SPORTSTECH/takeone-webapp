@@ -53,12 +53,39 @@ cog renders /court/<token>
    ↓
 ┌──────────────────────┐               white screen, QR, 6-character code
 │  unpaired            │──────────────► organiser scans it, picks event + mat
-└──────────────────────┘               the screen notices within 5s and switches
+└──────────────────────┘               takeone-court-link hears it and restarts
+   ↓ ▲                                 the display — seconds, not minutes
+   │ │  unpair from the console
+   │ └───────────────────────────────── back to a FRESH code, ready for another mat
    ↓
 ┌──────────────────────┐
 │  the board           │               closest bout first; shortens as results land
 └──────────────────────┘
 ```
+
+### The ear — `takeone-court-link`
+
+A second process, started by `takeone-court` before it hands the console to cog.
+It subscribes to this screen's own MQTT topic and, when the assignment changes,
+kills cog — which ends the unit's main process, so systemd brings the display
+straight back and the server decides what it now shows.
+
+**Why it is not in the page.** The board carries the same subscription and it
+works anywhere with a GPU. On a Pi 3B it does not: the board animates
+continuously (a 110px-blur `box-shadow`, gradient `background-position`, clip-path
+rows — none of it accelerated), which saturates the renderer. Measured, the same
+page reacted to a message in **7 seconds run headless** and **not at all within
+six minutes on the real display**, and a 60s timer fired every ~2m50s. Out here
+nothing the browser does can starve it: the reaction is now in the same second
+the organiser taps.
+
+It degrades rather than breaks. No `python3-paho-mqtt`, no realtime configured,
+broker unreachable — the display still works, falling back to the board's own
+slow polling.
+
+> Its HTTP request identifies itself as `takeone-court-link/1.0` deliberately.
+> Cloudflare answers **403** to urllib's default `Python-urllib/3.11`, which cost
+> an afternoon once.
 
 The token is written to `/etc/takeone-court/token`, `0600`, root-owned. It is
 that screen's whole identity, and it survives reboots — **a power cut at 11am

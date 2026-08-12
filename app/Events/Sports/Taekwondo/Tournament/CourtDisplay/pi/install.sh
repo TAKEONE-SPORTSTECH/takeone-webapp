@@ -31,7 +31,8 @@ apt-get update -qq
 apt-get install -y --no-install-recommends \
     cog \
     curl \
-    ca-certificates
+    ca-certificates \
+    python3-paho-mqtt
 
 # The DRM platform ships separately on some images. Not fatal if absent — cog
 # will say so on first run and the journal will show it.
@@ -40,6 +41,10 @@ apt-get install -y --no-install-recommends cog-platform-drm 2>/dev/null || \
 
 say "Installing the display program"
 install -m 755 "$HERE/takeone-court" /usr/local/bin/takeone-court
+# The ear: subscribes to this screen's topic so pairing changes land in seconds
+# instead of waiting for the board to notice. Optional at runtime — the display
+# works without it, just slower — so a missing paho only degrades, never breaks.
+install -m 755 "$HERE/takeone-court-link" /usr/local/bin/takeone-court-link
 install -m 644 "$HERE/takeone-court.service" /etc/systemd/system/takeone-court.service
 
 install -d -m 700 "$CONF_DIR"

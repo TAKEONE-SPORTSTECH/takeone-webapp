@@ -1,0 +1,150 @@
+#!/usr/bin/env python3
+"""
+The screen's ear.
+
+One job: notice that this screen has been given a mat, or taken off one, and
+make the display start again so the server can decide what it now shows.
+
+Why this is a separate process and not a few lines in the board page. The board
+carries the same subscription, and on anything with a GPU it works — but the
+board animates continuously, and on a Pi 3B that saturates the renderer: a
+measured inbound message sat behind paint work for minutes, while the same page
+run headless reacted in seven seconds. An organiser who unpairs a screen is
+standing in front of it. So the subscription lives out here, where nothing the
+browser does can starve it.
+
+It does not parse the board, know the event, or hold any state. It waits for one
+word and restarts the display; the server decides everything else.
+
+Run by takeone-court, which starts it in the background before handing the
+console to cog. Never run by hand.
+"""
+
+import json
+import os
+import ssl
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.request
+from urllib.parse import urlparse
+
+import paho.mqtt.client as mqtt
+
+CONF_DIR = "/etc/takeone-court"
+TOKEN_FILE = os.path.join(CONF_DIR, "token")
+SERVER_FILE = os.path.join(CONF_DIR, "server")
+
+
+def log(msg):
+    # journald picks up stdout; the prefix matches the shell agent's.
+    print("[takeone-court-link] %s" % msg, flush=True)
+
+
+def read(path, default=""):
+    try:
+        with open(path) as fh:
+            return fh.read().strip()
+    except OSError:
+        return default
+
+
+def fetch_credentials(server, token):
+    """Ask the server who we are on the broker. Retries forever: a screen that
+    cannot reach the server has nothing better to do, and the display itself is
+    already showing whatever it last had."""
+    url = "%s/court/%s/link" % (server.rstrip("/"), token)
+
+    # Named on purpose. Cloudflare sits in front of the app and answers 403 to
+    # urllib's default "Python-urllib/3.11" — a WAF rule about scripted clients
+    # that has nothing to do with this request being legitimate. Identifying the
+    # agent by name gets a 200 and is what a device should send anyway.
+    request = urllib.request.Request(url, headers={
+        "User-Agent": "takeone-court-link/1.0",
+        "Accept": "application/json",
+    })
+
+    while True:
+        try:
+            with urllib.request.urlopen(request, timeout=20) as res:
+                return json.loads(res.read().decode())
+        except urllib.error.HTTPError as e:
+            # 404 = realtime is switched off server-side, or this token is dead.
+            # Either way there is nothing to subscribe to; the display's own
+            # polling remains the fallback, so exit quietly rather than spin.
+            log("no realtime link (HTTP %s) — falling back to polling" % e.code)
+            sys.exit(0)
+        except Exception as e:
+            log("cannot reach %s (%s); retrying in 15s" % (server, e))
+            time.sleep(15)
+
+
+def restart_display():
+    """Bring the browser back so it re-fetches its page.
+
+    A restart rather than a reload: the display is a separate process this has
+    no handle on, the page it should show may be a different page entirely, and
+    a fresh cog is the one state we know is correct. systemd brings it straight
+    back — killing cog ends the unit's main process, because the agent execs it.
+    """
+    log("assignment changed — restarting the display")
+    subprocess.run(["pkill", "-x", "cog"], check=False)
+
+
+def main():
+    token = read(TOKEN_FILE)
+    server = read(SERVER_FILE, "https://takeone.bh")
+
+    if not token:
+        log("no token yet — nothing to listen for")
+        return
+
+    creds = fetch_credentials(server, token)
+    url = urlparse(creds["ws_url"])
+    secure = url.scheme in ("wss", "https")
+    port = url.port or (443 if secure else 80)
+    path = url.path or "/mqtt"
+
+    client = mqtt.Client(transport="websockets", clean_session=True)
+    client.username_pw_set(creds["username"], creds["password"])
+    client.ws_set_options(path=path)
+
+    if secure:
+        client.tls_set(cert_reqs=ssl.CERT_REQUIRED)
+
+    def on_connect(cli, _userdata, _flags, rc):
+        if rc != 0:
+            # Almost always an expired credential. Exiting is the fix: the agent
+            # restarts this process, which fetches a fresh one.
+            log("broker refused the connection (rc=%s)" % rc)
+            os._exit(1)
+        log("connected; watching for pairing changes")
+        cli.subscribe(creds["topic"], qos=0)
+
+    def on_message(_cli, _userdata, msg):
+        try:
+            action = json.loads(msg.payload.decode()).get("action")
+        except Exception:
+            return
+        if action in ("paired", "unpaired"):
+            restart_display()
+
+    client.on_connect = on_connect
+    client.on_message = on_message
+
+    # paho reconnects on its own with a backoff; a venue's wifi dropping must
+    # never need a human.
+    client.reconnect_delay_set(min_delay=2, max_delay=60)
+
+    while True:
+        try:
+            client.connect(url.hostname, port, keepalive=60)
+            client.loop_forever()
+        except Exception as e:
+            log("connection lost (%s); retrying in 10s" % e)
+            time.sleep(10)
+
+
+if __name__ == "__main__":
+    main()

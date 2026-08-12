@@ -206,6 +206,37 @@ class CourtDisplayDevice extends Model
         return hash('sha256', $token);
     }
 
+    /**
+     * What an organiser's console may know about this screen.
+     *
+     * Deliberately not `toArray()`: that would carry the token hint, the row id
+     * of whoever created it and the raw timestamps. A console needs to tell one
+     * screen from another and see whether it is alive — nothing more.
+     *
+     * @return array<string, mixed>
+     */
+    public function present(): array
+    {
+        return [
+            'id' => $this->id,
+            'label' => $this->label ?: null,
+            'court' => $this->court,
+            // "alive" is a stronger claim than "was seen once", and it is only
+            // answerable because the board heartbeats.
+            //
+            // Ten minutes for a beat asked for every sixty seconds, because the
+            // appliance browser does not honour that interval: cog/WPE on DRM
+            // throttles background timers hard — measured at ~2m50s for a 60s
+            // interval on a Pi 3B, and ~2m45s for the pairing screen's 5s poll.
+            // A window near the nominal period would flap green/amber on a
+            // perfectly healthy screen, which is worse than saying nothing. Ten
+            // minutes still catches the case that matters: a screen unplugged or
+            // off the network while the hall fills up.
+            'live' => $this->last_seen_at !== null && $this->last_seen_at->gt(now()->subMinutes(10)),
+            'last_seen' => $this->last_seen_at?->diffForHumans(),
+        ];
+    }
+
     /** Note that the screen is alive, without writing a row on every poll. */
     public function touchSeen(): void
     {
@@ -217,5 +248,28 @@ class CourtDisplayDevice extends Model
     public function revoke(): void
     {
         $this->forceFill(['revoked_at' => now()])->saveQuietly();
+    }
+
+    /**
+     * Send this screen back to its pairing code, keeping its identity.
+     *
+     * The console's "unpair" — and deliberately NOT revoke(). A revoked token
+     * resolves to nothing, and the Pi agent only ever enrols when its token file
+     * is empty: it would sit on a 404 forever, recoverable only by editing the
+     * SD card. Unclaiming keeps the token valid, so the device polls, sees it is
+     * no longer claimed, and comes back showing a fresh code — which is the
+     * thing an organiser moving a screen between mats actually wants.
+     *
+     * A new code every time, because the old one was spent when it was claimed
+     * and a code that came back would let an onlooker's photograph work twice.
+     */
+    public function unclaim(): void
+    {
+        $this->forceFill([
+            'event_id' => null,
+            'court' => null,
+            'claimed_at' => null,
+            'pairing_code' => static::freshPairingCode(),
+        ])->save();
     }
 }

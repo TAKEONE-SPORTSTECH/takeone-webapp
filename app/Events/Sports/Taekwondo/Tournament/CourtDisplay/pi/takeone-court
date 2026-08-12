@@ -73,6 +73,23 @@ TOKEN="$(cat "$TOKEN_FILE")"
 # A board that blanks after ten minutes is worse than no board at all.
 setterm --blank 0 --powerdown 0 >/dev/tty0 2>/dev/null || true
 
+# ── The ear ──────────────────────────────────────────────────────────────
+# Subscribes to this screen's topic and kills cog when the assignment changes,
+# so an organiser who pairs or unpairs a screen sees it change within seconds.
+#
+# A separate process ON PURPOSE. The board page holds the same subscription, but
+# it animates continuously and on a Pi 3B that saturates the renderer — a
+# message measured seven seconds through a headless run sat for minutes behind
+# paint work on the real display. Out here nothing the browser does can starve
+# it. Killing cog ends the unit's main process (it is exec'd below), so systemd
+# brings the display straight back and the server decides what it now shows.
+#
+# Best-effort: if it cannot start, the display still works — the board's own
+# polling is the fallback, just slower.
+if [ -x /usr/local/bin/takeone-court-link ]; then
+    /usr/local/bin/takeone-court-link &
+fi
+
 log "starting display"
 
 # ── The browser engine, as an appliance ──────────────────────────────────
