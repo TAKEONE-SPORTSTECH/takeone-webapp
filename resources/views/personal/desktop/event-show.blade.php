@@ -757,13 +757,6 @@
                                             · <span x-text="spectators">{{ $e['spectator']['count'] }}</span> {{ __('personal.event_show_spectators') }}
                                         @endif
                                     </p>
-                                    {{-- Officials get told the roster is where their
-                                         work is now, since their old card is gone. --}}
-                                    @if($canOfficiate ?? false)
-                                        <p class="text-[11px] text-white/70 mt-0.5 truncate flex items-center gap-1">
-                                            <i class="bi bi-clipboard2-check"></i>{{ __('personal.event_verify_open_sub') }}
-                                        </p>
-                                    @endif
                                 </div>
                                 <i class="bi bi-chevron-right text-white/80 flex-shrink-0 rtl:rotate-180"></i>
                             </div>

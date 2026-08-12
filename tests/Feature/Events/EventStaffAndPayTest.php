@@ -77,10 +77,17 @@ class EventStaffAndPayTest extends TestCase
             'user_id' => $blocked->id, 'scope' => 'event',
         ]);
 
+        // The blocked list lives with the organiser's other work, on the desk —
+        // "who's joined" is reading only and shows nobody's moderation state.
+        $this->actingAs($organiser->fresh())
+            ->get("/me/events/{$event->uuid}/verify")
+            ->assertOk()
+            ->assertSee('Blocked Person');
+
         $this->actingAs($organiser->fresh())
             ->get("/me/events/{$event->uuid}/people")
             ->assertOk()
-            ->assertSee('Blocked Person');
+            ->assertDontSee('Blocked Person');
     }
 
     /* ============ One roster, and what each role may do to it ============ */
@@ -105,17 +112,17 @@ class EventStaffAndPayTest extends TestCase
         return $athlete;
     }
 
-    public function test_the_old_verification_desk_url_lands_on_the_roster(): void
+    public function test_the_verification_desk_url_opens_the_desk_for_the_organiser(): void
     {
         $organiser = $this->createUser();
         $club = $this->clubFor($organiser);
         $event = $this->event($club, $organiser);
 
-        // The console was folded into the roster. Its URL was linked from the
-        // event screen and gets bookmarked, so it must not dead-end.
+        // This URL is linked from the event screen and gets bookmarked, so it
+        // must open the desk itself rather than bounce anywhere.
         $this->actingAs($organiser->fresh())
             ->get("/me/events/{$event->uuid}/verify")
-            ->assertRedirect("/me/events/{$event->uuid}/people");
+            ->assertOk();
     }
 
     public function test_a_competitor_gets_no_verification_controls_on_the_roster(): void
@@ -154,7 +161,7 @@ class EventStaffAndPayTest extends TestCase
         ]);
 
         $body = $this->actingAs($scaler->fresh())
-            ->get("/me/events/{$event->uuid}/people")
+            ->get("/me/events/{$event->uuid}/verify")
             ->assertOk()
             ->assertSee('Weighed Athlete')
             ->getContent();
@@ -185,7 +192,7 @@ class EventStaffAndPayTest extends TestCase
         ]);
 
         $body = $this->actingAs($cashier->fresh())
-            ->get("/me/events/{$event->uuid}/people")
+            ->get("/me/events/{$event->uuid}/verify")
             ->assertOk()
             ->assertSee('Paying Athlete')
             ->getContent();
@@ -215,7 +222,7 @@ class EventStaffAndPayTest extends TestCase
         ]);
 
         $this->actingAs($cashier->fresh())
-            ->get("/me/events/{$event->uuid}/people")
+            ->get("/me/events/{$event->uuid}/verify")
             ->assertOk()
             ->assertSee('Paying Athlete')
             ->assertSee('/proof', false);

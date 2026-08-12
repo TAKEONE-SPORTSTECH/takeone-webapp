@@ -605,6 +605,39 @@ class McpServerTest extends TestCase
         $this->assertArrayNotHasKey('path', $result['documents'][0]);
     }
 
+    public function test_list_event_people_returns_the_athletes_and_their_clubs(): void
+    {
+        [$event, $organiser] = $this->drawnChampionship();
+        $this->actingAs($organiser);
+
+        $result = $this->callTool(\App\Mcp\Tools\ListEventPeopleTool::class, ['event' => $event->uuid]);
+
+        $this->assertSame(4, $result['totals']['athletes']);
+        $this->assertSame(1, $result['totals']['clubs']);
+        $this->assertSame(4, $result['clubs'][0]['athletes']);
+        $this->assertSame('Athlete 1', $result['athletes'][0]['name']);
+
+        // Reading only, for everyone: the officials' data is not in this payload
+        // even for the organiser who runs the event.
+        $this->assertArrayNotHasKey('reg_id', $result['athletes'][0]);
+        $this->assertArrayNotHasKey('weight', $result['athletes'][0]);
+        $this->assertArrayNotHasKey('paid', $result['athletes'][0]);
+    }
+
+    public function test_list_event_people_hides_an_event_the_user_cannot_see(): void
+    {
+        [$event] = $this->drawnChampionship();
+
+        $outsider = $this->createUser();
+        $otherClub = $this->createClub($outsider, ['country' => 'BH']);
+        $outsider->memberClubs()->syncWithoutDetaching([$otherClub->id => ['status' => 'active']]);
+        $this->actingAs($outsider->fresh());
+
+        $result = $this->callTool(\App\Mcp\Tools\ListEventPeopleTool::class, ['event' => $event->uuid]);
+
+        $this->assertStringContainsString('Event not found', $result['error']);
+    }
+
     public function test_list_events_requires_authentication(): void
     {
         config(['takeone-mcp.stdio_user_id' => null]);

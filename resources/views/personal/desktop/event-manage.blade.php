@@ -39,18 +39,16 @@
         $cards[] = [
             'icon' => 'bi-patch-check-fill', 'tone' => 'bg-blue-50 text-blue-600',
             'label' => __('personal.event_manage_verification'),
-            'sub' => __('personal.event_manage_verification_sub'),
+            // The desk is its own screen again. "Who's joined" is now a reading
+            // surface with no controls on it for anyone, so an official needs a
+            // door to the place where the gates actually are.
+            'sub' => trans_choice('personal.event_manage_entrants', $counts['entrants'], ['count' => $counts['entrants']])
+                .' · '.__('personal.event_manage_verification_sub'),
             'href' => route('me.events.verify', $e['key']),
         ];
     }
 
     if ($canManage) {
-        $cards[] = [
-            'icon' => 'bi-people-fill', 'tone' => 'bg-primary/10 text-primary',
-            'label' => __('personal.event_manage_roster'),
-            'sub' => trans_choice('personal.event_manage_entrants', $counts['entrants'], ['count' => $counts['entrants']]),
-            'href' => route('me.events.people', $e['key']),
-        ];
         $cards[] = [
             'icon' => 'bi-person-plus-fill', 'tone' => 'bg-primary/10 text-primary',
             'label' => __('personal.event_manage_entries'),

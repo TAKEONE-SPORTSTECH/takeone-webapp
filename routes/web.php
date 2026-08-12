@@ -186,8 +186,10 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     Route::get('/events/{event:uuid}/documents/{document:uuid}', [App\Http\Controllers\EventDocumentController::class, 'download'])->name('events.documents.download');
     Route::delete('/events/{event:uuid}/documents/{document:uuid}', [App\Http\Controllers\EventDocumentController::class, 'destroy'])->name('events.documents.destroy')->middleware('throttle:member-write');
 
-    // Officials' console: weigh-ins and payment checks. Each action authorises
-    // against its own role — a weigh-in official cannot approve money.
+    // Officials' desk: weigh-ins and payment checks, on a screen of its own.
+    // "Who's joined" (events.people) is the reading surface and carries no
+    // controls for anyone. Each action authorises against its own role — a
+    // weigh-in official cannot approve money.
     Route::get('/events/{event:uuid}/verify', [App\Http\Controllers\PersonalEventController::class, 'verify'])->name('events.verify');
     Route::put('/events/{event:uuid}/verify/{registration}/weigh-in', [App\Http\Controllers\PersonalEventController::class, 'verifyWeighIn'])->name('events.verify.weigh-in')->middleware('throttle:member-write');
     Route::put('/events/{event:uuid}/verify/{registration}/payment', [App\Http\Controllers\PersonalEventController::class, 'verifyPayment'])->name('events.verify.payment')->middleware('throttle:member-write');

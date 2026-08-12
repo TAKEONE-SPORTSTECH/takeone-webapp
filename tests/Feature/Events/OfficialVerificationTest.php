@@ -196,32 +196,59 @@ class OfficialVerificationTest extends TestCase
     }
 
     /**
-     * The console is no longer a screen — it is the roster, with the gates on
-     * the rows. What used to be "can this person open the console?" is now
-     * "does this person get controls on the list everyone can see?".
+     * The desk is a screen of its own again, and it is officials-only.
+     *
+     * "Who's joined" is the reading surface: it carries no controls for anybody,
+     * so the question here is both halves — an ordinary member cannot open the
+     * desk, and the list they CAN open hands them nothing to act with.
      */
-    public function test_an_ordinary_member_gets_the_roster_without_any_controls(): void
+    public function test_an_ordinary_member_cannot_open_the_desk_and_the_roster_has_no_controls(): void
     {
         $event = $this->event();
         $category = $this->division($event);
         $this->entry($event, $category, $this->member('Athlete One'));
         $nobody = $this->member('Just A Member');
 
-        // The old console URL now lands on the roster for everyone…
+        // A browser GET to a forbidden page is a redirect, not a 403 — see the
+        // global handler in bootstrap/app.php.
         $this->actingAs($nobody)
             ->get("/me/events/{$event->uuid}/verify")
-            ->assertRedirect(route('me.events.people', $event->uuid));
+            ->assertRedirect('/');
 
-        // …but an ordinary member gets a plain list: no registration ids to act
-        // on, and no link to anyone's proof of payment.
+        $this->actingAs($nobody)
+            ->getJson("/me/events/{$event->uuid}/verify")
+            ->assertForbidden();
+
+        // The roster itself: no registration ids to act on, no officiating
+        // wiring, and no link to anyone's proof of payment.
         $this->actingAs($nobody)
             ->get("/me/events/{$event->uuid}/people")
             ->assertOk()
+            ->assertSee('Athlete One')
+            ->assertDontSee('reg_id')
+            ->assertDontSee('officiating: true', false)
+            ->assertDontSee('openPerson(', false);
+    }
+
+    /**
+     * An ORGANISER gets the same plain list as everyone else. This is the point
+     * of the split: the screen does not change shape depending on who opened it.
+     */
+    public function test_even_an_organiser_gets_no_controls_on_the_roster(): void
+    {
+        $event = $this->event();
+        $category = $this->division($event);
+        $this->entry($event, $category, $this->member('Athlete One'));
+
+        $this->actingAs($this->organiser)
+            ->get("/me/events/{$event->uuid}/people")
+            ->assertOk()
+            ->assertSee('Athlete One')
             ->assertDontSee('reg_id')
             ->assertDontSee('officiating: true', false);
     }
 
-    public function test_the_gates_render_on_the_roster_for_an_appointed_official(): void
+    public function test_the_gates_render_on_the_desk_for_an_appointed_official(): void
     {
         $event = $this->event();
         $category = $this->division($event);
@@ -234,13 +261,13 @@ class OfficialVerificationTest extends TestCase
         ]);
 
         $this->actingAs($scale)
-            ->get("/me/events/{$event->uuid}/people")
+            ->get("/me/events/{$event->uuid}/verify")
             ->assertOk()
             ->assertSee('Athlete One')
             ->assertSee('officiating: true', false)
             ->assertSee('reg_id')
             // The row is one line that opens a sheet — the gates are not
-            // stamped inline onto every card any more.
+            // stamped inline onto every card.
             ->assertSee('openPerson(', false)
             ->assertSee('sheet-weight', false)
             ->assertDontSee('id="w-', false);

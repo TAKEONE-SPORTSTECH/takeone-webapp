@@ -6,6 +6,7 @@ use App\Events\Contracts\EventType;
 use App\Events\EventTypeRegistry;
 use App\Events\Support\EntryService;
 use App\Events\Support\EventAccess;
+use App\Events\Support\RosterPeople;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventCategory;
@@ -345,19 +346,55 @@ class PersonalEventController extends Controller
     /* ---------------- Officials' console ---------------- */
 
     /**
-     * The officials' console was folded into the roster — see people().
+     * The officials' desk: the roster with the two gates on its rows.
      *
-     * Kept as a redirect rather than deleted: the console was linked from the
-     * event screen and is the kind of URL an organiser bookmarks or messages to
-     * the official working the door. A dead link on the morning of an event is
-     * the worst possible time to find out a screen moved.
+     * This used to be folded into people(), which made one screen answer two
+     * unrelated questions — "who is competing" for everyone walking past, and
+     * "is this entry cleared for the draw" for the two people signing it off.
+     * They are separate screens now: people() is a reading surface with no
+     * controls on it at all, and everything actionable lives here.
+     *
+     * Officials only. A competitor has no use for a scale and a receipt viewer,
+     * and the endpoints each re-authorise anyway — but shipping the wiring to
+     * everyone would put the shape of the officials' tools in every page.
      */
-    public function verify(ClubEvent $event, Request $request): RedirectResponse
+    public function verify(ClubEvent $event, Request $request): View
     {
         $me = Auth::user();
         $this->assertVisible($event, $me);
 
-        return redirect()->route('me.events.people', $event->uuid);
+        // The two officiating jobs, asked separately: a weigh-in official may
+        // put an athlete on the scale but must not be able to approve money.
+        $access = app(EventAccess::class);
+        $canWeigh = $access->canVerifyWeighIn($event, $me);
+        $canPay = $access->canVerifyPayments($event, $me);
+
+        abort_unless($canWeigh || $canPay, 403);
+
+        $type = $this->typeFor($event);
+
+        $event->loadCount(['participantRegistrations']);
+        $myReg = $this->myRegistrations($me->id, collect([$event->id]));
+        $e = $this->eventView($event, $me->id, $myReg, full: true, wholeRoster: true);
+        $e['cancelled'] = $event->status === 'cancelled';
+        $e['participants'] = $this->attachVerification($event, $e['participants'], $canWeigh, $canPay);
+
+        $canManage = $this->canManage($event, $me);
+        $banned = $this->isBanned($event, $me->id);
+        $gate = $type->enrolmentGate($event, $me, $myReg->get($event->id));
+
+        return view('personal.event-verification', [
+            'e' => $e,
+            'canManage' => $canManage,
+            'banned' => $banned,
+            'canCompete' => $banned ? false : $gate->allowed,
+            'eligReason' => $banned ? __('events.banned_by_organiser') : $gate->message,
+            'actions' => $canManage ? $type->availableActions($event) : [],
+            'finance' => $canManage ? $type->finance($event) : null,
+            'canWeigh' => $canWeigh,
+            'canPay' => $canPay,
+            'payment' => $this->paymentInstructions($event),
+        ] + $type->viewData($event, $me));
     }
 
     /** Record an official weight. Signing it is the point — hence weighed_in_by. */
@@ -450,26 +487,26 @@ class PersonalEventController extends Controller
     }
 
     /**
-     * Who's joined — the roster, and the only place anyone works on it.
+     * Who's joined — the competitors, and the clubs behind them. Reading only.
      *
-     * There used to be a second screen (the officials' console) listing exactly
-     * the same competitors, for the sole reason that its rows carried buttons.
-     * That is one list of people rendered twice: an organiser checking a payment
-     * had to hold two screens in their head and remember which one could act.
-     * The gates now live ON the roster row, so there is one list, and what you
-     * may do to a row is decided by what you are — not by which URL you opened.
+     * This screen answers one question for anyone entered in the event: who else
+     * is here. It carries no controls of any kind, for anyone — an organiser
+     * opening it sees exactly what a first-time competitor sees. That is the
+     * point: it briefly did both jobs, and a screen that changes what it IS
+     * depending on who opened it is a screen nobody can describe to anyone else.
+     * The officials' gates moved to verify().
      *
-     * Nothing here widens who sees what. The roster payload is already scoped by
-     * scopeRosterStatus(); the ACTIONABLE data (registration id, recorded weight,
-     * proof of payment) is merged in below only for the roles that sign those
-     * gates off, and each endpoint re-authorises on its own.
+     * Spectators are not listed. Ticket-holders did not enter a competition and
+     * have no place on a page about who is competing.
+     *
+     * Every row links somewhere public and already reachable: an athlete to
+     * their public profile (/people/{uuid}), a club to its club page. Nothing on
+     * this screen discloses more than those destinations already do.
      */
     public function people(ClubEvent $event, Request $request): View
     {
         $me = Auth::user();
         $this->assertVisible($event, $me);
-
-        $type = $this->typeFor($event);
 
         $event->loadCount(['participantRegistrations']);
         $myReg = $this->myRegistrations($me->id, collect([$event->id]));
@@ -478,32 +515,17 @@ class PersonalEventController extends Controller
         $e = $this->eventView($event, $me->id, $myReg, full: true, wholeRoster: true);
         $e['cancelled'] = $event->status === 'cancelled';
 
-        $canManage = $this->canManage($event, $me);
-        $banned = $this->isBanned($event, $me->id);
-        $gate = $type->enrolmentGate($event, $me, $myReg->get($event->id));
-
-        // The two officiating jobs, asked separately: a weigh-in official may
-        // put an athlete on the scale but must not be able to approve money.
-        $access = app(EventAccess::class);
-        $canWeigh = $access->canVerifyWeighIn($event, $me);
-        $canPay = $access->canVerifyPayments($event, $me);
-
-        if ($canWeigh || $canPay) {
-            $e['participants'] = $this->attachVerification($event, $e['participants'], $canWeigh, $canPay);
-        }
+        // Two tabs, one roster: the competitors, and the clubs they came from.
+        // Nothing actionable is assembled here — no registration ids, no
+        // weights, no payment state, no moderation. An official who needs those
+        // goes to verify(), which is a different screen with a different guard.
+        $people = app(RosterPeople::class)->build($e['participants']);
 
         return view('personal.event-people', [
             'e' => $e,
-            'canManage' => $canManage,
-            'banned' => $banned,
-            'canCompete' => $banned ? false : $gate->allowed,
-            'eligReason' => $banned ? __('events.banned_by_organiser') : $gate->message,
-            'actions' => $canManage ? $type->availableActions($event) : [],
-            'finance' => $canManage ? $type->finance($event) : null,
-            'canWeigh' => $canWeigh,
-            'canPay' => $canPay,
-            'payment' => $this->paymentInstructions($event),
-        ] + $type->viewData($event, $me));
+            'participants' => $people['participants'],
+            'clubs' => $people['clubs'],
+        ]);
     }
 
     /**

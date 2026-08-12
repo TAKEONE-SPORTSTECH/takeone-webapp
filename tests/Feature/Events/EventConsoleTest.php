@@ -109,7 +109,8 @@ class EventConsoleTest extends TestCase
 
         // Their job is there…
         $this->assertStringContainsString('eventChecklist', $html, 'an official must still reach the preparations list');
-        $this->assertStringContainsString("/verify", $html, 'an official must still reach their verification desk');
+        // The desk is a screen of its own; "who's joined" is reading only.
+        $this->assertStringContainsString('/verify', $html, 'an official must still reach their verification desk');
 
         // …and nothing else is.
         // Assert on the CLICK BINDINGS, not the method names: cancelEvent() and
@@ -190,7 +191,7 @@ class EventConsoleTest extends TestCase
         $this->assertStringNotContainsString('pay(sel', $html, 'the payment controls reached a plain member');
     }
 
-    public function test_an_official_can_open_a_persons_details_from_the_roster(): void
+    public function test_an_official_can_open_a_persons_details_from_the_desk(): void
     {
         $organiser = $this->createUser();
         $club = $this->clubFor($organiser);
@@ -202,7 +203,7 @@ class EventConsoleTest extends TestCase
         ]);
 
         $scale = $this->official($event, $club);
-        $html = $this->actingAs($scale)->get("/me/events/{$event->uuid}/people")->assertOk()->getContent();
+        $html = $this->actingAs($scale)->get("/me/events/{$event->uuid}/verify")->assertOk()->getContent();
 
         $this->assertStringContainsString('openPerson(', $html, 'the official lost their verification desk');
     }

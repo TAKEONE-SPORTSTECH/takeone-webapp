@@ -16,6 +16,7 @@ use App\Mcp\Tools\GetMemberTool;
 use App\Mcp\Tools\ListActivityCatalogTool;
 use App\Mcp\Tools\ListClubsTool;
 use App\Mcp\Tools\ListEventDocumentsTool;
+use App\Mcp\Tools\ListEventPeopleTool;
 use App\Mcp\Tools\ListEventsTool;
 use App\Mcp\Tools\ListMembersTool;
 use App\Mcp\Tools\ManageMemberPhotoTool;
@@ -76,6 +77,7 @@ class TakeOneServer extends Server
         EnrollMembersTool::class,
         ListEventsTool::class,
         ListEventDocumentsTool::class,
+        ListEventPeopleTool::class,
         EnterEventAthletesTool::class,
         GetEventBracketTool::class,
         GetEventReadinessTool::class,
