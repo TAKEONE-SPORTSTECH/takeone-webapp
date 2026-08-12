@@ -153,8 +153,8 @@ class MemberController extends Controller
     {
         $user = Auth::user();
 
-        // Get the member to display by UUID
-        $member = User::where('uuid', $uuid)->firstOrFail();
+        // Get the member to display by UUID ('photos' feeds the profile picture sheet)
+        $member = User::with('photos')->where('uuid', $uuid)->firstOrFail();
         $id = $member->id;
 
         // Check if user is super-admin or viewing their own profile

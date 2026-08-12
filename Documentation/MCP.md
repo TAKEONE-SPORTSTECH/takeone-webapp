@@ -88,6 +88,7 @@ Or point a local client (Claude Desktop) at `php artisan mcp:start takeone`. If
 | `verify_achievement` | write | admin | Confirm/reject a member self-claimed record that names your club — a tournament medal (`type: achievement`) or an acquired skill (`type: skill`), bound by uuid. Only an admin/owner of the named club may act — mirrors the web verification queue (medals + skills) |
 | `add_certification` | write | self/guardian | Add a self-managed certification/qualification (name, issuer, dates, credential id/url) to a member — super-admin/self/guardian only (not club-admins) |
 | `add_work_history` | write | self/guardian | Add a self-managed work/coaching history entry (role, org, dates, type) to a member; null end date = current — super-admin/self/guardian only |
+| `manage_member_photo` | write | self/guardian | A profile holds several pictures; one is the avatar. Promote an existing picture (`action: set_avatar`) or delete one (`action: delete`, which purges the file and hands the avatar to the next picture), addressed by photo uuid and scoped to that member — super-admin/self/guardian only. **Uploading is deliberately not exposed** (raw image bytes belong to the app's own validated uploader); read the list from `get_member.photos` |
 
 - **Clubs** are addressed by numeric id **or** slug. **Members** by uuid (preferred) or id.
 - Amounts are in each club's own currency.

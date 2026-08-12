@@ -14,6 +14,8 @@
     'eventName' => null,
     'showPasswordFields' => false,
     'showEmailField' => true,
+    // Mobile hands the photo to the profile-photo-sheet component instead, so it opts the tab out.
+    'showPhotoTab' => true,
 ])
 
 @php
@@ -67,8 +69,8 @@
         }
     }
 
-    // Tabs: create mode skips the photo tab
-    $showPhotoTab = !$isCreate && $user;
+    // Tabs: create mode skips the photo tab, and a caller may opt out of it entirely
+    $showPhotoTab = $showPhotoTab && !$isCreate && $user;
     $defaultTab = $showPhotoTab ? 'photo' : 'personal';
 
     // JSON data for dynamic list Alpine components
@@ -629,7 +631,10 @@ function {{ $alpineComponent }}() {
                 removeBtn.style.display = 'block';
             }
 
-            document.getElementById('removeProfilePictureInput').value = '0';
+            // Absent when the caller opted out of the photo tab — the upload still
+            // reaches us (nav avatars sync), there is just no preview to reset.
+            const removeInput = document.getElementById('removeProfilePictureInput');
+            if (removeInput) removeInput.value = '0';
         },
 
         syncProfilePicsOnPage(imageUrl) {

@@ -73,6 +73,12 @@ class GetMemberTool extends BaseTool
             'medals' => $this->authenticMedals($member),
             // Only VERIFIED skills (provenance-backed): activity + club + since + proficiency.
             'skills' => $this->verifiedSkills($member),
+            // The pictures on the profile; the avatar is the one flagged is_avatar.
+            'photos' => $member->photos->map(fn ($p) => [
+                'uuid' => $p->uuid,
+                'url' => $p->url(),
+                'is_avatar' => $p->path === $member->profile_picture,
+            ])->values(),
             // Self-managed certifications / qualifications the member holds.
             'certifications' => $member->certifications()
                 ->orderByRaw('issue_date IS NULL, issue_date DESC')

@@ -18,6 +18,7 @@ use App\Mcp\Tools\ListClubsTool;
 use App\Mcp\Tools\ListEventDocumentsTool;
 use App\Mcp\Tools\ListEventsTool;
 use App\Mcp\Tools\ListMembersTool;
+use App\Mcp\Tools\ManageMemberPhotoTool;
 use App\Mcp\Tools\NotifyMemberTool;
 use App\Mcp\Tools\RecordTransactionTool;
 use App\Mcp\Tools\SearchPeopleTool;
@@ -83,6 +84,7 @@ class TakeOneServer extends Server
         VerifyAchievementTool::class,
         AddCertificationTool::class,
         AddWorkHistoryTool::class,
+        ManageMemberPhotoTool::class,
     ];
 
     protected array $resources = [

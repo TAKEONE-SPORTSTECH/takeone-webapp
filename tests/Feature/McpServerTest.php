@@ -10,6 +10,7 @@ use App\Mcp\Tools\EnrollMembersTool;
 use App\Mcp\Tools\GetMemberTool;
 use App\Mcp\Tools\ListActivityCatalogTool;
 use App\Mcp\Tools\ListClubsTool;
+use App\Mcp\Tools\ManageMemberPhotoTool;
 use App\Mcp\Tools\RecordTransactionTool;
 use App\Mcp\Tools\SearchPeopleTool;
 use App\Mcp\Tools\WhoAmITool;
@@ -681,5 +682,59 @@ class McpServerTest extends TestCase
 
         $this->assertStringContainsString('organiser', $result['error']);
         $this->assertNotNull($bout->fresh()->a_name);
+    }
+    public function test_member_can_promote_and_delete_own_profile_photos_through_mcp(): void
+    {
+        $me = $this->createUser();
+        $this->actingAs($me);
+
+        $first = $me->photos()->create(['path' => 'people/'.$me->uuid.'/photos/one.png']);
+        $second = $me->photos()->create(['path' => 'people/'.$me->uuid.'/photos/two.png', 'sort_order' => 1]);
+        $me->update(['profile_picture' => $second->path]);
+
+        // The photos read back through get_member, flagged with which one is the avatar.
+        $member = $this->callTool(GetMemberTool::class, ['member' => $me->uuid]);
+        $this->assertCount(2, $member['photos']);
+        $this->assertSame($second->uuid, collect($member['photos'])->firstWhere('is_avatar', true)['uuid']);
+
+        // Promote the older one.
+        $promoted = $this->callTool(ManageMemberPhotoTool::class, [
+            'member' => $me->uuid,
+            'photo' => $first->uuid,
+            'action' => 'set_avatar',
+        ]);
+        $this->assertTrue($promoted['success']);
+        $this->assertSame($first->path, $me->fresh()->profile_picture);
+
+        // Deleting the avatar hands the role to what is left.
+        $deleted = $this->callTool(ManageMemberPhotoTool::class, [
+            'member' => $me->uuid,
+            'photo' => $first->uuid,
+            'action' => 'delete',
+        ]);
+        $this->assertTrue($deleted['success']);
+        $this->assertTrue($deleted['was_avatar']);
+        $this->assertSame($second->path, $me->fresh()->profile_picture);
+        $this->assertSame(1, $me->photos()->count());
+    }
+
+    public function test_manage_member_photo_denies_unrelated_user(): void
+    {
+        $owner = $this->createUser();
+        $photo = $owner->photos()->create(['path' => 'people/'.$owner->uuid.'/photos/one.png']);
+        $owner->update(['profile_picture' => $photo->path]);
+
+        $rando = $this->createUser();
+        $this->actingAs($rando);
+
+        $result = $this->callTool(ManageMemberPhotoTool::class, [
+            'member' => $owner->uuid,
+            'photo' => $photo->uuid,
+            'action' => 'delete',
+        ]);
+
+        $this->assertArrayHasKey('error', $result);
+        $this->assertStringContainsString('not authorized', $result['error']);
+        $this->assertSame(1, $owner->photos()->count());
     }
 }

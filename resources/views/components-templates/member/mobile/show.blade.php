@@ -62,7 +62,7 @@
 
     .mp-avatar-ring {
         background: conic-gradient(from 210deg, #fff, hsl(250 80% 85%), #fff, hsl(280 80% 85%), #fff);
-        padding: 3px; border-radius: 25px;
+        padding: 3px; border-radius: 16px;
         box-shadow: 0 12px 30px rgba(60,20,120,.45);
     }
 
@@ -72,6 +72,11 @@
         display: grid; place-items: center; }
     .mp-ring::before { content:""; position:absolute; width:46px; height:46px; border-radius:50%; background:#fff; }
     .mp-ring b { position: relative; font-size: 13px; font-weight: 800; color: #1f2937; }
+
+    /* Same ring, sheet-sized — the hole scales with it or it reads as a thick donut. */
+    .mp-ring.is-lg { width: 104px; height: 104px; }
+    .mp-ring.is-lg::before { width: 84px; height: 84px; }
+    .mp-ring.is-lg b { font-size: 22px; }
 
     .mp-rail { scrollbar-width: none; scroll-snap-type: x mandatory; }
     .mp-rail::-webkit-scrollbar { display: none; }
@@ -98,7 +103,18 @@
             if (h === 'affiliations') h = 'clubs';   // legacy deep-link alias
             return valid.includes(h) ? h : 'overview';
         })(),
-        goTab(t){ this.tab = t; this.$nextTick(() => document.getElementById('mpTabs')?.scrollIntoView({behavior:'smooth', block:'start'})); }
+        goTab(t){ this.tab = t; this.$nextTick(() => document.getElementById('mpTabs')?.scrollIntoView({behavior:'smooth', block:'start'})); },
+        {{-- The metric rings answer in a sheet rather than throwing the reader down
+             the page: null | 'attendance' | 'goals' | 'challenges'. --}}
+        metric: null,
+        metricQuery: '',
+        openMetric(m){ this.metricQuery = ''; this.metric = m },
+        closeMetric(){ this.metric = null },
+        {{-- In-sheet search: each row carries its own lowercased haystack. --}}
+        metricMatches(hay){
+            const q = this.metricQuery.trim().toLowerCase();
+            return ! q || (hay || '').includes(q);
+        }
      }"
      x-init="$watch('tab', v => { try { history.replaceState(history.state, '', '#' + v); } catch(e) {} })">
 
@@ -135,6 +151,58 @@
             $isFollowing = (!$isSelf && $viewer) ? $viewer->isFollowing($user->id) : false;
             // Can the viewer DM this member? (club-mates / connections / existing thread)
             $canChat = !$isSelf && $viewer && $viewer->canMessage($user);
+
+            // ── Avatar gallery ───────────────────────────────────────────────
+            // Every picture this profile already shows, gathered behind the avatar:
+            // profile photo first, then awards, certificates, goal proofs, club photos.
+            // Nothing new is exposed — each source is already rendered in a tab below,
+            // so the audience is identical to the page itself.
+            $galleryCap = 30;
+            $galleryPush = function (?string $path, ?string $label, bool $absolute = false) use (&$avatarGallery, $galleryCap) {
+                $path = trim((string) $path);
+                if ($path === '' || count($avatarGallery) >= $galleryCap) {
+                    return;
+                }
+                if ($absolute) {
+                    // Affiliation media may hold an external URL — allow only http(s).
+                    $scheme = strtolower((string) parse_url($path, PHP_URL_SCHEME));
+                    $src = in_array($scheme, ['http', 'https'], true) ? $path : null;
+                } else {
+                    $src = asset('storage/'.$path);
+                }
+                if ($src) {
+                    $avatarGallery[] = ['src' => $src, 'label' => $label ?: ''];
+                }
+            };
+
+            $avatarGallery = [];
+
+            // The profile's own pictures lead the viewer and are kept separate: the photo
+            // sheet can add or delete them, and this list re-syncs from its event.
+            $profileGallery = $user->photos
+                ->sortByDesc(fn ($p) => $p->path === $user->profile_picture)
+                ->map(fn ($p) => ['src' => $p->url(), 'label' => $user->full_name])
+                ->values()->all();
+            $currentAvatar = $profileGallery[0]['src'] ?? '';
+
+            foreach (($awardedAchievements ?? collect()) as $ga) {
+                $gaLabel = $ga->tr('short_title') ?: $ga->tr('title');
+                foreach (array_merge($ga->image_path ? [$ga->image_path] : [], $ga->images ?? []) as $gaImg) {
+                    $galleryPush($gaImg, $gaLabel);
+                }
+            }
+            foreach (($certifications ?? collect()) as $gc) {
+                $galleryPush($gc->image_path, $gc->title);
+            }
+            foreach (($goals ?? collect()) as $gg) {
+                $galleryPush($gg->before_proof, $gg->title ? $gg->title.' · '.__('member.before') : null);
+                $galleryPush($gg->after_proof, $gg->title ? $gg->title.' · '.__('member.after') : null);
+            }
+            foreach (($clubAffiliations ?? collect()) as $gaf) {
+                foreach ($gaf->affiliationMedia->where('media_type', 'photo') as $gm) {
+                    $galleryPush($gm->media_url, $gm->title ?: $gaf->club_name, true);
+                }
+            }
         @endphp
         <div x-data="memberFollow({{ $isFollowing ? 'true' : 'false' }}, @js(route('wall.follow', $user)), @js($user->full_name), @js($canChat ? route('messages.start', $user) : null))"
              class="flex items-center justify-center gap-4 mp-reveal" style="animation-delay:.05s">
@@ -152,28 +220,115 @@
             @endif
 
             {{-- Profile picture --}}
-            <div class="relative inline-block flex-shrink-0" x-data="{ zoom: false }">
-                <div class="mp-avatar-ring inline-block">
-                    @if($user->profile_picture)
-                        <img id="mpAvatarImg" src="{{ asset('storage/'.$user->profile_picture) }}?v={{ optional($user->updated_at)->timestamp }}"
-                             alt="{{ $user->full_name }}" class="w-28 aspect-[3/4] rounded-[22px] object-cover block cursor-pointer" @click="zoom=true">
-                    @else
-                        <div id="mpAvatarFallback" class="w-28 aspect-[3/4] rounded-[22px] bg-white/20 grid place-items-center text-4xl font-black">{{ $initials }}</div>
+            <div class="relative inline-block flex-shrink-0"
+                 x-data="{
+                    open: false,
+                    i: 0,
+                    {{-- The profile's own pictures, then everything else the page shows. --}}
+                    profilePhotos: @js($profileGallery),
+                    otherPhotos: @js($avatarGallery),
+                    avatar: @js($currentAvatar),
+                    get photos() { return [...this.profilePhotos, ...this.otherPhotos] },
+
+                    {{-- The photo sheet owns the pictures; the avatar and the viewer follow it. --}}
+                    syncPhotos(list) {
+                        this.profilePhotos = (list || []).map(p => ({ src: p.url, label: @js($user->full_name) }));
+                        this.avatar = (list || []).find(p => p.is_avatar)?.url || '';
+                        this.i = Math.min(this.i, Math.max(0, this.photos.length - 1));
+                        if (! this.photos.length) this.open = false;
+                    },
+                    {{-- Tapping the avatar always opens on the avatar, wherever it sits in
+                         the list — promoting an older picture moves it off index 0. --}}
+                    showAvatar() {
+                        const n = this.photos.findIndex(p => p.src === this.avatar);
+                        this.show(n < 0 ? 0 : n);
+                    },
+                    show(n) {
+                        if (! this.photos.length) return;
+                        this.i = n; this.open = true;
+                        {{-- The track only has a width once it is shown. --}}
+                        this.$nextTick(() => this.jump(n, 'auto'));
+                    },
+                    jump(n, behavior) {
+                        const t = this.$refs.track;
+                        if (t) t.scrollTo({ left: n * t.clientWidth, behavior: behavior || 'smooth' });
+                    },
+                    {{-- Swipe drives the index; rounding survives RTL's negative scrollLeft. --}}
+                    sync() {
+                        const t = this.$refs.track;
+                        if (t && t.clientWidth) this.i = Math.round(Math.abs(t.scrollLeft) / t.clientWidth);
+                    },
+                    step(d) {
+                        const n = Math.min(this.photos.length - 1, Math.max(0, this.i + d));
+                        this.i = n; this.jump(n);
+                    },
+                 }"
+                 @keydown.escape.window="open = false"
+                 @keydown.arrow-right.window="open && step(1)"
+                 @keydown.arrow-left.window="open && step(-1)"
+                 @profile-photos-changed.window="syncPhotos($event.detail?.photos)">
+                <div class="mp-avatar-ring inline-block relative">
+                    <template x-if="avatar">
+                        <img id="mpAvatarImg" :src="avatar" alt="{{ $user->full_name }}"
+                             class="w-28 aspect-[3/4] rounded-[13px] object-cover block cursor-pointer" @click="showAvatar()">
+                    </template>
+                    <template x-if="! avatar">
+                        <div id="mpAvatarFallback" class="w-28 aspect-[3/4] rounded-[13px] bg-white/20 grid place-items-center text-4xl font-black"
+                             :class="photos.length && 'cursor-pointer'" @click="showAvatar()">{{ $initials }}</div>
+                    </template>
+                    @if($canEditBasic ?? false)
+                        {{-- Bare pencil inside the picture, top-right — opens the photo sheet
+                             (the picture large, plus a tile to add a new one) --}}
+                        <button type="button" @click.stop="$dispatch('open-profile-photo-sheet')" aria-label="{{ __('member.edit') }}"
+                                class="m-press absolute top-2 right-2 rtl:right-auto rtl:left-2 p-1 text-white active:scale-90 transition-transform">
+                            <i class="bi bi-pencil-fill text-sm drop-shadow-[0_1px_3px_rgba(0,0,0,.7)]"></i>
+                        </button>
                     @endif
                 </div>
                 <span class="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-green-400 border-[3px] border-white"></span>
 
-                @if($user->profile_picture)
-                    {{-- Full, uncropped view of the profile picture — tap the avatar to open, tap away to close --}}
-                    <template x-teleport="body">
-                        <div x-show="zoom" x-cloak class="fixed inset-0 z-[80] flex items-center justify-center p-4" @click="zoom=false" @keydown.escape.window="zoom=false">
-                            <div x-show="zoom" x-transition.opacity class="absolute inset-0 bg-black/90"></div>
-                            <button type="button" class="absolute top-4 right-4 rtl:right-auto rtl:left-4 w-10 h-10 rounded-full bg-white/10 text-white grid place-items-center z-10" @click.stop="zoom=false"><i class="bi bi-x-lg text-lg"></i></button>
-                            <img x-show="zoom" x-transition src="{{ asset('storage/'.$user->profile_picture) }}?v={{ optional($user->updated_at)->timestamp }}"
-                                 alt="{{ $user->full_name }}" class="relative rounded-2xl object-contain" style="max-width:80vw; max-height:85vh;" @click.stop>
+                {{-- Picture viewer — tap the avatar to open, swipe for the rest, tap away to close.
+                     Teleported to <body> so the hero's transform can't clip a fixed overlay.
+                     Always rendered: an upload can fill an empty gallery without a reload. --}}
+                <template x-teleport="body">
+                        <div x-show="open" x-cloak class="fixed inset-0 z-[80] flex flex-col" @click="open=false">
+                            <div x-show="open" x-transition.opacity class="absolute inset-0 bg-black/60 backdrop-blur-md"></div>
+
+                            {{-- Close --}}
+                            <button type="button" @click.stop="open=false" aria-label="{{ __('shared.close') }}"
+                                    class="absolute top-4 right-4 rtl:right-auto rtl:left-4 w-10 h-10 rounded-full bg-white/15 text-white grid place-items-center z-10 active:scale-90 transition-transform">
+                                <i class="bi bi-x-lg text-lg"></i>
+                            </button>
+
+                            {{-- Counter, for galleries too long to dot --}}
+                            <div x-show="photos.length > 10" class="absolute top-5 left-4 rtl:left-auto rtl:right-4 z-10 px-2.5 py-1 rounded-full bg-white/15 text-white text-xs font-semibold tabular-nums">
+                                <span x-text="i + 1"></span> / <span x-text="photos.length"></span>
+                            </div>
+
+                            {{-- Swipeable track — one full-width snap slide per picture --}}
+                            <div x-ref="track" @scroll.passive.debounce.60ms="sync()" @click.stop
+                                 class="relative flex-1 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory mp-rail overscroll-x-contain">
+                                <template x-for="(p, n) in photos" :key="n">
+                                    <div class="w-full h-full flex-shrink-0 snap-center flex items-center justify-center p-6" @click="open=false">
+                                        <img :src="p.src" :alt="p.label" loading="lazy" @click.stop
+                                             class="max-w-full max-h-full object-contain rounded-2xl shadow-2xl">
+                                    </div>
+                                </template>
+                            </div>
+
+                            {{-- Caption + dots --}}
+                            <div class="relative flex-shrink-0 px-6 pt-2 text-center" style="padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));" @click.stop>
+                                <p class="text-white/90 text-sm font-medium truncate" x-text="photos[i]?.label"></p>
+                                <div x-show="photos.length > 1 && photos.length <= 10" class="flex items-center justify-center gap-2 mt-3">
+                                    <template x-for="(p, n) in photos" :key="n">
+                                        <button type="button" @click="i = n; jump(n)" :aria-label="p.label"
+                                                class="rounded-full transition-all duration-300"
+                                                :class="i === n ? 'w-5 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/40'"></button>
+                                    </template>
+                                </div>
+                            </div>
                         </div>
-                    </template>
-                @endif
+                </template>
             </div>
 
             {{-- Right controls: share, with the chat button stacked underneath --}}
@@ -228,29 +383,280 @@
 
     {{-- ===== Metric rail (overlaps hero) ===== --}}
     <div class="px-4 -mt-6 relative z-10">
-        {{-- Each stat card jumps to its matching profile section/tab. Tournaments &
-             attendance have no tab button, so the cards are the only way to reach them. --}}
+        {{-- Each ring opens its own sheet with the numbers behind it — the reader stays
+             where they are instead of being thrown down to a tab. --}}
         <div class="mp-rail flex gap-3 overflow-x-auto pb-1">
             {{-- attendance ring --}}
-            <div role="button" tabindex="0" @click="goTab('attendance')" @keydown.enter.space.prevent="goTab('attendance')"
+            <div role="button" tabindex="0" @click="openMetric('attendance')" @keydown.enter.space.prevent="openMetric('attendance')"
                  class="mp-card m-press cursor-pointer bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col items-center mp-reveal" style="animation-delay:.24s">
                 <div class="mp-ring" style="--p:{{ (int) $attendanceRate }}"><b>{{ (int) $attendanceRate }}%</b></div>
                 <p class="text-[11px] text-muted-foreground mt-2 font-medium">{{ __('member.attendance') }}</p>
             </div>
             {{-- goals ring --}}
-            <div role="button" tabindex="0" @click="goTab('goals')" @keydown.enter.space.prevent="goTab('goals')"
+            <div role="button" tabindex="0" @click="openMetric('goals')" @keydown.enter.space.prevent="openMetric('goals')"
                  class="mp-card m-press cursor-pointer bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col items-center mp-reveal" style="animation-delay:.28s">
                 <div class="mp-ring" style="--p:{{ (int) $successRate }}"><b>{{ (int) $successRate }}%</b></div>
                 <p class="text-[11px] text-muted-foreground mt-2 font-medium">{{ __('member.goal_success') }}</p>
             </div>
-            {{-- challenge win rate — opens this member's Challenges list in-page --}}
-            <div role="button" tabindex="0" @click="goTab('challenges')" @keydown.enter.space.prevent="goTab('challenges')"
+            {{-- challenge win rate --}}
+            <div role="button" tabindex="0" @click="openMetric('challenges')" @keydown.enter.space.prevent="openMetric('challenges')"
                  class="mp-card m-press cursor-pointer bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col items-center mp-reveal" style="animation-delay:.3s">
                 <div class="mp-ring" style="--p:{{ (int) $challengeWinRate }}"><b>{{ (int) $challengeWinRate }}%</b></div>
                 <p class="text-[11px] text-muted-foreground mt-2 font-medium">{{ __('member.challenge') }}</p>
             </div>
         </div>
     </div>
+
+    {{-- ===== Metric sheet — one sheet, three readings of it =====
+         The ring, the numbers behind it, and the actual list, scrollable, with a
+         search box once the list is long enough to need one. Teleported to <body>
+         so the shell's transform can't clip a fixed overlay. --}}
+    @php
+        // Row view-models per metric. `hay` is the lowercased haystack the in-sheet
+        // search filters on — built here so the markup stays declarative.
+        $mAttendanceRows = collect($scheduleSessions ?? [])->map(fn ($s) => [
+            'hay' => mb_strtolower(trim(($s->title ?? '').' '.($s->coach ?? '').' '.optional($s->date)->format('d M Y'))),
+            'session' => $s,
+        ])->all();
+
+        $mGoalRows = collect($goals ?? [])->map(fn ($g) => [
+            'hay' => mb_strtolower(trim(($g->title ?? '').' '.($g->status ?? '').' '.($g->unit ?? ''))),
+            'goal' => $g,
+        ])->all();
+
+        $mChallengeRows = collect($memberChallenges ?? [])->map(fn ($c) => [
+            'hay' => mb_strtolower(trim(($c->discipline ?? '').' '.($c->rival_name ?? '').' '.($c->status ?? '').' '.($c->result ?? ''))),
+            'challenge' => $c,
+        ])->all();
+
+        $metricSheets = [
+            'attendance' => [
+                'icon' => 'bi-calendar2-check',
+                'title' => __('member.attendance'),
+                'percent' => (int) $attendanceRate,
+                'caption' => __('member.attendance_sheet_caption'),
+                'figures' => [
+                    [__('member.attended'), (int) $sessionsCompleted, 'text-green-600'],
+                    [__('member.no_shows'), (int) $noShows, 'text-red-500'],
+                    [__('member.total_sessions'), (int) $totalSessions, 'text-foreground'],
+                ],
+                'rows' => $mAttendanceRows,
+                'empty' => __('member.no_schedule_sessions'),
+                'emptyIcon' => 'bi-calendar-x',
+                // Attendance is derived from the club's class schedule and the trainer's
+                // marks — there is nothing here for the member to add by hand.
+                'add' => null,
+            ],
+            'goals' => [
+                'icon' => 'bi-flag',
+                'title' => __('member.goal_success'),
+                'percent' => (int) $successRate,
+                'caption' => __('member.goals_sheet_caption'),
+                'figures' => [
+                    [__('member.completed'), (int) $completedGoalsCount, 'text-green-600'],
+                    [__('member.active'), (int) $activeGoalsCount, 'text-primary'],
+                    [__('member.total'), (int) ($goals?->count() ?? 0), 'text-foreground'],
+                ],
+                'rows' => $mGoalRows,
+                'empty' => __('member.no_goals'),
+                'emptyIcon' => 'bi-flag',
+                'add' => ($canEditBasic ?? false)
+                    ? ['label' => __('member.add_goal'), 'event' => 'open-goal-sheet']
+                    : null,
+            ],
+            'challenges' => [
+                'icon' => 'bi-lightning-charge',
+                'title' => __('member.challenge'),
+                'percent' => (int) $challengeWinRate,
+                'caption' => __('member.challenges_sheet_caption'),
+                'figures' => [
+                    [__('member.won'), (int) $challengeWins, 'text-green-600'],
+                    [__('member.lost'), max(0, (int) $challengesTotal - (int) $challengeWins), 'text-red-500'],
+                    [__('member.total'), (int) $challengesTotal, 'text-foreground'],
+                ],
+                'rows' => $mChallengeRows,
+                'empty' => __('member.ch_empty'),
+                'emptyIcon' => 'bi-lightning-charge',
+                'add' => $isSelf
+                    ? ['label' => __('member.new_challenge'), 'url' => route('me.challenge.create')]
+                    : null,
+            ],
+        ];
+
+        // A search box is clutter on a short list — it appears once there is enough to sift.
+        $metricSearchFrom = 8;
+    @endphp
+    <template x-teleport="body">
+        <div x-show="metric" x-cloak class="fixed inset-0 z-[70] flex flex-col justify-end"
+             @keydown.escape.window="closeMetric()">
+            <div x-show="metric" x-transition.opacity class="absolute inset-0 bg-black/50" @click="closeMetric()"></div>
+
+            <div x-show="metric"
+                 x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+                 x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+                 class="relative h-[88vh] flex flex-col bg-background rounded-t-3xl shadow-2xl overflow-hidden">
+
+                @foreach($metricSheets as $key => $m)
+                    @php $rowCount = count($m['rows']); @endphp
+                    <div x-show="metric === '{{ $key }}'" class="flex flex-col min-h-0 flex-1">
+                        {{-- Header --}}
+                        <div class="flex-shrink-0 px-5 pt-3 pb-3 border-b border-gray-100">
+                            <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3"></div>
+                            <div class="flex items-center justify-between">
+                                <h3 class="font-bold text-foreground flex items-center gap-2">
+                                    <i class="bi {{ $m['icon'] }} text-primary"></i>{{ $m['title'] }}
+                                </h3>
+                                <button type="button" @click="closeMetric()" aria-label="{{ __('shared.close') }}"
+                                        class="w-8 h-8 rounded-full grid place-items-center text-muted-foreground hover:bg-muted"><i class="bi bi-x-lg"></i></button>
+                            </div>
+                        </div>
+
+                        {{-- Everything below the header scrolls together: the ring, the
+                             figures, then the list — so a long list has the whole sheet. --}}
+                        <div class="flex-1 overflow-y-auto min-h-0 px-5 py-4 space-y-4">
+                            <div class="flex flex-col items-center">
+                                <div class="mp-ring is-lg" style="--p:{{ $m['percent'] }}"><b>{{ $m['percent'] }}%</b></div>
+                                <p class="text-[13px] text-muted-foreground text-center mt-3 max-w-xs">{{ $m['caption'] }}</p>
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-2">
+                                @foreach($m['figures'] as [$label, $value, $tone])
+                                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 text-center">
+                                        <p class="text-xl font-black tabular-nums leading-none {{ $tone }}">{{ $value }}</p>
+                                        <p class="text-[11px] text-muted-foreground mt-1.5 leading-tight">{{ $label }}</p>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            @if($rowCount >= $metricSearchFrom)
+                                {{-- Tiny search — only once the list is long enough to sift --}}
+                                <div class="relative sticky top-0 z-10 -mx-1 px-1 py-1 bg-background">
+                                    <i class="bi bi-search absolute left-4 rtl:left-auto rtl:right-4 top-1/2 -translate-y-1/2 text-muted-foreground text-xs"></i>
+                                    <input type="search" x-model="metricQuery" placeholder="{{ __('member.search_in_list') }}"
+                                           class="w-full ps-9 pe-9 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent">
+                                    <button type="button" x-show="metricQuery" @click="metricQuery = ''" aria-label="{{ __('member.clear') }}"
+                                            class="absolute right-4 rtl:right-auto rtl:left-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                                        <i class="bi bi-x-circle-fill text-xs"></i>
+                                    </button>
+                                </div>
+                            @endif
+
+                            @if($rowCount === 0)
+                                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
+                                    <i class="bi {{ $m['emptyIcon'] }} text-3xl text-gray-300"></i>
+                                    <p class="text-sm text-muted-foreground mt-2">{{ $m['empty'] }}</p>
+                                </div>
+                            @else
+                                <div class="space-y-2">
+                                    @if($key === 'attendance')
+                                        @php
+                                            $mStatusStyles = [
+                                                'attended' => ['bg-green-50 text-green-600', 'bi-check-lg', __('member.attended')],
+                                                'missed' => ['bg-red-50 text-red-500', 'bi-x-lg', __('member.missed')],
+                                                'upcoming' => ['bg-gray-100 text-gray-500', 'bi-clock', __('member.upcoming')],
+                                            ];
+                                        @endphp
+                                        @foreach($m['rows'] as $row)
+                                            @php
+                                                $s = $row['session'];
+                                                [$badgeClass, $icon, $label] = $mStatusStyles[$s->status] ?? $mStatusStyles['upcoming'];
+                                            @endphp
+                                            <a href="{{ $s->url }}" x-show="metricMatches(@js($row['hay']))"
+                                               class="m-press bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex items-center gap-3">
+                                                <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0 {{ $badgeClass }}"><i class="bi {{ $icon }}"></i></span>
+                                                <div class="min-w-0 flex-1">
+                                                    <p class="text-sm font-semibold text-foreground truncate">{{ $s->title }}</p>
+                                                    <p class="text-[11px] text-muted-foreground mt-0.5">{{ $s->date->format('d M Y') }} · {{ $s->start_time }}@if($s->coach) · {{ $s->coach }}@endif</p>
+                                                </div>
+                                                <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $badgeClass }}">{{ $label }}</span>
+                                            </a>
+                                        @endforeach
+                                    @elseif($key === 'goals')
+                                        @foreach($m['rows'] as $row)
+                                            @php
+                                                $g = $row['goal'];
+                                                $done = $g->status === 'completed';
+                                                $target = (float) ($g->target_value ?: 0);
+                                                $pct = $target > 0 ? min(100, round(((float) $g->current_progress_value / $target) * 100)) : ($done ? 100 : 0);
+                                            @endphp
+                                            <div x-show="metricMatches(@js($row['hay']))" class="bg-white rounded-xl shadow-sm border border-gray-100 p-3">
+                                                <div class="flex items-center gap-3">
+                                                    <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0 {{ $done ? 'bg-green-50 text-green-600' : 'bg-accent text-primary' }}">
+                                                        <i class="bi {{ $done ? 'bi-check-lg' : 'bi-flag' }}"></i>
+                                                    </span>
+                                                    <div class="min-w-0 flex-1">
+                                                        <p class="text-sm font-semibold text-foreground truncate">{{ $g->title }}</p>
+                                                        <p class="text-[11px] text-muted-foreground mt-0.5">
+                                                            {{ number_format((float) $g->current_progress_value, 1) }}/{{ number_format($target, 1) }}{{ $g->unit ? ' '.$g->unit : '' }}
+                                                            @if($g->target_date) · {{ optional($g->target_date)->format('d M Y') }}@endif
+                                                        </p>
+                                                    </div>
+                                                    <span class="shrink-0 text-[11px] font-bold tabular-nums {{ $done ? 'text-green-600' : 'text-primary' }}">{{ $pct }}%</span>
+                                                </div>
+                                                <div class="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+                                                    <span class="block h-full rounded-full {{ $done ? 'bg-green-500' : 'bg-primary' }}" style="width: {{ $pct }}%"></span>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    @else
+                                        @foreach($m['rows'] as $row)
+                                            @php
+                                                $ch = $row['challenge'];
+                                                if ($ch->result === 'won')          [$bTone, $bText] = ['bg-green-100 text-green-700', __('member.ch_won')];
+                                                elseif ($ch->result === 'lost')     [$bTone, $bText] = ['bg-red-100 text-red-600', __('member.ch_lost')];
+                                                elseif ($ch->result === 'draw')     [$bTone, $bText] = ['bg-gray-100 text-gray-600', __('member.ch_draw')];
+                                                elseif ($ch->status === 'active')   [$bTone, $bText] = ['bg-blue-100 text-blue-700', __('member.ch_active')];
+                                                elseif ($ch->status === 'pending')  [$bTone, $bText] = ['bg-amber-100 text-amber-700', __('member.ch_pending')];
+                                                elseif ($ch->status === 'reported') [$bTone, $bText] = ['bg-purple-100 text-purple-700', __('member.ch_reported')];
+                                                else [$bTone, $bText] = ['bg-gray-100 text-gray-500', ucfirst($ch->status)];
+                                            @endphp
+                                            <div x-show="metricMatches(@js($row['hay']))" class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex items-center gap-3">
+                                                @if($ch->rival_avatar)
+                                                    <img src="{{ $ch->rival_avatar }}" alt="" class="w-9 h-9 rounded-full object-cover border border-gray-100 flex-shrink-0">
+                                                @else
+                                                    <x-gender-avatar :gender="$ch->rival_gender" class="w-9 h-9 rounded-full border border-gray-100 flex-shrink-0" />
+                                                @endif
+                                                <div class="min-w-0 flex-1">
+                                                    <p class="text-sm font-semibold text-foreground truncate">
+                                                        <i class="bi {{ $ch->type === 'fight' ? 'bi-shield-shaded' : 'bi-lightning-charge-fill' }} text-primary mr-0.5"></i>{{ $ch->discipline }}
+                                                    </p>
+                                                    <p class="text-[11px] text-muted-foreground truncate">{{ __('member.ch_vs') }} {{ $ch->rival_name }} · {{ optional($ch->date)->format('d M Y') }}</p>
+                                                </div>
+                                                <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $bTone }}">{{ $bText }}</span>
+                                            </div>
+                                        @endforeach
+                                    @endif
+
+                                    {{-- Nothing left after filtering --}}
+                                    @if($rowCount >= $metricSearchFrom)
+                                        <p x-show="metricQuery && ! @js(collect($m['rows'])->pluck('hay')->all()).some(h => h.includes(metricQuery.trim().toLowerCase()))"
+                                           class="text-sm text-muted-foreground text-center py-6">{{ __('member.no_matches') }}</p>
+                                    @endif
+                                </div>
+                            @endif
+                        </div>
+
+                        @if($m['add'])
+                            <div class="flex-shrink-0 border-t border-gray-100 bg-background px-5 pt-3"
+                                 style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
+                                @if(isset($m['add']['url']))
+                                    <a href="{{ $m['add']['url'] }}"
+                                       class="m-press w-full bg-primary text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 active:bg-primary/90">
+                                        <i class="bi bi-plus-lg"></i>{{ $m['add']['label'] }}
+                                    </a>
+                                @else
+                                    <button type="button" @click="closeMetric(); $dispatch('{{ $m['add']['event'] }}')"
+                                            class="m-press w-full bg-primary text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 active:bg-primary/90">
+                                        <i class="bi bi-plus-lg"></i>{{ $m['add']['label'] }}
+                                    </button>
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </template>
 
     @php
         // Pre-build the awarded-achievement view models ONCE. Reused by the medal
@@ -644,6 +1050,16 @@
                 @endforeach
             </div>
             @endif
+            {{-- Section header — above the metric cards it summarises (shown once there are readings) --}}
+            <div class="flex items-center justify-between gap-2" x-show="rows.length" x-cloak>
+                <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-graph-up-arrow text-primary"></i>{{ __('member.weight_history') }}</h3>
+                @if($canEditBasic)
+                    <button type="button" @click="openAdd()" class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
+                        <i class="bi bi-plus-lg"></i>{{ __('member.add_weight') }}
+                    </button>
+                @endif
+            </div>
+
             @if($latest)
                 @php
                     // Primary trio shown in one row, then any extra metrics below.
@@ -702,15 +1118,6 @@
             @endif
 
             {{-- ===== Weight tracking (Work-History-style layout: bare header + standalone cards) ===== --}}
-            {{-- Section header (shown once there are readings) --}}
-            <div class="flex items-center justify-between gap-2" x-show="rows.length" x-cloak>
-                <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-graph-up-arrow text-primary"></i>{{ __('member.weight_history') }}</h3>
-                @if($canEditBasic)
-                    <button type="button" @click="openAdd()" class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
-                        <i class="bi bi-plus-lg"></i>{{ __('member.add_weight') }}
-                    </button>
-                @endif
-            </div>
 
             {{-- Taekwondo weight-class card — reflects the latest weight, updates live --}}
             <template x-if="classify(latest.weight)">
@@ -866,7 +1273,10 @@
                     goalCreated: @js(__('member.goal_created')),
                     goalUpdated: @js(__('member.goal_updated')),
                 }
-             })">
+             })"
+             {{-- The Goal-success metric sheet opens the add form from outside this tab.
+                  The form is teleported to <body>, so it shows even while the tab is hidden. --}}
+             @open-goal-sheet.window="openAdd()">
             {{-- Goals summary — ring (success rate) + counts, mirrors the attendance card. --}}
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-5" x-show="goals.length">
                 <div class="mp-ring" :style="'--p:'+successRate+'; width:84px; height:84px;'"><b style="font-size:18px" x-text="successRate+'%'"></b></div>
@@ -2656,15 +3066,26 @@
 {{-- Basic-info edit — self / guardian / super-admin only. Reuses the shared
      profile modal; on success it dispatches `member-profile-updated`. --}}
 @if($canEditBasic ?? false)
+    @php
+        $isAdminView = $relationship->relationship_type === 'admin_view';
+        $photoUploadUrl = $isAdminView
+            ? route('admin.platform.members.upload-picture', $relationship->dependent->id)
+            : route('member.upload-picture', $relationship->dependent->id);
+    @endphp
+    {{-- The photo is NOT a tab here — the avatar's pencil opens the photo sheet instead,
+         which manages the profile's several pictures rather than one. --}}
     <x-profile-modal
         :user="$relationship->dependent"
-        :formAction="$relationship->relationship_type === 'admin_view' ? route('admin.platform.members.update', $relationship->dependent->id) : route('member.update', $relationship->dependent->id)"
+        :formAction="$isAdminView ? route('admin.platform.members.update', $relationship->dependent->id) : route('member.update', $relationship->dependent->id)"
         formMethod="PUT"
         :cancelUrl="null"
-        :uploadUrl="$relationship->relationship_type === 'admin_view' ? route('admin.platform.members.upload-picture', $relationship->dependent->id) : route('member.upload-picture', $relationship->dependent->id)"
-        :showRelationshipFields="$relationship->relationship_type !== 'admin_view' && $relationship->relationship_type !== 'self'"
+        :uploadUrl="$photoUploadUrl"
+        :showPhotoTab="false"
+        :showRelationshipFields="!$isAdminView && $relationship->relationship_type !== 'self'"
         :relationship="$relationship"
     />
+
+    <x-profile-photo-sheet :user="$relationship->dependent" />
 @endif
 
 {{-- Scripts live INSIDE the content section (not @push) so they ship with #shell-content --}}

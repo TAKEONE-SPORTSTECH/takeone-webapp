@@ -828,4 +828,10 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(UserNotification::class);
     }
+
+    /** The pictures on this profile — the avatar is the one whose path is in profile_picture. */
+    public function photos(): HasMany
+    {
+        return $this->hasMany(UserPhoto::class)->orderBy('sort_order')->orderBy('id');
+    }
 }

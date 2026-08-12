@@ -162,6 +162,10 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     Route::get('/events/create', [App\Http\Controllers\PersonalEventController::class, 'create'])->name('events.create');
     Route::post('/events', [App\Http\Controllers\PersonalEventController::class, 'store'])->name('events.store')->middleware('throttle:member-write');
     Route::get('/events/{event:uuid}', [App\Http\Controllers\PersonalEventController::class, 'show'])->name('events.show');
+    // The organiser's console. `show` is what a visitor came to read; this is
+    // what the people running the event came to do. Organiser or an appointed
+    // official only — the action refuses everyone else.
+    Route::get('/events/{event:uuid}/manage', [App\Http\Controllers\PersonalEventController::class, 'manage'])->name('events.manage');
     Route::get('/events/{event:uuid}/edit', [App\Http\Controllers\PersonalEventController::class, 'edit'])->name('events.edit');
     Route::put('/events/{event:uuid}', [App\Http\Controllers\PersonalEventController::class, 'update'])->name('events.update')->middleware('throttle:member-write');
     Route::patch('/events/{event:uuid}/cancel', [App\Http\Controllers\PersonalEventController::class, 'cancelEvent'])->name('events.cancel-event')->middleware('throttle:member-write');
@@ -781,6 +785,12 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     Route::post('/member/{id}/upload-picture', [MemberController::class, 'uploadPicture'])->name('member.upload-picture')->middleware('throttle:uploads');
     Route::delete('/member/{id}/profile-picture', [MemberController::class, 'removeProfilePicture'])->name('member.remove-picture')->middleware('throttle:member-write');
     Route::put('/member/{id}/profile-picture/visibility', [MemberController::class, 'updateProfilePictureVisibility'])->name('member.picture-visibility')->middleware('throttle:member-write');
+
+    // A profile holds several pictures; {photo} is a uuid and is always resolved
+    // inside {id}'s own photos, so another profile's uuid resolves to nothing.
+    Route::post('/member/{id}/photos', [App\Http\Controllers\UserPhotoController::class, 'store'])->name('member.photos.store')->middleware('throttle:uploads');
+    Route::put('/member/{id}/photos/{photo}/avatar', [App\Http\Controllers\UserPhotoController::class, 'setAvatar'])->name('member.photos.avatar')->middleware('throttle:member-write');
+    Route::delete('/member/{id}/photos/{photo}', [App\Http\Controllers\UserPhotoController::class, 'destroy'])->name('member.photos.destroy')->middleware('throttle:member-write');
     Route::post('/member/{id}/upload-document', [MemberController::class, 'uploadDocument'])->name('member.upload-document')->middleware('throttle:uploads');
     Route::delete('/member/{id}/document', [MemberController::class, 'deleteDocument'])->name('member.delete-document')->middleware('throttle:member-write');
     Route::post('/member/{id}/reset-password', [MemberController::class, 'resetPassword'])->name('member.reset-password')->middleware('throttle:member-write');
