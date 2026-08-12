@@ -498,16 +498,18 @@
             </div>
             @endif
 
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                <div class="flex items-center justify-between mb-3">
-                    <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-person-vcard text-primary"></i> {{ __('member.personal') }}</h3>
+            <div>
+                {{-- Header always outside the card (matches Work history / Active clubs) --}}
+                <div class="flex items-center justify-between gap-2 mb-2">
+                    <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-person-vcard text-primary"></i>{{ __('member.personal') }}</h3>
                     @if($canEditBasic ?? false)
                         <button type="button" @click="$dispatch('open-profile-modal')"
-                                class="m-press inline-flex items-center gap-1.5 text-primary text-sm font-semibold">
+                                class="m-press inline-flex items-center gap-1.5 text-primary text-sm font-semibold flex-shrink-0">
                             <i class="bi bi-pencil-square"></i> {{ __('member.edit') }}
                         </button>
                     @endif
                 </div>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                 {{-- Age, gender & nationality live in the hero meta — not repeated here. --}}
                 @php
                     // Marital status → icon + colour (matches the profile modal's dropdown).
@@ -553,12 +555,18 @@
                         @endif
                     </div>
                 </div>
+                </div>
             </div>
             @if($user->email || $phone)
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-2.5">
-                <h3 class="font-bold text-foreground mb-1 flex items-center gap-2"><i class="bi bi-telephone text-primary"></i> {{ __('member.contact') }}</h3>
+            <div>
+                {{-- Header always outside the card --}}
+                <div class="flex items-center justify-between gap-2 mb-2">
+                    <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-telephone text-primary"></i>{{ __('member.contact') }}</h3>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-2.5">
                 @if($user->email)<a href="mailto:{{ $user->email }}" class="flex items-center gap-3 text-sm"><span class="w-8 h-8 rounded-lg bg-accent grid place-items-center text-primary"><i class="bi bi-envelope"></i></span><span class="truncate">{{ $user->email }}</span></a>@endif
                 @if($phone)<a href="tel:{{ $phone }}" class="flex items-center gap-3 text-sm"><span class="w-8 h-8 rounded-lg bg-accent grid place-items-center text-primary"><i class="bi bi-phone"></i></span><span dir="ltr">{{ $phone }}</span></a>@endif
+                </div>
             </div>
             @endif
 
@@ -1137,14 +1145,17 @@
              x-data="tournamentSheet({ storeUrl: '{{ $tvStoreUrl }}', csrf: '{{ csrf_token() }}', memberId: {{ (int) $relationship->dependent->id }}, canAdd: {{ $isSelf ? 'true' : 'false' }}, affiliations: @js($tvAffiliations) })"
              @open-achievement-sheet.window="openAdd()">
             @php $hasTournamentContent = ($awardedAchievements ?? collect())->isNotEmpty() || $tournamentEvents->isNotEmpty(); @endphp
-            @if($isSelf && $hasTournamentContent)
-                {{-- Bare section header + labeled add button (matches Work History) --}}
+            @if($isSelf || ! $hasTournamentContent)
+                {{-- Bare section header + labeled add button (matches Work History / Active clubs).
+                     Always outside the card, so the empty state keeps the same header as the filled one. --}}
                 <div class="flex items-center justify-between gap-2">
                     <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-trophy text-primary"></i>{{ __('member.tab_tournaments') }}</h3>
-                    <button type="button" @click="openAdd()" aria-label="{{ __('Add achievement') }}"
-                            class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
-                        <i class="bi bi-plus-lg"></i>{{ __('Add achievement') }}
-                    </button>
+                    @if($isSelf)
+                        <button type="button" @click="openAdd()" aria-label="{{ __('Add achievement') }}"
+                                class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-sm shadow-primary/25 hover:bg-primary/90 transition-colors flex-shrink-0">
+                            <i class="bi bi-plus-lg"></i>{{ __('Add achievement') }}
+                        </button>
+                    @endif
                 </div>
             @endif
             @if(($awardedAchievements ?? collect())->isNotEmpty())
@@ -1249,14 +1260,6 @@
             @empty
                 @if(($awardedAchievements ?? collect())->isEmpty())
                 <div id="mobileTournamentsEmpty" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-trophy text-primary"></i> {{ __('member.tab_tournaments') }}</h3>
-                        @if($isSelf)
-                            <button type="button" @click="openAdd()" class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold active:bg-primary/90">
-                                <i class="bi bi-plus-lg"></i>{{ __('Add achievement') }}
-                            </button>
-                        @endif
-                    </div>
                     <p class="text-sm text-muted-foreground text-center py-4">{{ __('member.no_tournaments') }}</p>
                 </div>
                 @endif
@@ -2394,8 +2397,8 @@
                 }
              })">
 
-            {{-- Section header (shown once there are entries) --}}
-            <div class="flex items-center justify-between gap-2" x-show="items.length" x-cloak>
+            {{-- Section header — always outside the card, so the empty state keeps the same header as the filled one --}}
+            <div class="flex items-center justify-between gap-2">
                 <h3 class="font-bold text-foreground flex items-center gap-2 text-[15px]"><i class="bi bi-briefcase text-primary"></i>{{ __('member.work_history') }}</h3>
                 @if($canEditBasic ?? false)
                     <button type="button" @click="openAdd()" aria-label="{{ __('member.add_work') }}"
@@ -2408,14 +2411,6 @@
             {{-- Empty state --}}
             <template x-if="!items.length">
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <h3 class="font-bold text-foreground flex items-center gap-2"><i class="bi bi-briefcase text-primary"></i> {{ __('member.work_history') }}</h3>
-                        @if($canEditBasic ?? false)
-                            <button type="button" @click="openAdd()" class="m-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold active:bg-primary/90">
-                                <i class="bi bi-plus-lg"></i>{{ __('member.add_work') }}
-                            </button>
-                        @endif
-                    </div>
                     <p class="text-sm text-muted-foreground text-center py-4">{{ __('member.no_work') }}</p>
                 </div>
             </template>
