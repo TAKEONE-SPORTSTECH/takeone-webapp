@@ -31,7 +31,20 @@ class DemoPurge extends Command
         'user_follows', 'user_schedule_sessions',
         'club_member_subscriptions', 'memberships',
         'club_package_activities', 'club_packages', 'club_activities', 'club_instructors', 'club_facilities',
-        'club_gallery_images', 'user_roles', 'tenants', 'businesses', 'users',
+        'club_gallery_images', 'user_photos', 'user_roles', 'tenants', 'businesses', 'users',
+    ];
+
+    /**
+     * Child rows resolved from a manifest-recorded parent: table => [fk, parent].
+     *
+     * `demo:seed` records only what it creates itself, so a table it never writes
+     * is invisible to the manifest — and a member's extra profile pictures are
+     * exactly that: they arrive later, from the UI or a backfill, hanging off a
+     * demo user. A row whose owner is a demo user IS demo data, so it is still
+     * "nothing more than what was seeded" — the parent id is the authority.
+     */
+    private array $childTables = [
+        'user_photos' => ['user_id', 'users'],
     ];
 
     /** table => [ [column, disk, 'single'|'array'], ... ] — files purged before the rows. */
@@ -46,6 +59,7 @@ class DemoPurge extends Command
         'club_timeline_posts' => [['image_path', 'public', 'single']],
         'user_posts' => [['images', 'public', 'array']],
         'club_gallery_images' => [['image_path', 'public', 'single']],
+        'user_photos' => [['path', 'public', 'single']],
     ];
 
     public function handle(): int
@@ -57,7 +71,7 @@ class DemoPurge extends Command
             return self::FAILURE;
         }
 
-        $tables = $manifest['tables'] ?? [];
+        $tables = $this->withChildren($manifest['tables'] ?? []);
         $totalRows = array_sum(array_map('count', $tables));
         $this->warn("This will permanently delete {$totalRows} demo rows across ".count($tables).' tables (seeded '.($manifest['seeded_at'] ?? '?').').');
 
@@ -125,6 +139,32 @@ class DemoPurge extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Fold rows owned by a manifest-recorded parent into the table map, so the
+     * file sweep and the row deletion below see them like any recorded id.
+     *
+     * @param  array<string, array<int, int>>  $tables
+     * @return array<string, array<int, int>>
+     */
+    private function withChildren(array $tables): array
+    {
+        foreach ($this->childTables as $table => [$fk, $parent]) {
+            $parentIds = $tables[$parent] ?? [];
+            if (! $parentIds || ! Schema::hasTable($table) || ! Schema::hasColumn($table, $fk)) {
+                continue;
+            }
+
+            $ids = [];
+            foreach (array_chunk($parentIds, 500) as $chunk) {
+                $ids = array_merge($ids, DB::table($table)->whereIn($fk, $chunk)->pluck('id')->all());
+            }
+
+            $tables[$table] = array_values(array_unique(array_merge($tables[$table] ?? [], $ids)));
+        }
+
+        return $tables;
     }
 
     /** Normalize a column value into a list of storage paths. */
