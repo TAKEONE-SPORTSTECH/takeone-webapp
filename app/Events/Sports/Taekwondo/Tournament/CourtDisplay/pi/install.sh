@@ -82,6 +82,12 @@ fi
 # 720p. The board is authored at 1920x1080 and only ever SCALES, so the design
 # is identical — but a Pi 3B is filling 56% of the pixels, which is the single
 # biggest thing standing between this hardware and a smooth board.
+#
+# gpu_mem matters just as much and is easier to miss. A Pi 3B ships with 64 MB
+# split to the VideoCore, which is not enough to hold the compositor's buffers
+# for a full-screen page: it spills, and the board turns into a slideshow that
+# looks exactly like a slow network. 128 MB is the smallest split that holds a
+# 720p page comfortably and still leaves the 1 GB board room for cog.
 CONF=/boot/firmware/config.txt
 [ -f "$CONF" ] || CONF=/boot/config.txt
 if [ -f "$CONF" ] && ! grep -q '^# takeone-court' "$CONF"; then
@@ -91,8 +97,16 @@ if [ -f "$CONF" ] && ! grep -q '^# takeone-court' "$CONF"; then
 hdmi_group=1
 hdmi_mode=4
 disable_overscan=1
+gpu_mem=128
 EOF
-    echo "set output to 720p (edit $CONF and reboot for 1080p)"
+    echo "set output to 720p and gpu_mem=128 (edit $CONF and reboot to change)"
+fi
+
+# An earlier install wrote the block without gpu_mem. Re-running must fix that
+# screen too, or the fleet silently splits into fast Pis and slow ones.
+if [ -f "$CONF" ] && grep -q '^# takeone-court' "$CONF" && ! grep -q '^gpu_mem=' "$CONF"; then
+    printf 'gpu_mem=128\n' >> "$CONF"
+    echo "added gpu_mem=128 (reboot to apply)"
 fi
 
 say "Starting"

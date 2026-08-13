@@ -23,7 +23,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ __('event-taekwondo_tournament::messages.court_title') }}</title>
+<title>{{ __('event-taekwondo_tournament::messages.court_page_title', ['court' => $payload['court'] ?? '', 'event' => $payload['event']['title'] ?? '']) }}</title>
 
 <style>
 @php
@@ -67,6 +67,21 @@
   @keyframes platePop { 0% { opacity: 0; transform: translate(-50%,-50%) scale(0.4); } 70% { opacity: 1; transform: translate(-50%,-50%) scale(1.12); } 100% { opacity: 1; transform: translate(-50%,-50%) scale(1); } }
   @keyframes headerIn { from { opacity: 0; transform: translateY(-40px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes rowSweep { 0% { transform: translateX(-140%) skewX(-22deg); } 45%, 100% { transform: translateX(320%) skewX(-22deg); } }
+  /* ── Restored to the approved layout, verbatim ───────────────────────────
+     These are the draft's own loops, back as authored: an animated box-shadow
+     for the glow, an animated background-position for the running gold border
+     and the title, and letter-spacing for the GET READY tracking. All four run
+     `infinite`.
+
+     Recorded so nobody has to rediscover it: this is a paint-and-layout load
+     that a Pi 3B cannot carry. It repaints each row every frame forever, and
+     measurably starved inbound socket messages in the renderer for minutes
+     (cog eventually took a SIGSEGV). The composited, settling equivalents that
+     used to be here are in git — `git log -p` this file, or the copies kept
+     beside it — and can be put back in one edit.
+
+     Restored deliberately, with that trade-off understood: the target screen is
+     no longer necessarily a Pi 3B. On an Android TV box or a PC these are free. */
   @keyframes goldRun { 0% { background-position: 0% 50%; } 100% { background-position: 300% 50%; } }
   @keyframes nextBreathe { 0%,100% { box-shadow: 0 0 16px rgba(253,196,54,0.35), 0 0 44px rgba(253,196,54,0.15); box-shadow: 0 0 16px oklch(0.85 0.16 85 / 0.35), 0 0 44px oklch(0.85 0.16 85 / 0.15); } 50% { box-shadow: 0 0 36px rgba(253,196,54,0.8), 0 0 110px rgba(253,196,54,0.35); box-shadow: 0 0 36px oklch(0.85 0.16 85 / 0.8), 0 0 110px oklch(0.85 0.16 85 / 0.35); } }
   @keyframes titleShimmer { 0% { background-position: -200% 50%; } 100% { background-position: 300% 50%; } }
@@ -94,6 +109,9 @@
      is what actually hurts, and the queue rarely changes minute to minute. */
   #stale { position: absolute; right: 60px; bottom: 34px; display: none; align-items: center; gap: 12px; padding: 8px 20px; background: rgba(10,10,14,0.85); border: 1px solid rgba(232,230,224,0.25); font-weight: 600; font-size: 22px; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(232,230,224,0.6); }
   #stale.on { display: flex; }
+  /* The one loop on this board that never settles, deliberately: it is 12px,
+     it is display:none unless something is actually wrong, and a trouble light
+     that stops blinking stops being a trouble light. */
   #stale .dot { width: 12px; height: 12px; border-radius: 50%; background: #fb7c00; background: oklch(0.72 0.19 55); animation: numBeat 1.6s ease-in-out infinite; }
 
   @media (prefers-reduced-motion: reduce) {
@@ -142,6 +160,7 @@
   var root = document.getElementById('root');
   var rowsEl = document.getElementById('rows');
   var staleEl = document.getElementById('stale');
+
 
   // ── Stage scaling ────────────────────────────────────────────────────────
   // The layout is authored at 1920x1080 and never reflows; it only scales. That
@@ -193,7 +212,7 @@
   // TODO(offline): flags come from flagcdn. Harmless on 4G, but the Pi agent
   // should mirror them to disk so a dead uplink never empties the flag boxes.
   function flagUrl(code) {
-    return /^[a-z]{2}$/.test(String(code || '')) ? 'https://flagcdn.com/w320/' + code + '.png' : null;
+    return /^[a-z]{2}$/.test(String(code || '')) ? 'https://flagcdn.com/w1280/' + code + '.png' : null;
   }
 
   // ── Colour has to survive an old engine ──────────────────────────────────
@@ -239,7 +258,7 @@
     wrap.appendChild(photo);
 
     var col = el('div', 'flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:6px;' +
-      (isRed ? 'padding:10px 180px 10px 26px;' : 'align-items:flex-end; padding:10px 26px 10px 180px; text-align:right;'));
+      (isRed ? 'padding:10px 60px 10px 26px;' : 'align-items:flex-end; padding:10px 26px 10px 60px; text-align:right;'));
 
     // The one field that never hides: a nameless half looks broken from ten
     // metres, so an undrawn slot says so instead.
@@ -247,12 +266,14 @@
 
     var meta = el('div', 'display:flex; align-items:center; gap:12px; max-width:100%;' + (isRed ? '' : 'flex-direction:row-reverse;'));
 
-    // `contain`, never `cover`. National flags run from 1.43:1 (Brazil) to 2:1
-    // (Jordan) while this box is 4:3, so cover crops a third off EACH side of a
-    // 2:1 flag — which is exactly where the hoist device lives. It ate Jordan's
-    // chevron and star, and Oman's emblem, leaving both as anonymous stripes.
-    // The letterbox band is the honest trade: a flag is either whole or wrong.
-    var flag = el('div', 'width:76px; flex:0 0 auto; aspect-ratio:4/3; background-color:rgba(0,0,0,0.25); background-size:contain; background-repeat:no-repeat; background-position:center; border:1px solid rgba(255,255,255,0.4);');
+    // Stretched to fill the box — `100% 100%`, not `cover` and not `contain`.
+    // National flags run from 1.43:1 (Brazil) to 2:1 (Jordan) while this box is
+    // 4:3, so the three options are: crop (`cover`) which ate a third off each
+    // side of a 2:1 flag and took Jordan's chevron and Oman's emblem with it;
+    // letterbox (`contain`) which left grey bands and a flag that did not fill
+    // its frame; or stretch, which keeps every flag WHOLE and fills the plate.
+    // Stretch is the chosen trade: a little distortion, nothing lost.
+    var flag = el('div', 'width:76px; flex:0 0 auto; aspect-ratio:4/3; background-color:rgba(0,0,0,0.25); background-size:100% 100%; image-rendering:auto; background-repeat:no-repeat; background-position:center; border:1px solid rgba(255,255,255,0.4);');
     var hasFlag = bgOrHide(flag, flagUrl(m[corner + 'Flag']));
     meta.appendChild(flag);
 
@@ -352,11 +373,21 @@
   var shownVersion = null;
   var shownKeys = [];
   var first = true;
+  var ownCourt = null;
 
   function keyOf(m) { return String(m.number) + '|' + (m.redName || '') + '|' + (m.blueName || ''); }
 
   function render(payload) {
     if (!payload || typeof payload !== 'object') return;
+
+    // This board belongs to one mat, decided by the server when the page was
+    // rendered. Now that updates are PUSHED rather than fetched, a payload for
+    // some other mat is a thing that can arrive — an in-flight message for the
+    // previous assignment landing just after a re-pair — and drawing it would
+    // put Mat 2's queue on Mat 1's wall. The first payload sets the mat; a
+    // later one that disagrees is dropped.
+    if (ownCourt === null) ownCourt = payload.court || null;
+    else if (payload.court && payload.court !== ownCourt) return;
 
     // A re-publish with no visible change must not repaint — on a wall, a board
     // that silently re-animates every few seconds reads as a fault.
@@ -401,7 +432,12 @@
    */
   window.CourtBoard = {
     update: render,
-    stale: function (on) { staleEl.classList.toggle('on', !!on); }
+    stale: function (on) { staleEl.classList.toggle('on', !!on); },
+    // 'queue' when this screen was hung up to show the running order and
+    // nothing else, for as long as it is switched on. The socket client reads
+    // it to know it must not navigate this screen onto a bout when the mat
+    // loads one — see the note in CourtDisplayController::board.
+    pinned: @json($pinned ?? false)
   };
 
   render(@json($payload));

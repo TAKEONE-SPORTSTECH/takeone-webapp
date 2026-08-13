@@ -29,7 +29,7 @@ class CourtDisplayDevice extends Model
 {
     protected $table = 'court_displays';
 
-    protected $fillable = ['event_id', 'court', 'token_hash', 'token_hint', 'pairing_code', 'label', 'created_by'];
+    protected $fillable = ['event_id', 'court', 'surface', 'token_hash', 'token_hint', 'pairing_code', 'label', 'created_by'];
 
     protected $casts = [
         'last_seen_at' => 'datetime',
@@ -139,11 +139,14 @@ class CourtDisplayDevice extends Model
      * the acting user may manage the event — this method does not know who is
      * asking, and must never be reached without that check.
      */
-    public function claim(ClubEvent $event, string $court, ?int $by = null): void
+    public function claim(ClubEvent $event, string $court, ?int $by = null, ?string $surface = null): void
     {
         $this->forceFill([
             'event_id' => $event->id,
             'court' => $court,
+            // What this screen is FOR, chosen by whoever paired it. Null means
+            // follow the mat, which is what a board hanging over it should do.
+            'surface' => in_array($surface, ['queue', 'bout', 'control'], true) ? $surface : null,
             'claimed_at' => now(),
             'created_by' => $this->created_by ?: $by,
             // Spent: the code on the wall stops being claimable the moment it
@@ -221,6 +224,11 @@ class CourtDisplayDevice extends Model
             'id' => $this->id,
             'label' => $this->label ?: null,
             'court' => $this->court,
+            // What it was paired AS. A panel that only says "Mat 1" cannot tell
+            // an organiser which of the three screens on Mat 1 is the one
+            // scoring — and that is the row they most need to find.
+            'surface' => $this->surface ?: 'follow',
+            'surface_label' => __('personal.event_screens_surface_'.($this->surface ?: 'follow')),
             // "alive" is a stronger claim than "was seen once", and it is only
             // answerable because the board heartbeats.
             //

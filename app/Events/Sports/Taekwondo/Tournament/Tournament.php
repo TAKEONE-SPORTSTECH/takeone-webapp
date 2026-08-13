@@ -4,6 +4,7 @@ namespace App\Events\Sports\Taekwondo\Tournament;
 
 use App\Events\AbstractEventType;
 use App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayDevice;
+use App\Events\Sports\Taekwondo\Tournament\CourtDisplay\ScreenChannel;
 use App\Events\Support\BracketView;
 use App\Events\Support\EnrolmentDecision;
 use App\Events\Support\Milestone;
@@ -254,6 +255,14 @@ class Tournament extends AbstractEventType
         }
         $calls->pushDue($event, $match->court);
 
+        // And the walls — EVERY mat, not just this one. The winner of this bout
+        // advances into a next-round slot, and the scheduler is free to put that
+        // bout on another mat: that mat's queue just changed too, and scoping the
+        // push to $match->court would leave it announcing a bout with a corner
+        // that is no longer "to be decided". Rebuilding three or four boards is
+        // cheaper than one wrong wall.
+        ScreenChannel::notifyCourt($event, null);
+
         // Everyone following this championship sees the bout land — and the
         // athletes it just advanced — without refreshing.
         $this->broadcast($event, [
@@ -280,6 +289,7 @@ class Tournament extends AbstractEventType
             'generate_draw' => $this->generateDraw($event),
             'arrange_draw' => $this->arrangeDraw($event, $payload),
             'clear_draw' => $this->clearDraw($event, $payload),
+            'end_next_bout' => $this->endNextBout($event),
             default => ['success' => false, 'message' => __('events.action_unsupported')],
         };
     }
@@ -311,7 +321,125 @@ class Tournament extends AbstractEventType
             ];
         }
 
+        // A way to make the hall board move without twenty people and a mat.
+        //
+        // Ending a bout is otherwise only reachable by POSTing to the outcome
+        // endpoint by hand — there is no run-day scorer yet — which makes the
+        // court display impossible to demonstrate or rehearse. This ends the
+        // next queued bout with a plausible score, which is exactly what the
+        // real thing will do when it exists.
+        //
+        // NOT in production. It invents a result and writes it to a real draw:
+        // fine on a rehearsal event, never something to leave one tap away from
+        // an organiser during a live competition.
+        if (! app()->environment('production') && $this->nextBout($event)) {
+            $actions[] = [
+                'action' => 'end_next_bout',
+                'label' => __('event-taekwondo_tournament::messages.action_end_next_bout'),
+                'icon' => 'bi-flag-fill',
+            ];
+        }
+
         return $actions;
+    }
+
+    /**
+     * End the next queued bout, so the hall board can be watched moving.
+     *
+     * Goes through recordOutcome rather than writing the row itself: the point
+     * is to exercise the real path — the winner advances, the podium closes when
+     * a division finishes, the athletes are called, the screens redraw. A
+     * shortcut here would demonstrate nothing.
+     *
+     * Re-checks the environment. availableActions decides what to OFFER; this
+     * decides what may HAPPEN, and a request can arrive without the button.
+     */
+    private function endNextBout(ClubEvent $event): array
+    {
+        abort_if(app()->environment('production'), 403);
+
+        $bout = $this->nextBout($event);
+
+        if (! $bout) {
+            return ['success' => false, 'message' => __('event-taekwondo_tournament::messages.end_next_bout_none')];
+        }
+
+        // Red or blue, decided here rather than always 'a', so a rehearsal draw
+        // does not fill one side of the bracket.
+        $winner = random_int(0, 1) === 1 ? 'a' : 'b';
+        $winning = random_int(8, 20);
+        $losing = random_int(0, $winning - 1);
+
+        $this->recordOutcome($event, $bout->id, [
+            'winner' => $winner,
+            'a_score' => (string) ($winner === 'a' ? $winning : $losing),
+            'b_score' => (string) ($winner === 'b' ? $winning : $losing),
+            'status' => 'done',
+        ]);
+
+        $bout->refresh();
+
+        return [
+            'success' => true,
+            'message' => __('event-taekwondo_tournament::messages.end_next_bout_done', [
+                'winner' => ($winner === 'a' ? $bout->a_name : $bout->b_name) ?: '—',
+                'court' => $bout->court ?: '—',
+            ]),
+        ];
+    }
+
+    /**
+     * The bout this test action should end, or null when nothing is endable.
+     *
+     * Prefers a mat somebody is watching. The whole point of the button is to
+     * see a hall screen move, and the running order's own next bout is often on
+     * a mat with no screen paired to it — press, nothing happens, and the
+     * feature looks broken when it is working exactly as scoped.
+     */
+    private function nextBout(ClubEvent $event): ?EventMatch
+    {
+        // A bout waiting on a feeder has nobody to declare the winner of.
+        $endable = $this->runningOrder()->upcomingBouts($event)
+            ->filter(fn (EventMatch $m) => $m->a_competitor_id && $m->b_competitor_id);
+
+        $watched = CourtDisplayDevice::where('event_id', $event->id)
+            ->whereNull('revoked_at')
+            ->whereNotNull('court')
+            ->pluck('court')
+            ->all();
+
+        return $endable->first(fn (EventMatch $m) => in_array($m->court, $watched, true))
+            ?? $endable->first();
+    }
+
+    /**
+     * Carry every first-round bye into the next round.
+     *
+     * A field that is not a power of two is padded with byes, and the draw
+     * engine writes those straight to the table as already won — winner set,
+     * status done — because nobody fights them. But writing a winner is not the
+     * same as ADVANCING one: propagate() is what puts a name into the next
+     * round's slot, and it only ever runs from recordOutcome(), which a bye
+     * never reaches.
+     *
+     * So without this a bracket keeps permanent holes. The semi-final fed by a
+     * bye never gets its second competitor, so it can never be played, so the
+     * division never completes and its podium is never awarded. Any entry list
+     * that is not exactly 4, 8 or 16 hits it.
+     *
+     * Idempotent: propagate() writes the same name into the same slot however
+     * many times a draw is re-cut.
+     */
+    private function advanceByes(EventCategory $category): void
+    {
+        $byes = $category->matches()
+            ->whereNotNull('winner')
+            ->where(fn ($q) => $q->whereNull('a_competitor_id')->orWhereNull('b_competitor_id'))
+            ->get();
+
+        foreach ($byes as $bye) {
+            $this->advancement()->propagate($category, $bye);
+        }
     }
 
     /**
@@ -385,6 +513,7 @@ class Tournament extends AbstractEventType
         foreach ($event->categories()->get() as $category) {
             if ($category->registrations()->where('role', 'participant')->count() >= 1) {
                 $this->draws->build($event, $category, paidOnly: false);
+                $this->advanceByes($category);
             }
         }
 
@@ -609,7 +738,9 @@ class Tournament extends AbstractEventType
      */
     protected function matchView(ClubEvent $event, EventCategory $c, $m): array
     {
-        $day = $this->scheduler->phaseDay($c, $m->phase ?: 'preliminary');
+        // The scheduler resolves this once and stores it on the bout; fall back
+        // to re-deriving it for a draw that predates that column.
+        $day = $m->day ?: $this->scheduler->phaseDay($c, $m->phase ?: 'preliminary');
         $courtNo = ($m->court && preg_match('/(\d+)/', $m->court, $cm)) ? (int) $cm[1] : null;
 
         return array_replace(parent::matchView($event, $c, $m), [

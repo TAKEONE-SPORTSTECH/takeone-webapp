@@ -26,6 +26,10 @@ class Roster
             ->with([
                 'user:id,full_name,name,gender,birthdate',
                 'user.latestHealthRecord',
+                // For BeltRank: resolving a rank per athlete would otherwise be a
+                // query each, on a list that can run to hundreds of entrants.
+                'user.certifications:id,user_id,title,issue_date',
+                'user.skillAcquisitions:id,user_id,proficiency_level,start_date',
                 'category:id,name,weight_class',
             ])
             ->latest('registered_at')->get()
@@ -57,6 +61,9 @@ class Roster
                     'paid_verified' => $r->paid && $r->paid_by !== null,
                     'weighed' => $r->weighed_in_at !== null,
                     'weighed_verified' => $r->weighed_in_at !== null && $r->weighed_in_by !== null,
+                    // What the arena screen will announce. Null when nothing is
+                    // on file anywhere — the desk then asks the official for it.
+                    'belt' => $user ? app(\App\Sports\Combat\BeltRank::class)->for($user, $r) : null,
                     'weighed_in' => $r->weight !== null,
                     'has_weight' => $weightOnFile !== null,
                 ];

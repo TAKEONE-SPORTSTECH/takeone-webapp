@@ -2,8 +2,9 @@
 """
 The screen's ear.
 
-One job: notice that this screen has been given a mat, or taken off one, and
-make the display start again so the server can decide what it now shows.
+One job: notice that this screen has been given a mat, taken off one, or that
+the queue on its mat has moved, and make the display start again so the server
+can decide what it now shows.
 
 Why this is a separate process and not a few lines in the board page. The board
 carries the same subscription, and on anything with a GPU it works — but the
@@ -80,7 +81,7 @@ def fetch_credentials(server, token):
             time.sleep(15)
 
 
-def restart_display():
+def restart_display(reason):
     """Bring the browser back so it re-fetches its page.
 
     A restart rather than a reload: the display is a separate process this has
@@ -88,7 +89,7 @@ def restart_display():
     a fresh cog is the one state we know is correct. systemd brings it straight
     back — killing cog ends the unit's main process, because the agent execs it.
     """
-    log("assignment changed — restarting the display")
+    log("%s — restarting the display" % reason)
     subprocess.run(["pkill", "-x", "cog"], check=False)
 
 
@@ -127,8 +128,12 @@ def main():
             action = json.loads(msg.payload.decode()).get("action")
         except Exception:
             return
+        # A queue change is NOT a restart. The page redraws itself in place
+        # from the same message — restarting for a finished bout would blank the
+        # wall every few minutes, which is the one thing a hall screen must
+        # never do. Only a change of PAGE justifies bouncing the browser.
         if action in ("paired", "unpaired"):
-            restart_display()
+            restart_display("assignment changed")
 
     client.on_connect = on_connect
     client.on_message = on_message

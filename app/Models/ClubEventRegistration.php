@@ -2,12 +2,27 @@
 
 namespace App\Models;
 
+use App\Traits\DeletesUploadedFiles;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ClubEventRegistration extends Model
 {
+    use DeletesUploadedFiles;
+
     protected $table = 'club_event_registrations';
+
+    /**
+     * Uploads this row owns, purged before the row goes — see the trait.
+     * `photo` is the competitor picture an official added at the scoring table
+     * for this event's screens.
+     */
+    protected array $fileUploads = [
+        'photo' => 'public',
+        // The club crest an official supplied for this event's screens — never
+        // the club's own `tenants.logo`, which this must not touch.
+        'club_logo' => 'public',
+    ];
 
     protected $fillable = [
         'event_id',
@@ -20,6 +35,14 @@ class ClubEventRegistration extends Model
         'paid_by',
         'category_id',
         'weight',
+        // Recorded at the same desk, by the same official, as the weight —
+        // see App\Sports\Combat\BeltRank for why this outranks the profile.
+        'belt_colour',
+        'belt_grade',
+        // Added at the desk for this event's screens. Never the member's own
+        // profile picture, and never the club's own logo — see the migrations.
+        'photo',
+        'club_logo',
         'weighed_in_at',
         'weighed_in_by',
         'meta',

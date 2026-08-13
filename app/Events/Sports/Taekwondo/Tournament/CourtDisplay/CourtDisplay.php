@@ -3,6 +3,7 @@
 namespace App\Events\Sports\Taekwondo\Tournament\CourtDisplay;
 
 use App\Events\Sports\Taekwondo\Tournament\RunningOrder;
+use App\Events\Sports\Taekwondo\Tournament\Scoreboard\MatState;
 use App\Models\ClubEvent;
 use App\Models\ClubEventRegistration;
 use App\Models\EventMatch;
@@ -36,7 +37,7 @@ class CourtDisplay
     /** Rows the board shows at once. The design is built for four. */
     public const ROWS = 4;
 
-    public function __construct(private RunningOrder $order) {}
+    public function __construct(private RunningOrder $order, private \App\Events\Sports\Taekwondo\Tournament\CompetitorPhoto $photos) {}
 
     /**
      * The whole screen, ready to render — the exact shape board.blade.php draws.
@@ -85,8 +86,22 @@ class CourtDisplay
      */
     private function rows(ClubEvent $event, string $court): array
     {
-        $queue = $this->order->upcomingBouts($event)
-            ->filter(fn (EventMatch $m) => $m->court === $court)
+        // The shared definition — see RunningOrder::matQueue. The board, the
+        // scoring table and "next bout" must name the same bout, or the wall
+        // announces one thing and the table does another.
+        //
+        // Minus whatever is ON the mat right now. A bout only leaves
+        // upcomingBouts() when it has a WINNER, so one being fought at this
+        // moment is still, technically, upcoming — and it lands in row 0 with
+        // GET READY printed over it. The hall is then told to prepare for two
+        // people already on the mat, and the bout the operator is actually
+        // called to next is a row further down than anyone reading the wall
+        // expects. The scoring table owns "what is on this mat", so that is
+        // where the answer comes from.
+        $onMat = MatState::load($event, $court)->matchId;
+
+        $queue = $this->order->matQueue($event, $court)
+            ->reject(fn (EventMatch $m) => $onMat && $m->id === $onMat)
             ->take(self::ROWS)
             ->values();
 
@@ -106,8 +121,8 @@ class CourtDisplay
             'stage' => $this->stage($m),
             'weightClass' => $m->category?->weight_class ?: ($m->category?->name ?: ''),
 
-            ...$this->corner('red', $m, $entries),
-            ...$this->corner('blue', $m, $entries),
+            ...$this->corner('red', $m, $entries, $event),
+            ...$this->corner('blue', $m, $entries, $event),
         ])->all();
     }
 
@@ -121,7 +136,7 @@ class CourtDisplay
      * @param  array<int, ClubEventRegistration>  $entries
      * @return array<string, ?string>
      */
-    private function corner(string $corner, EventMatch $bout, array $entries): array
+    private function corner(string $corner, EventMatch $bout, array $entries, ClubEvent $event): array
     {
         $side = $corner === 'red' ? 'a' : 'b';
         $entry = $entries[$bout->{$side.'_competitor_id'}] ?? null;
@@ -134,25 +149,13 @@ class CourtDisplay
             // The match records the competitor's country at draw time; fall back
             // to the member's own nationality, then the club's.
             $corner.'Flag' => strtolower((string) ($bout->{$side.'_country'} ?: $user?->nationality ?: $club?->country ?: '')) ?: null,
-            $corner.'Photo' => $this->photo($user),
-            $corner.'Logo' => $club?->logo ? asset('storage/'.$club->logo) : null,
+            // The SAME question the introduction and the mat ask, answered in
+            // the same place — so a picture added at the scoring desk shows on
+            // the upcoming board too, and on every later bout this competitor
+            // has in this event.
+            $corner.'Photo' => $this->photos->url($entry, $user, $event->id),
+            $corner.'Logo' => $this->photos->crestUrl($entry, $club, $event->id),
         ];
-    }
-
-    /**
-     * The competitor's picture, or null when they have not published one.
-     *
-     * `profile_picture_is_public` is the member's own choice about whether their
-     * face may be shown to people who are not their club. A hall screen is the
-     * most public surface in the product, so a false here means the silhouette.
-     */
-    private function photo(?\App\Models\User $user): ?string
-    {
-        if (! $user?->profile_picture || ! $user->profile_picture_is_public) {
-            return null;
-        }
-
-        return asset('storage/'.$user->profile_picture);
     }
 
     /**

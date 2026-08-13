@@ -2,14 +2,15 @@
 
 namespace App\Events\Sports\Taekwondo\Tournament\CourtDisplay;
 
+use App\Models\ClubEvent;
+
 /**
  * The realtime channel belonging to one hall screen.
  *
  * A wall screen is not a user: it has no session, no account, and nothing in
  * the app's user-topic scheme fits it. So it gets its own subtree and its own
- * short contract — the server tells a screen when it has been paired or
- * unpaired, and the screen reloads into whatever it is now. Nothing else is
- * ever published here.
+ * short contract — the server tells a screen that its page changed, or hands it
+ * the queue it should now be showing.
  *
  * Why not simply let it poll: cog/WPE on DRM throttles background timers to
  * minutes (measured ~2m50s for a 60s interval on a Pi 3B), so an organiser who
@@ -17,11 +18,32 @@ namespace App\Events\Sports\Taekwondo\Tournament\CourtDisplay;
  * inbound socket message wakes the page immediately and sidesteps the throttle
  * entirely.
  *
- * Topic secrecy is deliberate but not load-bearing: the key is derived from the
- * device's stored token hash through the app key, so it cannot be guessed from
- * anything on the wall, and it cannot be reversed into the device's token. Even
- * if it leaked, the subtree carries one word — "paired" or "unpaired" — and the
- * screen's JWT allows subscribe only, never publish.
+ * Two shapes travel here, and the difference is whether the PAGE changed:
+ *
+ *   {action: paired|unpaired}   — you are a different screen now. Reload and
+ *                                 let the server decide what you are.
+ *   {action: board, payload:{}} — same page, new numbers. Redraw in place.
+ *
+ * Why the board's payload rides along instead of being fetched. Screens are
+ * remote — a Pi in a hall on the other side of a WAN link, not on our network —
+ * so a bare nudge cost a second internet round trip back to the origin, plus a
+ * PHP render, before a single pixel could change. Carrying the queue in the
+ * message deletes that hop: the frame that wakes the screen already contains
+ * what to draw. It also survives the case the nudge could not: a screen whose
+ * link blipped reconnects and asks once for the current board, rather than
+ * sitting on a finished bout until the next result happens to land.
+ *
+ * This reverses this channel's original "nothing about the competition travels
+ * here" rule, so: the board's content is the least secret thing in the product.
+ * It is projected onto a wall, at size, for a room full of strangers, and the
+ * organiser's console publishes the same running order to every athlete in the
+ * event. The topic is still an HMAC of the device token under the app key —
+ * unguessable from anything visible on the screen and not reversible into the
+ * token — and the screen's JWT is still subscribe-only on that one topic. What
+ * would leak, to someone who already had the topic, is a queue of bout numbers
+ * and competitor names that anyone standing in the venue can read. Personal
+ * data beyond that never enters the payload: CourtDisplay already withholds a
+ * competitor's photo unless they made it public.
  */
 class ScreenChannel
 {
@@ -110,6 +132,66 @@ class ScreenChannel
             // about the competition needs to travel on this topic.
             'payload' => ['action' => $action],
         ]]), null, false);
+    }
+
+    /**
+     * Hand the screens on a mat their new queue.
+     *
+     * A bout ends and the board behind it is instantly wrong — the finished
+     * fight still at the top, the next one not called. Everyone else following
+     * the event already learns this over their own channel; the wall is the one
+     * surface that had no way to hear it.
+     *
+     * Scoped to the mat when one is given: Mat 2's screen has no reason to
+     * redraw because Mat 1 finished a bout.
+     *
+     * One connection for the whole fan-out, and one payload built per MAT
+     * rather than per screen. Both matter because this runs inside the
+     * organiser's request while they wait: the old shape opened a fresh TCP
+     * connection and MQTT handshake per screen, so a four-mat event paid four
+     * of them to say four identical things.
+     */
+    /**
+     * `$message` overrides what is sent. Two things travel to a mat and they
+     * are not the same shape: the QUEUE changed (a match ended, the running
+     * order moved) or the BOUT changed (a point, the clock, a round). The queue
+     * is rebuilt per mat and differs between them; a bout message is one
+     * payload the caller already has, identical for every screen on that mat.
+     * Passing it in avoids rebuilding a board nobody asked for on every single
+     * keypress at the scoring table.
+     */
+    public static function notifyCourt(ClubEvent $event, ?string $court, ?array $message = null): void
+    {
+        if (! \Realtime()->enabled()) {
+            return;
+        }
+
+        $screens = CourtDisplayDevice::where('event_id', $event->id)
+            ->whereNull('revoked_at')
+            ->whereNotNull('court')
+            ->when($court, fn ($q) => $q->where('court', $court))
+            ->get();
+
+        if ($screens->isEmpty()) {
+            return;
+        }
+
+        $display = app(CourtDisplay::class);
+        $boards = [];
+        $messages = [];
+
+        foreach ($screens as $screen) {
+            $messages[] = [
+                'topic' => self::topic($screen),
+                // Two screens on the same mat show the same thing — build once.
+                'payload' => $message ?? [
+                    'action' => 'board',
+                    'payload' => $boards[$screen->court] ??= $display->payload($event, $screen->court),
+                ],
+            ];
+        }
+
+        rescue(fn () => \Realtime()->publishMany($messages), null, false);
     }
 
     /**
