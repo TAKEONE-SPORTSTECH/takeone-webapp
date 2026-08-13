@@ -24,6 +24,9 @@ class UpdateFamilyMemberRequest extends FormRequest
             'marital_status' => 'nullable|in:single,married,divorced,widowed',
             'birthdate' => 'required|date',
             'blood_type' => 'nullable|string|max:10',
+            // Centimetres, for the arena VS screen's stat line. Bounds are
+            // deliberately wide — this is a human height, not a sport rule.
+            'height_cm' => 'nullable|integer|min:50|max:260',
             'nationality' => 'required|string|max:100',
             'social_links' => 'nullable|array',
             'social_links.*.platform' => 'required_with:social_links.*.url|string',

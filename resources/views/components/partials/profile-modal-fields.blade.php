@@ -265,6 +265,29 @@
         </div>
     </div>
 
+    {{-- Height. A standing fact about the person, unlike the dated series in
+         health records — it is what a competition screen announces alongside
+         age and the official weigh-in weight. Optional everywhere: an athlete
+         without one gets a shorter stat line, never an invented number. --}}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+        <div>
+            <label for="{{ $formId }}_height_cm" class="block text-sm font-medium text-gray-700 mb-1">
+                {{ __('shared.profile_modal_fields_height') }}
+            </label>
+            <div class="relative">
+                <input type="number" inputmode="numeric" min="50" max="260" step="1"
+                       name="height_cm" id="{{ $formId }}_height_cm"
+                       value="{{ $userHeightCm }}"
+                       class="w-full px-3 py-2.5 pe-12 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                       placeholder="{{ __('shared.profile_modal_fields_height_placeholder') }}">
+                <span class="absolute inset-y-0 end-3 flex items-center text-xs font-semibold text-gray-400">cm</span>
+            </div>
+            @error('height_cm')
+                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
+    </div>
+
     {{-- Section: Personal --}}
     <div class="flex items-center gap-2 mb-3 mt-1">
         <i class="bi bi-chat-quote text-primary text-sm"></i>

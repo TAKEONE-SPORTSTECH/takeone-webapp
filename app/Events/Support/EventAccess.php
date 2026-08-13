@@ -81,6 +81,27 @@ class EventAccess
             || $this->isOfficial($event, $user, EventOfficial::ROLE_PAYMENTS);
     }
 
+    /**
+     * Run the table at a mat: load a bout onto the hall screens, score it, and
+     * work the clock.
+     *
+     * The organiser who created the event, anyone appointed to officiate it in
+     * any capacity, and platform staff. Deliberately wider than canManage() and
+     * narrower than "signed in": scoring is done by whoever is sitting at the
+     * table, which at a real competition is a jury member rather than the person
+     * who typed the event in — but it drives what a room full of people sees, so
+     * it stays inside the appointed list.
+     *
+     * It is NOT a result: a bout's running score is scaffolding, and the outcome
+     * still lands through recordOutcome(), which has its own authorisation.
+     */
+    public function canScore(ClubEvent $event, User $user): bool
+    {
+        return $this->canManage($event, $user)
+            || $this->isOfficial($event, $user, EventOfficial::ROLE_JURY)
+            || $this->isOfficial($event, $user, EventOfficial::ROLE_ORGANISER);
+    }
+
     /** Any officiating job at all — used to decide who sees the console. */
     public function canOfficiate(ClubEvent $event, User $user): bool
     {

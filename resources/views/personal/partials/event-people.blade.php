@@ -105,8 +105,14 @@
                 openPerson(uid) {
                     this.sel = uid;
                     this.draft = this.gates[uid]?.weight ?? '';
+                    {{-- Seeded from whatever BeltRank resolved for this athlete,
+                         so the official confirms a rank rather than re-typing one
+                         the system already had. --}}
+                    const belt = this.gates[uid]?.belt;
+                    this.beltColour = belt?.colour ?? '';
+                    this.beltGrade = belt?.grade ?? '';
                 },
-                closePerson() { this.sel = null; this.draft = ''; },
+                closePerson() { this.sel = null; this.draft = ''; this.beltColour = ''; this.beltGrade = ''; },
                 get current() { return this.sel === null ? null : (this.gates[this.sel] || null); },
 
                 gate(uid) { return this.gates[uid] || null; },
@@ -141,6 +147,23 @@
                     return d;
                 },
 
+                {{-- The belt ladder, as chips. Free text on the server, so this
+                     list is only the shortcut — a federation that grades some
+                     other way types it into the grade field. --}}
+                beltColour: '',
+                beltGrade: '',
+                beltColours: [
+                    { value: 'White',  label: @js(__('personal.belt_white')),  bg: '#f8fafc', fg: '#1f2937' },
+                    { value: 'Yellow', label: @js(__('personal.belt_yellow')), bg: '#facc15', fg: '#1f2937' },
+                    { value: 'Orange', label: @js(__('personal.belt_orange')), bg: '#fb923c', fg: '#1f2937' },
+                    { value: 'Green',  label: @js(__('personal.belt_green')),  bg: '#16a34a', fg: '#ffffff' },
+                    { value: 'Blue',   label: @js(__('personal.belt_blue')),   bg: '#2563eb', fg: '#ffffff' },
+                    { value: 'Purple', label: @js(__('personal.belt_purple')), bg: '#7c3aed', fg: '#ffffff' },
+                    { value: 'Brown',  label: @js(__('personal.belt_brown')),  bg: '#78350f', fg: '#ffffff' },
+                    { value: 'Red',    label: @js(__('personal.belt_red')),    bg: '#dc2626', fg: '#ffffff' },
+                    { value: 'Black',  label: @js(__('personal.belt_black')),  bg: '#111827', fg: '#ffffff' },
+                ],
+
                 async weigh(uid) {
                     const g = this.gates[uid];
                     const weight = parseFloat(this.draft);
@@ -148,8 +171,17 @@
 
                     this.busy = uid;
                     try {
-                        const d = await this.send(`{{ url('me/events/'.$e['key'].'/verify') }}/${g.reg_id}/weigh-in`, { weight });
+                        {{-- Belt fields are only sent when the official filled
+                             them in: an absent key leaves whatever is already on
+                             the row alone, so re-weighing someone never silently
+                             erases the rank recorded a minute earlier. --}}
+                        const body = { weight };
+                        if (this.beltColour) body.belt_colour = this.beltColour;
+                        if (this.beltGrade.trim()) body.belt_grade = this.beltGrade.trim();
+
+                        const d = await this.send(`{{ url('me/events/'.$e['key'].'/verify') }}/${g.reg_id}/weigh-in`, body);
                         g.weight = d.weight; g.weigh_verified = true;
+                        if (d.belt !== undefined) g.belt = d.belt;
                         window.showToast('success', d.message);
                     } catch (e) { window.showToast('error', e.message); }
                     finally { this.busy = null; }
@@ -563,6 +595,47 @@
                                                     class="m-press h-11 px-4 rounded-xl text-white text-xs font-black disabled:opacity-60 shrink-0"
                                                     style="background: {{ $e['color'] }};"
                                                     x-text="current?.weigh_verified ? @js(__('personal.event_verify_reweigh')) : @js(__('personal.event_verify_mark_weighed'))"></button>
+                                        </div>
+
+                                        {{-- ── Belt, recorded at the same desk ──────────
+                                             Rank is announced on the arena screen, and for
+                                             most athletes the system already knows it from
+                                             a certification — so this shows what it will
+                                             announce and the official only touches it when
+                                             it is wrong or missing. The scale is where an
+                                             athlete is physically in front of an official,
+                                             which makes it the one moment rank can actually
+                                             be checked rather than taken on trust.
+
+                                             Chips, not a dropdown: this sheet body scrolls,
+                                             and an absolutely-positioned panel would be
+                                             clipped by it (Mobile Pattern Language §3). A
+                                             colour is also the thing you recognise fastest
+                                             by eye, which is the whole point of a belt. --}}
+                                        <div class="mt-3 pt-3 border-t border-gray-100">
+                                            <div class="flex items-center justify-between gap-2">
+                                                <p class="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">{{ __('personal.event_verify_belt') }}</p>
+                                                <p class="text-[11px] text-muted-foreground truncate"
+                                                   x-show="current?.belt && current.belt.source !== 'weigh_in'"
+                                                   x-text="@js(__('personal.event_verify_belt_on_file')) + ': ' + (current?.belt?.label || '')"></p>
+                                            </div>
+
+                                            <div class="mt-2 flex flex-wrap gap-1.5">
+                                                <template x-for="c in beltColours" :key="c.value">
+                                                    <button type="button" @click="beltColour = (beltColour === c.value ? '' : c.value)"
+                                                            class="m-press h-8 px-3 rounded-lg text-[11px] font-black border-2 transition-colors"
+                                                            :class="beltColour === c.value ? 'border-current' : 'border-transparent opacity-70'"
+                                                            :style="`background:${c.bg}; color:${c.fg};`"
+                                                            x-text="c.label"></button>
+                                                </template>
+                                            </div>
+
+                                            <input type="text" x-model="beltGrade" maxlength="40"
+                                                   @keydown.enter.prevent="weigh(sel)"
+                                                   class="mt-2 w-full h-10 px-3 rounded-xl border-2 border-gray-200 text-sm font-bold text-foreground
+                                                          focus:outline-none focus:border-current"
+                                                   style="caret-color: {{ $e['color'] }};"
+                                                   placeholder="{{ __('personal.event_verify_belt_grade_hint') }}">
                                         </div>
                                     </div>
                                 @endif

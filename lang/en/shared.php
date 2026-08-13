@@ -54,6 +54,8 @@ return [
     'profile_modal_fields_marital_status' => 'Marital Status',
     'profile_modal_fields_date_of_birth' => 'Date of Birth',
     'profile_modal_fields_blood_type' => 'Blood Type',
+    'profile_modal_fields_height' => 'Height',
+    'profile_modal_fields_height_placeholder' => 'e.g. 178',
     'profile_modal_fields_nationality' => 'Nationality',
     'profile_modal_fields_personal' => 'Personal',
     'profile_modal_fields_personal_motto' => 'Personal Motto',

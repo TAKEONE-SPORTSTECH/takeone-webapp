@@ -48,7 +48,8 @@
             "Database\\Seeders\\": "database/seeders/"
         },
         "files": [
-            "app/Helpers/taekwondo_weightclass.php"
+            "app/Helpers/taekwondo_weightclass.php",
+            "app/Helpers/karate_weightclass.php"
         ]
     },
     "autoload-dev": {

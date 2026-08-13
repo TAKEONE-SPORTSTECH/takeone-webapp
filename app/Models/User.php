@@ -131,6 +131,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'marital_status',
         'birthdate',
         'blood_type',
+        'height_cm',
         'nationality',
         'locale',
         'addresses',
@@ -183,6 +184,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'media_gallery' => 'array',
             'mobile' => 'array',
             'skills' => 'array',
+            'height_cm' => 'integer',
             'experience_years' => 'integer',
             'is_personal_trainer' => 'boolean',
             'is_discoverable' => 'boolean',
@@ -621,6 +623,18 @@ class User extends Authenticatable implements MustVerifyEmail
     public function certifications(): HasMany
     {
         return $this->hasMany(MemberCertification::class);
+    }
+
+    /**
+     * Skills the user has acquired, with the club and dates behind each.
+     *
+     * Declared so callers can eager-load them: App\Sports\Combat\BeltRank reads
+     * proficiency_level as its last resort for an athlete's rank, and an
+     * officials' desk resolves that for every entrant in the event at once.
+     */
+    public function skillAcquisitions(): HasMany
+    {
+        return $this->hasMany(SkillAcquisition::class);
     }
 
     /**

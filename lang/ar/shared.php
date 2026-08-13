@@ -54,6 +54,8 @@ return [
     'profile_modal_fields_marital_status' => 'الحالة الاجتماعية',
     'profile_modal_fields_date_of_birth' => 'تاريخ الميلاد',
     'profile_modal_fields_blood_type' => 'فصيلة الدم',
+    'profile_modal_fields_height' => 'الطول',
+    'profile_modal_fields_height_placeholder' => 'مثال: ١٧٨',
     'profile_modal_fields_nationality' => 'الجنسية',
     'profile_modal_fields_personal' => 'معلومات شخصية',
     'profile_modal_fields_personal_motto' => 'الشعار الشخصي',

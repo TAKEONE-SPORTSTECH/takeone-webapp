@@ -38,6 +38,7 @@
     $userMaritalStatus = old('marital_status', $user->marital_status ?? '');
     $userBirthdate = old('birthdate', $user ? ($user->birthdate?->format('Y-m-d')) : '');
     $userBloodType = old('blood_type', $user->blood_type ?? '');
+    $userHeightCm = old('height_cm', $user->height_cm ?? '');
     $userNationality = old('nationality', $user->nationality ?? '');
     $userMotto = old('motto', $user->motto ?? '');
     $profilePicturePublic = old('profile_picture_is_public', $user->profile_picture_is_public ?? true);
@@ -524,6 +525,7 @@ function {{ $alpineComponent }}() {
                 nationality:       fid + '_nationality',
                 relationship_type: fid + '_relationship_type',
                 blood_type:        fid + '_blood_type',
+                height_cm:         fid + '_height_cm',
                 mobile:            fid + '_mobile_number',
                 motto:             fid + '_motto',
             };
