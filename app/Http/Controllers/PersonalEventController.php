@@ -292,6 +292,12 @@ class PersonalEventController extends Controller
             // Hall screens, if this type drives any. The type answers; a type
             // with no wall boards returns null and the section is simply absent.
             'screens' => $canManage ? $type->hallScreens($event) : null,
+            // Which screen roles this event's package can actually serve. The
+            // panel offers only these — a slot it cannot serve ends with a
+            // screen in a hall showing an error and no way back.
+            'screenSurfaces' => app(\App\Events\Support\HallScreenRouter::class)->surfaces($event),
+            // The address to open ON a screen so it joins THIS event's fleet.
+            'screenNewUrl' => app(\App\Events\Support\HallScreenRouter::class)->newScreenUrl($event),
             // Counts for the section cards, so each one says what is waiting
             // inside it before it is opened.
             'counts' => [
@@ -407,20 +413,36 @@ class PersonalEventController extends Controller
         abort_unless(app(EventAccess::class)->canVerifyWeighIn($event, $me), 403);
         abort_unless($registration->event_id === $event->id, 404);
 
+        // The belt is optional and the weight is not, because a weigh-in is
+        // valid without one: an official may simply not be recording rank at
+        // this event. Both are free text — belt ladders differ per sport and per
+        // federation, and this desk is not the place to enforce a vocabulary.
         $data = $request->validate([
             'weight' => ['required', 'numeric', 'min:10', 'max:250'],
+            'belt_colour' => ['nullable', 'string', 'max:40'],
+            'belt_grade' => ['nullable', 'string', 'max:40'],
         ]);
 
-        $registration->update([
+        // Absent keys must not wipe a belt recorded a moment ago, so only the
+        // fields that were actually sent are written.
+        $registration->update(array_filter([
             'weight' => $data['weight'],
+            'belt_colour' => $data['belt_colour'] ?? null,
+            'belt_grade' => $data['belt_grade'] ?? null,
             'weighed_in_at' => now(),
             'weighed_in_by' => $me->id,
-        ]);
+        ], fn ($v) => $v !== null));
+
+        $belt = app(\App\Sports\Combat\BeltRank::class)->for($registration->user, $registration->fresh());
 
         return response()->json([
             'success' => true,
             'message' => __('personal.event_verify_weight_recorded'),
             'weight' => (float) $data['weight'],
+            // Echoed back so the desk shows what the arena screen will announce
+            // — including a rank that came from the profile rather than this
+            // form, which is the official's cue that they need not type it.
+            'belt' => $belt,
         ]);
     }
 

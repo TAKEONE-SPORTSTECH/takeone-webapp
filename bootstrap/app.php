@@ -38,6 +38,12 @@ return Application::configure(basePath: dirname(__DIR__))
             // rate limit. Note this cannot be caught by tests: Laravel skips
             // CSRF under phpunit, so it fails only against a real device.
             'court/enroll',
+            'karate/court/enroll',
+            // The same, for the sport-neutral waiting room a browser screen
+            // enrols into: a television opening one address, with no session and
+            // no cookie to forge against. What it grants is a row that can
+            // render its own pairing code and nothing else.
+            'screen/enroll',
         ]);
         $middleware->alias([
             'no-store'   => \App\Http\Middleware\NoStoreCache::class,

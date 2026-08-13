@@ -35,6 +35,14 @@
     'event',
     'mats' => [],
     'screens' => [],
+    // Which slots this event's package can actually SERVE. Offering one it
+    // cannot ends with a screen in a hall showing an error and no way back, so
+    // the panel asks rather than assumes — score control exists for Taekwondo
+    // and not (yet) for Karate.
+    'surfaces' => ['bout', 'queue', 'control'],
+    // The address to open ON a screen so it joins THIS event's fleet. Shown in
+    // the pairing sheet because a screen has to exist before it has a code.
+    'newUrl' => null,
     'color' => '#7c3aed',
 ])
 @php
@@ -48,8 +56,10 @@
         listUrl: @js(route('me.events.screens', $event)),
         pairUrl: @js(route('me.events.screens.pair', $event)),
         base: @js(url('/me/events/'.$event.'/screens')),
+        allowed: @js(array_values($surfaces)),
         eventKey: @js($event),
      })"
+     x-init="watch()"
      @court-screens:scanned.window="onScan($event.detail)"
      @realtime:events.window="onRealtime($event.detail)"
      class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -69,61 +79,127 @@
               x-text="screens.length"></span>
     </div>
 
-    {{-- Empty state: says what to do, not merely that there is nothing --}}
-    <div x-show="! screens.length" x-cloak class="px-4 pb-4">
+    {{-- ── One block per mat, three slots each ──────────────────────────────
+         A hall is not a bag of screens: every mat has a scoreboard, an
+         upcoming-matches board and a scoring table, and the question an
+         organiser actually has is "which of Mat 2's three is still missing?".
+         A flat list could not answer that — it could only show what already
+         existed, which is the half of the truth that needs no attention.
+
+         So the panel is the hall's own shape. Every slot is drawn whether or
+         not it is filled: a filled one says it is alive and offers to unpair,
+         an empty one offers to pair. Pressing Pair on a slot already knows the
+         mat and the job, so the sheet has one thing left to ask. --}}
+    <div x-show="! mats.length" x-cloak class="px-4 pb-4">
         <div class="rounded-2xl border border-dashed border-gray-200 bg-muted/30 px-4 py-6 text-center">
-            <i class="bi bi-qr-code-scan text-2xl text-muted-foreground/50"></i>
-            <p class="text-xs font-bold text-foreground mt-2">{{ __('personal.event_screens_empty') }}</p>
-            <p class="text-[11px] text-muted-foreground mt-0.5">{{ __('personal.event_screens_empty_sub') }}</p>
+            <i class="bi bi-diagram-3 text-2xl text-muted-foreground/50"></i>
+            <p class="text-xs font-bold text-foreground mt-2">{{ __('personal.event_screens_no_mats') }}</p>
         </div>
     </div>
 
-    {{-- The screens. The mat plate borrows the hall board's own look — dark,
-         condensed, all caps — so a row on the phone reads as the thing bolted
-         to the wall rather than as another list item. --}}
-    <div x-show="screens.length" x-cloak class="px-4 pb-2 space-y-2">
-        <template x-for="s in screens" :key="s.id">
-            <div class="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-2.5">
-                <span class="flex-shrink-0 px-3 py-2 rounded-xl bg-[#101016] text-white text-xs font-black uppercase tracking-wider"
-                      x-text="s.court"></span>
+    <div class="px-4 pb-4 space-y-3">
+        <template x-for="m in mats" :key="m">
+            <div class="rounded-2xl border border-gray-100 overflow-hidden">
 
-                <span class="min-w-0 flex-1">
-                    <span class="flex items-center gap-1.5">
-                        {{-- A live screen pulses; a silent one is a flat amber
-                             dot. The distinction is the whole point of the row:
-                             a board nobody has looked at since setup is exactly
-                             what an organiser needs to catch before the hall
-                             fills. --}}
-                        <span class="relative flex w-2 h-2 flex-shrink-0">
-                            <span x-show="s.live" class="absolute inline-flex w-full h-full rounded-full bg-green-500 opacity-60 animate-ping"></span>
-                            <span class="relative inline-flex w-2 h-2 rounded-full"
-                                  :class="s.live ? 'bg-green-500' : 'bg-amber-500'"></span>
+                {{-- The mat plate borrows the hall board's own look — dark,
+                     condensed, all caps — so this reads as the thing bolted to
+                     the wall rather than as another list header. --}}
+                <div class="flex items-center gap-2 px-3 py-2 bg-[#101016]">
+                    <span class="text-white text-xs font-black uppercase tracking-wider" x-text="m"></span>
+                    <span class="flex-1"></span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider"
+                          :class="filledCount(m) === surfaces.length ? 'text-green-400' : 'text-white/40'"
+                          x-text="filledCount(m) + '/' + surfaces.length"></span>
+                </div>
+
+                <template x-for="sf in surfaces" :key="m + '|' + sf.key">
+                    <div class="flex items-center gap-3 px-3 py-2.5 border-t border-gray-100 first:border-t-0">
+
+                        <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0"
+                              :class="screenFor(m, sf.key) ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground/60'">
+                            <i class="bi" :class="sf.icon"></i>
                         </span>
-                        <span class="text-[11px] font-bold"
-                              :class="s.live ? 'text-green-600' : 'text-amber-600'"
-                              x-text="s.live ? @js(__('personal.event_screens_live')) : @js(__('personal.event_screens_offline'))"></span>
-                    </span>
-                    <span class="block text-xs font-semibold text-foreground truncate mt-0.5"
-                          x-text="s.label || @js(__('personal.event_screens_unnamed'))"></span>
-                    <span class="block text-[11px] text-muted-foreground truncate"
-                          x-text="s.last_seen || @js(__('personal.event_screens_never_seen'))"></span>
-                </span>
 
-                <button type="button" @click="unpair(s)" :disabled="busy === s.id"
-                        class="m-press flex-shrink-0 w-9 h-9 rounded-xl grid place-items-center text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-40"
-                        :aria-label="@js(__('personal.event_screens_unpair'))">
-                    <i class="bi" :class="busy === s.id ? 'bi-arrow-repeat animate-spin' : 'bi-x-circle'"></i>
-                </button>
+                        <span class="min-w-0 flex-1">
+                            <span class="flex items-center gap-1.5">
+                                <span class="text-xs font-bold text-foreground truncate" x-text="sf.label"></span>
+                                {{-- The slot that can WRITE results is called
+                                     out: "which of these is the scoring tablet"
+                                     is the question asked in a hurry. --}}
+                                <span x-show="sf.key === 'control'"
+                                      class="flex-shrink-0 px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-700"
+                                      x-text="@js(__('personal.event_screens_writes'))"></span>
+                            </span>
+
+                            {{-- A live screen pulses; a silent one is a flat
+                                 amber dot. A board nobody has looked at since
+                                 setup is exactly what to catch before the hall
+                                 fills. --}}
+                            <span x-show="screenFor(m, sf.key)" x-cloak class="flex items-center gap-1.5 mt-0.5">
+                                <span class="relative flex w-2 h-2 flex-shrink-0">
+                                    <span x-show="screenFor(m, sf.key)?.live" class="absolute inline-flex w-full h-full rounded-full bg-green-500 opacity-60 animate-ping"></span>
+                                    <span class="relative inline-flex w-2 h-2 rounded-full"
+                                          :class="screenFor(m, sf.key)?.live ? 'bg-green-500' : 'bg-amber-500'"></span>
+                                </span>
+                                <span class="text-[11px] font-bold"
+                                      :class="screenFor(m, sf.key)?.live ? 'text-green-600' : 'text-amber-600'"
+                                      x-text="screenFor(m, sf.key)?.live ? @js(__('personal.event_screens_live')) : (screenFor(m, sf.key)?.last_seen || @js(__('personal.event_screens_never_seen')))"></span>
+                            </span>
+
+                            <span x-show="! screenFor(m, sf.key)" x-cloak
+                                  class="block text-[11px] text-muted-foreground/70 mt-0.5"
+                                  x-text="sf.hint"></span>
+                        </span>
+
+                        {{-- Filled: unpair. Empty: pair, already knowing both
+                             the mat and the job. --}}
+                        <template x-if="screenFor(m, sf.key)">
+                            <button type="button" @click="unpair(screenFor(m, sf.key))" :disabled="busy === screenFor(m, sf.key).id"
+                                    class="m-press flex-shrink-0 w-9 h-9 rounded-xl grid place-items-center text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-40"
+                                    :aria-label="@js(__('personal.event_screens_unpair'))">
+                                <i class="bi" :class="busy === screenFor(m, sf.key).id ? 'bi-arrow-repeat animate-spin' : 'bi-x-circle'"></i>
+                            </button>
+                        </template>
+
+                        <template x-if="! screenFor(m, sf.key)">
+                            <button type="button" @click="start(m, sf.key)"
+                                    class="m-press flex-shrink-0 h-9 px-3 rounded-xl text-white text-[11px] font-bold inline-flex items-center gap-1.5"
+                                    style="background: linear-gradient(140deg, {{ $csColor }}, {{ $csColor }}b0);">
+                                <i class="bi bi-qr-code-scan"></i>{{ __('personal.event_screens_pair_short') }}
+                            </button>
+                        </template>
+                    </div>
+                </template>
             </div>
         </template>
-    </div>
 
-    <div class="px-4 pb-4 pt-2">
-        <button type="button" @click="start()"
-                class="m-press w-full h-11 rounded-xl text-white text-sm font-bold inline-flex items-center justify-center gap-2 shadow-sm"
-                style="background: linear-gradient(140deg, {{ $csColor }}, {{ $csColor }}b0);">
-            <i class="bi bi-qr-code-scan"></i>{{ __('personal.event_screens_pair') }}
-        </button>
+        {{-- Screens that predate the three slots, or sit on a mat the draw no
+             longer has. Shown rather than hidden: a board is on a wall
+             somewhere whatever this panel thinks, and one that cannot be seen
+             here cannot be unpaired either. --}}
+        <template x-if="strays().length">
+            <div class="rounded-2xl border border-dashed border-gray-200 overflow-hidden">
+                <div class="px-3 py-2 bg-muted/50">
+                    <span class="text-[10px] font-black uppercase tracking-wider text-muted-foreground">{{ __('personal.event_screens_other') }}</span>
+                </div>
+                <template x-for="s in strays()" :key="s.id">
+                    <div class="flex items-center gap-3 px-3 py-2.5 border-t border-gray-100">
+                        <span class="flex-shrink-0 px-2.5 py-1.5 rounded-lg bg-[#101016] text-white text-[10px] font-black uppercase tracking-wider"
+                              x-text="s.court"></span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block text-xs font-bold text-foreground truncate" x-text="s.surface_label"></span>
+                            <span class="block text-[11px] text-muted-foreground truncate"
+                                  x-text="s.live ? @js(__('personal.event_screens_live')) : (s.last_seen || @js(__('personal.event_screens_never_seen')))"></span>
+                        </span>
+                        <button type="button" @click="unpair(s)" :disabled="busy === s.id"
+                                class="m-press flex-shrink-0 w-9 h-9 rounded-xl grid place-items-center text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-40"
+                                :aria-label="@js(__('personal.event_screens_unpair'))">
+                            <i class="bi" :class="busy === s.id ? 'bi-arrow-repeat animate-spin' : 'bi-x-circle'"></i>
+                        </button>
+                    </div>
+                </template>
+            </div>
+        </template>
     </div>
 
     {{-- Pairing — a sheet on a phone, a centered dialog on a wide screen.
@@ -145,7 +221,14 @@
                 <div class="flex-shrink-0 px-5 pt-3 pb-3 border-b border-gray-100">
                     <div class="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3 sm:hidden"></div>
                     <div class="flex items-center justify-between gap-3">
-                        <h3 class="font-bold text-foreground">{{ __('personal.event_screens_pair') }}</h3>
+                        {{-- The sheet says WHICH screen it is about. Pressing a
+                             slot is the choice; repeating it as two more steps
+                             inside would be asking twice. --}}
+                        <h3 class="font-bold text-foreground min-w-0 truncate">
+                            <span x-text="court"></span>
+                            <span class="text-muted-foreground font-medium"> · </span>
+                            <span x-text="surfaceLabel()"></span>
+                        </h3>
                         <button type="button" @click="close()" aria-label="{{ __('shared.close') }}"
                                 class="w-8 h-8 rounded-full grid place-items-center text-muted-foreground hover:bg-muted flex-shrink-0"><i class="bi bi-x-lg"></i></button>
                     </div>
@@ -153,6 +236,29 @@
 
                 {{-- Body scrolls; the action below stays reachable on a phone --}}
                 <div class="flex-1 overflow-y-auto min-h-0 px-5 py-4 space-y-5">
+
+                    {{-- Step 0 — the screen has to exist before it has a code.
+
+                         Not decoration: a fleet is per sport, so a screen must
+                         be opened at THIS event's address or its code will not
+                         be found here. Getting that wrong used to surface as
+                         "that code does not match a screen waiting to be
+                         paired", which blames the code and hides the mistake. --}}
+                    @if ($newUrl)
+                        <details class="rounded-2xl border border-gray-100 bg-muted/30 overflow-hidden">
+                            <summary class="px-4 py-3 cursor-pointer text-xs font-bold text-foreground flex items-center gap-2">
+                                <i class="bi bi-1-circle text-primary"></i>
+                                {{ __('personal.event_screens_open_first') }}
+                            </summary>
+                            <div class="px-4 pb-4 text-center">
+                                <p class="text-[11px] text-muted-foreground mb-3">{{ __('personal.event_screens_open_hint') }}</p>
+                                <div class="inline-block bg-white p-2.5 rounded-xl border border-gray-100">
+                                    {!! \App\Support\Qr::svg($newUrl, 150, 2) !!}
+                                </div>
+                                <p class="mt-3 text-[11px] font-mono text-foreground break-all select-all">{{ $newUrl }}</p>
+                            </div>
+                        </details>
+                    @endif
 
                     {{-- Step 1 — the code --}}
                     <div>
@@ -177,51 +283,6 @@
                                class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-center text-lg font-black tracking-[0.4em] uppercase focus:ring-2 focus:ring-primary focus:border-transparent">
                     </div>
 
-                    {{-- Step 2 — the mat. Selection cards, not a dropdown: a
-                         short known set, and an absolutely-positioned panel
-                         inside this scrolling body would be clipped by it. --}}
-                    <div>
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-2">{{ __('personal.event_screens_step_mat') }}</p>
-
-                        <template x-if="! mats.length">
-                            <p class="text-[11px] text-muted-foreground mb-2">{{ __('personal.event_screens_no_mats') }}</p>
-                        </template>
-
-                        <div class="space-y-2">
-                            <template x-for="m in mats" :key="m">
-                                <button type="button" @click="court = m; custom = false"
-                                        class="m-press w-full flex items-center gap-3 rounded-xl border p-3 text-start transition-colors"
-                                        :class="(! custom && court === m) ? 'border-primary bg-primary/5' : 'border-gray-200 bg-white hover:bg-muted/60'">
-                                    <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0 bg-[#101016] text-white text-[10px] font-black uppercase"
-                                          x-text="matShort(m)"></span>
-                                    <span class="flex-1 min-w-0 text-sm font-semibold text-foreground truncate" x-text="m"></span>
-                                    <span class="w-5 h-5 rounded-full border-2 grid place-items-center flex-shrink-0"
-                                          :class="(! custom && court === m) ? 'border-primary' : 'border-gray-300'">
-                                        <span x-show="! custom && court === m" class="w-2.5 h-2.5 rounded-full bg-primary"></span>
-                                    </span>
-                                </button>
-                            </template>
-
-                            {{-- The escape hatch: a mat the draw does not know
-                                 about yet. Offered, never assumed. --}}
-                            <button type="button" @click="custom = true; court = ''; $nextTick(() => $refs.customMat && $refs.customMat.focus())"
-                                    class="m-press w-full flex items-center gap-3 rounded-xl border p-3 text-start transition-colors"
-                                    :class="custom ? 'border-primary bg-primary/5' : 'border-gray-200 bg-white hover:bg-muted/60'">
-                                <span class="w-9 h-9 rounded-xl grid place-items-center flex-shrink-0 bg-muted text-muted-foreground">
-                                    <i class="bi bi-pencil"></i>
-                                </span>
-                                <span class="flex-1 min-w-0 text-sm font-semibold text-foreground">{{ __('personal.event_screens_mat_other') }}</span>
-                                <span class="w-5 h-5 rounded-full border-2 grid place-items-center flex-shrink-0"
-                                      :class="custom ? 'border-primary' : 'border-gray-300'">
-                                    <span x-show="custom" class="w-2.5 h-2.5 rounded-full bg-primary"></span>
-                                </span>
-                            </button>
-
-                            <input x-show="custom" x-cloak x-ref="customMat" type="text" x-model="court" maxlength="40"
-                                   placeholder="{{ __('personal.event_screens_mat_ph') }}"
-                                   class="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary focus:border-transparent text-sm">
-                        </div>
-                    </div>
                 </div>
 
                 {{-- Sticky action, clear of the home indicator --}}
@@ -258,27 +319,55 @@
                 busy: null,
                 code: '',
                 court: '',
-                custom: false,
+                // Which slot is being filled. Both are set by pressing a slot,
+                // never chosen inside the sheet — the press IS the choice.
+                surface: 'bout',
 
-                start() {
+                /* The three screens every mat has. This list is the panel's
+                   shape as much as its vocabulary: one block per mat, one row
+                   per entry here, drawn whether or not it is filled. */
+                surfaces: [
+                    { key: 'bout',    icon: 'bi-trophy',  label: @js(__('personal.event_screens_surface_bout')),    hint: @js(__('personal.event_screens_surface_bout_hint')) },
+                    { key: 'queue',   icon: 'bi-list-ol', label: @js(__('personal.event_screens_surface_queue')),   hint: @js(__('personal.event_screens_surface_queue_hint')) },
+                    { key: 'control', icon: 'bi-sliders', label: @js(__('personal.event_screens_surface_control')), hint: @js(__('personal.event_screens_surface_control_hint')) },
+                ].filter(sf => (config.allowed || []).includes(sf.key)),
+
+                /** The screen filling one slot, or undefined. */
+                screenFor(mat, surface) {
+                    return this.screens.find(s => s.court === mat && s.surface === surface);
+                },
+
+                /** How many of a mat's three slots are filled — the mat's standing. */
+                filledCount(mat) {
+                    return this.surfaces.filter(sf => this.screenFor(mat, sf.key)).length;
+                },
+
+                /* Paired screens that fit no slot: an older one that follows the
+                   mat, or one on a mat the draw has since dropped. They exist on
+                   a wall whatever this panel thinks, so they are shown — a
+                   screen that cannot be seen here cannot be unpaired either. */
+                strays() {
+                    return this.screens.filter(s =>
+                        ! this.mats.includes(s.court) ||
+                        ! this.surfaces.some(sf => sf.key === s.surface)
+                    );
+                },
+
+                surfaceLabel() {
+                    return (this.surfaces.find(sf => sf.key === this.surface) || {}).label || '';
+                },
+
+                /** Pair the screen for one mat's one job. */
+                start(mat, surface) {
                     this.code = '';
-                    // One mat means there is nothing to choose — preselect it and
-                    // let the organiser scan and be done.
-                    this.court = this.mats.length === 1 ? this.mats[0] : '';
-                    this.custom = false;
+                    this.court = mat;
+                    this.surface = surface;
                     this.open = true;
                 },
 
                 close() {
                     this.open = false;
                     this.busy = null;
-                },
-
-                /** "Mat 1" → "1" for the plate; a named mat keeps its first word. */
-                matShort(m) {
-                    const digits = String(m || '').match(/\d+/);
-
-                    return digits ? digits[0] : String(m || '').slice(0, 3);
                 },
 
                 /** The pairing alphabet: no vowels, no 0/O/1/I. */
@@ -342,7 +431,7 @@
                                 'X-Requested-With': 'XMLHttpRequest',
                                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                             },
-                            body: JSON.stringify({ code: code, court: court }),
+                            body: JSON.stringify({ code: code, court: court, surface: this.surface }),
                         });
                         const data = await res.json().catch(() => ({}));
 
@@ -407,6 +496,27 @@
                 onRealtime(detail) {
                     if (! detail || detail.action !== 'screens' || detail.event !== this.eventKey) return;
                     this.refresh();
+                },
+
+                /* Liveness is the one thing on this panel that changes with
+                   nobody doing anything: a screen is unplugged, a television is
+                   switched on, a tablet goes to sleep. Nothing pushes it —
+                   `last_seen` is written by the screens themselves — so the
+                   panel re-reads quietly while it is on the page.
+
+                   Thirty seconds against a ten-minute liveness window: slow
+                   enough to be nothing, fast enough that an organiser walking
+                   the hall sees a dot change before they reach the screen.
+                   Stops when the page is hidden, because a laptop in a bag is
+                   not watching anything. */
+                beat: null,
+
+                watch() {
+                    var self = this;
+                    if (this.beat) return;
+                    this.beat = setInterval(function () {
+                        if (document.visibilityState === 'visible') self.refresh();
+                    }, 30000);
                 },
 
                 async refresh() {

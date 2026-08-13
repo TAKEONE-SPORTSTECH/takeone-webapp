@@ -91,14 +91,32 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($request->user()?->id ?: $request->ip());
         });
 
-        // A hall screen enrolling itself on first boot. Unauthenticated by
-        // necessity — a fresh Pi has no credential and no keyboard — and what it
-        // gets back grants no access to any data, only the right to show a
-        // pairing code. But it does write a row, so: 5 an hour per address,
-        // which is far beyond any real venue (a Pi enrols ONCE, ever) and makes
-        // bulk row creation pointless.
+        // A screen asking about ITSELF — its board, its own status.
+        //
+        // Keyed by the TOKEN, deliberately, not by the address. A venue is one
+        // NAT'd IP: every screen in the building, every Pi and every television,
+        // arrives from the same address. Under a per-IP limit one misbehaving
+        // screen — a stale token, a tab left open on an old page — spends the
+        // whole venue's allowance and every OTHER screen in the hall starts
+        // getting 429s in the middle of a competition. Which is exactly what
+        // happened. A screen may now only starve itself.
+        RateLimiter::for('screen-token', function (Request $request) {
+            return Limit::perMinute(60)->by((string) $request->route('token'));
+        });
+
+        // A hall screen enrolling itself. Unauthenticated by necessity — a fresh
+        // Pi has no credential and no keyboard — and what it gets back grants no
+        // access to any data, only the right to show a pairing code until an
+        // organiser claims it. But it does write a row, so it is capped.
+        //
+        // 30 an hour per address, raised from 5. Five was right while a Pi was
+        // the only thing that enrolled, ONCE, ever. Now `/court/new` lets any
+        // browser become a screen, and a venue has three per mat — a hall with
+        // three mats sets up nine, every one of them from the building's single
+        // address, on the morning of the competition. Five would have stopped
+        // that halfway through. Thirty still makes bulk row creation pointless.
         RateLimiter::for('court-enroll', function (Request $request) {
-            return Limit::perHour(5)->by($request->ip());
+            return Limit::perHour(30)->by($request->ip());
         });
 
         // File uploads (gallery, profile pictures, facility images, etc.):

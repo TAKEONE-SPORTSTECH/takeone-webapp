@@ -66,7 +66,7 @@ Route::get('/app/manifest.json', [App\Http\Controllers\MobileAppController::clas
 // identity. The URL carries no event and no court — both are read off the paired
 // device — so there is no identifier here to tamper with or enumerate.
 Route::get('/court/{token}', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'board'])
-    ->name('court-display.board')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:60,1');
+    ->name('court-display.board')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
 // A screen's first boot: it has nothing on its SD card and asks for an identity.
 // What it receives is an UNCLAIMED device that can show a pairing code and
 // nothing else, so the endpoint grants no access to any data — but it does write
@@ -76,13 +76,56 @@ Route::post('/court/enroll', [\App\Events\Sports\Taekwondo\Tournament\CourtDispl
 
 // "Have I been claimed yet?" — one boolean, polled by an unpaired screen.
 Route::get('/court/{token}/status', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'status'])
-    ->name('court-display.status')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:60,1');
+    ->name('court-display.status')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+
+/*
+|--------------------------------------------------------------------------
+| Screens — one address, any screen, any job
+|--------------------------------------------------------------------------
+| Sport-neutral on purpose. A person carrying a television into a hall does not
+| know which package will own it and should not have to: they open /screen, the
+| screen shows a QR, an organiser scans it and says what it is — a scoreboard,
+| an upcoming-matches board, or the scoring table — and only THEN is it adopted
+| into that event's fleet with a token of that fleet's own.
+|
+| Open, like every screen endpoint, because a wall has nobody signed in to it.
+| What an unclaimed screen can render is its own pairing code and nothing else.
+*/
+Route::get('/screen', [\App\Events\Support\ScreenPairingController::class, 'screen'])
+    ->name('screen.new')->middleware('throttle:60,1');
+Route::post('/screen/enroll', [\App\Events\Support\ScreenPairingController::class, 'enroll'])
+    ->name('screen.enroll')->middleware('throttle:court-enroll');
+Route::get('/screen/{token}', [\App\Events\Support\ScreenPairingController::class, 'show'])
+    ->name('screen.show')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+Route::get('/screen/{token}/status', [\App\Events\Support\ScreenPairingController::class, 'status'])
+    ->name('screen.status')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+
+Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
+    Route::get('/screen/claim/{code}', [\App\Events\Support\ScreenPairingController::class, 'claim'])
+        ->name('screen.claim')->where('code', '[A-Z0-9]{6}')->middleware('throttle:30,1');
+    Route::post('/screen/claim/{code}', [\App\Events\Support\ScreenPairingController::class, 'storeClaim'])
+        ->name('screen.claim.store')->where('code', '[A-Z0-9]{6}')->middleware('throttle:member-write');
+    Route::get('/screen/paired', [\App\Events\Support\ScreenPairingController::class, 'claimed'])
+        ->name('screen.claimed');
+});
+
+// "Make this screen a display." The one address a hall television, a laptop or
+// a spare monitor is pointed at: it enrols itself and stands there showing its
+// pairing QR until an organiser scans it. Ahead of `/court/{token}` so the
+// literal segment is matched before the token pattern.
+Route::get('/court/new', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'screen'])
+    ->name('court-display.new')->middleware('throttle:60,1');
+
+// The board as JSON, so a paired screen can redraw in place instead of
+// reloading — a wall going black on every result is worse than a stale queue.
+Route::get('/court/{token}/payload', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'payload'])
+    ->name('court-display.payload')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
 
 // The device agent's realtime credentials — subscribe-only, one topic. Held by
 // the agent rather than the page, because the board's own animation load can
 // starve an inbound socket message in the renderer for minutes.
 Route::get('/court/{token}/link', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'link'])
-    ->name('court-display.link')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:20,1');
+    ->name('court-display.link')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
 
 // Claiming a screen — the page its QR points at. Authenticated, because the
 // pairing code is printed on a wall in a public hall and is worth nothing on its
@@ -101,6 +144,117 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
 // so there is nothing here to scope to a viewer.
 Route::get('/court-display/font/{file}', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'font'])
     ->name('court-display.font')->where('file', '[a-z0-9.-]+')->middleware('throttle:60,1');
+
+/*
+|--------------------------------------------------------------------------
+| Karate hall screens
+|--------------------------------------------------------------------------
+| The same surface as the Taekwondo block above, for the Karate Tournament
+| package's own screen fleet: its own controller, its own devices table
+| (karate_court_displays), its own Pi build and systemd unit.
+|
+| Separate rather than shared BY DESIGN. Both packages resolve a device from a
+| bare token, so one route set over one table could hand a Karate screen a
+| Taekwondo board. A screen belongs to one fleet, and the URL it was flashed
+| with is what decides which. Everything else — throttles, the reasons each
+| endpoint is or is not authenticated — is identical, so the notes above apply
+| here unchanged.
+*/
+// "Make this screen a display", Karate's own. Ahead of the token route so the
+// literal segment wins, and separate from Taekwondo's because the address a
+// screen is opened with is what decides which fleet it joins.
+Route::get('/karate/court/new', [\App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayController::class, 'screen'])
+    ->name('karate-court-display.new')->middleware('throttle:60,1');
+
+Route::get('/karate/court/{token}', [\App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayController::class, 'board'])
+    ->name('karate-court-display.board')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+Route::post('/karate/court/enroll', [\App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayController::class, 'enroll'])
+    ->name('karate-court-display.enroll')->middleware('throttle:court-enroll');
+
+Route::get('/karate/court/{token}/status', [\App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayController::class, 'status'])
+    ->name('karate-court-display.status')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+
+Route::get('/karate/court/{token}/payload', [\App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayController::class, 'payload'])
+    ->name('karate-court-display.payload')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+
+Route::get('/karate/court/{token}/link', [\App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayController::class, 'link'])
+    ->name('karate-court-display.link')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+
+Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
+    Route::get('/karate/court/claim/{code}', [\App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayController::class, 'claim'])
+        ->name('karate-court-display.claim')->where('code', '[A-Z0-9]{6}')->middleware('throttle:30,1');
+    Route::post('/karate/court/claim/{code}', [\App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayController::class, 'storeClaim'])
+        ->name('karate-court-display.claim.store')->where('code', '[A-Z0-9]{6}')->middleware('throttle:member-write');
+    Route::get('/karate/court/screen/{device}', [\App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayController::class, 'claimed'])
+        ->name('karate-court-display.claimed')->whereNumber('device');
+});
+
+Route::get('/karate/court-display/font/{file}', [\App\Events\Sports\Karate\Tournament\CourtDisplay\CourtDisplayController::class, 'font'])
+    ->name('karate-court-display.font')->where('file', '[a-z0-9.-]+')->middleware('throttle:60,1');
+
+// The mat's live state, for a screen that just loaded or reconnected. Same
+// contract as the board payload above: the DEVICE's token authorises it, because
+// a wall screen has nobody signed in to it, and that token already names one
+// event and one mat — there is nothing here to tamper with.
+Route::get('/karate/court/{token}/state', [\App\Events\Sports\Karate\Tournament\Scoreboard\ScoreboardController::class, 'state'])
+    ->name('karate-scoreboard.state')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+
+/*
+| The scoring table on a screen that was PAIRED rather than signed in — a tablet
+| carried to the mat, scanned once, and handed between officials all day.
+|
+| Authorised by the device token, which is scoped to one event and one mat, and
+| only when that screen was paired as a control by an organiser who could score.
+| That organiser's right is re-checked on every request, so removing them from
+| the jury stops every console they paired. No CSRF token to carry, because
+| there is no session to ride: the bearer of the token IS the credential, and it
+| never leaves the device's own URL bar.
+*/
+Route::withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])->group(function () {
+    Route::get('/court/{token}/control', [\App\Events\Sports\Taekwondo\Tournament\Scoreboard\ScoreboardController::class, 'tokenControl'])
+        ->name('taekwondo-scoreboard.token-control')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+    Route::post('/court/{token}/command', [\App\Events\Sports\Taekwondo\Tournament\Scoreboard\ScoreboardController::class, 'tokenCommand'])
+        ->name('taekwondo-scoreboard.token-command')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+    Route::post('/court/{token}/photo', [\App\Events\Sports\Taekwondo\Tournament\Scoreboard\ScoreboardController::class, 'tokenPhoto'])
+        ->name('taekwondo-scoreboard.token-photo')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:uploads');
+});
+
+// The Taekwondo mat's live state, for a screen that just loaded or reconnected.
+// Same contract as its board payload: the DEVICE's token authorises it, and that
+// token already names one event and one mat.
+Route::get('/court/{token}/state', [\App\Events\Sports\Taekwondo\Tournament\Scoreboard\ScoreboardController::class, 'state'])
+    ->name('taekwondo-scoreboard.state')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+
+/*
+| The Taekwondo scoring table. Same shape and the same rules as the Karate block
+| below — the two sports differ in what a point is worth and in the fact that a
+| WT match is a series of rounds, not in who is allowed to score one.
+*/
+Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
+    Route::get('/taekwondo/control/{event:uuid}', [\App\Events\Sports\Taekwondo\Tournament\Scoreboard\ScoreboardController::class, 'control'])
+        ->name('taekwondo-scoreboard.control');
+    Route::post('/taekwondo/control/{event:uuid}', [\App\Events\Sports\Taekwondo\Tournament\Scoreboard\ScoreboardController::class, 'command'])
+        ->name('taekwondo-scoreboard.command')->middleware('throttle:300,1');
+    // A competitor picture added at the desk. Throttled far below the command
+    // endpoint — this one writes a file, and a scoring official has no reason
+    // to send more than a handful a minute.
+    Route::post('/taekwondo/control/{event:uuid}/photo', [\App\Events\Sports\Taekwondo\Tournament\Scoreboard\ScoreboardController::class, 'photo'])
+        ->name('taekwondo-scoreboard.photo')->middleware('throttle:uploads');
+});
+
+/*
+| The Karate scoring table. Bound by the event's UUID because the URL is read
+| off a laptop at a mat, and every call re-checks EventAccess::canScore — the
+| page is a convenience, the command endpoint is the attack surface.
+*/
+Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
+    Route::get('/karate/control/{event:uuid}', [\App\Events\Sports\Karate\Tournament\Scoreboard\ScoreboardController::class, 'control'])
+        ->name('karate-scoreboard.control');
+    // Throttled well above a human at a keyboard, but not unbounded: this is a
+    // write path an appointed official holds for the length of a competition.
+    Route::post('/karate/control/{event:uuid}', [\App\Events\Sports\Karate\Tournament\Scoreboard\ScoreboardController::class, 'command'])
+        ->name('karate-scoreboard.command')->middleware('throttle:300,1');
+});
 
 // Personal (member) mobile experience — shared mobile shell
 Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')->group(function () {
@@ -244,9 +398,13 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     // Hall screens, from inside the event console: scan the QR on a Pi and it is
     // pointed at this event and one of its mats. The event comes from the URL
     // and is authorized per request — the scanned code is public by design.
-    Route::get('/events/{event:uuid}/screens', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'screens'])->name('events.screens')->middleware('throttle:60,1');
-    Route::post('/events/{event:uuid}/screens', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'pair'])->name('events.screens.pair')->middleware('throttle:admin-write');
-    Route::delete('/events/{event:uuid}/screens/{device}', [\App\Events\Sports\Taekwondo\Tournament\CourtDisplay\CourtDisplayController::class, 'revokeScreen'])->name('events.screens.revoke')->whereNumber('device')->middleware('throttle:admin-write');
+    // Dispatched by the EVENT's sport, never hardcoded to one package: these
+    // were pointed at Taekwondo for every event, so pairing from a Karate
+    // console wrote a Taekwondo device row against a Karate event — a screen
+    // that could then be served by nobody and unpaired from nowhere.
+    Route::get('/events/{event:uuid}/screens', [\App\Events\Support\HallScreenRouter::class, 'screens'])->name('events.screens')->middleware('throttle:60,1');
+    Route::post('/events/{event:uuid}/screens', [\App\Events\Support\HallScreenRouter::class, 'pair'])->name('events.screens.pair')->middleware('throttle:admin-write');
+    Route::delete('/events/{event:uuid}/screens/{device}', [\App\Events\Support\HallScreenRouter::class, 'revoke'])->name('events.screens.revoke')->whereNumber('device')->middleware('throttle:admin-write');
     Route::get('/events/{event:uuid}/next-up', [App\Http\Controllers\PersonalEventController::class, 'nextUp'])->name('events.next-up');
     Route::get('/events/{event:uuid}/entry-roster', [App\Http\Controllers\PersonalEventController::class, 'entryRoster'])->name('events.entry-roster');
     Route::post('/events/{event:uuid}/entries', [App\Http\Controllers\PersonalEventController::class, 'storeEntries'])->name('events.entries')->middleware('throttle:admin-write');

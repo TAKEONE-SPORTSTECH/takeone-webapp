@@ -181,6 +181,8 @@
             <x-court-screens :event="$e['key']"
                              :mats="$screens['mats'] ?? []"
                              :screens="$screens['screens'] ?? []"
+                             :surfaces="$screenSurfaces ?? []"
+                             :new-url="$screenNewUrl ?? null"
                              :color="$mgColor" />
         </div>
     @endif

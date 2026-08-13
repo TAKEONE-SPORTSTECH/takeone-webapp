@@ -89,4 +89,42 @@ return [
     'validate_break_before_start' => 'The break cannot start before the event does.',
     'validate_break_end_before_break_start' => 'The break has to end after it starts.',
     'validate_break_after_end' => 'The break has to end before the event does.',
+
+    /* ── Screens ────────────────────────────────────────────────────────────
+       The one address any screen is opened at, and the form an organiser fills
+       after scanning it. Shared across every sport: a television does not know
+       which package will own it. */
+    'screen_new_title' => 'Make this a competition screen',
+    'screen_eyebrow' => 'Competition screen',
+    'screen_new_working' => 'Setting this screen up',
+    'screen_new_hint' => 'In a moment this screen will show a code to scan.',
+    'screen_new_failed' => 'Could not reach the server',
+    'screen_new_retry' => 'Try again',
+    'screen_new_busy' => 'The server is busy — trying again in a moment.',
+    'screen_new_retrying' => 'Cannot reach the server — trying again in a moment.',
+    'screen_title' => 'Scan to set up this screen',
+    'screen_code_label' => 'Pairing code',
+    'screen_hint' => 'Scan this code with the TAKEONE app, then choose what this screen shows.',
+    'screen_waiting' => 'Waiting to be set up',
+    'screen_another' => 'Set up another screen here',
+
+    'screen_claim_title' => 'What should this screen show?',
+    'screen_claim_sub' => 'Screen :code is waiting to be told what it is.',
+    'screen_claim_no_events' => 'You do not manage any events running right now.',
+    'screen_claim_no_mats' => 'This event has no mats yet — build the draw first.',
+    'screen_claim_event' => 'Which competition?',
+    'screen_claim_surface' => 'What is this screen?',
+    'screen_claim_submit' => 'Set this screen up',
+
+    'screen_role_bout' => 'Scoreboard',
+    'screen_role_bout_hint' => 'The introduction and the live score for this mat. Hang as many as you like.',
+    'screen_role_queue' => 'Upcoming matches',
+    'screen_role_queue_hint' => 'The running order for this mat. Hang as many as you like — call room, corridor, entrance.',
+    'screen_role_control' => 'Score control',
+    'screen_role_control_hint' => 'The scoring table. One per mat, and it records results — pair only a device that stays with an official.',
+    'screen_role_control_taken' => 'This mat already has a scoring table. Unpair it first from the event console.',
+
+    'screen_done_title' => 'That screen is set up',
+    'screen_done_sub' => 'It has already changed by itself.',
+    'screen_done_hint' => 'You can change or unpair it any time from the event console.',
 ];
