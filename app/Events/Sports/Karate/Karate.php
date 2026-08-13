@@ -1,0 +1,46 @@
+<?php
+
+namespace App\Events\Sports\Karate;
+
+use App\Sports\Combat\AbstractCombatSport;
+
+/**
+ * Karate (World Karate Federation) — a combat-sport plug-in.
+ * Wraps the single-source weight tables (config/karate_divisions.php) and the
+ * autoloaded classifier helper (classifyKarate).
+ */
+class Karate extends AbstractCombatSport
+{
+    public function key(): string
+    {
+        return 'karate';
+    }
+
+    public function label(): string
+    {
+        return __('sport-karate::messages.sport_label');
+    }
+
+    public function weightDivisions(): array
+    {
+        return config('karate_divisions', []);
+    }
+
+    public function classify(string $gender, int $age, float $weight): ?array
+    {
+        return classifyKarate($gender, $age, $weight);
+    }
+
+    /**
+     * WKF awards two bronzes through repechage: the athletes beaten by each
+     * finalist fight back up their side of the draw, and the two repechage
+     * winners take bronze. Same rule as World Taekwondo, arrived at separately —
+     * verify against your federation's current rules before a real competition,
+     * since a national body may run a third-place match instead (the other
+     * conventions the engine accepts are listed in config/combat.php).
+     */
+    public function bronzeRule(): string
+    {
+        return 'repechage';
+    }
+}

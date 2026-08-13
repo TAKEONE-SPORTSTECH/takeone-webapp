@@ -23,13 +23,13 @@ return [
 
         // Combat championships — bracketed, weight-classed, medal-awarding.
         \App\Events\Sports\Taekwondo\Tournament\Tournament::class,
+        \App\Events\Sports\Karate\Tournament\Tournament::class,
 
         // TODO — port the remaining types out of the generic bucket. Each
         // lives under its SPORT's folder (see Documentation/EVENTS.md):
         // \App\Events\Sports\Taekwondo\BeltTest\BeltTest::class,
         // \App\Events\Sports\Taekwondo\Poomsae\Poomsae::class,
         // \App\Events\Sports\Football\League\League::class,
-        // \App\Events\Sports\Karate\Tournament\Tournament::class,
     ],
 
     /*

@@ -23,6 +23,32 @@ class Scheduler
         return 1;
     }
 
+    /**
+     * The competition day the venue is on right now, 1-based.
+     *
+     * A mat's queue, its wall board and its next-bout are all about TODAY: a
+     * board that lists tomorrow's bouts under today's is not a running order,
+     * it is two of them shuffled together. Bout numbers restart each morning,
+     * so without this the same mat shows two bout #1s and the caller cannot say
+     * which one they mean.
+     *
+     * Clamped at both ends deliberately. Before the doors open there is no
+     * elapsed day, and the thing worth showing is day one's order; after the
+     * last day the event is history and the final day's board is what belongs
+     * on the wall. Neither end should ever produce an empty queue for a reason
+     * nobody standing in the hall can see.
+     */
+    public function currentDay(ClubEvent $event): int
+    {
+        if (! $event->date) {
+            return 1;
+        }
+
+        $elapsed = (int) $event->date->copy()->startOfDay()->diffInDays(now()->startOfDay(), absolute: false);
+
+        return max(1, min($this->eventDayCount($event), $elapsed + 1));
+    }
+
     /** Auto-spread default: divisions distributed across days, all phases on the base day. */
     public function defaultSchedule(ClubEvent $event, EventCategory $cat): array
     {
@@ -138,6 +164,13 @@ class Scheduler
                         foreach ($queues as &$q) {
                             if ($m = array_shift($q)) {
                                 $m->court = 'Mat '.$court;
+                                // Numbering restarts per mat per day, so the day
+                                // is part of a bout's identity in the running
+                                // order — persisted here because it is resolved
+                                // here, and everything downstream (the wall
+                                // board, the scoring queue, "bouts ahead") has
+                                // to be able to order by it. See the migration.
+                                $m->day = (int) $day;
                                 $m->match_no = ++$no;
                                 $m->save();
                                 $any = true;
@@ -150,7 +183,7 @@ class Scheduler
         }
 
         if ($byes) {
-            EventMatch::whereIn('id', $byes)->update(['match_no' => null, 'court' => null]);
+            EventMatch::whereIn('id', $byes)->update(['match_no' => null, 'court' => null, 'day' => null]);
         }
 
         return $plan;
