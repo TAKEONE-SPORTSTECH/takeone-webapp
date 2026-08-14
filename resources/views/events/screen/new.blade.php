@@ -82,14 +82,18 @@
   var T = {
     failed: @json(__('events.screen_new_failed')),
     busy: @json(__('events.screen_new_busy')),
-    retrying: @json(__('events.screen_new_retrying'))
+    retrying: @json(__('events.screen_new_retrying')),
+    trouble: @json(__('events.screen_new_trouble')),
+    status: @json(__('events.screen_new_status')),
+    malformed: @json(__('events.screen_new_malformed'))
   };
 
   function go(token) { window.location.replace(BOARD + '/' + token); }
 
-  function fail() {
+  function fail(why) {
     document.getElementById('spin').hidden = true;
     document.getElementById('title').textContent = T.failed;
+    if (why) document.getElementById('hint').textContent = why;
     document.getElementById('retry').hidden = false;
   }
 
@@ -132,22 +136,57 @@
      throttled reply would answer a rate limit by creating more work, and would
      leave a trail of abandoned rows and a code on the wall that changes every
      few seconds while somebody is trying to scan it. */
-  function later(fn, why) {
-    document.getElementById('hint').textContent = why;
-    setTimeout(fn, 5000);
+  /* A wall screen cannot be asked what it saw in the console, so it says it
+     itself. The old version changed only the hint line and left the title
+     reading "Setting this screen up" — which, from across a hall, is
+     indistinguishable from working, and is why a stalled screen looked like a
+     hang instead of a rate limit. Now the title changes, the reason is on
+     screen, and the wait is counted down so it is visibly still trying. */
+  var attempts = 0;
+
+  function later(fn, why, seconds) {
+    attempts++;
+    var wait = seconds || 5;
+    document.getElementById('title').textContent = T.trouble;
+    document.getElementById('retry').hidden = false;
+
+    var hint = document.getElementById('hint');
+    (function tick() {
+      hint.textContent = why + ' (' + wait + ')';
+      if (wait-- <= 0) { hint.textContent = why; fn(); return; }
+      setTimeout(tick, 1000);
+    })();
+  }
+
+  /** Say exactly what came back, so nobody has to guess from a spinner. */
+  function detail(r) {
+    if (!r) return T.retrying;
+    if (r.status === 429) return T.busy;
+    return T.status.replace(':code', r.status);
   }
 
   function enroll() {
     postAsk(ENROLL).then(function (r) {
       if (!r) return later(enroll, T.retrying);
-      if (r.status === 429) return later(enroll, T.busy);
-      if (!r.ok) return fail();
+
+      // Too many screens set up from this building in the last hour. It clears
+      // by itself, and the server says when — so wait exactly that long rather
+      // than hammering a limit that is already refusing.
+      if (r.status === 429) {
+        var after = parseInt(r.headers.get('retry-after') || '', 10);
+        return later(enroll, T.busy, (after > 0 && after < 3600) ? after : 60);
+      }
+
+      // Anything else is worth showing rather than retrying blindly — a 500 is
+      // not going to fix itself in five seconds, and a screen quietly cycling
+      // on one tells nobody anything.
+      if (!r.ok) return fail(detail(r));
 
       r.json().then(function (d) {
-        if (!d || !d.token) return fail();
+        if (!d || !d.token) return fail(T.malformed);
         try { window.localStorage.setItem(KEY, d.token); } catch (e) { /* still works, just not across reloads */ }
         go(d.token);
-      }).catch(fail);
+      }).catch(function () { fail(T.malformed); });
     });
   }
 
@@ -172,8 +211,16 @@
   function resume(token) {
     ask(BOARD + '/' + token + '/status').then(function (r) {
       if (!r) return later(function () { resume(token); }, T.retrying);
-      if (r.status === 404) { forget(); enroll(); return; }
-      if (r.status === 429) return later(function () { resume(token); }, T.busy);
+      // Gone for good — the row was pruned, or the database moved on. Start over
+      // rather than following a token nowhere.
+      if (r.status === 404 || r.status === 410) { forget(); enroll(); return; }
+      if (r.status === 429) {
+        var after = parseInt(r.headers.get('retry-after') || '', 10);
+        return later(function () { resume(token); }, T.busy, (after > 0 && after < 3600) ? after : 60);
+      }
+      // Any other refusal: the stored identity is the suspect, so drop it and
+      // enrol fresh. Better a new screen than a screen that cannot become one.
+      if (!r.ok) { forget(); enroll(); return; }
       go(token);
     });
   }
@@ -182,6 +229,10 @@
     document.getElementById('retry').hidden = true;
     document.getElementById('spin').hidden = false;
     document.getElementById('title').textContent = @json(__('events.screen_new_working'));
+    document.getElementById('hint').textContent = @json(__('events.screen_new_hint'));
+    // Pressing it means "this one is stuck" — so let go of the stored identity
+    // and ask for a clean one, which is what a person expects from Try again.
+    forget();
     enroll();
   };
 

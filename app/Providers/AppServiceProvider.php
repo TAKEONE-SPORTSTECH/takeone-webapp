@@ -115,8 +115,19 @@ class AppServiceProvider extends ServiceProvider
         // three mats sets up nine, every one of them from the building's single
         // address, on the morning of the competition. Five would have stopped
         // that halfway through. Thirty still makes bulk row creation pointless.
+        // Raised from 30 to 120. Thirty was sized for a hall setting up once,
+        // and it is the wrong shape for how this is actually used: a venue is
+        // one NAT address, every screen in the building enrols through it, and
+        // setting up is iterative — a screen is paired to the wrong mat, a
+        // television is moved, somebody presses Try again. Running out looked
+        // exactly like a hang, because the page showed the same spinner either
+        // way (now fixed, but the limit was still too tight).
+        //
+        // What it grants is unchanged and still worth almost nothing: a row
+        // that can render its own pairing code and nothing else, useless until
+        // an authenticated organiser adopts it. Bulk creation remains pointless.
         RateLimiter::for('court-enroll', function (Request $request) {
-            return Limit::perHour(30)->by($request->ip());
+            return Limit::perHour(120)->by($request->ip());
         });
 
         // File uploads (gallery, profile pictures, facility images, etc.):

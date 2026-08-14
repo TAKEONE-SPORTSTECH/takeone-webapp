@@ -127,4 +127,7 @@ return [
     'screen_done_title' => 'That screen is set up',
     'screen_done_sub' => 'It has already changed by itself.',
     'screen_done_hint' => 'You can change or unpair it any time from the event console.',
+    'screen_new_trouble' => 'Having trouble setting up',
+    'screen_new_status' => 'The server refused the request (:code). Trying again.',
+    'screen_new_malformed' => 'The server answered with something unusable.',
 ];
