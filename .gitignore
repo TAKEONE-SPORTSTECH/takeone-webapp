@@ -33,3 +33,10 @@ Thumbs.db
 
 # Claude Code agent worktrees (local tooling scratch)
 .claude/worktrees/
+
+# Local .env snapshots taken before a config change — never commit a secrets copy.
+.env.bak-*
+
+# Screenshots dropped in drafts/ while debugging — the design sources beside
+# them are project assets and stay tracked.
+drafts/*.png

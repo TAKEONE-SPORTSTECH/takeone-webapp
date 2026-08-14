@@ -254,7 +254,9 @@
   var STATE = @json($state);
   var QUEUE = @json($queue);
   var MAT = @json($court);
-  var URL_CMD = @json(route('karate-scoreboard.command', $event->uuid));
+  // Whichever door opened this page — an organiser by event uuid, or a paired
+  // scoring table by its own device token. Same console either way.
+  var URL_CMD = @json($commandUrl ?? route('karate-scoreboard.command', $event->uuid));
   var EVENT_TITLE = @json($event->title);
   var PEN = @json(\App\Events\Sports\Karate\Tournament\Scoreboard\MatState::PENALTIES);
   var COUNTRIES = @json($countries);
@@ -268,6 +270,28 @@
   }
   (window.ResizeObserver ? new ResizeObserver(fit).observe(root) : window.addEventListener('resize', fit));
   fit();
+
+@isset($heartbeatUrl)
+  // A paired console is a SCREEN and is listed beside the boards with a live
+  // dot. Commands alone would show a mat waiting twenty minutes for the next
+  // bout as offline — the opposite of the truth, and exactly when an organiser
+  // is checking. So it beats.
+  //
+  // It also notices being UNPAIRED and goes back to its code, like the boards.
+  //
+  // That reload was removed for a while because it was a trap: the control URL
+  // answered an unpaired device with a refusal, so the page reloaded into an
+  // error once a minute with no way out. It is safe now — tokenControl() sends
+  // a console it cannot open to the board address, which shows the pairing QR
+  // — and without it an unpaired scoring table just sat there still showing
+  // the console, which is worse: the mat looks staffed when it is not.
+  setInterval(function () {
+    fetch(@json($heartbeatUrl), { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (s) { if (s && s.claimed === false) window.location.reload(); })
+      .catch(function () { /* keep scoring — the table is not the network */ });
+  }, 60000);
+@endisset
 
   /* ── Talking to the mat ────────────────────────────────────────────────
      Never optimistic. A console showing a point the server did not record is

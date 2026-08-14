@@ -155,6 +155,12 @@ class CourtDisplayController extends Controller
                 'court' => $device->court,
                 'state' => $state->toArray(),
                 'screenLink' => $screenLink,
+                // The scoreboard beats like every other screen. Without it a
+                // mat paired as a scoreboard touched `last_seen` once, when it
+                // loaded, and then went quiet — so the organiser's panel showed
+                // it amber forever while it was working perfectly. The queue
+                // board and the console both had one; this was the gap.
+                'statusUrl' => route('court-display.status', $token, false),
                 'pinned' => $surface === 'bout' ? 'bout' : false,
                 // The host club's crest fills the design's dashed logo box.
                 'eventLogo' => $device->event->tenant?->logo

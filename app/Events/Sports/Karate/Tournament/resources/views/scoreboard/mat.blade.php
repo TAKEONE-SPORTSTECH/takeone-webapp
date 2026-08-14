@@ -661,6 +661,21 @@
   };
 
   update(@json($state));
+
+@isset($statusUrl)
+  // ── Heartbeat ────────────────────────────────────────────────────────────
+  // The same beat the queue board sends, for the same two reasons: the
+  // organiser's console cannot otherwise tell a mat that is running from one
+  // that was unplugged, and a screen that has been unpaired needs to notice by
+  // itself and go back to its code. Once a minute — a twelfth of the pairing
+  // screen's poll, which is already considered acceptable on a metered link.
+  setInterval(function () {
+    fetch(@json($statusUrl), { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (s) { if (s && s.claimed === false) window.location.reload(); })
+      .catch(function () { /* offline — keep the bout on screen */ });
+  }, 60000);
+@endisset
 })();
 </script>
 

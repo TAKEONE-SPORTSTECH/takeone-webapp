@@ -1264,8 +1264,15 @@
      over the same link anyway. */
 @isset($heartbeatUrl)
 @if($heartbeatUrl)
+  // Beats, and notices being UNPAIRED — a scoring table left showing the
+  // console after it has been taken off the mat reads as staffed when it is
+  // not. Safe to reload: tokenControl() sends a console it cannot open to the
+  // board address, which shows the pairing QR.
   setInterval(function () {
-    fetch(@json($heartbeatUrl), { cache: 'no-store' }).catch(function () {});
+    fetch(@json($heartbeatUrl), { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (s) { if (s && s.claimed === false) window.location.reload(); })
+      .catch(function () { /* keep scoring — the table is not the network */ });
   }, 60000);
 @endif
 @endisset
