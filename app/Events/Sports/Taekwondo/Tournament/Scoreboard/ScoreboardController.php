@@ -114,6 +114,19 @@ class ScoreboardController extends Controller
      */
     public function tokenControl(Request $request, string $token)
     {
+        // A screen bolted to a wall must never be stranded somewhere it cannot
+        // leave. If this console will not open — the screen was unpaired, or
+        // revoked, or re-purposed to a board, or the organiser who paired it
+        // has since lost the right to score — send it to its own board address,
+        // which knows how to show a pairing code and wait to be adopted again.
+        //
+        // Loop-safe by construction: the board only redirects BACK to here when
+        // it has already checked the same conditions, so a refusal here means
+        // the board will draw rather than bounce.
+        if (! $this->canOpenControl($token)) {
+            return redirect()->route('court-display.board', $token);
+        }
+
         [$device, $event] = $this->controlDevice($token);
 
         $mats = $event->matches()->whereNotNull('court')->distinct()->orderBy('court')->pluck('court')->values();
@@ -151,6 +164,28 @@ class ScoreboardController extends Controller
         $request->merge(['mat' => $device->court]);
 
         return $this->photo($request, $event);
+    }
+
+    /**
+     * Would tokenControl() open for this token? Asked before rendering, so a
+     * refusal becomes a redirect to something drawable instead of an error.
+     *
+     * Mirrors controlDevice() exactly. If the two ever disagree, a screen
+     * bounces — so they are written to be read side by side.
+     */
+    private function canOpenControl(string $token): bool
+    {
+        $device = CourtDisplayDevice::resolve($token);
+
+        if (! $device || ! $device->isClaimed() || ! $device->event
+            || $device->surface !== 'control' || ! $device->court
+            || $device->event->sport !== 'taekwondo') {
+            return false;
+        }
+
+        $by = $device->created_by ? \App\Models\User::find($device->created_by) : null;
+
+        return $by !== null && app(EventAccess::class)->canScore($device->event, $by);
     }
 
     /**

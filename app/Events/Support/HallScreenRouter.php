@@ -128,20 +128,20 @@ class HallScreenRouter
      *
      * The panel asks before it offers: a slot an organiser can fill but the
      * package cannot serve is worse than no slot at all — it ends with a screen
-     * in a hall showing an error and no way back. Score control is Taekwondo
-     * only for now; every fleet can draw both boards.
+     * in a hall showing an error and no way back.
+     *
+     * Both fleets now serve all three. A sport that gains wall screens without
+     * a token-scoped scoring table must say so here, or an organiser will pair
+     * a console the package cannot open.
      */
+    private const SURFACES = [
+        'taekwondo' => ['bout', 'queue', 'control'],
+        'karate' => ['bout', 'queue', 'control'],
+    ];
+
     public function surfaces(ClubEvent $event): array
     {
-        $sport = (string) $event->sport;
-
-        if (! isset(self::OWNERS[$sport])) {
-            return [];
-        }
-
-        return $sport === 'taekwondo'
-            ? ['bout', 'queue', 'control']
-            : ['bout', 'queue'];
+        return self::SURFACES[(string) $event->sport] ?? [];
     }
 
     /**

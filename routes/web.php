@@ -91,8 +91,11 @@ Route::get('/court/{token}/status', [\App\Events\Sports\Taekwondo\Tournament\Cou
 | Open, like every screen endpoint, because a wall has nobody signed in to it.
 | What an unclaimed screen can render is its own pairing code and nothing else.
 */
+// Creates a waiting row and redirects to it, so this GET is now the enrolment
+// and carries the enrolment's limit. A reload costs nothing: the cookie means
+// the same machine resolves to the screen it already is.
 Route::get('/screen', [\App\Events\Support\ScreenPairingController::class, 'screen'])
-    ->name('screen.new')->middleware('throttle:60,1');
+    ->name('screen.new')->middleware('throttle:court-enroll');
 Route::post('/screen/enroll', [\App\Events\Support\ScreenPairingController::class, 'enroll'])
     ->name('screen.enroll')->middleware('throttle:court-enroll');
 Route::get('/screen/{token}', [\App\Events\Support\ScreenPairingController::class, 'show'])
@@ -254,6 +257,20 @@ Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
     // write path an appointed official holds for the length of a competition.
     Route::post('/karate/control/{event:uuid}', [\App\Events\Sports\Karate\Tournament\Scoreboard\ScoreboardController::class, 'command'])
         ->name('karate-scoreboard.command')->middleware('throttle:300,1');
+});
+
+/*
+| The Karate scoring table as a PAIRED SCREEN. No session: the device token is
+| the identity, it names one event and one mat, and every request re-checks
+| that the organiser who paired it may still score. Outside the auth group for
+| that reason — a tablet at a mat has nobody signed in to it.
+*/
+Route::get('/karate/court/{token}/control', [\App\Events\Sports\Karate\Tournament\Scoreboard\ScoreboardController::class, 'tokenControl'])
+    ->name('karate-scoreboard.token-control')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+Route::post('/karate/court/{token}/command', [\App\Events\Sports\Karate\Tournament\Scoreboard\ScoreboardController::class, 'tokenCommand'])
+    ->name('karate-scoreboard.token-command')->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:screen-token');
+
+Route::middleware(['auth', 'verified', 'two-factor'])->group(function () {
 });
 
 // Personal (member) mobile experience — shared mobile shell

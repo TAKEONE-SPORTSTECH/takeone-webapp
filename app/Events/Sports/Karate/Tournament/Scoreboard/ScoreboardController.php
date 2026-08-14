@@ -46,6 +46,21 @@ class ScoreboardController extends Controller
         $court = (string) $request->query('mat', $mats->first() ?? 'Mat 1');
         abort_unless($mats->isEmpty() || $mats->contains($court), 404);
 
+        return $this->consoleView($event, $mats, $court, [
+            'commandUrl' => route('karate-scoreboard.command', $event->uuid),
+        ], $request->boolean('adjust'));
+    }
+
+    /**
+     * The console page itself — one body, two front doors.
+     *
+     * A signed-in organiser reaches it by event uuid; a paired scoring table
+     * reaches it by its own device token. They must render the SAME page, or
+     * the two drift and a mat behaves differently depending on how somebody
+     * opened it. Only the addresses it posts to differ.
+     */
+    private function consoleView(ClubEvent $event, $mats, string $court, array $urls, bool $showTimeAdjust = false)
+    {
         return view('event-karate_tournament::scoreboard.control', [
             'event' => $event,
             'mats' => $mats,
@@ -64,8 +79,128 @@ class ScoreboardController extends Controller
             // The approved layout ships the clock nudges hidden, because the
             // console is sized to land inside 1080 and that row is what tips it
             // over. ?adjust=1 brings them back for a screen with room.
-            'showTimeAdjust' => $request->boolean('adjust'),
+            'showTimeAdjust' => $showTimeAdjust,
+        ] + $urls);
+    }
+
+    /**
+     * The scoring table as a PAIRED SCREEN — no session, the device token is
+     * the whole identity.
+     *
+     * Because the alternative is worse. A tablet at a mat is handed between
+     * officials for eight hours; signing in on it means a session belonging to
+     * one named person left unattended in a public hall, with rights over
+     * everything that person can reach in the product. A screen token reaches
+     * exactly one thing.
+     *
+     * ── What bounds it ──────────────────────────────────────────────────────
+     *
+     *  · ONE event and ONE mat, both read off the device record. There is no
+     *    event and no court in this URL to tamper with, and the mat a command
+     *    names is overwritten with the device's own below.
+     *  · Only if it was PAIRED as a control, by an organiser who could score.
+     *  · Re-checked on EVERY request against the pairing organiser: take that
+     *    person off the jury and every console they paired stops scoring, at
+     *    once, without anybody visiting the hall.
+     *  · Unpairing or revoking the screen ends it immediately.
+     */
+    public function tokenControl(Request $request, string $token)
+    {
+        // A screen bolted to a wall must never be stranded somewhere it cannot
+        // leave. If this console will not open — the screen was unpaired, or
+        // revoked, or re-purposed to a board, or the organiser who paired it
+        // has since lost the right to score — send it to its own board address,
+        // which knows how to show a pairing code and wait to be adopted again.
+        //
+        // Loop-safe by construction: the board only redirects BACK to here when
+        // it has already checked the same conditions, so a refusal here means
+        // the board will draw rather than bounce.
+        if (! $this->canOpenControl($token)) {
+            return redirect()->route('karate-court-display.board', $token);
+        }
+
+        [$device, $event] = $this->controlDevice($token);
+
+        $mats = $event->matches()->whereNotNull('court')->distinct()->orderBy('court')->pluck('court')->values();
+
+        return $this->consoleView($event, $mats, $device->court, [
+            'commandUrl' => route('karate-scoreboard.token-command', $token),
+            // A paired console is a SCREEN, and the console lists it beside the
+            // boards with a live dot. Commands alone would show a mat waiting
+            // twenty minutes for the next bout as offline — the opposite of the
+            // truth, and exactly when an organiser checks. So it beats.
+            'heartbeatUrl' => route('karate-court-display.status', $token, false),
         ]);
+    }
+
+    /** A command from a paired console. Same body, its own front door. */
+    public function tokenCommand(Request $request, string $token): JsonResponse
+    {
+        [$device, $event] = $this->controlDevice($token);
+
+        // The device's mat, never the request's. A console paired to Mat 2
+        // cannot score Mat 1 by editing its own payload.
+        $request->merge(['mat' => $device->court]);
+
+        return $this->command($request, $event);
+    }
+
+    /**
+     * Would tokenControl() open for this token? Asked before rendering, so a
+     * refusal becomes a redirect to something drawable instead of an error.
+     *
+     * Mirrors controlDevice() exactly. If the two ever disagree, a screen
+     * bounces — so they are written to be read side by side.
+     */
+    private function canOpenControl(string $token): bool
+    {
+        $device = CourtDisplayDevice::resolve($token);
+
+        if (! $device || ! $device->isClaimed() || ! $device->event
+            || $device->surface !== 'control' || ! $device->court
+            || $device->event->sport !== 'karate') {
+            return false;
+        }
+
+        $by = $device->created_by ? \App\Models\User::find($device->created_by) : null;
+
+        return $by !== null && app(EventAccess::class)->canScore($device->event, $by);
+    }
+
+    /**
+     * Resolve a screen entitled to score this mat, or refuse.
+     *
+     * @return array{0: CourtDisplayDevice, 1: ClubEvent}
+     */
+    private function controlDevice(string $token): array
+    {
+        $device = CourtDisplayDevice::resolve($token);
+
+        // One answer for every way this can fail — a bad token, a display-only
+        // screen, an unpaired one, a pairing organiser who has since lost the
+        // right to score. A console in a hall is looked at by strangers, and
+        // telling them which of those it was is telling them what to try next.
+        abort_unless(
+            $device
+            && $device->isClaimed()
+            && $device->event
+            && $device->surface === 'control'
+            && $device->court
+            && $device->event->sport === 'karate',
+            404
+        );
+
+        $by = $device->created_by ? \App\Models\User::find($device->created_by) : null;
+
+        abort_unless($by && app(EventAccess::class)->canScore($device->event, $by), 403);
+
+        // From here on this request acts AS that organiser — the same checks,
+        // the same scope, the same audit trail as if they were signed in.
+        $this->actor = $by;
+
+        $device->touchSeen();
+
+        return [$device, $device->event];
     }
 
     /**
@@ -218,9 +353,15 @@ class ScoreboardController extends Controller
 
     /* ---------------- Helpers ---------------- */
 
+    /**
+     * Who this request is acting as. Set only by controlDevice(), when a paired
+     * screen is standing in for the organiser who paired it.
+     */
+    private ?\App\Models\User $actor = null;
+
     private function canScore(ClubEvent $event): bool
     {
-        $user = Auth::user();
+        $user = $this->actor ?: Auth::user();
 
         return $user !== null && app(EventAccess::class)->canScore($event, $user);
     }

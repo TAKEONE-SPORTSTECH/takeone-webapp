@@ -24,6 +24,23 @@ class CourtDisplayController extends Controller
     public function __construct(private CourtDisplay $display) {}
 
     /**
+     * Will the scoring console actually open for this screen?
+     *
+     * Asked before redirecting to it, so a screen is never sent somewhere that
+     * will refuse it. Mirrors controlDevice()'s checks in ScoreboardController.
+     */
+    private function canServeControl(CourtDisplayDevice $device): bool
+    {
+        if ($device->event?->sport !== 'karate' || ! $device->court) {
+            return false;
+        }
+
+        $by = $device->created_by ? \App\Models\User::find($device->created_by) : null;
+
+        return $by !== null && app(EventAccess::class)->canScore($device->event, $by);
+    }
+
+    /**
      * Preview one court's board — organiser only.
      *
      * The Pi's own board is public-by-token (nobody is logged in to a wall), but
@@ -81,6 +98,23 @@ class CourtDisplayController extends Controller
             ]);
         }
 
+        // Paired as the scoring table rather than a display. That page has its
+        // own front door — its own authorisation, its own write endpoint — so
+        // this hands over rather than trying to render it here. A screen whose
+        // URL asks for a display still gets one: the pin is a choice about what
+        // to draw, and a control screen is entitled to both boards.
+        //
+        // Only when that door will actually open. It can be shut — the organiser
+        // who paired the screen may since have lost the right to score — and
+        // redirecting into a refusal leaves a screen in a hall bouncing between
+        // two URLs with nothing on it and no way back. A board it can draw is
+        // always better than an error it cannot leave.
+        if ($device->surface === 'control'
+            && ! in_array($request->query('surface'), ['queue', 'bout'], true)
+            && $this->canServeControl($device)) {
+            return redirect()->route('karate-scoreboard.token-control', $token);
+        }
+
         // The socket carries both surfaces, so it is built once here: payload_url
         // re-fetches the queue, state_url re-fetches the bout. A screen that
         // reconnects asks for whichever one it is currently showing.
@@ -108,17 +142,28 @@ class CourtDisplayController extends Controller
         //                  bouts instead of turning into a second copy of the
         //                  queue board next to it.
         //
-        // It rides in the URL rather than a column because that is where a
-        // screen's identity already lives: the Pi opens one address forever, so
-        // the pin survives a reboot with nothing to keep in step, and no
-        // migration is needed to hang another board in a hall. It is also not a
-        // privilege — the device is entitled to both surfaces and this only
-        // chooses which of the two it draws, so a tampered value grants nothing
-        // that the bare token did not already grant. Anything but these two
-        // words means the default, following behaviour.
+        // TWO ways to say it, and the URL wins.
+        //
+        // In the URL is right for a Raspberry Pi: it is flashed with one address
+        // and opens it forever, so the pin rides along with its identity and
+        // survives a reboot with nothing to keep in step.
+        //
+        // On the DEVICE is the only way it can work for a screen that is a
+        // browser somebody pointed at a QR code. Nobody types a URL into a
+        // television — they scan, they choose what the screen is for, and the
+        // screen has to remember it.
+        //
+        // Reading only the query string is what made a Karate screen paired as
+        // a SCOREBOARD open on the upcoming board: the choice was stored on the
+        // device correctly, this never looked at it, and the fall-through is
+        // "follow the mat" — which, with no bout loaded, is the queue. The
+        // Taekwondo controller already read both; this one had been left behind.
+        //
+        // Neither is a privilege: the device is entitled to both surfaces, and
+        // this only chooses which of the two it draws.
         $surface = in_array($request->query('surface'), ['queue', 'bout'], true)
             ? $request->query('surface')
-            : null;
+            : (in_array($device->surface, ['queue', 'bout'], true) ? $device->surface : null);
 
         // Is a bout on this mat right now? The scoring table decides, and the
         // answer outlives a reload because it lives in the cache — a screen that
@@ -131,6 +176,12 @@ class CourtDisplayController extends Controller
                 'court' => $device->court,
                 'state' => $state->toArray(),
                 'screenLink' => $screenLink,
+                // The scoreboard beats like every other screen. Without it a
+                // mat paired as a scoreboard touched `last_seen` once, when it
+                // loaded, and then went quiet — so the organiser's panel showed
+                // it amber forever while it was working perfectly. The queue
+                // board and the console both had one; this was the gap.
+                'statusUrl' => route('karate-court-display.status', $token, false),
                 // Told to the page so it refuses a running-order push meant for
                 // a queue board, and stays on this surface between bouts.
                 'pinned' => $surface === 'bout' ? 'bout' : false,
@@ -310,6 +361,12 @@ class CourtDisplayController extends Controller
         $data = $request->validate([
             'event' => ['required', 'string', 'size:36'],
             'court' => ['required', 'string', 'max:40'],
+            // What the screen is FOR. `follow` (or absent) means follow the
+            // mat, which is a real choice — but it must now be MADE: every
+            // door sends one, because a claim that quietly omitted it reset a
+            // paired scoreboard's job back to follow, and a mat with nothing
+            // loaded draws the upcoming board. Same vocabulary as the twin.
+            'surface' => ['nullable', 'string', 'in:queue,bout,control,follow'],
         ]);
 
         $event = ClubEvent::where('uuid', $data['event'])->first();
@@ -318,7 +375,23 @@ class CourtDisplayController extends Controller
         // is a convenience, this is the authorization.
         abort_unless($event && app(EventAccess::class)->canManage($event, $request->user()), 403);
 
-        $device->claim($event, trim($data['court']), $request->user()->id);
+        // The job must be one this event's package can serve, and the same two
+        // rules the other doors apply: a scoring table takes the right to
+        // SCORE, not merely to manage, and there is only ever one per mat.
+        $router = app(\App\Events\Support\HallScreenRouter::class);
+        abort_unless(in_array($data['surface'] ?? 'follow', array_merge($router->surfaces($event), ['follow']), true), 422);
+
+        if (($data['surface'] ?? null) === 'control') {
+            abort_unless(app(EventAccess::class)->canScore($event, $request->user()), 403);
+
+            if ($router->existingControl($event, trim($data['court']))) {
+                return back()->withErrors([
+                    'surface' => __('personal.event_screens_control_taken', ['court' => trim($data['court'])]),
+                ])->withInput();
+            }
+        }
+
+        $device->claim($event, trim($data['court']), $request->user()->id, $data['surface'] ?? null);
 
         return redirect()
             ->route('karate-court-display.claimed', $device->id)
@@ -365,6 +438,12 @@ class CourtDisplayController extends Controller
         $data = $request->validate([
             'code' => ['required', 'string', 'regex:/^[A-Z0-9]{6}$/'],
             'court' => ['required', 'string', 'max:40'],
+            // What the screen is FOR. `follow` (or absent) means follow the
+            // mat, which is a real choice — but it must now be MADE: every
+            // door sends one, because a claim that quietly omitted it reset a
+            // paired scoreboard's job back to follow, and a mat with nothing
+            // loaded draws the upcoming board. Same vocabulary as the twin.
+            'surface' => ['nullable', 'string', 'in:queue,bout,control,follow'],
         ]);
 
         $court = trim($data['court']);
@@ -382,7 +461,24 @@ class CourtDisplayController extends Controller
             ], 404);
         }
 
-        $device->claim($event, $court, $request->user()->id);
+        // The job must be one this event's package can serve, and the same two
+        // rules the other doors apply: a scoring table takes the right to
+        // SCORE, not merely to manage, and there is only ever one per mat.
+        $router = app(\App\Events\Support\HallScreenRouter::class);
+        abort_unless(in_array($data['surface'] ?? 'follow', array_merge($router->surfaces($event), ['follow']), true), 422);
+
+        if (($data['surface'] ?? null) === 'control') {
+            abort_unless(app(EventAccess::class)->canScore($event, $request->user()), 403);
+
+            if ($router->existingControl($event, $court)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('personal.event_screens_control_taken', ['court' => $court]),
+                ], 422);
+            }
+        }
+
+        $device->claim($event, $court, $request->user()->id, $data['surface'] ?? null);
 
         // The screen is standing in front of somebody showing a QR code — it
         // should become the board now, not on its next throttled poll.
