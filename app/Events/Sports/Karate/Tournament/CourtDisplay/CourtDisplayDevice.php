@@ -144,10 +144,16 @@ class CourtDisplayDevice extends Model
         $this->forceFill([
             'event_id' => $event->id,
             'court' => $court,
-            // What this screen is FOR — see the Taekwondo twin and the surface
-            // migration. Karate hangs boards, not scoring tablets, so 'control'
-            // is not among the values its console offers.
-            'surface' => in_array($surface, ['queue', 'bout'], true) ? $surface : null,
+            // What this screen is FOR. All three are storable: both sports
+            // now serve a scoring console as well as the two boards.
+            //
+            // A null here means "follow the mat", which is a real setting — but
+            // it must be CHOSEN, not arrived at. Every caller passes a surface;
+            // one that forgot used to silently wipe the screen's job back to
+            // null on re-claim, and a mat with nothing loaded then drew the
+            // upcoming board. That is why re-pairing a scoreboard produced the
+            // running order instead.
+            'surface' => in_array($surface, ['queue', 'bout', 'control'], true) ? $surface : null,
             'claimed_at' => now(),
             'created_by' => $this->created_by ?: $by,
             // Spent: the code on the wall stops being claimable the moment it

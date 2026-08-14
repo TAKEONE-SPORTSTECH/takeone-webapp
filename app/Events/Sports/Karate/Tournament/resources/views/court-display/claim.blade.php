@@ -8,7 +8,7 @@
     start — so this asks one question and offers only real answers: the events
     they can manage, and the mats those events actually run bouts on.
 --}}
-<div class="px-4 sm:px-6 lg:px-8 py-6 max-w-2xl mx-auto" x-data="{ picked: null, court: null }">
+<div class="px-4 sm:px-6 lg:px-8 py-6 max-w-2xl mx-auto" x-data="{ picked: null, court: null, surface: 'bout' }">
 
     <div class="flex items-center gap-3 mb-1">
         <span class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
@@ -69,6 +69,53 @@
             </div>
 
             <input type="hidden" name="court" :value="court">
+
+            {{-- What the screen is FOR. Asked here as well as on the
+                 sport-neutral door, because an UNPAIRED screen is re-claimed
+                 through this form — and a claim without it reset the job to
+                 "follow the mat", which with nothing on the mat draws the
+                 upcoming board. That is why re-pairing a scoreboard kept
+                 coming back as the running order. --}}
+            <div x-show="picked && court" x-cloak>
+                <p class="text-sm font-medium text-gray-700 mb-2">
+<div x-show="picked && court" x-cloak
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 -translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0">
+                <p class="text-sm font-medium text-gray-700 mb-2">
+                    {{ __('event-karate_tournament::messages.claim_surface') }}
+                </p>
+
+                <div class="space-y-2">
+                    @foreach ([
+                        ['follow', 'bi-arrow-repeat', 'claim_surface_follow', 'claim_surface_follow_hint'],
+                        ['queue', 'bi-list-ol', 'claim_surface_queue', 'claim_surface_queue_hint'],
+                        ['bout', 'bi-trophy', 'claim_surface_bout', 'claim_surface_bout_hint'],
+                        ['control', 'bi-sliders', 'claim_surface_control', 'claim_surface_control_hint'],
+                    ] as [$value, $icon, $label, $hint])
+                        <label class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors"
+                               :class="surface === @js($value) ? 'border-primary bg-primary/5' : 'border-gray-200 bg-white hover:bg-muted/60'">
+                            <input type="radio" name="surface" value="{{ $value }}" class="sr-only" x-model="surface">
+                            <span class="w-9 h-9 rounded-lg grid place-items-center flex-shrink-0"
+                                  :class="surface === @js($value) ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'">
+                                <i class="bi {{ $icon }}"></i>
+                            </span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-medium text-gray-900">
+                                    {{ __('event-karate_tournament::messages.'.$label) }}
+                                </span>
+                                <span class="block text-xs text-muted-foreground">
+                                    {{ __('event-karate_tournament::messages.'.$hint) }}
+                                </span>
+                            </span>
+                            <span class="w-5 h-5 rounded-full border-2 grid place-items-center flex-shrink-0"
+                                  :class="surface === @js($value) ? 'border-primary' : 'border-gray-300'">
+                                <span class="w-2.5 h-2.5 rounded-full bg-primary" x-show="surface === @js($value)" x-cloak></span>
+                            </span>
+                        </label>
+                    @endforeach
+                </div>
+            </div>
 
             <button type="submit"
                     class="w-full bg-primary text-white px-4 py-3 rounded-lg hover:bg-primary/90 transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed"

@@ -26,16 +26,64 @@ class ScreenPairingController extends Controller
 {
     public function __construct(private HallScreenRouter $router) {}
 
+    /** Remembers which waiting screen this machine already is. */
+    private const COOKIE = 'takeone_screen';
+
     /**
-     * The blank page you open on a screen.
+     * The address you open on a screen. Resolves SERVER-SIDE and redirects.
      *
-     * Keeps its token in localStorage so a reload — or a television waking up —
-     * comes back as the SAME waiting screen rather than minting another one and
-     * leaving the code on the wall stale.
+     * There is no page here any more, and that is the point. It used to render
+     * a spinner and then enrol over fetch — which meant a television could sit
+     * on "Setting this screen up" forever if anything at all went wrong with
+     * the request, and the one machine that cannot be debugged is a screen
+     * bolted to a wall with no keyboard. Every failure mode of that design
+     * (a hung fetch, an exhausted rate limit, stale cached JavaScript, storage
+     * disabled, JS off entirely) produced the same silent spinner.
+     *
+     * Now the work happens before a byte is sent: this either finds the screen
+     * this machine already is, or creates one, and redirects straight to its
+     * code. Nothing to hang, nothing to retry, and it works with JavaScript
+     * switched off.
+     *
+     * The identity lives in a cookie rather than localStorage for the same
+     * reason — the server can read a cookie, so a reload is resolved here
+     * instead of by a script that has to run first.
      */
-    public function screen()
+    public function screen(Request $request)
     {
-        return view('events.screen.new');
+        // "This is a DIFFERENT screen" — the explicit start-over, so a machine
+        // that has already been one can become a second.
+        if (! $request->has('new')) {
+            $existing = PendingScreen::resolve($request->cookie(self::COOKIE));
+
+            // Only a screen that is still WAITING. A settled row is spent — it
+            // has already become a real device and holds nothing but the
+            // address that device was sent to.
+            //
+            // Reusing one was the bug that made every scan land on the same
+            // board: pair a monitor as the upcoming list, then come back to
+            // this address to make it a scoreboard, and the cookie sent you
+            // straight back to the settled row, which redirected to the
+            // upcoming board again. It looked like the surface choice was being
+            // ignored; in fact the choice was never reached. Coming back here
+            // means "make this a screen", so a spent identity is dropped.
+            if ($existing && $existing->claimed_at === null) {
+                return redirect()->route('screen.show', $this->tokenFor($request));
+            }
+        }
+
+        ['token' => $token] = PendingScreen::begin();
+
+        // A month: long enough that a television which is switched off between
+        // competitions comes back as itself, short enough to be forgotten.
+        return redirect()->route('screen.show', $token)
+            ->withCookie(cookie(self::COOKIE, $token, 60 * 24 * 30, null, null, true, true));
+    }
+
+    /** The raw token this machine is carrying — validated by resolve() above. */
+    private function tokenFor(Request $request): string
+    {
+        return (string) $request->cookie(self::COOKIE);
     }
 
     /** A waiting screen asks for an identity. Grants only the right to wait. */

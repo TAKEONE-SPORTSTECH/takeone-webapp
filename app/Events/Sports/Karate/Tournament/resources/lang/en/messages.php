@@ -143,4 +143,14 @@ return [
     'ctl_commit' => 'Record result · next bout',
     'ctl_commit_hint' => 'Writes the result, advances the bracket, and calls the next bout on this mat.',
     'ctl_waiting_feeder' => 'Waiting on an earlier bout — both competitors are not known yet.',
+    /* ── Pairing: what the screen is FOR ─────────────────────────────── */
+    'claim_surface' => 'What is this screen for?',
+    'claim_surface_follow' => 'Follow the mat',
+    'claim_surface_follow_hint' => 'The running order between bouts, the bout while one is being fought. For the board over the mat.',
+    'claim_surface_queue' => 'Upcoming boutes, always',
+    'claim_surface_queue_hint' => 'Never turns into a scoreboard. For the call room, a corridor, the entrance.',
+    'claim_surface_bout' => 'Scoreboard, always',
+    'claim_surface_bout_hint' => 'The introduction and the score, with its own idle card between boutes.',
+    'claim_surface_control' => 'Score control',
+    'claim_surface_control_hint' => 'The scoring table for this mat. Only for a device that stays with an official — it can record results without signing in.',
 ];
