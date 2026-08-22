@@ -302,7 +302,13 @@ class PersonalEventController extends Controller
 
         $isMobile = (bool) $request->attributes->get('is_mobile');
 
-        return view($isMobile ? 'personal.mobile.event-manage' : 'personal.desktop.event-manage', [
+        // A package may bring its own console. A sparring session's run-day
+        // screen has nothing in common with a championship's — no draw, no
+        // weigh-in, no entries to verify — so it supplies its own rather than
+        // hiding half of the shared one. Falls back to the shared console for
+        // every type that declares nothing, exactly like `show` and `bracket`.
+        return view($this->packageView($type, 'manage', $isMobile ? 'mobile' : 'desktop',
+            $isMobile ? 'personal.mobile.event-manage' : 'personal.desktop.event-manage'), [
             'e' => $e,
             'canManage' => $canManage,
             'canOfficiate' => $canOfficiate,

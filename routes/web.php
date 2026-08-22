@@ -496,6 +496,9 @@ Route::middleware(['auth', 'verified', 'two-factor'])->prefix('me')->name('me.')
     Route::post('/events/{event:uuid}/screens', [\App\Events\Support\HallScreenRouter::class, 'pair'])->name('events.screens.pair')->middleware('throttle:admin-write');
     Route::delete('/events/{event:uuid}/screens/{device}', [\App\Events\Support\HallScreenRouter::class, 'revoke'])->name('events.screens.revoke')->whereNumber('device')->middleware('throttle:admin-write');
     Route::get('/events/{event:uuid}/next-up', [App\Http\Controllers\PersonalEventController::class, 'nextUp'])->name('events.next-up');
+    // A sparring session as JSON, for its console to re-read after a nudge —
+    // one coach queues a bout and every other console follows without a reload.
+    Route::get('/events/{event:uuid}/sparring', [\App\Events\Sparring\SparringLauncherController::class, 'state'])->name('events.sparring')->middleware('throttle:120,1');
     // Throttled: it takes a search term, and a searchable endpoint is one
     // someone will try to hammer.
     Route::get('/events/{event:uuid}/entry-roster', [App\Http\Controllers\PersonalEventController::class, 'entryRoster'])->name('events.entry-roster')->middleware('throttle:60,1');
@@ -938,6 +941,12 @@ Route::middleware(['auth', 'verified', 'two-factor', 'tenant', 'throttle:admin-w
 
     // Events
     Route::get('/events', [App\Http\Controllers\Admin\ClubEventController::class, 'events'])->name('events');
+    // Sparring — the club's own scoreboard for training. Two routes and no
+    // more: the launcher, and the one tap that opens a session. Everything
+    // afterwards is the session's console under /me/events, because a session
+    // IS an event (see App\Events\Sparring\Sparring).
+    Route::get('/sparring', [\App\Events\Sparring\SparringLauncherController::class, 'index'])->name('sparring');
+    Route::post('/sparring', [\App\Events\Sparring\SparringLauncherController::class, 'store'])->name('sparring.store')->middleware('throttle:admin-write');
     Route::post('/events', [App\Http\Controllers\Admin\ClubEventController::class, 'storeEvent'])->name('events.store');
     Route::put('/events/{event}', [App\Http\Controllers\Admin\ClubEventController::class, 'updateEvent'])->name('events.update');
     Route::delete('/events/{event}', [App\Http\Controllers\Admin\ClubEventController::class, 'destroyEvent'])->name('events.destroy');

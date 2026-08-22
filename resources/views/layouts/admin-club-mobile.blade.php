@@ -34,6 +34,7 @@
             ['route'=>'admin.club.packages',    'icon'=>'bi-box',           'label'=>__('admin.nav_packages')],
             ['route'=>'admin.club.activities',  'icon'=>'bi-activity',      'label'=>__('admin.nav_activities')],
             ['route'=>'admin.club.events',      'icon'=>'bi-calendar-event','label'=>__('admin.nav_events')],
+            ['route'=>'admin.club.sparring',    'icon'=>'bi-lightning-charge','label'=>__('event-sparring::messages.label')],
             ['route'=>'admin.club.facilities',  'icon'=>'bi-geo-alt',       'label'=>__('admin.nav_facilities')],
         ],
         __('admin.nav_group_store') => [

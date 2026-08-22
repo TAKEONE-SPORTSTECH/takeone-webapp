@@ -262,6 +262,7 @@ html, body { overflow: hidden !important; height: 100% !important; }
             ['route'=>'admin.club.activities',   'icon'=>'bi-activity',       'label'=>__('nav.layouts_admin_club_nav_activities')],
             ['route'=>'admin.club.packages',     'icon'=>'bi-box',            'label'=>__('nav.layouts_admin_club_nav_packages')],
             ['route'=>'admin.club.events',       'icon'=>'bi-calendar-event', 'label'=>__('nav.layouts_admin_club_nav_events')],
+            ['route'=>'admin.club.sparring',     'icon'=>'bi-lightning-charge','label'=>__('event-sparring::messages.label')],
             ['route'=>'admin.club.facilities',   'icon'=>'bi-geo-alt',        'label'=>__('nav.layouts_admin_club_nav_facilities')],
         ]],
         ['label'=>__('nav.layouts_admin_club_group_storefront'), 'items'=>[
